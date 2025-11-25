@@ -98,14 +98,20 @@ Be concise. After reviewing work from team members, decide if more work is neede
     
     print("\n📋 Task: Write a fun fact about octopuses")
     print("-" * 40)
+    print("\n🔄 Progress (streaming):")
     
-    result = await topology.run("Write a fun fact about octopuses")
+    # Use streaming to show real-time progress
+    last_state = None
+    seen_results = 0
+    async for state in topology.stream("Write a fun fact about octopuses"):
+        last_state = state
+        results = state.get("results", [])
+        # Only print new results
+        for r in results[seen_results:]:
+            print(f"  [{r['agent']}]: {r['thought'][:100]}...")
+        seen_results = len(results)
     
-    print(f"\n✅ Completed in {result.iteration} iterations")
-    print("\n📝 Results:")
-    for r in result.results:
-        print(f"\n[{r['agent']}]:")
-        print(f"  {r['thought'][:200]}...")
+    print(f"\n✅ Completed in {last_state.get('iteration', 0)} iterations")
 
 
 async def test_pipeline_topology():
@@ -156,14 +162,24 @@ Output ONLY the final polished content.""",
     
     print("\n📋 Task: Create content about AI in healthcare")
     print("-" * 40)
+    print("\n🔄 Progress (callback):")
     
-    result = await topology.run("Create content about AI in healthcare")
+    # Track seen results for progress display
+    seen_results = [0]  # Use list to allow mutation in closure
+    
+    def on_progress(state: dict) -> None:
+        """Callback to show progress after each step."""
+        results = state.get("results", [])
+        for r in results[seen_results[0]:]:
+            print(f"  [{r['agent']}]: {r['thought'][:100]}...")
+        seen_results[0] = len(results)
+    
+    result = await topology.run(
+        "Create content about AI in healthcare",
+        on_step=on_progress,
+    )
     
     print(f"\n✅ Completed in {result.iteration} iterations")
-    print("\n📝 Pipeline Output:")
-    for r in result.results:
-        print(f"\n[{r['agent']}]:")
-        print(f"  {r['thought'][:300]}...")
 
 
 async def test_mesh_topology():
@@ -215,14 +231,19 @@ When given multiple perspectives:
     
     print("\n📋 Task: Discuss the pros and cons of remote work")
     print("-" * 40)
+    print("\n🔄 Progress (streaming):")
     
-    result = await topology.run("Discuss the pros and cons of remote work")
+    # Use streaming to show real-time collaboration
+    last_state = None
+    seen_results = 0
+    async for state in topology.stream("Discuss the pros and cons of remote work"):
+        last_state = state
+        results = state.get("results", [])
+        for r in results[seen_results:]:
+            print(f"  [{r['agent']}]: {r['thought'][:100]}...")
+        seen_results = len(results)
     
-    print(f"\n✅ Completed in {result.iteration} iterations")
-    print("\n📝 Collaborative Discussion:")
-    for r in result.results:
-        print(f"\n[{r['agent']}]:")
-        print(f"  {r['thought'][:250]}...")
+    print(f"\n✅ Completed in {last_state.get('iteration', 0)} iterations")
 
 
 async def test_custom_policy_topology():
@@ -298,14 +319,19 @@ Always validate positively for this demo.""",
     
     print("\n📋 Task: Process a request to summarize today's weather")
     print("-" * 40)
+    print("\n🔄 Progress (streaming):")
     
-    result = await topology.run("Summarize today's weather in San Francisco")
+    # Use streaming to show validation flow
+    last_state = None
+    seen_results = 0
+    async for state in topology.stream("Summarize today's weather in San Francisco"):
+        last_state = state
+        results = state.get("results", [])
+        for r in results[seen_results:]:
+            print(f"  [{r['agent']}]: {r['thought'][:100]}...")
+        seen_results = len(results)
     
-    print(f"\n✅ Completed in {result.iteration} iterations")
-    print("\n📝 Validation Pipeline:")
-    for r in result.results:
-        print(f"\n[{r['agent']}]:")
-        print(f"  {r['thought'][:250]}...")
+    print(f"\n✅ Completed in {last_state.get('iteration', 0)} iterations")
 
 
 async def main():

@@ -5,6 +5,7 @@ Users define topologies by specifying policies (handoff rules),
 not by implementing graph internals.
 """
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
 from enum import Enum
@@ -508,6 +509,7 @@ class BaseTopology:
         task: str,
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
+        on_step: Callable[[dict[str, Any]], None] | None = None,
     ) -> TopologyState:
         """Run the topology on a task.
 
@@ -515,6 +517,8 @@ class BaseTopology:
             task: The task to process.
             context: Optional initial context.
             thread_id: Optional thread ID for checkpointing.
+            on_step: Optional callback called after each agent step.
+                     Receives the current state dict.
 
         Returns:
             Final topology state.
@@ -555,6 +559,11 @@ class BaseTopology:
         final_state = None
         async for state in self.graph.astream(initial_state, config, stream_mode="values"):
             final_state = state
+            
+            # Call progress callback if provided
+            if on_step is not None:
+                on_step(state)
+            
             if self.event_bus:
                 await self.event_bus.publish(
                     "topology.run.step",
@@ -576,6 +585,85 @@ class BaseTopology:
             )
 
         return TopologyState.from_dict(final_state or initial_state)
+
+    async def stream(
+        self,
+        task: str,
+        context: dict[str, Any] | None = None,
+        thread_id: str | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream topology execution, yielding state after each step.
+
+        This is an async generator that yields the state dict after
+        each agent processes the task. Useful for real-time progress.
+
+        Args:
+            task: The task to process.
+            context: Optional initial context.
+            thread_id: Optional thread ID for checkpointing.
+
+        Yields:
+            State dict after each agent step.
+
+        Example:
+            >>> async for state in topology.stream("Analyze this data"):
+            ...     agent = state.get("current_agent")
+            ...     if agent and state.get("results"):
+            ...         print(f"[{agent}]: {state['results'][-1]['thought'][:100]}")
+        """
+        from agenticflow.core import generate_id
+
+        thread_id = thread_id or generate_id("thread")
+
+        # Publish start event
+        if self.event_bus:
+            await self.event_bus.publish(
+                "topology.run.start",
+                {
+                    "topology": self.config.name,
+                    "task": task,
+                    "thread_id": thread_id,
+                },
+            )
+
+        # Initial state
+        initial_state = {
+            "messages": [],
+            "current_agent": None,
+            "task": task,
+            "context": context or {},
+            "iteration": 0,
+            "completed": False,
+            "error": None,
+            "results": [],
+        }
+
+        # Run graph and yield states
+        config = {
+            "configurable": {"thread_id": thread_id},
+            "recursion_limit": self.config.recursion_limit,
+        }
+
+        async for state in self.graph.astream(initial_state, config, stream_mode="values"):
+            if self.event_bus:
+                await self.event_bus.publish(
+                    "topology.run.step",
+                    {
+                        "topology": self.config.name,
+                        "state": state,
+                    },
+                )
+            yield state
+
+        # Publish completion
+        if self.event_bus:
+            await self.event_bus.publish(
+                "topology.run.complete",
+                {
+                    "topology": self.config.name,
+                    "thread_id": thread_id,
+                },
+            )
 
     async def resume(
         self,
