@@ -1,3 +1,14 @@
+# Suppress Pydantic V1 compatibility warning on Python 3.14+
+# This is a LangChain internal issue, not our code
+# Must be done BEFORE any langchain imports
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message="Core Pydantic V1 functionality",
+    category=UserWarning,
+)
+
 """
 AgenticFlow - Event-Driven Multi-Agent System Framework
 ========================================================
@@ -77,6 +88,18 @@ from agenticflow.core.enums import (
 )
 from agenticflow.core.utils import generate_id, now_utc
 
+# Model providers
+from agenticflow.core.providers import (
+    create_chat_model,
+    create_embeddings,
+    openai_chat,
+    azure_chat,
+    anthropic_chat,
+    ollama_chat,
+    openai_embeddings,
+    azure_embeddings,
+)
+
 # Models
 from agenticflow.models.event import Event
 from agenticflow.models.message import Message, MessageType
@@ -86,6 +109,16 @@ from agenticflow.models.task import Task
 from agenticflow.agents.base import Agent
 from agenticflow.agents.config import AgentConfig
 from agenticflow.agents.state import AgentState
+from agenticflow.agents.executor import (
+    ExecutionStrategy,
+    ExecutionPlan,
+    ToolCall,
+    DAGExecutor,
+    ReActExecutor,
+    PlanExecutor,
+    AdaptiveExecutor,
+    create_executor,
+)
 
 # Events
 from agenticflow.events.bus import EventBus, get_event_bus, set_event_bus
@@ -159,6 +192,20 @@ from agenticflow.observability import (
     AgentInspector,
     TaskInspector,
     EventInspector,
+    # Progress & Output system
+    OutputConfig,
+    Verbosity,
+    OutputFormat,
+    ProgressStyle,
+    ProgressTracker,
+    ProgressEvent,
+    Styler,
+    Colors,
+    Symbols,
+    create_on_step_callback,
+    create_executor_callback,
+    configure_output,
+    render_dag_ascii,
 )
 
 # Graph (LangGraph integration)
@@ -205,6 +252,15 @@ __all__ = [
     # Core utilities
     "generate_id",
     "now_utc",
+    # Model providers
+    "create_chat_model",
+    "create_embeddings",
+    "openai_chat",
+    "azure_chat",
+    "anthropic_chat",
+    "ollama_chat",
+    "openai_embeddings",
+    "azure_embeddings",
     # Models
     "Event",
     "Message",
@@ -214,6 +270,15 @@ __all__ = [
     "Agent",
     "AgentConfig",
     "AgentState",
+    # Execution strategies
+    "ExecutionStrategy",
+    "ExecutionPlan",
+    "ToolCall",
+    "DAGExecutor",
+    "ReActExecutor",
+    "PlanExecutor",
+    "AdaptiveExecutor",
+    "create_executor",
     # Events
     "EventBus",
     "get_event_bus",
@@ -273,6 +338,20 @@ __all__ = [
     "AgentInspector",
     "TaskInspector",
     "EventInspector",
+    # Progress & Output
+    "OutputConfig",
+    "Verbosity",
+    "OutputFormat",
+    "ProgressStyle",
+    "ProgressTracker",
+    "ProgressEvent",
+    "Styler",
+    "Colors",
+    "Symbols",
+    "create_on_step_callback",
+    "create_executor_callback",
+    "configure_output",
+    "render_dag_ascii",
     # Graph (LangGraph integration)
     "GraphBuilder",
     "NodeConfig",

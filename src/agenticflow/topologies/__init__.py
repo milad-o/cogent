@@ -43,6 +43,7 @@ from agenticflow.topologies.policies import (
     HandoffRule,
     HandoffCondition,
     AcceptancePolicy,
+    ExecutionMode,
 )
 from agenticflow.topologies.custom import CustomTopology, CustomTopologyConfig, Edge
 from agenticflow.topologies.factory import TopologyFactory, TopologyType
@@ -59,6 +60,7 @@ __all__ = [
     "HandoffRule",
     "HandoffCondition",
     "AcceptancePolicy",
+    "ExecutionMode",
     # Convenience classes
     "SupervisorTopology",
     "MeshTopology",

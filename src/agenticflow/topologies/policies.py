@@ -5,6 +5,7 @@ Policies define the rules for agent communication:
 - Who accepts tasks from whom  
 - Under what conditions handoffs occur
 - What data flows between agents
+- Execution mode (sequential vs parallel)
 """
 
 from dataclasses import dataclass, field
@@ -29,6 +30,21 @@ class AcceptancePolicy(Enum):
     ACCEPT_LISTED = "accept_listed"  # Only accept from specific agents
     REJECT_LISTED = "reject_listed"  # Accept from all except specific agents
     CONDITIONAL = "conditional"  # Custom acceptance function
+
+
+class ExecutionMode(Enum):
+    """How agents execute within a topology.
+    
+    SEQUENTIAL: Agents run one at a time (default, safe)
+    PARALLEL: Independent agents can run concurrently
+    FAN_OUT: Supervisor fans out to multiple workers simultaneously
+    FAN_IN: Multiple workers converge results to coordinator
+    """
+    
+    SEQUENTIAL = "sequential"
+    PARALLEL = "parallel"
+    FAN_OUT = "fan_out"
+    FAN_IN = "fan_in"
 
 
 @dataclass
@@ -197,6 +213,7 @@ class TopologyPolicy:
         ...         "worker1": AgentPolicy("worker1", can_finish=False),
         ...     },
         ...     entry_point="supervisor",
+        ...     execution_mode=ExecutionMode.FAN_OUT,  # Parallel workers
         ... )
     """
 
@@ -205,6 +222,8 @@ class TopologyPolicy:
     entry_point: str | None = None
     default_acceptance: AcceptancePolicy = AcceptancePolicy.ACCEPT_ALL
     allow_self_handoff: bool = False
+    execution_mode: ExecutionMode = ExecutionMode.SEQUENTIAL
+    parallel_groups: list[list[str]] = field(default_factory=list)  # Groups of agents that can run in parallel
 
     def add_rule(
         self,
@@ -395,6 +414,7 @@ class TopologyPolicy:
         cls,
         supervisor: str,
         workers: list[str],
+        parallel_workers: bool = False,
     ) -> "TopologyPolicy":
         """Create a supervisor topology policy.
 
@@ -403,11 +423,16 @@ class TopologyPolicy:
         Args:
             supervisor: Supervisor agent name.
             workers: List of worker agent names.
+            parallel_workers: If True, workers can execute in parallel.
 
         Returns:
             Configured policy.
         """
-        policy = cls(entry_point=supervisor)
+        policy = cls(
+            entry_point=supervisor,
+            execution_mode=ExecutionMode.FAN_OUT if parallel_workers else ExecutionMode.SEQUENTIAL,
+            parallel_groups=[workers] if parallel_workers else [],
+        )
 
         # Supervisor can delegate to any worker
         for worker in workers:
@@ -489,18 +514,27 @@ class TopologyPolicy:
         return policy
 
     @classmethod
-    def mesh(cls, agents: list[str]) -> "TopologyPolicy":
+    def mesh(
+        cls,
+        agents: list[str],
+        parallel: bool = False,
+    ) -> "TopologyPolicy":
         """Create a mesh topology policy.
 
         All agents can communicate with all others.
 
         Args:
             agents: List of agent names.
+            parallel: If True, agents can execute in parallel.
 
         Returns:
             Configured policy.
         """
-        policy = cls(entry_point=agents[0] if agents else None)
+        policy = cls(
+            entry_point=agents[0] if agents else None,
+            execution_mode=ExecutionMode.PARALLEL if parallel else ExecutionMode.SEQUENTIAL,
+            parallel_groups=[agents] if parallel else [],
+        )
 
         # Everyone can talk to everyone
         policy.add_rule("*", "*", label="")

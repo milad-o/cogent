@@ -5,6 +5,7 @@ Users define topologies by specifying policies (handoff rules),
 not by implementing graph internals.
 """
 
+import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
@@ -24,6 +25,7 @@ from agenticflow.topologies.policies import (
     HandoffRule,
     HandoffCondition,
     AcceptancePolicy,
+    ExecutionMode,
 )
 
 
@@ -692,6 +694,173 @@ class BaseTopology:
             final_state = state
 
         return TopologyState.from_dict(final_state or {})
+
+    async def run_parallel(
+        self,
+        task: str,
+        context: dict[str, Any] | None = None,
+        agent_names: list[str] | None = None,
+        merge_strategy: str = "combine",
+        on_agent_complete: Callable[[str, str], None] | None = None,
+    ) -> dict[str, Any]:
+        """Run multiple agents in parallel on the same task.
+        
+        This is useful for:
+        - Getting diverse perspectives from multiple agents
+        - Fan-out patterns where a supervisor delegates to many workers
+        - Parallel data processing across specialized agents
+        
+        Args:
+            task: The task for all agents to process.
+            context: Optional shared context.
+            agent_names: List of agents to run in parallel.
+                        Defaults to policy's parallel_groups or all agents.
+            merge_strategy: How to combine results:
+                - "combine": Return all results as list
+                - "first": Return first completed result
+                - "vote": Return most common result (for simple outputs)
+            on_agent_complete: Optional callback(agent_name, result) for each completion.
+            
+        Returns:
+            Dictionary with:
+                - results: Dict mapping agent name to their result
+                - timing: Dict mapping agent name to duration_ms
+                - errors: Dict mapping agent name to error (if any)
+                - merged: Combined result based on merge_strategy
+                
+        Example:
+            >>> # Run 3 analysts in parallel for diverse perspectives
+            >>> results = await topology.run_parallel(
+            ...     "Analyze Q3 sales data",
+            ...     agent_names=["analyst1", "analyst2", "analyst3"],
+            ...     on_agent_complete=lambda name, r: print(f"{name} done!"),
+            ... )
+            >>> for name, thought in results["results"].items():
+            ...     print(f"{name}: {thought[:100]}...")
+        """
+        from agenticflow.core import generate_id, now_utc
+        
+        # Determine which agents to run
+        if agent_names is None:
+            # Use parallel groups from policy, or all agents
+            if self._policy.parallel_groups:
+                agent_names = self._policy.parallel_groups[0]
+            else:
+                agent_names = list(self.agents.keys())
+        
+        # Validate agent names
+        for name in agent_names:
+            if name not in self.agents:
+                raise ValueError(f"Agent '{name}' not found in topology")
+        
+        # Publish start event
+        if self.event_bus:
+            await self.event_bus.publish(
+                "topology.parallel.start",
+                {
+                    "topology": self.config.name,
+                    "task": task,
+                    "agents": agent_names,
+                },
+            )
+        
+        # Build prompt with context
+        prompt_parts = [f"Task: {task}"]
+        if context:
+            prompt_parts.append(f"\nContext: {context}")
+        prompt = "\n".join(prompt_parts)
+        
+        # Track results and timing
+        results: dict[str, str] = {}
+        timing: dict[str, float] = {}
+        errors: dict[str, str] = {}
+        
+        async def run_agent(name: str) -> tuple[str, str | None, str | None, float]:
+            """Run a single agent and return (name, result, error, duration_ms)."""
+            agent = self.agents[name]
+            start = now_utc()
+            
+            try:
+                result = await agent.think(prompt)
+                duration_ms = (now_utc() - start).total_seconds() * 1000
+                
+                if on_agent_complete:
+                    on_agent_complete(name, result)
+                
+                return (name, result, None, duration_ms)
+            except Exception as e:
+                duration_ms = (now_utc() - start).total_seconds() * 1000
+                return (name, None, str(e), duration_ms)
+        
+        # Execute all agents in parallel
+        tasks = [run_agent(name) for name in agent_names]
+        
+        if merge_strategy == "first":
+            # Return as soon as first completes successfully
+            done, pending = await asyncio.wait(
+                [asyncio.create_task(t) for t in tasks],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            
+            # Cancel pending tasks
+            for task_obj in pending:
+                task_obj.cancel()
+            
+            # Get first result
+            for task_obj in done:
+                name, result, error, duration = task_obj.result()
+                if result:
+                    results[name] = result
+                    timing[name] = duration
+                    break
+                elif error:
+                    errors[name] = error
+                    timing[name] = duration
+        else:
+            # Run all to completion
+            completed = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for item in completed:
+                if isinstance(item, Exception):
+                    continue
+                name, result, error, duration = item
+                timing[name] = duration
+                if result:
+                    results[name] = result
+                elif error:
+                    errors[name] = error
+        
+        # Merge results based on strategy
+        merged: Any = None
+        if merge_strategy == "combine":
+            merged = list(results.values())
+        elif merge_strategy == "first":
+            merged = next(iter(results.values()), None)
+        elif merge_strategy == "vote":
+            # Simple voting - most common result
+            from collections import Counter
+            if results:
+                counter = Counter(results.values())
+                merged = counter.most_common(1)[0][0]
+        
+        # Publish completion
+        if self.event_bus:
+            await self.event_bus.publish(
+                "topology.parallel.complete",
+                {
+                    "topology": self.config.name,
+                    "successes": len(results),
+                    "failures": len(errors),
+                    "total_duration_ms": sum(timing.values()),
+                },
+            )
+        
+        return {
+            "results": results,
+            "timing": timing,
+            "errors": errors,
+            "merged": merged,
+        }
 
     def draw_mermaid(
         self,

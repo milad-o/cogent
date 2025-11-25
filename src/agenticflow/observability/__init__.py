@@ -1,6 +1,6 @@
 """Observability module for AgenticFlow.
 
-Provides comprehensive monitoring, tracing, and metrics
+Provides comprehensive monitoring, tracing, metrics, and progress output
 for understanding system behavior at runtime.
 """
 
@@ -32,6 +32,36 @@ from agenticflow.observability.inspector import (
     TaskInspector,
     EventInspector,
 )
+from agenticflow.observability.progress import (
+    # Configuration
+    OutputConfig,
+    Verbosity,
+    OutputFormat,
+    ProgressStyle,
+    Theme,
+    # Core classes
+    ProgressTracker,
+    ProgressEvent,
+    # Renderers
+    BaseRenderer,
+    TextRenderer,
+    RichRenderer,
+    JSONRenderer,
+    MinimalRenderer,
+    # Styling
+    Styler,
+    Colors,
+    Symbols,
+    # Callbacks
+    create_on_step_callback,
+    create_executor_callback,
+    # Convenience
+    get_tracker,
+    set_tracker,
+    configure_output,
+    # Visualization
+    render_dag_ascii,
+)
 
 __all__ = [
     # Tracing
@@ -57,4 +87,26 @@ __all__ = [
     "AgentInspector",
     "TaskInspector",
     "EventInspector",
+    # Progress & Output (NEW)
+    "OutputConfig",
+    "Verbosity",
+    "OutputFormat",
+    "ProgressStyle",
+    "Theme",
+    "ProgressTracker",
+    "ProgressEvent",
+    "BaseRenderer",
+    "TextRenderer",
+    "RichRenderer",
+    "JSONRenderer",
+    "MinimalRenderer",
+    "Styler",
+    "Colors",
+    "Symbols",
+    "create_on_step_callback",
+    "create_executor_callback",
+    "get_tracker",
+    "set_tracker",
+    "configure_output",
+    "render_dag_ascii",
 ]

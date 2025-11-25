@@ -6,15 +6,15 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from agenticflow.agents.config import AgentConfig
 from agenticflow.agents.state import AgentState
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
+from agenticflow.core.providers import create_chat_model
 from agenticflow.models.event import Event
 from agenticflow.models.message import Message
 from agenticflow.models.task import Task
@@ -22,6 +22,8 @@ from agenticflow.models.task import Task
 if TYPE_CHECKING:
     from agenticflow.events.bus import EventBus
     from agenticflow.tools.registry import ToolRegistry
+    from agenticflow.observability.progress import ProgressTracker
+    from agenticflow.agents.resilience import ToolResilience, FallbackRegistry
 
 
 class Agent:
@@ -92,7 +94,50 @@ class Agent:
         self.tool_registry = tool_registry
         self._model = None
         self._lock = asyncio.Lock()
+        self._resilience: ToolResilience | None = None
+        self._setup_resilience()
 
+    def _setup_resilience(self) -> None:
+        """Setup resilience layer if configured."""
+        from agenticflow.agents.resilience import (
+            FallbackRegistry,
+            ResilienceConfig,
+            ToolResilience,
+        )
+        
+        # Use explicit resilience config or create from legacy settings
+        if self.config.resilience_config:
+            resilience_config = self.config.resilience_config
+        elif self.config.retry_on_error:
+            # Create config from legacy settings
+            from agenticflow.agents.resilience import RetryPolicy, RetryStrategy
+            resilience_config = ResilienceConfig(
+                retry_policy=RetryPolicy(
+                    max_retries=self.config.max_retries,
+                    strategy=RetryStrategy.EXPONENTIAL_JITTER,
+                ),
+                timeout_seconds=self.config.timeout_seconds,
+            )
+        else:
+            resilience_config = ResilienceConfig.fast_fail()
+        
+        # Setup fallback registry
+        fallback_registry = FallbackRegistry()
+        for primary, fallbacks in self.config.fallback_tools.items():
+            fallback_registry.register(primary, fallbacks)
+        
+        self._resilience = ToolResilience(
+            config=resilience_config,
+            fallback_registry=fallback_registry,
+        )
+    
+    @property
+    def resilience(self) -> ToolResilience:
+        """Access the resilience layer for this agent."""
+        if self._resilience is None:
+            self._setup_resilience()
+        return self._resilience
+    
     @property
     def name(self) -> str:
         """Agent's display name."""
@@ -110,12 +155,29 @@ class Agent:
 
     @property
     def model(self):
-        """Lazy-load the LLM model."""
-        if self._model is None and self.config.model_name:
-            self._model = init_chat_model(
-                self.config.model_name,
-                temperature=self.config.temperature,
-            )
+        """Lazy-load the LLM model.
+        
+        Supports:
+        - Direct LangChain model objects
+        - Model name strings (e.g., "gpt-4o")
+        - Provider-prefixed strings (e.g., "openai:gpt-4o", "azure:gpt-4")
+        - Configuration dictionaries
+        """
+        if self._model is None:
+            model_spec = self.config.effective_model
+            if model_spec is not None:
+                # Check if it's already a model object
+                from langchain_core.language_models import BaseChatModel
+                if isinstance(model_spec, BaseChatModel):
+                    self._model = model_spec
+                else:
+                    # Create model from spec (string or dict)
+                    self._model = create_chat_model(
+                        model_spec,
+                        temperature=self.config.temperature,
+                        max_tokens=self.config.max_tokens,
+                        **self.config.model_kwargs,
+                    )
         return self._model
 
     async def _set_status(
@@ -240,17 +302,26 @@ class Agent:
         tool_name: str,
         args: dict,
         correlation_id: str | None = None,
+        tracker: ProgressTracker | None = None,
+        use_resilience: bool = True,
     ) -> Any:
         """
-        Execute an action using a tool.
+        Execute an action using a tool with intelligent retry and recovery.
         
         This is the agent's "acting" phase where it interacts with
-        the world through tools.
+        the world through tools. When use_resilience=True (default),
+        the agent will:
+        - Retry on transient failures with exponential backoff
+        - Use circuit breakers to prevent cascading failures
+        - Fall back to alternative tools if configured
+        - Learn from failures to adapt future behavior
         
         Args:
             tool_name: Name of the tool to use
             args: Arguments for the tool
             correlation_id: Optional correlation ID for event tracking
+            tracker: Optional progress tracker for real-time output
+            use_resilience: Whether to use intelligent retry/recovery (default: True)
             
         Returns:
             The tool's result
@@ -259,6 +330,15 @@ class Agent:
             RuntimeError: If no tool registry is configured
             ValueError: If tool is not found
             PermissionError: If agent is not authorized to use the tool
+            
+        Example:
+            ```python
+            # With full resilience (retry, circuit breaker, fallback)
+            result = await agent.act("web_search", {"query": "Python async"})
+            
+            # Disable resilience for testing
+            result = await agent.act("web_search", {"query": "test"}, use_resilience=False)
+            ```
         """
         if not self.tool_registry:
             raise RuntimeError(f"Agent {self.name} has no tool registry")
@@ -285,32 +365,274 @@ class Agent:
             },
             correlation_id,
         )
+        
+        # Emit to progress tracker if provided
+        if tracker:
+            tracker.tool_call(tool_name, args, agent=self.name)
+            # Attach tracker to resilience layer for retry/fallback tracking
+            if self._resilience:
+                self._resilience.tracker = tracker
 
         start_time = now_utc()
 
         try:
-            # Execute tool in thread pool
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+            if use_resilience and self._resilience:
+                # Use resilience layer for intelligent retry/recovery
+                def get_fallback_tool(name: str):
+                    t = self.tool_registry.get(name) if self.tool_registry else None
+                    return t.invoke if t else None
+                
+                exec_result = await self._resilience.execute(
+                    tool_fn=tool_obj.invoke,
+                    tool_name=tool_name,
+                    args=args,
+                    fallback_fn=get_fallback_tool,
+                )
+                
+                if exec_result.success:
+                    result = exec_result.result
+                    duration_ms = exec_result.total_time_ms
+                    
+                    # Emit additional info if fallback was used
+                    if exec_result.used_fallback:
+                        await self._emit_event(
+                            EventType.TOOL_RESULT,
+                            {
+                                "agent_id": self.id,
+                                "tool": tool_name,
+                                "actual_tool": exec_result.tool_used,
+                                "used_fallback": True,
+                                "fallback_chain": exec_result.fallback_chain,
+                                "attempts": exec_result.attempts,
+                                "result_preview": str(result)[:200],
+                                "duration_ms": duration_ms,
+                            },
+                            correlation_id,
+                        )
+                        if tracker:
+                            tracker.update(
+                                f"✅ {tool_name} succeeded via fallback → {exec_result.tool_used}"
+                            )
+                    else:
+                        await self._emit_event(
+                            EventType.TOOL_RESULT,
+                            {
+                                "agent_id": self.id,
+                                "tool": tool_name,
+                                "attempts": exec_result.attempts,
+                                "result_preview": str(result)[:200],
+                                "duration_ms": duration_ms,
+                            },
+                            correlation_id,
+                        )
+                        if tracker and exec_result.attempts > 1:
+                            tracker.update(
+                                f"✅ {tool_name} succeeded after {exec_result.attempts} attempts"
+                            )
+                else:
+                    # All retries and fallbacks exhausted
+                    error = exec_result.error or RuntimeError(f"Tool {tool_name} failed")
+                    
+                    await self._emit_event(
+                        EventType.TOOL_ERROR,
+                        {
+                            "agent_id": self.id,
+                            "tool": tool_name,
+                            "error": str(error),
+                            "attempts": exec_result.attempts,
+                            "fallback_chain": exec_result.fallback_chain,
+                            "circuit_state": exec_result.circuit_state.value if exec_result.circuit_state else None,
+                            "recovery_action": exec_result.recovery_action.value if exec_result.recovery_action else None,
+                        },
+                        correlation_id,
+                    )
+                    
+                    if tracker:
+                        tracker.tool_error(
+                            tool_name,
+                            f"{error} (after {exec_result.attempts} attempts, "
+                            f"fallbacks: {exec_result.fallback_chain or 'none'})"
+                        )
+                    
+                    self.state.record_error(str(error))
+                    await self._set_status(AgentStatus.ERROR, correlation_id)
+                    raise error
+            else:
+                # Direct execution without resilience
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+                duration_ms = (now_utc() - start_time).total_seconds() * 1000
 
             # Track timing
-            duration_ms = (now_utc() - start_time).total_seconds() * 1000
             self.state.add_acting_time(duration_ms)
 
-            await self._emit_event(
-                EventType.TOOL_RESULT,
-                {
-                    "agent_id": self.id,
-                    "tool": tool_name,
-                    "result_preview": str(result)[:200],
-                    "duration_ms": duration_ms,
-                },
-                correlation_id,
-            )
+            if tracker:
+                tracker.tool_result(tool_name, str(result)[:200], duration_ms=duration_ms)
 
             await self._set_status(AgentStatus.IDLE, correlation_id)
             return result
 
+        except Exception as e:
+            # Only catch if not already handled by resilience layer
+            if not (use_resilience and self._resilience):
+                self.state.record_error(str(e))
+                await self._set_status(AgentStatus.ERROR, correlation_id)
+                await self._emit_event(
+                    EventType.TOOL_ERROR,
+                    {
+                        "agent_id": self.id,
+                        "tool": tool_name,
+                        "error": str(e),
+                    },
+                    correlation_id,
+                )
+                
+                if tracker:
+                    tracker.tool_error(tool_name, str(e))
+            
+            raise
+
+    async def act_many(
+        self,
+        tool_calls: list[tuple[str, dict]],
+        correlation_id: str | None = None,
+        fail_fast: bool = False,
+        tracker: ProgressTracker | None = None,
+        use_resilience: bool = True,
+    ) -> list[Any]:
+        """
+        Execute multiple tool calls in parallel with intelligent retry and recovery.
+        
+        This enables concurrent tool execution when an LLM requests
+        multiple tools simultaneously. Results are returned in the
+        same order as the input tool_calls. Each tool call uses the
+        resilience layer independently for retry and fallback.
+        
+        Args:
+            tool_calls: List of (tool_name, args) tuples
+            correlation_id: Optional correlation ID for event tracking
+            fail_fast: If True, cancel remaining on first error
+            tracker: Optional progress tracker for real-time output
+            use_resilience: Whether to use intelligent retry/recovery (default: True)
+            
+        Returns:
+            List of results (or exceptions if fail_fast=False)
+            
+        Example:
+            ```python
+            results = await agent.act_many([
+                ("search_web", {"query": "Python async"}),
+                ("read_file", {"path": "data.json"}),
+                ("calculate", {"expr": "2 + 2"}),
+            ])
+            ```
+        """
+        if not tool_calls:
+            return []
+        
+        await self._set_status(AgentStatus.ACTING, correlation_id)
+        
+        await self._emit_event(
+            EventType.TOOL_CALLED,
+            {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "tool": f"parallel:{len(tool_calls)} tools",
+                "tools": [tc[0] for tc in tool_calls],
+            },
+            correlation_id,
+        )
+        
+        # Emit to progress tracker
+        if tracker:
+            tracker.update(f"Executing {len(tool_calls)} tools in parallel")
+            for tool_name, args in tool_calls:
+                tracker.tool_call(tool_name, args, agent=self.name, parallel=True)
+            # Attach tracker to resilience layer
+            if self._resilience:
+                self._resilience.tracker = tracker
+        
+        start_time = now_utc()
+        
+        async def execute_single(tool_name: str, args: dict) -> Any:
+            """Execute a single tool with resilience (for parallel execution)."""
+            if not self.tool_registry:
+                raise RuntimeError(f"Agent {self.name} has no tool registry")
+            
+            tool_obj = self.tool_registry.get(tool_name)
+            if not tool_obj:
+                raise ValueError(f"Unknown tool: {tool_name}")
+            
+            if not self.config.can_use_tool(tool_name):
+                raise PermissionError(
+                    f"Agent {self.name} not authorized to use tool: {tool_name}"
+                )
+            
+            if use_resilience and self._resilience:
+                # Use resilience layer
+                def get_fallback_tool(name: str):
+                    t = self.tool_registry.get(name) if self.tool_registry else None
+                    return t.invoke if t else None
+                
+                exec_result = await self._resilience.execute(
+                    tool_fn=tool_obj.invoke,
+                    tool_name=tool_name,
+                    args=args,
+                    fallback_fn=get_fallback_tool,
+                )
+                
+                if exec_result.success:
+                    return exec_result.result
+                else:
+                    raise exec_result.error or RuntimeError(f"Tool {tool_name} failed")
+            else:
+                # Direct execution
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+        
+        # Create tasks for parallel execution
+        tasks = [execute_single(name, args) for name, args in tool_calls]
+        
+        try:
+            if fail_fast:
+                # Cancel all on first error
+                results = await asyncio.gather(*tasks)
+            else:
+                # Return exceptions instead of raising
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Track timing
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            self.state.add_acting_time(duration_ms)
+            
+            # Count successes/failures
+            successes = sum(1 for r in results if not isinstance(r, Exception))
+            failures = len(results) - successes
+            
+            await self._emit_event(
+                EventType.TOOL_RESULT,
+                {
+                    "agent_id": self.id,
+                    "tools": [tc[0] for tc in tool_calls],
+                    "successes": successes,
+                    "failures": failures,
+                    "duration_ms": duration_ms,
+                },
+                correlation_id,
+            )
+            
+            # Emit results to progress tracker
+            if tracker:
+                for (tool_name, _), result in zip(tool_calls, results):
+                    if isinstance(result, Exception):
+                        tracker.tool_error(tool_name, str(result))
+                    else:
+                        tracker.tool_result(tool_name, str(result)[:100])
+                tracker.update(f"Completed {successes}/{len(tool_calls)} tools ({duration_ms:.0f}ms)")
+            
+            await self._set_status(AgentStatus.IDLE, correlation_id)
+            return results
+            
         except Exception as e:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
@@ -318,11 +640,16 @@ class Agent:
                 EventType.TOOL_ERROR,
                 {
                     "agent_id": self.id,
-                    "tool": tool_name,
+                    "tools": [tc[0] for tc in tool_calls],
                     "error": str(e),
                 },
                 correlation_id,
             )
+            
+            # Emit error to progress tracker
+            if tracker:
+                tracker.tool_error("parallel_execution", str(e))
+            
             raise
 
     async def execute_task(
@@ -392,6 +719,65 @@ class Agent:
         except Exception as e:
             self.state.finish_task(task.id, success=False)
             raise
+
+    async def run(
+        self,
+        task: str,
+        context: dict[str, Any] | None = None,
+        strategy: str = "dag",
+        on_step: Callable[[str, Any], None] | None = None,
+        tracker: ProgressTracker | None = None,
+    ) -> Any:
+        """
+        Execute a complex task using an advanced execution strategy.
+        
+        This is the main entry point for complex multi-step tasks.
+        It uses sophisticated execution patterns to maximize speed
+        and efficiency.
+        
+        Args:
+            task: The task description.
+            context: Optional context dict.
+            strategy: Execution strategy:
+                - "react": Classic think-act-observe loop (slowest)
+                - "plan": Plan all steps, then execute sequentially
+                - "dag": Build dependency graph, execute in parallel (fastest)
+                - "adaptive": Auto-select based on task complexity
+            on_step: Optional callback(step_type, data) for progress.
+            tracker: Optional ProgressTracker for real-time output.
+            
+        Returns:
+            The final result.
+            
+        Example:
+            ```python
+            # Fast parallel execution with progress tracking
+            tracker = ProgressTracker(OutputConfig.verbose())
+            result = await agent.run(
+                "Search for Python tutorials and Rust tutorials, then compare them",
+                strategy="dag",
+                tracker=tracker,
+            )
+            ```
+        """
+        from agenticflow.agents.executor import (
+            ExecutionStrategy,
+            create_executor,
+        )
+        
+        strategy_map = {
+            "react": ExecutionStrategy.REACT,
+            "plan": ExecutionStrategy.PLAN_EXECUTE,
+            "dag": ExecutionStrategy.DAG,
+            "adaptive": ExecutionStrategy.ADAPTIVE,
+        }
+        
+        exec_strategy = strategy_map.get(strategy, ExecutionStrategy.DAG)
+        executor = create_executor(self, exec_strategy)
+        executor.on_step = on_step
+        executor.tracker = tracker  # Pass tracker to executor
+        
+        return await executor.execute(task, context)
 
     async def send_message(
         self,
@@ -466,6 +852,88 @@ class Agent:
             self.state.is_available()
             and self.state.has_capacity(self.config.max_concurrent_tasks)
         )
+    
+    # --- Resilience Control Methods ---
+    
+    def get_circuit_status(self, tool_name: str | None = None) -> dict[str, Any]:
+        """
+        Get circuit breaker status for tools.
+        
+        Args:
+            tool_name: Specific tool name, or None for all tools
+            
+        Returns:
+            Circuit breaker status dict
+            
+        Example:
+            ```python
+            # Check specific tool
+            status = agent.get_circuit_status("web_search")
+            if status["state"] == "open":
+                print(f"web_search circuit is open!")
+            
+            # Check all tools
+            all_status = agent.get_circuit_status()
+            ```
+        """
+        if not self._resilience:
+            return {"state": "no_resilience_configured"}
+        
+        if tool_name:
+            return self._resilience.get_circuit_status(tool_name)
+        return self._resilience.get_all_circuit_status()
+    
+    def reset_circuit(self, tool_name: str | None = None) -> None:
+        """
+        Reset circuit breaker(s) to closed state.
+        
+        Args:
+            tool_name: Specific tool, or None to reset all
+            
+        Example:
+            ```python
+            # Reset specific tool
+            agent.reset_circuit("web_search")
+            
+            # Reset all circuits
+            agent.reset_circuit()
+            ```
+        """
+        if not self._resilience:
+            return
+        
+        if tool_name:
+            self._resilience.reset_circuit(tool_name)
+        else:
+            self._resilience.reset_all_circuits()
+    
+    def get_failure_suggestions(self, tool_name: str) -> dict[str, Any] | None:
+        """
+        Get suggestions for a failing tool based on learned patterns.
+        
+        Args:
+            tool_name: Name of the tool
+            
+        Returns:
+            Suggestions dict with failure_rate, common_errors, recommendations
+            
+        Example:
+            ```python
+            suggestions = agent.get_failure_suggestions("web_search")
+            print(f"Failure rate: {suggestions['failure_rate']:.1%}")
+            print(f"Common errors: {suggestions['common_errors']}")
+            for rec in suggestions['recommendations']:
+                print(f"  - {rec}")
+            ```
+        """
+        if not self._resilience:
+            return None
+        return self._resilience.get_failure_suggestions(tool_name)
+    
+    def clear_failure_memory(self) -> None:
+        """Clear all learned failure patterns (reset memory)."""
+        if self._resilience and self._resilience.failure_memory:
+            self._resilience.failure_memory.clear()
 
     def to_dict(self) -> dict:
         """Convert agent info to dictionary."""
