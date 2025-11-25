@@ -11,20 +11,19 @@ Semantic memory = Vector Stores:
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore, VectorStore
 from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import InMemoryVectorStore, VectorStore
 
-if TYPE_CHECKING:
-    pass
+from agenticflow.providers import EmbeddingSpec, create_embeddings
 
 
 def create_vectorstore(
     backend: str = "memory",
     *,
-    embeddings: Embeddings | None = None,
+    embeddings: str | EmbeddingSpec | Embeddings | None = None,
     **kwargs: Any,
 ) -> VectorStore:
     """Create a vector store for semantic memory.
@@ -38,14 +37,32 @@ def create_vectorstore(
             - "faiss": FAISS (local, persistent)
             - "chroma": ChromaDB (local/cloud)
             - "pgvector": PostgreSQL with pgvector
-        embeddings: Embeddings model instance
+        embeddings: Embeddings specification - can be:
+            - String: "openai/text-embedding-3-small", "cohere/embed-english-v3.0"
+            - EmbeddingSpec: Explicit specification object
+            - Embeddings: Direct LangChain embeddings instance
         **kwargs: Backend-specific configuration
 
     Returns:
         A configured vector store instance.
 
     Examples:
-        # In-memory with OpenAI embeddings
+        # In-memory with string spec (simplest)
+        >>> vectorstore = create_vectorstore(
+        ...     "memory",
+        ...     embeddings="openai/text-embedding-3-small"
+        ... )
+
+        # Using EmbeddingSpec for more control
+        >>> from agenticflow.providers import EmbeddingSpec
+        >>> spec = EmbeddingSpec(
+        ...     provider="openai",
+        ...     model="text-embedding-3-large",
+        ...     dimensions=1024,  # Reduce dimensions
+        ... )
+        >>> vectorstore = create_vectorstore("memory", embeddings=spec)
+
+        # Direct LangChain embeddings (legacy)
         >>> from langchain_openai import OpenAIEmbeddings
         >>> embeddings = OpenAIEmbeddings()
         >>> vectorstore = create_vectorstore("memory", embeddings=embeddings)
@@ -57,10 +74,13 @@ def create_vectorstore(
         # Search
         >>> results = vectorstore.similarity_search("greeting", k=1)
     """
+    # Resolve embeddings from string or spec
+    resolved_embeddings = _resolve_embeddings(embeddings)
+
     if backend == "memory":
-        if embeddings is None:
+        if resolved_embeddings is None:
             raise ValueError("embeddings required for memory backend")
-        return InMemoryVectorStore(embedding=embeddings, **kwargs)
+        return InMemoryVectorStore(embedding=resolved_embeddings, **kwargs)
 
     elif backend == "faiss":
         try:
@@ -68,10 +88,10 @@ def create_vectorstore(
         except ImportError as e:
             raise ImportError(
                 "FAISS backend requires langchain-community and faiss-cpu. "
-                "Install with: pip install langchain-community faiss-cpu"
+                "Install with: uv add langchain-community faiss-cpu"
             ) from e
 
-        if embeddings is None:
+        if resolved_embeddings is None:
             raise ValueError("embeddings required for faiss backend")
 
         # Check if loading from existing index
@@ -79,7 +99,7 @@ def create_vectorstore(
             index_path = kwargs.pop("index_path")
             return FAISS.load_local(
                 index_path,
-                embeddings,
+                resolved_embeddings,
                 allow_dangerous_deserialization=kwargs.pop(
                     "allow_dangerous_deserialization", True
                 ),
@@ -87,7 +107,7 @@ def create_vectorstore(
             )
 
         # Create new empty index
-        return FAISS.from_documents([], embeddings, **kwargs)
+        return FAISS.from_documents([], resolved_embeddings, **kwargs)
 
     elif backend == "chroma":
         try:
@@ -95,10 +115,10 @@ def create_vectorstore(
         except ImportError as e:
             raise ImportError(
                 "Chroma backend requires langchain-chroma. "
-                "Install with: pip install langchain-chroma"
+                "Install with: uv add langchain-chroma"
             ) from e
 
-        return Chroma(embedding_function=embeddings, **kwargs)
+        return Chroma(embedding_function=resolved_embeddings, **kwargs)
 
     elif backend == "pgvector":
         try:
@@ -106,12 +126,12 @@ def create_vectorstore(
         except ImportError as e:
             raise ImportError(
                 "PGVector backend requires langchain-postgres. "
-                "Install with: pip install langchain-postgres"
+                "Install with: uv add langchain-postgres"
             ) from e
 
         connection = kwargs.pop("connection")
         return PGVector(
-            embeddings=embeddings,
+            embeddings=resolved_embeddings,
             connection=connection,
             **kwargs,
         )
@@ -123,38 +143,76 @@ def create_vectorstore(
         )
 
 
-def memory_vectorstore(embeddings: Embeddings, **kwargs: Any) -> InMemoryVectorStore:
+def _resolve_embeddings(
+    embeddings: str | EmbeddingSpec | Embeddings | None,
+) -> Embeddings | None:
+    """Resolve embeddings from various input types.
+
+    Args:
+        embeddings: String spec, EmbeddingSpec, or Embeddings instance.
+
+    Returns:
+        Resolved Embeddings instance or None.
+    """
+    if embeddings is None:
+        return None
+
+    if isinstance(embeddings, Embeddings):
+        return embeddings
+
+    if isinstance(embeddings, EmbeddingSpec):
+        return embeddings.create()
+
+    if isinstance(embeddings, str):
+        return create_embeddings(embeddings)
+
+    raise TypeError(
+        f"embeddings must be str, EmbeddingSpec, or Embeddings, got {type(embeddings)}"
+    )
+
+
+def memory_vectorstore(
+    embeddings: str | EmbeddingSpec | Embeddings,
+    **kwargs: Any,
+) -> InMemoryVectorStore:
     """Create an in-memory vector store.
 
     Args:
-        embeddings: Embeddings model
+        embeddings: Embeddings specification - string, EmbeddingSpec, or instance.
         **kwargs: Additional configuration
 
     Returns:
         InMemoryVectorStore instance.
 
     Example:
-        >>> from langchain_openai import OpenAIEmbeddings
-        >>> embeddings = OpenAIEmbeddings()
-        >>> vectorstore = memory_vectorstore(embeddings)
+        # Using string spec (simplest)
+        >>> vectorstore = memory_vectorstore("openai/text-embedding-3-small")
         >>> vectorstore.add_texts(["Hello", "World"])
         >>> vectorstore.similarity_search("greeting")
+
+        # Using EmbeddingSpec
+        >>> from agenticflow.providers import EmbeddingSpec
+        >>> spec = EmbeddingSpec(provider="openai", model="text-embedding-3-small")
+        >>> vectorstore = memory_vectorstore(spec)
     """
-    return InMemoryVectorStore(embedding=embeddings, **kwargs)
+    resolved = _resolve_embeddings(embeddings)
+    if resolved is None:
+        raise ValueError("embeddings is required")
+    return InMemoryVectorStore(embedding=resolved, **kwargs)
 
 
 def faiss_vectorstore(
-    embeddings: Embeddings,
+    embeddings: str | EmbeddingSpec | Embeddings,
     *,
     index_path: str | None = None,
     **kwargs: Any,
 ) -> VectorStore:
     """Create a FAISS vector store.
 
-    Requires: pip install langchain-community faiss-cpu
+    Requires: uv add langchain-community faiss-cpu
 
     Args:
-        embeddings: Embeddings model
+        embeddings: Embeddings specification - string, EmbeddingSpec, or instance.
         index_path: Path to load existing index from
         **kwargs: Additional configuration
 
@@ -162,20 +220,22 @@ def faiss_vectorstore(
         FAISS instance.
 
     Example:
-        >>> from langchain_openai import OpenAIEmbeddings
-        >>> embeddings = OpenAIEmbeddings()
-        >>> vectorstore = faiss_vectorstore(embeddings)
+        # Using string spec
+        >>> vectorstore = faiss_vectorstore("openai/text-embedding-3-small")
         >>> vectorstore.add_texts(["Hello", "World"])
         >>> vectorstore.save_local("my_index")
         >>>
         >>> # Load later
-        >>> vectorstore = faiss_vectorstore(embeddings, index_path="my_index")
+        >>> vectorstore = faiss_vectorstore(
+        ...     "openai/text-embedding-3-small",
+        ...     index_path="my_index"
+        ... )
     """
     return create_vectorstore("faiss", embeddings=embeddings, index_path=index_path, **kwargs)
 
 
 def chroma_vectorstore(
-    embeddings: Embeddings | None = None,
+    embeddings: str | EmbeddingSpec | Embeddings | None = None,
     *,
     collection_name: str = "langchain",
     persist_directory: str | None = None,
@@ -183,10 +243,10 @@ def chroma_vectorstore(
 ) -> VectorStore:
     """Create a ChromaDB vector store.
 
-    Requires: pip install langchain-chroma
+    Requires: uv add langchain-chroma
 
     Args:
-        embeddings: Embeddings model (optional for Chroma)
+        embeddings: Embeddings specification - string, EmbeddingSpec, or instance.
         collection_name: Name of the collection
         persist_directory: Directory for persistence
         **kwargs: Additional configuration
@@ -195,10 +255,9 @@ def chroma_vectorstore(
         Chroma instance.
 
     Example:
-        >>> from langchain_openai import OpenAIEmbeddings
-        >>> embeddings = OpenAIEmbeddings()
+        # Using string spec
         >>> vectorstore = chroma_vectorstore(
-        ...     embeddings,
+        ...     "openai/text-embedding-3-small",
         ...     collection_name="my_docs",
         ...     persist_directory="./chroma_db"
         ... )
@@ -221,4 +280,5 @@ __all__ = [
     "VectorStore",
     "InMemoryVectorStore",
     "Document",
+    "EmbeddingSpec",
 ]

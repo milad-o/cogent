@@ -11,6 +11,8 @@ from agenticflow.core.enums import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
+    from agenticflow.agents.resilience import ResilienceConfig
+    from agenticflow.providers import ModelSpec
 
 
 @dataclass
@@ -26,8 +28,10 @@ class AgentConfig:
         role: Agent's role in the system
         description: Detailed description of agent's purpose
         model: LLM model - can be:
-            - String: model name (e.g., "gpt-4o", "claude-3-opus")
-            - String with provider: "openai:gpt-4o", "azure:gpt-4"
+            - String: "openai/gpt-4o", "anthropic/claude-3-5-sonnet-latest"
+            - String (legacy): "openai:gpt-4o", "azure:gpt-4"
+            - String (auto-detect): "gpt-4o" -> infers OpenAI
+            - ModelSpec: Explicit specification object
             - LangChain model object: ChatOpenAI, AzureChatOpenAI, etc.
             - Dict: {"provider": "openai", "model": "gpt-4o", ...}
         model_name: Deprecated, use 'model' instead
@@ -45,27 +49,40 @@ class AgentConfig:
         
     Example:
         ```python
-        # Simple - model name string
+        # Simple - model name string (auto-detects provider)
         config = AgentConfig(
             name="DataAnalyst",
             role=AgentRole.SPECIALIST,
             model="gpt-4o",  # Auto-detects OpenAI
         )
         
-        # Provider-prefixed string
+        # Provider/model format (preferred)
         config = AgentConfig(
             name="Writer",
-            model="anthropic:claude-3-5-sonnet-latest",
+            model="anthropic/claude-3-5-sonnet-latest",
         )
         
-        # Azure OpenAI
+        # Using ModelSpec for full control
+        from agenticflow.providers import ModelSpec
+        config = AgentConfig(
+            name="PreciseAgent",
+            model=ModelSpec(
+                provider="openai",
+                model="gpt-4o",
+                temperature=0.3,
+                max_tokens=2000,
+            ),
+        )
+        
+        # Azure OpenAI with Managed Identity
+        from agenticflow.providers import AzureOpenAIProvider, AzureAuthMethod
+        provider = AzureOpenAIProvider(
+            endpoint="https://my-resource.openai.azure.com",
+            auth_method=AzureAuthMethod.MANAGED_IDENTITY,
+        )
         config = AgentConfig(
             name="AzureAgent",
-            model="azure:gpt-4o",
-            model_kwargs={
-                "azure_endpoint": "https://my-resource.openai.azure.com",
-                "azure_deployment": "my-gpt4-deployment",
-            },
+            model=provider.create_chat_model("gpt-4o-deployment"),
         )
         
         # Direct LangChain model object
@@ -82,7 +99,7 @@ class AgentConfig:
     description: str = ""
 
     # LLM Configuration - flexible model specification
-    model: str | BaseChatModel | dict[str, Any] | None = None
+    model: str | ModelSpec | BaseChatModel | dict[str, Any] | None = None
     model_name: str | None = None  # Deprecated, for backwards compatibility
     temperature: float = 0.7
     max_tokens: int | None = None

@@ -14,7 +14,7 @@ from agenticflow.agents.config import AgentConfig
 from agenticflow.agents.state import AgentState
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.core.providers import create_chat_model
+from agenticflow.providers import create_model, ModelSpec
 from agenticflow.models.event import Event
 from agenticflow.models.message import Message
 from agenticflow.models.task import Task
@@ -159,8 +159,9 @@ class Agent:
         
         Supports:
         - Direct LangChain model objects
-        - Model name strings (e.g., "gpt-4o")
-        - Provider-prefixed strings (e.g., "openai:gpt-4o", "azure:gpt-4")
+        - ModelSpec objects
+        - Model name strings (e.g., "gpt-4o", "openai/gpt-4o")
+        - Provider-prefixed strings (e.g., "openai:gpt-4o" - legacy)
         - Configuration dictionaries
         """
         if self._model is None:
@@ -170,9 +171,12 @@ class Agent:
                 from langchain_core.language_models import BaseChatModel
                 if isinstance(model_spec, BaseChatModel):
                     self._model = model_spec
+                elif isinstance(model_spec, ModelSpec):
+                    # Use ModelSpec directly
+                    self._model = model_spec.create()
                 else:
                     # Create model from spec (string or dict)
-                    self._model = create_chat_model(
+                    self._model = create_model(
                         model_spec,
                         temperature=self.config.temperature,
                         max_tokens=self.config.max_tokens,

@@ -88,10 +88,37 @@ from agenticflow.core.enums import (
 )
 from agenticflow.core.utils import generate_id, now_utc
 
-# Model providers
-from agenticflow.core.providers import (
-    create_chat_model,
+# Model providers (new modular system)
+from agenticflow.providers import (
+    # Factory functions
+    create_model,
     create_embeddings,
+    acreate_model,
+    acreate_embeddings,
+    get_provider,
+    parse_model_spec,
+    list_providers,
+    # Spec classes
+    ModelSpec,
+    EmbeddingSpec,
+    # Base class
+    BaseProvider,
+    ProviderRegistry,
+    # Provider implementations
+    OpenAIProvider,
+    AzureOpenAIProvider,
+    AnthropicProvider,
+    GoogleProvider,
+    OllamaProvider,
+    # Enums
+    Provider,
+    AzureAuthMethod,
+    AzureConfig,
+)
+
+# Legacy provider aliases (deprecated, use providers module)
+from agenticflow.core.providers import (
+    create_chat_model,  # Use create_model instead
     openai_chat,
     azure_chat,
     anthropic_chat,
@@ -252,9 +279,28 @@ __all__ = [
     # Core utilities
     "generate_id",
     "now_utc",
-    # Model providers
-    "create_chat_model",
+    # Model providers (new system)
+    "create_model",
     "create_embeddings",
+    "acreate_model",
+    "acreate_embeddings",
+    "get_provider",
+    "parse_model_spec",
+    "list_providers",
+    "ModelSpec",
+    "EmbeddingSpec",
+    "BaseProvider",
+    "ProviderRegistry",
+    "OpenAIProvider",
+    "AzureOpenAIProvider",
+    "AnthropicProvider",
+    "GoogleProvider",
+    "OllamaProvider",
+    "Provider",
+    "AzureAuthMethod",
+    "AzureConfig",
+    # Legacy aliases (deprecated)
+    "create_chat_model",
     "openai_chat",
     "azure_chat",
     "anthropic_chat",
