@@ -8,6 +8,7 @@ Requires OPENAI_API_KEY in .env file.
 import asyncio
 import os
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 
 from agenticflow.agents import Agent, AgentConfig
 from agenticflow.core.enums import AgentRole
@@ -33,12 +34,14 @@ def create_real_agent(
     tools: list[str] | None = None,
 ) -> Agent:
     """Create a real agent with OpenAI model."""
+    # Create model using LangChain directly
+    model = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    
     config = AgentConfig(
         name=name,
         role=role,
-        model_name="gpt-4o-mini",  # Use mini for cost efficiency
+        model=model,  # Pass LangChain model directly
         system_prompt=system_prompt,
-        temperature=0.7,
         tools=tools or [],
     )
     return Agent(config=config, event_bus=event_bus)

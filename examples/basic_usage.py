@@ -16,6 +16,7 @@ import os
 
 from dotenv import load_dotenv
 from langchain.tools import tool
+from langchain_openai import ChatOpenAI
 
 from agenticflow import (
     Agent,
@@ -29,6 +30,13 @@ from agenticflow import (
 )
 
 load_dotenv()
+
+# Create the model using LangChain directly
+def get_model():
+    """Get the LLM model (only if API key is set)."""
+    if os.getenv("OPENAI_API_KEY"):
+        return ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o"))
+    return None
 
 
 # =============================================================================
@@ -83,12 +91,15 @@ async def main() -> None:
     print(tool_registry.get_tool_descriptions())
 
     # 4. Create agents with different roles
+    # Create model using LangChain directly
+    model = get_model()
+
     researcher = Agent(
         config=AgentConfig(
             name="Researcher",
             role=AgentRole.RESEARCHER,
             description="Researches topics and gathers information",
-            model_name=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            model=model,  # Pass LangChain model directly
             tools=["search_web"],
         ),
         event_bus=event_bus,
@@ -100,7 +111,7 @@ async def main() -> None:
             name="Writer",
             role=AgentRole.WORKER,
             description="Writes content based on research",
-            model_name=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            model=model,
             tools=["write_content"],
         ),
         event_bus=event_bus,
@@ -112,7 +123,7 @@ async def main() -> None:
             name="Analyst",
             role=AgentRole.SPECIALIST,
             description="Analyzes data and provides insights",
-            model_name=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            model=model,
             tools=["analyze_data"],
         ),
         event_bus=event_bus,
@@ -128,7 +139,7 @@ async def main() -> None:
         event_bus=event_bus,
         task_manager=task_manager,
         tool_registry=tool_registry,
-        model_name=os.getenv("OPENAI_MODEL", "gpt-4o"),
+        model=model,  # Pass LangChain model directly
     )
 
     # Register agents with orchestrator

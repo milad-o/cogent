@@ -80,20 +80,24 @@ async def configuration_example():
     
     event_bus = EventBus()
     
-    # Different role types
+    # Models should be created using LangChain directly:
+    # from langchain_openai import ChatOpenAI
+    # model = ChatOpenAI(model="gpt-4o", temperature=0.3)
+    
+    # Different role types (showing config without actual model for demo)
     configs = [
         AgentConfig(
             name="Orchestrator",
             role=AgentRole.ORCHESTRATOR,
             description="Coordinates other agents",
-            model_name="gpt-4o",  # High capability model
+            # model=ChatOpenAI(model="gpt-4o", temperature=0.3),
             temperature=0.3,  # Lower for consistency
         ),
         AgentConfig(
             name="Specialist",
             role=AgentRole.SPECIALIST,
             description="Expert in data analysis",
-            model_name="gpt-4o-mini",
+            # model=ChatOpenAI(model="gpt-4o-mini"),
             temperature=0.5,
             tools=["analyze_data", "create_chart"],  # Allowed tools
         ),
@@ -101,16 +105,18 @@ async def configuration_example():
             name="Worker",
             role=AgentRole.WORKER,
             description="General purpose worker",
-            model_name="gpt-4o-mini",
+            # model=ChatOpenAI(model="gpt-4o-mini"),
             max_concurrent_tasks=3,
             timeout_seconds=60.0,
         ),
     ]
     
     print("\n📋 Agent Configurations:")
+    print("\n   💡 Models are passed as LangChain objects:")
+    print("      from langchain_openai import ChatOpenAI")
+    print("      model = ChatOpenAI(model='gpt-4o')")
     for config in configs:
         print(f"\n   🤖 {config.name} ({config.role.value})")
-        print(f"      Model: {config.model_name}")
         print(f"      Temperature: {config.temperature}")
         print(f"      Tools: {config.tools or 'all'}")
         print(f"      Max concurrent: {config.max_concurrent_tasks}")
