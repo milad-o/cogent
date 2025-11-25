@@ -479,5 +479,98 @@ class Agent:
             "state": self.state.to_dict(),
         }
 
+    def draw_mermaid(
+        self,
+        *,
+        theme: str = "default",
+        direction: str = "TB",
+        title: str | None = None,
+        show_tools: bool = True,
+        show_roles: bool = True,
+        show_config: bool = False,
+    ) -> str:
+        """
+        Generate a Mermaid diagram showing this agent and its tools.
+        
+        Args:
+            theme: Mermaid theme (default, forest, dark, neutral, base)
+            direction: Graph direction (TB, TD, BT, LR, RL)
+            title: Optional diagram title
+            show_tools: Whether to show agent tools
+            show_roles: Whether to show agent role
+            show_config: Whether to show model configuration
+            
+        Returns:
+            Mermaid diagram code as string
+        """
+        from agenticflow.visualization.mermaid import (
+            AgentDiagram,
+            MermaidConfig,
+            MermaidDirection,
+            MermaidTheme,
+        )
+        
+        # Parse theme and direction enums
+        theme_enum = MermaidTheme(theme)
+        direction_enum = MermaidDirection(direction)
+        
+        config = MermaidConfig(
+            title=title or "",
+            theme=theme_enum,
+            direction=direction_enum,
+            show_tools=show_tools,
+            show_roles=show_roles,
+            show_config=show_config,
+        )
+        diagram = AgentDiagram(self, config=config)
+        return diagram.to_mermaid()
+
+    def draw_mermaid_png(
+        self,
+        *,
+        theme: str = "default",
+        direction: str = "TB",
+        title: str | None = None,
+        show_tools: bool = True,
+        show_roles: bool = True,
+        show_config: bool = False,
+    ) -> bytes:
+        """
+        Generate a PNG image of this agent's Mermaid diagram.
+        
+        Requires httpx to be installed for mermaid.ink API.
+        
+        Args:
+            theme: Mermaid theme (default, forest, dark, neutral, base)
+            direction: Graph direction (TB, TD, BT, LR, RL)
+            title: Optional diagram title
+            show_tools: Whether to show agent tools
+            show_roles: Whether to show agent role
+            show_config: Whether to show model configuration
+            
+        Returns:
+            PNG image as bytes
+        """
+        from agenticflow.visualization.mermaid import (
+            AgentDiagram,
+            MermaidConfig,
+            MermaidDirection,
+            MermaidTheme,
+        )
+        
+        theme_enum = MermaidTheme(theme)
+        direction_enum = MermaidDirection(direction)
+        
+        config = MermaidConfig(
+            title=title or "",
+            theme=theme_enum,
+            direction=direction_enum,
+            show_tools=show_tools,
+            show_roles=show_roles,
+            show_config=show_config,
+        )
+        diagram = AgentDiagram(self, config=config)
+        return diagram.draw_png()
+
     def __repr__(self) -> str:
         return f"Agent(id={self.id}, name={self.name}, role={self.role.value})"

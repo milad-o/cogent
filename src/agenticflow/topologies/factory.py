@@ -7,15 +7,20 @@ from enum import Enum
 from typing import Any, Sequence
 
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.store.base import BaseStore
 
 from agenticflow.agents import Agent
 from agenticflow.events import EventBus
-from agenticflow.memory import MemoryManager
-from agenticflow.topologies.base import BaseTopology, TopologyConfig
-from agenticflow.topologies.supervisor import SupervisorTopology
-from agenticflow.topologies.mesh import MeshTopology
-from agenticflow.topologies.pipeline import PipelineTopology
-from agenticflow.topologies.hierarchical import HierarchicalTopology
+from agenticflow.topologies.base import (
+    BaseTopology,
+    TopologyConfig,
+    SupervisorTopology,
+    MeshTopology,
+    PipelineTopology,
+    HierarchicalTopology,
+)
+from agenticflow.topologies.custom import CustomTopology, CustomTopologyConfig, Edge
 
 
 class TopologyType(Enum):
@@ -25,6 +30,7 @@ class TopologyType(Enum):
     MESH = "mesh"
     PIPELINE = "pipeline"
     HIERARCHICAL = "hierarchical"
+    CUSTOM = "custom"
 
 
 class TopologyFactory:
@@ -49,6 +55,7 @@ class TopologyFactory:
         TopologyType.MESH: MeshTopology,
         TopologyType.PIPELINE: PipelineTopology,
         TopologyType.HIERARCHICAL: HierarchicalTopology,
+        TopologyType.CUSTOM: CustomTopology,
     }
 
     @classmethod
@@ -60,7 +67,8 @@ class TopologyFactory:
         *,
         description: str = "",
         event_bus: EventBus | None = None,
-        memory_manager: MemoryManager | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
+        store: BaseStore | None = None,
         enable_checkpointing: bool = True,
         **kwargs: Any,
     ) -> BaseTopology:
@@ -72,7 +80,8 @@ class TopologyFactory:
             agents: List of agents to include.
             description: Optional description.
             event_bus: Optional event bus for events.
-            memory_manager: Optional memory manager.
+            checkpointer: Optional checkpointer for short-term memory.
+            store: Optional store for long-term memory.
             enable_checkpointing: Whether to enable state checkpointing.
             **kwargs: Additional arguments for specific topology types.
 
@@ -95,9 +104,8 @@ class TopologyFactory:
             **{k: v for k, v in kwargs.items() if k in TopologyConfig.__dataclass_fields__},
         )
 
-        # Setup checkpointer
-        checkpointer = None
-        if enable_checkpointing:
+        # Setup checkpointer if not provided but enabled
+        if checkpointer is None and enable_checkpointing:
             checkpointer = MemorySaver()
 
         # Filter kwargs for topology-specific params
@@ -111,8 +119,8 @@ class TopologyFactory:
             config=config,
             agents=agents,
             event_bus=event_bus,
-            memory_manager=memory_manager,
             checkpointer=checkpointer,
+            store=store,
             **topology_kwargs,
         )
 

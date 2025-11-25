@@ -1,0 +1,28 @@
+---
+title: "Pipeline: ETL Process"
+config:
+  theme: default
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 40
+---
+flowchart TB
+    Extractor(["`**Extractor**
+_fetch, parse_`"]):::work
+    Transformer["`**Transformer**
+_clean, enrich_`"]:::work
+    Loader[["`**Loader**
+_validate, insert_`"]]:::work
+
+    Extractor --> Transformer --> Loader
+
+    classDef orch fill:#4a90d9,stroke:#2d5986,color:#fff
+    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
+    classDef plan fill:#e6a23c,stroke:#b87c1e,color:#fff
+    classDef crit fill:#f56c6c,stroke:#c45656,color:#fff
+    classDef spec fill:#9b59b6,stroke:#7b3a96,color:#fff
+    classDef res fill:#3498db,stroke:#2475ad,color:#fff
+    classDef val fill:#1abc9c,stroke:#16a085,color:#fff
+    classDef asst fill:#95a5a6,stroke:#7f8c8d,color:#fff
+    classDef tool fill:#f5f5f5,stroke:#999,color:#333

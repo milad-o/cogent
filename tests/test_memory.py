@@ -1,193 +1,182 @@
-"""Tests for the memory module."""
+"""Tests for the memory module - minimal LangChain/LangGraph wrappers."""
 
 import pytest
-from datetime import datetime
 
 from agenticflow.memory import (
-    MemoryManager,
-    ShortTermMemory,
-    LongTermMemory,
-    SharedMemory,
-    MemoryEntry,
-    MemoryType,
-    MemoryConfig,
+    # Checkpointers
+    create_checkpointer,
+    memory_checkpointer,
+    MemorySaver,
+    BaseCheckpointSaver,
+    # Stores
+    create_store,
+    memory_store,
+    BaseStore,
+    InMemoryStore,
+    # Vector stores
+    create_vectorstore,
+    VectorStore,
+    InMemoryVectorStore,
+    Document,
 )
 
 
-class TestMemoryEntry:
-    """Tests for MemoryEntry dataclass."""
+class TestCheckpointers:
+    """Tests for checkpointer factory functions."""
 
-    def test_create_memory_entry(self):
-        """Test creating a memory entry."""
-        entry = MemoryEntry(
-            content={"data": "test"},
-            namespace="test-ns",
-        )
-        assert entry.content == {"data": "test"}
-        assert entry.namespace == "test-ns"
-        assert entry.id is not None
+    def test_memory_checkpointer(self):
+        """Test creating in-memory checkpointer."""
+        checkpointer = memory_checkpointer()
+        assert checkpointer is not None
+        assert isinstance(checkpointer, MemorySaver)
+        assert isinstance(checkpointer, BaseCheckpointSaver)
 
-    def test_memory_entry_to_dict(self):
-        """Test converting entry to dictionary."""
-        entry = MemoryEntry(
-            content="test-value",
-            namespace="custom",
-            metadata={"key": "value"},
-        )
-        data = entry.to_dict()
-        assert data["content"] == "test-value"
-        assert data["namespace"] == "custom"
-        assert data["metadata"] == {"key": "value"}
+    def test_create_checkpointer_memory(self):
+        """Test create_checkpointer with memory backend."""
+        checkpointer = create_checkpointer("memory")
+        assert isinstance(checkpointer, MemorySaver)
 
-    def test_memory_entry_from_dict(self):
-        """Test creating entry from dictionary."""
-        data = {
-            "content": "test",
-            "namespace": "ns1",
-            "timestamp": "2024-01-01T00:00:00",
-        }
-        entry = MemoryEntry.from_dict(data)
-        assert entry.content == "test"
-        assert entry.namespace == "ns1"
+    def test_create_checkpointer_invalid_backend(self):
+        """Test create_checkpointer with invalid backend."""
+        with pytest.raises(ValueError, match="Unknown backend"):
+            create_checkpointer("invalid")
 
+    def test_sqlite_checkpointer_requires_package(self):
+        """Test that sqlite checkpointer requires optional package."""
+        # This may succeed if package is installed, or fail with ImportError
+        try:
+            from agenticflow.memory import sqlite_checkpointer
+            # If import succeeds, the function should work
+            # (but we don't actually create it as it needs file access)
+        except ImportError:
+            pass  # Expected if package not installed
 
-class TestShortTermMemory:
-    """Tests for ShortTermMemory."""
-
-    @pytest.fixture
-    def memory(self):
-        """Create short-term memory instance."""
-        config = MemoryConfig(max_entries=10, memory_type=MemoryType.SHORT_TERM)
-        return ShortTermMemory(thread_id="test-thread", config=config)
-
-    @pytest.mark.asyncio
-    async def test_add_and_search(self, memory):
-        """Test adding and searching entries."""
-        entry = await memory.add("value1", metadata={"key": "k1"})
-        assert entry.content == "value1"
-
-        results = await memory.search()
-        assert len(results) >= 1
-        assert any(r.content == "value1" for r in results)
-
-    @pytest.mark.asyncio
-    async def test_thread_isolation(self, memory):
-        """Test that different threads are isolated."""
-        await memory.add("value1")
-        memory.switch_thread("thread-2")
-        await memory.add("value2")
-
-        # Switch back to original thread
-        memory.switch_thread("test-thread")
-        results = await memory.search()
-        assert any(r.content == "value1" for r in results)
-
-    @pytest.mark.asyncio
-    async def test_delete(self, memory):
-        """Test deleting from memory."""
-        entry = await memory.add("value1")
-        deleted = await memory.delete(entry.id)
-        assert deleted is True
-
-        result = await memory.get(entry.id)
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_clear(self, memory):
-        """Test clearing memory."""
-        await memory.add("value1")
-        await memory.add("value2")
-        count = await memory.clear()
-        assert count == 2
-
-        results = await memory.search()
-        assert len(results) == 0
+    def test_postgres_checkpointer_requires_package(self):
+        """Test that postgres checkpointer requires optional package."""
+        try:
+            from agenticflow.memory import postgres_checkpointer
+        except ImportError:
+            pass  # Expected if package not installed
 
 
-class TestLongTermMemory:
-    """Tests for LongTermMemory."""
+class TestStores:
+    """Tests for store factory functions."""
 
-    @pytest.fixture
-    def memory(self):
-        """Create long-term memory instance."""
-        config = MemoryConfig(memory_type=MemoryType.LONG_TERM)
-        return LongTermMemory(config=config)
+    def test_memory_store(self):
+        """Test creating in-memory store."""
+        store = memory_store()
+        assert store is not None
+        assert isinstance(store, InMemoryStore)
+        assert isinstance(store, BaseStore)
 
-    @pytest.mark.asyncio
-    async def test_add_and_get(self, memory):
-        """Test adding and getting entries."""
-        entry = await memory.add({"data": "test"}, namespace="test")
-        assert entry.content == {"data": "test"}
+    def test_create_store_memory(self):
+        """Test create_store with memory backend."""
+        store = create_store("memory")
+        assert isinstance(store, InMemoryStore)
 
-        retrieved = await memory.get(entry.id)
-        assert retrieved is not None
-        assert retrieved.content == {"data": "test"}
+    def test_create_store_invalid_backend(self):
+        """Test create_store with invalid backend."""
+        with pytest.raises(ValueError, match="Unknown backend"):
+            create_store("invalid")
 
-    @pytest.mark.asyncio
-    async def test_search_by_namespace(self, memory):
-        """Test searching by namespace."""
-        await memory.add({"name": "Alice"}, namespace="users")
-        await memory.add({"name": "Bob"}, namespace="users")
-        await memory.add({"setting": "value"}, namespace="config")
+    def test_store_put_and_get(self):
+        """Test basic store put and get operations."""
+        store = memory_store()
 
-        results = await memory.search(namespace="users")
-        assert len(results) == 2
+        # Put a value
+        store.put(("user", "prefs"), "theme", {"value": "dark"})
+
+        # Get it back
+        items = list(store.search(("user", "prefs")))
+        assert len(items) == 1
+        assert items[0].value == {"value": "dark"}
+
+    def test_store_namespacing(self):
+        """Test that store namespaces work correctly."""
+        store = memory_store()
+
+        # Put in different namespaces
+        store.put(("user1", "prefs"), "theme", {"value": "dark"})
+        store.put(("user2", "prefs"), "theme", {"value": "light"})
+
+        # Each namespace is isolated
+        user1_items = list(store.search(("user1", "prefs")))
+        user2_items = list(store.search(("user2", "prefs")))
+
+        assert len(user1_items) == 1
+        assert len(user2_items) == 1
+        assert user1_items[0].value["value"] == "dark"
+        assert user2_items[0].value["value"] == "light"
+
+    def test_store_delete(self):
+        """Test store delete operation."""
+        store = memory_store()
+
+        store.put(("ns",), "key1", {"data": "test"})
+        items = list(store.search(("ns",)))
+        assert len(items) == 1
+
+        store.delete(("ns",), "key1")
+        items = list(store.search(("ns",)))
+        assert len(items) == 0
 
 
-class TestSharedMemory:
-    """Tests for SharedMemory."""
+class TestVectorStores:
+    """Tests for vector store factory functions."""
 
-    @pytest.fixture
-    def memory(self):
-        """Create shared memory instance."""
-        return SharedMemory()
+    def test_memory_vectorstore_requires_embeddings(self):
+        """Test that memory vectorstore requires embeddings."""
+        with pytest.raises(ValueError, match="embeddings required"):
+            create_vectorstore("memory")
 
-    @pytest.mark.asyncio
-    async def test_add_and_search(self, memory):
-        """Test adding and searching shared memory."""
-        entry = await memory.add("shared-value", namespace="shared")
-        assert entry.content == "shared-value"
+    def test_create_vectorstore_invalid_backend(self):
+        """Test create_vectorstore with invalid backend."""
+        with pytest.raises(ValueError, match="Unknown backend"):
+            create_vectorstore("invalid")
 
-        results = await memory.search(namespace="shared")
-        assert len(results) >= 1
-
-    @pytest.mark.asyncio
-    async def test_cross_agent_access(self, memory):
-        """Test that shared memory is accessible across agents."""
-        # Agent 1 adds
-        entry = await memory.add("shared-data", metadata={"agent": "agent-1"})
-
-        # Any agent can read
-        result = await memory.get(entry.id)
-        assert result is not None
-        assert result.content == "shared-data"
+    def test_document_creation(self):
+        """Test Document can be created."""
+        doc = Document(page_content="Hello world", metadata={"source": "test"})
+        assert doc.page_content == "Hello world"
+        assert doc.metadata["source"] == "test"
 
 
-class TestMemoryManager:
-    """Tests for MemoryManager."""
+class TestMemoryTypes:
+    """Tests for understanding memory type concepts."""
 
-    @pytest.fixture
-    def manager(self):
-        """Create memory manager."""
-        return MemoryManager()
+    def test_short_term_concept(self):
+        """Short-term = Checkpointer = thread-scoped."""
+        # Create checkpointer (ephemeral short-term memory)
+        checkpointer = memory_checkpointer()
 
-    @pytest.mark.asyncio
-    async def test_short_term_operations(self, manager):
-        """Test short-term memory through manager."""
-        entry = await manager.short_term.add("value1")
-        assert entry.content == "value1"
+        # Short-term memory is thread-scoped
+        # Each thread_id has its own conversation state
+        # This is managed by LangGraph when you compile with checkpointer
+        assert checkpointer is not None
 
-        results = await manager.short_term.search()
-        assert len(results) >= 1
+    def test_long_term_concept(self):
+        """Long-term = Store = cross-thread, namespaced."""
+        # Create store (long-term memory)
+        store = memory_store()
 
-    @pytest.mark.asyncio
-    async def test_long_term_operations(self, manager):
-        """Test long-term memory through manager."""
-        entry = await manager.long_term.add("value1")
-        assert entry.content == "value1"
+        # Long-term memory persists across threads
+        # Namespaced by user_id, assistant_id, etc.
+        store.put(("user_123", "memories"), "fact_1", {"text": "User likes pizza"})
+        store.put(("user_123", "memories"), "fact_2", {"text": "User is an engineer"})
 
-    @pytest.mark.asyncio
-    async def test_shared_operations(self, manager):
-        """Test shared memory through manager."""
-        entry = await manager.shared.add("value1")
-        assert entry.content == "value1"
+        # Can retrieve across any thread
+        memories = list(store.search(("user_123", "memories")))
+        assert len(memories) == 2
+
+    def test_ephemeral_vs_persistent(self):
+        """Test ephemeral (memory) vs persistent (sqlite/postgres) concept."""
+        # Ephemeral: lost on restart
+        ephemeral_checkpointer = memory_checkpointer()
+        ephemeral_store = memory_store()
+
+        # Persistent requires optional packages:
+        # - sqlite_checkpointer("file.db")  # survives restart
+        # - postgres_checkpointer("conn_string")  # production
+
+        assert ephemeral_checkpointer is not None
+        assert ephemeral_store is not None

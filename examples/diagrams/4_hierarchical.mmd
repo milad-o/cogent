@@ -1,0 +1,47 @@
+---
+title: "Hierarchical: Organization"
+config:
+  theme: default
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 40
+---
+flowchart TB
+    CEO["`**CEO**
+_strategy, approve_`"]:::orch
+    CTO["`**CTO**
+_tech_plan, review_`"]:::plan
+    CFO["`**CFO**
+_budget, forecast_`"]:::plan
+    Dev1["`**Dev1**
+_code, test_`"]:::work
+    Dev2["`**Dev2**
+_code, deploy_`"]:::work
+
+    CEO --> |delegate|CTO
+    CEO --> |delegate|CFO
+    CTO --> |coordinate|CFO
+    CTO --> |delegate|Dev1
+    CTO --> |delegate|Dev2
+    CTO --> |report|CEO
+    CFO --> |coordinate|CTO
+    CFO --> |delegate|Dev1
+    CFO --> |delegate|Dev2
+    CFO --> |report|CEO
+    Dev1 --> |coordinate|Dev2
+    Dev1 --> |report|CTO
+    Dev1 --> |report|CFO
+    Dev2 --> |coordinate|Dev1
+    Dev2 --> |report|CTO
+    Dev2 --> |report|CFO
+
+    classDef orch fill:#4a90d9,stroke:#2d5986,color:#fff
+    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
+    classDef plan fill:#e6a23c,stroke:#b87c1e,color:#fff
+    classDef crit fill:#f56c6c,stroke:#c45656,color:#fff
+    classDef spec fill:#9b59b6,stroke:#7b3a96,color:#fff
+    classDef res fill:#3498db,stroke:#2475ad,color:#fff
+    classDef val fill:#1abc9c,stroke:#16a085,color:#fff
+    classDef asst fill:#95a5a6,stroke:#7f8c8d,color:#fff
+    classDef tool fill:#f5f5f5,stroke:#999,color:#333

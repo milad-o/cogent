@@ -224,9 +224,13 @@ def create_tool_from_function(
     Returns:
         A LangChain tool
     """
-    from langchain.tools import tool as tool_decorator
-
-    # Apply decorator with custom name/description if provided
-    if name or description:
-        return tool_decorator(name=name, description=description)(func)
+    from langchain_core.tools import tool as tool_decorator
+    
+    # The tool decorator creates a tool from the function
+    # We can override the name by setting __name__ and description via docstring
+    if name:
+        func.__name__ = name
+    if description:
+        func.__doc__ = description
+    
     return tool_decorator(func)

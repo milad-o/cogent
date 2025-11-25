@@ -47,7 +47,7 @@ Quick Start:
 Advanced Usage (Multi-Agent Topology):
     ```python
     from agenticflow.topologies import TopologyFactory, TopologyType
-    from agenticflow.memory import MemoryManager
+    from agenticflow.memory import memory_checkpointer, memory_store
     from agenticflow.observability import Tracer, MetricsCollector
     
     # Create topology with automatic coordination
@@ -56,6 +56,8 @@ Advanced Usage (Multi-Agent Topology):
         "content-team",
         agents=[supervisor, researcher, writer],
         supervisor_name="supervisor",
+        checkpointer=memory_checkpointer(),  # short-term memory
+        store=memory_store(),  # long-term memory
     )
     
     # Run with memory and observability
@@ -103,16 +105,25 @@ from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 # Orchestrator
 from agenticflow.orchestrator.orchestrator import Orchestrator
 
-# Memory
+# Memory (minimal wrappers around LangChain/LangGraph)
 from agenticflow.memory import (
-    MemoryManager,
-    ShortTermMemory,
-    LongTermMemory,
-    SharedMemory,
-    BaseMemory,
-    MemoryConfig,
-    MemoryEntry,
-    MemoryType,
+    # Checkpointers (short-term)
+    create_checkpointer,
+    memory_checkpointer,
+    MemorySaver,
+    BaseCheckpointSaver,
+    # Stores (long-term)
+    create_store,
+    memory_store,
+    semantic_store,
+    BaseStore,
+    InMemoryStore,
+    # Vector stores (semantic)
+    create_vectorstore,
+    memory_vectorstore,
+    VectorStore,
+    InMemoryVectorStore,
+    Document,
 )
 
 # Topologies
@@ -171,6 +182,16 @@ from agenticflow.graph import (
     StreamMode,
 )
 
+# Visualization (Mermaid diagrams)
+from agenticflow.visualization import (
+    MermaidConfig,
+    MermaidRenderer,
+    MermaidTheme,
+    MermaidDirection,
+    AgentDiagram,
+    TopologyDiagram,
+)
+
 # All public exports
 __all__ = [
     # Version
@@ -208,15 +229,21 @@ __all__ = [
     "create_tool_from_function",
     # Orchestrator
     "Orchestrator",
-    # Memory
-    "MemoryManager",
-    "ShortTermMemory",
-    "LongTermMemory",
-    "SharedMemory",
-    "BaseMemory",
-    "MemoryConfig",
-    "MemoryEntry",
-    "MemoryType",
+    # Memory (LangChain/LangGraph wrappers)
+    "create_checkpointer",
+    "memory_checkpointer",
+    "MemorySaver",
+    "BaseCheckpointSaver",
+    "create_store",
+    "memory_store",
+    "semantic_store",
+    "BaseStore",
+    "InMemoryStore",
+    "create_vectorstore",
+    "memory_vectorstore",
+    "VectorStore",
+    "InMemoryVectorStore",
+    "Document",
     # Topologies
     "BaseTopology",
     "TopologyConfig",
@@ -264,4 +291,11 @@ __all__ = [
     "GraphRunner",
     "RunConfig",
     "StreamMode",
+    # Visualization
+    "MermaidConfig",
+    "MermaidRenderer",
+    "MermaidTheme",
+    "MermaidDirection",
+    "AgentDiagram",
+    "TopologyDiagram",
 ]

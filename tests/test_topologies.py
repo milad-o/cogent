@@ -196,17 +196,29 @@ class TestSupervisorTopology:
         assert "writer" in topology.worker_names
         assert "supervisor" not in topology.worker_names
 
-    def test_parse_supervisor_decision_finish(self, topology):
-        """Test parsing finish decision."""
-        thought = "The task is now complete. We can finish here."
-        decision = topology._parse_supervisor_decision(thought)
-        assert decision == "FINISH"
+    def test_parse_agent_output_finish(self, topology):
+        """Test parsing finish decision from agent output."""
+        output = "The task is now complete. We can finish here."
+        next_agent = topology._parse_agent_output(output, "supervisor")
+        assert next_agent == "__end__"
 
-    def test_parse_supervisor_decision_worker(self, topology):
-        """Test parsing worker delegation."""
-        thought = "Let's delegate this to the researcher for more info."
-        decision = topology._parse_supervisor_decision(thought)
-        assert decision == "researcher"
+    def test_parse_agent_output_worker(self, topology):
+        """Test parsing worker delegation from agent output."""
+        output = "Let's delegate this to the researcher for more info."
+        next_agent = topology._parse_agent_output(output, "supervisor")
+        assert next_agent == "researcher"
+
+    def test_policy_allows_supervisor_to_worker(self, topology):
+        """Test policy allows supervisor to delegate to workers."""
+        policy = topology.policy
+        assert policy.can_handoff("supervisor", "researcher", {})
+        assert policy.can_handoff("supervisor", "writer", {})
+
+    def test_policy_workers_report_to_supervisor(self, topology):
+        """Test policy allows workers to report back to supervisor."""
+        policy = topology.policy
+        assert policy.can_handoff("researcher", "supervisor", {})
+        assert policy.can_handoff("writer", "supervisor", {})
 
 
 class TestPipelineTopology:
@@ -267,28 +279,37 @@ class TestHierarchicalTopology:
         return HierarchicalTopology(
             config=TopologyConfig(name="org-chart"),
             agents=agents,
-            hierarchy={
-                "ceo": ["eng_lead"],
-                "eng_lead": ["dev1", "dev2"],
-            },
-            root="ceo",
+            levels=[
+                ["ceo"],
+                ["eng_lead"],
+                ["dev1", "dev2"],
+            ],
         )
 
-    def test_hierarchy_structure(self, topology):
-        """Test hierarchy is structured correctly."""
-        assert topology.root == "ceo"
-        assert "ceo" in topology.hierarchy
-        assert "eng_lead" in topology.hierarchy["ceo"]
+    def test_levels_structure(self, topology):
+        """Test levels are structured correctly."""
+        assert topology.levels == [["ceo"], ["eng_lead"], ["dev1", "dev2"]]
 
-    def test_get_leaves(self, topology):
-        """Test getting leaf nodes."""
-        leaves = topology._get_leaves("ceo")
-        assert "dev1" in leaves
-        assert "dev2" in leaves
-        assert "eng_lead" not in leaves
+    def test_policy_allows_delegation_down(self, topology):
+        """Test policy allows delegation from higher to lower levels."""
+        policy = topology.policy
+        # CEO can delegate to eng_lead
+        assert policy.can_handoff("ceo", "eng_lead", {})
+        # eng_lead can delegate to devs
+        assert policy.can_handoff("eng_lead", "dev1", {})
+        assert policy.can_handoff("eng_lead", "dev2", {})
 
-    def test_invalid_root_raises(self):
-        """Test invalid root raises error."""
+    def test_policy_allows_reporting_up(self, topology):
+        """Test policy allows reporting from lower to higher levels."""
+        policy = topology.policy
+        # Devs can report to eng_lead
+        assert policy.can_handoff("dev1", "eng_lead", {})
+        assert policy.can_handoff("dev2", "eng_lead", {})
+        # eng_lead can report to CEO
+        assert policy.can_handoff("eng_lead", "ceo", {})
+
+    def test_invalid_agent_in_level_raises(self):
+        """Test invalid agent name in levels raises error."""
         config = AgentConfig(name="a", role=AgentRole.WORKER)
         agent = MagicMock(spec=Agent)
         agent.config = config
@@ -297,19 +318,5 @@ class TestHierarchicalTopology:
             HierarchicalTopology(
                 config=TopologyConfig(name="test"),
                 agents=[agent],
-                hierarchy={"a": []},
-                root="nonexistent",
-            )
-
-    def test_requires_root_with_hierarchy(self):
-        """Test root is required when hierarchy is provided."""
-        config = AgentConfig(name="a", role=AgentRole.WORKER)
-        agent = MagicMock(spec=Agent)
-        agent.config = config
-
-        with pytest.raises(ValueError, match="root must be specified"):
-            HierarchicalTopology(
-                config=TopologyConfig(name="test"),
-                agents=[agent],
-                hierarchy={"a": []},
+                levels=[["nonexistent"]],
             )

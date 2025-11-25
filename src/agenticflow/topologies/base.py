@@ -1,21 +1,29 @@
 """Base topology classes and interfaces.
 
 Provides abstract base for multi-agent coordination patterns.
+Users define topologies by specifying policies (handoff rules),
+not by implementing graph internals.
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
 from enum import Enum
 
-from langgraph.graph import StateGraph
+from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.store.base import BaseStore
 from langgraph.types import Command, interrupt
 
 from agenticflow.agents import Agent
 from agenticflow.events import EventBus
-from agenticflow.memory import MemoryManager
+from agenticflow.topologies.policies import (
+    TopologyPolicy,
+    AgentPolicy,
+    HandoffRule,
+    HandoffCondition,
+    AcceptancePolicy,
+)
 
 
 class HandoffStrategy(Enum):
@@ -85,67 +93,212 @@ class TopologyState:
         )
 
 
-class BaseTopology(ABC):
-    """Abstract base class for multi-agent topologies.
+class BaseTopology:
+    """Base class for multi-agent topologies.
 
-    Subclasses implement specific coordination patterns like
-    supervisor, mesh, pipeline, or hierarchical.
+    Define your topology by providing a policy that specifies
+    handoff rules between agents. The graph is built automatically.
+
+    Simple Example:
+        >>> # Define agents
+        >>> agents = [researcher, writer, reviewer]
+        >>>
+        >>> # Define policy - who talks to whom
+        >>> policy = TopologyPolicy.pipeline(["researcher", "writer", "reviewer"])
+        >>>
+        >>> # Create topology
+        >>> topology = BaseTopology(
+        ...     config=TopologyConfig(name="content-pipeline"),
+        ...     agents=agents,
+        ...     policy=policy,
+        ... )
+
+    Custom Policy Example:
+        >>> policy = TopologyPolicy(entry_point="gateway")
+        >>> policy.add_rule("gateway", "validator")
+        >>> policy.add_rule("validator", "processor", label="valid")
+        >>> policy.add_rule("validator", "gateway", label="invalid")
+        >>> policy.add_rule("processor", "storage")
+        >>>
+        >>> topology = BaseTopology(
+        ...     config=TopologyConfig(name="custom-flow"),
+        ...     agents=agents,
+        ...     policy=policy,
+        ... )
     """
 
     def __init__(
         self,
         config: TopologyConfig,
         agents: Sequence[Agent],
+        policy: TopologyPolicy | None = None,
         event_bus: EventBus | None = None,
-        memory_manager: MemoryManager | None = None,
         checkpointer: BaseCheckpointSaver | None = None,
+        store: BaseStore | None = None,
     ) -> None:
         """Initialize topology.
 
         Args:
             config: Topology configuration.
             agents: List of agents in the topology.
+            policy: Handoff policy defining agent relationships.
+                   If None, a default mesh policy is created.
             event_bus: Optional event bus for publishing events.
-            memory_manager: Optional memory manager for persistence.
-            checkpointer: Optional checkpointer for state persistence.
+            checkpointer: Optional checkpointer for short-term memory.
+            store: Optional store for long-term memory.
         """
         self.config = config
+        self._agents = list(agents)
         self.agents = {agent.config.name: agent for agent in agents}
         self.event_bus = event_bus
-        self.memory_manager = memory_manager
         self.checkpointer = checkpointer
-        self._graph: CompiledStateGraph | None = None
+        self.store = store
+
+        # Set up policy
+        if policy is None:
+            # Default to mesh (everyone can talk to everyone)
+            policy = TopologyPolicy.mesh(list(self.agents.keys()))
+        self._policy = policy
+
+        # Ensure entry point is valid
+        if self._policy.entry_point and self._policy.entry_point not in self.agents:
+            raise ValueError(
+                f"Entry point '{self._policy.entry_point}' not in agents"
+            )
+
+        self._compiled_graph: CompiledStateGraph | None = None
+
+    @property
+    def policy(self) -> TopologyPolicy:
+        """Get the topology's handoff policy."""
+        return self._policy
 
     @property
     def graph(self) -> CompiledStateGraph:
         """Get or build the compiled graph."""
-        if self._graph is None:
-            self._graph = self._build_graph()
-        return self._graph
+        if self._compiled_graph is None:
+            self._compiled_graph = self._build_graph()
+        return self._compiled_graph
 
-    @abstractmethod
     def _build_graph(self) -> CompiledStateGraph:
-        """Build the LangGraph StateGraph for this topology.
+        """Build the LangGraph StateGraph from the policy.
+
+        The graph structure is determined by the policy's rules.
+        Override this method only for very custom graph structures.
 
         Returns:
             Compiled StateGraph ready for execution.
         """
-        ...
+        builder = StateGraph(dict)
 
-    @abstractmethod
-    def _route(self, state: dict[str, Any]) -> str | list[str]:
-        """Determine next node(s) based on current state.
+        # Add all agent nodes
+        for name, agent in self.agents.items():
+            builder.add_node(name, self._create_agent_node(agent))
+
+        # Set entry point
+        entry = self._policy.entry_point or next(iter(self.agents.keys()))
+        builder.add_edge(START, entry)
+
+        # Add edges based on policy
+        agent_names = list(self.agents.keys())
+        for agent_name in agent_names:
+            # Get all possible targets for this agent
+            targets = self._policy.get_allowed_targets(
+                agent_name, {}, agent_names
+            )
+
+            agent_policy = self._policy.get_agent_policy(agent_name)
+
+            if not targets and agent_policy.can_finish:
+                # No targets, go to END
+                builder.add_edge(agent_name, END)
+            elif len(targets) == 1 and not agent_policy.can_finish:
+                # Single target, no finish option
+                builder.add_edge(agent_name, targets[0])
+            else:
+                # Multiple targets or can finish - use routing
+                edge_map = {t: t for t in targets}
+                if agent_policy.can_finish:
+                    edge_map["__end__"] = END
+
+                builder.add_conditional_edges(
+                    agent_name,
+                    self._create_router(agent_name),
+                    edge_map,
+                )
+
+        return builder.compile(checkpointer=self.checkpointer)
+
+    def _create_router(self, agent_name: str) -> Callable[[dict[str, Any]], str]:
+        """Create a routing function for an agent.
 
         Args:
-            state: Current topology state.
+            agent_name: The agent to create router for.
 
         Returns:
-            Name of next node or list of parallel nodes.
+            Router function.
         """
-        ...
 
-    def _create_agent_node(self, agent: Agent) -> Callable[[dict[str, Any]], dict[str, Any]]:
+        def router(state: dict[str, Any]) -> str:
+            """Route to next agent based on state and policy."""
+            # Check iteration limit
+            if state.get("iteration", 0) >= self.config.max_iterations:
+                return "__end__"
+
+            # Check if completed
+            if state.get("completed"):
+                return "__end__"
+
+            # Check for explicit next agent request
+            next_agent = state.get("next_agent")
+            if next_agent:
+                if next_agent == "__end__" or next_agent == "FINISH":
+                    return "__end__"
+                if self._policy.can_handoff(agent_name, next_agent, state):
+                    return next_agent
+
+            # Get allowed targets and pick first
+            targets = self._policy.get_allowed_targets(
+                agent_name, state, list(self.agents.keys())
+            )
+
+            if targets:
+                # Use custom routing if provided
+                return self._route(agent_name, state, targets)
+
+            return "__end__"
+
+        return router
+
+    def _route(
+        self,
+        current_agent: str,
+        state: dict[str, Any],
+        allowed_targets: list[str],
+    ) -> str:
+        """Route to next agent from allowed targets.
+
+        Override this method to implement custom routing logic.
+
+        Args:
+            current_agent: Current agent name.
+            state: Current state.
+            allowed_targets: List of allowed target agents.
+
+        Returns:
+            Name of next agent or "__end__".
+        """
+        # Default: return first allowed target
+        if allowed_targets:
+            return allowed_targets[0]
+        return "__end__"
+
+    def _create_agent_node(
+        self, agent: Agent
+    ) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """Create a graph node function for an agent.
+
+        Override this to customize agent processing.
 
         Args:
             agent: The agent to wrap.
@@ -198,6 +351,15 @@ class BaseTopology(ABC):
                 ],
             }
 
+            # Parse for next agent hint
+            next_agent = self._parse_agent_output(thought, agent.config.name)
+            if next_agent:
+                result["next_agent"] = next_agent
+
+            # Check for completion
+            if self._is_task_complete(thought):
+                result["completed"] = True
+
             # Publish completion event
             if self.event_bus:
                 await self.event_bus.publish(
@@ -212,6 +374,62 @@ class BaseTopology(ABC):
             return result
 
         return node
+
+    def _parse_agent_output(self, output: str, current_agent: str) -> str | None:
+        """Parse agent output to determine next agent.
+
+        Override this for custom output parsing.
+
+        Args:
+            output: Agent's output text.
+            current_agent: Current agent name.
+
+        Returns:
+            Target agent name, "__end__", or None.
+        """
+        output_lower = output.lower()
+
+        # Check for finish signals
+        finish_signals = ["finish", "complete", "done", "final answer"]
+        for signal in finish_signals:
+            if signal in output_lower:
+                return "__end__"
+
+        # Check for handoff mentions
+        handoff_keywords = ["hand off to", "pass to", "delegate to", "send to"]
+        for keyword in handoff_keywords:
+            if keyword in output_lower:
+                for name in self.agents:
+                    if name != current_agent and name.lower() in output_lower:
+                        return name
+
+        # Check for any agent mention
+        for name in self.agents:
+            if name != current_agent and name.lower() in output_lower:
+                return name
+
+        return None
+
+    def _is_task_complete(self, output: str) -> bool:
+        """Check if task is complete based on output.
+
+        Override this for custom completion detection.
+
+        Args:
+            output: Agent's output text.
+
+        Returns:
+            True if task appears complete.
+        """
+        completion_signals = [
+            "task complete",
+            "finished",
+            "done",
+            "final answer",
+            "here is the result",
+        ]
+        output_lower = output.lower()
+        return any(signal in output_lower for signal in completion_signals)
 
     def handoff(
         self,
@@ -234,6 +452,7 @@ class BaseTopology(ABC):
         """
         update = state_update or {}
         update["current_agent"] = target
+        update["next_agent"] = target
 
         return Command(
             goto=target,
@@ -364,3 +583,259 @@ class BaseTopology(ABC):
             final_state = state
 
         return TopologyState.from_dict(final_state or {})
+
+    def draw_mermaid(
+        self,
+        *,
+        theme: str = "default",
+        direction: str = "TB",
+        title: str | None = None,
+        show_tools: bool = True,
+        show_roles: bool = True,
+    ) -> str:
+        """Generate a Mermaid diagram showing this topology.
+
+        Args:
+            theme: Mermaid theme (default, forest, dark, neutral, base)
+            direction: Graph direction (TB, TD, BT, LR, RL)
+            title: Optional diagram title
+            show_tools: Whether to show agent tools
+            show_roles: Whether to show agent roles
+
+        Returns:
+            Mermaid diagram code as string
+        """
+        from agenticflow.visualization.mermaid import (
+            MermaidConfig,
+            MermaidDirection,
+            MermaidTheme,
+            TopologyDiagram,
+        )
+
+        theme_enum = MermaidTheme(theme)
+        direction_enum = MermaidDirection(direction)
+
+        config = MermaidConfig(
+            title=title or "",
+            theme=theme_enum,
+            direction=direction_enum,
+            show_tools=show_tools,
+            show_roles=show_roles,
+        )
+        diagram = TopologyDiagram(self, config=config)
+        return diagram.to_mermaid()
+
+    def draw_mermaid_png(
+        self,
+        *,
+        theme: str = "default",
+        direction: str = "TB",
+        title: str | None = None,
+        show_tools: bool = True,
+        show_roles: bool = True,
+    ) -> bytes:
+        """Generate a PNG image of this topology's Mermaid diagram.
+
+        Requires httpx to be installed for mermaid.ink API.
+
+        Args:
+            theme: Mermaid theme (default, forest, dark, neutral, base)
+            direction: Graph direction (TB, TD, BT, LR, RL)
+            title: Optional diagram title
+            show_tools: Whether to show agent tools
+            show_roles: Whether to show agent roles
+
+        Returns:
+            PNG image as bytes
+        """
+        from agenticflow.visualization.mermaid import (
+            MermaidConfig,
+            MermaidDirection,
+            MermaidTheme,
+            TopologyDiagram,
+        )
+
+        theme_enum = MermaidTheme(theme)
+        direction_enum = MermaidDirection(direction)
+
+        config = MermaidConfig(
+            title=title or "",
+            theme=theme_enum,
+            direction=direction_enum,
+            show_tools=show_tools,
+            show_roles=show_roles,
+        )
+        diagram = TopologyDiagram(self, config=config)
+        return diagram.draw_png()
+
+
+# ==================== Prebuilt Topology Classes ====================
+# These are convenience subclasses that set up common patterns
+
+
+class SupervisorTopology(BaseTopology):
+    """Supervisor pattern: one coordinator, multiple workers.
+
+    Example:
+        >>> topology = SupervisorTopology(
+        ...     config=TopologyConfig(name="team"),
+        ...     agents=[supervisor, worker1, worker2],
+        ...     supervisor_name="supervisor",
+        ... )
+    """
+
+    def __init__(
+        self,
+        config: TopologyConfig,
+        agents: Sequence[Agent],
+        supervisor_name: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize supervisor topology.
+
+        Args:
+            config: Topology configuration.
+            agents: List of agents (supervisor + workers).
+            supervisor_name: Name of supervisor agent.
+                           Defaults to first agent.
+            **kwargs: Additional arguments for BaseTopology.
+        """
+        agent_names = [a.config.name for a in agents]
+
+        if supervisor_name is None:
+            supervisor_name = agent_names[0]
+
+        if supervisor_name not in agent_names:
+            raise ValueError(f"Supervisor '{supervisor_name}' not in agents")
+
+        workers = [n for n in agent_names if n != supervisor_name]
+
+        policy = TopologyPolicy.supervisor(supervisor_name, workers)
+
+        super().__init__(config=config, agents=agents, policy=policy, **kwargs)
+
+        self.supervisor_name = supervisor_name
+        self.worker_names = workers
+
+
+class PipelineTopology(BaseTopology):
+    """Pipeline pattern: sequential agent processing.
+
+    Example:
+        >>> topology = PipelineTopology(
+        ...     config=TopologyConfig(name="content-pipeline"),
+        ...     agents=[researcher, writer, editor],
+        ...     stages=["researcher", "writer", "editor"],
+        ... )
+    """
+
+    def __init__(
+        self,
+        config: TopologyConfig,
+        agents: Sequence[Agent],
+        stages: Sequence[str] | None = None,
+        allow_skip: bool = False,
+        allow_repeat: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize pipeline topology.
+
+        Args:
+            config: Topology configuration.
+            agents: List of agents.
+            stages: Ordered list of agent names.
+                   Defaults to agent order.
+            allow_skip: Allow skipping stages.
+            allow_repeat: Allow going back.
+            **kwargs: Additional arguments for BaseTopology.
+        """
+        agent_names = [a.config.name for a in agents]
+
+        if stages is None:
+            stages = agent_names
+        else:
+            stages = list(stages)
+            for s in stages:
+                if s not in agent_names:
+                    raise ValueError(f"Stage '{s}' not in agents")
+
+        policy = TopologyPolicy.pipeline(stages, allow_skip, allow_repeat)
+
+        super().__init__(config=config, agents=agents, policy=policy, **kwargs)
+
+        self.stages = stages
+        self.allow_skip = allow_skip
+        self.allow_repeat = allow_repeat
+
+
+class MeshTopology(BaseTopology):
+    """Mesh pattern: all agents can communicate with each other.
+
+    Example:
+        >>> topology = MeshTopology(
+        ...     config=TopologyConfig(name="collaborative-team"),
+        ...     agents=[analyst, reviewer, editor],
+        ... )
+    """
+
+    def __init__(
+        self,
+        config: TopologyConfig,
+        agents: Sequence[Agent],
+        **kwargs: Any,
+    ) -> None:
+        """Initialize mesh topology.
+
+        Args:
+            config: Topology configuration.
+            agents: List of agents.
+            **kwargs: Additional arguments for BaseTopology.
+        """
+        agent_names = [a.config.name for a in agents]
+        policy = TopologyPolicy.mesh(agent_names)
+
+        super().__init__(config=config, agents=agents, policy=policy, **kwargs)
+
+
+class HierarchicalTopology(BaseTopology):
+    """Hierarchical pattern: agents organized in levels.
+
+    Example:
+        >>> topology = HierarchicalTopology(
+        ...     config=TopologyConfig(name="org"),
+        ...     agents=[ceo, manager1, manager2, worker1, worker2, worker3],
+        ...     levels=[
+        ...         ["ceo"],
+        ...         ["manager1", "manager2"],
+        ...         ["worker1", "worker2", "worker3"],
+        ...     ],
+        ... )
+    """
+
+    def __init__(
+        self,
+        config: TopologyConfig,
+        agents: Sequence[Agent],
+        levels: list[list[str]],
+        **kwargs: Any,
+    ) -> None:
+        """Initialize hierarchical topology.
+
+        Args:
+            config: Topology configuration.
+            agents: List of agents.
+            levels: List of levels (each a list of agent names).
+            **kwargs: Additional arguments for BaseTopology.
+        """
+        agent_names = [a.config.name for a in agents]
+
+        for level in levels:
+            for name in level:
+                if name not in agent_names:
+                    raise ValueError(f"Agent '{name}' not in agents")
+
+        policy = TopologyPolicy.hierarchical(levels)
+
+        super().__init__(config=config, agents=agents, policy=policy, **kwargs)
+
+        self.levels = levels
