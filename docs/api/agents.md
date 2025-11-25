@@ -10,7 +10,6 @@ from agenticflow import (
     Agent,
     AgentConfig,
     AgentState,
-    AgentExecutor,
     
     # Resilience
     RetryPolicy,
@@ -18,15 +17,24 @@ from agenticflow import (
     CircuitBreaker,
     CircuitState,
     FallbackRegistry,
-    FailureMemory,
     ResilienceConfig,
     ToolResilience,
+    
+    # Execution strategies
+    ExecutionStrategy,
+    DAGExecutor,
+    ReActExecutor,
+    PlanExecutor,
+    AdaptiveExecutor,
     
     # Enums
     AgentRole,
     AgentStatus,
-    ExecutionStrategy,
 )
+
+# For models, use LangChain directly
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 ```
 
 ---
@@ -59,7 +67,7 @@ Agent(
 | `name` | `str` | Agent's display name |
 | `role` | `AgentRole` | Agent's role in the system |
 | `status` | `AgentStatus` | Current agent status |
-| `model` | `BaseChatModel` | Lazy-loaded LLM model (see [Providers](providers.md)) |
+| `model` | `BaseChatModel` | LLM model (passed via AgentConfig) |
 | `resilience` | `ToolResilience` | Resilience layer for the agent |
 
 ### Methods
@@ -305,8 +313,8 @@ class AgentConfig:
     role: AgentRole = AgentRole.WORKER
     description: str = ""
     
-    # LLM Configuration (see Providers Guide for all options)
-    model: str | ModelSpec | BaseChatModel | dict | None = None
+    # LLM Configuration - pass LangChain models directly
+    model: BaseChatModel | None = None
     temperature: float = 0.7
     max_tokens: int | None = None
     system_prompt: str | None = None
@@ -324,60 +332,47 @@ class AgentConfig:
     fallback_tools: dict[str, list[str]] = field(default_factory=dict)
 ```
 
-### Model Specification
+### Model Configuration
 
-The `model` parameter supports multiple formats. See the [Providers Guide](providers.md) for complete documentation.
+Pass LangChain models directly to AgentConfig:
 
 ```python
-from agenticflow import ModelSpec
-
-# String: provider/model format (recommended)
-config = AgentConfig(name="Agent", model="openai/gpt-4o")
-config = AgentConfig(name="Agent", model="anthropic/claude-sonnet-4-20250514")
-config = AgentConfig(name="Agent", model="google/gemini-2.0-flash")
-config = AgentConfig(name="Agent", model="ollama/llama3.2")
-
-# ModelSpec for full control
-config = AgentConfig(
-    name="Agent",
-    model=ModelSpec(
-        provider="openai",
-        model="gpt-4o",
-        temperature=0.5,
-        max_tokens=4096,
-    ),
-)
-
-# Azure OpenAI with Managed Identity
-from agenticflow.providers import AzureAuthMethod
-
-config = AgentConfig(
-    name="Agent",
-    model=ModelSpec(
-        provider="azure_openai",
-        model="gpt-4o",
-        azure_endpoint="https://my-resource.openai.azure.com",
-        azure_deployment="my-gpt4-deployment",
-        azure_auth_method=AzureAuthMethod.MANAGED_IDENTITY,
-    ),
-)
-
-# Direct LangChain model object
 from langchain_openai import ChatOpenAI
-config = AgentConfig(
-    name="Agent",
-    model=ChatOpenAI(model="gpt-4o", temperature=0.5),
-)
+from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-# Configuration dict
-config = AgentConfig(
-    name="Agent",
-    model={
-        "provider": "openai",
-        "model": "gpt-4o",
-        "temperature": 0.7,
-    },
+# OpenAI
+model = ChatOpenAI(model="gpt-4o", temperature=0.7)
+config = AgentConfig(name="Agent", model=model)
+
+# Anthropic
+model = ChatAnthropic(model="claude-3-5-sonnet-latest")
+config = AgentConfig(name="Agent", model=model)
+
+# Google
+model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+config = AgentConfig(name="Agent", model=model)
+
+# Azure OpenAI
+from langchain_openai import AzureChatOpenAI
+model = AzureChatOpenAI(
+    azure_endpoint="https://my-resource.openai.azure.com",
+    azure_deployment="my-gpt4-deployment",
+    api_version="2024-02-01",
 )
+config = AgentConfig(name="Agent", model=model)
+
+# Azure with Managed Identity
+from azure.identity import DefaultAzureCredential
+credential = DefaultAzureCredential()
+token_provider = credential.get_token("https://cognitiveservices.azure.com/.default")
+
+model = AzureChatOpenAI(
+    azure_endpoint="https://my-resource.openai.azure.com",
+    azure_deployment="my-gpt4-deployment",
+    azure_ad_token=token_provider.token,
+)
+config = AgentConfig(name="Agent", model=model)
 ```
 
 ### Methods

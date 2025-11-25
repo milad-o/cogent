@@ -2,6 +2,15 @@
 
 A production-grade event-driven multi-agent system framework for building sophisticated AI applications.
 
+Built on top of LangChain and LangGraph, AgenticFlow adds value where it matters:
+- **Multi-agent topologies** (supervisor, mesh, pipeline, hierarchical)
+- **Intelligent resilience** (retry, circuit breakers, fallbacks)
+- **Advanced execution strategies** (DAG, ReAct, Plan-Execute)
+- **Full observability** (tracing, metrics, progress tracking)
+- **Event-driven architecture** with pub/sub patterns
+
+**Philosophy**: USE LangChain/LangGraph DIRECTLY. We don't wrap what they do well.
+
 ## Overview
 
 AgenticFlow provides a robust foundation for building multi-agent systems with:
@@ -60,31 +69,36 @@ uv add agenticflow[dev]
 
 ```python
 import asyncio
+from langchain_openai import ChatOpenAI  # Use LangChain directly for models
 from agenticflow import (
     Agent, AgentConfig, AgentRole,
     EventBus, TaskManager, Orchestrator,
-    ToolRegistry, tool,
+    ToolRegistry, create_tool_from_function,
 )
-
-# Define a tool
-@tool
-def write_poem(subject: str) -> str:
-    """Write a poem about a subject."""
-    return f"A poem about {subject}..."
 
 # Create the system
 async def main():
     # Initialize components
     event_bus = EventBus()
     task_manager = TaskManager(event_bus)
-    tool_registry = ToolRegistry().register(write_poem)
+    
+    # Create tools
+    def write_poem(subject: str) -> str:
+        """Write a poem about a subject."""
+        return f"A poem about {subject}..."
+    
+    tool_registry = ToolRegistry()
+    tool_registry.register(create_tool_from_function(write_poem))
+    
+    # Create a model using LangChain directly
+    model = ChatOpenAI(model="gpt-4o")
     
     # Create an agent
     writer = Agent(
         config=AgentConfig(
             name="Writer",
             role=AgentRole.WORKER,
-            model="openai/gpt-4o",  # provider/model format
+            model=model,  # Pass LangChain model directly
             tools=["write_poem"],
         ),
         event_bus=event_bus,
@@ -110,18 +124,21 @@ asyncio.run(main())
 
 ### Agent
 
-An autonomous entity that can think, act, and communicate:
+An autonomous entity that can think, act, and communicate with intelligent resilience:
 
 ```python
+from langchain_openai import ChatOpenAI
 from agenticflow import Agent, AgentConfig, AgentRole
+
+# Create model using LangChain directly
+model = ChatOpenAI(model="gpt-4o", temperature=0.3)
 
 agent = Agent(
     config=AgentConfig(
         name="Analyst",
         role=AgentRole.SPECIALIST,
         description="Analyzes data and provides insights",
-        model="openai/gpt-4o",  # provider/model format
-        temperature=0.3,
+        model=model,  # Pass LangChain model directly
         system_prompt="You are a data analyst...",
         tools=["analyze_data", "create_chart"],
     ),
@@ -130,38 +147,40 @@ agent = Agent(
 )
 ```
 
-### Model Providers
+### Using LangChain Directly
 
-Flexible model specification supporting multiple providers:
+For models, embeddings, vector stores, memory - use LangChain/LangGraph directly:
 
 ```python
-from agenticflow import AgentConfig
-from agenticflow.providers import ModelSpec, AzureOpenAIProvider, AzureAuthMethod
+# Models
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-# String format (simplest)
-config = AgentConfig(name="Agent", model="openai/gpt-4o-mini")
-config = AgentConfig(name="Agent", model="anthropic/claude-3-5-sonnet-latest")
+model = ChatOpenAI(model="gpt-4o")
+model = ChatAnthropic(model="claude-3-5-sonnet-latest")
 
-# ModelSpec for full control
-config = AgentConfig(
-    name="PreciseAgent",
-    model=ModelSpec(
-        provider="openai",
-        model="gpt-4o",
-        temperature=0.3,
-        max_tokens=2000,
-    ),
-)
+# Embeddings
+from langchain_openai import OpenAIEmbeddings
+embeddings = OpenAIEmbeddings()
 
-# Azure with Managed Identity
-provider = AzureOpenAIProvider(
-    endpoint="https://my-resource.openai.azure.com",
-    auth_method=AzureAuthMethod.MANAGED_IDENTITY,
-)
-config = AgentConfig(
-    name="AzureAgent",
-    model=provider.create_chat_model("gpt-4o-deployment"),
-)
+# Vector stores
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_community.vectorstores import FAISS, Chroma
+
+vectorstore = InMemoryVectorStore(embeddings)
+
+# Document loading
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+docs = WebBaseLoader("https://example.com").load()
+chunks = RecursiveCharacterTextSplitter(chunk_size=1000).split_documents(docs)
+
+# Graphs and memory - use LangGraph directly
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.store.memory import InMemoryStore
 ```
 
 ### Task

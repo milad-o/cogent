@@ -2,20 +2,39 @@
 
 Complete API documentation for AgenticFlow. This reference covers all public modules, classes, and functions.
 
+## Philosophy
+
+AgenticFlow is built on top of LangChain and LangGraph. We ADD VALUE where it matters:
+- **Agents**: Resilience, execution strategies, state management
+- **Topologies**: Multi-agent coordination patterns
+- **Events**: Pub/sub communication
+- **Observability**: Progress tracking, metrics, tracing
+
+For models, embeddings, vector stores, memory, graphs - **use LangChain/LangGraph directly**:
+
+```python
+# Models
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+
+# Embeddings
+from langchain_openai import OpenAIEmbeddings
+
+# Vector stores
+from langchain_core.vectorstores import InMemoryVectorStore
+
+# Graphs
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
+```
+
 ## Module Overview
 
 | Module | Description |
 |--------|-------------|
 | [Agents](agents.md) | Agent creation, configuration, state management, and resilience |
-| [Providers](providers.md) | LLM and embedding model providers (OpenAI, Azure, Anthropic, etc.) |
 | [Topologies](topologies.md) | Multi-agent orchestration patterns |
-| [Events](events.md) | Event-driven communication between agents |
-| [Tasks](tasks.md) | Task management and tracking |
-| [Memory](memory.md) | Persistence, checkpointing, and vector stores |
 | [Observability](observability.md) | Progress tracking, metrics, and tracing |
-| [Graph](graph.md) | LangGraph integration and workflow building |
-| [Tools](tools.md) | Tool registry and management |
-| [Visualization](visualization.md) | Mermaid diagram generation |
 
 ---
 
@@ -28,21 +47,7 @@ from agenticflow import (
     Agent,
     AgentConfig,
     AgentState,
-    AgentExecutor,
-    
-    # Providers (new modular system)
-    create_model,
-    create_embeddings,
-    ModelSpec,
-    EmbeddingSpec,
-    OpenAIProvider,
-    AzureOpenAIProvider,
-    AnthropicProvider,
-    GoogleProvider,
-    OllamaProvider,
-    AzureAuthMethod,
-    AzureConfig,
-    Provider,
+    AgentRole,
     
     # Resilience
     RetryPolicy,
@@ -50,36 +55,34 @@ from agenticflow import (
     CircuitBreaker,
     CircuitState,
     FallbackRegistry,
-    FailureMemory,
     ResilienceConfig,
     ToolResilience,
+    
+    # Execution strategies
+    ExecutionStrategy,
+    DAGExecutor,
+    ReActExecutor,
+    PlanExecutor,
+    AdaptiveExecutor,
     
     # Events
     EventBus,
     Event,
     EventType,
-    EventPriority,
     
     # Tasks
     Task,
     TaskManager,
     TaskStatus,
-    TaskPriority,
+    Priority,
     
     # Topologies
+    TopologyFactory,
+    TopologyType,
     SupervisorTopology,
     MeshTopology,
     PipelineTopology,
     HierarchicalTopology,
-    CustomTopology,
-    
-    # Memory
-    Checkpointer,
-    MemoryCheckpointer,
-    FileCheckpointer,
-    SQLiteCheckpointer,
-    Store,
-    VectorStore,
     
     # Observability
     ProgressTracker,
@@ -87,23 +90,28 @@ from agenticflow import (
     Verbosity,
     OutputFormat,
     ProgressStyle,
-    Theme,
     MetricsCollector,
     Tracer,
     
-    # Graph
-    GraphBuilder,
-    GraphRunner,
-    AgentNode,
-    ToolNode,
-    RouterNode,
-    
     # Tools
     ToolRegistry,
+    create_tool_from_function,
     
     # Visualization
-    MermaidGenerator,
+    MermaidConfig,
+    AgentDiagram,
+    TopologyDiagram,
 )
+
+# LangChain imports (use directly)
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_anthropic import ChatAnthropic
+from langchain_core.vectorstores import InMemoryVectorStore
+
+# LangGraph imports (use directly)
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.store.memory import InMemoryStore
 ```
 
 ---

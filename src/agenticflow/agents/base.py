@@ -8,13 +8,13 @@ import asyncio
 import json
 from typing import TYPE_CHECKING, Any, Callable
 
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from agenticflow.agents.config import AgentConfig
 from agenticflow.agents.state import AgentState
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.providers import create_model, ModelSpec
 from agenticflow.models.event import Event
 from agenticflow.models.message import Message
 from agenticflow.models.task import Task
@@ -154,33 +154,31 @@ class Agent:
         return self.state.status
 
     @property
-    def model(self):
-        """Lazy-load the LLM model.
+    def model(self) -> BaseChatModel | None:
+        """Get the LLM model.
         
-        Supports:
-        - Direct LangChain model objects
-        - ModelSpec objects
-        - Model name strings (e.g., "gpt-4o", "openai/gpt-4o")
-        - Provider-prefixed strings (e.g., "openai:gpt-4o" - legacy)
-        - Configuration dictionaries
+        The model should be passed directly as a LangChain BaseChatModel
+        instance in the AgentConfig.
+        
+        Example:
+            ```python
+            from langchain_openai import ChatOpenAI
+            
+            model = ChatOpenAI(model="gpt-4o")
+            config = AgentConfig(name="Agent", model=model)
+            ```
         """
         if self._model is None:
             model_spec = self.config.effective_model
             if model_spec is not None:
-                # Check if it's already a model object
-                from langchain_core.language_models import BaseChatModel
                 if isinstance(model_spec, BaseChatModel):
                     self._model = model_spec
-                elif isinstance(model_spec, ModelSpec):
-                    # Use ModelSpec directly
-                    self._model = model_spec.create()
                 else:
-                    # Create model from spec (string or dict)
-                    self._model = create_model(
-                        model_spec,
-                        temperature=self.config.temperature,
-                        max_tokens=self.config.max_tokens,
-                        **self.config.model_kwargs,
+                    raise TypeError(
+                        f"model must be a LangChain BaseChatModel instance, "
+                        f"got {type(model_spec).__name__}. "
+                        f"Use: from langchain_openai import ChatOpenAI; "
+                        f"model = ChatOpenAI(model='gpt-4o')"
                     )
         return self._model
 

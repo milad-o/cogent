@@ -1,5 +1,10 @@
 """
 Core module - foundational types and utilities for AgenticFlow.
+
+For models and embeddings, use LangChain directly:
+    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+    from langchain_anthropic import ChatAnthropic
+    from langchain_google_genai import ChatGoogleGenerativeAI
 """
 
 from agenticflow.core.enums import (
@@ -10,18 +15,6 @@ from agenticflow.core.enums import (
     TaskStatus,
 )
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.core.providers import (
-    create_chat_model,
-    create_embeddings,
-    openai_chat,
-    azure_chat,
-    anthropic_chat,
-    ollama_chat,
-    openai_embeddings,
-    azure_embeddings,
-    LLM_PROVIDERS,
-    EMBEDDING_PROVIDERS,
-)
 
 __all__ = [
     # Enums
@@ -33,15 +26,4 @@ __all__ = [
     # Utilities
     "generate_id",
     "now_utc",
-    # Model Providers
-    "create_chat_model",
-    "create_embeddings",
-    "openai_chat",
-    "azure_chat",
-    "anthropic_chat",
-    "ollama_chat",
-    "openai_embeddings",
-    "azure_embeddings",
-    "LLM_PROVIDERS",
-    "EMBEDDING_PROVIDERS",
 ]

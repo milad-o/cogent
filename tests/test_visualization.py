@@ -34,7 +34,6 @@ def sample_agent(event_bus: EventBus) -> Agent:
             name="TestAgent",
             role=AgentRole.RESEARCHER,
             description="A test agent",
-            model_name="gpt-4o",
             tools=["web_search", "doc_summarizer", "text_writer"],
         ),
         event_bus=event_bus,
@@ -179,9 +178,10 @@ class TestAgentDiagram:
         diagram = AgentDiagram(sample_agent, config=config)
         mermaid = diagram.to_mermaid()
 
-        # Compact mode shows just the model name
-        assert "gpt-4o" in mermaid
+        # Config section should be present (shows model info if model is set)
         assert ":::config" in mermaid
+        # Without a model set, shows "no model"
+        assert "no model" in mermaid
 
     def test_diagram_frontmatter(self, sample_agent: Agent) -> None:
         """Test YAML frontmatter in diagram."""

@@ -12,7 +12,6 @@ from agenticflow.core.enums import AgentRole
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
     from agenticflow.agents.resilience import ResilienceConfig
-    from agenticflow.providers import ModelSpec
 
 
 @dataclass
@@ -27,69 +26,61 @@ class AgentConfig:
         name: Human-readable agent name
         role: Agent's role in the system
         description: Detailed description of agent's purpose
-        model: LLM model - can be:
-            - String: "openai/gpt-4o", "anthropic/claude-3-5-sonnet-latest"
-            - String (legacy): "openai:gpt-4o", "azure:gpt-4"
-            - String (auto-detect): "gpt-4o" -> infers OpenAI
-            - ModelSpec: Explicit specification object
-            - LangChain model object: ChatOpenAI, AzureChatOpenAI, etc.
-            - Dict: {"provider": "openai", "model": "gpt-4o", ...}
-        model_name: Deprecated, use 'model' instead
-        temperature: LLM temperature parameter (0.0-2.0)
-        max_tokens: Maximum tokens in LLM response
+        model: LLM model - must be a LangChain chat model instance.
+            Use LangChain directly to create your model:
+            - ChatOpenAI(model="gpt-4o")
+            - AzureChatOpenAI(...)
+            - ChatAnthropic(model="claude-3-5-sonnet-latest")
+            - ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+            - ChatOllama(model="llama3.2")
+        temperature: LLM temperature parameter (0.0-2.0) - only used if model is None
+        max_tokens: Maximum tokens in LLM response - only used if model is None
         system_prompt: System prompt defining agent behavior
         tools: List of tool names this agent can use
         max_concurrent_tasks: Maximum parallel tasks
-        timeout_seconds: Task timeout in seconds (deprecated, use resilience_config)
-        retry_on_error: Whether to auto-retry on errors (deprecated, use resilience_config)
-        max_retries: Maximum retry attempts (deprecated, use resilience_config)
-        model_kwargs: Additional kwargs passed to model creation
         resilience_config: Advanced resilience configuration (retry, circuit breaker, fallback)
         fallback_tools: Mapping of tool -> fallback tools for graceful degradation
         
     Example:
         ```python
-        # Simple - model name string (auto-detects provider)
+        from langchain_openai import ChatOpenAI
+        from langchain_anthropic import ChatAnthropic
+        
+        # OpenAI
         config = AgentConfig(
             name="DataAnalyst",
             role=AgentRole.SPECIALIST,
-            model="gpt-4o",  # Auto-detects OpenAI
+            model=ChatOpenAI(model="gpt-4o"),
         )
         
-        # Provider/model format (preferred)
+        # Anthropic
         config = AgentConfig(
             name="Writer",
-            model="anthropic/claude-3-5-sonnet-latest",
-        )
-        
-        # Using ModelSpec for full control
-        from agenticflow.providers import ModelSpec
-        config = AgentConfig(
-            name="PreciseAgent",
-            model=ModelSpec(
-                provider="openai",
-                model="gpt-4o",
-                temperature=0.3,
-                max_tokens=2000,
-            ),
+            model=ChatAnthropic(model="claude-3-5-sonnet-latest"),
         )
         
         # Azure OpenAI with Managed Identity
-        from agenticflow.providers import AzureOpenAIProvider, AzureAuthMethod
-        provider = AzureOpenAIProvider(
-            endpoint="https://my-resource.openai.azure.com",
-            auth_method=AzureAuthMethod.MANAGED_IDENTITY,
+        from langchain_openai import AzureChatOpenAI
+        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+        
+        token_provider = get_bearer_token_provider(
+            DefaultAzureCredential(),
+            "https://cognitiveservices.azure.com/.default"
         )
         config = AgentConfig(
             name="AzureAgent",
-            model=provider.create_chat_model("gpt-4o-deployment"),
+            model=AzureChatOpenAI(
+                azure_deployment="gpt-4o",
+                azure_endpoint="https://my-resource.openai.azure.com",
+                azure_ad_token_provider=token_provider,
+            ),
         )
         
-        # Direct LangChain model object
-        from langchain_openai import ChatOpenAI
+        # Local with Ollama
+        from langchain_ollama import ChatOllama
         config = AgentConfig(
-            name="CustomAgent",
-            model=ChatOpenAI(model="gpt-4o", temperature=0.5),
+            name="LocalAgent",
+            model=ChatOllama(model="llama3.2"),
         )
         ```
     """
@@ -98,13 +89,12 @@ class AgentConfig:
     role: AgentRole = AgentRole.WORKER
     description: str = ""
 
-    # LLM Configuration - flexible model specification
-    model: str | ModelSpec | BaseChatModel | dict[str, Any] | None = None
-    model_name: str | None = None  # Deprecated, for backwards compatibility
-    temperature: float = 0.7
-    max_tokens: int | None = None
+    # LLM Configuration - accepts LangChain model directly
+    model: BaseChatModel | None = None
+    temperature: float = 0.7  # Used only if model is None (for lazy creation)
+    max_tokens: int | None = None  # Used only if model is None
     system_prompt: str | None = None
-    model_kwargs: dict[str, Any] = field(default_factory=dict)
+    model_kwargs: dict[str, Any] = field(default_factory=dict)  # For lazy model creation
 
     # Capabilities
     tools: list[str] = field(default_factory=list)
@@ -132,15 +122,6 @@ class AgentConfig:
             raise ValueError("max_concurrent_tasks must be at least 1")
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
-        
-        # Handle backwards compatibility: model_name -> model
-        if self.model_name and not self.model:
-            object.__setattr__(self, 'model', self.model_name)
-
-    @property
-    def effective_model(self) -> str | Any | None:
-        """Get the effective model (handles backwards compatibility)."""
-        return self.model or self.model_name
 
     def with_tools(self, tools: list[str]) -> AgentConfig:
         """
@@ -157,7 +138,6 @@ class AgentConfig:
             role=self.role,
             description=self.description,
             model=self.model,
-            model_name=self.model_name,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             system_prompt=self.system_prompt,
@@ -187,7 +167,6 @@ class AgentConfig:
             role=self.role,
             description=self.description,
             model=self.model,
-            model_name=self.model_name,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             system_prompt=prompt,
@@ -227,7 +206,6 @@ class AgentConfig:
             role=self.role,
             description=self.description,
             model=self.model,
-            model_name=self.model_name,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             system_prompt=self.system_prompt,
@@ -268,7 +246,6 @@ class AgentConfig:
             role=self.role,
             description=self.description,
             model=self.model,
-            model_name=self.model_name,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             system_prompt=self.system_prompt,
@@ -299,15 +276,11 @@ class AgentConfig:
         return tool_name in self.tools
 
     def to_dict(self) -> dict:
-        """Convert to dictionary."""
-        # Only serialize model if it's a string (not an object)
-        model_value = self.model if isinstance(self.model, str) else None
+        """Convert to dictionary (model is not serialized)."""
         return {
             "name": self.name,
             "role": self.role.value,
             "description": self.description,
-            "model": model_value,
-            "model_name": self.model_name,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
             "system_prompt": self.system_prompt,
@@ -321,14 +294,18 @@ class AgentConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> AgentConfig:
-        """Create from dictionary."""
+    def from_dict(cls, data: dict, model: BaseChatModel | None = None) -> AgentConfig:
+        """Create from dictionary.
+        
+        Args:
+            data: Configuration dictionary.
+            model: LangChain model instance to use.
+        """
         return cls(
             name=data["name"],
             role=AgentRole(data.get("role", "worker")),
             description=data.get("description", ""),
-            model=data.get("model"),
-            model_name=data.get("model_name"),
+            model=model,
             temperature=data.get("temperature", 0.7),
             max_tokens=data.get("max_tokens"),
             system_prompt=data.get("system_prompt"),

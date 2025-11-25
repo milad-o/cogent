@@ -1,6 +1,4 @@
 # Suppress Pydantic V1 compatibility warning on Python 3.14+
-# This is a LangChain internal issue, not our code
-# Must be done BEFORE any langchain imports
 import warnings
 
 warnings.filterwarnings(
@@ -13,66 +11,85 @@ warnings.filterwarnings(
 AgenticFlow - Event-Driven Multi-Agent System Framework
 ========================================================
 
-A production-grade framework for building multi-agent systems with:
-- Event-driven architecture with pub/sub patterns
-- Hierarchical task management with dependencies
+Built on top of LangChain and LangGraph, AgenticFlow adds value where it matters:
 - Multi-agent topologies (supervisor, mesh, pipeline, hierarchical)
-- Memory systems (short-term, long-term, shared)
-- LangGraph integration with Command and interrupt
-- Full observability (tracing, metrics, logging)
-- Real-time WebSocket streaming
+- Intelligent resilience (retry, circuit breakers, fallbacks)
+- Advanced execution strategies (DAG, ReAct, Plan-Execute)
+- Full observability (tracing, metrics, progress tracking)
+- Event-driven architecture with pub/sub patterns
+- Mermaid visualization for agents and topologies
+
+Philosophy: USE LangChain/LangGraph DIRECTLY. We don't wrap what they do well.
+
+For models, embeddings, vector stores, memory, graphs - use LangChain/LangGraph:
+    ```python
+    # Models - use LangChain directly
+    from langchain_openai import ChatOpenAI
+    from langchain_anthropic import ChatAnthropic
+    
+    # Embeddings - use LangChain directly
+    from langchain_openai import OpenAIEmbeddings
+    
+    # Vector stores - use LangChain directly
+    from langchain_core.vectorstores import InMemoryVectorStore
+    from langchain_community.vectorstores import FAISS
+    
+    # Document loading - use LangChain directly
+    from langchain_community.document_loaders import WebBaseLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    
+    # Graphs - use LangGraph directly
+    from langgraph.graph import StateGraph, START, END
+    from langgraph.checkpoint.memory import MemorySaver
+    from langgraph.store.memory import InMemoryStore
+    ```
+
+AgenticFlow adds value with:
+    - Agent: Autonomous entity with resilience, execution strategies
+    - EventBus: Pub/sub event system for agent communication
+    - ToolRegistry: Tool management with permissions
+    - Topologies: Multi-agent coordination patterns
+    - Observability: Progress tracking, metrics, tracing
+    - Visualization: Mermaid diagrams for agents/topologies
 
 Quick Start:
     ```python
-    from agenticflow import (
-        Agent, AgentConfig, AgentRole,
-        EventBus, TaskManager, Orchestrator,
-        ToolRegistry,
-    )
+    from langchain_openai import ChatOpenAI
+    from agenticflow import Agent, AgentConfig, EventBus
     
-    # Create infrastructure
-    event_bus = EventBus()
-    task_manager = TaskManager(event_bus)
-    tool_registry = ToolRegistry()
+    # Create model using LangChain directly
+    model = ChatOpenAI(model="gpt-4o")
     
-    # Create an agent
+    # Create an agent with AgenticFlow's resilience
     agent = Agent(
         config=AgentConfig(
             name="Assistant",
-            role=AgentRole.WORKER,
-            model_name="gpt-4o",
+            model=model,  # Pass LangChain model directly
         ),
-        event_bus=event_bus,
-        tool_registry=tool_registry,
+        event_bus=EventBus(),
     )
     
-    # Create orchestrator
-    orchestrator = Orchestrator(
-        event_bus=event_bus,
-        task_manager=task_manager,
-        tool_registry=tool_registry,
-    )
-    orchestrator.register_agent(agent)
+    # Think with automatic retry on failures
+    response = await agent.think("What should I do?")
+    
+    # Act with circuit breakers and fallbacks
+    result = await agent.act("search", {"query": "Python"})
     ```
 
-Advanced Usage (Multi-Agent Topology):
+Multi-Agent Topology:
     ```python
-    from agenticflow.topologies import TopologyFactory, TopologyType
-    from agenticflow.memory import memory_checkpointer, memory_store
-    from agenticflow.observability import Tracer, MetricsCollector
+    from agenticflow import TopologyFactory, TopologyType
     
-    # Create topology with automatic coordination
+    # Create a supervisor topology
     topology = TopologyFactory.create(
         TopologyType.SUPERVISOR,
-        "content-team",
+        "team",
         agents=[supervisor, researcher, writer],
         supervisor_name="supervisor",
-        checkpointer=memory_checkpointer(),  # short-term memory
-        store=memory_store(),  # long-term memory
     )
     
-    # Run with memory and observability
-    result = await topology.run("Create a technical blog post")
+    # Run with progress tracking
+    result = await topology.run("Create a blog post")
     ```
 """
 
@@ -88,51 +105,12 @@ from agenticflow.core.enums import (
 )
 from agenticflow.core.utils import generate_id, now_utc
 
-# Model providers (new modular system)
-from agenticflow.providers import (
-    # Factory functions
-    create_model,
-    create_embeddings,
-    acreate_model,
-    acreate_embeddings,
-    get_provider,
-    parse_model_spec,
-    list_providers,
-    # Spec classes
-    ModelSpec,
-    EmbeddingSpec,
-    # Base class
-    BaseProvider,
-    ProviderRegistry,
-    # Provider implementations
-    OpenAIProvider,
-    AzureOpenAIProvider,
-    AnthropicProvider,
-    GoogleProvider,
-    OllamaProvider,
-    # Enums
-    Provider,
-    AzureAuthMethod,
-    AzureConfig,
-)
-
-# Legacy provider aliases (deprecated, use providers module)
-from agenticflow.core.providers import (
-    create_chat_model,  # Use create_model instead
-    openai_chat,
-    azure_chat,
-    anthropic_chat,
-    ollama_chat,
-    openai_embeddings,
-    azure_embeddings,
-)
-
 # Models
 from agenticflow.models.event import Event
 from agenticflow.models.message import Message, MessageType
 from agenticflow.models.task import Task
 
-# Agents
+# Agents (THIS IS WHERE WE ADD VALUE)
 from agenticflow.agents.base import Agent
 from agenticflow.agents.config import AgentConfig
 from agenticflow.agents.state import AgentState
@@ -146,8 +124,17 @@ from agenticflow.agents.executor import (
     AdaptiveExecutor,
     create_executor,
 )
+from agenticflow.agents.resilience import (
+    ResilienceConfig,
+    RetryPolicy,
+    RetryStrategy,
+    CircuitBreaker,
+    CircuitState,
+    ToolResilience,
+    FallbackRegistry,
+)
 
-# Events
+# Events (THIS IS WHERE WE ADD VALUE)
 from agenticflow.events.bus import EventBus, get_event_bus, set_event_bus
 from agenticflow.events.handlers import (
     ConsoleEventHandler,
@@ -159,34 +146,13 @@ from agenticflow.events.handlers import (
 # Tasks
 from agenticflow.tasks.manager import TaskManager
 
-# Tools
+# Tools (THIS IS WHERE WE ADD VALUE)
 from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 
 # Orchestrator
 from agenticflow.orchestrator.orchestrator import Orchestrator
 
-# Memory (minimal wrappers around LangChain/LangGraph)
-from agenticflow.memory import (
-    # Checkpointers (short-term)
-    create_checkpointer,
-    memory_checkpointer,
-    MemorySaver,
-    BaseCheckpointSaver,
-    # Stores (long-term)
-    create_store,
-    memory_store,
-    semantic_store,
-    BaseStore,
-    InMemoryStore,
-    # Vector stores (semantic)
-    create_vectorstore,
-    memory_vectorstore,
-    VectorStore,
-    InMemoryVectorStore,
-    Document,
-)
-
-# Topologies
+# Topologies (THIS IS WHERE WE ADD VALUE)
 from agenticflow.topologies import (
     BaseTopology,
     TopologyConfig,
@@ -199,7 +165,7 @@ from agenticflow.topologies import (
     TopologyType,
 )
 
-# Observability
+# Observability (THIS IS WHERE WE ADD VALUE)
 from agenticflow.observability import (
     Tracer,
     Span,
@@ -235,28 +201,7 @@ from agenticflow.observability import (
     render_dag_ascii,
 )
 
-# Graph (LangGraph integration)
-from agenticflow.graph import (
-    GraphBuilder,
-    NodeConfig,
-    EdgeConfig,
-    AgentGraphState,
-    create_state_schema,
-    merge_states,
-    AgentNode,
-    ToolNode,
-    RouterNode,
-    HumanNode,
-    Handoff,
-    HandoffType,
-    create_handoff,
-    create_interrupt,
-    GraphRunner,
-    RunConfig,
-    StreamMode,
-)
-
-# Visualization (Mermaid diagrams)
+# Visualization (THIS IS WHERE WE ADD VALUE)
 from agenticflow.visualization import (
     MermaidConfig,
     MermaidRenderer,
@@ -264,6 +209,15 @@ from agenticflow.visualization import (
     MermaidDirection,
     AgentDiagram,
     TopologyDiagram,
+)
+
+# LangChain message types (re-export for convenience)
+from langchain_core.messages import (
+    BaseMessage,
+    HumanMessage,
+    AIMessage,
+    SystemMessage,
+    ToolMessage,
 )
 
 # All public exports
@@ -279,34 +233,6 @@ __all__ = [
     # Core utilities
     "generate_id",
     "now_utc",
-    # Model providers (new system)
-    "create_model",
-    "create_embeddings",
-    "acreate_model",
-    "acreate_embeddings",
-    "get_provider",
-    "parse_model_spec",
-    "list_providers",
-    "ModelSpec",
-    "EmbeddingSpec",
-    "BaseProvider",
-    "ProviderRegistry",
-    "OpenAIProvider",
-    "AzureOpenAIProvider",
-    "AnthropicProvider",
-    "GoogleProvider",
-    "OllamaProvider",
-    "Provider",
-    "AzureAuthMethod",
-    "AzureConfig",
-    # Legacy aliases (deprecated)
-    "create_chat_model",
-    "openai_chat",
-    "azure_chat",
-    "anthropic_chat",
-    "ollama_chat",
-    "openai_embeddings",
-    "azure_embeddings",
     # Models
     "Event",
     "Message",
@@ -325,6 +251,14 @@ __all__ = [
     "PlanExecutor",
     "AdaptiveExecutor",
     "create_executor",
+    # Resilience
+    "ResilienceConfig",
+    "RetryPolicy",
+    "RetryStrategy",
+    "CircuitBreaker",
+    "CircuitState",
+    "ToolResilience",
+    "FallbackRegistry",
     # Events
     "EventBus",
     "get_event_bus",
@@ -340,21 +274,6 @@ __all__ = [
     "create_tool_from_function",
     # Orchestrator
     "Orchestrator",
-    # Memory (LangChain/LangGraph wrappers)
-    "create_checkpointer",
-    "memory_checkpointer",
-    "MemorySaver",
-    "BaseCheckpointSaver",
-    "create_store",
-    "memory_store",
-    "semantic_store",
-    "BaseStore",
-    "InMemoryStore",
-    "create_vectorstore",
-    "memory_vectorstore",
-    "VectorStore",
-    "InMemoryVectorStore",
-    "Document",
     # Topologies
     "BaseTopology",
     "TopologyConfig",
@@ -398,24 +317,6 @@ __all__ = [
     "create_executor_callback",
     "configure_output",
     "render_dag_ascii",
-    # Graph (LangGraph integration)
-    "GraphBuilder",
-    "NodeConfig",
-    "EdgeConfig",
-    "AgentGraphState",
-    "create_state_schema",
-    "merge_states",
-    "AgentNode",
-    "ToolNode",
-    "RouterNode",
-    "HumanNode",
-    "Handoff",
-    "HandoffType",
-    "create_handoff",
-    "create_interrupt",
-    "GraphRunner",
-    "RunConfig",
-    "StreamMode",
     # Visualization
     "MermaidConfig",
     "MermaidRenderer",
@@ -423,4 +324,10 @@ __all__ = [
     "MermaidDirection",
     "AgentDiagram",
     "TopologyDiagram",
+    # LangChain messages
+    "BaseMessage",
+    "HumanMessage",
+    "AIMessage",
+    "SystemMessage",
+    "ToolMessage",
 ]

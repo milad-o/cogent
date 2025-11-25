@@ -314,8 +314,13 @@ class AgentDiagram:
         # Add config if enabled
         if cfg.show_config:
             config_id = f"cfg_{agent_id}"
-            model = self.agent.config.model_name or "default"
-            lines.append(f'    {config_id}{{"{model}"}}:::config')
+            # Get model info from the model object if available
+            model_info = "no model"
+            if self.agent.config.model is not None:
+                model_obj = self.agent.config.model
+                # Try to get model name from LangChain model
+                model_info = getattr(model_obj, "model_name", None) or getattr(model_obj, "model", "model") or "model"
+            lines.append(f'    {config_id}{{"{model_info}"}}:::config')
             lines.append(f"    {agent_id} -.- {config_id}")
 
         # Add class definitions

@@ -30,7 +30,10 @@ from agenticflow.topologies import (
     MeshTopology,
     HierarchicalTopology,
 )
-from agenticflow.memory import memory_checkpointer, memory_store
+
+# For memory, use LangGraph directly:
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.store.memory import InMemoryStore
 
 
 # =============================================================================
@@ -403,9 +406,9 @@ async def topology_with_memory_example():
     event_bus = EventBus()
     agents = create_test_agents(event_bus)
     
-    # Create memory components
-    checkpointer = memory_checkpointer()
-    store = memory_store()
+    # Create memory components using LangGraph directly
+    checkpointer = MemorySaver()
+    store = InMemoryStore()
     
     # Store team context in long-term memory
     team_namespace = ("team", "content")
