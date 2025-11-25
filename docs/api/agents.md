@@ -59,7 +59,7 @@ Agent(
 | `name` | `str` | Agent's display name |
 | `role` | `AgentRole` | Agent's role in the system |
 | `status` | `AgentStatus` | Current agent status |
-| `model` | `BaseChatModel` | Lazy-loaded LLM model |
+| `model` | `BaseChatModel` | Lazy-loaded LLM model (see [Providers](providers.md)) |
 | `resilience` | `ToolResilience` | Resilience layer for the agent |
 
 ### Methods
@@ -305,8 +305,8 @@ class AgentConfig:
     role: AgentRole = AgentRole.WORKER
     description: str = ""
     
-    # LLM Configuration
-    model: str | BaseChatModel | dict | None = None
+    # LLM Configuration (see Providers Guide for all options)
+    model: str | ModelSpec | BaseChatModel | dict | None = None
     temperature: float = 0.7
     max_tokens: int | None = None
     system_prompt: str | None = None
@@ -326,23 +326,40 @@ class AgentConfig:
 
 ### Model Specification
 
-The `model` parameter supports multiple formats:
+The `model` parameter supports multiple formats. See the [Providers Guide](providers.md) for complete documentation.
 
 ```python
-# String: model name (auto-detects provider)
-config = AgentConfig(name="Agent", model="gpt-4o")
+from agenticflow import ModelSpec
 
-# Provider-prefixed string
-config = AgentConfig(name="Agent", model="anthropic:claude-3-5-sonnet-latest")
+# String: provider/model format (recommended)
+config = AgentConfig(name="Agent", model="openai/gpt-4o")
+config = AgentConfig(name="Agent", model="anthropic/claude-sonnet-4-20250514")
+config = AgentConfig(name="Agent", model="google/gemini-2.0-flash")
+config = AgentConfig(name="Agent", model="ollama/llama3.2")
 
-# Azure OpenAI
+# ModelSpec for full control
 config = AgentConfig(
     name="Agent",
-    model="azure:gpt-4o",
-    model_kwargs={
-        "azure_endpoint": "https://my-resource.openai.azure.com",
-        "azure_deployment": "my-gpt4-deployment",
-    },
+    model=ModelSpec(
+        provider="openai",
+        model="gpt-4o",
+        temperature=0.5,
+        max_tokens=4096,
+    ),
+)
+
+# Azure OpenAI with Managed Identity
+from agenticflow.providers import AzureAuthMethod
+
+config = AgentConfig(
+    name="Agent",
+    model=ModelSpec(
+        provider="azure_openai",
+        model="gpt-4o",
+        azure_endpoint="https://my-resource.openai.azure.com",
+        azure_deployment="my-gpt4-deployment",
+        azure_auth_method=AzureAuthMethod.MANAGED_IDENTITY,
+    ),
 )
 
 # Direct LangChain model object
@@ -370,7 +387,7 @@ config = AgentConfig(
 Create a new config with additional tools.
 
 ```python
-config = AgentConfig(name="Agent", model="gpt-4o")
+config = AgentConfig(name="Agent", model="openai/gpt-4o")
 config = config.with_tools(["search", "calculate", "write"])
 ```
 
@@ -448,7 +465,7 @@ config = AgentConfig(
     name="ResearchAgent",
     role=AgentRole.SPECIALIST,
     description="A resilient research agent",
-    model="gpt-4o",
+    model="openai/gpt-4o",
     temperature=0.3,
     system_prompt="You are a meticulous researcher. Always verify facts.",
     tools=["search", "cached_search"],
@@ -889,7 +906,7 @@ async def main():
     config = AgentConfig(
         name="ResearchBot",
         role=AgentRole.SPECIALIST,
-        model="gpt-4o",
+        model="openai/gpt-4o",
         tools=["unreliable_search", "cached_search", "local_search"],
     ).with_resilience(
         ResilienceConfig(
@@ -954,6 +971,7 @@ if __name__ == "__main__":
 
 ## Next Steps
 
+- [Providers](providers.md) - Configure LLM providers (OpenAI, Azure, Anthropic, etc.)
 - [Topologies](topologies.md) - Multi-agent orchestration patterns
 - [Events](events.md) - Event-driven communication
 - [Observability](observability.md) - Progress tracking and metrics

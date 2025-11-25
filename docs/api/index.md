@@ -7,6 +7,7 @@ Complete API documentation for AgenticFlow. This reference covers all public mod
 | Module | Description |
 |--------|-------------|
 | [Agents](agents.md) | Agent creation, configuration, state management, and resilience |
+| [Providers](providers.md) | LLM and embedding model providers (OpenAI, Azure, Anthropic, etc.) |
 | [Topologies](topologies.md) | Multi-agent orchestration patterns |
 | [Events](events.md) | Event-driven communication between agents |
 | [Tasks](tasks.md) | Task management and tracking |
@@ -28,6 +29,20 @@ from agenticflow import (
     AgentConfig,
     AgentState,
     AgentExecutor,
+    
+    # Providers (new modular system)
+    create_model,
+    create_embeddings,
+    ModelSpec,
+    EmbeddingSpec,
+    OpenAIProvider,
+    AzureOpenAIProvider,
+    AnthropicProvider,
+    GoogleProvider,
+    OllamaProvider,
+    AzureAuthMethod,
+    AzureConfig,
+    Provider,
     
     # Resilience
     RetryPolicy,

@@ -7,6 +7,7 @@
 - 🤖 **Multi-Agent Orchestration** - Coordinate multiple specialized AI agents
 - 🔄 **Event-Driven Architecture** - Decoupled pub/sub communication
 - 🧠 **Intelligent Resilience** - Retry, circuit breakers, fallback tools
+- 🔌 **Multi-Provider Support** - OpenAI, Azure (with Managed Identity), Anthropic, Google, Ollama
 - 📊 **Multiple Topologies** - Supervisor, mesh, pipeline, hierarchical
 - 💾 **Memory Systems** - Short-term, long-term, semantic search
 - 🔍 **Full Observability** - Tracing, metrics, progress tracking
@@ -18,6 +19,7 @@
 | Section | Description |
 |---------|-------------|
 | [Quickstart](quickstart.md) | Get started in 5 minutes |
+| [Providers Guide](api/providers.md) | Configure LLM providers (OpenAI, Azure, etc.) |
 | [API Reference](api/index.md) | Complete API documentation |
 | [Cookbook](cookbook.md) | Practical examples and patterns |
 | [Examples](../examples/) | Runnable example scripts |
@@ -56,12 +58,12 @@ async def main():
         """Search for information."""
         return f"Results for: {query}"
     
-    # Create a resilient agent
+    # Create a resilient agent with provider/model format
     agent = Agent(
         config=AgentConfig(
             name="Researcher",
             role=AgentRole.WORKER,
-            model="gpt-4o",
+            model="openai/gpt-4o",  # provider/model string format
             tools=["search"],
             resilience_config=ResilienceConfig.aggressive(),
         ),
@@ -113,7 +115,7 @@ asyncio.run(main())
 ### Agents
 Autonomous entities that think, act, and communicate. Each agent has:
 - A unique identity and role
-- LLM model for reasoning
+- LLM model for reasoning (supports OpenAI, Azure, Anthropic, Google, Ollama)
 - Access to tools
 - Resilience configuration for retry/recovery
 

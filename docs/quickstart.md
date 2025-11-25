@@ -38,7 +38,7 @@ async def main():
         config=AgentConfig(
             name="Assistant",
             role=AgentRole.WORKER,
-            model_name="gpt-4o-mini",
+            model="openai/gpt-4o-mini",  # provider/model format
             system_prompt="You are a helpful assistant. Be concise.",
         ),
         event_bus=event_bus,
@@ -69,7 +69,7 @@ async def main():
         config=AgentConfig(
             name="Manager",
             role=AgentRole.ORCHESTRATOR,
-            model_name="gpt-4o-mini",
+            model="openai/gpt-4o-mini",
             system_prompt="""You coordinate a team of specialists.
 Delegate tasks to: Researcher (facts), Writer (content).
 Say 'task is complete' when finished.""",
@@ -82,7 +82,7 @@ Say 'task is complete' when finished.""",
         config=AgentConfig(
             name="Researcher",
             role=AgentRole.WORKER,
-            model_name="gpt-4o-mini",
+            model="openai/gpt-4o-mini",
             system_prompt="You research topics and provide key facts.",
         ),
         event_bus=event_bus,
@@ -92,7 +92,7 @@ Say 'task is complete' when finished.""",
         config=AgentConfig(
             name="Writer",
             role=AgentRole.WORKER,
-            model_name="gpt-4o-mini",
+            model="openai/gpt-4o-mini",
             system_prompt="You write engaging content based on research.",
         ),
         event_bus=event_bus,
@@ -229,7 +229,8 @@ flowchart TD
 
 ## Next Steps
 
+- [**Providers Guide**](api/providers.md) - Configure OpenAI, Azure, Anthropic, and more
 - [**Topologies Guide**](topologies.md) - Deep dive into coordination patterns
 - [**Memory Systems**](memory.md) - Short-term, long-term, and semantic memory
-- [**API Reference**](api-reference.md) - Complete API documentation
+- [**API Reference**](api/index.md) - Complete API documentation
 - [**Examples**](../examples/) - More runnable examples

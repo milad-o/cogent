@@ -84,7 +84,7 @@ async def main():
         config=AgentConfig(
             name="Writer",
             role=AgentRole.WORKER,
-            model_name="gpt-4o",
+            model="openai/gpt-4o",  # provider/model format
             tools=["write_poem"],
         ),
         event_bus=event_bus,
@@ -120,13 +120,47 @@ agent = Agent(
         name="Analyst",
         role=AgentRole.SPECIALIST,
         description="Analyzes data and provides insights",
-        model_name="gpt-4o",
+        model="openai/gpt-4o",  # provider/model format
         temperature=0.3,
         system_prompt="You are a data analyst...",
         tools=["analyze_data", "create_chart"],
     ),
     event_bus=event_bus,
     tool_registry=tool_registry,
+)
+```
+
+### Model Providers
+
+Flexible model specification supporting multiple providers:
+
+```python
+from agenticflow import AgentConfig
+from agenticflow.providers import ModelSpec, AzureOpenAIProvider, AzureAuthMethod
+
+# String format (simplest)
+config = AgentConfig(name="Agent", model="openai/gpt-4o-mini")
+config = AgentConfig(name="Agent", model="anthropic/claude-3-5-sonnet-latest")
+
+# ModelSpec for full control
+config = AgentConfig(
+    name="PreciseAgent",
+    model=ModelSpec(
+        provider="openai",
+        model="gpt-4o",
+        temperature=0.3,
+        max_tokens=2000,
+    ),
+)
+
+# Azure with Managed Identity
+provider = AzureOpenAIProvider(
+    endpoint="https://my-resource.openai.azure.com",
+    auth_method=AzureAuthMethod.MANAGED_IDENTITY,
+)
+config = AgentConfig(
+    name="AzureAgent",
+    model=provider.create_chat_model("gpt-4o-deployment"),
 )
 ```
 
