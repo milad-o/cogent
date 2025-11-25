@@ -320,15 +320,26 @@ class BaseTopology:
                     },
                 )
 
-            # Build messages for agent
-            messages = state.get("messages", [])
+            # Build prompt for agent including task and conversation context
             task = state.get("task", "")
-            context = state.get("context", {})
+            results = state.get("results", [])
+            
+            # Build prompt with context from previous agents
+            prompt_parts = [f"Task: {task}"]
+            
+            if results:
+                prompt_parts.append("\nPrevious contributions:")
+                for r in results:
+                    prompt_parts.append(f"\n[{r['agent']}]: {r['thought']}")
+                prompt_parts.append("\n\nYour turn to contribute:")
+            
+            prompt = "\n".join(prompt_parts)
 
             # Let agent think about the task
-            thought = await agent.think(task, context)
+            thought = await agent.think(prompt)
 
-            # Add thought to messages
+            # Build updated messages list
+            messages = state.get("messages", [])
             new_messages = messages + [
                 {
                     "role": "assistant",
@@ -389,24 +400,32 @@ class BaseTopology:
         """
         output_lower = output.lower()
 
-        # Check for finish signals
-        finish_signals = ["finish", "complete", "done", "final answer"]
-        for signal in finish_signals:
-            if signal in output_lower:
-                return "__end__"
-
-        # Check for handoff mentions
-        handoff_keywords = ["hand off to", "pass to", "delegate to", "send to"]
+        # Check for handoff mentions FIRST (higher priority than finish)
+        handoff_keywords = ["hand off to", "pass to", "delegate to", "send to", "assigned to"]
         for keyword in handoff_keywords:
             if keyword in output_lower:
                 for name in self.agents:
                     if name != current_agent and name.lower() in output_lower:
                         return name
 
-        # Check for any agent mention
+        # Check for any agent mention (before finish signals)
         for name in self.agents:
             if name != current_agent and name.lower() in output_lower:
                 return name
+
+        # Check for explicit finish signals (only if no agent mentioned)
+        finish_patterns = [
+            "task is complete",
+            "task is now complete",
+            "task complete",
+            "job is complete",
+            "we can finish",
+            "all done",
+            "final answer:",
+        ]
+        for pattern in finish_patterns:
+            if pattern in output_lower:
+                return "__end__"
 
         return None
 
@@ -421,12 +440,14 @@ class BaseTopology:
         Returns:
             True if task appears complete.
         """
+        # More precise completion detection
         completion_signals = [
             "task complete",
-            "finished",
-            "done",
-            "final answer",
-            "here is the result",
+            "task is complete",
+            "job is done",
+            "all tasks complete",
+            "final answer:",
+            "here is the final",
         ]
         output_lower = output.lower()
         return any(signal in output_lower for signal in completion_signals)
@@ -532,7 +553,7 @@ class BaseTopology:
         }
 
         final_state = None
-        async for state in self.graph.astream(initial_state, config):
+        async for state in self.graph.astream(initial_state, config, stream_mode="values"):
             final_state = state
             if self.event_bus:
                 await self.event_bus.publish(

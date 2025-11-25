@@ -6,17 +6,26 @@ import uuid
 from datetime import datetime, timezone
 
 
-def generate_id(length: int = 8) -> str:
+def generate_id(prefix: str | int = "", length: int = 8) -> str:
     """
     Generate a short unique identifier.
     
     Args:
+        prefix: Optional prefix string, or length for backwards compatibility
         length: Number of characters (default 8)
         
     Returns:
-        A unique ID string
+        A unique ID string, optionally with prefix
     """
-    return str(uuid.uuid4())[:length]
+    # Handle backwards compatibility where first arg was length
+    if isinstance(prefix, int):
+        length = prefix
+        prefix = ""
+    
+    uid = str(uuid.uuid4()).replace("-", "")[:length]
+    if prefix:
+        return f"{prefix}_{uid}"
+    return uid
 
 
 def now_utc() -> datetime:

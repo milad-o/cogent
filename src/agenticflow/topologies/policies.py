@@ -124,6 +124,7 @@ class AgentPolicy:
         accept_from: List of agents to accept from (for ACCEPT_LISTED).
         reject_from: List of agents to reject (for REJECT_LISTED).
         can_send_to: List of agents this agent can hand off to.
+                     None means can send to anyone, [] means can't send to anyone.
         can_finish: Whether this agent can end the workflow.
         acceptance_fn: Custom acceptance function if acceptance is CONDITIONAL.
     """
@@ -132,7 +133,7 @@ class AgentPolicy:
     acceptance: AcceptancePolicy = AcceptancePolicy.ACCEPT_ALL
     accept_from: list[str] = field(default_factory=list)
     reject_from: list[str] = field(default_factory=list)
-    can_send_to: list[str] = field(default_factory=list)
+    can_send_to: list[str] | None = None  # None = anyone, [] = nobody
     can_finish: bool = True
     acceptance_fn: Callable[[str, dict[str, Any]], bool] | None = None
 
@@ -171,9 +172,10 @@ class AgentPolicy:
         Returns:
             True if handoff is allowed.
         """
-        if not self.can_send_to:
-            # Empty list means can send to anyone
+        if self.can_send_to is None:
+            # None means can send to anyone
             return True
+        # Explicit list (including empty) - check membership
         return target in self.can_send_to
 
 
