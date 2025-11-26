@@ -375,33 +375,38 @@ class TopologySpec:
                 self._roles[worker.name] = AgentRole.WORKER
         
         elif self.pattern == TopologyPattern.COORDINATOR:
+            # Coordinator pattern uses SUPERVISOR for the coordinator
             if self.supervisor:
-                self._roles[self.supervisor.name] = AgentRole.COORDINATOR
+                self._roles[self.supervisor.name] = AgentRole.SUPERVISOR
             for worker in self.workers:
                 self._roles[worker.name] = AgentRole.WORKER
         
         elif self.pattern == TopologyPattern.PIPELINE:
             for i, agent in enumerate(self.stages):
-                if i == 0:
-                    self._roles[agent.name] = AgentRole.RESEARCHER
-                elif i == len(self.stages) - 1:
-                    self._roles[agent.name] = AgentRole.VALIDATOR
+                if i == len(self.stages) - 1:
+                    # Last agent can finish (reviewer)
+                    self._roles[agent.name] = AgentRole.REVIEWER
                 else:
+                    # All others are workers
                     self._roles[agent.name] = AgentRole.WORKER
         
         elif self.pattern == TopologyPattern.HIERARCHICAL:
             for i, level in enumerate(self.levels):
                 for agent in level:
                     if i == 0:
+                        # Top level is supervisor
                         self._roles[agent.name] = AgentRole.SUPERVISOR
-                    elif i == len(self.levels) - 1:
-                        self._roles[agent.name] = AgentRole.WORKER
                     else:
-                        self._roles[agent.name] = AgentRole.COORDINATOR
+                        # All others are workers
+                        self._roles[agent.name] = AgentRole.WORKER
         
         elif self.pattern == TopologyPattern.MESH:
-            for agent in self._all_agents:
-                self._roles[agent.name] = AgentRole.WORKER
+            # In mesh, first agent is supervisor (can finish), rest are workers
+            for i, agent in enumerate(self._all_agents):
+                if i == 0:
+                    self._roles[agent.name] = AgentRole.SUPERVISOR
+                else:
+                    self._roles[agent.name] = AgentRole.WORKER
     
     @property
     def all_agents(self) -> list[Agent]:
@@ -638,21 +643,21 @@ def hierarchical_topology(
 TOPOLOGY_ROLE_REQUIREMENTS: dict[TopologyPattern, dict[str, list[AgentRole]]] = {
     TopologyPattern.SUPERVISOR: {
         "leader": [AgentRole.SUPERVISOR],
-        "workers": [AgentRole.WORKER, AgentRole.SPECIALIST, AgentRole.RESEARCHER],
+        "workers": [AgentRole.WORKER],
     },
     TopologyPattern.COORDINATOR: {
-        "leader": [AgentRole.COORDINATOR],
-        "peers": [AgentRole.WORKER, AgentRole.SPECIALIST, AgentRole.RESEARCHER, AgentRole.PLANNER],
+        "leader": [AgentRole.SUPERVISOR],
+        "peers": [AgentRole.WORKER],
     },
     TopologyPattern.PIPELINE: {
-        "first": [AgentRole.RESEARCHER, AgentRole.WORKER],
-        "middle": [AgentRole.WORKER, AgentRole.SPECIALIST, AgentRole.PLANNER],
-        "last": [AgentRole.VALIDATOR, AgentRole.WORKER],
+        "first": [AgentRole.WORKER],
+        "middle": [AgentRole.WORKER],
+        "last": [AgentRole.REVIEWER, AgentRole.WORKER],
     },
     TopologyPattern.HIERARCHICAL: {
-        "top": [AgentRole.SUPERVISOR, AgentRole.ORCHESTRATOR],
-        "middle": [AgentRole.COORDINATOR, AgentRole.PLANNER],
-        "bottom": [AgentRole.WORKER, AgentRole.SPECIALIST],
+        "top": [AgentRole.SUPERVISOR],
+        "middle": [AgentRole.WORKER],
+        "bottom": [AgentRole.WORKER],
     },
     TopologyPattern.MESH: {
         "any": list(AgentRole),

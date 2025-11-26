@@ -348,21 +348,20 @@ class AgentDiagram:
         return "\n".join(lines)
 
     def _get_role_class(self, role: str) -> str:
-        """Get CSS class for agent role."""
-        return {"orchestrator": "orch", "worker": "work", "planner": "plan",
-                "critic": "crit", "specialist": "spec", "researcher": "res",
-                "validator": "val", "assistant": "asst"}.get(role, "work")
+        """Get CSS class for agent role (clean 4-role system)."""
+        return {
+            "worker": "work",
+            "supervisor": "super",
+            "autonomous": "auto",
+            "reviewer": "review",
+        }.get(role, "work")
 
     def _get_class_definitions(self) -> str:
-        """Get compact Mermaid class definitions."""
-        return """    classDef orch fill:#4a90d9,stroke:#2d5986,color:#fff
-    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
-    classDef plan fill:#e6a23c,stroke:#b87c1e,color:#fff
-    classDef crit fill:#f56c6c,stroke:#c45656,color:#fff
-    classDef spec fill:#9b59b6,stroke:#7b3a96,color:#fff
-    classDef res fill:#3498db,stroke:#2475ad,color:#fff
-    classDef val fill:#1abc9c,stroke:#16a085,color:#fff
-    classDef asst fill:#95a5a6,stroke:#7f8c8d,color:#fff
+        """Get compact Mermaid class definitions for the 4-role system."""
+        return """    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
+    classDef super fill:#4a90d9,stroke:#2d5986,color:#fff
+    classDef auto fill:#9b59b6,stroke:#7b3a96,color:#fff
+    classDef review fill:#f56c6c,stroke:#c45656,color:#fff
     classDef tool fill:#f5f5f5,stroke:#999,color:#333
     classDef config fill:#fff3e0,stroke:#ff9800,color:#333,stroke-dasharray:3"""
 
@@ -519,10 +518,13 @@ class TopologyDiagram:
         return policy.get_edges_for_diagram(agent_names)
 
     def _get_role_class(self, role: str) -> str:
-        """Get CSS class for agent role."""
-        return {"orchestrator": "orch", "worker": "work", "planner": "plan",
-                "critic": "crit", "specialist": "spec", "researcher": "res",
-                "validator": "val", "assistant": "asst"}.get(role, "work")
+        """Get CSS class for agent role (clean 4-role system)."""
+        return {
+            "worker": "work",
+            "supervisor": "super",
+            "autonomous": "auto",
+            "reviewer": "review",
+        }.get(role, "work")
 
     def _make_agent_node(self, name: str, shape: str = "rect") -> str:
         """Create clean agent node."""
@@ -838,15 +840,11 @@ class TopologyDiagram:
         return lines
 
     def _get_class_definitions(self) -> str:
-        """Get compact Mermaid class definitions."""
-        return """    classDef orch fill:#4a90d9,stroke:#2d5986,color:#fff
-    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
-    classDef plan fill:#e6a23c,stroke:#b87c1e,color:#fff
-    classDef crit fill:#f56c6c,stroke:#c45656,color:#fff
-    classDef spec fill:#9b59b6,stroke:#7b3a96,color:#fff
-    classDef res fill:#3498db,stroke:#2475ad,color:#fff
-    classDef val fill:#1abc9c,stroke:#16a085,color:#fff
-    classDef asst fill:#95a5a6,stroke:#7f8c8d,color:#fff
+        """Get compact Mermaid class definitions for the 4-role system."""
+        return """    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
+    classDef super fill:#4a90d9,stroke:#2d5986,color:#fff
+    classDef auto fill:#9b59b6,stroke:#7b3a96,color:#fff
+    classDef review fill:#f56c6c,stroke:#c45656,color:#fff
     classDef tool fill:#f5f5f5,stroke:#999,color:#333"""
 
     def draw_png(self) -> bytes:

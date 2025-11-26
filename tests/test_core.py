@@ -93,16 +93,54 @@ class TestPriority:
 
 
 class TestAgentRole:
-    """Tests for AgentRole enum."""
+    """Tests for AgentRole enum with the clean 4-role system."""
 
-    def test_can_delegate_orchestrator(self) -> None:
-        assert AgentRole.ORCHESTRATOR.can_delegate() is True
-
-    def test_can_delegate_planner(self) -> None:
-        assert AgentRole.PLANNER.can_delegate() is True
+    def test_can_delegate_supervisor(self) -> None:
+        assert AgentRole.SUPERVISOR.can_delegate() is True
 
     def test_can_delegate_worker(self) -> None:
         assert AgentRole.WORKER.can_delegate() is False
+
+    def test_can_delegate_autonomous(self) -> None:
+        assert AgentRole.AUTONOMOUS.can_delegate() is False
+
+    def test_can_delegate_reviewer(self) -> None:
+        assert AgentRole.REVIEWER.can_delegate() is False
+
+    def test_can_finish_supervisor(self) -> None:
+        assert AgentRole.SUPERVISOR.can_finish() is True
+
+    def test_can_finish_worker(self) -> None:
+        assert AgentRole.WORKER.can_finish() is False
+
+    def test_can_finish_autonomous(self) -> None:
+        assert AgentRole.AUTONOMOUS.can_finish() is True
+
+    def test_can_finish_reviewer(self) -> None:
+        assert AgentRole.REVIEWER.can_finish() is True
+
+    def test_can_use_tools_supervisor(self) -> None:
+        assert AgentRole.SUPERVISOR.can_use_tools() is False
+
+    def test_can_use_tools_worker(self) -> None:
+        assert AgentRole.WORKER.can_use_tools() is True
+
+    def test_can_use_tools_autonomous(self) -> None:
+        assert AgentRole.AUTONOMOUS.can_use_tools() is True
+
+    def test_can_use_tools_reviewer(self) -> None:
+        assert AgentRole.REVIEWER.can_use_tools() is False
+
+    def test_only_four_roles_exist(self) -> None:
+        """Ensure only the clean 4-role system exists."""
+        roles = list(AgentRole)
+        assert len(roles) == 4
+        assert set(roles) == {
+            AgentRole.WORKER,
+            AgentRole.SUPERVISOR,
+            AgentRole.AUTONOMOUS,
+            AgentRole.REVIEWER,
+        }
 
 
 class TestGenerateId:

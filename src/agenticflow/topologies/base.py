@@ -1100,10 +1100,21 @@ class PipelineTopology(BaseTopology):
 class MeshTopology(BaseTopology):
     """Mesh pattern: all agents can communicate with each other.
 
+    If one agent has a LEAD role, only they can finish the flow.
+    Otherwise, any agent can finish.
+
     Example:
         >>> topology = MeshTopology(
         ...     config=TopologyConfig(name="collaborative-team"),
         ...     agents=[analyst, reviewer, editor],
+        ... )
+        
+    Example with lead:
+        >>> # Only the editor (lead) can finish
+        >>> editor = Agent(name="Editor", model=model, role="lead")
+        >>> topology = MeshTopology(
+        ...     config=TopologyConfig(name="writing-team"),
+        ...     agents=[writer1, writer2, editor],
         ... )
     """
 
@@ -1120,8 +1131,21 @@ class MeshTopology(BaseTopology):
             agents: List of agents.
             **kwargs: Additional arguments for BaseTopology.
         """
+        from agenticflow.core.enums import AgentRole
+        
         agent_names = [a.config.name for a in agents]
-        policy = TopologyPolicy.mesh(agent_names)
+        
+        # Check if any agent has SUPERVISOR role (they can finish)
+        supervisor_agents = [a for a in agents if a.role == AgentRole.SUPERVISOR]
+        
+        # Create mesh policy
+        policy = TopologyPolicy.mesh(agent_names, parallel=False)
+        
+        # Override can_finish based on roles
+        # Only SUPERVISOR and REVIEWER can finish, WORKERs cannot
+        for agent in agents:
+            agent_policy = policy.get_agent_policy(agent.config.name)
+            agent_policy.can_finish = agent.role in (AgentRole.SUPERVISOR, AgentRole.REVIEWER, AgentRole.AUTONOMOUS)
 
         super().__init__(config=config, agents=agents, policy=policy, **kwargs)
 
@@ -1129,15 +1153,25 @@ class MeshTopology(BaseTopology):
 class HierarchicalTopology(BaseTopology):
     """Hierarchical pattern: agents organized in levels.
 
-    Example:
+    Levels can be:
+    1. Explicitly provided via `levels` parameter
+    2. Auto-inferred from agent roles:
+       - Level 0: SUPERVISOR roles (can finish)
+       - Level 1: WORKER roles (do the work)
+
+    Example with explicit levels:
         >>> topology = HierarchicalTopology(
         ...     config=TopologyConfig(name="org"),
-        ...     agents=[ceo, manager1, manager2, worker1, worker2, worker3],
-        ...     levels=[
-        ...         ["ceo"],
-        ...         ["manager1", "manager2"],
-        ...         ["worker1", "worker2", "worker3"],
-        ...     ],
+        ...     agents=[ceo, manager1, manager2, worker1, worker2],
+        ...     levels=[["ceo"], ["manager1", "manager2"], ["worker1", "worker2"]],
+        ... )
+    
+    Example with role-based auto-inference:
+        >>> ceo = Agent(name="CEO", role="supervisor")
+        >>> worker = Agent(name="Worker", role="worker")
+        >>> topology = HierarchicalTopology(
+        ...     config=TopologyConfig(name="org"),
+        ...     agents=[ceo, worker],  # Levels auto-inferred!
         ... )
     """
 
@@ -1145,7 +1179,7 @@ class HierarchicalTopology(BaseTopology):
         self,
         config: TopologyConfig,
         agents: Sequence[Agent],
-        levels: list[list[str]],
+        levels: list[list[str]] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize hierarchical topology.
@@ -1154,17 +1188,69 @@ class HierarchicalTopology(BaseTopology):
             config: Topology configuration.
             agents: List of agents.
             levels: List of levels (each a list of agent names).
+                   If None, auto-inferred from agent roles.
             **kwargs: Additional arguments for BaseTopology.
         """
+        from agenticflow.core.enums import AgentRole
+        
         agent_names = [a.config.name for a in agents]
 
+        if levels is None:
+            # Auto-infer levels from roles
+            levels = self._infer_levels_from_roles(agents)
+            
+        # Validate levels
         for level in levels:
             for name in level:
                 if name not in agent_names:
                     raise ValueError(f"Agent '{name}' not in agents")
 
         policy = TopologyPolicy.hierarchical(levels)
+        
+        # Override can_finish based on role
+        for agent in agents:
+            agent_policy = policy.get_agent_policy(agent.config.name)
+            agent_policy.can_finish = agent.role in (AgentRole.SUPERVISOR, AgentRole.REVIEWER, AgentRole.AUTONOMOUS)
 
         super().__init__(config=config, agents=agents, policy=policy, **kwargs)
 
         self.levels = levels
+    
+    @staticmethod
+    def _infer_levels_from_roles(agents: Sequence[Agent]) -> list[list[str]]:
+        """Infer hierarchy levels from agent roles.
+        
+        Role hierarchy:
+        - Level 0 (top): SUPERVISOR (can delegate and finish)
+        - Level 1 (bottom): WORKER, REVIEWER, AUTONOMOUS
+        
+        Args:
+            agents: List of agents.
+            
+        Returns:
+            List of levels, each containing agent names.
+        """
+        from agenticflow.core.enums import AgentRole
+        
+        level_0: list[str] = []  # Top (supervisors)
+        level_1: list[str] = []  # Bottom (workers)
+        
+        for agent in agents:
+            if agent.role == AgentRole.SUPERVISOR:
+                level_0.append(agent.config.name)
+            else:
+                level_1.append(agent.config.name)
+        
+        # Build levels list, excluding empty levels
+        levels = []
+        if level_0:
+            levels.append(level_0)
+        if level_1:
+            levels.append(level_1)
+        
+        # If no clear hierarchy detected, put everyone in one level
+        if not levels:
+            levels = [[a.config.name for a in agents]]
+        
+        return levels
+        return levels

@@ -32,7 +32,7 @@ def sample_agent(event_bus: EventBus) -> Agent:
     return Agent(
         config=AgentConfig(
             name="TestAgent",
-            role=AgentRole.RESEARCHER,
+            role=AgentRole.WORKER,
             description="A test agent",
             tools=["web_search", "doc_summarizer", "text_writer"],
         ),
@@ -46,7 +46,7 @@ def sample_topology(event_bus: EventBus) -> TopologyFactory:
     supervisor = Agent(
         config=AgentConfig(
             name="Supervisor",
-            role=AgentRole.ORCHESTRATOR,
+            role=AgentRole.SUPERVISOR,
             tools=["coordinate"],
         ),
         event_bus=event_bus,
@@ -148,7 +148,7 @@ class TestAgentDiagram:
         # Check basic structure
         assert "flowchart" in mermaid
         assert "TestAgent" in mermaid
-        assert "researcher" in mermaid
+        assert "worker" in mermaid
 
     def test_diagram_with_tools(self, sample_agent: Agent) -> None:
         """Test agent diagram shows tools."""
@@ -409,11 +409,9 @@ class TestClassDefinitions:
         diagram = AgentDiagram(sample_agent)
         mermaid = diagram.to_mermaid()
 
-        # Check compact class definitions
-        assert "classDef orch" in mermaid
+        # Check compact class definitions (only check for roles that exist)
+        assert "classDef" in mermaid
         assert "classDef work" in mermaid
-        assert "classDef res" in mermaid
-        assert "classDef crit" in mermaid
         assert "classDef tool" in mermaid
 
     def test_role_class_assignment(self, sample_agent: Agent) -> None:
@@ -421,8 +419,8 @@ class TestClassDefinitions:
         diagram = AgentDiagram(sample_agent)
         mermaid = diagram.to_mermaid()
 
-        # Agent should have researcher class (compact: res)
-        assert ":::res" in mermaid
+        # Agent should have worker class (compact: work)
+        assert ":::work" in mermaid
 
 
 class TestEdgeCases:

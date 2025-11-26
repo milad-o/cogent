@@ -102,6 +102,7 @@ from agenticflow.core.enums import (
     EventType,
     Priority,
     TaskStatus,
+    get_role_capabilities,
 )
 from agenticflow.core.utils import generate_id, now_utc
 
@@ -270,6 +271,7 @@ __all__ = [
     "EventType",
     "Priority",
     "AgentRole",
+    "get_role_capabilities",
     # Core utilities
     "generate_id",
     "now_utc",

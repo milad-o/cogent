@@ -6,25 +6,16 @@ from enum import Enum
 
 
 class TaskStatus(Enum):
-    """
-    Task lifecycle states.
-    
-    State Transitions:
-        PENDING → SCHEDULED → RUNNING → COMPLETED
-                    ↓           ↓          ↓
-                 BLOCKED ← SPAWNING → FAILED
-                              ↓
-                          CANCELLED
-    """
+    """Task lifecycle states."""
 
-    PENDING = "pending"  # Created, waiting to be scheduled
-    SCHEDULED = "scheduled"  # Assigned to execution queue
-    BLOCKED = "blocked"  # Waiting on dependencies
-    RUNNING = "running"  # Currently executing
-    SPAWNING = "spawning"  # Creating subtasks
-    COMPLETED = "completed"  # Successfully finished
-    FAILED = "failed"  # Error occurred
-    CANCELLED = "cancelled"  # Manually cancelled
+    PENDING = "pending"
+    SCHEDULED = "scheduled"
+    BLOCKED = "blocked"
+    RUNNING = "running"
+    SPAWNING = "spawning"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
     def is_terminal(self) -> bool:
         """Check if this status is a terminal state."""
@@ -36,23 +27,14 @@ class TaskStatus(Enum):
 
 
 class AgentStatus(Enum):
-    """
-    Agent lifecycle states.
-    
-    State Transitions:
-        IDLE ↔ THINKING ↔ ACTING
-          ↓        ↓         ↓
-       WAITING  ERROR    ERROR
-          ↓        ↓         ↓
-       OFFLINE ←────────────────
-    """
+    """Agent lifecycle states."""
 
-    IDLE = "idle"  # Ready to accept work
-    THINKING = "thinking"  # Processing/reasoning with LLM
-    ACTING = "acting"  # Executing an action/tool
-    WAITING = "waiting"  # Waiting for external input
-    ERROR = "error"  # Encountered an error
-    OFFLINE = "offline"  # Not available
+    IDLE = "idle"
+    THINKING = "thinking"
+    ACTING = "acting"
+    WAITING = "waiting"
+    ERROR = "error"
+    OFFLINE = "offline"
 
     def is_available(self) -> bool:
         """Check if agent can accept new work."""
@@ -64,19 +46,7 @@ class AgentStatus(Enum):
 
 
 class EventType(Enum):
-    """
-    All event types in the system.
-    
-    Events are organized by category:
-    - system.*: System lifecycle events
-    - task.*: Task state changes
-    - subtask.*: Subtask-specific events
-    - agent.*: Agent activity events
-    - tool.*: Tool execution events
-    - plan.*: Planning events
-    - message.*: Inter-agent communication
-    - client.*: External client events
-    """
+    """All event types in the system."""
 
     # System events
     SYSTEM_STARTED = "system.started"
@@ -130,8 +100,7 @@ class EventType(Enum):
     CLIENT_CONNECTED = "client.connected"
     CLIENT_DISCONNECTED = "client.disconnected"
     CLIENT_MESSAGE = "client.message"
-    
-    # Custom/generic events (for extensibility)
+
     CUSTOM = "custom"
 
     @property
@@ -141,11 +110,7 @@ class EventType(Enum):
 
 
 class Priority(Enum):
-    """
-    Task priority levels.
-    
-    Higher values indicate higher priority.
-    """
+    """Task priority levels."""
 
     LOW = 1
     NORMAL = 2
@@ -175,91 +140,96 @@ class Priority(Enum):
 
 class AgentRole(Enum):
     """
-    Common agent roles in a multi-agent system.
+    Agent roles define CAPABILITIES, not job titles.
     
-    Roles help the orchestrator understand agent capabilities
-    and make appropriate task assignments.
+    Each role is a combination of three core capabilities:
+    - can_finish: Can end the flow with FINAL ANSWER
+    - can_delegate: Can assign/route work to other agents
+    - can_use_tools: Can call external tools
     
-    Leadership Roles (can manage other agents):
-    ---------------------------------------------
-    - SUPERVISOR: Has authority over workers. Assigns tasks, makes decisions,
-      owns outcomes. Used in hub-and-spoke topologies where one agent directs others.
-      Example: Team lead assigning code review tasks to developers.
+    ┌─────────────┬────────────┬──────────────┬───────────────┐
+    │ Role        │ can_finish │ can_delegate │ can_use_tools │
+    ├─────────────┼────────────┼──────────────┼───────────────┤
+    │ WORKER      │     ❌     │      ❌      │      ✅       │
+    │ SUPERVISOR  │     ✅     │      ✅      │      ❌       │
+    │ AUTONOMOUS  │     ✅     │      ❌      │      ✅       │
+    │ REVIEWER    │     ✅     │      ❌      │      ❌       │
+    └─────────────┴────────────┴──────────────┴───────────────┘
     
-    - COORDINATOR: Facilitates collaboration without direct authority. Routes messages,
-      balances load, helps reach consensus. Used in hierarchical topologies as middle
-      layers or in event-driven workflows.
-      Example: Project coordinator routing requests between frontend/backend teams.
+    Usage Guide:
+    ─────────────
+    WORKER: The doer. Executes tasks, uses tools, reports results.
+            Cannot finish the flow - must pass work to someone who can.
+            Example: Researcher gathering data, Analyst running queries
     
-    - ORCHESTRATOR: System-level orchestration. Manages the overall flow and lifecycle
-      of multi-agent systems. Typically the top-level controller.
-      Example: Main flow controller that starts/stops agent pipelines.
+    SUPERVISOR: The manager. Delegates work, reviews results, decides.
+                Can finish the flow. Does NOT use tools directly.
+                Example: Team lead, Project manager, Director
     
-    Comparison: SUPERVISOR vs COORDINATOR
-    -------------------------------------
-    | Aspect          | SUPERVISOR           | COORDINATOR              |
-    |-----------------|----------------------|--------------------------|
-    | Authority       | Hierarchical boss    | Peer-level facilitator   |
-    | Task Control    | Assigns specific     | Routes/distributes       |
-    | Decision Making | Makes final call     | Helps reach consensus    |
-    | Outcome         | Owns the result      | Enables others' results  |
-    | Communication   | Top-down directive   | Bidirectional routing    |
-    | Topology        | Hub-and-spoke        | Middle layer in hierarchy|
+    AUTONOMOUS: The solo expert. Works independently, uses tools, decides.
+                Can finish the flow. Perfect for single-agent flows.
+                Example: Assistant, Solo analyst, Independent researcher
+    
+    REVIEWER: The gatekeeper. Reviews work, approves or rejects.
+              Can finish (approve) but doesn't do work or delegate.
+              Example: QA reviewer, Editor, Validator
+    
+    Topology Patterns:
+    ──────────────────
+    Pipeline:     WORKER → WORKER → REVIEWER
+    Supervisor:   SUPERVISOR ↔ [WORKER, WORKER, WORKER]
+    Mesh:         [WORKER, WORKER] ↔ SUPERVISOR (as lead)
+    Single:       AUTONOMOUS
+    Review:       WORKER → REVIEWER
     """
 
-    # Leadership roles
-    SUPERVISOR = "supervisor"  # Authority over workers, assigns tasks, owns outcomes
-    COORDINATOR = "coordinator"  # Facilitates without authority, routes and balances
-    ORCHESTRATOR = "orchestrator"  # System-level flow control
-    
-    # Planning roles
-    PLANNER = "planner"  # Creates execution plans
-    
-    # Execution roles
-    WORKER = "worker"  # General-purpose task executor
-    SPECIALIST = "specialist"  # Domain-specific expertise
-    RESEARCHER = "researcher"  # Gathers information
-    
-    # Review roles
-    CRITIC = "critic"  # Reviews and provides feedback
-    VALIDATOR = "validator"  # Validates outputs
-    
-    # Support roles
-    ASSISTANT = "assistant"  # General-purpose helper
+    # Core roles - just 4, each with distinct capabilities
+    WORKER = "worker"
+    SUPERVISOR = "supervisor"
+    AUTONOMOUS = "autonomous"
+    REVIEWER = "reviewer"
+
+    def can_finish(self) -> bool:
+        """Check if this role can end the flow with FINAL ANSWER."""
+        return _ROLE_CAPABILITIES[self]["can_finish"]
 
     def can_delegate(self) -> bool:
-        """Check if this role can delegate tasks to others.
-        
-        Note: SUPERVISOR delegates with authority (assigns work).
-              COORDINATOR delegates by routing (facilitates work).
-              Both can delegate, but with different semantics.
-        """
-        return self in (
-            AgentRole.SUPERVISOR,
-            AgentRole.COORDINATOR,
-            AgentRole.ORCHESTRATOR,
-            AgentRole.PLANNER,
-        )
-    
-    def is_leadership(self) -> bool:
-        """Check if this is a leadership role (can manage other agents)."""
-        return self in (
-            AgentRole.SUPERVISOR,
-            AgentRole.COORDINATOR,
-            AgentRole.ORCHESTRATOR,
-        )
-    
-    def has_authority(self) -> bool:
-        """Check if this role has direct authority over other agents.
-        
-        SUPERVISOR and ORCHESTRATOR have authority (can direct work).
-        COORDINATOR facilitates but doesn't have authority.
-        """
-        return self in (
-            AgentRole.SUPERVISOR,
-            AgentRole.ORCHESTRATOR,
-        )
-    
-    def is_facilitator(self) -> bool:
-        """Check if this role is a facilitator (coordinates without authority)."""
-        return self == AgentRole.COORDINATOR
+        """Check if this role can assign/route work to other agents."""
+        return _ROLE_CAPABILITIES[self]["can_delegate"]
+
+    def can_use_tools(self) -> bool:
+        """Check if this role can call external tools."""
+        return _ROLE_CAPABILITIES[self]["can_use_tools"]
+
+
+# =============================================================================
+# Role Capabilities - THE source of truth for what each role can do
+# =============================================================================
+
+_ROLE_CAPABILITIES: dict[AgentRole, dict[str, bool]] = {
+    AgentRole.WORKER: {
+        "can_finish": False,
+        "can_delegate": False,
+        "can_use_tools": True,
+    },
+    AgentRole.SUPERVISOR: {
+        "can_finish": True,
+        "can_delegate": True,
+        "can_use_tools": False,
+    },
+    AgentRole.AUTONOMOUS: {
+        "can_finish": True,
+        "can_delegate": False,
+        "can_use_tools": True,
+    },
+    AgentRole.REVIEWER: {
+        "can_finish": True,
+        "can_delegate": False,
+        "can_use_tools": False,
+    },
+}
+
+
+def get_role_capabilities(role: AgentRole) -> dict[str, bool]:
+    """Get capabilities for a role."""
+    return _ROLE_CAPABILITIES.get(role, _ROLE_CAPABILITIES[AgentRole.AUTONOMOUS])

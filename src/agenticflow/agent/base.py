@@ -372,6 +372,11 @@ class Agent:
         return self.role_behavior.can_finish
 
     @property
+    def can_use_tools(self) -> bool:
+        """Whether this agent can use tools directly."""
+        return self.role_behavior.can_use_tools
+
+    @property
     def status(self) -> AgentStatus:
         """Current agent status."""
         return self.state.status
@@ -1606,9 +1611,9 @@ class Agent:
         instructions: str | None = None,
         **kwargs,
     ) -> "Agent":
-        """Create a critic agent.
+        """Create a reviewer/critic agent.
         
-        Critics review work and provide feedback.
+        Reviewers evaluate work and can approve (finish) or request revisions.
         
         Args:
             name: Agent name
@@ -1618,11 +1623,11 @@ class Agent:
             **kwargs: Additional Agent parameters
             
         Returns:
-            Agent configured as a critic
+            Agent configured as a reviewer
         """
         from agenticflow.agent.roles import get_role_prompt
         
-        base_prompt = get_role_prompt(AgentRole.CRITIC)
+        base_prompt = get_role_prompt(AgentRole.REVIEWER)
         if criteria:
             base_prompt += f"\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
         if instructions:
@@ -1631,7 +1636,57 @@ class Agent:
         return cls(
             name=name,
             model=model,
-            role=AgentRole.CRITIC,
+            role=AgentRole.REVIEWER,
+            instructions=base_prompt,
+            **kwargs,
+        )
+    
+    # Alias for as_critic
+    as_reviewer = as_critic
+    
+    @classmethod
+    def as_autonomous(
+        cls,
+        name: str,
+        model: Any,
+        *,
+        tools: list | None = None,
+        instructions: str | None = None,
+        **kwargs,
+    ) -> "Agent":
+        """Create an autonomous agent.
+        
+        Autonomous agents work independently - they use tools AND can finish.
+        Perfect for single-agent flows or independent tasks.
+        
+        Args:
+            name: Agent name
+            model: LLM model to use
+            tools: Tools available to this agent
+            instructions: Additional instructions
+            **kwargs: Additional Agent parameters
+            
+        Returns:
+            Agent configured as autonomous
+            
+        Example:
+            assistant = Agent.as_autonomous(
+                name="Assistant",
+                model=ChatOpenAI(),
+                tools=[search, calculator],
+            )
+        """
+        from agenticflow.agent.roles import get_role_prompt
+        
+        base_prompt = get_role_prompt(AgentRole.AUTONOMOUS)
+        if instructions:
+            base_prompt += f"\n\n{instructions}"
+        
+        return cls(
+            name=name,
+            model=model,
+            role=AgentRole.AUTONOMOUS,
+            tools=tools,
             instructions=base_prompt,
             **kwargs,
         )
@@ -1646,9 +1701,10 @@ class Agent:
         instructions: str | None = None,
         **kwargs,
     ) -> "Agent":
-        """Create a planner agent.
+        """Create a planner agent (autonomous with planning focus).
         
         Planners create execution plans with steps and dependencies.
+        They are autonomous agents with planning-focused instructions.
         
         Args:
             name: Agent name
@@ -1660,9 +1716,17 @@ class Agent:
         Returns:
             Agent configured as a planner
         """
-        from agenticflow.agent.roles import get_role_prompt
-        
-        base_prompt = get_role_prompt(AgentRole.PLANNER)
+        base_prompt = """You create execution plans with steps and dependencies.
+
+Output plans in this format:
+PLAN:
+1. [Step 1] - [assigned_to] - [dependencies: none/step_n]
+2. [Step 2] - [assigned_to] - [dependencies: step_1]
+...
+END PLAN
+
+When plan is complete: "FINAL ANSWER: [plan summary]"
+"""
         if available_agents:
             base_prompt += f"\n\nAvailable agents for task assignment: {', '.join(available_agents)}"
         if instructions:
@@ -1671,7 +1735,7 @@ class Agent:
         return cls(
             name=name,
             model=model,
-            role=AgentRole.PLANNER,
+            role=AgentRole.AUTONOMOUS,  # Planners are autonomous - they can finish
             instructions=base_prompt,
             **kwargs,
         )
@@ -1687,9 +1751,10 @@ class Agent:
         instructions: str | None = None,
         **kwargs,
     ) -> "Agent":
-        """Create a researcher agent.
+        """Create a researcher agent (worker with research focus).
         
-        Researchers gather and synthesize information.
+        Researchers gather and synthesize information using tools.
+        They are workers with research-focused instructions.
         
         Args:
             name: Agent name
@@ -1702,9 +1767,14 @@ class Agent:
         Returns:
             Agent configured as a researcher
         """
-        from agenticflow.agent.roles import get_role_prompt
-        
-        base_prompt = get_role_prompt(AgentRole.RESEARCHER)
+        base_prompt = """You gather and synthesize information using your tools.
+
+Structure your findings:
+- Key facts discovered
+- Sources used
+- Confidence level (high/medium/low)
+- Areas needing more research
+"""
         if focus_areas:
             base_prompt += f"\n\nFocus areas: {', '.join(focus_areas)}"
         if instructions:
@@ -1713,7 +1783,7 @@ class Agent:
         return cls(
             name=name,
             model=model,
-            role=AgentRole.RESEARCHER,
+            role=AgentRole.WORKER,  # Researchers are workers - they use tools but can't finish
             tools=tools,
             instructions=base_prompt,
             **kwargs,

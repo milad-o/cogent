@@ -331,9 +331,9 @@ class Flow:
             else:
                 supervisor_name = self._supervisor_param
         else:
-            # Auto-detect: look for agent with SUPERVISOR or COORDINATOR role
+            # Auto-detect: look for agent with SUPERVISOR role
             for agent in self._agents:
-                if agent.role in (AgentRole.SUPERVISOR, AgentRole.COORDINATOR):
+                if agent.role == AgentRole.SUPERVISOR:
                     supervisor_name = agent.name
                     break
         
@@ -341,7 +341,7 @@ class Flow:
             raise ValueError(
                 "Supervisor topology requires a supervisor agent. Either:\n"
                 "1. Pass supervisor=<agent> to Flow()\n"
-                "2. Create an agent with role='supervisor' or role='coordinator'\n"
+                "2. Create an agent with role='supervisor'\n"
                 "3. Use a different topology pattern"
             )
         
@@ -375,18 +375,17 @@ class Flow:
         )
     
     def _build_hierarchical_topology(self, config: TopologyConfig) -> HierarchicalTopology:
-        """Build hierarchical topology."""
-        levels = self._levels_param
-        if levels is None:
-            raise ValueError(
-                "Hierarchical topology requires levels parameter.\n"
-                "Example: levels=[['ceo'], ['manager1', 'manager2'], ['worker1', 'worker2']]"
-            )
+        """Build hierarchical topology.
         
+        If levels are not provided, they are auto-inferred from agent roles:
+        - Level 0 (top): LEAD, ORCHESTRATOR
+        - Level 1 (middle): SUPERVISOR, COORDINATOR, PLANNER
+        - Level 2 (bottom): WORKER, CONTRIBUTOR, etc.
+        """
         return HierarchicalTopology(
             config=config,
             agents=self._agents,
-            levels=levels,
+            levels=self._levels_param,  # None is OK - will auto-infer
             event_bus=self._event_bus,
         )
     
