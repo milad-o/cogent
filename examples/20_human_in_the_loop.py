@@ -364,6 +364,100 @@ async def demo_interactive():
         print(f"   ← Result: {result}")
 
 
+async def demo_guidance():
+    """
+    Demo 6: Guidance and Response
+    
+    Shows how humans can provide guidance/instructions instead of
+    just approving or rejecting actions. This is useful when you
+    want the agent to reconsider its approach.
+    """
+    print("\n" + "="*60)
+    print("Demo 6: Guidance and Response")
+    print("="*60)
+    
+    from agenticflow.agent.hitl import GuidanceResult, HumanResponse
+    
+    agent = Agent(
+        name="FileAssistant",
+        model=None,
+        tools=[delete_file, write_file, read_file],
+        instructions="Help manage files safely.",
+        interrupt_on={
+            "delete_file": True,
+            "write_file": True,
+        },
+    )
+    
+    print("\n1. Agent wants to delete - human provides guidance...")
+    try:
+        result = await agent.act("delete_file", {"path": "/important/data.csv"})
+    except InterruptedException as e:
+        pending = e.state.pending_actions[0]
+        print(f"   ⏸️  Pending: {pending.describe()}")
+        
+        # Human provides guidance instead of yes/no
+        guidance = HumanDecision.guide(
+            pending.action_id,
+            guidance="Don't delete this file directly. First, create a backup in /backup/, "
+                     "verify the backup is complete, then delete the original.",
+            feedback="Critical data - be careful"
+        )
+        
+        result = await agent.resume_action(guidance)
+        
+        if isinstance(result, GuidanceResult):
+            print(f"   💡 Guidance received!")
+            print(f"   📝 Instructions: {result.guidance}")
+            print(f"   📋 Original action: {result.original_action.describe()}")
+            print(f"   🔄 Should retry: {result.should_retry}")
+            print(f"\n   Agent message format:")
+            print(f"   {result.to_message()}")
+    
+    print("\n2. Agent asks a question - human responds directly...")
+    try:
+        # Simulating an agent asking "what should I name the output file?"
+        result = await agent.act("write_file", {"path": "?", "content": "report data"})
+    except InterruptedException as e:
+        pending = e.state.pending_actions[0]
+        print(f"   ⏸️  Agent asks: What path should I use for the file?")
+        print(f"   (Pending: {pending.describe()})")
+        
+        # Human provides a direct response
+        response = HumanDecision.respond(
+            pending.action_id,
+            response={
+                "path": "/reports/Q4-2024-Sales.csv",
+                "add_timestamp": True,
+                "format": "csv"
+            },
+            feedback="Use this naming convention for all reports"
+        )
+        
+        result = await agent.resume_action(response)
+        
+        if isinstance(result, HumanResponse):
+            print(f"   💬 Response received!")
+            print(f"   📦 Data: {result.response}")
+            print(f"   📝 Feedback: {result.feedback}")
+    
+    print("\n3. Comparison of decision types:")
+    print("""
+   Decision Types:
+   ┌─────────────┬─────────────────────────────────────────────────┐
+   │ Type        │ Use Case                                        │
+   ├─────────────┼─────────────────────────────────────────────────┤
+   │ APPROVE     │ "Yes, do exactly what you proposed"             │
+   │ REJECT      │ "No, don't do this at all"                      │
+   │ EDIT        │ "Do it, but with these modified arguments"      │
+   │ SKIP        │ "Skip this one, continue with the rest"         │
+   │ ABORT       │ "Stop everything immediately"                   │
+   │ GUIDE       │ "Here's how you should approach this instead"   │
+   │ RESPOND     │ "Here's the information you asked for"          │
+   └─────────────┴─────────────────────────────────────────────────┘
+   """)
+
+
 # =============================================================================
 # Main
 # =============================================================================
@@ -379,6 +473,7 @@ async def main():
     await demo_abort()
     await demo_flow_hitl()
     await demo_interactive()
+    await demo_guidance()
     
     print("\n" + "="*60)
     print("All HITL demos completed!")
@@ -387,9 +482,11 @@ async def main():
 Key Takeaways:
 1. Configure interrupt_on in AgentConfig to control which tools need approval
 2. Catch InterruptedException to handle pending actions
-3. Use HumanDecision.approve/reject/edit/skip/abort to respond
-4. Call agent.resume_action() or flow.resume() to continue execution
-5. Use dynamic rules (callables) for context-aware approval logic
+3. Use HumanDecision.approve/reject/edit/skip/abort/guide/respond
+4. Use HumanDecision.guide() to provide guidance for agent to reconsider
+5. Use HumanDecision.respond() to provide direct answers to agent questions
+6. Call agent.resume_action() or flow.resume() to continue execution
+7. Use dynamic rules (callables) for context-aware approval logic
 """)
 
 

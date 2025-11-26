@@ -14,6 +14,8 @@ from agenticflow.agent.hitl import (
     InterruptedException,
     AbortedException,
     DecisionRequiredException,
+    GuidanceResult,
+    HumanResponse,
     should_interrupt,
 )
 
@@ -193,6 +195,40 @@ class TestHumanDecision:
         assert decision.decision == DecisionType.ABORT
         assert decision.feedback == "Stop everything"
     
+    def test_human_decision_guide(self):
+        """Test guide factory method."""
+        decision = HumanDecision.guide(
+            "action-123",
+            guidance="Archive the file first, then delete it",
+            feedback="Be more careful"
+        )
+        
+        assert decision.decision == DecisionType.GUIDE
+        assert decision.guidance == "Archive the file first, then delete it"
+        assert decision.feedback == "Be more careful"
+    
+    def test_human_decision_respond(self):
+        """Test respond factory method."""
+        decision = HumanDecision.respond(
+            "action-123",
+            response="Q4-Sales-Report",
+            feedback="Use this naming convention"
+        )
+        
+        assert decision.decision == DecisionType.RESPOND
+        assert decision.response == "Q4-Sales-Report"
+        assert decision.feedback == "Use this naming convention"
+    
+    def test_human_decision_respond_with_dict(self):
+        """Test respond with complex response."""
+        decision = HumanDecision.respond(
+            "action-123",
+            response={"name": "report", "format": "pdf", "include_charts": True}
+        )
+        
+        assert decision.decision == DecisionType.RESPOND
+        assert decision.response == {"name": "report", "format": "pdf", "include_charts": True}
+    
     def test_human_decision_serialization(self):
         """Test to_dict and from_dict."""
         original = HumanDecision.edit(
@@ -273,6 +309,135 @@ class TestInterruptedState:
         assert restored.conversation_history == original.conversation_history
         assert restored.interrupt_reason == original.interrupt_reason
         assert restored.metadata == original.metadata
+
+
+# =============================================================================
+# Test GuidanceResult and HumanResponse
+# =============================================================================
+
+class TestGuidanceResult:
+    """Tests for GuidanceResult dataclass."""
+    
+    def test_guidance_result_creation(self):
+        """Test basic GuidanceResult creation."""
+        pending = PendingAction(
+            action_id="test-123",
+            tool_name="delete_file",
+            args={"path": "/test.txt"},
+            agent_name="TestAgent",
+        )
+        
+        result = GuidanceResult(
+            action_id="test-123",
+            guidance="Archive the file first before deleting",
+            original_action=pending,
+            feedback="Be careful with deletions",
+            should_retry=True,
+        )
+        
+        assert result.action_id == "test-123"
+        assert result.guidance == "Archive the file first before deleting"
+        assert result.original_action is pending
+        assert result.should_retry is True
+    
+    def test_guidance_result_to_message(self):
+        """Test to_message method."""
+        pending = PendingAction(
+            action_id="test-123",
+            tool_name="delete_file",
+            args={"path": "/test.txt"},
+            agent_name="TestAgent",
+        )
+        
+        result = GuidanceResult(
+            action_id="test-123",
+            guidance="Archive first, then delete",
+            original_action=pending,
+            feedback="Safety first",
+        )
+        
+        message = result.to_message()
+        assert "delete_file" in message
+        assert "Archive first, then delete" in message
+        assert "Safety first" in message
+    
+    def test_guidance_result_serialization(self):
+        """Test to_dict method."""
+        pending = PendingAction(
+            action_id="test-123",
+            tool_name="delete_file",
+            args={"path": "/test.txt"},
+            agent_name="TestAgent",
+        )
+        
+        result = GuidanceResult(
+            action_id="test-123",
+            guidance="Archive first",
+            original_action=pending,
+        )
+        
+        data = result.to_dict()
+        assert data["action_id"] == "test-123"
+        assert data["guidance"] == "Archive first"
+        assert data["original_action"]["tool_name"] == "delete_file"
+
+
+class TestHumanResponse:
+    """Tests for HumanResponse dataclass."""
+    
+    def test_human_response_string(self):
+        """Test HumanResponse with string value."""
+        pending = PendingAction(
+            action_id="test-123",
+            tool_name="ask_name",
+            args={},
+            agent_name="TestAgent",
+        )
+        
+        response = HumanResponse(
+            action_id="test-123",
+            response="Alice",
+            original_action=pending,
+        )
+        
+        assert response.response == "Alice"
+    
+    def test_human_response_complex(self):
+        """Test HumanResponse with complex value."""
+        pending = PendingAction(
+            action_id="test-123",
+            tool_name="get_config",
+            args={},
+            agent_name="TestAgent",
+        )
+        
+        response = HumanResponse(
+            action_id="test-123",
+            response={"name": "report", "format": "pdf"},
+            original_action=pending,
+        )
+        
+        assert response.response == {"name": "report", "format": "pdf"}
+    
+    def test_human_response_serialization(self):
+        """Test to_dict method."""
+        pending = PendingAction(
+            action_id="test-123",
+            tool_name="ask_name",
+            args={},
+            agent_name="TestAgent",
+        )
+        
+        response = HumanResponse(
+            action_id="test-123",
+            response="Alice",
+            original_action=pending,
+            feedback="My name is Alice",
+        )
+        
+        data = response.to_dict()
+        assert data["response"] == "Alice"
+        assert data["feedback"] == "My name is Alice"
 
 
 # =============================================================================
@@ -533,6 +698,99 @@ class TestAgentHITL:
         
         assert agent.is_interrupted is False
         assert agent.pending_actions == []
+    
+    @pytest.mark.asyncio
+    async def test_agent_resume_guide(self, simple_tool):
+        """Test resuming with guidance."""
+        from agenticflow import Agent
+        
+        agent = Agent(
+            name="TestAgent",
+            model=None,
+            tools=[simple_tool],
+            interrupt_on={"delete_file": True},
+        )
+        
+        # Get interrupted
+        with pytest.raises(InterruptedException) as exc_info:
+            await agent.act("delete_file", {"path": "/test.txt"})
+        
+        pending = exc_info.value.state.pending_actions[0]
+        
+        # Resume with guidance
+        decision = HumanDecision.guide(
+            pending.action_id,
+            guidance="Archive the file first, then delete it",
+            feedback="Be more careful"
+        )
+        result = await agent.resume_action(decision)
+        
+        # Should return GuidanceResult
+        assert isinstance(result, GuidanceResult)
+        assert result.guidance == "Archive the file first, then delete it"
+        assert result.original_action.tool_name == "delete_file"
+        assert result.should_retry is True
+        assert agent.is_interrupted is False
+    
+    @pytest.mark.asyncio
+    async def test_agent_resume_respond(self, simple_tool):
+        """Test resuming with direct response."""
+        from agenticflow import Agent
+        
+        agent = Agent(
+            name="TestAgent",
+            model=None,
+            tools=[simple_tool],
+            interrupt_on={"delete_file": True},
+        )
+        
+        # Get interrupted (simulating a "human input needed" scenario)
+        with pytest.raises(InterruptedException) as exc_info:
+            await agent.act("delete_file", {"path": "/test.txt"})
+        
+        pending = exc_info.value.state.pending_actions[0]
+        
+        # Resume with direct response
+        decision = HumanDecision.respond(
+            pending.action_id,
+            response={"confirmed": True, "backup_path": "/backup/test.txt"}
+        )
+        result = await agent.resume_action(decision)
+        
+        # Should return HumanResponse
+        assert isinstance(result, HumanResponse)
+        assert result.response == {"confirmed": True, "backup_path": "/backup/test.txt"}
+        assert result.original_action.tool_name == "delete_file"
+        assert agent.is_interrupted is False
+    
+    @pytest.mark.asyncio
+    async def test_guidance_result_has_correct_message(self, simple_tool):
+        """Test that GuidanceResult.to_message() formats correctly."""
+        from agenticflow import Agent
+        
+        agent = Agent(
+            name="TestAgent",
+            model=None,
+            tools=[simple_tool],
+            interrupt_on={"delete_file": True},
+        )
+        
+        with pytest.raises(InterruptedException) as exc_info:
+            await agent.act("delete_file", {"path": "/test.txt"})
+        
+        pending = exc_info.value.state.pending_actions[0]
+        
+        decision = HumanDecision.guide(
+            pending.action_id,
+            guidance="Check dependencies first",
+            feedback="Safety matters"
+        )
+        result = await agent.resume_action(decision)
+        
+        message = result.to_message()
+        assert "delete_file" in message
+        assert "Check dependencies first" in message
+        assert "Safety matters" in message
 
 
 # =============================================================================

@@ -1220,13 +1220,16 @@ class Agent:
         continues execution based on the human's decision.
         
         Args:
-            decision: Human decision (approve, reject, edit, etc.)
+            decision: Human decision (approve, reject, edit, guide, respond, etc.)
             correlation_id: Optional correlation ID for event tracking
             tracker: Optional progress tracker
             use_resilience: Whether to use resilience (default: True)
             
         Returns:
-            Tool result if approved/edited, None if rejected/skipped
+            - Tool result if approved/edited
+            - None if rejected/skipped
+            - GuidanceResult if human provided guidance
+            - HumanResponse if human provided direct response
             
         Raises:
             AbortedException: If human aborts the workflow
@@ -1237,17 +1240,25 @@ class Agent:
             try:
                 result = await agent.act("delete_file", {"path": "/important.txt"})
             except InterruptedException as e:
-                # Show pending action to human
                 pending = e.state.pending_actions[0]
-                print(f"Approve? {pending.describe()}")
                 
-                # Get human decision
+                # Option 1: Approve
                 decision = HumanDecision.approve(pending.action_id)
                 
-                # Resume execution
+                # Option 2: Provide guidance for agent to reconsider
+                decision = HumanDecision.guide(
+                    pending.action_id,
+                    guidance="Archive the file first, then delete it."
+                )
+                
                 result = await agent.resume_action(decision)
+                if isinstance(result, GuidanceResult):
+                    # Agent should reconsider with this guidance
+                    print(f"Guidance: {result.guidance}")
             ```
         """
+        from agenticflow.agent.hitl import GuidanceResult, HumanResponse
+        
         action_id = decision.action_id
         
         if action_id not in self._pending_actions:
@@ -1263,6 +1274,8 @@ class Agent:
                 "action_id": action_id,
                 "decision": decision.decision.value,
                 "tool": pending.tool_name,
+                "has_guidance": decision.guidance is not None,
+                "has_response": decision.response is not None,
             },
             correlation_id,
         )
@@ -1284,6 +1297,31 @@ class Agent:
             if tracker:
                 tracker.update(f"⏭️ Skipped: {pending.describe()}")
             return None
+        
+        if decision.decision == DecisionType.GUIDE:
+            # Human provided guidance - return it for the agent to reconsider
+            if tracker:
+                tracker.update(f"💡 Guidance received: {decision.guidance[:100]}...")
+            self._interrupted_state = None
+            return GuidanceResult(
+                action_id=action_id,
+                guidance=decision.guidance or "",
+                original_action=pending,
+                feedback=decision.feedback,
+                should_retry=True,
+            )
+        
+        if decision.decision == DecisionType.RESPOND:
+            # Human provided a direct response
+            if tracker:
+                tracker.update(f"💬 Response received: {str(decision.response)[:100]}")
+            self._interrupted_state = None
+            return HumanResponse(
+                action_id=action_id,
+                response=decision.response,
+                original_action=pending,
+                feedback=decision.feedback,
+            )
         
         # APPROVE or EDIT - execute the tool
         args = decision.modified_args if decision.decision == DecisionType.EDIT else pending.args

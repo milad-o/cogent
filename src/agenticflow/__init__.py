@@ -141,6 +141,8 @@ from agenticflow.agent.hitl import (
     InterruptedException,
     DecisionRequiredException,
     AbortedException,
+    GuidanceResult,
+    HumanResponse,
     should_interrupt,
 )
 
@@ -339,6 +341,8 @@ __all__ = [
     "InterruptedException",
     "DecisionRequiredException",
     "AbortedException",
+    "GuidanceResult",
+    "HumanResponse",
     "should_interrupt",
     # Events
     "EventBus",

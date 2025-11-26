@@ -34,6 +34,8 @@ class DecisionType(Enum):
     EDIT = "edit"  # Approve with modifications
     SKIP = "skip"  # Skip this action but continue
     ABORT = "abort"  # Abort the entire workflow
+    GUIDE = "guide"  # Provide guidance for agent to reconsider/retry
+    RESPOND = "respond"  # Provide a direct response (for human_input interrupts)
 
 
 @dataclass
@@ -103,13 +105,15 @@ class HumanDecision:
     A human's decision about a pending action.
     
     Represents the human's response to a pending action, including
-    any modifications they want to make before execution.
+    any modifications, guidance, or direct responses.
     
     Attributes:
         action_id: ID of the pending action this decision applies to
-        decision: Type of decision (approve, reject, edit, etc.)
+        decision: Type of decision (approve, reject, edit, guide, respond, etc.)
         modified_args: If decision is EDIT, the modified arguments
         feedback: Optional human feedback/explanation
+        guidance: If decision is GUIDE, instructions for agent to reconsider
+        response: If decision is RESPOND, the human's direct answer
         timestamp: When the decision was made
     """
     
@@ -117,6 +121,8 @@ class HumanDecision:
     decision: DecisionType
     modified_args: dict[str, Any] | None = None
     feedback: str | None = None
+    guidance: str | None = None  # Instructions for agent to reconsider
+    response: Any = None  # Direct response value for RESPOND decisions
     timestamp: datetime = field(default_factory=datetime.now)
     
     def to_dict(self) -> dict[str, Any]:
@@ -126,6 +132,8 @@ class HumanDecision:
             "decision": self.decision.value,
             "modified_args": self.modified_args,
             "feedback": self.feedback,
+            "guidance": self.guidance,
+            "response": self.response,
             "timestamp": self.timestamp.isoformat(),
         }
     
@@ -137,6 +145,8 @@ class HumanDecision:
             decision=DecisionType(data["decision"]),
             modified_args=data.get("modified_args"),
             feedback=data.get("feedback"),
+            guidance=data.get("guidance"),
+            response=data.get("response"),
             timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else datetime.now(),
         )
     
@@ -164,6 +174,55 @@ class HumanDecision:
     def abort(cls, action_id: str, feedback: str | None = None) -> HumanDecision:
         """Create an abort decision."""
         return cls(action_id=action_id, decision=DecisionType.ABORT, feedback=feedback)
+    
+    @classmethod
+    def guide(cls, action_id: str, guidance: str, feedback: str | None = None) -> HumanDecision:
+        """
+        Create a guidance decision - tells the agent to reconsider with new instructions.
+        
+        Use this when you want the agent to think again with your input, rather than
+        simply approving or rejecting the proposed action.
+        
+        Args:
+            action_id: ID of the pending action
+            guidance: Instructions/guidance for the agent to consider
+            feedback: Optional additional feedback
+            
+        Example:
+            ```python
+            # Agent wants to delete important.txt
+            decision = HumanDecision.guide(
+                action_id,
+                guidance="Don't delete that file. Instead, archive it to /backup/ first, "
+                         "then delete the original. Also check if any other files depend on it."
+            )
+            ```
+        """
+        return cls(action_id=action_id, decision=DecisionType.GUIDE, guidance=guidance, feedback=feedback)
+    
+    @classmethod
+    def respond(cls, action_id: str, response: Any, feedback: str | None = None) -> HumanDecision:
+        """
+        Create a direct response - provides a value the agent requested.
+        
+        Use this when the agent asks for human input (not approval) and you
+        want to provide a direct answer.
+        
+        Args:
+            action_id: ID of the pending action
+            response: The response value (string, dict, etc.)
+            feedback: Optional additional context
+            
+        Example:
+            ```python
+            # Agent asks "What should I name the report?"
+            decision = HumanDecision.respond(
+                action_id,
+                response="Q4-2024-Sales-Report"
+            )
+            ```
+        """
+        return cls(action_id=action_id, decision=DecisionType.RESPOND, response=response, feedback=feedback)
 
 
 @dataclass
@@ -310,3 +369,74 @@ class AbortedException(HITLException):
     def __init__(self, decision: HumanDecision):
         super().__init__(f"Workflow aborted by human: {decision.feedback or 'No reason provided'}")
         self.decision = decision
+
+
+@dataclass
+class GuidanceResult:
+    """
+    Result returned when human provides guidance instead of approval.
+    
+    When a human chooses to guide rather than approve/reject, this result
+    contains the guidance that should influence the agent's next action.
+    
+    Attributes:
+        action_id: ID of the original pending action
+        guidance: Human's guidance/instructions
+        original_action: The action that was pending
+        feedback: Optional additional feedback
+        should_retry: Whether the agent should retry with the guidance
+    """
+    
+    action_id: str
+    guidance: str
+    original_action: PendingAction
+    feedback: str | None = None
+    should_retry: bool = True
+    
+    def to_message(self) -> str:
+        """Convert guidance to a message for the agent."""
+        parts = [f"Human guidance for {self.original_action.tool_name}:"]
+        parts.append(self.guidance)
+        if self.feedback:
+            parts.append(f"\nAdditional context: {self.feedback}")
+        return "\n".join(parts)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize for storage."""
+        return {
+            "action_id": self.action_id,
+            "guidance": self.guidance,
+            "original_action": self.original_action.to_dict(),
+            "feedback": self.feedback,
+            "should_retry": self.should_retry,
+        }
+
+
+@dataclass  
+class HumanResponse:
+    """
+    Result returned when human provides a direct response.
+    
+    When an agent requests human input (not approval), this contains
+    the human's direct answer.
+    
+    Attributes:
+        action_id: ID of the original pending action
+        response: The human's response value
+        original_action: The action that was pending
+        feedback: Optional additional context
+    """
+    
+    action_id: str
+    response: Any
+    original_action: PendingAction
+    feedback: str | None = None
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize for storage."""
+        return {
+            "action_id": self.action_id,
+            "response": self.response,
+            "original_action": self.original_action.to_dict(),
+            "feedback": self.feedback,
+        }
