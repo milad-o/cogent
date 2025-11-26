@@ -444,6 +444,36 @@ class Agent:
         
         return "\n".join(descriptions)
 
+    def get_effective_system_prompt(self) -> str | None:
+        """Get the system prompt with tools automatically injected.
+        
+        If the system prompt contains `{tools}`, it will be replaced with
+        tool descriptions. Otherwise, tool descriptions are appended at the end.
+        
+        Returns:
+            The system prompt with tools injected, or None if no prompt.
+        """
+        base_prompt = self.config.system_prompt
+        if not base_prompt:
+            return None
+        
+        tools = self.all_tools
+        if not tools:
+            # No tools, just return the base prompt (strip {tools} if present)
+            return base_prompt.replace("{tools}", "No tools available.")
+        
+        tools_desc = self.get_tool_descriptions()
+        
+        # Check if prompt has {tools} placeholder
+        if "{tools}" in base_prompt:
+            return base_prompt.replace("{tools}", tools_desc)
+        
+        # Auto-append tools at the end
+        return f"""{base_prompt}
+
+Available tools:
+{tools_desc}"""
+
     @property
     def instructions(self) -> str | None:
         """Agent's instructions (system prompt)."""
@@ -580,10 +610,11 @@ class Agent:
 
         start_time = now_utc()
 
-        # Build messages
+        # Build messages with effective system prompt (includes tools)
         messages = []
-        if self.config.system_prompt:
-            messages.append(SystemMessage(content=self.config.system_prompt))
+        effective_prompt = self.get_effective_system_prompt()
+        if effective_prompt:
+            messages.append(SystemMessage(content=effective_prompt))
 
         # Add relevant history
         messages.extend(self.state.get_recent_history(10))
@@ -720,10 +751,11 @@ class Agent:
             # Load conversation history from memory
             history = await self._memory.get_messages(thread_id)
             
-            # Build messages
+            # Build messages with effective system prompt (includes tools)
             messages = []
-            if self.config.system_prompt:
-                messages.append(SystemMessage(content=self.config.system_prompt))
+            effective_prompt = self.get_effective_system_prompt()
+            if effective_prompt:
+                messages.append(SystemMessage(content=effective_prompt))
             
             # Add conversation history
             messages.extend(history)

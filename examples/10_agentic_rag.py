@@ -191,6 +191,8 @@ def create_rag_agent(model) -> Agent:
         name="RAG_Assistant",
         role=AgentRole.AUTONOMOUS,
         model=model,
+        # {tools} placeholder is auto-replaced with tool descriptions!
+        # Or if you omit it, tools are appended automatically.
         instructions="""You are a helpful assistant that answers questions about "The Secret Garden" 
 by Frances Hodgson Burnett.
 
@@ -202,9 +204,7 @@ You have access to the full text of the book through your search tool. When answ
 4. If the passages don't contain the answer, say so honestly
 5. Be concise but thorough
 
-Available tools:
-- search_documents: Search for relevant passages in the book
-- get_document_info: Get info about the loaded document""",
+{tools}""",
         tools=[search_documents, get_document_info],
     )
 
