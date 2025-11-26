@@ -135,6 +135,8 @@ class SSISAnalyzer(BaseCapability):
             self._trace_lineage_tool(),
             self._find_dependencies_tool(),
             self._find_callers_tool(),
+            self._get_execution_order_tool(),
+            self._get_stats_tool(),
         ]
 
     @property
@@ -1030,6 +1032,50 @@ class SSISAnalyzer(BaseCapability):
             return "\n".join(f"- {t['id']} ({t['type']})" for t in tasks)
 
         return find_table_usage
+
+    def _get_execution_order_tool(self) -> BaseTool:
+        @tool
+        def get_execution_order(package: str) -> str:
+            """
+            Get the task execution order for a package.
+
+            Args:
+                package: Package name to analyze
+            """
+            order = self.get_execution_order(package)
+            if not order:
+                return f"No execution order found for '{package}'."
+
+            result = [f"Execution order for '{package}':"]
+            for i, task_id in enumerate(order, 1):
+                task_name = task_id.split(".")[-1]
+                result.append(f"  {i}. {task_name}")
+            return "\n".join(result)
+
+        return get_execution_order
+
+    def _get_stats_tool(self) -> BaseTool:
+        @tool
+        def get_ssis_stats() -> str:
+            """Get statistics about loaded SSIS packages."""
+            stats = self.stats()
+
+            result = ["SSIS Project Statistics:"]
+            result.append(f"  Total entities: {stats.get('total_entities', 0)}")
+            result.append(f"  Total relationships: {stats.get('total_relationships', 0)}")
+            result.append(f"  Packages loaded: {stats.get('packages_loaded', 0)}")
+
+            # Add type counts
+            type_counts = {k: v for k, v in stats.items()
+                         if k not in ('total_entities', 'total_relationships', 'packages_loaded')}
+            if type_counts:
+                result.append("  By type:")
+                for type_name, count in sorted(type_counts.items()):
+                    result.append(f"    - {type_name}: {count}")
+
+            return "\n".join(result)
+
+        return get_ssis_stats
 
     # =========================================================================
     # Context Manager
