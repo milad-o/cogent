@@ -132,6 +132,17 @@ from agenticflow.agent.resilience import (
     ToolResilience,
     FallbackRegistry,
 )
+from agenticflow.agent.hitl import (
+    InterruptReason,
+    DecisionType,
+    PendingAction,
+    HumanDecision,
+    InterruptedState,
+    InterruptedException,
+    DecisionRequiredException,
+    AbortedException,
+    should_interrupt,
+)
 
 # Graphs - Execution strategies (DAG is our superior approach)
 from agenticflow.graphs import (
@@ -319,6 +330,16 @@ __all__ = [
     "CircuitState",
     "ToolResilience",
     "FallbackRegistry",
+    # Human-in-the-Loop
+    "InterruptReason",
+    "DecisionType",
+    "PendingAction",
+    "HumanDecision",
+    "InterruptedState",
+    "InterruptedException",
+    "DecisionRequiredException",
+    "AbortedException",
+    "should_interrupt",
     # Events
     "EventBus",
     "get_event_bus",

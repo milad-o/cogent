@@ -69,6 +69,17 @@ from agenticflow.agent.resilience import (
     ExecutionResult,
     ToolResilience,
 )
+from agenticflow.agent.hitl import (
+    InterruptReason,
+    DecisionType,
+    PendingAction,
+    HumanDecision,
+    InterruptedState,
+    InterruptedException,
+    DecisionRequiredException,
+    AbortedException,
+    should_interrupt,
+)
 
 __all__ = [
     # Core
@@ -105,4 +116,14 @@ __all__ = [
     "ResilienceConfig",
     "ExecutionResult",
     "ToolResilience",
+    # Human-in-the-Loop
+    "InterruptReason",
+    "DecisionType",
+    "PendingAction",
+    "HumanDecision",
+    "InterruptedState",
+    "InterruptedException",
+    "DecisionRequiredException",
+    "AbortedException",
+    "should_interrupt",
 ]

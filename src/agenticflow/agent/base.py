@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 from typing import TYPE_CHECKING, Any, Callable, Sequence, overload
 
 from langchain_core.language_models import BaseChatModel
@@ -14,6 +15,16 @@ from langchain_core.tools import BaseTool
 
 from agenticflow.agent.config import AgentConfig
 from agenticflow.agent.state import AgentState
+from agenticflow.agent.hitl import (
+    should_interrupt,
+    PendingAction,
+    HumanDecision,
+    InterruptedState,
+    InterruptReason,
+    DecisionType,
+    InterruptedException,
+    AbortedException,
+)
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.models.event import Event
@@ -141,6 +152,7 @@ class Agent:
         capabilities: Sequence[Any] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
+        interrupt_on: dict[str, Any] | None = None,  # HITL: tool approval rules
     ) -> None:
         """
         Initialize an Agent.
@@ -230,6 +242,7 @@ class Agent:
                 system_prompt=effective_prompt,
                 tools=tool_names,
                 resilience_config=resilience,
+                interrupt_on=interrupt_on or {},
             )
         else:
             self._direct_tools = []
@@ -244,6 +257,10 @@ class Agent:
         self._resilience: ToolResilience | None = None
         self._capabilities: list[Any] = []
         self._setup_resilience()
+        
+        # Human-in-the-loop state
+        self._pending_actions: dict[str, PendingAction] = {}  # action_id -> pending action
+        self._interrupted_state: InterruptedState | None = None
         
         # Setup capabilities (adds tools from each capability)
         if capabilities:
@@ -1005,6 +1022,46 @@ class Agent:
             raise PermissionError(
                 f"Agent {self.name} not authorized to use tool: {tool_name}"
             )
+        
+        # Check for human-in-the-loop interrupt
+        if should_interrupt(tool_name, args, self.config.interrupt_on):
+            action_id = str(uuid.uuid4())
+            pending = PendingAction(
+                action_id=action_id,
+                tool_name=tool_name,
+                args=args,
+                agent_name=self.name,
+                reason=InterruptReason.TOOL_APPROVAL,
+                context={
+                    "correlation_id": correlation_id,
+                    "use_resilience": use_resilience,
+                },
+            )
+            self._pending_actions[action_id] = pending
+            
+            await self._emit_event(
+                EventType.AGENT_INTERRUPTED,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "reason": "tool_approval",
+                    "pending_action": pending.to_dict(),
+                },
+                correlation_id,
+            )
+            
+            if tracker:
+                tracker.update(f"⏸️ Waiting for approval: {pending.describe()}")
+            
+            # Create interrupted state and raise exception
+            interrupted = InterruptedState(
+                thread_id=correlation_id or self.id,
+                pending_actions=[pending],
+                agent_state=self.state.to_dict(),
+                interrupt_reason=InterruptReason.TOOL_APPROVAL,
+            )
+            self._interrupted_state = interrupted
+            raise InterruptedException(interrupted, f"Tool '{tool_name}' requires human approval")
 
         await self._set_status(AgentStatus.ACTING, correlation_id)
 
@@ -1148,6 +1205,181 @@ class Agent:
                     tracker.tool_error(tool_name, str(e))
             
             raise
+
+    async def resume_action(
+        self,
+        decision: HumanDecision,
+        correlation_id: str | None = None,
+        tracker: ProgressTracker | None = None,
+        use_resilience: bool = True,
+    ) -> Any:
+        """
+        Resume a pending action after human decision.
+        
+        When a tool call is interrupted for human approval, this method
+        continues execution based on the human's decision.
+        
+        Args:
+            decision: Human decision (approve, reject, edit, etc.)
+            correlation_id: Optional correlation ID for event tracking
+            tracker: Optional progress tracker
+            use_resilience: Whether to use resilience (default: True)
+            
+        Returns:
+            Tool result if approved/edited, None if rejected/skipped
+            
+        Raises:
+            AbortedException: If human aborts the workflow
+            ValueError: If action_id not found in pending actions
+            
+        Example:
+            ```python
+            try:
+                result = await agent.act("delete_file", {"path": "/important.txt"})
+            except InterruptedException as e:
+                # Show pending action to human
+                pending = e.state.pending_actions[0]
+                print(f"Approve? {pending.describe()}")
+                
+                # Get human decision
+                decision = HumanDecision.approve(pending.action_id)
+                
+                # Resume execution
+                result = await agent.resume_action(decision)
+            ```
+        """
+        action_id = decision.action_id
+        
+        if action_id not in self._pending_actions:
+            raise ValueError(f"No pending action with id: {action_id}")
+        
+        pending = self._pending_actions.pop(action_id)
+        
+        await self._emit_event(
+            EventType.AGENT_RESUMED,
+            {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "action_id": action_id,
+                "decision": decision.decision.value,
+                "tool": pending.tool_name,
+            },
+            correlation_id,
+        )
+        
+        if tracker:
+            tracker.update(f"▶️ Resumed: {decision.decision.value} - {pending.describe()}")
+        
+        # Handle decision types
+        if decision.decision == DecisionType.ABORT:
+            self._interrupted_state = None
+            raise AbortedException(decision)
+        
+        if decision.decision == DecisionType.REJECT:
+            if tracker:
+                tracker.update(f"❌ Rejected: {pending.describe()}")
+            return None
+        
+        if decision.decision == DecisionType.SKIP:
+            if tracker:
+                tracker.update(f"⏭️ Skipped: {pending.describe()}")
+            return None
+        
+        # APPROVE or EDIT - execute the tool
+        args = decision.modified_args if decision.decision == DecisionType.EDIT else pending.args
+        
+        if decision.decision == DecisionType.EDIT:
+            if tracker:
+                tracker.update(f"✏️ Edited args: {args}")
+        
+        # Clear interrupted state since we're resuming
+        self._interrupted_state = None
+        
+        # Execute the tool (bypass interrupt check since already approved)
+        tool_obj = self._get_tool(pending.tool_name)
+        if not tool_obj:
+            raise ValueError(f"Tool no longer available: {pending.tool_name}")
+        
+        await self._set_status(AgentStatus.ACTING, correlation_id)
+        
+        await self._emit_event(
+            EventType.TOOL_CALLED,
+            {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "tool": pending.tool_name,
+                "args": args,
+                "approved_by_human": True,
+            },
+            correlation_id,
+        )
+        
+        if tracker:
+            tracker.tool_call(pending.tool_name, args, agent=self.name)
+        
+        start_time = now_utc()
+        
+        try:
+            if use_resilience and self._resilience:
+                def get_fallback_tool(name: str):
+                    t = self._get_tool(name)
+                    return t.invoke if t else None
+                
+                exec_result = await self._resilience.execute(
+                    tool_fn=tool_obj.invoke,
+                    tool_name=pending.tool_name,
+                    args=args,
+                    fallback_fn=get_fallback_tool,
+                    tool_obj=tool_obj,
+                )
+                
+                if exec_result.success:
+                    result = exec_result.result
+                    duration_ms = exec_result.total_time_ms
+                else:
+                    error = exec_result.error or RuntimeError(f"Tool {pending.tool_name} failed")
+                    raise error
+            else:
+                if hasattr(tool_obj, "ainvoke"):
+                    result = await tool_obj.ainvoke(args)
+                else:
+                    loop = asyncio.get_event_loop()
+                    result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+                duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            
+            self.state.add_acting_time(duration_ms)
+            
+            if tracker:
+                tracker.tool_result(pending.tool_name, str(result)[:200], duration_ms=duration_ms)
+            
+            await self._set_status(AgentStatus.IDLE, correlation_id)
+            return result
+            
+        except Exception as e:
+            self.state.record_error(str(e))
+            await self._set_status(AgentStatus.ERROR, correlation_id)
+            if tracker:
+                tracker.tool_error(pending.tool_name, str(e))
+            raise
+    
+    @property
+    def pending_actions(self) -> list[PendingAction]:
+        """Get list of pending actions awaiting human decision."""
+        return list(self._pending_actions.values())
+    
+    @property
+    def is_interrupted(self) -> bool:
+        """Check if agent has pending actions awaiting human decision."""
+        return len(self._pending_actions) > 0
+    
+    def get_interrupted_state(self) -> InterruptedState | None:
+        """Get the current interrupted state, if any."""
+        return self._interrupted_state
+    
+    def clear_pending_actions(self) -> None:
+        """Clear all pending actions (e.g., on abort or reset)."""
+        self._pending_actions.clear()
+        self._interrupted_state = None
 
     async def act_many(
         self,

@@ -578,6 +578,120 @@ class Flow:
             merge_strategy=merge_strategy,
         )
     
+    # =========================================================================
+    # Human-in-the-Loop Methods
+    # =========================================================================
+    
+    @property
+    def is_interrupted(self) -> bool:
+        """Check if any agent in the flow has pending actions awaiting human decision."""
+        return any(agent.is_interrupted for agent in self._agents)
+    
+    def get_pending_actions(self) -> list[tuple[str, Any]]:
+        """
+        Get all pending actions from all agents.
+        
+        Returns:
+            List of (agent_name, PendingAction) tuples.
+        """
+        from agenticflow.agent.hitl import PendingAction
+        
+        pending: list[tuple[str, PendingAction]] = []
+        for agent in self._agents:
+            for action in agent.pending_actions:
+                pending.append((agent.name, action))
+        return pending
+    
+    def get_interrupted_agent(self) -> Agent | None:
+        """Get the first interrupted agent, if any."""
+        for agent in self._agents:
+            if agent.is_interrupted:
+                return agent
+        return None
+    
+    async def resume(
+        self,
+        decision: Any,
+        *,
+        agent_name: str | None = None,
+        thread_id: str | None = None,
+    ) -> Any:
+        """
+        Resume an interrupted flow with a human decision.
+        
+        After a flow is interrupted for human approval, call this method
+        with the human's decision to continue execution.
+        
+        Args:
+            decision: HumanDecision object with the decision.
+            agent_name: Name of agent to resume (auto-detected if only one interrupted).
+            thread_id: Thread ID for memory continuity.
+        
+        Returns:
+            Result of the resumed action.
+        
+        Raises:
+            ValueError: If no interrupted agent found or multiple interrupted without specifying.
+        
+        Example:
+            ```python
+            from agenticflow.agent import HumanDecision, InterruptedException
+            
+            try:
+                result = await flow.run("Delete old files")
+            except InterruptedException as e:
+                # Show pending action to human
+                pending = e.state.pending_actions[0]
+                print(f"Approve '{pending.describe()}'? [y/n]")
+                
+                if input() == 'y':
+                    decision = HumanDecision.approve(pending.action_id)
+                else:
+                    decision = HumanDecision.reject(pending.action_id)
+                
+                result = await flow.resume(decision)
+            ```
+        """
+        # Find the interrupted agent
+        if agent_name:
+            agent = self.get_agent(agent_name)
+            if not agent:
+                raise ValueError(f"Agent not found: {agent_name}")
+            if not agent.is_interrupted:
+                raise ValueError(f"Agent '{agent_name}' is not interrupted")
+        else:
+            interrupted_agents = [a for a in self._agents if a.is_interrupted]
+            if not interrupted_agents:
+                raise ValueError("No agents are currently interrupted")
+            if len(interrupted_agents) > 1:
+                names = [a.name for a in interrupted_agents]
+                raise ValueError(
+                    f"Multiple agents interrupted ({names}). Specify agent_name."
+                )
+            agent = interrupted_agents[0]
+        
+        # Resume the agent
+        return await agent.resume_action(
+            decision=decision,
+            correlation_id=thread_id,
+        )
+    
+    def clear_interrupts(self) -> None:
+        """Clear all pending actions across all agents."""
+        for agent in self._agents:
+            agent.clear_pending_actions()
+    
+    def describe_pending_actions(self) -> str:
+        """Get a human-readable description of all pending actions."""
+        pending = self.get_pending_actions()
+        if not pending:
+            return "No pending actions."
+        
+        lines = [f"Pending actions ({len(pending)}):"]
+        for agent_name, action in pending:
+            lines.append(f"  [{agent_name}] {action.describe()}")
+        return "\n".join(lines)
+    
     def add_agent(self, agent: Agent) -> None:
         """
         Add an agent to the flow.

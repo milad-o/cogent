@@ -5,13 +5,16 @@ AgentConfig - configuration for an Agent.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Callable
 
 from agenticflow.core.enums import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
     from agenticflow.agent.resilience import ResilienceConfig
+
+# Type for interrupt rules - bool or callable that takes (tool_name, args) -> bool
+InterruptRule = bool | Callable[[str, dict[str, Any]], bool]
 
 
 @dataclass
@@ -108,6 +111,14 @@ class AgentConfig:
     # Resilience Configuration (intelligent retry, circuit breaker, fallback)
     resilience_config: ResilienceConfig | None = None
     fallback_tools: dict[str, list[str]] = field(default_factory=dict)  # tool -> [fallbacks]
+    
+    # Human-in-the-Loop Configuration
+    # Map tool names to interrupt rules:
+    # - True: Always require human approval
+    # - False: Never require approval (auto-approve)  
+    # - Callable[[str, dict], bool]: Dynamic decision based on tool name and args
+    # - "*": Wildcard rule for unlisted tools
+    interrupt_on: dict[str, InterruptRule] = field(default_factory=dict)
 
     # Metadata
     metadata: dict = field(default_factory=dict)
@@ -149,6 +160,7 @@ class AgentConfig:
             max_retries=self.max_retries,
             resilience_config=self.resilience_config,
             fallback_tools=self.fallback_tools.copy(),
+            interrupt_on=self.interrupt_on.copy(),
             metadata=self.metadata.copy(),
         )
 
@@ -178,6 +190,7 @@ class AgentConfig:
             max_retries=self.max_retries,
             resilience_config=self.resilience_config,
             fallback_tools=self.fallback_tools.copy(),
+            interrupt_on=self.interrupt_on.copy(),
             metadata=self.metadata.copy(),
         )
     
@@ -217,6 +230,7 @@ class AgentConfig:
             max_retries=self.max_retries,
             resilience_config=config,
             fallback_tools=self.fallback_tools.copy(),
+            interrupt_on=self.interrupt_on.copy(),
             metadata=self.metadata.copy(),
         )
     
@@ -257,6 +271,54 @@ class AgentConfig:
             max_retries=self.max_retries,
             resilience_config=self.resilience_config,
             fallback_tools={**self.fallback_tools, **fallback_tools},
+            interrupt_on=self.interrupt_on.copy(),
+            metadata=self.metadata.copy(),
+        )
+    
+    def with_interrupt_on(self, interrupt_on: dict[str, InterruptRule]) -> AgentConfig:
+        """
+        Create a new config with human-in-the-loop interrupt rules.
+        
+        Args:
+            interrupt_on: Mapping of tool names to interrupt rules.
+                - True: Always require human approval
+                - False: Auto-approve (never interrupt)
+                - Callable[[str, dict], bool]: Dynamic decision based on args
+                - "*": Wildcard rule for unlisted tools
+            
+        Returns:
+            New AgentConfig with interrupt rules
+            
+        Example:
+            ```python
+            config = AgentConfig(
+                name="CautiousAgent",
+                model="gpt-4o",
+                tools=["read_file", "write_file", "delete_file"],
+            ).with_interrupt_on({
+                "delete_file": True,  # Always require approval
+                "write_file": lambda name, args: "/important/" in args.get("path", ""),
+                "read_file": False,  # Auto-approve
+            })
+            ```
+        """
+        return AgentConfig(
+            name=self.name,
+            role=self.role,
+            description=self.description,
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            system_prompt=self.system_prompt,
+            model_kwargs=self.model_kwargs.copy(),
+            tools=self.tools.copy(),
+            max_concurrent_tasks=self.max_concurrent_tasks,
+            timeout_seconds=self.timeout_seconds,
+            retry_on_error=self.retry_on_error,
+            max_retries=self.max_retries,
+            resilience_config=self.resilience_config,
+            fallback_tools=self.fallback_tools.copy(),
+            interrupt_on={**self.interrupt_on, **interrupt_on},
             metadata=self.metadata.copy(),
         )
 
@@ -286,7 +348,11 @@ class AgentConfig:
         return tool_name in self.tools
 
     def to_dict(self) -> dict:
-        """Convert to dictionary (model is not serialized)."""
+        """Convert to dictionary (model and callables are not serialized)."""
+        # Filter out callable interrupt rules (can't serialize functions)
+        serializable_interrupt_on = {
+            k: v for k, v in self.interrupt_on.items() if isinstance(v, bool)
+        }
         return {
             "name": self.name,
             "role": self.role.value,
@@ -300,6 +366,7 @@ class AgentConfig:
             "timeout_seconds": self.timeout_seconds,
             "retry_on_error": self.retry_on_error,
             "max_retries": self.max_retries,
+            "interrupt_on": serializable_interrupt_on,
             "metadata": self.metadata,
         }
 
@@ -325,5 +392,6 @@ class AgentConfig:
             timeout_seconds=data.get("timeout_seconds", 300.0),
             retry_on_error=data.get("retry_on_error", True),
             max_retries=data.get("max_retries", 3),
+            interrupt_on=data.get("interrupt_on", {}),
             metadata=data.get("metadata", {}),
         )

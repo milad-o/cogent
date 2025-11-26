@@ -78,6 +78,8 @@ class EventType(Enum):
     AGENT_RESPONDED = "agent.responded"
     AGENT_ERROR = "agent.error"
     AGENT_STATUS_CHANGED = "agent.status_changed"
+    AGENT_INTERRUPTED = "agent.interrupted"  # HITL: agent paused for human input
+    AGENT_RESUMED = "agent.resumed"  # HITL: agent resumed after human decision
 
     # Tool events
     TOOL_REGISTERED = "tool.registered"
