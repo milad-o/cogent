@@ -160,9 +160,6 @@ from agenticflow.tasks.manager import TaskManager
 # Tools (THIS IS WHERE WE ADD VALUE)
 from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 
-# Orchestrator (DEPRECATED - use Flow instead)
-from agenticflow.orchestrator.orchestrator import Orchestrator
-
 # Flow - THE MAIN ENTRY POINT
 from agenticflow.flow import (
     Flow,
@@ -252,6 +249,14 @@ from agenticflow.visualization import (
     TopologyDiagram,
 )
 
+# Prebuilt agents (ready-to-use components)
+from agenticflow.prebuilt import (
+    Chatbot,
+    RAGAgent,
+    create_chatbot,
+    create_rag_agent,
+)
+
 # LangChain message types (re-export for convenience)
 from langchain_core.messages import (
     BaseMessage,
@@ -329,8 +334,6 @@ __all__ = [
     "supervisor_flow",
     "pipeline_flow",
     "mesh_flow",
-    # Orchestrator (deprecated - use Flow)
-    "Orchestrator",
     # Topologies
     "BaseTopology",
     "TopologyConfig",
@@ -400,6 +403,11 @@ __all__ = [
     "MermaidDirection",
     "AgentDiagram",
     "TopologyDiagram",
+    # Prebuilt agents
+    "Chatbot",
+    "RAGAgent",
+    "create_chatbot",
+    "create_rag_agent",
     # LangChain messages
     "BaseMessage",
     "HumanMessage",

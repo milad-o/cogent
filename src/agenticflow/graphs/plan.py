@@ -118,18 +118,27 @@ Task: {task}
 Available tools:
 {tools_desc}
 
-Respond with a JSON plan:
+Respond with ONLY a JSON plan (no other text):
 {{
   "steps": [
-    {{"tool": "tool_name", "args": {{}}, "depends_on": []}},
+    {{"tool": "tool_name", "args": {{}}}},
     ...
   ]
 }}
 
-If no tools are needed, respond with: {{"steps": []}}
+Rules:
+- Only use tools from the list above
+- If no tools are needed, respond with: {{"steps": []}}
+- Output ONLY the JSON, nothing else
 """
         
-        response = await self.agent.think(prompt)
+        # Use neutral planner persona
+        planner_prompt = "You are a task planner. Your job is to analyze tasks and output JSON execution plans. Never execute tools, only plan them."
+        response = await self.agent.think(
+            prompt, 
+            include_tools=False, 
+            system_prompt_override=planner_prompt,
+        )
         return self._parse_plan(response)
     
     def _parse_plan(self, response: str) -> ExecutionPlan:

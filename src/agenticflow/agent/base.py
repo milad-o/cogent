@@ -576,6 +576,9 @@ Available tools:
         self,
         prompt: str,
         correlation_id: str | None = None,
+        *,
+        include_tools: bool = True,
+        system_prompt_override: str | None = None,
     ) -> str:
         """
         Process a prompt through the agent's reasoning.
@@ -586,6 +589,10 @@ Available tools:
         Args:
             prompt: The prompt to process
             correlation_id: Optional correlation ID for event tracking
+            include_tools: Whether to include tools in system prompt (default: True).
+                Set to False for planning prompts that already list tools.
+            system_prompt_override: If provided, use this instead of agent's system prompt.
+                Useful for planning where we need a neutral persona.
             
         Returns:
             The LLM's response
@@ -610,9 +617,14 @@ Available tools:
 
         start_time = now_utc()
 
-        # Build messages with effective system prompt (includes tools)
+        # Build messages - determine which system prompt to use
         messages = []
-        effective_prompt = self.get_effective_system_prompt()
+        if system_prompt_override is not None:
+            effective_prompt = system_prompt_override
+        elif include_tools:
+            effective_prompt = self.get_effective_system_prompt()
+        else:
+            effective_prompt = self.config.system_prompt
         if effective_prompt:
             messages.append(SystemMessage(content=effective_prompt))
 
@@ -933,6 +945,7 @@ Available tools:
                     tool_name=tool_name,
                     args=args,
                     fallback_fn=get_fallback_tool,
+                    tool_obj=tool_obj,  # Pass tool object for ainvoke support
                 )
                 
                 if exec_result.success:
@@ -1004,9 +1017,12 @@ Available tools:
                     await self._set_status(AgentStatus.ERROR, correlation_id)
                     raise error
             else:
-                # Direct execution without resilience
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+                # Direct execution without resilience - use ainvoke for async support
+                if hasattr(tool_obj, "ainvoke"):
+                    result = await tool_obj.ainvoke(args)
+                else:
+                    loop = asyncio.get_event_loop()
+                    result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
                 duration_ms = (now_utc() - start_time).total_seconds() * 1000
 
             # Track timing
@@ -1122,6 +1138,7 @@ Available tools:
                     tool_name=tool_name,
                     args=args,
                     fallback_fn=get_fallback_tool,
+                    tool_obj=tool_obj,  # Pass tool object for ainvoke support
                 )
                 
                 if exec_result.success:
@@ -1129,9 +1146,12 @@ Available tools:
                 else:
                     raise exec_result.error or RuntimeError(f"Tool {tool_name} failed")
             else:
-                # Direct execution
-                loop = asyncio.get_event_loop()
-                return await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+                # Direct execution - use ainvoke for async support
+                if hasattr(tool_obj, "ainvoke"):
+                    return await tool_obj.ainvoke(args)
+                else:
+                    loop = asyncio.get_event_loop()
+                    return await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
         
         # Create tasks for parallel execution
         tasks = [execute_single(name, args) for name, args in tool_calls]

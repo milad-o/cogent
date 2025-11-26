@@ -126,7 +126,7 @@ Task: {task}
 Available tools:
 {tools_desc}
 
-Respond with a JSON DAG plan:
+Respond with ONLY a JSON DAG plan (no other text):
 {{
   "steps": [
     {{"id": "call_0", "tool": "tool_name", "args": {{}}, "depends_on": []}},
@@ -136,12 +136,20 @@ Respond with a JSON DAG plan:
 }}
 
 Rules:
+- Only use tools from the list above - do NOT invent tools like "combine"
 - Steps with NO dependencies can run in parallel
 - Use $call_N to reference results from previous steps
 - List all dependencies in depends_on array
+- Output ONLY the JSON, nothing else
 """
         
-        response = await self.agent.think(prompt)
+        # Use neutral planner persona to avoid tool execution behavior
+        planner_prompt = "You are a task planner. Your job is to analyze tasks and output JSON execution plans. Never execute tools, only plan them."
+        response = await self.agent.think(
+            prompt, 
+            include_tools=False, 
+            system_prompt_override=planner_prompt,
+        )
         return self._parse_dag_plan(response)
     
     def _parse_dag_plan(self, response: str) -> ExecutionPlan:

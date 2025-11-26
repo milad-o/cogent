@@ -870,6 +870,7 @@ class ToolResilience:
         tool_name: str,
         args: dict[str, Any],
         fallback_fn: Callable[[str], Callable[..., Any]] | None = None,
+        tool_obj: Any | None = None,
     ) -> ExecutionResult:
         """
         Execute a tool with full resilience.
@@ -879,6 +880,7 @@ class ToolResilience:
             tool_name: Name of the tool (for tracking)
             args: Arguments to pass to the tool
             fallback_fn: Optional function to get fallback tool by name
+            tool_obj: Optional tool object (for ainvoke support)
             
         Returns:
             ExecutionResult with success/failure details
@@ -930,7 +932,7 @@ class ToolResilience:
             try:
                 # Execute with timeout
                 call_result = await asyncio.wait_for(
-                    self._execute_tool(tool_fn, args),
+                    self._execute_tool(tool_fn, args, tool_obj=tool_obj),
                     timeout=timeout,
                 )
                 
@@ -1001,9 +1003,20 @@ class ToolResilience:
         self,
         tool_fn: Callable[..., Any],
         args: dict[str, Any],
+        tool_obj: Any | None = None,
     ) -> Any:
-        """Execute tool function, handling both sync and async."""
-        if inspect.iscoroutinefunction(tool_fn):
+        """Execute tool function, handling both sync and async.
+        
+        Args:
+            tool_fn: The invoke method or callable
+            args: Arguments dict for the tool
+            tool_obj: Optional tool object (for ainvoke detection)
+        """
+        # Check if the tool object has ainvoke (LangChain async tools)
+        if tool_obj is not None and hasattr(tool_obj, "ainvoke"):
+            # LangChain tool - use ainvoke for proper async support
+            return await tool_obj.ainvoke(args)
+        elif inspect.iscoroutinefunction(tool_fn):
             return await tool_fn(args)
         else:
             loop = asyncio.get_event_loop()
