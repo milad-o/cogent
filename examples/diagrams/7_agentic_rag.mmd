@@ -1,0 +1,26 @@
+---
+title: Agentic RAG System
+config:
+  theme: default
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 40
+---
+flowchart TD
+    RAG_Coordinator["RAG_Coordinator<br/><small><i>supervisor</i></small>"]:::super
+
+    subgraph Workers[" "]
+        direction LR
+        Retriever["Retriever<br/><small><i>worker</i></small><br/><small>text_search, chunk_retriever, semantic_search</small>"]:::work
+        Analyzer["Analyzer<br/><small><i>worker</i></small><br/><small>text_summarizer, theme_extractor</small>"]:::work
+        Reviewer["Reviewer<br/><small><i>reviewer</i></small><br/><small>fact_checker, citation_validator</small>"]:::review
+    end
+
+    RAG_Coordinator --> Workers
+
+    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
+    classDef super fill:#4a90d9,stroke:#2d5986,color:#fff
+    classDef auto fill:#9b59b6,stroke:#7b3a96,color:#fff
+    classDef review fill:#f56c6c,stroke:#c45656,color:#fff
+    classDef tool fill:#f5f5f5,stroke:#999,color:#333
