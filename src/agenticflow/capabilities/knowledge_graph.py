@@ -102,11 +102,16 @@ class InMemoryGraph:
         
         if self._nx:
             existing = self.graph.nodes.get(entity_id, {})
+            # Parse created_at if it's a string (from previous to_dict())
+            existing_created = existing.get("created_at", now)
+            if isinstance(existing_created, str):
+                existing_created = datetime.fromisoformat(existing_created)
+            
             entity = Entity(
                 id=entity_id,
                 type=entity_type,
                 attributes={**existing.get("attributes", {}), **(attributes or {})},
-                created_at=existing.get("created_at", now),
+                created_at=existing_created,
                 updated_at=now,
                 source=source or existing.get("source"),
             )
@@ -160,7 +165,9 @@ class InMemoryGraph:
         )
         
         if self._nx:
-            self.graph.add_edge(source_id, target_id, relation=relation, **rel.to_dict())
+            # Don't duplicate 'relation' - it's already in to_dict()
+            edge_data = rel.to_dict()
+            self.graph.add_edge(source_id, target_id, **edge_data)
         else:
             # Check if relationship already exists
             existing = [r for r in self._relationships 
