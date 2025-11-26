@@ -6,12 +6,12 @@ Capabilities are reusable building blocks that add tools to agents:
 - CodebaseAnalyzer: Python AST parsing and code exploration
 - FileSystem: Sandboxed file operations with security controls
 - WebSearch: Web search and page fetching (DuckDuckGo, free)
-- CodeSandbox: Safe code execution (coming soon)
+- CodeSandbox: Safe Python code execution
 
 Example:
     ```python
     from agenticflow import Agent
-    from agenticflow.capabilities import KnowledgeGraph, FileSystem, WebSearch
+    from agenticflow.capabilities import KnowledgeGraph, FileSystem, WebSearch, CodeSandbox
     
     agent = Agent(
         name="Assistant",
@@ -20,16 +20,18 @@ Example:
             KnowledgeGraph(),                    # Adds remember, recall, query tools
             FileSystem(allowed_paths=["./data"]), # Adds read, write, search tools
             WebSearch(),                          # Adds web_search, news_search, fetch tools
+            CodeSandbox(),                        # Adds execute_python, run_function tools
         ],
     )
     
     # Agent automatically has all capability tools
-    await agent.run("Search for Python 3.13 features and remember the highlights")
+    await agent.run("Write a function to calculate fibonacci and test it")
     ```
 """
 
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.capabilities.codebase import CodebaseAnalyzer
+from agenticflow.capabilities.code_sandbox import CodeSandbox
 from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 from agenticflow.capabilities.web_search import WebSearch
@@ -37,6 +39,7 @@ from agenticflow.capabilities.web_search import WebSearch
 __all__ = [
     "BaseCapability",
     "CodebaseAnalyzer",
+    "CodeSandbox",
     "FileSystem",
     "KnowledgeGraph",
     "WebSearch",

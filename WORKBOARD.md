@@ -53,11 +53,17 @@ Agent(capabilities=[KnowledgeGraph(), WebSearch(), ...])
 - [x] Tests: 27 tests (2 skipped integration)
 - [x] Example: `examples/15_web_search.py`
 
-### Phase 6: CodeSandbox
-- [ ] `capabilities/code_sandbox.py`
-  - [ ] Safe Python execution
-  - [ ] execute, test tools
+### Phase 6: CodeSandbox ✅
+- [x] `capabilities/code_sandbox.py`
+  - [x] Safe Python execution with restricted builtins
+  - [x] Configurable timeout and output limits
+  - [x] Blocked dangerous operations (file/network/subprocess)
+  - [x] Safe imports (math, json, datetime, statistics, etc.)
+  - [x] Tools: execute_python, run_function
+  - [x] Execution history tracking
+- [x] Tests: 47 tests passing
+- [x] Example: `examples/16_code_sandbox.py`
 
 ---
-**Status**: Phase 5 complete, 400 tests passing
+**Status**: All 6 capabilities complete, 447 tests passing
 **Last Updated**: 2025-11-26
