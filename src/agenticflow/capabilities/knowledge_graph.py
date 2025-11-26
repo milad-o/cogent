@@ -352,6 +352,14 @@ class InMemoryGraph:
                 "relationships": len(self._relationships),
             }
 
+    def clear(self) -> None:
+        """Clear all entities and relationships."""
+        if self._nx:
+            self.graph.clear()
+        else:
+            self._entities.clear()
+            self._relationships.clear()
+
 
 class KnowledgeGraph(BaseCapability):
     """
@@ -386,13 +394,14 @@ class KnowledgeGraph(BaseCapability):
         ```
     """
     
-    def __init__(self, backend: str = "memory"):
+    def __init__(self, backend: str = "memory", name: str | None = None):
         """
         Initialize KnowledgeGraph capability.
         
         Args:
             backend: Storage backend. Currently supports:
                 - "memory": In-memory graph (uses networkx if available)
+            name: Optional custom name for this capability instance
         """
         if backend == "memory":
             self.graph = InMemoryGraph()
@@ -400,11 +409,12 @@ class KnowledgeGraph(BaseCapability):
             raise ValueError(f"Unknown backend: {backend}. Supported: 'memory'")
         
         self._backend = backend
+        self._name = name
         self._tools_cache: dict[str, BaseTool] | None = None
     
     @property
     def name(self) -> str:
-        return "knowledge_graph"
+        return self._name or "knowledge_graph"
     
     @property
     def description(self) -> str:
@@ -581,17 +591,21 @@ class KnowledgeGraph(BaseCapability):
         @tool
         def query_knowledge(pattern: str) -> str:
             """
-            Query the knowledge graph.
+            Query the knowledge graph for relationships.
+            
+            The pattern uses arrow syntax: SOURCE -RELATION-> TARGET
+            Use '?' as a wildcard to find unknowns.
             
             Args:
-                pattern: Query pattern. Examples:
-                    - "Alice" - Get all info about Alice
+                pattern: Query pattern. IMPORTANT: Use '?' for what you want to find:
+                    - "? -works_on-> Project X" - Who works on Project X?
                     - "Alice -works_at-> ?" - Where does Alice work?
-                    - "? -works_at-> Acme" - Who works at Acme?
-                    - "Alice -?-> ?" - All of Alice's relationships
+                    - "? -reports_to-> Bob" - Who reports to Bob?
+                    - "Alice -?-> ?" - All relationships FROM Alice
+                    - "Alice" - Get all info about Alice (simple lookup)
             
             Returns:
-                Query results
+                Query results as JSON
             """
             results = graph.query(pattern)
             
@@ -651,7 +665,164 @@ class KnowledgeGraph(BaseCapability):
             return "\n".join(lines)
         
         return list_knowledge
-    
+
+    # =========================================================================
+    # Convenience Methods - Direct access without tools
+    # =========================================================================
+
+    def add_entity(
+        self,
+        entity_id: str,
+        entity_type: str = "Entity",
+        attributes: dict[str, Any] | None = None,
+    ) -> Entity:
+        """
+        Add an entity to the knowledge graph.
+
+        Args:
+            entity_id: Unique identifier for the entity
+            entity_type: Type/category of the entity
+            attributes: Optional attributes dictionary
+
+        Returns:
+            The created Entity object
+        """
+        return self.graph.add_entity(entity_id, entity_type, attributes)
+
+    def add_relationship(
+        self,
+        source: str,
+        relation: str,
+        target: str,
+        attributes: dict[str, Any] | None = None,
+    ) -> Relationship:
+        """
+        Add a relationship between two entities.
+
+        Args:
+            source: Source entity ID
+            relation: Relationship type
+            target: Target entity ID
+            attributes: Optional relationship attributes
+
+        Returns:
+            The created Relationship object
+        """
+        return self.graph.add_relationship(source, relation, target, attributes)
+
+    def get_entity(self, entity_id: str) -> Entity | None:
+        """
+        Get an entity by ID.
+
+        Args:
+            entity_id: The entity identifier
+
+        Returns:
+            Entity object or None if not found
+        """
+        return self.graph.get_entity(entity_id)
+
+    def get_entities(self, entity_type: str | None = None) -> list[Entity]:
+        """
+        Get all entities, optionally filtered by type.
+
+        Args:
+            entity_type: Optional type filter
+
+        Returns:
+            List of Entity objects
+        """
+        return self.graph.get_all_entities(entity_type)
+
+    def get_relationships(
+        self,
+        entity_id: str,
+        relation_type: str | None = None,
+        direction: str = "both",
+    ) -> list[Relationship]:
+        """
+        Get relationships for an entity.
+
+        Args:
+            entity_id: The entity to get relationships for
+            relation_type: Optional filter by relationship type
+            direction: 'outgoing', 'incoming', or 'both'
+
+        Returns:
+            List of Relationship objects
+        """
+        return self.graph.get_relationships(entity_id, relation_type, direction)
+
+    def query_graph(self, pattern: str) -> list[dict[str, Any]]:
+        """
+        Query the knowledge graph with a pattern.
+
+        Args:
+            pattern: Query pattern (e.g., "Alice -works_at-> ?")
+
+        Returns:
+            List of matching results
+        """
+        return self.graph.query(pattern)
+
+    def find_path(
+        self,
+        source: str,
+        target: str,
+        max_depth: int = 5,
+    ) -> list[str] | None:
+        """
+        Find a path between two entities.
+
+        Args:
+            source: Starting entity ID
+            target: Target entity ID
+            max_depth: Maximum path length to search
+
+        Returns:
+            List of entity IDs forming the path, or None if no path exists
+        """
+        return self.graph.find_path(source, target, max_depth)
+
+    def remove_entity(self, entity_id: str) -> bool:
+        """
+        Remove an entity and all its relationships.
+
+        Args:
+            entity_id: Entity to remove
+
+        Returns:
+            True if removed, False if not found
+        """
+        return self.graph.remove_entity(entity_id)
+
+    def get_tool(self, name: str) -> BaseTool | None:
+        """
+        Get a specific tool by name.
+
+        Args:
+            name: Tool name (remember, recall, connect, query, forget, list)
+
+        Returns:
+            The tool or None if not found
+        """
+        if self._tools_cache is None:
+            _ = self.tools  # Initialize cache
+        return self._tools_cache.get(name)
+
+    def stats(self) -> dict[str, int]:
+        """
+        Get graph statistics.
+
+        Returns:
+            Dictionary with entity_count, relationship_count, type_counts
+        """
+        return self.graph.stats()
+
+    def clear(self) -> None:
+        """Clear all entities and relationships from the graph."""
+        self.graph.clear()
+
     def to_dict(self) -> dict[str, Any]:
         """Convert capability info to dictionary."""
         base = super().to_dict()

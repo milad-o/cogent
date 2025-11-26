@@ -3,21 +3,61 @@
 Demo: Knowledge Graph Capability
 
 Shows how to use the KnowledgeGraph capability to give an agent
-persistent memory of entities and relationships.
+persistent memory of entities and relationships. The agent can
+drill down through the graph to find answers.
 
 Key features demonstrated:
-1. Pre-populate a KnowledgeGraph before giving it to an agent
-2. Agent's prompt auto-includes the KG tools
-3. Multiple agents can share the same KnowledgeGraph
-4. Query patterns for relationships
+1. Load knowledge from a data file
+2. Agent uses KG tools to explore and find answers
+3. Multi-hop reasoning through relationships
+4. Clean programmatic API for direct access
 """
 
 import asyncio
+import json
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def load_knowledge_file(kg, filepath: str) -> dict:
+    """
+    Load entities and relationships from a knowledge file.
+    
+    File format:
+    - entity|name|type|{"attr": "value"}
+    - rel|source|relation|target
+    - Lines starting with # are comments
+    """
+    stats = {"entities": 0, "relationships": 0}
+    
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            
+            parts = line.split("|")
+            if parts[0] == "entity" and len(parts) >= 3:
+                name = parts[1]
+                etype = parts[2]
+                attrs = json.loads(parts[3]) if len(parts) > 3 else {}
+                kg.add_entity(name, etype, attrs)
+                stats["entities"] += 1
+            elif parts[0] == "rel" and len(parts) >= 4:
+                source, relation, target = parts[1], parts[2], parts[3]
+                # Auto-create entities if they don't exist
+                if not kg.get_entity(source):
+                    kg.add_entity(source, "Unknown")
+                if not kg.get_entity(target):
+                    kg.add_entity(target, "Unknown")
+                kg.add_relationship(source, relation, target)
+                stats["relationships"] += 1
+    
+    return stats
 
 
 async def demo():
@@ -31,114 +71,107 @@ async def demo():
     
     model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     
-    # === Step 1: Create and pre-populate the KnowledgeGraph ===
-    print("\n📝 Step 1: Pre-populate KnowledgeGraph")
+    # === Step 1: Load KnowledgeGraph from file ===
+    print("\n📂 Step 1: Load Knowledge from File")
     print("-" * 40)
     
     kg = KnowledgeGraph()
+    data_file = Path(__file__).parent / "data" / "company_knowledge.txt"
     
-    # Add entities with attributes
-    kg.graph.add_entity("Alice", "Person", {
-        "role": "Senior Engineer",
-        "team": "Backend",
-        "skills": ["Python", "Go", "Kubernetes"],
-    })
-    kg.graph.add_entity("Bob", "Person", {
-        "role": "Engineering Manager",
-        "team": "Backend",
-    })
-    kg.graph.add_entity("Acme Corp", "Company", {
-        "industry": "Tech",
-        "founded": 2015,
-        "size": "500+",
-    })
-    kg.graph.add_entity("Project Alpha", "Project", {
-        "status": "active",
-        "deadline": "2025-Q1",
-    })
+    stats = load_knowledge_file(kg, str(data_file))
+    print(f"✅ Loaded from {data_file.name}:")
+    print(f"   Entities: {stats['entities']}")
+    print(f"   Relationships: {stats['relationships']}")
+    print(f"   Graph stats: {kg.stats()}")
     
-    # Add relationships
-    kg.graph.add_relationship("Alice", "works_at", "Acme Corp")
-    kg.graph.add_relationship("Bob", "works_at", "Acme Corp")
-    kg.graph.add_relationship("Alice", "reports_to", "Bob")
-    kg.graph.add_relationship("Alice", "works_on", "Project Alpha")
-    kg.graph.add_relationship("Bob", "manages", "Project Alpha")
+    # === Step 2: Explore with direct API ===
+    print("\n🔍 Step 2: Direct API Exploration")
+    print("-" * 40)
     
-    print(f"✅ Created graph with {kg.graph.stats()}")
+    # Get all people
+    people = kg.get_entities("Person")
+    print(f"People in the system: {[p.id for p in people]}")
     
-    # === Step 2: Create agent with the pre-populated KG ===
-    print("\n🤖 Step 2: Create Agent with KnowledgeGraph")
+    # Get all projects
+    projects = kg.get_entities("Project")
+    print(f"Projects: {[p.id for p in projects]}")
+    
+    # Query: Who works on ETL Pipeline?
+    results = kg.query_graph("? -works_on-> ETL Pipeline")
+    print(f"\nWho works on ETL Pipeline?")
+    for r in results:
+        print(f"  → {r}")
+    
+    # === Step 3: Multi-hop exploration ===
+    print("\n🔗 Step 3: Multi-hop Exploration")
+    print("-" * 40)
+    
+    # Find path from Bob to Eve
+    path = kg.find_path("Bob Smith", "Eve Wilson")
+    print(f"Path from Bob to Eve: {path}")
+    
+    # Get Bob's relationships
+    bob_rels = kg.get_relationships("Bob Smith", direction="outgoing")
+    print(f"\nBob Smith's relationships:")
+    for rel in bob_rels:
+        print(f"  → {rel.relation} → {rel.target_id}")
+    
+    # === Step 4: Create agent with KG ===
+    print("\n🤖 Step 4: Agent with KnowledgeGraph")
     print("-" * 40)
     
     agent = Agent(
-        name="KnowledgeAssistant",
+        name="CompanyExpert",
         model=model,
-        instructions="You are a helpful assistant with access to a knowledge graph about a company and its employees.",
+        instructions="""You are a company knowledge expert. You have access to a knowledge graph
+containing information about employees, teams, projects, and technologies.
+
+Use the available tools to explore the knowledge graph and find answers.
+When asked about relationships or connections, drill down through the graph
+to trace the path and provide complete answers.""",
         capabilities=[kg],
     )
     
     print(f"Agent tools: {[t.name for t in agent.all_tools]}")
     
-    # === Step 3: Query the knowledge directly ===
-    print("\n🔍 Step 3: Direct Queries (clean API)")
+    # === Step 5: Agent drills down to find answers ===
+    print("\n💬 Step 5: Agent Queries (Drill-down)")
     print("-" * 40)
     
-    # Use convenience methods - no tool lookup needed!
-    print("Recalling Alice:")
-    print(kg.recall("Alice"))
+    questions = [
+        "Who is working on the ETL Pipeline project and what technologies does it use?",
+        "Who does David Lee report to, and what team does that person lead?",
+        "What Python experts do we have and what projects are they working on?",
+    ]
     
-    print("\nWho works at Acme Corp?")
-    print(kg.query("? -works_at-> Acme Corp"))
+    for q in questions:
+        print(f"\n❓ {q}")
+        response = await agent.run(q, strategy="dag")
+        print(f"💡 {response}")
     
-    # === Step 4: Let the agent use the knowledge ===
-    print("\n🤖 Step 4: Agent Query")
-    print("-" * 40)
-    
-    response = await agent.run(
-        "Tell me about Alice - what's her role, who does she report to, and what project is she on?",
-        strategy="dag",
-    )
-    print(f"Agent response:\n{response}")
-    
-    # === Step 5: Shared KG between agents ===
-    print("\n👥 Step 5: Shared KnowledgeGraph")
-    print("-" * 40)
-    
-    # Create a second agent that shares the same KG
-    agent2 = Agent(
-        name="SecondAssistant",
-        model=model,
-        instructions="You help with project information.",
-        capabilities=[kg],  # Same KG instance!
-    )
-    
-    # Agent2 can query the same data
-    response2 = await agent2.run(
-        "Who manages Project Alpha?",
-        strategy="dag",
-    )
-    print(f"Agent2 response: {response2}")
-    
-    # === Step 6: Agent adds new knowledge ===
+    # === Step 6: Agent updates knowledge ===
     print("\n➕ Step 6: Agent Adds Knowledge")
     print("-" * 40)
     
-    # Agent can add new entities via the remember tool
     response = await agent.run(
-        "Remember that Charlie is a new intern who reports to Alice",
+        "Remember that Frank Martinez is a new DevOps Engineer who joined Platform Team and is expert in Kubernetes",
         strategy="dag",
     )
-    print(f"After adding Charlie: {kg.graph.stats()}")
+    print(f"Response: {response}")
     
-    # Verify Charlie was added
-    print(f"Charlie info: {kg.recall('Charlie')}")
+    # Verify Frank was added
+    frank = kg.get_entity("Frank Martinez")
+    if frank:
+        print(f"\n✅ Frank added: {frank.type}, attrs={frank.attributes}")
+        rels = kg.get_relationships("Frank Martinez", direction="outgoing")
+        print(f"   Relationships: {[(r.relation, r.target_id) for r in rels]}")
     
     print("\n" + "=" * 60)
     print("✅ Summary:")
-    print("   - Pre-populate KG before creating agent")
-    print("   - Tools auto-injected into agent prompt")
-    print("   - Multiple agents can share same KG")
-    print("   - Agents can query and add to the KG")
+    print("   - Load knowledge from structured files")
+    print("   - Clean API: kg.add_entity(), kg.get_relationships()")
+    print("   - Multi-hop queries with find_path()")
+    print("   - Agents drill down through graph to find answers")
     print("=" * 60)
 
 

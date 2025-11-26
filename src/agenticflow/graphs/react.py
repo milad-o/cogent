@@ -145,16 +145,72 @@ class ReActExecutor(BaseExecutor):
             answer = response[idx + 13:].strip()
             return {"type": "final_answer", "answer": answer}
         
-        # Check for tool call
-        tool_match = re.search(r"TOOL:\s*(\w+)\s*\((.+?)\)", response, re.IGNORECASE | re.DOTALL)
+        # Check for tool call - support both JSON and simple argument formats
+        # Pattern 1: TOOL: name({json})
+        # Pattern 2: TOOL: name(simple_value)
+        # Pattern 3: TOOL: name("string")
+        tool_match = re.search(r"TOOL:\s*(\w+)\s*\(([^)]*)\)", response, re.IGNORECASE | re.DOTALL)
         if tool_match:
             tool_name = tool_match.group(1)
-            try:
-                args = json.loads(tool_match.group(2))
-            except json.JSONDecodeError:
-                # Try to parse as simple key=value
-                args = {"input": tool_match.group(2).strip()}
+            args_str = tool_match.group(2).strip()
+            
+            # Try to parse as JSON first
+            if args_str:
+                try:
+                    args = json.loads(args_str)
+                    if isinstance(args, str):
+                        # JSON parsed to string like "ETLPipeline" -> need to wrap
+                        args = self._infer_arg_name(tool_name, args)
+                    elif not isinstance(args, dict):
+                        args = self._infer_arg_name(tool_name, args)
+                except json.JSONDecodeError:
+                    # Not valid JSON - treat as simple value
+                    # Remove quotes if present
+                    value = args_str.strip('\'"')
+                    args = self._infer_arg_name(tool_name, value)
+            else:
+                args = {}
+                
             return {"type": "tool_call", "tool": tool_name, "args": args}
         
         # Default to final answer if no tool pattern found
         return {"type": "final_answer", "answer": response}
+    
+    def _infer_arg_name(self, tool_name: str, value: Any) -> dict[str, Any]:
+        """Infer the argument name based on tool name.
+        
+        Different tools expect different parameter names. This maps
+        common tool names to their expected first argument.
+        
+        Args:
+            tool_name: Name of the tool being called.
+            value: The value to wrap.
+            
+        Returns:
+            Dict with inferred argument name.
+        """
+        # Common parameter name mappings
+        param_mappings = {
+            # CodebaseAnalyzer tools
+            "find_classes": "pattern",
+            "find_functions": "pattern",
+            "find_callers": "function_name",
+            "find_usages": "name",
+            "find_subclasses": "base_class",
+            "find_imports": "module_name",
+            "get_definition": "name",
+            # KnowledgeGraph tools
+            "remember": "entity",
+            "recall": "entity",
+            "connect": "source",
+            "query_knowledge": "pattern",
+            "forget": "entity",
+            "list_knowledge": "entity_type",
+            # Generic fallbacks
+            "search": "query",
+            "get": "name",
+            "find": "query",
+        }
+        
+        param_name = param_mappings.get(tool_name, "input")
+        return {param_name: value}

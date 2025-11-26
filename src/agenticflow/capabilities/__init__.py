@@ -26,9 +26,11 @@ Example:
 """
 
 from agenticflow.capabilities.base import BaseCapability
+from agenticflow.capabilities.codebase import CodebaseAnalyzer
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 
 __all__ = [
     "BaseCapability",
+    "CodebaseAnalyzer",
     "KnowledgeGraph",
 ]

@@ -1,0 +1,59 @@
+# Company Knowledge Base - Demo Data
+# Format: entity|type|attributes (JSON) OR source|relation|target
+
+# === PEOPLE ===
+entity|Alice Chen|Person|{"role": "CTO", "department": "Engineering", "email": "alice@acme.com"}
+entity|Bob Smith|Person|{"role": "Senior Engineer", "department": "Engineering", "email": "bob@acme.com"}
+entity|Carol Jones|Person|{"role": "Product Manager", "department": "Product", "email": "carol@acme.com"}
+entity|David Lee|Person|{"role": "Data Scientist", "department": "Engineering", "email": "david@acme.com"}
+entity|Eve Wilson|Person|{"role": "CEO", "department": "Executive", "email": "eve@acme.com"}
+
+# === TEAMS ===
+entity|Platform Team|Team|{"focus": "Infrastructure", "size": 5}
+entity|ML Team|Team|{"focus": "Machine Learning", "size": 3}
+entity|Product Team|Team|{"focus": "Product Development", "size": 4}
+
+# === PROJECTS ===
+entity|Project Atlas|Project|{"status": "active", "budget": 500000, "deadline": "2025-06-01"}
+entity|Project Nova|Project|{"status": "planning", "budget": 200000, "deadline": "2025-09-01"}
+entity|ETL Pipeline|Project|{"status": "active", "budget": 100000, "deadline": "2025-03-01"}
+
+# === TECHNOLOGIES ===
+entity|Python|Technology|{"type": "language", "version": "3.13"}
+entity|PostgreSQL|Technology|{"type": "database", "version": "16"}
+entity|Kubernetes|Technology|{"type": "platform", "version": "1.28"}
+entity|LangChain|Technology|{"type": "framework", "version": "0.3"}
+
+# === RELATIONSHIPS ===
+# Reporting structure
+rel|Alice Chen|reports_to|Eve Wilson
+rel|Bob Smith|reports_to|Alice Chen
+rel|David Lee|reports_to|Alice Chen
+rel|Carol Jones|reports_to|Eve Wilson
+
+# Team membership
+rel|Alice Chen|leads|Platform Team
+rel|Bob Smith|member_of|Platform Team
+rel|David Lee|leads|ML Team
+rel|Carol Jones|leads|Product Team
+
+# Project assignments
+rel|Platform Team|works_on|Project Atlas
+rel|ML Team|works_on|Project Nova
+rel|Bob Smith|works_on|ETL Pipeline
+rel|David Lee|works_on|ETL Pipeline
+
+# Technology usage
+rel|Project Atlas|uses|Python
+rel|Project Atlas|uses|Kubernetes
+rel|Project Nova|uses|Python
+rel|Project Nova|uses|LangChain
+rel|ETL Pipeline|uses|Python
+rel|ETL Pipeline|uses|PostgreSQL
+
+# Expertise
+rel|Bob Smith|expert_in|Python
+rel|Bob Smith|expert_in|PostgreSQL
+rel|David Lee|expert_in|Python
+rel|David Lee|expert_in|LangChain
+rel|Alice Chen|expert_in|Kubernetes
