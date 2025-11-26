@@ -328,7 +328,7 @@ class BaseTopology:
             results = state.get("results", [])
             
             # Build prompt with context from previous agents
-            prompt_parts = [f"Task: {task}"]
+            prompt_parts = [task]
             
             if results:
                 prompt_parts.append("\nPrevious contributions:")
@@ -338,8 +338,18 @@ class BaseTopology:
             
             prompt = "\n".join(prompt_parts)
 
-            # Let agent think about the task
-            thought = await agent.think(prompt)
+            # Let agent execute the task using its own strategy
+            # If agent has tools, it will use them via agent.run()
+            # Otherwise, it falls back to agent.think()
+            if agent.all_tools:
+                # Agent has tools - use full execution with tool calling
+                thought = await agent.run(prompt, strategy="dag")
+                # Convert result to string if needed
+                if not isinstance(thought, str):
+                    thought = str(thought)
+            else:
+                # No tools - just think
+                thought = await agent.think(prompt)
 
             # Build updated messages list
             messages = state.get("messages", [])

@@ -20,7 +20,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from agenticflow import Agent
+from agenticflow import Agent, Flow
 from agenticflow.capabilities import SSISAnalyzer
 
 load_dotenv()
@@ -104,10 +104,17 @@ Provide detailed answers with specific package and task names.""",
         print(preview)
     print("-" * 50)
     
-    # Ask challenging questions using agent.run() which executes tools
+    # Ask challenging questions using Flow (which now properly executes tools)
     print("\n" + "=" * 70)
-    print("📝 Asking Challenging Questions")
+    print("📝 Asking Challenging Questions via Flow")
     print("=" * 70)
+    
+    # Create a Flow with single agent - this should work!
+    flow = Flow(
+        name="ssis_analysis",
+        agents=[agent],
+        topology="pipeline",
+    )
     
     for i, question in enumerate(CHALLENGING_QUESTIONS, 1):
         print(f"\n{'─' * 70}")
@@ -115,14 +122,19 @@ Provide detailed answers with specific package and task names.""",
         print("─" * 70)
         
         try:
-            # Use agent.run() with DAG strategy for tool execution
-            result = await agent.run(question, strategy="dag")
+            # Use Flow.run() - now properly executes tools via agent.run()
+            result = await flow.run(question)
             
-            # Clean up response
-            answer = str(result).replace("FINAL ANSWER:", "").strip()
-            print(f"\n💡 Answer:\n{answer[:1500]}")
-            if len(answer) > 1500:
-                print("... (truncated)")
+            # Get the final thought from results
+            if result.results:
+                answer = result.results[-1].get('thought', '')
+                # Clean up response
+                answer = str(answer).replace("FINAL ANSWER:", "").strip()
+                print(f"\n💡 Answer:\n{answer[:1500]}")
+                if len(answer) > 1500:
+                    print("... (truncated)")
+            else:
+                print("\n💡 No result returned")
         except Exception as e:
             print(f"\n❌ Error: {e}")
     
