@@ -20,11 +20,16 @@ Agent(capabilities=[KnowledgeGraph(), WebSearch(), ...])
 
 ### Phase 2: KnowledgeGraph ✅
 - [x] `capabilities/knowledge_graph.py`
+  - [x] Multiple backends: memory, sqlite, json
   - [x] In-memory graph (networkx fallback to dict)
+  - [x] SQLite for persistence and large graphs
+  - [x] JSON file with auto-save option
   - [x] Tools: remember, recall, query, connect, forget, list
   - [x] Multi-hop path finding
   - [x] Pattern-based queries
-- [x] Tests: 27 tests passing
+  - [x] Save/load for memory backend
+  - [x] Context manager support
+- [x] Tests: 50 tests passing (including persistence)
 - [x] Example: `examples/12_knowledge_graph.py`
 
 ### Phase 3: CodebaseAnalyzer ✅
@@ -65,5 +70,5 @@ Agent(capabilities=[KnowledgeGraph(), WebSearch(), ...])
 - [x] Example: `examples/16_code_sandbox.py`
 
 ---
-**Status**: All 6 capabilities complete, 447 tests passing
+**Status**: All 6 capabilities complete, 465 tests passing
 **Last Updated**: 2025-11-26

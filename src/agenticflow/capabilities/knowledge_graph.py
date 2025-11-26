@@ -4,15 +4,29 @@ KnowledgeGraph capability - persistent entity/relationship memory.
 Adds tools for storing and querying entities and their relationships,
 enabling multi-hop reasoning and grounded responses.
 
+Supports multiple backends:
+- "memory": In-memory storage (default, uses networkx if available)
+- "sqlite": SQLite database for persistence and large graphs
+- "json": JSON file for simple persistence
+
 Example:
     ```python
     from agenticflow import Agent
     from agenticflow.capabilities import KnowledgeGraph
     
+    # In-memory (default)
+    kg = KnowledgeGraph()
+    
+    # SQLite for persistence
+    kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
+    
+    # JSON file for simple persistence
+    kg = KnowledgeGraph(backend="json", path="knowledge.json")
+    
     agent = Agent(
         name="Assistant",
         model=model,
-        capabilities=[KnowledgeGraph()],
+        capabilities=[kg],
     )
     
     # Agent can now remember facts and query relationships
@@ -24,8 +38,12 @@ Example:
 from __future__ import annotations
 
 import json
+import sqlite3
+import threading
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from langchain_core.tools import BaseTool, tool
@@ -76,7 +94,91 @@ class Relationship:
         }
 
 
-class InMemoryGraph:
+class GraphBackend(ABC):
+    """Abstract base class for graph storage backends."""
+    
+    @abstractmethod
+    def add_entity(
+        self,
+        entity_id: str,
+        entity_type: str,
+        attributes: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> Entity:
+        """Add or update an entity."""
+        pass
+    
+    @abstractmethod
+    def get_entity(self, entity_id: str) -> Entity | None:
+        """Get an entity by ID."""
+        pass
+    
+    @abstractmethod
+    def add_relationship(
+        self,
+        source_id: str,
+        relation: str,
+        target_id: str,
+        attributes: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> Relationship:
+        """Add a relationship between entities."""
+        pass
+    
+    @abstractmethod
+    def get_relationships(
+        self,
+        entity_id: str,
+        relation: str | None = None,
+        direction: str = "outgoing",
+    ) -> list[Relationship]:
+        """Get relationships for an entity."""
+        pass
+    
+    @abstractmethod
+    def query(self, pattern: str) -> list[dict[str, Any]]:
+        """Query the graph with a pattern."""
+        pass
+    
+    @abstractmethod
+    def find_path(self, source_id: str, target_id: str, max_depth: int = 3) -> list[list[str]] | None:
+        """Find paths between two entities."""
+        pass
+    
+    @abstractmethod
+    def get_all_entities(self, entity_type: str | None = None) -> list[Entity]:
+        """Get all entities, optionally filtered by type."""
+        pass
+    
+    @abstractmethod
+    def remove_entity(self, entity_id: str) -> bool:
+        """Remove an entity and its relationships."""
+        pass
+    
+    @abstractmethod
+    def stats(self) -> dict[str, int]:
+        """Get graph statistics."""
+        pass
+    
+    @abstractmethod
+    def clear(self) -> None:
+        """Clear all entities and relationships."""
+        pass
+    
+    def save(self, path: str | Path | None = None) -> None:
+        """Save graph to persistent storage (optional)."""
+        pass
+    
+    def load(self, path: str | Path | None = None) -> None:
+        """Load graph from persistent storage (optional)."""
+        pass
+    
+    def close(self) -> None:
+        """Close any open connections (optional)."""
+        pass
+
+
+class InMemoryGraph(GraphBackend):
     """Simple in-memory graph storage using networkx."""
     
     def __init__(self):
@@ -360,10 +462,473 @@ class InMemoryGraph:
             self._entities.clear()
             self._relationships.clear()
 
+    def save(self, path: str | Path | None = None) -> None:
+        """Save graph to JSON file."""
+        if path is None:
+            raise ValueError("Path required for InMemoryGraph.save()")
+        
+        path = Path(path)
+        
+        # Serialize entities and relationships
+        data = {
+            "entities": [],
+            "relationships": [],
+        }
+        
+        for entity in self.get_all_entities():
+            data["entities"].append(entity.to_dict())
+        
+        if self._nx:
+            for source, target, edge_data in self.graph.edges(data=True):
+                data["relationships"].append({
+                    "source": source,
+                    "target": target,
+                    "relation": edge_data.get("relation", "related_to"),
+                    "attributes": edge_data.get("attributes", {}),
+                    "created_at": edge_data.get("created_at", datetime.now(timezone.utc).isoformat()),
+                })
+        else:
+            for rel in self._relationships:
+                data["relationships"].append(rel.to_dict())
+        
+        path.write_text(json.dumps(data, indent=2, default=str))
+
+    def load(self, path: str | Path | None = None) -> None:
+        """Load graph from JSON file."""
+        if path is None:
+            raise ValueError("Path required for InMemoryGraph.load()")
+        
+        path = Path(path)
+        if not path.exists():
+            return  # Nothing to load
+        
+        data = json.loads(path.read_text())
+        
+        # Clear existing data
+        self.clear()
+        
+        # Load entities
+        for e in data.get("entities", []):
+            self.add_entity(
+                e["id"],
+                e["type"],
+                e.get("attributes", {}),
+                e.get("source"),
+            )
+        
+        # Load relationships
+        for r in data.get("relationships", []):
+            self.add_relationship(
+                r["source"],
+                r["relation"],
+                r["target"],
+                r.get("attributes", {}),
+            )
+
+
+class SQLiteGraph(GraphBackend):
+    """SQLite-backed graph storage for persistence and large graphs."""
+    
+    def __init__(self, path: str | Path):
+        self._path = Path(path)
+        self._local = threading.local()
+        self._init_db()
+    
+    @property
+    def _conn(self) -> sqlite3.Connection:
+        """Get thread-local connection."""
+        if not hasattr(self._local, "conn") or self._local.conn is None:
+            self._local.conn = sqlite3.connect(str(self._path))
+            self._local.conn.row_factory = sqlite3.Row
+        return self._local.conn
+    
+    def _init_db(self) -> None:
+        """Initialize database schema."""
+        conn = self._conn
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS entities (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                attributes TEXT DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                source TEXT
+            );
+            
+            CREATE TABLE IF NOT EXISTS relationships (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id TEXT NOT NULL,
+                relation TEXT NOT NULL,
+                target_id TEXT NOT NULL,
+                attributes TEXT DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                source TEXT,
+                UNIQUE(source_id, relation, target_id)
+            );
+            
+            CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(type);
+            CREATE INDEX IF NOT EXISTS idx_rel_source ON relationships(source_id);
+            CREATE INDEX IF NOT EXISTS idx_rel_target ON relationships(target_id);
+            CREATE INDEX IF NOT EXISTS idx_rel_relation ON relationships(relation);
+        """)
+        conn.commit()
+    
+    def add_entity(
+        self,
+        entity_id: str,
+        entity_type: str,
+        attributes: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> Entity:
+        """Add or update an entity."""
+        now = datetime.now(timezone.utc).isoformat()
+        attrs_json = json.dumps(attributes or {})
+        
+        conn = self._conn
+        
+        # Check if exists
+        row = conn.execute(
+            "SELECT attributes, created_at FROM entities WHERE id = ?",
+            (entity_id,)
+        ).fetchone()
+        
+        if row:
+            # Merge attributes
+            existing_attrs = json.loads(row["attributes"])
+            merged_attrs = {**existing_attrs, **(attributes or {})}
+            conn.execute(
+                "UPDATE entities SET type = ?, attributes = ?, updated_at = ?, source = COALESCE(?, source) WHERE id = ?",
+                (entity_type, json.dumps(merged_attrs), now, source, entity_id)
+            )
+            created_at = row["created_at"]
+        else:
+            conn.execute(
+                "INSERT INTO entities (id, type, attributes, created_at, updated_at, source) VALUES (?, ?, ?, ?, ?, ?)",
+                (entity_id, entity_type, attrs_json, now, now, source)
+            )
+            created_at = now
+        
+        conn.commit()
+        
+        return Entity(
+            id=entity_id,
+            type=entity_type,
+            attributes=attributes or {},
+            created_at=datetime.fromisoformat(created_at),
+            updated_at=datetime.fromisoformat(now),
+            source=source,
+        )
+    
+    def get_entity(self, entity_id: str) -> Entity | None:
+        """Get an entity by ID."""
+        row = self._conn.execute(
+            "SELECT * FROM entities WHERE id = ?",
+            (entity_id,)
+        ).fetchone()
+        
+        if not row:
+            return None
+        
+        return Entity(
+            id=row["id"],
+            type=row["type"],
+            attributes=json.loads(row["attributes"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            source=row["source"],
+        )
+    
+    def add_relationship(
+        self,
+        source_id: str,
+        relation: str,
+        target_id: str,
+        attributes: dict[str, Any] | None = None,
+        source: str | None = None,
+    ) -> Relationship:
+        """Add a relationship between entities."""
+        now = datetime.now(timezone.utc)
+        attrs_json = json.dumps(attributes or {})
+        
+        conn = self._conn
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO relationships (source_id, relation, target_id, attributes, created_at, source) VALUES (?, ?, ?, ?, ?, ?)",
+                (source_id, relation, target_id, attrs_json, now.isoformat(), source)
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            pass  # Relationship already exists
+        
+        return Relationship(
+            source_id=source_id,
+            relation=relation,
+            target_id=target_id,
+            attributes=attributes or {},
+            created_at=now,
+            source=source,
+        )
+    
+    def get_relationships(
+        self,
+        entity_id: str,
+        relation: str | None = None,
+        direction: str = "outgoing",
+    ) -> list[Relationship]:
+        """Get relationships for an entity."""
+        results = []
+        conn = self._conn
+        
+        if direction in ("outgoing", "both"):
+            if relation:
+                rows = conn.execute(
+                    "SELECT * FROM relationships WHERE source_id = ? AND relation = ?",
+                    (entity_id, relation)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM relationships WHERE source_id = ?",
+                    (entity_id,)
+                ).fetchall()
+            
+            for row in rows:
+                results.append(Relationship(
+                    source_id=row["source_id"],
+                    relation=row["relation"],
+                    target_id=row["target_id"],
+                    attributes=json.loads(row["attributes"]),
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                ))
+        
+        if direction in ("incoming", "both"):
+            if relation:
+                rows = conn.execute(
+                    "SELECT * FROM relationships WHERE target_id = ? AND relation = ?",
+                    (entity_id, relation)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM relationships WHERE target_id = ?",
+                    (entity_id,)
+                ).fetchall()
+            
+            for row in rows:
+                results.append(Relationship(
+                    source_id=row["source_id"],
+                    relation=row["relation"],
+                    target_id=row["target_id"],
+                    attributes=json.loads(row["attributes"]),
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                ))
+        
+        return results
+    
+    def query(self, pattern: str) -> list[dict[str, Any]]:
+        """Query the graph with a pattern."""
+        results = []
+        pattern = pattern.strip()
+        
+        # Pattern: entity_id -relation-> ?
+        if " -" in pattern and "-> ?" in pattern:
+            parts = pattern.split(" -")
+            source = parts[0].strip()
+            relation = parts[1].replace("-> ?", "").strip()
+            relation = None if relation == "?" else relation
+            
+            for rel in self.get_relationships(source, relation, "outgoing"):
+                target = self.get_entity(rel.target_id)
+                results.append({
+                    "source": source,
+                    "relation": rel.relation,
+                    "target": rel.target_id,
+                    "target_type": target.type if target else "unknown",
+                    "target_attributes": target.attributes if target else {},
+                })
+        
+        # Pattern: ? -relation-> entity_id
+        elif "? -" in pattern and "-> " in pattern:
+            parts = pattern.split("-> ")
+            target = parts[1].strip()
+            relation = parts[0].replace("? -", "").strip()
+            relation = None if relation == "?" else relation
+            
+            for rel in self.get_relationships(target, relation, "incoming"):
+                source_entity = self.get_entity(rel.source_id)
+                results.append({
+                    "source": rel.source_id,
+                    "source_type": source_entity.type if source_entity else "unknown",
+                    "relation": rel.relation,
+                    "target": target,
+                })
+        
+        # Pattern: just entity_id - return entity + relationships
+        else:
+            entity = self.get_entity(pattern)
+            if entity:
+                results.append({
+                    "entity": entity.to_dict(),
+                    "outgoing": [r.to_dict() for r in self.get_relationships(pattern, direction="outgoing")],
+                    "incoming": [r.to_dict() for r in self.get_relationships(pattern, direction="incoming")],
+                })
+        
+        return results
+    
+    def find_path(self, source_id: str, target_id: str, max_depth: int = 3) -> list[list[str]] | None:
+        """Find paths between two entities using BFS."""
+        visited = set()
+        queue = [[source_id]]
+        
+        while queue:
+            path = queue.pop(0)
+            node = path[-1]
+            
+            if node == target_id:
+                return [path]
+            
+            if node in visited or len(path) > max_depth:
+                continue
+            
+            visited.add(node)
+            
+            for rel in self.get_relationships(node, direction="outgoing"):
+                new_path = path + [rel.target_id]
+                queue.append(new_path)
+        
+        return None
+    
+    def get_all_entities(self, entity_type: str | None = None, limit: int | None = None, offset: int = 0) -> list[Entity]:
+        """Get all entities, optionally filtered by type with pagination."""
+        conn = self._conn
+        
+        if entity_type:
+            query = "SELECT * FROM entities WHERE type = ?"
+            params: tuple = (entity_type,)
+        else:
+            query = "SELECT * FROM entities"
+            params = ()
+        
+        if limit is not None:
+            query += f" LIMIT {limit} OFFSET {offset}"
+        
+        rows = conn.execute(query, params).fetchall()
+        
+        return [
+            Entity(
+                id=row["id"],
+                type=row["type"],
+                attributes=json.loads(row["attributes"]),
+                created_at=datetime.fromisoformat(row["created_at"]),
+                updated_at=datetime.fromisoformat(row["updated_at"]),
+                source=row["source"],
+            )
+            for row in rows
+        ]
+    
+    def remove_entity(self, entity_id: str) -> bool:
+        """Remove an entity and its relationships."""
+        conn = self._conn
+        
+        cursor = conn.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
+        if cursor.rowcount == 0:
+            return False
+        
+        conn.execute("DELETE FROM relationships WHERE source_id = ? OR target_id = ?", (entity_id, entity_id))
+        conn.commit()
+        return True
+    
+    def stats(self) -> dict[str, int]:
+        """Get graph statistics."""
+        conn = self._conn
+        entities = conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
+        relationships = conn.execute("SELECT COUNT(*) FROM relationships").fetchone()[0]
+        return {
+            "entities": entities,
+            "relationships": relationships,
+        }
+    
+    def clear(self) -> None:
+        """Clear all entities and relationships."""
+        conn = self._conn
+        conn.execute("DELETE FROM entities")
+        conn.execute("DELETE FROM relationships")
+        conn.commit()
+    
+    def close(self) -> None:
+        """Close database connection."""
+        if hasattr(self._local, "conn") and self._local.conn:
+            self._local.conn.close()
+            self._local.conn = None
+
+
+class JSONFileGraph(GraphBackend):
+    """JSON file-backed graph with auto-save."""
+    
+    def __init__(self, path: str | Path, auto_save: bool = True):
+        self._path = Path(path)
+        self._auto_save = auto_save
+        self._memory = InMemoryGraph()
+        self.load()
+    
+    def _maybe_save(self) -> None:
+        """Auto-save if enabled."""
+        if self._auto_save:
+            self.save()
+    
+    def add_entity(self, entity_id: str, entity_type: str, attributes: dict[str, Any] | None = None, source: str | None = None) -> Entity:
+        result = self._memory.add_entity(entity_id, entity_type, attributes, source)
+        self._maybe_save()
+        return result
+    
+    def get_entity(self, entity_id: str) -> Entity | None:
+        return self._memory.get_entity(entity_id)
+    
+    def add_relationship(self, source_id: str, relation: str, target_id: str, attributes: dict[str, Any] | None = None, source: str | None = None) -> Relationship:
+        result = self._memory.add_relationship(source_id, relation, target_id, attributes, source)
+        self._maybe_save()
+        return result
+    
+    def get_relationships(self, entity_id: str, relation: str | None = None, direction: str = "outgoing") -> list[Relationship]:
+        return self._memory.get_relationships(entity_id, relation, direction)
+    
+    def query(self, pattern: str) -> list[dict[str, Any]]:
+        return self._memory.query(pattern)
+    
+    def find_path(self, source_id: str, target_id: str, max_depth: int = 3) -> list[list[str]] | None:
+        return self._memory.find_path(source_id, target_id, max_depth)
+    
+    def get_all_entities(self, entity_type: str | None = None) -> list[Entity]:
+        return self._memory.get_all_entities(entity_type)
+    
+    def remove_entity(self, entity_id: str) -> bool:
+        result = self._memory.remove_entity(entity_id)
+        if result:
+            self._maybe_save()
+        return result
+    
+    def stats(self) -> dict[str, int]:
+        return self._memory.stats()
+    
+    def clear(self) -> None:
+        self._memory.clear()
+        self._maybe_save()
+    
+    def save(self, path: str | Path | None = None) -> None:
+        """Save to JSON file."""
+        self._memory.save(path or self._path)
+    
+    def load(self, path: str | Path | None = None) -> None:
+        """Load from JSON file."""
+        self._memory.load(path or self._path)
+
 
 class KnowledgeGraph(BaseCapability):
     """
     Knowledge graph capability for persistent entity/relationship memory.
+    
+    Supports multiple backends:
+    - "memory": In-memory graph (default, uses networkx if available)
+    - "sqlite": SQLite database for persistence and large graphs
+    - "json": JSON file for simple persistence with auto-save
     
     Provides tools for:
     - remember: Store entities and facts
@@ -377,7 +942,15 @@ class KnowledgeGraph(BaseCapability):
         from agenticflow import Agent
         from agenticflow.capabilities import KnowledgeGraph
         
+        # In-memory (default)
         kg = KnowledgeGraph()
+        
+        # SQLite for persistence and large graphs
+        kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
+        
+        # JSON file with auto-save
+        kg = KnowledgeGraph(backend="json", path="knowledge.json")
+        
         agent = Agent(
             name="Assistant",
             model=model,
@@ -391,26 +964,49 @@ class KnowledgeGraph(BaseCapability):
         # Direct access to graph
         kg.graph.add_entity("Bob", "Person", {"role": "Manager"})
         kg.graph.add_relationship("Alice", "reports_to", "Bob")
+        
+        # Persistence (for memory backend, explicit save needed)
+        kg.save("backup.json")  # Save to file
+        kg.load("backup.json")  # Load from file
         ```
     """
     
-    def __init__(self, backend: str = "memory", name: str | None = None):
+    def __init__(
+        self,
+        backend: str = "memory",
+        path: str | Path | None = None,
+        name: str | None = None,
+        auto_save: bool = True,
+    ):
         """
         Initialize KnowledgeGraph capability.
         
         Args:
-            backend: Storage backend. Currently supports:
+            backend: Storage backend:
                 - "memory": In-memory graph (uses networkx if available)
+                - "sqlite": SQLite database for persistence
+                - "json": JSON file with auto-save
+            path: Path to storage file (required for sqlite/json backends)
             name: Optional custom name for this capability instance
+            auto_save: For json backend, save after each modification (default: True)
         """
-        if backend == "memory":
-            self.graph = InMemoryGraph()
-        else:
-            raise ValueError(f"Unknown backend: {backend}. Supported: 'memory'")
-        
         self._backend = backend
+        self._path = Path(path) if path else None
         self._name = name
         self._tools_cache: dict[str, BaseTool] | None = None
+        
+        if backend == "memory":
+            self.graph: GraphBackend = InMemoryGraph()
+        elif backend == "sqlite":
+            if not path:
+                raise ValueError("Path required for sqlite backend")
+            self.graph = SQLiteGraph(path)
+        elif backend == "json":
+            if not path:
+                raise ValueError("Path required for json backend")
+            self.graph = JSONFileGraph(path, auto_save=auto_save)
+        else:
+            raise ValueError(f"Unknown backend: {backend}. Supported: 'memory', 'sqlite', 'json'")
     
     @property
     def name(self) -> str:
@@ -823,9 +1419,62 @@ class KnowledgeGraph(BaseCapability):
         """Clear all entities and relationships from the graph."""
         self.graph.clear()
 
+    def save(self, path: str | Path | None = None) -> None:
+        """
+        Save graph to file.
+        
+        For memory backend: saves to specified path (required).
+        For sqlite backend: no-op (data is already persisted).
+        For json backend: saves to original path or specified path.
+        
+        Args:
+            path: File path (required for memory backend)
+        """
+        if self._backend == "sqlite":
+            return  # SQLite auto-persists
+        
+        save_path = path or self._path
+        if not save_path and self._backend == "memory":
+            raise ValueError("Path required for save() on memory backend")
+        
+        self.graph.save(save_path)
+    
+    def load(self, path: str | Path | None = None) -> None:
+        """
+        Load graph from file.
+        
+        For memory backend: loads from specified path (required).
+        For sqlite backend: no-op (data is already loaded).
+        For json backend: reloads from file.
+        
+        Args:
+            path: File path (required for memory backend)
+        """
+        if self._backend == "sqlite":
+            return  # SQLite auto-loads
+        
+        load_path = path or self._path
+        if not load_path and self._backend == "memory":
+            raise ValueError("Path required for load() on memory backend")
+        
+        self.graph.load(load_path)
+    
+    def close(self) -> None:
+        """Close any open connections (for sqlite backend)."""
+        self.graph.close()
+    
+    def __enter__(self) -> "KnowledgeGraph":
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit - closes connections."""
+        self.close()
+
     def to_dict(self) -> dict[str, Any]:
         """Convert capability info to dictionary."""
         base = super().to_dict()
         base["backend"] = self._backend
+        base["path"] = str(self._path) if self._path else None
         base["stats"] = self.graph.stats()
         return base

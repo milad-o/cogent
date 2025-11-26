@@ -388,3 +388,279 @@ class TestAgentWithCapabilities:
                 model=model,
                 capabilities=["not_a_capability"],
             )
+
+
+class TestInMemoryGraphPersistence:
+    """Tests for InMemoryGraph save/load functionality."""
+    
+    def test_save_and_load(self, tmp_path):
+        """Test saving and loading graph to JSON."""
+        graph = InMemoryGraph()
+        graph.add_entity("Alice", "Person", {"role": "engineer"})
+        graph.add_entity("Acme", "Company", {"industry": "tech"})
+        graph.add_relationship("Alice", "works_at", "Acme")
+        
+        # Save
+        save_path = tmp_path / "graph.json"
+        graph.save(save_path)
+        
+        assert save_path.exists()
+        
+        # Load into new graph
+        graph2 = InMemoryGraph()
+        graph2.load(save_path)
+        
+        # Verify
+        alice = graph2.get_entity("Alice")
+        assert alice is not None
+        assert alice.type == "Person"
+        assert alice.attributes["role"] == "engineer"
+        
+        acme = graph2.get_entity("Acme")
+        assert acme is not None
+        
+        rels = graph2.get_relationships("Alice", direction="outgoing")
+        assert len(rels) == 1
+        assert rels[0].relation == "works_at"
+        assert rels[0].target_id == "Acme"
+    
+    def test_load_nonexistent_file(self, tmp_path):
+        """Test loading from non-existent file does nothing."""
+        graph = InMemoryGraph()
+        graph.load(tmp_path / "nonexistent.json")
+        
+        # Graph should still be empty
+        assert graph.stats()["entities"] == 0
+
+
+class TestSQLiteGraph:
+    """Tests for SQLiteGraph backend."""
+    
+    def test_create_and_query(self, tmp_path):
+        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        
+        db_path = tmp_path / "test.db"
+        graph = SQLiteGraph(db_path)
+        
+        # Add data
+        graph.add_entity("Alice", "Person", {"role": "engineer"})
+        graph.add_entity("Acme", "Company")
+        graph.add_relationship("Alice", "works_at", "Acme")
+        
+        # Query
+        alice = graph.get_entity("Alice")
+        assert alice is not None
+        assert alice.type == "Person"
+        assert alice.attributes["role"] == "engineer"
+        
+        rels = graph.get_relationships("Alice", direction="outgoing")
+        assert len(rels) == 1
+        assert rels[0].target_id == "Acme"
+        
+        graph.close()
+    
+    def test_persistence_across_connections(self, tmp_path):
+        """Test that data persists across connections."""
+        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        
+        db_path = tmp_path / "persist.db"
+        
+        # First connection
+        graph1 = SQLiteGraph(db_path)
+        graph1.add_entity("Alice", "Person", {"role": "engineer"})
+        graph1.close()
+        
+        # Second connection
+        graph2 = SQLiteGraph(db_path)
+        alice = graph2.get_entity("Alice")
+        assert alice is not None
+        assert alice.attributes["role"] == "engineer"
+        graph2.close()
+    
+    def test_query_patterns(self, tmp_path):
+        """Test query patterns work with SQLite."""
+        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        
+        db_path = tmp_path / "query.db"
+        graph = SQLiteGraph(db_path)
+        
+        graph.add_entity("Alice", "Person")
+        graph.add_entity("Bob", "Person")
+        graph.add_entity("Acme", "Company")
+        graph.add_relationship("Alice", "works_at", "Acme")
+        graph.add_relationship("Bob", "works_at", "Acme")
+        
+        # Find who works at Acme
+        results = graph.query("? -works_at-> Acme")
+        assert len(results) == 2
+        sources = {r["source"] for r in results}
+        assert sources == {"Alice", "Bob"}
+        
+        graph.close()
+    
+    def test_stats(self, tmp_path):
+        """Test stats with SQLite."""
+        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        
+        db_path = tmp_path / "stats.db"
+        graph = SQLiteGraph(db_path)
+        
+        graph.add_entity("Alice", "Person")
+        graph.add_entity("Acme", "Company")
+        graph.add_relationship("Alice", "works_at", "Acme")
+        
+        stats = graph.stats()
+        assert stats["entities"] == 2
+        assert stats["relationships"] == 1
+        
+        graph.close()
+    
+    def test_clear(self, tmp_path):
+        """Test clearing SQLite graph."""
+        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        
+        db_path = tmp_path / "clear.db"
+        graph = SQLiteGraph(db_path)
+        
+        graph.add_entity("Alice", "Person")
+        graph.add_relationship("Alice", "knows", "Bob")
+        graph.clear()
+        
+        assert graph.stats()["entities"] == 0
+        assert graph.stats()["relationships"] == 0
+        
+        graph.close()
+
+
+class TestJSONFileGraph:
+    """Tests for JSONFileGraph backend."""
+    
+    def test_auto_save(self, tmp_path):
+        """Test that changes are auto-saved."""
+        from agenticflow.capabilities.knowledge_graph import JSONFileGraph
+        import json
+        
+        file_path = tmp_path / "auto.json"
+        graph = JSONFileGraph(file_path, auto_save=True)
+        
+        graph.add_entity("Alice", "Person", {"role": "engineer"})
+        
+        # Check file was written
+        assert file_path.exists()
+        data = json.loads(file_path.read_text())
+        assert len(data["entities"]) == 1
+        assert data["entities"][0]["id"] == "Alice"
+    
+    def test_no_auto_save(self, tmp_path):
+        """Test manual save when auto_save is False."""
+        from agenticflow.capabilities.knowledge_graph import JSONFileGraph
+        
+        file_path = tmp_path / "manual.json"
+        graph = JSONFileGraph(file_path, auto_save=False)
+        
+        graph.add_entity("Alice", "Person")
+        
+        # File shouldn't exist yet (or should be empty if created on init)
+        if file_path.exists():
+            import json
+            data = json.loads(file_path.read_text())
+            assert len(data.get("entities", [])) == 0
+        
+        # Now save manually
+        graph.save()
+        
+        import json
+        data = json.loads(file_path.read_text())
+        assert len(data["entities"]) == 1
+
+
+class TestKnowledgeGraphBackends:
+    """Tests for KnowledgeGraph with different backends."""
+    
+    def test_memory_backend(self):
+        """Test default memory backend."""
+        kg = KnowledgeGraph(backend="memory")
+        kg.graph.add_entity("Alice", "Person")
+        
+        assert kg.graph.get_entity("Alice") is not None
+        assert kg._backend == "memory"
+    
+    def test_sqlite_backend(self, tmp_path):
+        """Test SQLite backend."""
+        db_path = tmp_path / "kg.db"
+        kg = KnowledgeGraph(backend="sqlite", path=db_path)
+        
+        kg.graph.add_entity("Alice", "Person", {"role": "engineer"})
+        
+        alice = kg.graph.get_entity("Alice")
+        assert alice is not None
+        assert alice.attributes["role"] == "engineer"
+        
+        kg.close()
+    
+    def test_json_backend(self, tmp_path):
+        """Test JSON file backend."""
+        file_path = tmp_path / "kg.json"
+        kg = KnowledgeGraph(backend="json", path=file_path)
+        
+        kg.graph.add_entity("Alice", "Person", {"role": "engineer"})
+        
+        # Should auto-save
+        assert file_path.exists()
+    
+    def test_sqlite_requires_path(self):
+        """Test that SQLite backend requires path."""
+        with pytest.raises(ValueError, match="Path required"):
+            KnowledgeGraph(backend="sqlite")
+    
+    def test_json_requires_path(self):
+        """Test that JSON backend requires path."""
+        with pytest.raises(ValueError, match="Path required"):
+            KnowledgeGraph(backend="json")
+    
+    def test_invalid_backend(self):
+        """Test invalid backend raises error."""
+        with pytest.raises(ValueError, match="Unknown backend"):
+            KnowledgeGraph(backend="invalid")
+    
+    def test_context_manager(self, tmp_path):
+        """Test using KnowledgeGraph as context manager."""
+        db_path = tmp_path / "context.db"
+        
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
+            kg.graph.add_entity("Alice", "Person")
+        
+        # Connection should be closed, but file exists
+        assert db_path.exists()
+    
+    def test_memory_save_load(self, tmp_path):
+        """Test save/load with memory backend."""
+        kg = KnowledgeGraph(backend="memory")
+        kg.graph.add_entity("Alice", "Person", {"role": "engineer"})
+        kg.graph.add_entity("Acme", "Company")
+        kg.graph.add_relationship("Alice", "works_at", "Acme")
+        
+        # Save
+        save_path = tmp_path / "backup.json"
+        kg.save(save_path)
+        
+        # Clear and reload
+        kg.clear()
+        assert kg.stats()["entities"] == 0
+        
+        kg.load(save_path)
+        assert kg.stats()["entities"] == 2  # Alice and Acme
+        assert kg.graph.get_entity("Alice") is not None
+        assert kg.graph.get_entity("Acme") is not None
+    
+    def test_to_dict_includes_backend(self, tmp_path):
+        """Test to_dict includes backend info."""
+        db_path = tmp_path / "dict.db"
+        kg = KnowledgeGraph(backend="sqlite", path=db_path)
+        
+        info = kg.to_dict()
+        assert info["backend"] == "sqlite"
+        assert "path" in info
+        assert "stats" in info
+        
+        kg.close()

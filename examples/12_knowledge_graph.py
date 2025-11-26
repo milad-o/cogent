@@ -8,15 +8,18 @@ drill down through the graph to find answers.
 
 Key features demonstrated:
 1. Load knowledge from a data file
-2. Agent uses KG tools to explore and find answers
-3. Multi-hop reasoning through relationships
-4. Clean programmatic API for direct access
+2. Multiple storage backends (memory, sqlite, json)
+3. Agent uses KG tools to explore and find answers
+4. Multi-hop reasoning through relationships
+5. Save/load for persistence
+6. Clean programmatic API for direct access
 """
 
 import asyncio
 import json
 import os
 from pathlib import Path
+import tempfile
 
 from dotenv import load_dotenv
 
@@ -166,9 +169,51 @@ to trace the path and provide complete answers.""",
         rels = kg.get_relationships("Frank Martinez", direction="outgoing")
         print(f"   Relationships: {[(r.relation, r.target_id) for r in rels]}")
     
+    # === Step 7: Persistence Demo ===
+    print("\n💾 Step 7: Persistence Demo")
+    print("-" * 40)
+    
+    # Demo 1: Save memory graph to file
+    with tempfile.TemporaryDirectory() as tmpdir:
+        save_path = Path(tmpdir) / "knowledge_backup.json"
+        kg.save(save_path)
+        print(f"✅ Saved to: {save_path}")
+        print(f"   File size: {save_path.stat().st_size} bytes")
+        
+        # Create new graph and load
+        from agenticflow.capabilities import KnowledgeGraph as KG
+        kg2 = KG(backend="memory")
+        kg2.load(save_path)
+        print(f"✅ Loaded into new graph: {kg2.stats()}")
+        
+        # Demo 2: SQLite backend (persistent by default)
+        db_path = Path(tmpdir) / "knowledge.db"
+        with KG(backend="sqlite", path=db_path) as kg_sqlite:
+            kg_sqlite.graph.add_entity("Test", "Demo", {"note": "SQLite persists automatically"})
+            print(f"\n✅ SQLite backend:")
+            print(f"   Path: {db_path}")
+            print(f"   Stats: {kg_sqlite.stats()}")
+        
+        # Reopen to verify persistence
+        with KG(backend="sqlite", path=db_path) as kg_sqlite2:
+            test = kg_sqlite2.get_entity("Test")
+            print(f"   Reloaded: {test.id if test else 'Not found'} - {test.attributes if test else {}}")
+        
+        # Demo 3: JSON backend (auto-saves)
+        json_path = Path(tmpdir) / "knowledge.json"
+        kg_json = KG(backend="json", path=json_path, auto_save=True)
+        kg_json.graph.add_entity("Auto", "Demo", {"note": "Auto-saved on change"})
+        print(f"\n✅ JSON backend (auto-save):")
+        print(f"   Path: {json_path}")
+        print(f"   File exists: {json_path.exists()}")
+    
     print("\n" + "=" * 60)
     print("✅ Summary:")
     print("   - Load knowledge from structured files")
+    print("   - Multiple backends: memory, sqlite, json")
+    print("   - Memory backend: explicit save/load")
+    print("   - SQLite backend: auto-persistent, great for large graphs")
+    print("   - JSON backend: auto-save on changes")
     print("   - Clean API: kg.add_entity(), kg.get_relationships()")
     print("   - Multi-hop queries with find_path()")
     print("   - Agents drill down through graph to find answers")
