@@ -7,6 +7,7 @@ Capabilities are reusable building blocks that add tools to agents:
 - FileSystem: Sandboxed file operations with security controls
 - WebSearch: Web search and page fetching (DuckDuckGo, free)
 - CodeSandbox: Safe Python code execution
+- SSISAnalyzer: SSIS package analysis and data lineage tracing
 
 Example:
     ```python
@@ -34,6 +35,7 @@ from agenticflow.capabilities.codebase import CodebaseAnalyzer
 from agenticflow.capabilities.code_sandbox import CodeSandbox
 from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
+from agenticflow.capabilities.ssis import SSISAnalyzer
 from agenticflow.capabilities.web_search import WebSearch
 
 __all__ = [
@@ -42,5 +44,6 @@ __all__ = [
     "CodeSandbox",
     "FileSystem",
     "KnowledgeGraph",
+    "SSISAnalyzer",
     "WebSearch",
 ]
