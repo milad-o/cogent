@@ -146,8 +146,13 @@ class GraphBackend(ABC):
         pass
     
     @abstractmethod
-    def get_all_entities(self, entity_type: str | None = None) -> list[Entity]:
-        """Get all entities, optionally filtered by type."""
+    def get_all_entities(
+        self,
+        entity_type: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Entity]:
+        """Get all entities, optionally filtered by type with pagination."""
         pass
     
     @abstractmethod
@@ -164,6 +169,25 @@ class GraphBackend(ABC):
     def clear(self) -> None:
         """Clear all entities and relationships."""
         pass
+    
+    # Optional batch methods for performance (default implementations)
+    def add_entities_batch(
+        self,
+        entities: list[tuple[str, str, dict[str, Any] | None]],
+    ) -> int:
+        """Bulk insert entities. Override for better performance."""
+        for eid, etype, attrs in entities:
+            self.add_entity(eid, etype, attrs)
+        return len(entities)
+    
+    def add_relationships_batch(
+        self,
+        relationships: list[tuple[str, str, str]],
+    ) -> int:
+        """Bulk insert relationships. Override for better performance."""
+        for src, rel, tgt in relationships:
+            self.add_relationship(src, rel, tgt)
+        return len(relationships)
     
     def save(self, path: str | Path | None = None) -> None:
         """Save graph to persistent storage (optional)."""
@@ -407,8 +431,13 @@ class InMemoryGraph(GraphBackend):
             
             return None
     
-    def get_all_entities(self, entity_type: str | None = None) -> list[Entity]:
-        """Get all entities, optionally filtered by type."""
+    def get_all_entities(
+        self,
+        entity_type: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Entity]:
+        """Get all entities, optionally filtered by type with pagination."""
         if self._nx:
             entities = []
             for node_id, data in self.graph.nodes(data=True):
@@ -418,11 +447,19 @@ class InMemoryGraph(GraphBackend):
                         type=data.get("type", "unknown"),
                         attributes=data.get("attributes", {}),
                     ))
-            return entities
+            # Apply pagination
+            if limit is not None:
+                return entities[offset:offset + limit]
+            return entities[offset:] if offset else entities
         else:
             if entity_type is None:
-                return list(self._entities.values())
-            return [e for e in self._entities.values() if e.type == entity_type]
+                entities = list(self._entities.values())
+            else:
+                entities = [e for e in self._entities.values() if e.type == entity_type]
+            # Apply pagination
+            if limit is not None:
+                return entities[offset:offset + limit]
+            return entities[offset:] if offset else entities
     
     def remove_entity(self, entity_id: str) -> bool:
         """Remove an entity and its relationships."""
@@ -618,6 +655,65 @@ class SQLiteGraph(GraphBackend):
             updated_at=datetime.fromisoformat(now),
             source=source,
         )
+    
+    def add_entities_batch(
+        self,
+        entities: list[tuple[str, str, dict[str, Any] | None]],
+    ) -> int:
+        """
+        Bulk insert entities for high performance.
+        
+        Args:
+            entities: List of (entity_id, entity_type, attributes) tuples
+        
+        Returns:
+            Number of entities inserted
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        conn = self._conn
+        
+        # Use executemany for batch insert
+        data = [
+            (eid, etype, json.dumps(attrs or {}), now, now, None)
+            for eid, etype, attrs in entities
+        ]
+        
+        conn.executemany(
+            "INSERT OR REPLACE INTO entities (id, type, attributes, created_at, updated_at, source) VALUES (?, ?, ?, ?, ?, ?)",
+            data
+        )
+        conn.commit()
+        
+        return len(entities)
+    
+    def add_relationships_batch(
+        self,
+        relationships: list[tuple[str, str, str]],
+    ) -> int:
+        """
+        Bulk insert relationships for high performance.
+        
+        Args:
+            relationships: List of (source_id, relation, target_id) tuples
+        
+        Returns:
+            Number of relationships inserted
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        conn = self._conn
+        
+        data = [
+            (src, rel, tgt, "{}", now, None)
+            for src, rel, tgt in relationships
+        ]
+        
+        conn.executemany(
+            "INSERT OR IGNORE INTO relationships (source_id, relation, target_id, attributes, created_at, source) VALUES (?, ?, ?, ?, ?, ?)",
+            data
+        )
+        conn.commit()
+        
+        return len(relationships)
     
     def get_entity(self, entity_id: str) -> Entity | None:
         """Get an entity by ID."""
@@ -896,8 +992,13 @@ class JSONFileGraph(GraphBackend):
     def find_path(self, source_id: str, target_id: str, max_depth: int = 3) -> list[list[str]] | None:
         return self._memory.find_path(source_id, target_id, max_depth)
     
-    def get_all_entities(self, entity_type: str | None = None) -> list[Entity]:
-        return self._memory.get_all_entities(entity_type)
+    def get_all_entities(
+        self,
+        entity_type: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Entity]:
+        return self._memory.get_all_entities(entity_type, limit=limit, offset=offset)
     
     def remove_entity(self, entity_id: str) -> bool:
         result = self._memory.remove_entity(entity_id)
@@ -1357,6 +1458,58 @@ class KnowledgeGraph(BaseCapability):
         """
         return self.graph.add_relationship(source, relation, target, attributes)
 
+    def add_entities_batch(
+        self,
+        entities: list[tuple[str, str, dict[str, Any] | None]],
+    ) -> int:
+        """
+        Bulk insert entities for high performance.
+        
+        This is much faster than calling add_entity() in a loop for large datasets.
+        
+        Args:
+            entities: List of (entity_id, entity_type, attributes) tuples
+        
+        Returns:
+            Number of entities inserted
+        
+        Example:
+            ```python
+            kg.add_entities_batch([
+                ("Alice", "Person", {"role": "engineer"}),
+                ("Bob", "Person", {"role": "manager"}),
+                ("Acme", "Company", {"industry": "tech"}),
+            ])
+            ```
+        """
+        return self.graph.add_entities_batch(entities)
+    
+    def add_relationships_batch(
+        self,
+        relationships: list[tuple[str, str, str]],
+    ) -> int:
+        """
+        Bulk insert relationships for high performance.
+        
+        This is much faster than calling add_relationship() in a loop.
+        
+        Args:
+            relationships: List of (source_id, relation, target_id) tuples
+        
+        Returns:
+            Number of relationships inserted
+        
+        Example:
+            ```python
+            kg.add_relationships_batch([
+                ("Alice", "works_at", "Acme"),
+                ("Bob", "manages", "Alice"),
+                ("Alice", "knows", "Bob"),
+            ])
+            ```
+        """
+        return self.graph.add_relationships_batch(relationships)
+
     def get_entity(self, entity_id: str) -> Entity | None:
         """
         Get an entity by ID.
@@ -1369,17 +1522,24 @@ class KnowledgeGraph(BaseCapability):
         """
         return self.graph.get_entity(entity_id)
 
-    def get_entities(self, entity_type: str | None = None) -> list[Entity]:
+    def get_entities(
+        self,
+        entity_type: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Entity]:
         """
-        Get all entities, optionally filtered by type.
+        Get all entities, optionally filtered by type with pagination.
 
         Args:
             entity_type: Optional type filter
+            limit: Maximum number of entities to return (for pagination)
+            offset: Number of entities to skip (for pagination)
 
         Returns:
             List of Entity objects
         """
-        return self.graph.get_all_entities(entity_type)
+        return self.graph.get_all_entities(entity_type, limit=limit, offset=offset)
 
     def get_relationships(
         self,

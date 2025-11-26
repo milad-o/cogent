@@ -734,3 +734,114 @@ class TestKnowledgeGraphFromFile:
         kg2 = KnowledgeGraph.from_file(db_path, name="my_kg")
         assert kg2.name == "my_kg"
         kg2.close()
+
+
+class TestKnowledgeGraphBatchOperations:
+    """Tests for batch operations (performance optimization)."""
+    
+    def test_add_entities_batch_sqlite(self, tmp_path):
+        """Test batch entity insertion with SQLite."""
+        db_path = tmp_path / "batch.db"
+        
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
+            entities = [
+                ("Alice", "Person", {"role": "engineer"}),
+                ("Bob", "Person", {"role": "manager"}),
+                ("Acme", "Company", {"industry": "tech"}),
+            ]
+            
+            count = kg.add_entities_batch(entities)
+            
+            assert count == 3
+            assert kg.stats()["entities"] == 3
+            
+            alice = kg.get_entity("Alice")
+            assert alice is not None
+            assert alice.attributes["role"] == "engineer"
+    
+    def test_add_relationships_batch_sqlite(self, tmp_path):
+        """Test batch relationship insertion with SQLite."""
+        db_path = tmp_path / "batch_rel.db"
+        
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
+            # Add entities first
+            kg.add_entities_batch([
+                ("Alice", "Person", None),
+                ("Bob", "Person", None),
+                ("Acme", "Company", None),
+            ])
+            
+            # Batch add relationships
+            relationships = [
+                ("Alice", "works_at", "Acme"),
+                ("Bob", "works_at", "Acme"),
+                ("Alice", "reports_to", "Bob"),
+            ]
+            
+            count = kg.add_relationships_batch(relationships)
+            
+            assert count == 3
+            assert kg.stats()["relationships"] == 3
+            
+            alice_rels = kg.get_relationships("Alice", direction="outgoing")
+            assert len(alice_rels) == 2
+    
+    def test_batch_with_memory_backend(self):
+        """Test batch operations work with memory backend (uses default implementation)."""
+        kg = KnowledgeGraph(backend="memory")
+        
+        entities = [
+            ("E1", "Type1", {"a": 1}),
+            ("E2", "Type1", {"a": 2}),
+            ("E3", "Type2", {"a": 3}),
+        ]
+        
+        count = kg.add_entities_batch(entities)
+        assert count == 3
+        assert kg.stats()["entities"] == 3
+    
+    def test_pagination_memory(self):
+        """Test pagination with memory backend."""
+        kg = KnowledgeGraph(backend="memory")
+        
+        # Add 100 entities
+        entities = [(f"E_{i}", "Test", {"idx": i}) for i in range(100)]
+        kg.add_entities_batch(entities)
+        
+        # Get first page
+        page1 = kg.get_entities(limit=10, offset=0)
+        assert len(page1) == 10
+        
+        # Get second page
+        page2 = kg.get_entities(limit=10, offset=10)
+        assert len(page2) == 10
+        assert page1[0].id != page2[0].id
+        
+        # Get page beyond data
+        page_beyond = kg.get_entities(limit=10, offset=200)
+        assert len(page_beyond) == 0
+    
+    def test_pagination_sqlite(self, tmp_path):
+        """Test pagination with SQLite backend."""
+        db_path = tmp_path / "paginate.db"
+        
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
+            # Add 100 entities
+            entities = [(f"E_{i}", "Test", {"idx": i}) for i in range(100)]
+            kg.add_entities_batch(entities)
+            
+            # Paginate
+            page1 = kg.get_entities(limit=20, offset=0)
+            assert len(page1) == 20
+            
+            page3 = kg.get_entities(limit=20, offset=40)
+            assert len(page3) == 20
+            
+            # Filter + paginate
+            kg.add_entities_batch([
+                ("P1", "Person", None),
+                ("P2", "Person", None),
+            ])
+            
+            people = kg.get_entities(entity_type="Person", limit=10)
+            assert len(people) == 2
