@@ -1008,6 +1008,57 @@ class KnowledgeGraph(BaseCapability):
         else:
             raise ValueError(f"Unknown backend: {backend}. Supported: 'memory', 'sqlite', 'json'")
     
+    @classmethod
+    def from_file(
+        cls,
+        path: str | Path,
+        name: str | None = None,
+    ) -> "KnowledgeGraph":
+        """
+        Load a KnowledgeGraph from an existing file.
+        
+        Automatically detects the backend based on file extension:
+        - .db, .sqlite, .sqlite3 → SQLite backend
+        - .json → JSON backend (with auto-save)
+        
+        This is the simplest way to load an existing knowledge graph.
+        
+        Args:
+            path: Path to existing knowledge store file
+            name: Optional custom name for this capability instance
+        
+        Returns:
+            KnowledgeGraph instance loaded from the file
+        
+        Example:
+            ```python
+            # Load existing SQLite database
+            kg = KnowledgeGraph.from_file("knowledge.db")
+            
+            # Load existing JSON file
+            kg = KnowledgeGraph.from_file("knowledge.json")
+            
+            # Use with agent
+            agent = Agent(
+                name="Assistant",
+                capabilities=[KnowledgeGraph.from_file("company.db")],
+            )
+            ```
+        """
+        path = Path(path)
+        suffix = path.suffix.lower()
+        
+        if suffix in (".db", ".sqlite", ".sqlite3"):
+            return cls(backend="sqlite", path=path, name=name)
+        elif suffix == ".json":
+            return cls(backend="json", path=path, name=name, auto_save=True)
+        else:
+            raise ValueError(
+                f"Unknown file extension: {suffix}. "
+                "Use .db/.sqlite for SQLite or .json for JSON. "
+                "Or use KnowledgeGraph(backend=..., path=...) directly."
+            )
+    
     @property
     def name(self) -> str:
         return self._name or "knowledge_graph"

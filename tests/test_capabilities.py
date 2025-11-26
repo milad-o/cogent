@@ -664,3 +664,73 @@ class TestKnowledgeGraphBackends:
         assert "stats" in info
         
         kg.close()
+
+
+class TestKnowledgeGraphFromFile:
+    """Tests for KnowledgeGraph.from_file() convenience method."""
+    
+    def test_from_sqlite_file(self, tmp_path):
+        """Test loading from .db file."""
+        db_path = tmp_path / "test.db"
+        
+        # Create a database first
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
+            kg.graph.add_entity("Alice", "Person", {"role": "engineer"})
+        
+        # Load using from_file
+        kg2 = KnowledgeGraph.from_file(db_path)
+        
+        assert kg2._backend == "sqlite"
+        alice = kg2.get_entity("Alice")
+        assert alice is not None
+        assert alice.attributes["role"] == "engineer"
+        
+        kg2.close()
+    
+    def test_from_json_file(self, tmp_path):
+        """Test loading from .json file."""
+        json_path = tmp_path / "test.json"
+        
+        # Create a JSON file first
+        kg1 = KnowledgeGraph(backend="json", path=json_path)
+        kg1.graph.add_entity("Bob", "Person", {"team": "backend"})
+        
+        # Load using from_file (fresh instance)
+        kg2 = KnowledgeGraph.from_file(json_path)
+        
+        assert kg2._backend == "json"
+        bob = kg2.get_entity("Bob")
+        assert bob is not None
+        assert bob.attributes["team"] == "backend"
+    
+    def test_from_sqlite3_extension(self, tmp_path):
+        """Test .sqlite3 extension is recognized."""
+        db_path = tmp_path / "test.sqlite3"
+        
+        # Create
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
+            kg.graph.add_entity("Test", "Demo")
+        
+        # Load
+        kg2 = KnowledgeGraph.from_file(db_path)
+        assert kg2._backend == "sqlite"
+        kg2.close()
+    
+    def test_from_unknown_extension_raises(self, tmp_path):
+        """Test unknown extension raises error."""
+        bad_path = tmp_path / "test.xyz"
+        bad_path.touch()
+        
+        with pytest.raises(ValueError, match="Unknown file extension"):
+            KnowledgeGraph.from_file(bad_path)
+    
+    def test_from_file_with_name(self, tmp_path):
+        """Test from_file accepts custom name."""
+        db_path = tmp_path / "named.db"
+        
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
+            kg.graph.add_entity("Test", "Demo")
+        
+        kg2 = KnowledgeGraph.from_file(db_path, name="my_kg")
+        assert kg2.name == "my_kg"
+        kg2.close()
