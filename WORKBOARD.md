@@ -44,11 +44,14 @@ Agent(capabilities=[KnowledgeGraph(), WebSearch(), ...])
 - [x] Tests: 49 tests passing
 - [x] Example: `examples/14_filesystem.py`
 
-### Phase 5: WebSearch
-- [ ] `capabilities/web_search.py`
-  - [ ] Tavily integration
-  - [ ] Search + fetch tools
-  - [ ] Result deduplication
+### Phase 5: WebSearch ✅
+- [x] `capabilities/web_search.py`
+  - [x] DuckDuckGo integration (free, no API key)
+  - [x] Tools: web_search, news_search, fetch_webpage
+  - [x] HTML content extraction (BeautifulSoup)
+  - [x] Page caching
+- [x] Tests: 27 tests (2 skipped integration)
+- [x] Example: `examples/15_web_search.py`
 
 ### Phase 6: CodeSandbox
 - [ ] `capabilities/code_sandbox.py`
@@ -56,5 +59,5 @@ Agent(capabilities=[KnowledgeGraph(), WebSearch(), ...])
   - [ ] execute, test tools
 
 ---
-**Status**: Phase 4 complete, 373 tests passing
+**Status**: Phase 5 complete, 400 tests passing
 **Last Updated**: 2025-11-26
