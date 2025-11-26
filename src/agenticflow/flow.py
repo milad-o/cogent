@@ -69,6 +69,7 @@ from agenticflow.agents.base import Agent
 from agenticflow.core.enums import AgentRole
 from agenticflow.events.bus import EventBus
 from agenticflow.events.handlers import ConsoleEventHandler
+from agenticflow.observability.observer import FlowObserver, ObservabilityLevel, Channel
 from agenticflow.observability.progress import OutputConfig, ProgressTracker, Verbosity
 from agenticflow.tasks.manager import TaskManager
 from agenticflow.tools.registry import ToolRegistry
@@ -210,6 +211,7 @@ class Flow:
         config: FlowConfig | None = None,
         # Observability shortcuts
         verbose: bool = False,
+        observer: FlowObserver | None = None,
     ) -> None:
         """
         Create a Flow.
@@ -223,11 +225,13 @@ class Flow:
             levels: For hierarchical topology - list of levels (each a list of names).
             policy: For custom topology - explicit routing policy.
             config: Advanced configuration options.
-            verbose: Shortcut to enable verbose output.
+            verbose: Shortcut to enable verbose output (legacy, prefer observer).
+            observer: FlowObserver for fine-grained observability control.
         """
         self.name = name
         self._agents = list(agents)
         self._config = config or FlowConfig()
+        self._observer = observer
         
         if verbose:
             self._config.verbose = True
@@ -282,9 +286,14 @@ class Flow:
     
     def _setup_event_handlers(self) -> None:
         """Setup observability based on config."""
+        # Legacy verbose mode (ConsoleEventHandler)
         if self._config.verbose or self._config.log_events:
             handler = ConsoleEventHandler(verbose=self._config.verbose)
             self._event_bus.subscribe_all(handler)
+        
+        # New FlowObserver system
+        if self._observer is not None:
+            self._observer.attach(self._event_bus)
     
     def _build_topology(self) -> BaseTopology:
         """Build the topology based on pattern and agents."""
@@ -414,6 +423,49 @@ class Flow:
     def tool_registry(self) -> ToolRegistry:
         """Access the tool registry (for advanced use)."""
         return self._tool_registry
+    
+    @property
+    def observer(self) -> FlowObserver | None:
+        """Access the flow observer."""
+        return self._observer
+    
+    def get_metrics(self) -> dict[str, Any] | None:
+        """Get metrics from the observer if enabled.
+        
+        Returns:
+            Metrics dict or None if no observer.
+        """
+        if self._observer is not None:
+            return self._observer.metrics()
+        return None
+    
+    def get_event_history(
+        self,
+        event_type: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get event history from the observer.
+        
+        Args:
+            event_type: Optional filter by event type.
+            limit: Optional limit on number of events.
+        
+        Returns:
+            List of event dicts (most recent last).
+        """
+        if self._observer is not None:
+            events = self._observer.events(limit=limit)
+            result = []
+            for e in events:
+                if event_type and e.type.value != event_type:
+                    continue
+                result.append({
+                    "event_type": e.type.value,
+                    "timestamp": e.timestamp.isoformat(),
+                    "data": e.data,
+                })
+            return result
+        return []
     
     async def run(
         self,

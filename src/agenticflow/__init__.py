@@ -211,6 +211,10 @@ from agenticflow.observability import (
     AgentInspector,
     TaskInspector,
     EventInspector,
+    # Flow Observer (integrated observability)
+    FlowObserver,
+    ObservabilityLevel,
+    Channel,
     # Progress & Output system
     OutputConfig,
     Verbosity,
@@ -352,6 +356,10 @@ __all__ = [
     "AgentInspector",
     "TaskInspector",
     "EventInspector",
+    # Flow Observer (integrated observability)
+    "FlowObserver",
+    "ObservabilityLevel",
+    "Channel",
     # Progress & Output
     "OutputConfig",
     "Verbosity",

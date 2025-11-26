@@ -32,6 +32,11 @@ from agenticflow.observability.inspector import (
     TaskInspector,
     EventInspector,
 )
+from agenticflow.observability.observer import (
+    FlowObserver,
+    ObservabilityLevel,
+    Channel,
+)
 from agenticflow.observability.progress import (
     # Configuration
     OutputConfig,
@@ -87,7 +92,11 @@ __all__ = [
     "AgentInspector",
     "TaskInspector",
     "EventInspector",
-    # Progress & Output (NEW)
+    # Flow Observer (integrated observability)
+    "FlowObserver",
+    "ObservabilityLevel",
+    "Channel",
+    # Progress & Output
     "OutputConfig",
     "Verbosity",
     "OutputFormat",

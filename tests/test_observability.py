@@ -304,3 +304,167 @@ class TestDashboard:
 
         assert summary["agents"]["total"] == 2
         assert summary["tasks"]["total"] == 1
+
+
+class TestFlowObserver:
+    """Tests for the FlowObserver class."""
+
+    def test_factory_methods(self):
+        """Test observer factory methods."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        
+        obs = FlowObserver.off()
+        assert obs.config.level == ObservabilityLevel.OFF
+        
+        obs = FlowObserver.minimal()
+        assert obs.config.level == ObservabilityLevel.RESULT
+        
+        obs = FlowObserver.normal()
+        assert obs.config.level == ObservabilityLevel.PROGRESS
+        
+        obs = FlowObserver.detailed()
+        assert obs.config.level == ObservabilityLevel.DETAILED
+        
+        obs = FlowObserver.debug()
+        assert obs.config.level == ObservabilityLevel.DEBUG
+        assert Channel.ALL in obs.config.channels
+        
+        obs = FlowObserver.trace()
+        assert obs.config.level == ObservabilityLevel.TRACE
+        
+        obs = FlowObserver.agents_only()
+        assert Channel.AGENTS in obs.config.channels
+        
+        obs = FlowObserver.tools_only()
+        assert Channel.TOOLS in obs.config.channels
+
+    def test_custom_channels(self):
+        """Test observer with custom channels."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        
+        obs = FlowObserver(
+            level=ObservabilityLevel.DETAILED,
+            channels={Channel.AGENTS, Channel.TOOLS},
+        )
+        
+        assert Channel.AGENTS in obs.config.channels
+        assert Channel.TOOLS in obs.config.channels
+        assert Channel.MESSAGES not in obs.config.channels
+        assert Channel.ALL not in obs.config.channels
+
+    @pytest.mark.asyncio
+    async def test_attach_to_event_bus(self):
+        """Test attaching observer to event bus."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        bus = EventBus()
+        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        
+        obs.attach(bus)
+        
+        # Publish an event
+        event = Event(type=EventType.AGENT_INVOKED, data={"agent_name": "Test"})
+        await bus.publish(event)
+        
+        # Check metrics
+        metrics = obs.metrics()
+        assert metrics.get("total_events", 0) >= 1
+
+    @pytest.mark.asyncio
+    async def test_callbacks(self):
+        """Test observer callbacks."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        agent_calls = []
+        tool_calls = []
+        
+        obs = FlowObserver(
+            level=ObservabilityLevel.DEBUG,
+            channels={Channel.AGENTS, Channel.TOOLS},
+            on_agent=lambda name, action, data: agent_calls.append(f"{name}:{action}"),
+            on_tool=lambda name, action, data: tool_calls.append(f"{name}:{action}"),
+        )
+        
+        bus = EventBus()
+        obs.attach(bus)
+        
+        # Publish events
+        await bus.publish(Event(type=EventType.AGENT_INVOKED, data={"agent_name": "Test"}))
+        await bus.publish(Event(type=EventType.TOOL_CALLED, data={"tool": "search"}))
+        
+        assert len(agent_calls) == 1
+        assert "Test:invoked" in agent_calls[0]
+        assert len(tool_calls) == 1
+        assert "search:called" in tool_calls[0]
+
+    @pytest.mark.asyncio
+    async def test_events_query(self):
+        """Test querying observed events."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        bus = EventBus()
+        obs.attach(bus)
+        
+        # Publish multiple events
+        await bus.publish(Event(type=EventType.AGENT_INVOKED, data={"agent_name": "A1"}))
+        await bus.publish(Event(type=EventType.TOOL_CALLED, data={"tool": "search"}))
+        await bus.publish(Event(type=EventType.AGENT_RESPONDED, data={"agent_name": "A1"}))
+        
+        # Query all
+        events = obs.events()
+        assert len(events) >= 3
+        
+        # Query with limit
+        events = obs.events(limit=2)
+        assert len(events) == 2
+        
+        # Query by channel
+        agent_events = obs.events(channel=Channel.AGENTS)
+        assert all(e.type in {EventType.AGENT_INVOKED, EventType.AGENT_RESPONDED} for e in agent_events)
+
+    @pytest.mark.asyncio
+    async def test_timeline(self):
+        """Test timeline generation."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        bus = EventBus()
+        obs.attach(bus)
+        
+        await bus.publish(Event(type=EventType.TASK_STARTED, data={"task": "test"}))
+        await bus.publish(Event(type=EventType.TASK_COMPLETED, data={}))
+        
+        timeline = obs.timeline()
+        assert "Timeline:" in timeline
+        assert "s" in timeline  # Time markers
+
+    @pytest.mark.asyncio
+    async def test_summary(self):
+        """Test summary generation."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        bus = EventBus()
+        obs.attach(bus)
+        
+        await bus.publish(Event(type=EventType.AGENT_INVOKED, data={"agent_name": "Test"}))
+        
+        summary = obs.summary()
+        assert "Observer Summary" in summary
+        assert "Total events:" in summary
