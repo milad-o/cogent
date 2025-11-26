@@ -273,6 +273,52 @@ class TestKnowledgeGraphCapability:
         assert info["name"] == "knowledge_graph"
         assert info["backend"] == "memory"
         assert info["stats"]["entities"] == 1
+    
+    # === Convenience method tests ===
+    
+    def test_recall_convenience(self):
+        kg = KnowledgeGraph()
+        kg.graph.add_entity("Alice", "Person", {"role": "engineer"})
+        
+        result = kg.recall("Alice")
+        assert "Alice" in result
+        assert "engineer" in result
+    
+    def test_query_convenience(self):
+        kg = KnowledgeGraph()
+        kg.graph.add_entity("Alice", "Person")
+        kg.graph.add_entity("Acme", "Company")
+        kg.graph.add_relationship("Alice", "works_at", "Acme")
+        
+        result = kg.query("Alice -works_at-> ?")
+        assert "Acme" in result
+    
+    def test_connect_convenience(self):
+        kg = KnowledgeGraph()
+        result = kg.connect("Alice", "knows", "Bob")
+        assert "Connected" in result
+        
+        rels = kg.graph.get_relationships("Alice", direction="outgoing")
+        assert len(rels) == 1
+    
+    def test_forget_convenience(self):
+        kg = KnowledgeGraph()
+        kg.graph.add_entity("Alice", "Person")
+        
+        result = kg.forget("Alice")
+        assert "Forgot" in result
+        assert kg.graph.get_entity("Alice") is None
+    
+    def test_list_entities_convenience(self):
+        kg = KnowledgeGraph()
+        kg.graph.add_entity("Alice", "Person")
+        kg.graph.add_entity("Acme", "Company")
+        
+        result = kg.list_entities()
+        assert "2 entities" in result
+        
+        result = kg.list_entities("Person")
+        assert "Alice" in result
 
 
 class TestAgentWithCapabilities:

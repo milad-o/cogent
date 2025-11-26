@@ -400,6 +400,7 @@ class KnowledgeGraph(BaseCapability):
             raise ValueError(f"Unknown backend: {backend}. Supported: 'memory'")
         
         self._backend = backend
+        self._tools_cache: dict[str, BaseTool] | None = None
     
     @property
     def name(self) -> str:
@@ -411,14 +412,63 @@ class KnowledgeGraph(BaseCapability):
     
     @property
     def tools(self) -> list[BaseTool]:
-        return [
-            self._remember_tool(),
-            self._recall_tool(),
-            self._connect_tool(),
-            self._query_tool(),
-            self._forget_tool(),
-            self._list_entities_tool(),
-        ]
+        # Cache tools to avoid recreating them
+        if self._tools_cache is None:
+            self._tools_cache = {
+                "remember": self._remember_tool(),
+                "recall": self._recall_tool(),
+                "connect": self._connect_tool(),
+                "query": self._query_tool(),
+                "forget": self._forget_tool(),
+                "list": self._list_entities_tool(),
+            }
+        return list(self._tools_cache.values())
+    
+    # === Convenience methods for direct use ===
+    
+    def remember(self, entity: str, entity_type: str, facts: dict[str, Any] | None = None) -> str:
+        """Remember an entity with attributes."""
+        import json
+        facts_str = json.dumps(facts) if facts else "{}"
+        return self._tools_cache["remember"].invoke({
+            "entity": entity,
+            "entity_type": entity_type,
+            "facts": facts_str,
+        })
+    
+    def recall(self, entity: str) -> str:
+        """Recall information about an entity."""
+        if self._tools_cache is None:
+            _ = self.tools  # Initialize cache
+        return self._tools_cache["recall"].invoke({"entity": entity})
+    
+    def connect(self, source: str, relation: str, target: str) -> str:
+        """Create a relationship between entities."""
+        if self._tools_cache is None:
+            _ = self.tools
+        return self._tools_cache["connect"].invoke({
+            "source": source,
+            "relation": relation,
+            "target": target,
+        })
+    
+    def query(self, pattern: str) -> str:
+        """Query the knowledge graph with a pattern."""
+        if self._tools_cache is None:
+            _ = self.tools
+        return self._tools_cache["query"].invoke({"pattern": pattern})
+    
+    def forget(self, entity: str) -> str:
+        """Remove an entity from the graph."""
+        if self._tools_cache is None:
+            _ = self.tools
+        return self._tools_cache["forget"].invoke({"entity": entity})
+    
+    def list_entities(self, entity_type: str = "") -> str:
+        """List all known entities."""
+        if self._tools_cache is None:
+            _ = self.tools
+        return self._tools_cache["list"].invoke({"entity_type": entity_type})
     
     def _remember_tool(self) -> BaseTool:
         graph = self.graph

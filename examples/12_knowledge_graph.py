@@ -80,18 +80,15 @@ async def demo():
     print(f"Agent tools: {[t.name for t in agent.all_tools]}")
     
     # === Step 3: Query the knowledge directly ===
-    print("\n🔍 Step 3: Direct Tool Queries")
+    print("\n🔍 Step 3: Direct Queries (clean API)")
     print("-" * 40)
     
-    # Use recall tool
-    recall = next(t for t in kg.tools if t.name == "recall")
+    # Use convenience methods - no tool lookup needed!
     print("Recalling Alice:")
-    print(recall.invoke({"entity": "Alice"}))
+    print(kg.recall("Alice"))
     
-    # Use query tool
-    query = next(t for t in kg.tools if t.name == "query_knowledge")
     print("\nWho works at Acme Corp?")
-    print(query.invoke({"pattern": "? -works_at-> Acme Corp"}))
+    print(kg.query("? -works_at-> Acme Corp"))
     
     # === Step 4: Let the agent use the knowledge ===
     print("\n🤖 Step 4: Agent Query")
@@ -134,7 +131,7 @@ async def demo():
     print(f"After adding Charlie: {kg.graph.stats()}")
     
     # Verify Charlie was added
-    print(f"Charlie info: {recall.invoke({'entity': 'Charlie'})}")
+    print(f"Charlie info: {kg.recall('Charlie')}")
     
     print("\n" + "=" * 60)
     print("✅ Summary:")
