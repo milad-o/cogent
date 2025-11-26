@@ -102,6 +102,7 @@ class Agent:
         description: str = "",
         instructions: str | None = None,
         tools: Sequence[BaseTool | str] | None = None,
+        capabilities: Sequence[Any] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
         memory: Any = None,
@@ -137,6 +138,7 @@ class Agent:
         description: str = "",
         instructions: str | None = None,
         tools: Sequence[BaseTool | str] | None = None,
+        capabilities: Sequence[Any] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
     ) -> None:
@@ -240,7 +242,12 @@ class Agent:
         self._model = None
         self._lock = asyncio.Lock()
         self._resilience: ToolResilience | None = None
+        self._capabilities: list[Any] = []
         self._setup_resilience()
+        
+        # Setup capabilities (adds tools from each capability)
+        if capabilities:
+            self._setup_capabilities(capabilities)
         
         # Setup memory
         self._setup_memory(memory, store)
@@ -278,6 +285,57 @@ class Agent:
             config=resilience_config,
             fallback_registry=fallback_registry,
         )
+    
+    def _setup_capabilities(self, capabilities: Sequence[Any]) -> None:
+        """Setup capabilities and extract their tools.
+        
+        Args:
+            capabilities: List of BaseCapability instances.
+        """
+        from agenticflow.capabilities.base import BaseCapability
+        
+        for cap in capabilities:
+            if not isinstance(cap, BaseCapability):
+                raise TypeError(
+                    f"Expected BaseCapability, got {type(cap).__name__}. "
+                    "Capabilities must extend BaseCapability."
+                )
+            
+            self._capabilities.append(cap)
+            
+            # Add capability's tools to agent's direct tools
+            for tool in cap.tools:
+                if tool not in self._direct_tools:
+                    self._direct_tools.append(tool)
+                    # Also update config.tools for consistency
+                    if tool.name not in self.config.tools:
+                        self.config.tools.append(tool.name)
+    
+    async def initialize_capabilities(self) -> None:
+        """Initialize all capabilities (call after agent is fully set up).
+        
+        This is called automatically by Flow, but can be called manually
+        for standalone agents with capabilities.
+        """
+        for cap in self._capabilities:
+            await cap.initialize(self)
+    
+    async def shutdown_capabilities(self) -> None:
+        """Shutdown all capabilities (cleanup resources)."""
+        for cap in self._capabilities:
+            await cap.shutdown()
+    
+    @property
+    def capabilities(self) -> list[Any]:
+        """List of capabilities attached to this agent."""
+        return self._capabilities.copy()
+    
+    def get_capability(self, name: str) -> Any | None:
+        """Get a capability by name."""
+        for cap in self._capabilities:
+            if cap.name == name:
+                return cap
+        return None
     
     def _setup_memory(self, memory: Any = None, store: Any = None) -> None:
         """Setup memory manager.

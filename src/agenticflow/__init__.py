@@ -257,6 +257,12 @@ from agenticflow.prebuilt import (
     create_rag_agent,
 )
 
+# Capabilities (composable tools for agents)
+from agenticflow.capabilities import (
+    BaseCapability,
+    KnowledgeGraph,
+)
+
 # LangChain message types (re-export for convenience)
 from langchain_core.messages import (
     BaseMessage,
@@ -408,6 +414,9 @@ __all__ = [
     "RAGAgent",
     "create_chatbot",
     "create_rag_agent",
+    # Capabilities
+    "BaseCapability",
+    "KnowledgeGraph",
     # LangChain messages
     "BaseMessage",
     "HumanMessage",
