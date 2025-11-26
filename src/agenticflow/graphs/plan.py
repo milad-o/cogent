@@ -108,7 +108,7 @@ class PlanExecutor(BaseExecutor):
         Returns:
             ExecutionPlan with tool calls.
         """
-        tools_desc = self.agent.tool_registry.get_tool_descriptions() if self.agent.tool_registry else "No tools available"
+        tools_desc = self.agent.get_tool_descriptions()
         
         prompt = f"""Create a step-by-step plan to accomplish this task:
 

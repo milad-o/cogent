@@ -115,7 +115,7 @@ class DAGExecutor(BaseExecutor):
         Returns:
             ExecutionPlan with dependency information.
         """
-        tools_desc = self.agent.tool_registry.get_tool_descriptions() if self.agent.tool_registry else "No tools available"
+        tools_desc = self.agent.get_tool_descriptions()
         
         prompt = f"""Create an execution plan as a Directed Acyclic Graph (DAG).
 Identify which steps can run IN PARALLEL (no dependencies between them).

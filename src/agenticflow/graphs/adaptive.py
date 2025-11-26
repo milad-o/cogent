@@ -88,7 +88,7 @@ class AdaptiveExecutor(BaseExecutor):
         Returns:
             The recommended ExecutionStrategy.
         """
-        if not self.agent.tool_registry or len(self.agent.tool_registry) == 0:
+        if not self.agent.all_tools:
             return ExecutionStrategy.REACT  # No tools, just think
         
         # Ask agent to analyze complexity

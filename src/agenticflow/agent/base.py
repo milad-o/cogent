@@ -387,6 +387,64 @@ class Agent:
         return self._direct_tools
 
     @property
+    def all_tools(self) -> list[BaseTool]:
+        """Get all available tools (direct + registry).
+        
+        Returns tools in priority order:
+        1. Direct tools (passed to Agent constructor)
+        2. Registry tools (if tool_registry is set)
+        """
+        tools: list[BaseTool] = list(self._direct_tools)
+        
+        # Add registry tools that aren't already in direct tools
+        if self.tool_registry:
+            direct_names = {t.name for t in tools}
+            for name in self.config.tools:
+                if name not in direct_names:
+                    tool = self.tool_registry.get(name)
+                    if tool:
+                        tools.append(tool)
+        
+        return tools
+
+    def _get_tool(self, tool_name: str) -> BaseTool | None:
+        """Get a tool by name from direct tools or registry.
+        
+        Args:
+            tool_name: Name of the tool to retrieve.
+            
+        Returns:
+            The tool object, or None if not found.
+        """
+        # Check direct tools first (higher priority)
+        for tool in self._direct_tools:
+            if tool.name == tool_name:
+                return tool
+        
+        # Fall back to registry
+        if self.tool_registry:
+            return self.tool_registry.get(tool_name)
+        
+        return None
+
+    def get_tool_descriptions(self) -> str:
+        """Get formatted descriptions of all available tools.
+        
+        Returns:
+            Formatted string with tool names and descriptions.
+        """
+        tools = self.all_tools
+        if not tools:
+            return "No tools available"
+        
+        descriptions = []
+        for tool in tools:
+            desc = getattr(tool, "description", "No description")
+            descriptions.append(f"- {tool.name}: {desc}")
+        
+        return "\n".join(descriptions)
+
+    @property
     def instructions(self) -> str | None:
         """Agent's instructions (system prompt)."""
         return self.config.system_prompt
@@ -799,12 +857,9 @@ class Agent:
             result = await agent.act("web_search", {"query": "test"}, use_resilience=False)
             ```
         """
-        if not self.tool_registry:
-            raise RuntimeError(f"Agent {self.name} has no tool registry")
-
-        tool_obj = self.tool_registry.get(tool_name)
+        tool_obj = self._get_tool(tool_name)
         if not tool_obj:
-            raise ValueError(f"Unknown tool: {tool_name}")
+            raise ValueError(f"Unknown tool: {tool_name}. Available: {[t.name for t in self.all_tools]}")
 
         # Check if agent is allowed to use this tool
         if not self.config.can_use_tool(tool_name):
@@ -838,7 +893,7 @@ class Agent:
             if use_resilience and self._resilience:
                 # Use resilience layer for intelligent retry/recovery
                 def get_fallback_tool(name: str):
-                    t = self.tool_registry.get(name) if self.tool_registry else None
+                    t = self._get_tool(name)
                     return t.invoke if t else None
                 
                 exec_result = await self._resilience.execute(
@@ -1015,12 +1070,9 @@ class Agent:
         
         async def execute_single(tool_name: str, args: dict) -> Any:
             """Execute a single tool with resilience (for parallel execution)."""
-            if not self.tool_registry:
-                raise RuntimeError(f"Agent {self.name} has no tool registry")
-            
-            tool_obj = self.tool_registry.get(tool_name)
+            tool_obj = self._get_tool(tool_name)
             if not tool_obj:
-                raise ValueError(f"Unknown tool: {tool_name}")
+                raise ValueError(f"Unknown tool: {tool_name}. Available: {[t.name for t in self.all_tools]}")
             
             if not self.config.can_use_tool(tool_name):
                 raise PermissionError(
@@ -1030,7 +1082,7 @@ class Agent:
             if use_resilience and self._resilience:
                 # Use resilience layer
                 def get_fallback_tool(name: str):
-                    t = self.tool_registry.get(name) if self.tool_registry else None
+                    t = self._get_tool(name)
                     return t.invoke if t else None
                 
                 exec_result = await self._resilience.execute(

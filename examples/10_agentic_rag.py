@@ -1,36 +1,128 @@
 #!/usr/bin/env python3
 """
-Example 10: Agentic RAG with Nature-themed Text
-================================================
+Example 10: Agentic RAG with Nature-themed Document
+====================================================
 
-This example demonstrates an agentic RAG (Retrieval-Augmented Generation) system
-that uses multiple specialized agents to process and answer questions about a
-nature-themed document.
+A complete Agentic RAG system with a single AUTONOMOUS agent that has
+tools to search and retrieve from a vector store.
 
-The system consists of:
-- Retriever: Finds relevant chunks from the document
-- Analyzer: Interprets and synthesizes information
-- Reviewer: Validates answers for accuracy
-- Supervisor: Coordinates the workflow
+This demonstrates:
+1. Document loading (TextLoader)
+2. Text splitting (RecursiveCharacterTextSplitter)
+3. Embeddings (OpenAI text-embedding-3-small)
+4. Vector store (InMemoryVectorStore)
+5. Single autonomous agent with RAG tools
+6. Agent-driven retrieval and answer generation
+
+The agent has access to:
+- search_documents: Semantic search over document chunks
+- get_document_info: Get metadata about the loaded document
 
 Text Source: "The Secret Garden" by Frances Hodgson Burnett (Public Domain)
-Available at: https://www.gutenberg.org/cache/epub/113/pg113.txt
+
+Usage:
+    export OPENAI_API_KEY="your-key"
+    python examples/10_agentic_rag.py
 """
 
+from __future__ import annotations
+
 import asyncio
+import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from agenticflow import Agent, AgentRole, BaseTopology
-from agenticflow.topologies import SupervisorTopology, TopologyConfig
+from dotenv import load_dotenv
+from langchain_core.tools import tool
+
+# Load .env file for API keys
+load_dotenv()
+
+from agenticflow import Agent, AgentRole
+from agenticflow.visualization import AgentDiagram, MermaidConfig
+
+if TYPE_CHECKING:
+    from langchain_core.documents import Document
+    from langchain_core.vectorstores import VectorStore
 
 
-# Nature-themed sample text URL (public domain - The Secret Garden)
+# =============================================================================
+# Configuration
+# =============================================================================
+
 NATURE_TEXT_URL = "https://www.gutenberg.org/cache/epub/113/pg113.txt"
 NATURE_TEXT_NAME = "the_secret_garden.txt"
 
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 200
+TOP_K = 4
 
-async def download_sample_text(url: str, filename: str) -> Path:
-    """Download a sample text for the example."""
+
+# =============================================================================
+# Global vector store (accessible by tools)
+# =============================================================================
+
+_vector_store: VectorStore | None = None
+_document_info: dict = {}
+
+
+# =============================================================================
+# RAG Tools for the Agent
+# =============================================================================
+
+
+@tool
+def search_documents(query: str, num_results: int = 4) -> str:
+    """Search the document for relevant passages.
+
+    Args:
+        query: The search query to find relevant passages.
+        num_results: Number of passages to return (default: 4).
+
+    Returns:
+        Formatted string with relevant passages from the document.
+    """
+    if _vector_store is None:
+        return "Error: No document loaded. Please load a document first."
+
+    num_results = min(num_results, 10)  # Cap at 10
+    results = _vector_store.similarity_search(query, k=num_results)
+
+    if not results:
+        return "No relevant passages found for your query."
+
+    formatted = []
+    for i, doc in enumerate(results, 1):
+        content = doc.page_content.strip()
+        formatted.append(f"[Passage {i}]\n{content}")
+
+    return "\n\n---\n\n".join(formatted)
+
+
+@tool
+def get_document_info() -> str:
+    """Get information about the loaded document.
+
+    Returns:
+        String with document metadata (name, chunks, size).
+    """
+    if not _document_info:
+        return "No document loaded."
+
+    return f"""Document Information:
+- Name: {_document_info.get('name', 'Unknown')}
+- Total chunks: {_document_info.get('chunks', 0)}
+- Chunk size: {_document_info.get('chunk_size', 0)} characters
+- Chunk overlap: {_document_info.get('overlap', 0)} characters"""
+
+
+# =============================================================================
+# Document Loading & Processing
+# =============================================================================
+
+
+async def download_document(url: str, filename: str) -> Path:
+    """Download a text document from URL."""
     import httpx
 
     data_dir = Path(__file__).parent / "data"
@@ -38,217 +130,190 @@ async def download_sample_text(url: str, filename: str) -> Path:
     text_path = data_dir / filename
 
     if text_path.exists():
-        print(f"✓ Text already exists: {text_path}")
+        print(f"  ✓ Document cached: {text_path.name}")
         return text_path
 
-    print(f"⬇ Downloading nature text from {url}...")
-    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+    print(f"  ⬇ Downloading from {url}...")
+    async with httpx.AsyncClient(follow_redirects=True, timeout=60.0) as client:
         response = await client.get(url)
         response.raise_for_status()
         text_path.write_bytes(response.content)
 
-    print(f"✓ Downloaded: {text_path} ({text_path.stat().st_size / 1024:.1f} KB)")
+    size_kb = text_path.stat().st_size / 1024
+    print(f"  ✓ Downloaded: {text_path.name} ({size_kb:.1f} KB)")
     return text_path
 
 
-def create_rag_agents() -> list[Agent]:
-    """Create the RAG agent team with specialized roles."""
+def load_and_split_document(file_path: Path) -> list[Document]:
+    """Load document and split into chunks."""
+    from langchain_community.document_loaders import TextLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-    # Retriever: Searches and retrieves relevant document chunks
-    retriever = Agent(
-        name="Retriever",
-        role=AgentRole.WORKER,
-        instructions="""You are a document retrieval specialist.
-            Your job is to find and extract the most relevant passages from 
-            the source document that relate to the user's question.
-            
-            Focus on:
-            - Exact matches to key terms
-            - Semantically related content
-            - Context surrounding relevant passages
-            
-            Always cite chapter or section references when possible.""",
-        tools=["text_search", "chunk_retriever", "semantic_search"],
+    print(f"\n📄 Loading: {file_path.name}")
+
+    loader = TextLoader(str(file_path), encoding="utf-8")
+    documents = loader.load()
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+        length_function=len,
+        separators=["\n\n", "\n", ". ", " ", ""],
+    )
+    chunks = splitter.split_documents(documents)
+    print(f"  ✓ Split into {len(chunks)} chunks")
+
+    return chunks
+
+
+def create_vector_store(chunks: list[Document]) -> VectorStore:
+    """Create vector store with OpenAI embeddings."""
+    from langchain_openai import OpenAIEmbeddings
+    from langchain_core.vectorstores import InMemoryVectorStore
+
+    print("\n🧮 Creating embeddings...")
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    vector_store = InMemoryVectorStore.from_documents(chunks, embeddings)
+    print(f"  ✓ Vector store ready ({len(chunks)} embeddings)")
+
+    return vector_store
+
+
+# =============================================================================
+# Agent Setup
+# =============================================================================
+
+
+def create_rag_agent(model) -> Agent:
+    """Create a single autonomous RAG agent with tools."""
+
+    agent = Agent(
+        name="RAG_Assistant",
+        role=AgentRole.AUTONOMOUS,
+        model=model,
+        instructions="""You are a helpful assistant that answers questions about "The Secret Garden" 
+by Frances Hodgson Burnett.
+
+You have access to the full text of the book through your search tool. When answering questions:
+
+1. ALWAYS use the search_documents tool to find relevant passages
+2. Base your answers ONLY on the retrieved passages
+3. Cite passage numbers [1], [2], etc. to support your claims
+4. If the passages don't contain the answer, say so honestly
+5. Be concise but thorough
+
+Available tools:
+- search_documents: Search for relevant passages in the book
+- get_document_info: Get info about the loaded document""",
+        tools=[search_documents, get_document_info],
     )
 
-    # Analyzer: Interprets and synthesizes retrieved information
-    analyzer = Agent(
-        name="Analyzer",
-        role=AgentRole.WORKER,
-        instructions="""You are an information analyst specializing in nature topics.
-            Your job is to synthesize retrieved passages into coherent, accurate answers.
-            
-            Guidelines:
-            - Connect information from multiple sources
-            - Identify patterns and themes
-            - Provide context from the document
-            - Distinguish between facts stated in the document vs. inferences""",
-        tools=["text_summarizer", "theme_extractor"],
-    )
-
-    # Reviewer: Validates answers for accuracy and completeness
-    reviewer = Agent(
-        name="Reviewer",
-        role=AgentRole.REVIEWER,
-        instructions="""You are a quality assurance specialist for RAG systems.
-            Your job is to verify that answers are:
-            
-            1. Accurate - Supported by the source document
-            2. Complete - Address all aspects of the question
-            3. Well-cited - Reference specific parts of the document
-            4. Honest - Acknowledge when information is uncertain or missing
-            
-            Provide specific feedback for improvement if needed.""",
-        tools=["fact_checker", "citation_validator"],
-    )
-
-    # Supervisor: Coordinates the RAG workflow
-    supervisor = Agent(
-        name="RAG_Coordinator",
-        role=AgentRole.SUPERVISOR,
-        instructions="""You coordinate a RAG (Retrieval-Augmented Generation) team.
-            
-            Workflow:
-            1. Receive user question
-            2. Direct Retriever to find relevant passages
-            3. Pass passages to Analyzer for synthesis
-            4. Send answer to Reviewer for validation
-            5. Return final answer or iterate if needed
-            
-            Ensure answers are grounded in the source document.""",
-    )
-
-    return [supervisor, retriever, analyzer, reviewer]
+    return agent
 
 
-def create_rag_topology(agents: list[Agent]) -> BaseTopology:
-    """Create the RAG topology with supervisor pattern."""
-    supervisor = agents[0]  # First agent is the supervisor
-
-    # Build supervisor topology
-    topology = SupervisorTopology(
-        config=TopologyConfig(name="rag-system"),
-        agents=agents,
-        supervisor_name=supervisor.name,
-    )
-
-    return topology
-
-
-def visualize_rag_system(topology: BaseTopology) -> str:
-    """Generate Mermaid diagram for the RAG system."""
-    from agenticflow.visualization import MermaidConfig, TopologyDiagram
-
+def visualize_agent(agent: Agent) -> str:
+    """Generate Mermaid diagram for the agent."""
     config = MermaidConfig(
         show_tools=True,
         show_roles=True,
-        title="Agentic RAG System",
+        title="Agentic RAG Assistant",
     )
-
-    diagram = TopologyDiagram(topology, config=config)
+    diagram = AgentDiagram(agent, config=config)
     return diagram.to_mermaid()
 
 
-async def simulate_rag_query(question: str) -> None:
-    """Simulate a RAG query through the agent system."""
-    print(f"\n{'='*60}")
-    print(f"Question: {question}")
-    print(f"{'='*60}\n")
-
-    # In a real implementation, this would:
-    # 1. Load and chunk the text
-    # 2. Create embeddings for semantic search
-    # 3. Execute the actual agent workflow
-
-    # For this example, we show the workflow structure
-    print("RAG Workflow Steps:")
-    print("  1. 📥 Supervisor receives question")
-    print("  2. 🔍 Retriever searches document for relevant passages")
-    print("  3. 📊 Analyzer synthesizes information into answer")
-    print("  4. ✅ Reviewer validates accuracy and citations")
-    print("  5. 📤 Final answer returned to user")
-    print()
+# =============================================================================
+# Main
+# =============================================================================
 
 
 async def main() -> None:
-    """Run the Agentic RAG example."""
+    """Run the Agentic RAG example with a single agent."""
+    global _vector_store, _document_info
+
     print("=" * 60)
-    print("Agentic RAG Example - The Secret Garden")
+    print("🌿 Agentic RAG - The Secret Garden")
     print("=" * 60)
 
-    # Download sample text
-    text_path = None
-    try:
-        text_path = await download_sample_text(NATURE_TEXT_URL, NATURE_TEXT_NAME)
+    # Check for API key
+    if not os.getenv("OPENAI_API_KEY"):
+        print("\n❌ Error: OPENAI_API_KEY not found in environment")
+        print("   Please set it in .env file or export it")
+        return
 
-        # Show a snippet from the text
-        if text_path and text_path.exists():
-            content = text_path.read_text(encoding="utf-8", errors="ignore")
-            # Find a nature-related excerpt
-            lines = content.split("\n")
-            nature_lines = []
-            for i, line in enumerate(lines):
-                if "garden" in line.lower() and len(line) > 50:
-                    nature_lines = lines[i : i + 5]
-                    break
+    # Step 1: Download and process document
+    print("\n📥 Step 1: Loading document...")
+    text_path = await download_document(NATURE_TEXT_URL, NATURE_TEXT_NAME)
+    chunks = load_and_split_document(text_path)
 
-            if nature_lines:
-                print("\n📖 Sample from the text:")
-                print("-" * 40)
-                for line in nature_lines:
-                    if line.strip():
-                        print(f"  {line.strip()[:80]}...")
-                print("-" * 40)
+    # Step 2: Create vector store
+    _vector_store = create_vector_store(chunks)
+    _document_info = {
+        "name": text_path.name,
+        "chunks": len(chunks),
+        "chunk_size": CHUNK_SIZE,
+        "overlap": CHUNK_OVERLAP,
+    }
 
-    except Exception as e:
-        print(f"⚠ Could not download text: {e}")
-        print("  Continuing with example structure...")
+    # Step 3: Create agent with LLM
+    print("\n🤖 Step 3: Creating RAG agent...")
+    from langchain_openai import ChatOpenAI
 
-    # Create agents
-    print("\n📦 Creating RAG Agents...")
-    agents = create_rag_agents()
-    for agent in agents:
-        tools_str = ", ".join(agent.config.tools) if agent.config.tools else "none"
-        print(f"  • {agent.name} ({agent.role.value}) - tools: {tools_str}")
+    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    agent = create_rag_agent(model)
+    print(f"  ✓ Agent: {agent.name} ({agent.role.value})")
+    print(f"  ✓ Tools: {', '.join(t.name for t in agent._direct_tools)}")
+    print(f"  ✓ Model: gpt-4o-mini")
 
-    # Create topology
-    print("\n🔗 Building RAG Topology...")
-    topology = create_rag_topology(agents)
-    print(f"  Topology name: {topology.config.name}")
-    print(f"  Agent count: {len(topology.agents)}")
-
-    # Visualize
-    print("\n📊 Generating Mermaid Diagram...")
-    mermaid = visualize_rag_system(topology)
-    print(mermaid)
-
-    # Save diagram
+    # Step 4: Generate visualization
+    print("\n📊 Step 4: Generating diagram...")
+    mermaid = visualize_agent(agent)
     diagram_path = Path(__file__).parent / "diagrams" / "7_agentic_rag.mmd"
     diagram_path.parent.mkdir(exist_ok=True)
     diagram_path.write_text(mermaid)
-    print(f"\n✓ Diagram saved to: {diagram_path}")
+    print(f"  ✓ Saved to: {diagram_path}")
 
-    # Simulate queries
+    # Step 5: Run interactive RAG queries
+    print("\n" + "=" * 60)
+    print("🔍 Step 5: Running RAG queries with agent...")
+    print("=" * 60)
+
     sample_questions = [
-        "What is the secret garden like when Mary first discovers it?",
-        "How does the garden help the children heal?",
-        "What role does nature play in the story's themes?",
+        "What does Mary discover when she first enters the secret garden?",
+        "How does working in the garden affect Colin's health?",
+        "Who is Dickon and what is his relationship with animals?",
     ]
 
     for question in sample_questions:
-        await simulate_rag_query(question)
+        print(f"\n{'='*60}")
+        print(f"❓ Question: {question}")
+        print("=" * 60)
 
+        # Use agent.run() with DAG strategy for tool execution
+        response = await agent.run(
+            f"Answer this question about The Secret Garden: {question}",
+            strategy="dag",
+        )
+
+        print(f"\n💬 Agent Response:")
+        print("-" * 40)
+        print(response)
+        print("-" * 40)
+
+    # Summary
     print("\n" + "=" * 60)
-    print("Example complete!")
+    print("✅ Agentic RAG Complete!")
     print("=" * 60)
 
-    if text_path:
-        print(f"\nText location: {text_path}")
-    print("\nTo implement a full RAG system, you would need:")
-    print("  • Text chunking (langchain_text_splitters)")
-    print("  • Embeddings (langchain_openai.OpenAIEmbeddings)")
-    print("  • Vector store (chromadb, faiss, InMemoryVectorStore)")
-    print("  • LLM integration for agent execution")
+    print(f"\n📊 Summary:")
+    print(f"  • Document: {text_path.name}")
+    print(f"  • Chunks: {len(chunks)}")
+    print(f"  • Agent: {agent.name} (autonomous)")
+    print(f"  • Tools: search_documents, get_document_info")
+    print(f"  • Model: gpt-4o-mini")
+
+    print(f"\n📝 Mermaid Diagram:")
+    print(mermaid)
 
 
 if __name__ == "__main__":
