@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="11/26/2025"
+  DTS:CreatorName="DataTeam"
+  DTS:DTSID="{D4E5F6A7-4567-89AB-CDEF-012345678901}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:ObjectName="LoadWarehouse"
+  DTS:PackageType="DTSPackage">
+  <DTS:Property DTS:Name="ObjectName">LoadWarehouse</DTS:Property>
+  <DTS:Property DTS:Name="Description">Load dimension and fact tables into data warehouse</DTS:Property>
+  
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[StagingDB]"
+      DTS:CreationName="OLEDB"
+      DTS:ObjectName="StagingDB">
+      <DTS:Property DTS:Name="ObjectName">StagingDB</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=SQLSERVER01;Initial Catalog=Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[DataWarehouse]"
+      DTS:CreationName="OLEDB"
+      DTS:ObjectName="DataWarehouse">
+      <DTS:Property DTS:Name="ObjectName">DataWarehouse</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=DWSERVER;Initial Catalog=DataWarehouse;Provider=SQLNCLI11.1;Integrated Security=SSPI;"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\ForEach Loop - Dimensions"
+      DTS:CreationName="STOCK:FOREACHLOOP"
+      DTS:ObjectName="ForEach Loop - Dimensions">
+      <DTS:Property DTS:Name="ObjectName">ForEach Loop - Dimensions</DTS:Property>
+      <DTS:Property DTS:Name="Description">Loop through dimension tables to load</DTS:Property>
+      
+      <DTS:Executables>
+        <DTS:Executable
+          DTS:refId="Package\ForEach Loop - Dimensions\Load Dimension"
+          DTS:CreationName="Microsoft.ExecuteSQLTask"
+          DTS:ObjectName="Load Dimension">
+          <DTS:Property DTS:Name="ObjectName">Load Dimension</DTS:Property>
+          <DTS:ObjectData>
+            <SQLTask:SqlTaskData
+              xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+              SQLTask:SqlStatementSource="EXEC dbo.sp_LoadDimension @DimensionName = ?"/>
+          </DTS:ObjectData>
+        </DTS:Executable>
+      </DTS:Executables>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\DFT Load DimCustomer"
+      DTS:CreationName="Microsoft.Pipeline"
+      DTS:ObjectName="DFT Load DimCustomer">
+      <DTS:Property DTS:Name="ObjectName">DFT Load DimCustomer</DTS:Property>
+      <DTS:Property DTS:Name="Description">Type 2 SCD for Customer Dimension</DTS:Property>
+      <DTS:ObjectData>
+        <pipeline>
+          <components>
+            <component refId="Package\DFT Load DimCustomer\Staging Source" name="Staging Source" componentClassID="Microsoft.OLEDBSource">
+              <outputs>
+                <output name="Output">
+                  <outputColumns>
+                    <outputColumn name="CustomerID" dataType="i4"/>
+                    <outputColumn name="CustomerName" dataType="wstr" length="100"/>
+                    <outputColumn name="Email" dataType="wstr" length="255"/>
+                    <outputColumn name="CustomerType" dataType="wstr" length="50"/>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+            
+            <component refId="Package\DFT Load DimCustomer\SCD Wizard" name="Slowly Changing Dimension" componentClassID="Microsoft.ScdComponent" contactInfo="Slowly Changing Dimension;Microsoft">
+              <outputs>
+                <output name="New Rows"/>
+                <output name="Changed Attributes"/>
+                <output name="Historical Attributes"/>
+                <output name="Unchanged Rows"/>
+              </outputs>
+            </component>
+            
+            <component refId="Package\DFT Load DimCustomer\Insert New" name="OLE DB Command - Insert" componentClassID="Microsoft.OLEDBCommand">
+            </component>
+            
+            <component refId="Package\DFT Load DimCustomer\Update Current" name="OLE DB Command - Update" componentClassID="Microsoft.OLEDBCommand">
+            </component>
+            
+            <component refId="Package\DFT Load DimCustomer\Insert Historical" name="OLE DB Destination - Historical" componentClassID="Microsoft.OLEDBDestination">
+            </component>
+          </components>
+          
+          <paths>
+            <path startId="Package\DFT Load DimCustomer\Staging Source.Outputs[Output]" endId="Package\DFT Load DimCustomer\SCD Wizard.Inputs[Input]"/>
+            <path startId="Package\DFT Load DimCustomer\SCD Wizard.Outputs[New Rows]" endId="Package\DFT Load DimCustomer\Insert New.Inputs[Input]"/>
+            <path startId="Package\DFT Load DimCustomer\SCD Wizard.Outputs[Changed Attributes]" endId="Package\DFT Load DimCustomer\Update Current.Inputs[Input]"/>
+            <path startId="Package\DFT Load DimCustomer\SCD Wizard.Outputs[Historical Attributes]" endId="Package\DFT Load DimCustomer\Insert Historical.Inputs[Input]"/>
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\DFT Load FactSales"
+      DTS:CreationName="Microsoft.Pipeline"
+      DTS:ObjectName="DFT Load FactSales">
+      <DTS:Property DTS:Name="ObjectName">DFT Load FactSales</DTS:Property>
+      <DTS:Property DTS:Name="Description">Load fact table with dimension key lookups</DTS:Property>
+      <DTS:ObjectData>
+        <pipeline>
+          <components>
+            <component refId="Package\DFT Load FactSales\Order Source" name="Order Source" componentClassID="Microsoft.OLEDBSource">
+              <outputs>
+                <output name="Output">
+                  <outputColumns>
+                    <outputColumn name="OrderID" dataType="i4"/>
+                    <outputColumn name="CustomerID" dataType="i4"/>
+                    <outputColumn name="ProductID" dataType="i4"/>
+                    <outputColumn name="OrderDate" dataType="dbTimeStamp"/>
+                    <outputColumn name="Quantity" dataType="i4"/>
+                    <outputColumn name="Amount" dataType="cy"/>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+            
+            <component refId="Package\DFT Load FactSales\Lookup DimCustomer" name="Lookup DimCustomer" componentClassID="Microsoft.Lookup">
+            </component>
+            
+            <component refId="Package\DFT Load FactSales\Lookup DimProduct" name="Lookup DimProduct" componentClassID="Microsoft.Lookup">
+            </component>
+            
+            <component refId="Package\DFT Load FactSales\Lookup DimDate" name="Lookup DimDate" componentClassID="Microsoft.Lookup">
+            </component>
+            
+            <component refId="Package\DFT Load FactSales\Aggregate Daily" name="Aggregate Daily" componentClassID="Microsoft.Aggregate">
+            </component>
+            
+            <component refId="Package\DFT Load FactSales\Fact Destination" name="FactSales Destination" componentClassID="Microsoft.OLEDBDestination">
+            </component>
+          </components>
+          
+          <paths>
+            <path startId="Package\DFT Load FactSales\Order Source.Outputs[Output]" endId="Package\DFT Load FactSales\Lookup DimCustomer.Inputs[Input]"/>
+            <path startId="Package\DFT Load FactSales\Lookup DimCustomer.Outputs[Output]" endId="Package\DFT Load FactSales\Lookup DimProduct.Inputs[Input]"/>
+            <path startId="Package\DFT Load FactSales\Lookup DimProduct.Outputs[Output]" endId="Package\DFT Load FactSales\Lookup DimDate.Inputs[Input]"/>
+            <path startId="Package\DFT Load FactSales\Lookup DimDate.Outputs[Output]" endId="Package\DFT Load FactSales\Aggregate Daily.Inputs[Input]"/>
+            <path startId="Package\DFT Load FactSales\Aggregate Daily.Outputs[Output]" endId="Package\DFT Load FactSales\Fact Destination.Inputs[Input]"/>
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Rebuild Indexes"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Rebuild Indexes">
+      <DTS:Property DTS:Name="ObjectName">Rebuild Indexes</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="EXEC dbo.sp_RebuildFactIndexes"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Update Statistics"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Update Statistics">
+      <DTS:Property DTS:Name="ObjectName">Update Statistics</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="UPDATE STATISTICS dbo.FactSales"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+  
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint>
+      <DTS:Property DTS:Name="From">ForEach Loop - Dimensions</DTS:Property>
+      <DTS:Property DTS:Name="To">DFT Load DimCustomer</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint>
+      <DTS:Property DTS:Name="From">DFT Load DimCustomer</DTS:Property>
+      <DTS:Property DTS:Name="To">DFT Load FactSales</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint>
+      <DTS:Property DTS:Name="From">DFT Load FactSales</DTS:Property>
+      <DTS:Property DTS:Name="To">Rebuild Indexes</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint>
+      <DTS:Property DTS:Name="From">Rebuild Indexes</DTS:Property>
+      <DTS:Property DTS:Name="To">Update Statistics</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+  </DTS:PrecedenceConstraints>
+</DTS:Executable>

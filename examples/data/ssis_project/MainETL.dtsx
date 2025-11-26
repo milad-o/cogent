@@ -1,0 +1,143 @@
+<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="11/26/2025"
+  DTS:CreatorName="DataTeam"
+  DTS:DTSID="{A1B2C3D4-1234-5678-9ABC-DEF012345678}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:ObjectName="MainETL"
+  DTS:PackageType="DTSPackage">
+  <DTS:Property DTS:Name="ObjectName">MainETL</DTS:Property>
+  <DTS:Property DTS:Name="Description">Main ETL orchestration package - calls child packages</DTS:Property>
+  <DTS:Property DTS:Name="CreationDate">11/26/2025</DTS:Property>
+  <DTS:Property DTS:Name="CreatorName">DataTeam</DTS:Property>
+  
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[LogDB]"
+      DTS:CreationName="OLEDB"
+      DTS:ObjectName="LogDB">
+      <DTS:Property DTS:Name="ObjectName">LogDB</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=SQLSERVER01;Initial Catalog=ETL_Logs;Provider=SQLNCLI11.1;Integrated Security=SSPI;"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  
+  <DTS:Variables>
+    <DTS:Variable DTS:Name="RunDate" DTS:Namespace="User" DTS:DataType="7">
+      <DTS:Property DTS:Name="ObjectName">RunDate</DTS:Property>
+      <DTS:Property DTS:Name="Namespace">User</DTS:Property>
+      <DTS:Property DTS:Name="DataType">7</DTS:Property>
+    </DTS:Variable>
+    <DTS:Variable DTS:Name="BatchID" DTS:Namespace="User" DTS:DataType="3">
+      <DTS:Property DTS:Name="ObjectName">BatchID</DTS:Property>
+      <DTS:Property DTS:Name="Namespace">User</DTS:Property>
+      <DTS:Property DTS:Name="DataType">3</DTS:Property>
+    </DTS:Variable>
+  </DTS:Variables>
+  
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\Log Start"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Log Start">
+      <DTS:Property DTS:Name="ObjectName">Log Start</DTS:Property>
+      <DTS:Property DTS:Name="Description">Insert batch start record</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="INSERT INTO ETL_BatchLog (BatchName, StartTime, Status) VALUES ('MainETL', GETDATE(), 'Running'); SELECT SCOPE_IDENTITY() AS BatchID;"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Extract Customers"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:ObjectName="Extract Customers">
+      <DTS:Property DTS:Name="ObjectName">Extract Customers</DTS:Property>
+      <DTS:Property DTS:Name="Description">Execute customer extraction package</DTS:Property>
+      <DTS:ObjectData>
+        <ExecutePackageTask PackageName="ExtractCustomers.dtsx"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Extract Orders"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:ObjectName="Extract Orders">
+      <DTS:Property DTS:Name="ObjectName">Extract Orders</DTS:Property>
+      <DTS:Property DTS:Name="Description">Execute orders extraction package</DTS:Property>
+      <DTS:ObjectData>
+        <ExecutePackageTask PackageName="ExtractOrders.dtsx"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Load Data Warehouse"
+      DTS:CreationName="Microsoft.ExecutePackageTask"
+      DTS:ObjectName="Load Data Warehouse">
+      <DTS:Property DTS:Name="ObjectName">Load Data Warehouse</DTS:Property>
+      <DTS:Property DTS:Name="Description">Load transformed data to warehouse</DTS:Property>
+      <DTS:ObjectData>
+        <ExecutePackageTask PackageName="LoadWarehouse.dtsx"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Log End"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Log End">
+      <DTS:Property DTS:Name="ObjectName">Log End</DTS:Property>
+      <DTS:Property DTS:Name="Description">Update batch completion record</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="UPDATE ETL_BatchLog SET EndTime = GETDATE(), Status = 'Completed' WHERE BatchID = ?"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+  
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint DTS:refId="Package.PrecedenceConstraints[Constraint1]">
+      <DTS:Property DTS:Name="From">Log Start</DTS:Property>
+      <DTS:Property DTS:Name="To">Extract Customers</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint DTS:refId="Package.PrecedenceConstraints[Constraint2]">
+      <DTS:Property DTS:Name="From">Log Start</DTS:Property>
+      <DTS:Property DTS:Name="To">Extract Orders</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint DTS:refId="Package.PrecedenceConstraints[Constraint3]">
+      <DTS:Property DTS:Name="From">Extract Customers</DTS:Property>
+      <DTS:Property DTS:Name="To">Load Data Warehouse</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint DTS:refId="Package.PrecedenceConstraints[Constraint4]">
+      <DTS:Property DTS:Name="From">Extract Orders</DTS:Property>
+      <DTS:Property DTS:Name="To">Load Data Warehouse</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint DTS:refId="Package.PrecedenceConstraints[Constraint5]">
+      <DTS:Property DTS:Name="From">Load Data Warehouse</DTS:Property>
+      <DTS:Property DTS:Name="To">Log End</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+  </DTS:PrecedenceConstraints>
+  
+  <DTS:EventHandlers>
+    <DTS:EventHandler DTS:refId="Package.EventHandlers[OnError]" DTS:EventName="OnError">
+      <DTS:Property DTS:Name="EventName">OnError</DTS:Property>
+      <DTS:Executables>
+        <DTS:Executable
+          DTS:refId="Package.EventHandlers[OnError]\Send Error Email"
+          DTS:CreationName="Microsoft.SendMailTask"
+          DTS:ObjectName="Send Error Email">
+          <DTS:Property DTS:Name="ObjectName">Send Error Email</DTS:Property>
+        </DTS:Executable>
+      </DTS:Executables>
+    </DTS:EventHandler>
+  </DTS:EventHandlers>
+</DTS:Executable>

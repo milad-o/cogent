@@ -493,7 +493,7 @@ class Agent:
         """
         tools = self.all_tools
         if not tools:
-            return "No tools available"
+            return "No tools available."
         
         descriptions = []
         for tool in tools:
@@ -502,35 +502,72 @@ class Agent:
         
         return "\n".join(descriptions)
 
-    def get_effective_system_prompt(self) -> str | None:
-        """Get the system prompt with tools automatically injected.
-        
-        If the system prompt contains `{tools}`, it will be replaced with
-        tool descriptions. Otherwise, tool descriptions are appended at the end.
+    def get_capabilities_description(self) -> str:
+        """Get formatted descriptions of all capabilities and their tools.
         
         Returns:
-            The system prompt with tools injected, or None if no prompt.
+            Formatted string describing each capability and its tools.
+        """
+        if not self._capabilities:
+            return ""
+        
+        sections = []
+        for cap in self._capabilities:
+            cap_tools = cap.tools
+            if cap_tools:
+                tool_list = "\n".join(f"  - {t.name}: {t.description}" for t in cap_tools)
+                sections.append(f"**{cap.name}** - {cap.description}\n{tool_list}")
+            else:
+                sections.append(f"**{cap.name}** - {cap.description}")
+        
+        return "\n\n".join(sections)
+
+    def get_effective_system_prompt(self) -> str | None:
+        """Get the system prompt with capabilities and tools automatically injected.
+        
+        Supports placeholders:
+        - {tools}: Replaced with tool descriptions
+        - {capabilities}: Replaced with capability descriptions
+        
+        If no placeholders are present and tools exist, they are appended.
+        
+        Returns:
+            The system prompt with tools/capabilities injected, or None if no prompt.
         """
         base_prompt = self.config.system_prompt
         if not base_prompt:
             return None
         
         tools = self.all_tools
-        if not tools:
-            # No tools, just return the base prompt (strip {tools} if present)
-            return base_prompt.replace("{tools}", "No tools available.")
-        
         tools_desc = self.get_tool_descriptions()
+        caps_desc = self.get_capabilities_description()
         
-        # Check if prompt has {tools} placeholder
-        if "{tools}" in base_prompt:
-            return base_prompt.replace("{tools}", tools_desc)
+        result = base_prompt
         
-        # Auto-append tools at the end
-        return f"""{base_prompt}
-
-Available tools:
-{tools_desc}"""
+        # Replace placeholders if present
+        has_tools_placeholder = "{tools}" in result
+        has_caps_placeholder = "{capabilities}" in result
+        
+        if has_tools_placeholder:
+            result = result.replace("{tools}", tools_desc)
+        
+        if has_caps_placeholder:
+            result = result.replace("{capabilities}", caps_desc if caps_desc else "No capabilities.")
+        
+        # Auto-append if no placeholders and we have tools/capabilities
+        if not has_tools_placeholder and not has_caps_placeholder:
+            appendix_parts = []
+            
+            if caps_desc:
+                appendix_parts.append(f"## Capabilities\n\n{caps_desc}")
+            elif tools:
+                # Only show flat tool list if no capabilities (to avoid duplication)
+                appendix_parts.append(f"## Available Tools\n\n{tools_desc}")
+            
+            if appendix_parts:
+                result = f"{result}\n\n" + "\n\n".join(appendix_parts)
+        
+        return result
 
     @property
     def instructions(self) -> str | None:

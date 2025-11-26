@@ -3,6 +3,7 @@
 import pytest
 from pathlib import Path
 from agenticflow.capabilities import SSISAnalyzer
+from agenticflow.capabilities.ssis import classify_executable
 
 
 # Sample SSIS package XML for testing
@@ -459,7 +460,7 @@ class TestSSISExtensibility:
         ]
         
         for creation_name, expected_type in task_types:
-            result = analyzer._classify_executable(creation_name)
+            result = classify_executable(creation_name)
             assert result == expected_type, f"Expected {creation_name} -> {expected_type}, got {result}"
     
     def test_default_handlers_registered(self):
