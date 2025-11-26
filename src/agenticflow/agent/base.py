@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from typing import TYPE_CHECKING, Any, Callable, Sequence, overload
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Sequence, overload
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from agenticflow.tools.registry import ToolRegistry
     from agenticflow.observability.progress import ProgressTracker
     from agenticflow.agent.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
+    from agenticflow.agent.streaming import StreamChunk, StreamEvent
 
 
 class Agent:
@@ -153,6 +154,7 @@ class Agent:
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
         interrupt_on: dict[str, Any] | None = None,  # HITL: tool approval rules
+        stream: bool = False,  # Enable streaming by default for this agent
     ) -> None:
         """
         Initialize an Agent.
@@ -182,6 +184,8 @@ class Agent:
             tools: List of tools - can be BaseTool objects or strings (simplified API)
             system_prompt: System prompt (alias for instructions, for compatibility)
             resilience: Resilience configuration (simplified API)
+            stream: Enable token-by-token streaming by default for this agent.
+                   When True, chat() and think() return async iterators.
             
         Example with memory:
             ```python
@@ -243,6 +247,7 @@ class Agent:
                 tools=tool_names,
                 resilience_config=resilience,
                 interrupt_on=interrupt_on or {},
+                stream=stream,
             )
         else:
             self._direct_tools = []
@@ -684,14 +689,15 @@ class Agent:
                 )
             )
 
-    async def think(
+    def think(
         self,
         prompt: str,
         correlation_id: str | None = None,
         *,
+        stream: bool | None = None,
         include_tools: bool = True,
         system_prompt_override: str | None = None,
-    ) -> str:
+    ) -> "str | AsyncIterator[StreamChunk]":
         """
         Process a prompt through the agent's reasoning.
         
@@ -701,17 +707,61 @@ class Agent:
         Args:
             prompt: The prompt to process
             correlation_id: Optional correlation ID for event tracking
+            stream: Enable streaming response. If None, uses agent's default
+                (set via stream=True in constructor). When True, returns an
+                async iterator of StreamChunk objects.
             include_tools: Whether to include tools in system prompt (default: True).
                 Set to False for planning prompts that already list tools.
             system_prompt_override: If provided, use this instead of agent's system prompt.
                 Useful for planning where we need a neutral persona.
             
         Returns:
-            The LLM's response
+            If stream=False: Coroutine that returns the LLM's response string.
+            If stream=True: AsyncIterator[StreamChunk] for token-by-token streaming.
             
         Raises:
             RuntimeError: If no model is configured
+            
+        Example - Non-streaming:
+            ```python
+            response = await agent.think("What should I do?")
+            ```
+            
+        Example - Streaming:
+            ```python
+            async for chunk in agent.think("Write a poem", stream=True):
+                print(chunk.content, end="", flush=True)
+            ```
         """
+        # Determine if streaming based on parameter or agent default
+        use_streaming = stream if stream is not None else self.config.stream
+        
+        if use_streaming:
+            # Return async iterator directly (not wrapped in coroutine)
+            return self.think_stream(
+                prompt,
+                correlation_id=correlation_id,
+                include_tools=include_tools,
+                system_prompt_override=system_prompt_override,
+            )
+        
+        # Return coroutine for non-streaming
+        return self._think_impl(
+            prompt,
+            correlation_id=correlation_id,
+            include_tools=include_tools,
+            system_prompt_override=system_prompt_override,
+        )
+    
+    async def _think_impl(
+        self,
+        prompt: str,
+        correlation_id: str | None = None,
+        *,
+        include_tools: bool = True,
+        system_prompt_override: str | None = None,
+    ) -> str:
+        """Internal implementation of non-streaming think."""
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
 
@@ -788,14 +838,15 @@ class Agent:
             )
             raise
 
-    async def chat(
+    def chat(
         self,
         message: str,
         thread_id: str | None = None,
         *,
+        stream: bool | None = None,
         correlation_id: str | None = None,
         metadata: dict | None = None,
-    ) -> str:
+    ) -> "str | AsyncIterator[StreamChunk]":
         """
         Chat with the agent, maintaining conversation history per thread.
         
@@ -811,44 +862,77 @@ class Agent:
             message: The user's message.
             thread_id: Unique identifier for the conversation thread.
                 If None, uses a default thread for this agent.
+            stream: Enable streaming response. If None, uses agent's default
+                (set via stream=True in constructor). When True, returns an
+                async iterator of StreamChunk objects.
             correlation_id: Optional correlation ID for event tracking.
             metadata: Optional metadata to store with the conversation.
             
         Returns:
-            The agent's response.
+            If stream=False: Coroutine that returns the agent's response string.
+            If stream=True: AsyncIterator[StreamChunk] for token-by-token streaming.
             
-        Example:
+        Example - Non-streaming:
             ```python
-            from langgraph.checkpoint.memory import MemorySaver
-            from agenticflow import Agent
+            agent = Agent(name="Assistant", model=model)
+            response = await agent.chat("Hello!")
+            print(response)
+            ```
             
-            agent = Agent(
-                name="Assistant",
-                model=model,
-                checkpointer=MemorySaver(),
-            )
+        Example - Streaming (explicit):
+            ```python
+            agent = Agent(name="Assistant", model=model)
+            async for chunk in agent.chat("Tell me a story", stream=True):
+                print(chunk.content, end="", flush=True)
+            ```
             
-            # First message in a thread
-            response1 = await agent.chat(
-                "Hi, I'm Alice and I live in Paris",
-                thread_id="user-alice-123"
-            )
+        Example - Streaming (default):
+            ```python
+            # Set stream=True as default for the agent
+            agent = Agent(name="Assistant", model=model, stream=True)
             
-            # Second message - agent remembers context
-            response2 = await agent.chat(
-                "What city do I live in?",
-                thread_id="user-alice-123"
-            )
-            # Response will mention Paris!
+            async for chunk in agent.chat("Tell me a story"):
+                print(chunk.content, end="", flush=True)
+            ```
             
-            # Different thread = fresh context
-            response3 = await agent.chat(
-                "What city do I live in?",
-                thread_id="user-bob-456"
-            )
-            # Response will say it doesn't know
+        Example - Multi-turn with memory:
+            ```python
+            agent = Agent(name="Assistant", model=model, memory=True)
+            
+            await agent.chat("I'm Alice", thread_id="user-123")
+            response = await agent.chat("What's my name?", thread_id="user-123")
+            # Response will mention Alice!
             ```
         """
+        # Determine if streaming based on parameter or agent default
+        use_streaming = stream if stream is not None else self.config.stream
+        
+        if use_streaming:
+            # Return the streaming iterator directly (not wrapped in coroutine)
+            return self.chat_stream(
+                message,
+                thread_id=thread_id,
+                correlation_id=correlation_id,
+                metadata=metadata,
+            )
+        
+        # Return coroutine for non-streaming
+        return self._chat_impl(
+            message,
+            thread_id=thread_id,
+            correlation_id=correlation_id,
+            metadata=metadata,
+        )
+    
+    async def _chat_impl(
+        self,
+        message: str,
+        thread_id: str | None = None,
+        *,
+        correlation_id: str | None = None,
+        metadata: dict | None = None,
+    ) -> str:
+        """Internal implementation of non-streaming chat."""
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
         
@@ -969,6 +1053,460 @@ class Agent:
             thread_id: Thread identifier to clear.
         """
         await self._memory.clear_thread(thread_id)
+
+    # =========================================================================
+    # STREAMING METHODS
+    # =========================================================================
+
+    async def think_stream(
+        self,
+        prompt: str,
+        correlation_id: str | None = None,
+        *,
+        include_tools: bool = True,
+        system_prompt_override: str | None = None,
+    ) -> "AsyncIterator[StreamChunk]":
+        """
+        Stream the agent's thinking response token by token.
+        
+        This is the streaming version of think(). Tokens are yielded
+        as they are generated by the LLM, enabling real-time display.
+        
+        Args:
+            prompt: The prompt to process.
+            correlation_id: Optional correlation ID for event tracking.
+            include_tools: Whether to include tools in system prompt.
+            system_prompt_override: Optional system prompt override.
+            
+        Yields:
+            StreamChunk objects containing token content.
+            
+        Raises:
+            RuntimeError: If no model is configured.
+            
+        Example:
+            ```python
+            async for chunk in agent.think_stream("Write a poem"):
+                print(chunk.content, end="", flush=True)
+            print()  # Newline after streaming
+            ```
+        """
+        from agenticflow.agent.streaming import (
+            StreamChunk,
+            chunk_from_langchain,
+            extract_tool_calls,
+        )
+        
+        if not self.model:
+            raise RuntimeError(f"Agent {self.name} has no model configured")
+
+        await self._set_status(AgentStatus.THINKING, correlation_id)
+
+        await self._emit_event(
+            EventType.AGENT_THINKING,
+            {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "prompt_preview": prompt[:200],
+                "streaming": True,
+            },
+            correlation_id,
+        )
+
+        start_time = now_utc()
+
+        # Build messages
+        messages = []
+        if system_prompt_override is not None:
+            effective_prompt = system_prompt_override
+        elif include_tools:
+            effective_prompt = self.get_effective_system_prompt()
+        else:
+            effective_prompt = self.config.system_prompt
+        if effective_prompt:
+            messages.append(SystemMessage(content=effective_prompt))
+
+        messages.extend(self.state.get_recent_history(10))
+        messages.append(HumanMessage(content=prompt))
+
+        accumulated_content = ""
+        index = 0
+
+        try:
+            async for chunk in self.model.astream(messages):
+                stream_chunk = chunk_from_langchain(chunk, index)
+                accumulated_content += stream_chunk.content
+                index += 1
+                
+                # Emit token event
+                if stream_chunk.content:
+                    await self._emit_event(
+                        EventType.TOKEN_STREAMED,
+                        {
+                            "agent_id": self.id,
+                            "agent_name": self.name,
+                            "token": stream_chunk.content,
+                            "index": index,
+                        },
+                        correlation_id,
+                    )
+                
+                yield stream_chunk
+
+            # Track timing
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            self.state.add_thinking_time(duration_ms)
+
+            # Update history with final result
+            self.state.add_message(HumanMessage(content=prompt))
+            self.state.add_message(AIMessage(content=accumulated_content))
+
+            await self._set_status(AgentStatus.IDLE, correlation_id)
+
+            await self._emit_event(
+                EventType.AGENT_RESPONDED,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "response": accumulated_content,
+                    "response_preview": accumulated_content[:500] if accumulated_content else "",
+                    "duration_ms": duration_ms,
+                    "streaming": True,
+                    "token_count": index,
+                },
+                correlation_id,
+            )
+
+        except Exception as e:
+            self.state.record_error(str(e))
+            await self._set_status(AgentStatus.ERROR, correlation_id)
+            await self._emit_event(
+                EventType.AGENT_ERROR,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "error": str(e),
+                    "phase": "thinking_stream",
+                },
+                correlation_id,
+            )
+            raise
+
+    async def chat_stream(
+        self,
+        message: str,
+        thread_id: str | None = None,
+        *,
+        correlation_id: str | None = None,
+        metadata: dict | None = None,
+    ) -> "AsyncIterator[StreamChunk]":
+        """
+        Stream a chat response token by token with conversation history.
+        
+        This is the streaming version of chat(). Maintains conversation
+        history per thread while yielding tokens as they arrive.
+        
+        Args:
+            message: The user's message.
+            thread_id: Unique identifier for the conversation thread.
+            correlation_id: Optional correlation ID for event tracking.
+            metadata: Optional metadata to store with the conversation.
+            
+        Yields:
+            StreamChunk objects containing token content.
+            
+        Example:
+            ```python
+            async for chunk in agent.chat_stream("Tell me a story", thread_id="user-123"):
+                print(chunk.content, end="", flush=True)
+            print()
+            ```
+        """
+        from agenticflow.agent.streaming import StreamChunk, chunk_from_langchain
+        
+        if not self.model:
+            raise RuntimeError(f"Agent {self.name} has no model configured")
+
+        if thread_id is None:
+            thread_id = f"agent-{self.id}-default"
+
+        await self._set_status(AgentStatus.THINKING, correlation_id)
+
+        await self._emit_event(
+            EventType.AGENT_THINKING,
+            {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "thread_id": thread_id,
+                "prompt_preview": message[:200],
+                "streaming": True,
+            },
+            correlation_id,
+        )
+
+        start_time = now_utc()
+
+        try:
+            # Load conversation history
+            history = await self._memory.get_messages(thread_id)
+
+            # Build messages
+            messages = []
+            effective_prompt = self.get_effective_system_prompt()
+            if effective_prompt:
+                messages.append(SystemMessage(content=effective_prompt))
+            messages.extend(history)
+            
+            user_message = HumanMessage(content=message)
+            messages.append(user_message)
+
+            accumulated_content = ""
+            index = 0
+
+            async for chunk in self.model.astream(messages):
+                stream_chunk = chunk_from_langchain(chunk, index)
+                accumulated_content += stream_chunk.content
+                index += 1
+                
+                if stream_chunk.content:
+                    await self._emit_event(
+                        EventType.TOKEN_STREAMED,
+                        {
+                            "agent_id": self.id,
+                            "agent_name": self.name,
+                            "thread_id": thread_id,
+                            "token": stream_chunk.content,
+                            "index": index,
+                        },
+                        correlation_id,
+                    )
+                
+                yield stream_chunk
+
+            # Track timing
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            self.state.add_thinking_time(duration_ms)
+
+            # Save to memory
+            ai_message = AIMessage(content=accumulated_content)
+            await self._memory.add_messages(
+                thread_id=thread_id,
+                messages=[user_message, ai_message],
+                metadata={
+                    **(metadata or {}),
+                    "agent_name": self.name,
+                    "agent_id": self.id,
+                },
+            )
+
+            # Update local state
+            self.state.add_message(user_message)
+            self.state.add_message(ai_message)
+
+            await self._set_status(AgentStatus.IDLE, correlation_id)
+
+            await self._emit_event(
+                EventType.AGENT_RESPONDED,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "thread_id": thread_id,
+                    "response_preview": accumulated_content[:200] if accumulated_content else "",
+                    "duration_ms": duration_ms,
+                    "streaming": True,
+                    "token_count": index,
+                },
+                correlation_id,
+            )
+
+        except Exception as e:
+            self.state.record_error(str(e))
+            await self._set_status(AgentStatus.ERROR, correlation_id)
+            await self._emit_event(
+                EventType.AGENT_ERROR,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "thread_id": thread_id,
+                    "error": str(e),
+                    "phase": "chat_stream",
+                },
+                correlation_id,
+            )
+            raise
+
+    async def stream_events(
+        self,
+        prompt: str,
+        correlation_id: str | None = None,
+        *,
+        include_tools: bool = True,
+        system_prompt_override: str | None = None,
+    ) -> "AsyncIterator[StreamEvent]":
+        """
+        Stream structured events during agent thinking.
+        
+        This provides more detailed events than think_stream(), including:
+        - STREAM_START: Beginning of stream with metadata
+        - TOKEN: Each token as it arrives
+        - TOOL_CALL_START: When a tool call begins
+        - TOOL_CALL_ARGS: Tool call argument chunks
+        - TOOL_CALL_END: Tool call complete
+        - STREAM_END: End of stream with full content
+        - ERROR: If an error occurs
+        
+        Args:
+            prompt: The prompt to process.
+            correlation_id: Optional correlation ID for event tracking.
+            include_tools: Whether to include tools in system prompt.
+            system_prompt_override: Optional system prompt override.
+            
+        Yields:
+            StreamEvent objects with structured information.
+            
+        Example:
+            ```python
+            async for event in agent.stream_events("Search for Python tutorials"):
+                if event.type == StreamEventType.TOKEN:
+                    print(event.content, end="", flush=True)
+                elif event.type == StreamEventType.TOOL_CALL_START:
+                    print(f"\\n[Calling {event.tool_name}...]")
+            ```
+        """
+        from agenticflow.agent.streaming import (
+            StreamEvent,
+            StreamEventType,
+            chunk_from_langchain,
+            extract_tool_calls,
+            ToolCallChunk,
+        )
+        
+        if not self.model:
+            raise RuntimeError(f"Agent {self.name} has no model configured")
+
+        await self._set_status(AgentStatus.THINKING, correlation_id)
+
+        start_time = now_utc()
+
+        # Build messages
+        messages = []
+        if system_prompt_override is not None:
+            effective_prompt = system_prompt_override
+        elif include_tools:
+            effective_prompt = self.get_effective_system_prompt()
+        else:
+            effective_prompt = self.config.system_prompt
+        if effective_prompt:
+            messages.append(SystemMessage(content=effective_prompt))
+
+        messages.extend(self.state.get_recent_history(10))
+        messages.append(HumanMessage(content=prompt))
+
+        # Emit start event
+        yield StreamEvent(
+            type=StreamEventType.STREAM_START,
+            metadata={
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "prompt": prompt[:200],
+            },
+            index=0,
+        )
+
+        accumulated_content = ""
+        index = 1
+        active_tool_calls: dict[int, ToolCallChunk] = {}
+
+        try:
+            async for chunk in self.model.astream(messages):
+                stream_chunk = chunk_from_langchain(chunk, index)
+                
+                # Handle text content
+                if stream_chunk.content:
+                    accumulated_content += stream_chunk.content
+                    yield StreamEvent(
+                        type=StreamEventType.TOKEN,
+                        content=stream_chunk.content,
+                        accumulated=accumulated_content,
+                        index=index,
+                    )
+                    index += 1
+                
+                # Handle tool calls
+                tool_chunks = extract_tool_calls(chunk)
+                for tc in tool_chunks:
+                    tc_index = tc.index
+                    
+                    if tc_index not in active_tool_calls:
+                        # New tool call
+                        active_tool_calls[tc_index] = tc
+                        if tc.name:
+                            yield StreamEvent(
+                                type=StreamEventType.TOOL_CALL_START,
+                                tool_call=tc,
+                                tool_name=tc.name,
+                                index=index,
+                            )
+                            index += 1
+                    else:
+                        # Update existing tool call
+                        existing = active_tool_calls[tc_index]
+                        if tc.args:
+                            existing.args += tc.args
+                            yield StreamEvent(
+                                type=StreamEventType.TOOL_CALL_ARGS,
+                                tool_call=existing,
+                                tool_name=existing.name,
+                                index=index,
+                            )
+                            index += 1
+
+            # Emit tool call end events
+            for tc in active_tool_calls.values():
+                yield StreamEvent(
+                    type=StreamEventType.TOOL_CALL_END,
+                    tool_call=tc,
+                    tool_name=tc.name,
+                    index=index,
+                )
+                index += 1
+
+            # Track timing
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            self.state.add_thinking_time(duration_ms)
+
+            # Update history
+            self.state.add_message(HumanMessage(content=prompt))
+            self.state.add_message(AIMessage(content=accumulated_content))
+
+            await self._set_status(AgentStatus.IDLE, correlation_id)
+
+            # Emit end event
+            yield StreamEvent(
+                type=StreamEventType.STREAM_END,
+                accumulated=accumulated_content,
+                metadata={
+                    "duration_ms": duration_ms,
+                    "token_count": index,
+                    "tool_calls": len(active_tool_calls),
+                },
+                index=index,
+            )
+
+        except Exception as e:
+            self.state.record_error(str(e))
+            await self._set_status(AgentStatus.ERROR, correlation_id)
+            yield StreamEvent(
+                type=StreamEventType.ERROR,
+                error=str(e),
+                accumulated=accumulated_content,
+                index=index,
+            )
+            raise
+
+    # =========================================================================
+    # TOOL EXECUTION (ACT)
+    # =========================================================================
 
     async def act(
         self,

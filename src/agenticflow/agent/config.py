@@ -98,6 +98,9 @@ class AgentConfig:
     max_tokens: int | None = None  # Used only if model is None
     system_prompt: str | None = None
     model_kwargs: dict[str, Any] = field(default_factory=dict)  # For lazy model creation
+    
+    # Streaming Configuration
+    stream: bool = False  # Enable token-by-token streaming by default
 
     # Capabilities
     tools: list[str] = field(default_factory=list)

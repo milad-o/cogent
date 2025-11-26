@@ -468,3 +468,173 @@ class TestFlowObserver:
         summary = obs.summary()
         assert "Execution Summary" in summary
         assert "Total events:" in summary
+
+
+class TestFlowObserverStreaming:
+    """Tests for FlowObserver streaming integration."""
+    
+    def test_streaming_channel_exists(self):
+        """Test that STREAMING channel is available."""
+        from agenticflow.observability import Channel
+        
+        assert hasattr(Channel, "STREAMING")
+        assert Channel.STREAMING.value == "streaming"
+    
+    def test_streaming_factory_method(self):
+        """Test FlowObserver.streaming() factory method."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        
+        obs = FlowObserver.streaming()
+        assert obs.config.level == ObservabilityLevel.DEBUG
+        assert Channel.STREAMING in obs.config.channels
+        assert Channel.AGENTS in obs.config.channels
+        
+        # With show_tokens=False
+        obs2 = FlowObserver.streaming(show_tokens=False)
+        assert obs2.config.level == ObservabilityLevel.DETAILED
+    
+    def test_streaming_only_factory_method(self):
+        """Test FlowObserver.streaming_only() factory method."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        
+        obs = FlowObserver.streaming_only()
+        assert obs.config.level == ObservabilityLevel.DEBUG
+        assert Channel.STREAMING in obs.config.channels
+    
+    def test_on_stream_callback_config(self):
+        """Test on_stream callback is properly configured."""
+        from agenticflow.observability import FlowObserver
+        
+        stream_calls = []
+        
+        obs = FlowObserver(
+            on_stream=lambda agent, token, data: stream_calls.append((agent, token)),
+        )
+        
+        assert obs.config.on_stream is not None
+    
+    @pytest.mark.asyncio
+    async def test_streaming_events_dispatched(self):
+        """Test streaming events are dispatched to callback."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        stream_calls = []
+        
+        obs = FlowObserver(
+            level=ObservabilityLevel.DEBUG,
+            channels={Channel.STREAMING},
+            on_stream=lambda agent, token, data: stream_calls.append((agent, token)),
+        )
+        
+        bus = EventBus()
+        obs.attach(bus)
+        
+        # Publish streaming events
+        await bus.publish(Event(
+            type=EventType.STREAM_START,
+            data={"agent_name": "TestAgent", "model": "gpt-4"}
+        ))
+        await bus.publish(Event(
+            type=EventType.TOKEN_STREAMED,
+            data={"agent_name": "TestAgent", "token": "Hello"}
+        ))
+        await bus.publish(Event(
+            type=EventType.TOKEN_STREAMED,
+            data={"agent_name": "TestAgent", "token": " world"}
+        ))
+        await bus.publish(Event(
+            type=EventType.STREAM_END,
+            data={"agent_name": "TestAgent"}
+        ))
+        
+        # Check callbacks were called
+        assert len(stream_calls) >= 4
+        assert ("TestAgent", "start") in stream_calls
+        assert ("TestAgent", "Hello") in stream_calls
+        assert ("TestAgent", " world") in stream_calls
+        assert ("TestAgent", "end") in stream_calls
+    
+    @pytest.mark.asyncio
+    async def test_streaming_events_in_metrics(self):
+        """Test streaming events are counted in metrics."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        bus = EventBus()
+        obs.attach(bus)
+        
+        await bus.publish(Event(type=EventType.STREAM_START, data={"agent_name": "Test"}))
+        await bus.publish(Event(type=EventType.TOKEN_STREAMED, data={"agent_name": "Test", "token": "x"}))
+        await bus.publish(Event(type=EventType.STREAM_END, data={"agent_name": "Test"}))
+        
+        metrics = obs.metrics()
+        assert metrics.get("events.stream.start", 0) == 1
+        assert metrics.get("events.stream.token", 0) == 1
+        assert metrics.get("events.stream.end", 0) == 1
+    
+    @pytest.mark.asyncio
+    async def test_streaming_events_formatted(self):
+        """Test streaming events are properly formatted."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        from io import StringIO
+        
+        output = StringIO()
+        obs = FlowObserver(
+            level=ObservabilityLevel.DETAILED,
+            channels={Channel.STREAMING},
+            stream=output,
+        )
+        
+        bus = EventBus()
+        obs.attach(bus)
+        
+        await bus.publish(Event(
+            type=EventType.STREAM_START,
+            data={"agent_name": "TestAgent", "model": "gpt-4"}
+        ))
+        await bus.publish(Event(
+            type=EventType.STREAM_END,
+            data={"agent_name": "TestAgent"}
+        ))
+        
+        result = output.getvalue()
+        assert "TestAgent" in result
+        assert "streaming" in result
+        assert "complete" in result
+    
+    @pytest.mark.asyncio
+    async def test_stream_error_triggers_on_error(self):
+        """Test STREAM_ERROR triggers on_error callback."""
+        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.events.bus import EventBus
+        from agenticflow.models.event import Event
+        from agenticflow.core.enums import EventType
+        
+        errors = []
+        
+        obs = FlowObserver(
+            level=ObservabilityLevel.DEBUG,
+            channels={Channel.STREAMING},
+            on_error=lambda source, err: errors.append((source, err)),
+        )
+        
+        bus = EventBus()
+        obs.attach(bus)
+        
+        await bus.publish(Event(
+            type=EventType.STREAM_ERROR,
+            data={"agent_name": "TestAgent", "error": "Connection failed"}
+        ))
+        
+        assert len(errors) == 1
+        assert errors[0][0] == "TestAgent"
+        assert "Connection failed" in errors[0][1]

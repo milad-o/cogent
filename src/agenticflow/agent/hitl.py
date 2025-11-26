@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class InterruptReason(Enum):
@@ -89,7 +89,7 @@ class PendingAction:
             agent_name=data["agent_name"],
             reason=InterruptReason(data.get("reason", "tool_approval")),
             context=data.get("context", {}),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else datetime.now(),
+            timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else datetime.now(timezone.utc),
             metadata=data.get("metadata", {}),
         )
     
@@ -123,7 +123,7 @@ class HumanDecision:
     feedback: str | None = None
     guidance: str | None = None  # Instructions for agent to reconsider
     response: Any = None  # Direct response value for RESPOND decisions
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     
     def to_dict(self) -> dict[str, Any]:
         """Serialize for storage/transmission."""
@@ -147,9 +147,9 @@ class HumanDecision:
             feedback=data.get("feedback"),
             guidance=data.get("guidance"),
             response=data.get("response"),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else datetime.now(),
+            timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else datetime.now(timezone.utc),
         )
-    
+
     @classmethod
     def approve(cls, action_id: str, feedback: str | None = None) -> HumanDecision:
         """Create an approval decision."""

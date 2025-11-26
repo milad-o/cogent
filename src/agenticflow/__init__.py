@@ -145,6 +145,21 @@ from agenticflow.agent.hitl import (
     HumanResponse,
     should_interrupt,
 )
+from agenticflow.agent.streaming import (
+    StreamChunk,
+    StreamEvent,
+    StreamEventType,
+    StreamConfig,
+    StreamCallback,
+    PrintStreamCallback,
+    CollectorStreamCallback,
+    ObserverStreamCallback,
+    ToolCallChunk,
+    chunk_from_langchain,
+    extract_tool_calls,
+    collect_stream,
+    print_stream,
+)
 
 # Graphs - Execution strategies (DAG is our superior approach)
 from agenticflow.graphs import (
@@ -344,6 +359,19 @@ __all__ = [
     "GuidanceResult",
     "HumanResponse",
     "should_interrupt",
+    # Streaming
+    "StreamChunk",
+    "StreamEvent",
+    "StreamEventType",
+    "StreamConfig",
+    "StreamCallback",
+    "PrintStreamCallback",
+    "CollectorStreamCallback",
+    "ToolCallChunk",
+    "chunk_from_langchain",
+    "extract_tool_calls",
+    "collect_stream",
+    "print_stream",
     # Events
     "EventBus",
     "get_event_bus",

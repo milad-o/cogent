@@ -61,7 +61,7 @@ from enum import Enum, IntEnum
 from typing import Any, Callable, TextIO, TYPE_CHECKING
 
 from agenticflow.core.enums import EventType
-from agenticflow.core.utils import generate_id, now_utc
+from agenticflow.core.utils import generate_id, now_utc, to_local
 from agenticflow.models.event import Event
 from agenticflow.observability.progress import (
     OutputConfig,
@@ -109,6 +109,7 @@ class Channel(str, Enum):
     - TOOLS: Tool calls, results, errors, retries
     - MESSAGES: Inter-agent communication
     - TASKS: Task lifecycle events
+    - STREAMING: Token-by-token LLM output streaming
     - SYSTEM: System-level events
     - RESILIENCE: Retries, circuit breakers, fallbacks
     - ALL: Everything
@@ -118,6 +119,7 @@ class Channel(str, Enum):
     TOOLS = "tools"
     MESSAGES = "messages"
     TASKS = "tasks"
+    STREAMING = "streaming"
     SYSTEM = "system"
     RESILIENCE = "resilience"
     ALL = "all"
@@ -173,6 +175,13 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.TOOL_ERROR,
         EventType.AGENT_ERROR,
     },
+    Channel.STREAMING: {
+        EventType.STREAM_START,
+        EventType.TOKEN_STREAMED,
+        EventType.STREAM_TOOL_CALL,
+        EventType.STREAM_END,
+        EventType.STREAM_ERROR,
+    },
 }
 
 
@@ -211,6 +220,7 @@ class ObserverConfig:
     on_agent: Callable[[str, str, dict], None] | None = None  # name, action, data
     on_tool: Callable[[str, str, dict], None] | None = None   # name, action, data
     on_message: Callable[[str, str, str], None] | None = None  # from, to, content
+    on_stream: Callable[[str, str, dict], None] | None = None  # agent, token/action, data
     on_error: Callable[[str, Exception | str], None] | None = None
     
     # Filtering
@@ -302,6 +312,7 @@ class FlowObserver:
         on_agent: Callable[[str, str, dict], None] | None = None,
         on_tool: Callable[[str, str, dict], None] | None = None,
         on_message: Callable[[str, str, str], None] | None = None,
+        on_stream: Callable[[str, str, dict], None] | None = None,
         on_error: Callable[[str, Exception | str], None] | None = None,
         # Filtering
         include_agents: set[str] | list[str] | None = None,
@@ -326,6 +337,7 @@ class FlowObserver:
             on_agent: Callback for agent events (name, action, data)
             on_tool: Callback for tool events (name, action, data)
             on_message: Callback for messages (from, to, content)
+            on_stream: Callback for streaming events (agent, token/action, data)
             on_error: Callback for errors (source, error)
             include_agents: Only these agents (None = all)
             exclude_agents: Exclude these agents
@@ -346,6 +358,7 @@ class FlowObserver:
             on_agent=on_agent,
             on_tool=on_tool,
             on_message=on_message,
+            on_stream=on_stream,
             on_error=on_error,
             include_agents=set(include_agents) if include_agents else None,
             exclude_agents=set(exclude_agents) if exclude_agents else None,
@@ -377,6 +390,10 @@ class FlowObserver:
         # Span tracking (for nested operations)
         self._spans: list[dict] = []
         self._span_stack: list[dict] = []
+        
+        # Streaming state tracking
+        self._streaming_agents: dict[str, dict] = {}  # agent_name -> {tokens, start_time, ...}
+        self._stream_buffer: dict[str, str] = {}  # agent_name -> accumulated content
     
     # ==================== Factory Methods (Presets) ====================
     
@@ -511,6 +528,44 @@ class FlowObserver:
             show_timestamps=True,
         )
     
+    @classmethod
+    def streaming(cls, show_tokens: bool = True) -> FlowObserver:
+        """
+        Create observer optimized for streaming output.
+        
+        Shows real-time token streaming from LLM responses.
+        
+        Args:
+            show_tokens: If True, show individual tokens (DEBUG level).
+                        If False, show only start/end (DETAILED level).
+        
+        Example:
+            ```python
+            observer = FlowObserver.streaming()
+            flow = Flow(..., observer=observer)
+            
+            # Will show tokens as they arrive:
+            # ▸ [Agent] streaming... (gpt-4o)
+            # Hello world...  <- tokens appear in real-time
+            # ✓ [Agent] stream complete (1.2s, 45 tok/s)
+            ```
+        """
+        return cls(
+            level=ObservabilityLevel.DEBUG if show_tokens else ObservabilityLevel.DETAILED,
+            channels=[Channel.AGENTS, Channel.STREAMING, Channel.TASKS],
+            show_timestamps=True,
+            show_duration=True,
+        )
+    
+    @classmethod
+    def streaming_only(cls) -> FlowObserver:
+        """Create observer showing only streaming events."""
+        return cls(
+            level=ObservabilityLevel.DEBUG,
+            channels=[Channel.STREAMING],
+            show_timestamps=True,
+        )
+    
     # ==================== Attach/Detach ====================
     
     def attach(self, event_bus: EventBus) -> None:
@@ -613,6 +668,19 @@ class FlowObserver:
         }:
             return ObservabilityLevel.DEBUG
         
+        # Streaming events - DETAILED level (same as tool calls)
+        # STREAM_START/END at DETAILED, TOKEN_STREAMED at DEBUG for less noise
+        if event.type in {
+            EventType.STREAM_START,
+            EventType.STREAM_END,
+            EventType.STREAM_TOOL_CALL,
+            EventType.STREAM_ERROR,
+        }:
+            return ObservabilityLevel.DETAILED
+        
+        if event.type == EventType.TOKEN_STREAMED:
+            return ObservabilityLevel.DEBUG  # Individual tokens at debug level
+        
         # Trace-level: everything else
         return ObservabilityLevel.TRACE
     
@@ -686,10 +754,20 @@ class FlowObserver:
         
         # Error callback
         if self.config.on_error:
-            if event.type in {EventType.AGENT_ERROR, EventType.TOOL_ERROR, EventType.TASK_FAILED}:
+            if event.type in {EventType.AGENT_ERROR, EventType.TOOL_ERROR, EventType.TASK_FAILED, EventType.STREAM_ERROR}:
                 source = event.data.get("agent_name") or event.data.get("tool") or "unknown"
                 error = event.data.get("error") or event.data.get("message", "Unknown error")
                 self.config.on_error(source, error)
+        
+        # Streaming callback
+        if self.config.on_stream and channel == Channel.STREAMING:
+            agent_name = event.data.get("agent_name") or event.data.get("agent", "unknown")
+            if event.type == EventType.TOKEN_STREAMED:
+                token = event.data.get("token", event.data.get("content", ""))
+                self.config.on_stream(agent_name, token, event.data)
+            else:
+                action = event.type.value.split(".")[-1]  # "start", "end", "tool_call", "error"
+                self.config.on_stream(agent_name, action, event.data)
     
     def _format_event(self, event: Event) -> str:
         """Format an event for output with rich colors and formatting."""
@@ -703,7 +781,8 @@ class FlowObserver:
         # Timestamp prefix - use cyan for visibility
         ts_prefix = ""
         if self.config.show_timestamps:
-            ts = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
+            local_ts = to_local(event.timestamp)
+            ts = local_ts.strftime("%H:%M:%S.%f")[:-3]
             ts_prefix = s.info(f"[{ts}]") + " "
         
         # Trace ID
@@ -861,6 +940,94 @@ class FlowObserver:
             return f"{prefix}{s.dim('📢')} {sender} {s.dim('broadcast')}"
         
         # ═══════════════════════════════════════════════════════════
+        # STREAMING EVENTS - Real-time LLM output
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.STREAM_START:
+            agent_name = data.get("agent_name", data.get("agent", "?"))
+            model = data.get("model", "")
+            model_str = f" ({model})" if model else ""
+            # Track streaming state
+            self._streaming_agents[agent_name] = {
+                "start_time": event.timestamp,
+                "token_count": 0,
+            }
+            self._stream_buffer[agent_name] = ""
+            return f"{prefix}{s.info('▸')} {s.agent(f'[{agent_name}]')} {s.dim('streaming...')}{s.dim(model_str)}"
+        
+        elif event_type == EventType.TOKEN_STREAMED:
+            agent_name = data.get("agent_name", data.get("agent", "?"))
+            token = data.get("token", data.get("content", ""))
+            # Track token count
+            if agent_name in self._streaming_agents:
+                self._streaming_agents[agent_name]["token_count"] += 1
+            # Accumulate content
+            if agent_name in self._stream_buffer:
+                self._stream_buffer[agent_name] += token
+            # At DEBUG level, show each token (can be noisy)
+            # Use end="" style output for inline streaming effect
+            if self.config.level >= ObservabilityLevel.DEBUG:
+                # Return empty - we'll print directly for streaming effect
+                self.config.stream.write(s.dim(token))
+                self.config.stream.flush()
+                return ""  # Don't add newline
+            return ""  # Don't display individual tokens at lower levels
+        
+        elif event_type == EventType.STREAM_TOOL_CALL:
+            agent_name = data.get("agent_name", data.get("agent", "?"))
+            tool_name = data.get("tool_name", data.get("tool", "?"))
+            tool_args = data.get("args", {})
+            args_preview = str(tool_args)[:50] if tool_args else ""
+            return f"{prefix}   {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{s.dim(f' {args_preview}') if args_preview else ''}"
+        
+        elif event_type == EventType.STREAM_END:
+            agent_name = data.get("agent_name", data.get("agent", "?"))
+            # Calculate stats
+            token_count = 0
+            duration_str = ""
+            if agent_name in self._streaming_agents:
+                stream_info = self._streaming_agents[agent_name]
+                token_count = stream_info.get("token_count", 0)
+                if "start_time" in stream_info and self.config.show_duration:
+                    start = stream_info["start_time"]
+                    duration_ms = (event.timestamp - start).total_seconds() * 1000
+                    tokens_per_sec = token_count / (duration_ms / 1000) if duration_ms > 0 else 0
+                    if duration_ms > 1000:
+                        duration_str = s.success(f" ({duration_ms/1000:.1f}s, {tokens_per_sec:.0f} tok/s)")
+                    else:
+                        duration_str = s.dim(f" ({duration_ms:.0f}ms, {token_count} tokens)")
+                # Clean up
+                del self._streaming_agents[agent_name]
+            
+            # Get accumulated content preview
+            content_preview = ""
+            if agent_name in self._stream_buffer:
+                content = self._stream_buffer[agent_name]
+                if content:
+                    truncate_len = self.config.truncate or 200
+                    content_preview = content[:truncate_len]
+                    if len(content) > truncate_len:
+                        content_preview += "..."
+                del self._stream_buffer[agent_name]
+            
+            # If we were at DEBUG level, add newline after streaming tokens
+            if self.config.level >= ObservabilityLevel.DEBUG:
+                self.config.stream.write("\n")
+            
+            header = f"{prefix}{s.success('✓')} {s.agent(f'[{agent_name}]')} {s.dim('stream complete')}{duration_str}"
+            if content_preview and self.config.level >= ObservabilityLevel.DETAILED:
+                return f"{header}\n      {s.dim(content_preview)}"
+            return header
+        
+        elif event_type == EventType.STREAM_ERROR:
+            agent_name = data.get("agent_name", data.get("agent", "?"))
+            error = data.get("error", "Unknown streaming error")
+            # Clean up streaming state
+            self._streaming_agents.pop(agent_name, None)
+            self._stream_buffer.pop(agent_name, None)
+            return f"{prefix}{s.error('✗')} {s.agent(f'[{agent_name}]')} {s.error(f'Stream error: {error}')}"
+        
+        # ═══════════════════════════════════════════════════════════
         # DEFAULT - System/custom events (dimmed)
         # ═══════════════════════════════════════════════════════════
         
@@ -875,8 +1042,9 @@ class FlowObserver:
         event_type = event.type
         lines: list[str] = []
         
-        # Timestamp in cyan
-        ts = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
+        # Timestamp in cyan (converted to local)
+        local_ts = to_local(event.timestamp)
+        ts = local_ts.strftime("%H:%M:%S.%f")[:-3]
         
         # Color and emoji based on event type
         if event_type.category == "agent":

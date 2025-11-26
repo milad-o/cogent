@@ -30,7 +30,7 @@ def generate_id(prefix: str | int = "", length: int = 8) -> str:
 
 def now_utc() -> datetime:
     """
-    Get current UTC timestamp.
+    Get current UTC timestamp (timezone-aware).
     
     Returns:
         Current datetime in UTC timezone
@@ -38,18 +38,47 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def format_timestamp(dt: datetime | None) -> str | None:
+def now_local() -> datetime:
+    """
+    Get current local timestamp (timezone-aware).
+    
+    Returns:
+        Current datetime in local timezone
+    """
+    return datetime.now(timezone.utc).astimezone()
+
+
+def to_local(dt: datetime) -> datetime:
+    """
+    Convert a datetime to local timezone.
+    
+    Args:
+        dt: Datetime to convert (can be naive or timezone-aware)
+        
+    Returns:
+        Datetime in local timezone
+    """
+    if dt.tzinfo is None:
+        # Assume naive datetime is UTC
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone()
+
+
+def format_timestamp(dt: datetime | None, local: bool = True) -> str | None:
     """
     Format a datetime for display.
     
     Args:
         dt: Datetime to format (can be None)
+        local: If True, convert to local timezone first (default: True)
         
     Returns:
         Formatted string or None
     """
     if dt is None:
         return None
+    if local:
+        dt = to_local(dt)
     return dt.strftime("%H:%M:%S.%f")[:-3]
 
 

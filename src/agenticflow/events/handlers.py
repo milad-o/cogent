@@ -5,7 +5,7 @@ Event handlers - built-in handlers for common use cases.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TextIO
 
@@ -315,7 +315,7 @@ class MetricsEventHandler:
         self.event_counts: dict[str, int] = {}
         self.task_durations: list[float] = []
         self.error_count = 0
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
 
     def __call__(self, event: Event) -> None:
         """Collect metrics from event."""
@@ -362,7 +362,7 @@ class MetricsEventHandler:
             "avg_task_duration_ms": avg_duration,
             "min_task_duration_ms": min(self.task_durations) if self.task_durations else 0,
             "max_task_duration_ms": max(self.task_durations) if self.task_durations else 0,
-            "uptime_seconds": (datetime.now() - self.start_time).total_seconds(),
+            "uptime_seconds": (datetime.now(timezone.utc) - self.start_time).total_seconds(),
         }
 
     def reset(self) -> None:
@@ -370,4 +370,4 @@ class MetricsEventHandler:
         self.event_counts.clear()
         self.task_durations.clear()
         self.error_count = 0
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)

@@ -81,6 +81,13 @@ class EventType(Enum):
     AGENT_INTERRUPTED = "agent.interrupted"  # HITL: agent paused for human input
     AGENT_RESUMED = "agent.resumed"  # HITL: agent resumed after human decision
 
+    # Streaming events (token-by-token LLM output)
+    STREAM_START = "stream.start"  # Streaming has started
+    TOKEN_STREAMED = "stream.token"  # A token was streamed from the LLM
+    STREAM_TOOL_CALL = "stream.tool_call"  # Tool call detected during streaming
+    STREAM_END = "stream.end"  # Streaming has completed
+    STREAM_ERROR = "stream.error"  # Error during streaming
+
     # Tool events
     TOOL_REGISTERED = "tool.registered"
     TOOL_CALLED = "tool.called"
