@@ -14,7 +14,7 @@ from agenticflow.topologies import (
     HierarchicalTopology,
 )
 from agenticflow.topologies.base import HandoffStrategy
-from agenticflow.agents import Agent, AgentConfig
+from agenticflow.agent import Agent, AgentConfig
 from agenticflow.core.enums import AgentRole
 
 
@@ -198,14 +198,18 @@ class TestSupervisorTopology:
 
     def test_parse_agent_output_finish(self, topology):
         """Test parsing finish decision from agent output."""
-        output = "The task is now complete. We can finish here."
-        next_agent = topology._parse_agent_output(output, "supervisor")
+        output = "The task is now complete. FINAL ANSWER: Done."
+        # Get the supervisor agent from the topology
+        supervisor = topology.agents["supervisor"]
+        next_agent = topology._parse_agent_output(output, supervisor)
         assert next_agent == "__end__"
 
     def test_parse_agent_output_worker(self, topology):
         """Test parsing worker delegation from agent output."""
-        output = "Let's delegate this to the researcher for more info."
-        next_agent = topology._parse_agent_output(output, "supervisor")
+        output = "DELEGATE TO [researcher]: Look up more info."
+        # Get the supervisor agent from the topology
+        supervisor = topology.agents["supervisor"]
+        next_agent = topology._parse_agent_output(output, supervisor)
         assert next_agent == "researcher"
 
     def test_policy_allows_supervisor_to_worker(self, topology):

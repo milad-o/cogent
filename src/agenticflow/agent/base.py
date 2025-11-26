@@ -12,8 +12,8 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
 
-from agenticflow.agents.config import AgentConfig
-from agenticflow.agents.state import AgentState
+from agenticflow.agent.config import AgentConfig
+from agenticflow.agent.state import AgentState
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.models.event import Event
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from agenticflow.events.bus import EventBus
     from agenticflow.tools.registry import ToolRegistry
     from agenticflow.observability.progress import ProgressTracker
-    from agenticflow.agents.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
+    from agenticflow.agent.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
 
 
 class Agent:
@@ -104,6 +104,8 @@ class Agent:
         tools: Sequence[BaseTool | str] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
+        memory: Any = None,
+        store: Any = None,
     ) -> None:
         """Simplified constructor - create agent with direct parameters."""
         ...
@@ -114,6 +116,8 @@ class Agent:
         config: AgentConfig,
         event_bus: EventBus | None = None,
         tool_registry: ToolRegistry | None = None,
+        memory: Any = None,
+        store: Any = None,
     ) -> None:
         """Advanced constructor - create agent with AgentConfig."""
         ...
@@ -123,6 +127,8 @@ class Agent:
         config: AgentConfig | None = None,
         event_bus: EventBus | None = None,
         tool_registry: ToolRegistry | None = None,
+        memory: Any = None,
+        store: Any = None,
         *,
         # Simplified API parameters
         name: str | None = None,
@@ -149,6 +155,11 @@ class Agent:
             config: Agent configuration (advanced API)
             event_bus: Event bus for communication (optional, Flow provides this)
             tool_registry: Registry of available tools (optional, Flow provides this)
+            memory: Memory backend for conversation persistence. Accepts:
+                - True: Use built-in InMemoryCheckpointer (for testing)
+                - LangGraph checkpointer: MemorySaver, SqliteSaver, PostgresSaver
+                - AgentMemory instance: For custom configuration
+            store: LangGraph store for long-term memory across threads.
             name: Agent name (simplified API)
             model: LangChain model (simplified API)
             role: Agent role (simplified API)
@@ -157,6 +168,21 @@ class Agent:
             tools: List of tools - can be BaseTool objects or strings (simplified API)
             system_prompt: System prompt (alias for instructions, for compatibility)
             resilience: Resilience configuration (simplified API)
+            
+        Example with memory:
+            ```python
+            from langgraph.checkpoint.memory import MemorySaver
+            
+            # Simple: just pass True for in-memory
+            agent = Agent(name="Assistant", model=model, memory=True)
+            
+            # LangGraph checkpointer for persistence
+            agent = Agent(name="Assistant", model=model, memory=MemorySaver())
+            
+            # Chat with thread-based memory
+            response = await agent.chat("Hi, I'm Alice", thread_id="conv-1")
+            response = await agent.chat("What's my name?", thread_id="conv-1")  # Remembers!
+            ```
         """
         # Handle simplified API
         if config is None:
@@ -187,7 +213,11 @@ class Agent:
                         tool_names.append(getattr(tool, "name", str(tool)))
             
             # instructions takes priority over system_prompt
+            # If neither provided, use role-specific default prompt
             effective_prompt = instructions or system_prompt
+            if not effective_prompt:
+                from agenticflow.agent.roles import get_role_prompt
+                effective_prompt = get_role_prompt(role)
             
             # Create config from simplified params
             config = AgentConfig(
@@ -211,10 +241,13 @@ class Agent:
         self._lock = asyncio.Lock()
         self._resilience: ToolResilience | None = None
         self._setup_resilience()
+        
+        # Setup memory
+        self._setup_memory(memory, store)
 
     def _setup_resilience(self) -> None:
         """Setup resilience layer if configured."""
-        from agenticflow.agents.resilience import (
+        from agenticflow.agent.resilience import (
             FallbackRegistry,
             ResilienceConfig,
             ToolResilience,
@@ -225,7 +258,7 @@ class Agent:
             resilience_config = self.config.resilience_config
         elif self.config.retry_on_error:
             # Create config from legacy settings
-            from agenticflow.agents.resilience import RetryPolicy, RetryStrategy
+            from agenticflow.agent.resilience import RetryPolicy, RetryStrategy
             resilience_config = ResilienceConfig(
                 retry_policy=RetryPolicy(
                     max_retries=self.config.max_retries,
@@ -246,6 +279,65 @@ class Agent:
             fallback_registry=fallback_registry,
         )
     
+    def _setup_memory(self, memory: Any = None, store: Any = None) -> None:
+        """Setup memory manager.
+        
+        Args:
+            memory: Memory backend - can be:
+                - None: No persistence (in-memory only for session)
+                - True: Use built-in InMemorySaver
+                - LangGraph saver (MemorySaver, SqliteSaver, etc.)
+                - AgentMemory instance
+            store: LangGraph BaseStore for long-term memory.
+        """
+        from agenticflow.agent.memory import AgentMemory, InMemorySaver
+        
+        # Handle different memory input types
+        if isinstance(memory, AgentMemory):
+            # Already an AgentMemory instance
+            self._memory = memory
+        elif memory is True:
+            # Convenience: True means use built-in in-memory
+            self._memory = AgentMemory(
+                backend=InMemorySaver(),
+                store=store,
+            )
+        elif memory is not None:
+            # Assume it's a LangGraph saver
+            self._memory = AgentMemory(
+                backend=memory,
+                store=store,
+            )
+        else:
+            # No persistence
+            self._memory = AgentMemory(store=store)
+    
+    @property
+    def memory(self):
+        """Access the agent's memory manager.
+        
+        Returns:
+            AgentMemory instance for managing conversation history and long-term memory.
+            
+        Example:
+            ```python
+            # Get messages from a thread
+            messages = await agent.memory.get_messages(thread_id="conv-1")
+            
+            # Store long-term memory
+            await agent.memory.remember("user_preference", {"theme": "dark"})
+            
+            # Recall long-term memory
+            prefs = await agent.memory.recall("user_preference")
+            ```
+        """
+        return self._memory
+    
+    @property
+    def has_memory(self) -> bool:
+        """Whether the agent has a memory persistence backend configured."""
+        return self._memory.has_persistence
+    
     @property
     def resilience(self) -> ToolResilience:
         """Access the resilience layer for this agent."""
@@ -262,6 +354,22 @@ class Agent:
     def role(self) -> AgentRole:
         """Agent's role in the system."""
         return self.config.role
+
+    @property
+    def role_behavior(self):
+        """Get behavior definition for this agent's role."""
+        from agenticflow.agent.roles import RoleBehavior, get_role_behavior
+        return get_role_behavior(self.role)
+
+    @property
+    def can_delegate(self) -> bool:
+        """Whether this agent can delegate to other agents."""
+        return self.role_behavior.can_delegate
+
+    @property
+    def can_finish(self) -> bool:
+        """Whether this agent can produce final answers."""
+        return self.role_behavior.can_finish
 
     @property
     def status(self) -> AgentStatus:
@@ -431,6 +539,20 @@ class Agent:
             self.state.add_message(AIMessage(content=result))
 
             await self._set_status(AgentStatus.IDLE, correlation_id)
+            
+            # Emit response event so observer can show the thought
+            await self._emit_event(
+                EventType.AGENT_RESPONDED,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "response": result,
+                    "response_preview": result[:500] if result else "",
+                    "duration_ms": duration_ms,
+                },
+                correlation_id,
+            )
+            
             return result
 
         except Exception as e:
@@ -447,6 +569,187 @@ class Agent:
                 correlation_id,
             )
             raise
+
+    async def chat(
+        self,
+        message: str,
+        thread_id: str | None = None,
+        *,
+        correlation_id: str | None = None,
+        metadata: dict | None = None,
+    ) -> str:
+        """
+        Chat with the agent, maintaining conversation history per thread.
+        
+        This is the recommended way to have multi-turn conversations with
+        an agent. Each thread_id maintains its own conversation history,
+        enabling context-aware responses.
+        
+        Requires a checkpointer to be configured for cross-session persistence.
+        Without a checkpointer, history is only maintained in-memory for the
+        current session.
+        
+        Args:
+            message: The user's message.
+            thread_id: Unique identifier for the conversation thread.
+                If None, uses a default thread for this agent.
+            correlation_id: Optional correlation ID for event tracking.
+            metadata: Optional metadata to store with the conversation.
+            
+        Returns:
+            The agent's response.
+            
+        Example:
+            ```python
+            from langgraph.checkpoint.memory import MemorySaver
+            from agenticflow import Agent
+            
+            agent = Agent(
+                name="Assistant",
+                model=model,
+                checkpointer=MemorySaver(),
+            )
+            
+            # First message in a thread
+            response1 = await agent.chat(
+                "Hi, I'm Alice and I live in Paris",
+                thread_id="user-alice-123"
+            )
+            
+            # Second message - agent remembers context
+            response2 = await agent.chat(
+                "What city do I live in?",
+                thread_id="user-alice-123"
+            )
+            # Response will mention Paris!
+            
+            # Different thread = fresh context
+            response3 = await agent.chat(
+                "What city do I live in?",
+                thread_id="user-bob-456"
+            )
+            # Response will say it doesn't know
+            ```
+        """
+        if not self.model:
+            raise RuntimeError(f"Agent {self.name} has no model configured")
+        
+        # Default thread ID based on agent
+        if thread_id is None:
+            thread_id = f"agent-{self.id}-default"
+        
+        await self._set_status(AgentStatus.THINKING, correlation_id)
+        
+        await self._emit_event(
+            EventType.AGENT_THINKING,
+            {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "thread_id": thread_id,
+                "prompt_preview": message[:200],
+            },
+            correlation_id,
+        )
+        
+        start_time = now_utc()
+        
+        try:
+            # Load conversation history from memory
+            history = await self._memory.get_messages(thread_id)
+            
+            # Build messages
+            messages = []
+            if self.config.system_prompt:
+                messages.append(SystemMessage(content=self.config.system_prompt))
+            
+            # Add conversation history
+            messages.extend(history)
+            
+            # Add new user message
+            user_message = HumanMessage(content=message)
+            messages.append(user_message)
+            
+            # Get response from model
+            response = await self.model.ainvoke(messages)
+            result = response.content
+            
+            # Track timing
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            self.state.add_thinking_time(duration_ms)
+            
+            # Save messages to memory (both user and assistant)
+            ai_message = AIMessage(content=result)
+            await self._memory.add_messages(
+                thread_id=thread_id,
+                messages=[user_message, ai_message],
+                metadata={
+                    **(metadata or {}),
+                    "agent_name": self.name,
+                    "agent_id": self.id,
+                },
+            )
+            
+            # Also update local state
+            self.state.add_message(user_message)
+            self.state.add_message(ai_message)
+            
+            await self._set_status(AgentStatus.IDLE, correlation_id)
+            
+            await self._emit_event(
+                EventType.AGENT_RESPONDED,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "thread_id": thread_id,
+                    "response_preview": result[:200] if result else "",
+                    "duration_ms": duration_ms,
+                },
+                correlation_id,
+            )
+            
+            return result
+            
+        except Exception as e:
+            self.state.record_error(str(e))
+            await self._set_status(AgentStatus.ERROR, correlation_id)
+            await self._emit_event(
+                EventType.AGENT_ERROR,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "thread_id": thread_id,
+                    "error": str(e),
+                    "phase": "chat",
+                },
+                correlation_id,
+            )
+            raise
+
+    async def get_thread_history(
+        self,
+        thread_id: str,
+        limit: int | None = None,
+    ) -> list:
+        """
+        Get conversation history for a thread.
+        
+        Args:
+            thread_id: Thread identifier.
+            limit: Maximum number of messages to return.
+            
+        Returns:
+            List of messages in the thread.
+        """
+        return await self._memory.get_messages(thread_id, limit=limit)
+    
+    async def clear_thread(self, thread_id: str) -> None:
+        """
+        Clear conversation history for a thread.
+        
+        Args:
+            thread_id: Thread identifier to clear.
+        """
+        await self._memory.clear_thread(thread_id)
 
     async def act(
         self,
@@ -911,7 +1214,7 @@ class Agent:
             )
             ```
         """
-        from agenticflow.agents.executor import (
+        from agenticflow.graphs import (
             ExecutionStrategy,
             create_executor,
         )
@@ -1190,6 +1493,231 @@ class Agent:
         )
         diagram = AgentDiagram(self, config=config)
         return diagram.draw_png()
+
+    # =========================================================================
+    # Factory Methods - Create role-specific agents
+    # =========================================================================
+    
+    @classmethod
+    def as_supervisor(
+        cls,
+        name: str,
+        model: Any,
+        *,
+        workers: list[str] | None = None,
+        instructions: str | None = None,
+        **kwargs,
+    ) -> "Agent":
+        """Create a supervisor agent.
+        
+        Supervisors delegate tasks to workers and synthesize results.
+        
+        Args:
+            name: Agent name
+            model: LLM model to use
+            workers: List of worker agent names this supervisor manages
+            instructions: Additional instructions (appended to role prompt)
+            **kwargs: Additional Agent parameters
+            
+        Returns:
+            Agent configured as a supervisor
+            
+        Example:
+            supervisor = Agent.as_supervisor(
+                name="Manager",
+                model=ChatOpenAI(),
+                workers=["Researcher", "Analyst"],
+            )
+        """
+        from agenticflow.agent.roles import get_role_prompt
+        
+        base_prompt = get_role_prompt(AgentRole.SUPERVISOR)
+        if workers:
+            base_prompt += f"\n\nYour team members: {', '.join(workers)}"
+        if instructions:
+            base_prompt += f"\n\n{instructions}"
+        
+        return cls(
+            name=name,
+            model=model,
+            role=AgentRole.SUPERVISOR,
+            instructions=base_prompt,
+            **kwargs,
+        )
+    
+    @classmethod
+    def as_worker(
+        cls,
+        name: str,
+        model: Any,
+        *,
+        specialty: str | None = None,
+        instructions: str | None = None,
+        tools: list | None = None,
+        **kwargs,
+    ) -> "Agent":
+        """Create a worker agent.
+        
+        Workers execute tasks using their tools.
+        
+        Args:
+            name: Agent name
+            model: LLM model to use  
+            specialty: Description of worker's specialty
+            instructions: Additional instructions
+            tools: List of tools for this worker
+            **kwargs: Additional Agent parameters
+            
+        Returns:
+            Agent configured as a worker
+            
+        Example:
+            researcher = Agent.as_worker(
+                name="Researcher",
+                model=ChatOpenAI(),
+                specialty="web research and data gathering",
+                tools=[search_tool, scrape_tool],
+            )
+        """
+        from agenticflow.agent.roles import get_role_prompt
+        
+        base_prompt = get_role_prompt(AgentRole.WORKER)
+        if specialty:
+            base_prompt += f"\n\nYour specialty: {specialty}"
+        if instructions:
+            base_prompt += f"\n\n{instructions}"
+        
+        return cls(
+            name=name,
+            model=model,
+            role=AgentRole.WORKER,
+            instructions=base_prompt,
+            tools=tools,
+            **kwargs,
+        )
+    
+    @classmethod
+    def as_critic(
+        cls,
+        name: str,
+        model: Any,
+        *,
+        criteria: list[str] | None = None,
+        instructions: str | None = None,
+        **kwargs,
+    ) -> "Agent":
+        """Create a critic agent.
+        
+        Critics review work and provide feedback.
+        
+        Args:
+            name: Agent name
+            model: LLM model to use
+            criteria: List of criteria to evaluate against
+            instructions: Additional instructions
+            **kwargs: Additional Agent parameters
+            
+        Returns:
+            Agent configured as a critic
+        """
+        from agenticflow.agent.roles import get_role_prompt
+        
+        base_prompt = get_role_prompt(AgentRole.CRITIC)
+        if criteria:
+            base_prompt += f"\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
+        if instructions:
+            base_prompt += f"\n\n{instructions}"
+        
+        return cls(
+            name=name,
+            model=model,
+            role=AgentRole.CRITIC,
+            instructions=base_prompt,
+            **kwargs,
+        )
+    
+    @classmethod
+    def as_planner(
+        cls,
+        name: str,
+        model: Any,
+        *,
+        available_agents: list[str] | None = None,
+        instructions: str | None = None,
+        **kwargs,
+    ) -> "Agent":
+        """Create a planner agent.
+        
+        Planners create execution plans with steps and dependencies.
+        
+        Args:
+            name: Agent name
+            model: LLM model to use
+            available_agents: List of agents that can execute plan steps
+            instructions: Additional instructions
+            **kwargs: Additional Agent parameters
+            
+        Returns:
+            Agent configured as a planner
+        """
+        from agenticflow.agent.roles import get_role_prompt
+        
+        base_prompt = get_role_prompt(AgentRole.PLANNER)
+        if available_agents:
+            base_prompt += f"\n\nAvailable agents for task assignment: {', '.join(available_agents)}"
+        if instructions:
+            base_prompt += f"\n\n{instructions}"
+        
+        return cls(
+            name=name,
+            model=model,
+            role=AgentRole.PLANNER,
+            instructions=base_prompt,
+            **kwargs,
+        )
+    
+    @classmethod
+    def as_researcher(
+        cls,
+        name: str,
+        model: Any,
+        *,
+        tools: list | None = None,
+        focus_areas: list[str] | None = None,
+        instructions: str | None = None,
+        **kwargs,
+    ) -> "Agent":
+        """Create a researcher agent.
+        
+        Researchers gather and synthesize information.
+        
+        Args:
+            name: Agent name
+            model: LLM model to use
+            tools: Research tools (search, scrape, etc.)
+            focus_areas: Areas of research focus
+            instructions: Additional instructions
+            **kwargs: Additional Agent parameters
+            
+        Returns:
+            Agent configured as a researcher
+        """
+        from agenticflow.agent.roles import get_role_prompt
+        
+        base_prompt = get_role_prompt(AgentRole.RESEARCHER)
+        if focus_areas:
+            base_prompt += f"\n\nFocus areas: {', '.join(focus_areas)}"
+        if instructions:
+            base_prompt += f"\n\n{instructions}"
+        
+        return cls(
+            name=name,
+            model=model,
+            role=AgentRole.RESEARCHER,
+            tools=tools,
+            instructions=base_prompt,
+            **kwargs,
+        )
 
     def __repr__(self) -> str:
         return f"Agent(id={self.id}, name={self.name}, role={self.role.value})"

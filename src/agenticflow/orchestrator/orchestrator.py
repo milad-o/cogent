@@ -18,7 +18,7 @@ from agenticflow.models.event import Event
 from agenticflow.models.task import Task
 
 if TYPE_CHECKING:
-    from agenticflow.agents.base import Agent
+    from agenticflow.agent.base import Agent
     from agenticflow.events.bus import EventBus
     from agenticflow.tasks.manager import TaskManager
     from agenticflow.tools.registry import ToolRegistry

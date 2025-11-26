@@ -14,7 +14,7 @@ from agenticflow.core import now_utc
 from agenticflow.core.enums import TaskStatus, AgentStatus
 
 if TYPE_CHECKING:
-    from agenticflow.agents import Agent
+    from agenticflow.agent import Agent
     from agenticflow.tasks import TaskManager
     from agenticflow.events import EventBus
 

@@ -65,7 +65,7 @@ from typing import Any, Literal
 
 from langchain_core.tools import BaseTool
 
-from agenticflow.agents.base import Agent
+from agenticflow.agent.base import Agent
 from agenticflow.core.enums import AgentRole
 from agenticflow.events.bus import EventBus
 from agenticflow.events.handlers import ConsoleEventHandler
@@ -212,6 +212,7 @@ class Flow:
         # Observability shortcuts
         verbose: bool = False,
         observer: FlowObserver | None = None,
+        tracer: "ExecutionTracer | None" = None,
     ) -> None:
         """
         Create a Flow.
@@ -227,11 +228,13 @@ class Flow:
             config: Advanced configuration options.
             verbose: Shortcut to enable verbose output (legacy, prefer observer).
             observer: FlowObserver for fine-grained observability control.
+            tracer: ExecutionTracer for deep execution tracing.
         """
         self.name = name
         self._agents = list(agents)
         self._config = config or FlowConfig()
         self._observer = observer
+        self._tracer = tracer
         
         if verbose:
             self._config.verbose = True

@@ -17,7 +17,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.store.base import BaseStore
 from langgraph.types import Command, interrupt
 
-from agenticflow.agents import Agent
+from agenticflow.agent import Agent
 from agenticflow.events import EventBus
 from agenticflow.topologies.policies import (
     TopologyPolicy,
@@ -365,13 +365,13 @@ class BaseTopology:
                 ],
             }
 
-            # Parse for next agent hint
-            next_agent = self._parse_agent_output(thought, agent.config.name)
+            # Parse for next agent hint (using role-aware delegation parsing)
+            next_agent = self._parse_agent_output(thought, agent)
             if next_agent:
                 result["next_agent"] = next_agent
 
-            # Check for completion
-            if self._is_task_complete(thought):
+            # Check for completion (role-aware - only agents with can_finish can complete)
+            if self._is_task_complete(thought, agent):
                 result["completed"] = True
 
             # Publish completion event
@@ -389,71 +389,122 @@ class BaseTopology:
 
         return node
 
-    def _parse_agent_output(self, output: str, current_agent: str) -> str | None:
-        """Parse agent output to determine next agent.
+    def _parse_agent_output(self, output: str, agent: Agent) -> str | None:
+        """Parse agent output to determine next agent using role-aware parsing.
 
-        Override this for custom output parsing.
+        Uses the delegation parsing from roles module for structured commands,
+        with fallback to keyword-based detection.
 
         Args:
             output: Agent's output text.
-            current_agent: Current agent name.
+            agent: The agent that produced the output.
 
         Returns:
             Target agent name, "__end__", or None.
         """
+        from agenticflow.agent.roles import parse_delegation
+        
+        current_agent = agent.config.name
+        
+        # First, try structured delegation parsing
+        cmd = parse_delegation(output)
+        if cmd:
+            if cmd.action == "final_answer":
+                # Only agents with can_finish can produce final answers
+                if agent.can_finish:
+                    return "__end__"
+                # Otherwise, ignore the final answer attempt
+                return None
+            
+            if cmd.action == "delegate":
+                # Only agents with can_delegate can delegate
+                if agent.can_delegate and cmd.target:
+                    # Check if target is a valid agent
+                    if cmd.target in self.agents or cmd.target.lower() in [n.lower() for n in self.agents]:
+                        # Find actual agent name (case-insensitive)
+                        for name in self.agents:
+                            if name.lower() == cmd.target.lower():
+                                return name
+                # If can't delegate, ignore
+                return None
+            
+            if cmd.action == "route" and cmd.target:
+                # Routing is like delegation
+                for name in self.agents:
+                    if name.lower() == cmd.target.lower():
+                        return name
+        
+        # Fallback: keyword-based detection
         output_lower = output.lower()
 
-        # Check for handoff mentions FIRST (higher priority than finish)
-        handoff_keywords = ["hand off to", "pass to", "delegate to", "send to", "assigned to"]
-        for keyword in handoff_keywords:
-            if keyword in output_lower:
-                for name in self.agents:
-                    if name != current_agent and name.lower() in output_lower:
-                        return name
+        # Check for handoff mentions (only if agent can delegate)
+        if agent.can_delegate:
+            handoff_keywords = ["hand off to", "pass to", "delegate to", "send to", "assigned to"]
+            for keyword in handoff_keywords:
+                if keyword in output_lower:
+                    for name in self.agents:
+                        if name != current_agent and name.lower() in output_lower:
+                            return name
 
         # Check for any agent mention (before finish signals)
         for name in self.agents:
             if name != current_agent and name.lower() in output_lower:
                 return name
 
-        # Check for explicit finish signals (only if no agent mentioned)
-        finish_patterns = [
-            "task is complete",
-            "task is now complete",
-            "task complete",
-            "job is complete",
-            "we can finish",
-            "all done",
-            "final answer:",
-        ]
-        for pattern in finish_patterns:
-            if pattern in output_lower:
-                return "__end__"
+        # Check for explicit finish signals (only if agent can finish)
+        if agent.can_finish:
+            finish_patterns = [
+                "task is complete",
+                "task is now complete",
+                "task complete",
+                "job is complete",
+                "we can finish",
+                "all done",
+            ]
+            for pattern in finish_patterns:
+                if pattern in output_lower:
+                    return "__end__"
 
         return None
 
-    def _is_task_complete(self, output: str) -> bool:
-        """Check if task is complete based on output.
+    def _is_task_complete(self, output: str, agent: Agent | None = None) -> bool:
+        """Check if task is complete based on output and agent role.
 
-        Override this for custom completion detection.
+        Uses role-aware completion detection via the roles module.
 
         Args:
             output: Agent's output text.
+            agent: The agent that produced the output (for role checking).
 
         Returns:
             True if task appears complete.
         """
-        # More precise completion detection
+        from agenticflow.agent.roles import has_final_answer
+        
+        # First, check for explicit "FINAL ANSWER:" format
+        if has_final_answer(output):
+            # Only agents with can_finish=True can produce final answers
+            if agent is not None and not agent.can_finish:
+                return False
+            return True
+        
+        # Fallback: check for other completion signals
         completion_signals = [
             "task complete",
-            "task is complete",
+            "task is complete", 
             "job is done",
             "all tasks complete",
-            "final answer:",
             "here is the final",
         ]
         output_lower = output.lower()
-        return any(signal in output_lower for signal in completion_signals)
+        
+        if any(signal in output_lower for signal in completion_signals):
+            # Only agents with can_finish=True can complete
+            if agent is not None and not agent.can_finish:
+                return False
+            return True
+        
+        return False
 
     def handoff(
         self,

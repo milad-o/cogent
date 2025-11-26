@@ -10,7 +10,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.store.base import BaseStore
 
-from agenticflow.agents import Agent
+from agenticflow.agent import Agent
 from agenticflow.events import EventBus
 from agenticflow.topologies.base import (
     BaseTopology,

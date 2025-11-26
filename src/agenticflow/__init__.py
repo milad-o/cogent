@@ -111,10 +111,29 @@ from agenticflow.models.message import Message, MessageType
 from agenticflow.models.task import Task
 
 # Agents (THIS IS WHERE WE ADD VALUE)
-from agenticflow.agents.base import Agent
-from agenticflow.agents.config import AgentConfig
-from agenticflow.agents.state import AgentState
-from agenticflow.agents.executor import (
+from agenticflow.agent.base import Agent
+from agenticflow.agent.config import AgentConfig
+from agenticflow.agent.state import AgentState
+from agenticflow.agent.memory import (
+    AgentMemory,
+    MemorySnapshot,
+    MemoryCheckpoint,  # Backward compat alias
+    ThreadConfig,
+    InMemorySaver,
+    InMemoryCheckpointer,  # Backward compat alias
+)
+from agenticflow.agent.resilience import (
+    ResilienceConfig,
+    RetryPolicy,
+    RetryStrategy,
+    CircuitBreaker,
+    CircuitState,
+    ToolResilience,
+    FallbackRegistry,
+)
+
+# Graphs - Execution strategies (DAG is our superior approach)
+from agenticflow.graphs import (
     ExecutionStrategy,
     ExecutionPlan,
     ToolCall,
@@ -123,15 +142,6 @@ from agenticflow.agents.executor import (
     PlanExecutor,
     AdaptiveExecutor,
     create_executor,
-)
-from agenticflow.agents.resilience import (
-    ResilienceConfig,
-    RetryPolicy,
-    RetryStrategy,
-    CircuitBreaker,
-    CircuitState,
-    ToolResilience,
-    FallbackRegistry,
 )
 
 # Events (THIS IS WHERE WE ADD VALUE)
@@ -272,6 +282,13 @@ __all__ = [
     "Agent",
     "AgentConfig",
     "AgentState",
+    # Memory (LangGraph compatible)
+    "AgentMemory",
+    "MemorySnapshot",
+    "MemoryCheckpoint",  # Backward compat alias
+    "ThreadConfig",
+    "InMemorySaver",
+    "InMemoryCheckpointer",  # Backward compat alias
     # Execution strategies
     "ExecutionStrategy",
     "ExecutionPlan",

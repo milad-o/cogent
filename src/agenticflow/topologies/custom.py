@@ -9,7 +9,7 @@ from typing import Any, Sequence
 
 from langgraph.types import Command
 
-from agenticflow.agents import Agent
+from agenticflow.agent import Agent
 from agenticflow.topologies.base import BaseTopology, TopologyConfig, TopologyState
 
 

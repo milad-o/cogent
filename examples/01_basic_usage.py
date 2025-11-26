@@ -1,7 +1,7 @@
 """
-Demo: Research Assistant
+Demo: Basic Usage
 
-A simple agent that researches topics and provides summaries.
+Single agent with instructions performing a task.
 
 Usage:
     uv run python examples/01_basic_usage.py
@@ -11,45 +11,31 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-from agenticflow import Agent, Flow, TopologyPattern
+from agenticflow import Agent, Flow, FlowObserver
 
 load_dotenv()
-
-
-@tool
-def search(query: str) -> str:
-    """Search for information on a topic."""
-    # In production, connect to a real search API
-    return f"Found: {query} is a rapidly evolving field with recent advances in efficiency and accessibility."
-
-
-@tool
-def summarize(text: str) -> str:
-    """Summarize text into key points."""
-    return f"Summary: {text[:100]}... [Key takeaways extracted]"
 
 
 async def main():
     model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
     assistant = Agent(
-        name="ResearchAssistant",
+        name="Assistant",
         model=model,
-        tools=[search, summarize],
-        instructions="You are a research assistant. Search for information, then summarize the key points concisely.",
+        instructions="You are a helpful assistant. Be concise.",
     )
 
     flow = Flow(
-        name="research",
+        name="basic",
         agents=[assistant],
-        topology=TopologyPattern.PIPELINE,
+        topology="pipeline",
+        observer=FlowObserver.verbose(),
     )
 
-    result = await flow.run("What are the latest developments in quantum computing?")
-    print(result["results"][-1]["thought"])
+    result = await flow.run("What is 2 + 2? Explain briefly.")
+    print(f"\nResult: {result.results[-1]['thought']}")
 
 
 if __name__ == "__main__":

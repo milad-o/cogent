@@ -466,5 +466,5 @@ class TestFlowObserver:
         await bus.publish(Event(type=EventType.AGENT_INVOKED, data={"agent_name": "Test"}))
         
         summary = obs.summary()
-        assert "Observer Summary" in summary
+        assert "Execution Summary" in summary
         assert "Total events:" in summary

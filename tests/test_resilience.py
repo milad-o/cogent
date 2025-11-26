@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from agenticflow.agents.resilience import (
+from agenticflow.agent.resilience import (
     CircuitBreaker,
     CircuitState,
     ExecutionResult,

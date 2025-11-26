@@ -11,7 +11,7 @@ from agenticflow.core.enums import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
-    from agenticflow.agents.resilience import ResilienceConfig
+    from agenticflow.agent.resilience import ResilienceConfig
 
 
 @dataclass
@@ -193,7 +193,7 @@ class AgentConfig:
             
         Example:
             ```python
-            from agenticflow.agents.resilience import ResilienceConfig
+            from agenticflow.agent.resilience import ResilienceConfig
             
             config = AgentConfig(
                 name="ResilientAgent",

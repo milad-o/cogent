@@ -209,7 +209,7 @@ Messages = list[MessageDict]
 ## Exception Classes
 
 ```python
-from agenticflow.agents.resilience import (
+from agenticflow.agent.resilience import (
     CircuitOpenError,      # Raised when circuit breaker is open
     MaxRetriesExceeded,    # Raised when all retries exhausted
     NoFallbackAvailable,   # Raised when no fallback tools available

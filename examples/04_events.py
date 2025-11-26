@@ -1,7 +1,7 @@
 """
-Demo: Document Processor with Logging
+Demo: Custom Callbacks
 
-Pipeline with event hooks for observability.
+Use FlowObserver callbacks to track events programmatically.
 
 Usage:
     uv run python examples/04_events.py
@@ -9,58 +9,45 @@ Usage:
 
 import asyncio
 import os
-from datetime import datetime
 
 from dotenv import load_dotenv
-from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 
-from agenticflow import Agent, Flow, TopologyPattern, EventHooks, pipeline_topology
+from agenticflow import Agent, Flow, FlowObserver, ObservabilityLevel
 
 load_dotenv()
 
 
-@tool
-def extract_entities(text: str) -> str:
-    """Extract key entities from text."""
-    return "Entities: [Company: Acme Corp, Amount: $1.2M, Date: 2025-01-15]"
-
-
-@tool
-def classify_document(entities: str) -> str:
-    """Classify the document type."""
-    return "Type: Financial Report - Q4 Earnings"
-
-
-def log(msg: str):
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
-
-
 async def main():
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o"))
+    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
-    extractor = Agent(name="Extractor", model=model, tools=[extract_entities])
-    classifier = Agent(name="Classifier", model=model, tools=[classify_document])
+    planner = Agent(name="Planner", model=model, instructions="Create a plan.")
+    executor = Agent(name="Executor", model=model, instructions="Execute the plan.")
 
-    # Create topology with hooks for logging
-    pipeline_topology(
-        name="doc-processor",
-        stages=[extractor, classifier],
-        hooks=EventHooks(
-            on_handoff=lambda f, t, d: log(f"Handoff: {f} → {t}"),
-            on_complete=lambda a, r: log(f"Complete: {a}"),
-            on_error=lambda a, e: log(f"Error in {a}: {e}"),
-        ),
+    # Track events via callbacks
+    events = []
+    
+    observer = FlowObserver(
+        level=ObservabilityLevel.OFF,  # Silent - we handle output
+        on_event=lambda e: events.append(e.type.value),
     )
 
     flow = Flow(
-        name="doc-processor",
-        agents=[extractor, classifier],
-        topology=TopologyPattern.PIPELINE,
+        name="task",
+        agents=[planner, executor],
+        topology="pipeline",
+        observer=observer,
     )
 
-    result = await flow.run("Process this quarterly financial report from Acme Corp")
-    print(f"\nResult: {result['results'][-1]['thought']}")
+    print("Running with custom event tracking...")
+    result = await flow.run("Plan and execute: organize a meeting")
+    
+    print(f"\nCollected {len(events)} events:")
+    for event in events[:10]:
+        print(f"  - {event}")
+    
+    print(f"\nMetrics: {observer.metrics().get('by_channel', {})}")
+    print(f"\nResult: {result.results[-1]['thought'][:100]}...")
 
 
 if __name__ == "__main__":

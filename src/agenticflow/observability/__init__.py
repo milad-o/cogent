@@ -37,6 +37,16 @@ from agenticflow.observability.observer import (
     ObservabilityLevel,
     Channel,
 )
+from agenticflow.observability.trace import (
+    ExecutionTracer,
+    TracingObserver,
+    TraceLevel,
+    NodeType,
+    NodeStatus,
+    NodeTrace,
+    ToolTrace,
+    ExecutionSpan,
+)
 from agenticflow.observability.progress import (
     # Configuration
     OutputConfig,
@@ -74,6 +84,15 @@ __all__ = [
     "Span",
     "SpanContext",
     "SpanKind",
+    # Deep Execution Tracing (NEW!)
+    "ExecutionTracer",
+    "TracingObserver",
+    "TraceLevel",
+    "NodeType",
+    "NodeStatus",
+    "NodeTrace",
+    "ToolTrace",
+    "ExecutionSpan",
     # Metrics
     "MetricsCollector",
     "Counter",

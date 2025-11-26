@@ -17,7 +17,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from agenticflow.agents.base import Agent
+    from agenticflow.agent.base import Agent
     from agenticflow.topologies.base import BaseTopology
 
 

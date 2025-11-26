@@ -1,51 +1,63 @@
 """
-FlowObserver - pluggable observability for Flow execution.
+FlowObserver - THE unified observability system for Flow execution.
 
-Provides a unified interface for monitoring all aspects of flow execution
-with configurable channels, verbosity levels, and output formats.
+This is your single entry point for ALL observability needs:
+- Live console output (see what's happening)
+- Deep execution tracing (graph, timeline, spans)
+- Metrics and statistics
+- Export to JSON, Mermaid, OpenTelemetry
 
-Example:
+Example - Quick Start:
     ```python
     from agenticflow import Flow, Agent
-    from agenticflow.observability import FlowObserver, ObservabilityLevel
+    from agenticflow.observability import FlowObserver
     
-    # Quick setup with preset levels
-    observer = FlowObserver.verbose()
+    # Use presets for common needs
+    observer = FlowObserver.verbose()  # See agent thoughts
+    observer = FlowObserver.debug()    # See everything
+    observer = FlowObserver.trace()    # Maximum detail + graph
     
-    # Or full control
-    observer = FlowObserver(
-        level=ObservabilityLevel.DEBUG,
-        channels=["agents", "tools", "messages"],
-        on_event=my_callback,
-    )
-    
-    # Attach to flow
     flow = Flow(
         name="my-flow",
         agents=[agent1, agent2],
         topology="pipeline",
-        observer=observer,  # <-- plugged in
+        observer=observer,
     )
     
-    # Or attach later
-    flow.observer = observer
-    
-    # Run with full observability
     result = await flow.run("Do something")
     
-    # Get timeline, metrics, etc.
-    print(observer.timeline())
-    print(observer.metrics())
+    # After execution, get insights:
+    print(observer.summary())    # Statistics
+    print(observer.timeline())   # Chronological view
+    print(observer.graph())      # Execution graph (ASCII)
+    
+    # Export for analysis
+    observer.export_json("trace.json")
+    observer.export_mermaid("flow.mmd")
+    ```
+
+Example - Full Control:
+    ```python
+    observer = FlowObserver(
+        level=ObservabilityLevel.DEBUG,
+        channels=[Channel.AGENTS, Channel.TOOLS],
+        show_timestamps=True,
+        show_graph=True,  # Track execution graph
+        on_event=my_callback,
+        on_agent=lambda name, action, data: print(f"{name}: {action}"),
+        on_tool=lambda name, action, data: log_tool(name, data),
+    )
     ```
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, IntEnum, auto
+from enum import Enum, IntEnum
 from typing import Any, Callable, TextIO, TYPE_CHECKING
 
 from agenticflow.core.enums import EventType
@@ -76,7 +88,7 @@ class ObservabilityLevel(IntEnum):
     - PROGRESS: Key milestones (agent transitions)
     - DETAILED: Tool calls, retries, timing
     - DEBUG: Everything including internal events
-    - TRACE: Maximum detail for debugging
+    - TRACE: Maximum detail + execution graph
     """
     
     OFF = 0
@@ -349,6 +361,22 @@ class FlowObserver:
             format=format,
         ))
         self._attached_bus: EventBus | None = None
+        
+        # === Deep Tracing (integrated - no separate tracer needed!) ===
+        self._trace_id = generate_id()
+        
+        # Execution graph tracking
+        self._nodes: dict[str, dict] = {}  # node_id -> {name, type, status, ...}
+        self._edges: list[tuple[str, str, str]] = []  # (from, to, label)
+        self._current_agents: dict[str, str] = {}  # agent_name -> node_id
+        
+        # Tool call tracking
+        self._tool_calls: list[dict] = []
+        self._current_tools: dict[str, dict] = {}  # tool_name -> trace info
+        
+        # Span tracking (for nested operations)
+        self._spans: list[dict] = []
+        self._span_stack: list[dict] = []
     
     # ==================== Factory Methods (Presets) ====================
     
@@ -379,6 +407,16 @@ class FlowObserver:
         return cls.progress()
     
     @classmethod
+    def verbose(cls) -> FlowObserver:
+        """Create observer showing agent thoughts with full content."""
+        return cls(
+            level=ObservabilityLevel.PROGRESS,
+            channels=[Channel.AGENTS, Channel.TASKS],
+            show_duration=True,
+            truncate=500,  # Show substantial content
+        )
+    
+    @classmethod
     def detailed(cls) -> FlowObserver:
         """Create observer showing tool calls and timing."""
         return cls(
@@ -402,7 +440,16 @@ class FlowObserver:
     
     @classmethod
     def trace(cls) -> FlowObserver:
-        """Create observer with maximum detail for debugging."""
+        """
+        Create observer with maximum observability.
+        
+        Shows everything + builds execution graph.
+        After running, call:
+        - observer.graph() - Mermaid diagram of execution
+        - observer.timeline(detailed=True) - chronological view
+        - observer.summary() - stats and metrics
+        - observer.execution_trace() - structured data for export
+        """
         return cls(
             level=ObservabilityLevel.TRACE,
             channels=[Channel.ALL],
@@ -413,15 +460,20 @@ class FlowObserver:
         )
     
     @classmethod
-    def json(cls, stream: TextIO | None = None) -> FlowObserver:
-        """Create observer with JSON output (for log aggregation)."""
+    def json(cls, stream: TextIO | None = None, colored: bool = True) -> FlowObserver:
+        """
+        Create observer with structured JSON-like output.
+        
+        Outputs a readable, structured format ideal for log analysis.
+        Set colored=False for plain text (e.g., when piping to files).
+        """
         return cls(
             level=ObservabilityLevel.DETAILED,
             channels=[Channel.ALL],
             stream=stream,
             format=OutputFormat.JSON,
             show_timestamps=True,
-            use_colors=False,
+            use_colors=colored,
         )
     
     @classmethod
@@ -581,6 +633,9 @@ class FlowObserver:
         )
         self._events.append(observed)
         
+        # === Build execution trace graph ===
+        self._trace_event(event)
+        
         # Always call callbacks (they're opt-in)
         self._dispatch_callbacks(event, event_channel)
         
@@ -637,123 +692,500 @@ class FlowObserver:
                 self.config.on_error(source, error)
     
     def _format_event(self, event: Event) -> str:
-        """Format an event for output."""
+        """Format an event for output with rich colors and formatting."""
         if self.config.format == OutputFormat.JSON:
-            return event.to_json()
+            return self._format_event_json(event)
         
         s = self._styler
-        parts = []
+        c = Colors  # Direct access for custom colors
+        lines: list[str] = []
         
-        # Timestamp
+        # Timestamp prefix - use cyan for visibility
+        ts_prefix = ""
         if self.config.show_timestamps:
             ts = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
-            parts.append(s.timestamp(f"[{ts}]"))
+            ts_prefix = s.info(f"[{ts}]") + " "
         
         # Trace ID
+        trace_prefix = ""
         if self.config.show_trace_ids and event.correlation_id:
-            parts.append(s.dim(f"[{event.correlation_id[:8]}]"))
+            trace_prefix = s.dim(f"({event.correlation_id[:8]}) ")
+        
+        prefix = ts_prefix + trace_prefix
         
         # Format based on event type
         event_type = event.type
         data = event.data
         
-        # Agent events
+        # ═══════════════════════════════════════════════════════════
+        # AGENT EVENTS - Purple/Magenta theme with emojis
+        # ═══════════════════════════════════════════════════════════
+        
         if event_type == EventType.AGENT_INVOKED:
-            parts.append(s.agent(f"[{data.get('agent_name', '?')}]"))
-            parts.append("started")
+            agent_name = data.get('agent_name', '?')
+            return f"{prefix}{s.agent(f'▶ [{agent_name}]')} {s.dim('starting...')}"
         
         elif event_type == EventType.AGENT_THINKING:
-            parts.append(s.agent(f"[{data.get('agent_name', '?')}]"))
-            parts.append(s.dim("thinking..."))
+            agent_name = data.get('agent_name', '?')
+            return f"{prefix}{s.agent(f'🧠 [{agent_name}]')} {s.dim('thinking...')}"
         
         elif event_type == EventType.AGENT_ACTING:
-            parts.append(s.agent(f"[{data.get('agent_name', '?')}]"))
-            parts.append(s.dim("acting..."))
+            agent_name = data.get('agent_name', '?')
+            return f"{prefix}{s.agent(f'⚡ [{agent_name}]')} {s.dim('acting...')}"
         
         elif event_type == EventType.AGENT_RESPONDED:
-            parts.append(s.agent(f"[{data.get('agent_name', '?')}]"))
-            parts.append(s.success("✓"))
-            result = data.get("result_preview", "")
-            if self.config.truncate and len(result) > self.config.truncate:
-                result = result[:self.config.truncate] + "..."
+            agent_name = data.get('agent_name', '?')
+            result = data.get("response_preview") or data.get("response") or data.get("result_preview", "")
+            
+            # Duration formatting
+            duration_str = ""
+            if self.config.show_duration and "duration_ms" in data:
+                ms = data['duration_ms']
+                if ms > 1000:
+                    duration_str = s.success(f" ({ms/1000:.1f}s)")
+                else:
+                    duration_str = s.dim(f" ({ms:.0f}ms)")
+            
+            # Truncate if needed
+            truncate_len = self.config.truncate or 500
+            if len(result) > truncate_len:
+                result = result[:truncate_len] + "..."
+            
+            # Header with checkmark
+            header = f"{prefix}{s.success('✓')} {s.agent(f'[{agent_name}]')}{duration_str}"
+            
             if result:
-                parts.append(s.dim(result))
+                result_lines = result.split('\n')
+                if len(result_lines) > 1:
+                    # Multi-line response - simple indentation, no vertical lines
+                    lines.append(header)
+                    for line in result_lines[:12]:
+                        lines.append(f"      {line}")
+                    if len(result_lines) > 12:
+                        lines.append(s.dim(f"      ... ({len(result_lines) - 12} more lines)"))
+                    return "\n".join(lines)
+                else:
+                    # Single line - show inline
+                    return f"{header}\n      {result}"
+            else:
+                return header
         
         elif event_type == EventType.AGENT_ERROR:
-            parts.append(s.agent(f"[{data.get('agent_name', '?')}]"))
-            parts.append(s.error(f"✗ {data.get('error', 'error')}"))
+            agent_name = data.get('agent_name', '?')
+            error = data.get('error', 'Unknown error')
+            return f"{prefix}{s.error(f'✗ [{agent_name}] ERROR:')} {s.error(error)}"
         
-        # Tool events
+        # ═══════════════════════════════════════════════════════════
+        # TOOL EVENTS - Blue/Cyan theme with indentation
+        # ═══════════════════════════════════════════════════════════
+        
         elif event_type == EventType.TOOL_CALLED:
-            parts.append(s.info("→"))
-            parts.append(s.tool(data.get("tool", "?")))
+            tool_name = data.get("tool", "?")
             args = data.get("args", {})
+            args_str = ""
             if args and self.config.level >= ObservabilityLevel.DETAILED:
-                args_str = str(args)
-                if self.config.truncate and len(args_str) > self.config.truncate:
-                    args_str = args_str[:self.config.truncate] + "..."
-                parts.append(s.dim(f"({args_str})"))
+                args_preview = str(args)
+                if self.config.truncate and len(args_preview) > self.config.truncate:
+                    args_preview = args_preview[:self.config.truncate] + "..."
+                args_str = s.dim(f" args={args_preview}")
+            return f"{prefix}   {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('calling...')}{args_str}"
         
         elif event_type == EventType.TOOL_RESULT:
-            parts.append(s.success("✓"))
-            parts.append(s.tool(data.get("tool", "")))
+            tool_name = data.get("tool", "")
             result = data.get("result_preview", str(data.get("result", "")))
+            
+            # Duration
+            duration_str = ""
+            if self.config.show_duration and "duration_ms" in data:
+                ms = data['duration_ms']
+                if ms > 1000:
+                    duration_str = s.success(f" ({ms/1000:.1f}s)")
+                else:
+                    duration_str = s.dim(f" ({ms:.0f}ms)")
+            
+            # Truncate result
             if self.config.truncate and len(result) > self.config.truncate:
                 result = result[:self.config.truncate] + "..."
-            parts.append(s.dim(result))
-            if self.config.show_duration and "duration_ms" in data:
-                parts.append(s.dim(f"({data['duration_ms']:.0f}ms)"))
+            
+            result_preview = f" → {s.dim(result)}" if result else ""
+            return f"{prefix}   {s.success('✓')} {s.tool(f'🔧 {tool_name}')}{duration_str}{result_preview}"
         
         elif event_type == EventType.TOOL_ERROR:
-            parts.append(s.error("✗"))
-            parts.append(s.tool(data.get("tool", "?")))
-            parts.append(s.error(data.get("error", "error")))
+            tool_name = data.get("tool", "?")
+            error = data.get("error", "Unknown error")
+            return f"{prefix}   {s.error('✗')} {s.tool(f'🔧 {tool_name}')} {s.error(f'FAILED: {error}')}"
         
-        # Task events
+        # ═══════════════════════════════════════════════════════════
+        # TASK EVENTS - Green theme with clear status
+        # ═══════════════════════════════════════════════════════════
+        
         elif event_type == EventType.TASK_STARTED:
-            parts.append(s.info("🚀"))
-            parts.append(s.bold(data.get("task_name", data.get("task", "task"))))
+            task_name = data.get("task_name", data.get("task", "task"))
+            return f"{prefix}{s.success('🚀')} {s.bold('Task started:')} {task_name}"
         
         elif event_type == EventType.TASK_COMPLETED:
-            parts.append(s.success("✅"))
-            parts.append("Completed")
+            duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                parts.append(s.dim(f"({data['duration_ms']:.0f}ms)"))
+                ms = data['duration_ms']
+                if ms > 1000:
+                    duration_str = f" in {s.success(f'{ms/1000:.1f}s')}"
+                else:
+                    duration_str = f" in {s.dim(f'{ms:.0f}ms')}"
+            return f"{prefix}{s.success('✅ Task completed')}{duration_str}"
         
         elif event_type == EventType.TASK_FAILED:
-            parts.append(s.error("❌"))
-            parts.append(s.error(f"Failed: {data.get('error', 'unknown')}"))
+            error = data.get('error', 'unknown')
+            return f"{prefix}{s.error(f'❌ Task FAILED: {error}')}"
         
         elif event_type == EventType.TASK_RETRYING:
             attempt = data.get("attempt", "?")
             max_retries = data.get("max_retries", "?")
-            parts.append(s.warning("🔄"))
-            parts.append(f"Retry {attempt}/{max_retries}")
+            delay_str = ""
             if "delay" in data:
-                parts.append(s.dim(f"in {data['delay']:.1f}s"))
+                delay_str = s.dim(f" in {data['delay']:.1f}s")
+            return f"{prefix}{s.warning(f'🔄 Retrying ({attempt}/{max_retries})')}{delay_str}"
         
-        # Message events
+        # ═══════════════════════════════════════════════════════════
+        # MESSAGE EVENTS - Communication between agents
+        # ═══════════════════════════════════════════════════════════
+        
         elif event_type == EventType.MESSAGE_SENT:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
-            parts.append(s.dim("📤"))
-            parts.append(f"{sender} → {receiver}")
             content = data.get("content", "")[:50]
-            if content:
-                parts.append(s.dim(f'"{content}"'))
+            content_str = f' "{content}"' if content else ""
+            return f"{prefix}{s.dim('📤')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
         
         elif event_type == EventType.MESSAGE_BROADCAST:
             sender = data.get("sender_id", "?")
-            parts.append(s.dim("📢"))
-            parts.append(f"{sender} broadcast")
+            return f"{prefix}{s.dim('📢')} {sender} {s.dim('broadcast')}"
         
-        # Default
+        # ═══════════════════════════════════════════════════════════
+        # DEFAULT - System/custom events (dimmed)
+        # ═══════════════════════════════════════════════════════════
+        
         else:
-            parts.append(s.dim(event_type.value))
-            if data:
-                parts.append(s.dim(str(data)[:100]))
+            data_preview = str(data)[:100] if data else ""
+            return f"{prefix}{s.dim(event_type.value)} {s.dim(data_preview)}"
+    
+    def _format_event_json(self, event: Event) -> str:
+        """Format event as readable, colorized structured output."""
+        s = self._styler
+        data = event.data
+        event_type = event.type
+        lines: list[str] = []
         
-        return " ".join(parts)
+        # Timestamp in cyan
+        ts = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
+        
+        # Color and emoji based on event type
+        if event_type.category == "agent":
+            if "responded" in event_type.value:
+                icon = s.success("✓")
+            elif "thinking" in event_type.value:
+                icon = "🧠"
+            elif "error" in event_type.value:
+                icon = s.error("✗")
+            else:
+                icon = "▶"
+            type_str = s.agent(event_type.value)
+        elif event_type.category == "tool":
+            if "result" in event_type.value:
+                icon = s.success("✓")
+            elif "error" in event_type.value:
+                icon = s.error("✗")
+            else:
+                icon = "🔧"
+            type_str = s.tool(event_type.value)
+        elif event_type.category == "task":
+            if "completed" in event_type.value:
+                icon = s.success("✅")
+            elif "failed" in event_type.value:
+                icon = s.error("❌")
+            else:
+                icon = "🚀"
+            type_str = s.success(event_type.value)
+        else:
+            icon = "•"
+            type_str = s.dim(event_type.value)
+        
+        # Header with cyan timestamp
+        lines.append(f"{s.info(ts)} {icon} {type_str}")
+        
+        # Details based on event type - simple indentation, no tree lines
+        if event_type.category == "agent":
+            agent = data.get("agent_name", "?")
+            lines.append(f"    agent: {s.agent(agent)}")
+            
+            if "response_preview" in data or "response" in data:
+                response = data.get("response_preview") or data.get("response", "")
+                if len(response) > 150:
+                    response = response[:150] + "..."
+                first_line = response.split('\n')[0]
+                lines.append(f"    response: {first_line}")
+            
+            if "duration_ms" in data:
+                ms = data["duration_ms"]
+                dur_str = f"{ms/1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
+                lines.append(f"    duration: {s.success(dur_str)}")
+            
+            if "error" in data:
+                lines.append(f"    error: {s.error(data['error'])}")
+        
+        elif event_type.category == "tool":
+            tool = data.get("tool", "?")
+            lines.append(f"    tool: {s.tool(tool)}")
+            
+            if "args" in data and data["args"]:
+                args_str = str(data["args"])[:80]
+                lines.append(f"    args: {s.dim(args_str)}")
+            
+            if "result" in data or "result_preview" in data:
+                result = data.get("result_preview", str(data.get("result", "")))[:80]
+                lines.append(f"    result: {result}")
+            
+            if "duration_ms" in data:
+                ms = data["duration_ms"]
+                dur_str = f"{ms/1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
+                lines.append(f"    duration: {s.success(dur_str)}")
+            
+            if "error" in data:
+                lines.append(f"    error: {s.error(data['error'])}")
+        
+        elif event_type.category == "task":
+            task = data.get("task_name", data.get("task", ""))
+            if task:
+                lines.append(f"    task: {s.bold(task)}")
+            
+            if "duration_ms" in data:
+                ms = data["duration_ms"]
+                dur_str = f"{ms/1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
+                lines.append(f"    duration: {s.success(dur_str)}")
+            
+            if "error" in data:
+                lines.append(f"    error: {s.error(data['error'])}")
+        
+        else:
+            # Generic display for other events - simple indentation
+            items = list(data.items())[:4]
+            for key, value in items:
+                val_str = str(value)[:60]
+                lines.append(f"    {key}: {val_str}")
+        
+        return "\n".join(lines)
+    
+    # ==================== Deep Tracing ====================
+    
+    def _trace_event(self, event: Event) -> None:
+        """Build execution trace graph from events."""
+        event_type = event.type
+        data = event.data
+        ts = event.timestamp
+        
+        # Agent lifecycle tracking - start on INVOKED or THINKING
+        if event_type in (EventType.AGENT_INVOKED, EventType.AGENT_THINKING):
+            agent_name = data.get("agent_name", "unknown")
+            
+            # Only create node if agent not already tracked
+            if agent_name not in self._current_agents:
+                node_id = f"agent_{agent_name}_{generate_id()[:6]}"
+                self._nodes[node_id] = {
+                    "id": node_id,
+                    "name": agent_name,
+                    "type": "agent",
+                    "status": "running",
+                    "start_time": ts,
+                    "end_time": None,
+                    "input": data.get("input", ""),
+                    "output": None,
+                    "children": [],
+                    "tools_called": [],
+                }
+                self._current_agents[agent_name] = node_id
+                
+                # Add edge from previous completed agent
+                prev_completed = [
+                    n for n in self._nodes.values() 
+                    if n["type"] == "agent" and n["status"] == "completed"
+                ]
+                if prev_completed:
+                    last = prev_completed[-1]
+                    self._edges.append((last["id"], node_id, "→"))
+        
+        elif event_type == EventType.AGENT_RESPONDED:
+            agent_name = data.get("agent_name", "unknown")
+            if agent_name in self._current_agents:
+                node_id = self._current_agents[agent_name]
+                if node_id in self._nodes:
+                    node = self._nodes[node_id]
+                    node["status"] = "completed"
+                    node["end_time"] = ts
+                    node["output"] = data.get("response_preview") or data.get("response", "")[:200]
+                    if node["start_time"]:
+                        delta = (ts - node["start_time"]).total_seconds() * 1000
+                        node["duration_ms"] = delta
+                # Remove from current so next invocation creates new node
+                del self._current_agents[agent_name]
+        
+        elif event_type == EventType.AGENT_ERROR:
+            agent_name = data.get("agent_name", "unknown")
+            if agent_name in self._current_agents:
+                node_id = self._current_agents[agent_name]
+                if node_id in self._nodes:
+                    node = self._nodes[node_id]
+                    node["status"] = "failed"
+                    node["end_time"] = ts
+                    node["error"] = data.get("error", "Unknown error")
+                # Remove from current
+                del self._current_agents[agent_name]
+        
+        # Tool call tracking
+        elif event_type == EventType.TOOL_CALLED:
+            tool_name = data.get("tool", "unknown")
+            tool_id = f"tool_{tool_name}_{generate_id()[:6]}"
+            tool_record = {
+                "id": tool_id,
+                "name": tool_name,
+                "type": "tool",
+                "status": "running",
+                "start_time": ts,
+                "args": data.get("args", {}),
+                "result": None,
+            }
+            self._tool_calls.append(tool_record)
+            self._current_tools[tool_name] = tool_record
+            
+            # Link to current agent
+            for agent_name, agent_node_id in self._current_agents.items():
+                if agent_node_id in self._nodes:
+                    agent_node = self._nodes[agent_node_id]
+                    if agent_node["status"] == "running":
+                        agent_node["tools_called"].append(tool_id)
+                        self._edges.append((agent_node_id, tool_id, "calls"))
+        
+        elif event_type == EventType.TOOL_RESULT:
+            tool_name = data.get("tool", "unknown")
+            if tool_name in self._current_tools:
+                tool_record = self._current_tools[tool_name]
+                tool_record["status"] = "completed"
+                tool_record["end_time"] = ts
+                tool_record["result"] = data.get("result_preview") or str(data.get("result", ""))[:200]
+                if tool_record["start_time"]:
+                    delta = (ts - tool_record["start_time"]).total_seconds() * 1000
+                    tool_record["duration_ms"] = delta
+        
+        elif event_type == EventType.TOOL_ERROR:
+            tool_name = data.get("tool", "unknown")
+            if tool_name in self._current_tools:
+                tool_record = self._current_tools[tool_name]
+                tool_record["status"] = "failed"
+                tool_record["end_time"] = ts
+                tool_record["error"] = data.get("error", "Unknown error")
+    
+    def graph(self, style: str = "mermaid") -> str:
+        """
+        Get execution graph visualization.
+        
+        Shows the flow of execution through agents and tools.
+        
+        Args:
+            style: 'mermaid' (default) or 'ascii'
+        
+        Returns:
+            Graph visualization string
+        
+        Example:
+            >>> print(observer.graph())
+            ```mermaid
+            graph TD
+                agent_Researcher_a1b2c3[Researcher ✓ 1234ms]
+                tool_search_d4e5f6[🔧 search ✓]
+                agent_Researcher_a1b2c3 -->|calls| tool_search_d4e5f6
+            ```
+        """
+        if not self._nodes and not self._tool_calls:
+            return "No execution trace captured"
+        
+        if style == "mermaid":
+            return self._graph_mermaid()
+        else:
+            return self._graph_ascii()
+    
+    def _graph_mermaid(self) -> str:
+        """Generate Mermaid flowchart of execution."""
+        lines = ["```mermaid", "graph TD"]
+        
+        # Style definitions
+        lines.append("    classDef agent fill:#e1f5fe,stroke:#01579b")
+        lines.append("    classDef tool fill:#fff3e0,stroke:#e65100")
+        lines.append("    classDef error fill:#ffebee,stroke:#c62828")
+        
+        # Agent nodes
+        for node in self._nodes.values():
+            status_icon = "✓" if node["status"] == "completed" else "✗" if node["status"] == "failed" else "⋯"
+            duration = f" {node.get('duration_ms', 0):.0f}ms" if "duration_ms" in node else ""
+            label = f"{node['name']} {status_icon}{duration}"
+            css_class = "error" if node["status"] == "failed" else "agent"
+            lines.append(f"    {node['id']}[{label}]:::{css_class}")
+        
+        # Tool nodes
+        for tool in self._tool_calls:
+            status_icon = "✓" if tool["status"] == "completed" else "✗" if tool["status"] == "failed" else "⋯"
+            duration = f" {tool.get('duration_ms', 0):.0f}ms" if "duration_ms" in tool else ""
+            label = f"🔧 {tool['name']} {status_icon}{duration}"
+            css_class = "error" if tool["status"] == "failed" else "tool"
+            lines.append(f"    {tool['id']}[{label}]:::{css_class}")
+        
+        # Edges
+        for from_id, to_id, label in self._edges:
+            if label:
+                lines.append(f"    {from_id} -->|{label}| {to_id}")
+            else:
+                lines.append(f"    {from_id} --> {to_id}")
+        
+        lines.append("```")
+        return "\n".join(lines)
+    
+    def _graph_ascii(self) -> str:
+        """Generate ASCII art graph of execution."""
+        lines = ["Execution Graph:", "─" * 50]
+        
+        for node in self._nodes.values():
+            status = "✓" if node["status"] == "completed" else "✗" if node["status"] == "failed" else "…"
+            duration = f" ({node.get('duration_ms', 0):.0f}ms)" if "duration_ms" in node else ""
+            lines.append(f"  [{status}] {node['name']}{duration}")
+            
+            # Show tools called by this agent
+            for tool_id in node.get("tools_called", []):
+                tool = next((t for t in self._tool_calls if t["id"] == tool_id), None)
+                if tool:
+                    t_status = "✓" if tool["status"] == "completed" else "✗"
+                    t_duration = f" ({tool.get('duration_ms', 0):.0f}ms)" if "duration_ms" in tool else ""
+                    lines.append(f"      └─ 🔧 {tool['name']} [{t_status}]{t_duration}")
+        
+        return "\n".join(lines)
+    
+    def execution_trace(self) -> dict[str, Any]:
+        """
+        Get full execution trace as structured data.
+        
+        Returns:
+            Dict with nodes, edges, tools, and metadata
+        
+        Useful for:
+        - Exporting to JSON
+        - Building custom visualizations
+        - Integration with tracing backends (Jaeger, etc.)
+        """
+        return {
+            "trace_id": self._trace_id,
+            "start_time": self._start_time.isoformat() if self._start_time else None,
+            "nodes": list(self._nodes.values()),
+            "edges": [{"from": f, "to": t, "label": l} for f, t, l in self._edges],
+            "tools": self._tool_calls,
+            "spans": self._spans,
+            "metrics": dict(self._metrics),
+        }
     
     # ==================== Query API ====================
     
@@ -787,23 +1219,84 @@ class FlowObserver:
         
         return [e.event for e in result]
     
-    def timeline(self) -> str:
+    def timeline(self, detailed: bool = False) -> str:
         """
-        Get a timeline visualization of observed events.
+        Get a timeline visualization of execution.
+        
+        Args:
+            detailed: If True, show tool calls and nested details
         
         Returns:
             ASCII timeline string
+        
+        Example:
+            >>> print(observer.timeline())
+            Timeline:
+            ──────────────────────────────────────────────────
+            +  0.00s  [Researcher] started
+            +  0.05s  └─ 🔧 web_search (345ms)
+            +  0.40s  [Researcher] completed (401ms)
+            +  0.41s  [Writer] started
+            +  1.23s  [Writer] completed (820ms)
         """
-        if not self._events:
+        if not self._events and not self._nodes:
             return "No events observed"
         
-        lines = ["Timeline:", "─" * 50]
-        start = self._events[0].timestamp
+        lines = ["Timeline:", "─" * 60]
         
-        for observed in self._events:
-            delta = (observed.timestamp - start).total_seconds()
-            time_str = f"+{delta:>6.2f}s"
-            lines.append(f"  {time_str}  {observed.formatted}")
+        # Use trace nodes if available (richer data)
+        if self._nodes:
+            all_items: list[tuple[datetime, str, str]] = []
+            
+            for node in self._nodes.values():
+                # Start event
+                if node.get("start_time"):
+                    all_items.append((
+                        node["start_time"],
+                        "start",
+                        f"[{node['name']}] started"
+                    ))
+                    
+                    # Show tools called (if detailed)
+                    if detailed:
+                        for tool_id in node.get("tools_called", []):
+                            tool = next((t for t in self._tool_calls if t["id"] == tool_id), None)
+                            if tool and tool.get("start_time"):
+                                t_dur = f" ({tool.get('duration_ms', 0):.0f}ms)" if "duration_ms" in tool else ""
+                                status = "✓" if tool["status"] == "completed" else "✗"
+                                all_items.append((
+                                    tool["start_time"],
+                                    "tool",
+                                    f"└─ 🔧 {tool['name']} {status}{t_dur}"
+                                ))
+                
+                # End event
+                if node.get("end_time"):
+                    status = "✓" if node["status"] == "completed" else "✗"
+                    duration = f" ({node.get('duration_ms', 0):.0f}ms)" if "duration_ms" in node else ""
+                    all_items.append((
+                        node["end_time"],
+                        "end",
+                        f"[{node['name']}] {node['status']}{duration}"
+                    ))
+            
+            # Sort by timestamp
+            all_items.sort(key=lambda x: x[0])
+            
+            if all_items:
+                start_time = all_items[0][0]
+                for ts, item_type, text in all_items:
+                    delta = (ts - start_time).total_seconds()
+                    indent = "    " if item_type == "tool" else "  "
+                    lines.append(f"{indent}+{delta:>6.2f}s  {text}")
+        
+        # Fallback to event-based timeline
+        else:
+            start = self._events[0].timestamp
+            for observed in self._events:
+                delta = (observed.timestamp - start).total_seconds()
+                time_str = f"+{delta:>6.2f}s"
+                lines.append(f"  {time_str}  {observed.formatted}")
         
         return "\n".join(lines)
     
@@ -830,33 +1323,82 @@ class FlowObserver:
     
     def summary(self) -> str:
         """
-        Get a human-readable summary.
+        Get a human-readable summary of execution.
+        
+        Includes:
+        - Event counts
+        - Duration
+        - Agent execution stats
+        - Tool call stats
         
         Returns:
             Summary string
         """
         m = self.metrics()
         lines = [
-            "Observer Summary",
-            "─" * 30,
-            f"Total events: {m.get('total_events', 0)}",
+            "═" * 50,
+            "Execution Summary",
+            "═" * 50,
         ]
         
+        # Timing
         if "duration_seconds" in m:
-            lines.append(f"Duration: {m['duration_seconds']:.2f}s")
+            lines.append(f"⏱  Duration: {m['duration_seconds']:.2f}s")
         
-        if "by_channel" in m:
-            lines.append("By channel:")
+        lines.append(f"📊 Total events: {m.get('total_events', 0)}")
+        
+        # Agent stats
+        if self._nodes:
+            completed = sum(1 for n in self._nodes.values() if n["status"] == "completed")
+            failed = sum(1 for n in self._nodes.values() if n["status"] == "failed")
+            lines.append("")
+            lines.append("Agents:")
+            lines.append(f"  ✓ Completed: {completed}")
+            if failed:
+                lines.append(f"  ✗ Failed: {failed}")
+            
+            # Show each agent's timing
+            for node in self._nodes.values():
+                status = "✓" if node["status"] == "completed" else "✗"
+                duration = f" ({node.get('duration_ms', 0):.0f}ms)" if "duration_ms" in node else ""
+                lines.append(f"    [{status}] {node['name']}{duration}")
+        
+        # Tool stats
+        if self._tool_calls:
+            completed = sum(1 for t in self._tool_calls if t["status"] == "completed")
+            failed = sum(1 for t in self._tool_calls if t["status"] == "failed")
+            lines.append("")
+            lines.append("Tools:")
+            lines.append(f"  🔧 Calls: {len(self._tool_calls)}")
+            lines.append(f"  ✓ Success: {completed}")
+            if failed:
+                lines.append(f"  ✗ Failed: {failed}")
+        
+        # Channel breakdown
+        if "by_channel" in m and m["by_channel"]:
+            lines.append("")
+            lines.append("Events by channel:")
             for channel, count in m["by_channel"].items():
                 lines.append(f"  {channel}: {count}")
         
+        lines.append("═" * 50)
         return "\n".join(lines)
     
     def clear(self) -> None:
-        """Clear observed events and metrics."""
+        """Clear all observed events, metrics, and trace data."""
         self._events.clear()
         self._metrics.clear()
         self._start_time = now_utc()
+        
+        # Clear trace data
+        self._trace_id = generate_id()
+        self._nodes.clear()
+        self._edges.clear()
+        self._current_agents.clear()
+        self._tool_calls.clear()
+        self._current_tools.clear()
+        self._spans.clear()
+        self._span_stack.clear()
     
     def to_tracker(self) -> ProgressTracker:
         """

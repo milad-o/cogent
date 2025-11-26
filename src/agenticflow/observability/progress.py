@@ -300,7 +300,7 @@ class Styler:
         return self._wrap(text, Colors.BLUE)
     
     def timestamp(self, text: str) -> str:
-        return self._wrap(text, Colors.DIM)
+        return self._wrap(text, Colors.BRIGHT_BLACK)
     
     def sym(self, name: str) -> str:
         """Get symbol with Unicode/ASCII fallback."""
