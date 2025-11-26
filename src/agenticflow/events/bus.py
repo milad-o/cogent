@@ -134,13 +134,35 @@ class EventBus:
         self._handlers.clear()
         self._global_handlers.clear()
 
-    async def publish(self, event: Event) -> None:
+    async def publish(self, event: Event | str, data: dict | None = None) -> None:
         """
         Publish an event to all subscribers.
         
+        Can be called two ways:
+        1. publish(event) - with an Event object
+        2. publish("event_type", {"key": "value"}) - with string and dict
+        
         Args:
-            event: The event to publish
+            event: The Event object, or event type string
+            data: Event data (only used if event is a string)
         """
+        # Handle simple string/dict API
+        if isinstance(event, str):
+            from agenticflow.core.enums import EventType
+            from agenticflow.models.event import Event as EventClass
+            
+            # Try to parse as EventType enum, otherwise use custom type
+            try:
+                event_type = EventType(event)
+            except ValueError:
+                # Custom event type - use a generic type
+                event_type = EventType.CUSTOM
+            
+            event = EventClass(
+                type=event_type,
+                data={"event_name": event if event_type == EventType.CUSTOM else None, **(data or {})},
+            )
+        
         # Add to history
         async with self._lock:
             self._event_history.append(event)

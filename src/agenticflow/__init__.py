@@ -149,8 +149,19 @@ from agenticflow.tasks.manager import TaskManager
 # Tools (THIS IS WHERE WE ADD VALUE)
 from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 
-# Orchestrator
+# Orchestrator (DEPRECATED - use Flow instead)
 from agenticflow.orchestrator.orchestrator import Orchestrator
+
+# Flow - THE MAIN ENTRY POINT
+from agenticflow.flow import (
+    Flow,
+    FlowConfig,
+    TopologyPattern,
+    create_flow,
+    supervisor_flow,
+    pipeline_flow,
+    mesh_flow,
+)
 
 # Topologies (THIS IS WHERE WE ADD VALUE)
 from agenticflow.topologies import (
@@ -163,6 +174,21 @@ from agenticflow.topologies import (
     HierarchicalTopology,
     TopologyFactory,
     TopologyType,
+    # New API - Enums
+    TopologyPattern,
+    DelegationStrategy,
+    CompletionCondition,
+    # New API - Policies
+    DelegationPolicy,
+    EventHooks,
+    # New API - Main spec
+    TopologySpec,
+    # New API - Factory functions (preferred)
+    supervisor_topology,
+    coordinator_topology,
+    pipeline_topology,
+    mesh_topology,
+    hierarchical_topology,
 )
 
 # Observability (THIS IS WHERE WE ADD VALUE)
@@ -272,7 +298,15 @@ __all__ = [
     # Tools
     "ToolRegistry",
     "create_tool_from_function",
-    # Orchestrator
+    # Flow (MAIN ENTRY POINT)
+    "Flow",
+    "FlowConfig",
+    "TopologyPattern",
+    "create_flow",
+    "supervisor_flow",
+    "pipeline_flow",
+    "mesh_flow",
+    # Orchestrator (deprecated - use Flow)
     "Orchestrator",
     # Topologies
     "BaseTopology",
@@ -284,6 +318,21 @@ __all__ = [
     "HierarchicalTopology",
     "TopologyFactory",
     "TopologyType",
+    # Topology API - Enums
+    "TopologyPattern",
+    "DelegationStrategy",
+    "CompletionCondition",
+    # Topology API - Policies
+    "DelegationPolicy",
+    "EventHooks",
+    # Topology API - Main spec
+    "TopologySpec",
+    # Topology API - Factory functions (preferred)
+    "supervisor_topology",
+    "coordinator_topology",
+    "pipeline_topology",
+    "mesh_topology",
+    "hierarchical_topology",
     # Observability
     "Tracer",
     "Span",

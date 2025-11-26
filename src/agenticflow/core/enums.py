@@ -130,6 +130,9 @@ class EventType(Enum):
     CLIENT_CONNECTED = "client.connected"
     CLIENT_DISCONNECTED = "client.disconnected"
     CLIENT_MESSAGE = "client.message"
+    
+    # Custom/generic events (for extensibility)
+    CUSTOM = "custom"
 
     @property
     def category(self) -> str:
@@ -176,17 +179,87 @@ class AgentRole(Enum):
     
     Roles help the orchestrator understand agent capabilities
     and make appropriate task assignments.
+    
+    Leadership Roles (can manage other agents):
+    ---------------------------------------------
+    - SUPERVISOR: Has authority over workers. Assigns tasks, makes decisions,
+      owns outcomes. Used in hub-and-spoke topologies where one agent directs others.
+      Example: Team lead assigning code review tasks to developers.
+    
+    - COORDINATOR: Facilitates collaboration without direct authority. Routes messages,
+      balances load, helps reach consensus. Used in hierarchical topologies as middle
+      layers or in event-driven workflows.
+      Example: Project coordinator routing requests between frontend/backend teams.
+    
+    - ORCHESTRATOR: System-level orchestration. Manages the overall flow and lifecycle
+      of multi-agent systems. Typically the top-level controller.
+      Example: Main flow controller that starts/stops agent pipelines.
+    
+    Comparison: SUPERVISOR vs COORDINATOR
+    -------------------------------------
+    | Aspect          | SUPERVISOR           | COORDINATOR              |
+    |-----------------|----------------------|--------------------------|
+    | Authority       | Hierarchical boss    | Peer-level facilitator   |
+    | Task Control    | Assigns specific     | Routes/distributes       |
+    | Decision Making | Makes final call     | Helps reach consensus    |
+    | Outcome         | Owns the result      | Enables others' results  |
+    | Communication   | Top-down directive   | Bidirectional routing    |
+    | Topology        | Hub-and-spoke        | Middle layer in hierarchy|
     """
 
-    ORCHESTRATOR = "orchestrator"  # Coordinates other agents
-    WORKER = "worker"  # General-purpose task executor
+    # Leadership roles
+    SUPERVISOR = "supervisor"  # Authority over workers, assigns tasks, owns outcomes
+    COORDINATOR = "coordinator"  # Facilitates without authority, routes and balances
+    ORCHESTRATOR = "orchestrator"  # System-level flow control
+    
+    # Planning roles
     PLANNER = "planner"  # Creates execution plans
-    CRITIC = "critic"  # Reviews and provides feedback
+    
+    # Execution roles
+    WORKER = "worker"  # General-purpose task executor
     SPECIALIST = "specialist"  # Domain-specific expertise
-    ASSISTANT = "assistant"  # General-purpose helper
     RESEARCHER = "researcher"  # Gathers information
+    
+    # Review roles
+    CRITIC = "critic"  # Reviews and provides feedback
     VALIDATOR = "validator"  # Validates outputs
+    
+    # Support roles
+    ASSISTANT = "assistant"  # General-purpose helper
 
     def can_delegate(self) -> bool:
-        """Check if this role can delegate tasks to others."""
-        return self in (AgentRole.ORCHESTRATOR, AgentRole.PLANNER)
+        """Check if this role can delegate tasks to others.
+        
+        Note: SUPERVISOR delegates with authority (assigns work).
+              COORDINATOR delegates by routing (facilitates work).
+              Both can delegate, but with different semantics.
+        """
+        return self in (
+            AgentRole.SUPERVISOR,
+            AgentRole.COORDINATOR,
+            AgentRole.ORCHESTRATOR,
+            AgentRole.PLANNER,
+        )
+    
+    def is_leadership(self) -> bool:
+        """Check if this is a leadership role (can manage other agents)."""
+        return self in (
+            AgentRole.SUPERVISOR,
+            AgentRole.COORDINATOR,
+            AgentRole.ORCHESTRATOR,
+        )
+    
+    def has_authority(self) -> bool:
+        """Check if this role has direct authority over other agents.
+        
+        SUPERVISOR and ORCHESTRATOR have authority (can direct work).
+        COORDINATOR facilitates but doesn't have authority.
+        """
+        return self in (
+            AgentRole.SUPERVISOR,
+            AgentRole.ORCHESTRATOR,
+        )
+    
+    def is_facilitator(self) -> bool:
+        """Check if this role is a facilitator (coordinates without authority)."""
+        return self == AgentRole.COORDINATOR

@@ -9,7 +9,7 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
-from langchain.chat_models import init_chat_model
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 
 from agenticflow.core.enums import AgentRole, EventType, Priority, TaskStatus

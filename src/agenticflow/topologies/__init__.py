@@ -47,6 +47,26 @@ from agenticflow.topologies.policies import (
 )
 from agenticflow.topologies.custom import CustomTopology, CustomTopologyConfig, Edge
 from agenticflow.topologies.factory import TopologyFactory, TopologyType
+from agenticflow.topologies.builder import (
+    # Enums
+    TopologyPattern,
+    DelegationStrategy,
+    CompletionCondition,
+    # Policies
+    DelegationPolicy,
+    EventHooks,
+    # Main spec
+    TopologySpec,
+    # Factory functions (preferred API)
+    supervisor_topology,
+    coordinator_topology,
+    pipeline_topology,
+    mesh_topology,
+    hierarchical_topology,
+    # Validation
+    validate_roles,
+    TOPOLOGY_ROLE_REQUIREMENTS,
+)
 
 __all__ = [
     # Base
@@ -70,7 +90,25 @@ __all__ = [
     "CustomTopology",
     "CustomTopologyConfig",
     "Edge",
-    # Factory
+    # Factory (old API)
     "TopologyFactory",
     "TopologyType",
+    # New API - Enums
+    "TopologyPattern",
+    "DelegationStrategy",
+    "CompletionCondition",
+    # New API - Policies
+    "DelegationPolicy",
+    "EventHooks",
+    # New API - Main spec
+    "TopologySpec",
+    # New API - Factory functions (preferred)
+    "supervisor_topology",
+    "coordinator_topology",
+    "pipeline_topology",
+    "mesh_topology",
+    "hierarchical_topology",
+    # New API - Validation
+    "validate_roles",
+    "TOPOLOGY_ROLE_REQUIREMENTS",
 ]

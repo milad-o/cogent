@@ -260,6 +260,16 @@ class AgentConfig:
             metadata=self.metadata.copy(),
         )
 
+    @property
+    def effective_model(self) -> BaseChatModel | None:
+        """Get the effective model for this config.
+        
+        Returns the model if set, otherwise None.
+        Lazy model creation from model_name is no longer supported -
+        users should pass LangChain model instances directly.
+        """
+        return self.model
+
     def can_use_tool(self, tool_name: str) -> bool:
         """
         Check if agent is configured to use a tool.

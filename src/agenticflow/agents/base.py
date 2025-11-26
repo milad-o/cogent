@@ -6,10 +6,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Sequence, overload
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.tools import BaseTool
 
 from agenticflow.agents.config import AgentConfig
 from agenticflow.agents.state import AgentState
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
     from agenticflow.events.bus import EventBus
     from agenticflow.tools.registry import ToolRegistry
     from agenticflow.observability.progress import ProgressTracker
-    from agenticflow.agents.resilience import ToolResilience, FallbackRegistry
+    from agenticflow.agents.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
 
 
 class Agent:
@@ -42,51 +43,165 @@ class Agent:
     - Spawn subtasks for complex work
     - Send messages to other agents
     
-    Attributes:
-        id: Unique agent identifier
-        config: Agent configuration
-        state: Agent runtime state
-        event_bus: Event bus for communication
-        tool_registry: Registry of available tools
-        
-    Example:
+    Simplified API (recommended):
         ```python
+        from langchain_openai import ChatOpenAI
+        from langchain.tools import tool
+        
+        @tool
+        def search(query: str) -> str:
+            '''Search for information.'''
+            return f"Results for {query}"
+        
+        model = ChatOpenAI(model="gpt-4o")
+        
         agent = Agent(
-            config=AgentConfig(
-                name="Writer",
-                role=AgentRole.WORKER,
-                model_name="gpt-4o",
-                tools=["write_poem", "write_story"],
-            ),
-            event_bus=event_bus,
-            tool_registry=tool_registry,
+            name="Researcher",
+            model=model,
+            tools=[search],  # Pass tool functions directly
+            description="Researches topics",
         )
         
-        # Execute a task
-        result = await agent.execute_task(task)
+        result = await agent.think("What should I research?")
+        ```
+    
+    Advanced API (with AgentConfig):
+        ```python
+        from agenticflow import Agent, AgentConfig, AgentRole
         
-        # Direct thinking
-        response = await agent.think("What should I write about?")
+        config = AgentConfig(
+            name="Writer",
+            role=AgentRole.WORKER,
+            model=model,
+            tools=["write_poem", "write_story"],
+            resilience_config=ResilienceConfig.aggressive(),
+        )
         
-        # Direct action
-        result = await agent.act("write_poem", {"subject": "sunset"})
+        agent = Agent(config=config, event_bus=event_bus)
+        ```
+    
+    When used with Flow (recommended):
+        ```python
+        from agenticflow import Flow, Agent
+        
+        # No need to pass event_bus or tool_registry
+        agent = Agent(name="Worker", model=model, tools=[my_tool])
+        
+        # Flow wires everything automatically
+        flow = Flow(name="my-flow", agents=[agent], topology="pipeline")
         ```
     """
 
+    @overload
+    def __init__(
+        self,
+        *,
+        name: str,
+        model: BaseChatModel | None = None,
+        role: AgentRole | str = AgentRole.WORKER,
+        description: str = "",
+        instructions: str | None = None,
+        tools: Sequence[BaseTool | str] | None = None,
+        system_prompt: str | None = None,
+        resilience: ResilienceConfig | None = None,
+    ) -> None:
+        """Simplified constructor - create agent with direct parameters."""
+        ...
+
+    @overload
     def __init__(
         self,
         config: AgentConfig,
-        event_bus: EventBus,
+        event_bus: EventBus | None = None,
         tool_registry: ToolRegistry | None = None,
+    ) -> None:
+        """Advanced constructor - create agent with AgentConfig."""
+        ...
+
+    def __init__(
+        self,
+        config: AgentConfig | None = None,
+        event_bus: EventBus | None = None,
+        tool_registry: ToolRegistry | None = None,
+        *,
+        # Simplified API parameters
+        name: str | None = None,
+        model: BaseChatModel | None = None,
+        role: AgentRole | str = AgentRole.WORKER,
+        description: str = "",
+        instructions: str | None = None,
+        tools: Sequence[BaseTool | str] | None = None,
+        system_prompt: str | None = None,
+        resilience: ResilienceConfig | None = None,
     ) -> None:
         """
         Initialize an Agent.
         
+        Can be called two ways:
+        
+        1. Simplified (recommended for use with Flow):
+            Agent(name="Worker", model=model, tools=[...], instructions="...")
+        
+        2. Advanced (for full control):
+            Agent(config=AgentConfig(...), event_bus=bus, tool_registry=registry)
+        
         Args:
-            config: Agent configuration
-            event_bus: Event bus for communication
-            tool_registry: Registry of available tools (optional)
+            config: Agent configuration (advanced API)
+            event_bus: Event bus for communication (optional, Flow provides this)
+            tool_registry: Registry of available tools (optional, Flow provides this)
+            name: Agent name (simplified API)
+            model: LangChain model (simplified API)
+            role: Agent role (simplified API)
+            description: Agent description (simplified API)
+            instructions: Instructions for the agent - defines behavior and personality
+            tools: List of tools - can be BaseTool objects or strings (simplified API)
+            system_prompt: System prompt (alias for instructions, for compatibility)
+            resilience: Resilience configuration (simplified API)
         """
+        # Handle simplified API
+        if config is None:
+            if name is None:
+                raise ValueError(
+                    "Either provide 'config' (AgentConfig) or 'name' parameter.\n"
+                    "Simplified: Agent(name='Worker', model=model)\n"
+                    "Advanced: Agent(config=AgentConfig(...))"
+                )
+            
+            # Parse role if string
+            if isinstance(role, str):
+                role = AgentRole(role.lower())
+            
+            # Extract tool names and store tool objects
+            tool_names: list[str] = []
+            self._direct_tools: list[BaseTool] = []
+            
+            if tools:
+                for tool in tools:
+                    if isinstance(tool, str):
+                        tool_names.append(tool)
+                    elif isinstance(tool, BaseTool):
+                        tool_names.append(tool.name)
+                        self._direct_tools.append(tool)
+                    else:
+                        # Try to get name attribute
+                        tool_names.append(getattr(tool, "name", str(tool)))
+            
+            # instructions takes priority over system_prompt
+            effective_prompt = instructions or system_prompt
+            
+            # Create config from simplified params
+            config = AgentConfig(
+                name=name,
+                role=role,
+                description=description,
+                model=model,
+                system_prompt=effective_prompt,
+                tools=tool_names,
+                resilience_config=resilience,
+            )
+        else:
+            self._direct_tools = []
+        
         self.id = generate_id()
         self.config = config
         self.state = AgentState()
@@ -154,6 +269,38 @@ class Agent:
         return self.state.status
 
     @property
+    def direct_tools(self) -> list[BaseTool]:
+        """Get tools passed directly to the agent (not via registry)."""
+        return self._direct_tools
+
+    @property
+    def instructions(self) -> str | None:
+        """Agent's instructions (system prompt)."""
+        return self.config.system_prompt
+    
+    @instructions.setter
+    def instructions(self, value: str | None) -> None:
+        """Set agent's instructions."""
+        self.config = AgentConfig(
+            name=self.config.name,
+            role=self.config.role,
+            description=self.config.description,
+            model=self.config.model,
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+            system_prompt=value,
+            model_kwargs=self.config.model_kwargs.copy(),
+            tools=self.config.tools.copy(),
+            max_concurrent_tasks=self.config.max_concurrent_tasks,
+            timeout_seconds=self.config.timeout_seconds,
+            retry_on_error=self.config.retry_on_error,
+            max_retries=self.config.max_retries,
+            resilience_config=self.config.resilience_config,
+            fallback_tools=self.config.fallback_tools.copy(),
+            metadata=self.config.metadata.copy(),
+        )
+
+    @property
     def model(self) -> BaseChatModel | None:
         """Get the LLM model.
         
@@ -192,19 +339,20 @@ class Agent:
         self.state.status = status
         self.state.record_activity()
 
-        await self.event_bus.publish(
-            Event(
-                type=EventType.AGENT_STATUS_CHANGED,
-                data={
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "old_status": old_status.value,
-                    "new_status": status.value,
-                },
-                source=f"agent:{self.id}",
-                correlation_id=correlation_id,
+        if self.event_bus:
+            await self.event_bus.publish(
+                Event(
+                    type=EventType.AGENT_STATUS_CHANGED,
+                    data={
+                        "agent_id": self.id,
+                        "agent_name": self.name,
+                        "old_status": old_status.value,
+                        "new_status": status.value,
+                    },
+                    source=f"agent:{self.id}",
+                    correlation_id=correlation_id,
+                )
             )
-        )
 
     async def _emit_event(
         self,
@@ -213,14 +361,15 @@ class Agent:
         correlation_id: str | None = None,
     ) -> None:
         """Emit an event from this agent."""
-        await self.event_bus.publish(
-            Event(
-                type=event_type,
-                data=data,
-                source=f"agent:{self.id}",
-                correlation_id=correlation_id,
+        if self.event_bus:
+            await self.event_bus.publish(
+                Event(
+                    type=event_type,
+                    data=data,
+                    source=f"agent:{self.id}",
+                    correlation_id=correlation_id,
+                )
             )
-        )
 
     async def think(
         self,
