@@ -42,6 +42,9 @@ dev = [
     "ruff>=0.7.0",
     "mypy>=1.13.0",
 ]
+analytics = [
+    "pyarrow>=22.0.0",
+]
 
 [project.scripts]
 agenticflow = "agenticflow.cli:main"

@@ -956,6 +956,7 @@ class SQLiteGraph(GraphBackend):
             self._local.conn = None
 
 
+
 class JSONFileGraph(GraphBackend):
     """JSON file-backed graph with auto-save."""
     
