@@ -237,6 +237,49 @@ def _make_node_id(name: str) -> str:
     return node_id or "node"
 
 
+def _make_node_label(name: str, role: str, tools: list[str] | None = None) -> str:
+    """Create standardized node label with name, role, and optional tools.
+    
+    Format: Name<br/><small><i>role</i></small><br/><small>tool1, tool2</small>
+    
+    Args:
+        name: Agent name.
+        role: Agent role (worker, supervisor, etc.).
+        tools: Optional list of tool names.
+    
+    Returns:
+        Formatted label string for Mermaid node.
+    """
+    escaped_name = _escape_label(name)
+    label_parts = [escaped_name, f"<small><i>{role}</i></small>"]
+    
+    if tools:
+        tools_str = ", ".join(tools[:3])
+        if len(tools) > 3:
+            tools_str += "..."
+        label_parts.append(f"<small>{tools_str}</small>")
+    
+    return "<br/>".join(label_parts)
+
+
+# Standard class definitions for the 4-role system
+MERMAID_CLASS_DEFS = """    classDef super fill:#4a90d9,stroke:#2d5986,color:#fff
+    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
+    classDef auto fill:#9b59b6,stroke:#7b3a96,color:#fff
+    classDef review fill:#f56c6c,stroke:#c45656,color:#fff
+    classDef tool fill:#f5f5f5,stroke:#999,color:#333
+    classDef config fill:#fff3e0,stroke:#ff9800,color:#333,stroke-dasharray:3"""
+
+
+# Role to CSS class mapping
+ROLE_CLASS_MAP = {
+    "worker": "work",
+    "supervisor": "super",
+    "autonomous": "auto",
+    "reviewer": "review",
+}
+
+
 class AgentDiagram:
     """Generates Mermaid diagrams for agents.
 
@@ -279,37 +322,16 @@ class AgentDiagram:
         # Start flowchart
         lines.append(f"flowchart {cfg.direction.value}")
 
-        # Agent node with role
+        # Agent node with standardized format
         agent_id = _make_node_id(self.agent.name)
         role = self.agent.role.value
+        role_class = ROLE_CLASS_MAP.get(role, "work")
         
-        if cfg.show_roles:
-            agent_label = f"{self.agent.name}\\n({role})"
-        else:
-            agent_label = self.agent.name
-
-        # Use role-specific shape
-        lines.append(f'    {agent_id}["{_escape_label(agent_label)}"]:::' + self._get_role_class(role))
-
-        # Add tools - compact inline or expanded subgraph
-        if cfg.show_tools and self.agent.config.tools:
-            if cfg.compact:
-                # Compact: single tools node with comma-separated list
-                tools_str = ", ".join(self.agent.config.tools[:5])  # Limit to 5
-                if len(self.agent.config.tools) > 5:
-                    tools_str += f" +{len(self.agent.config.tools) - 5}"
-                tools_id = f"t_{agent_id}"
-                lines.append(f'    {tools_id}[/"{tools_str}"/]:::tool')
-                lines.append(f"    {agent_id} --> {tools_id}")
-            else:
-                # Expanded: subgraph with individual tools
-                lines.append(f'    subgraph tools_{agent_id} ["🛠️ Tools"]')
-                lines.append("        direction LR")
-                for i, tool_name in enumerate(self.agent.config.tools):
-                    tool_id = f"tool_{agent_id}_{i}"
-                    lines.append(f'        {tool_id}[/"{_escape_label(tool_name)}"/]:::tool')
-                lines.append("    end")
-                lines.append(f"    {agent_id} --> tools_{agent_id}")
+        # Get tools for label
+        tools = self.agent.config.tools if cfg.show_tools else None
+        label = _make_node_label(self.agent.name, role, tools)
+        
+        lines.append(f'    {agent_id}["{label}"]:::{role_class}')
 
         # Add config if enabled
         if cfg.show_config:
@@ -349,21 +371,11 @@ class AgentDiagram:
 
     def _get_role_class(self, role: str) -> str:
         """Get CSS class for agent role (clean 4-role system)."""
-        return {
-            "worker": "work",
-            "supervisor": "super",
-            "autonomous": "auto",
-            "reviewer": "review",
-        }.get(role, "work")
+        return ROLE_CLASS_MAP.get(role, "work")
 
     def _get_class_definitions(self) -> str:
         """Get compact Mermaid class definitions for the 4-role system."""
-        return """    classDef work fill:#7eb36a,stroke:#4a7a3d,color:#fff
-    classDef super fill:#4a90d9,stroke:#2d5986,color:#fff
-    classDef auto fill:#9b59b6,stroke:#7b3a96,color:#fff
-    classDef review fill:#f56c6c,stroke:#c45656,color:#fff
-    classDef tool fill:#f5f5f5,stroke:#999,color:#333
-    classDef config fill:#fff3e0,stroke:#ff9800,color:#333,stroke-dasharray:3"""
+        return MERMAID_CLASS_DEFS
 
     def draw_png(self) -> bytes:
         """Render diagram as PNG.
@@ -519,37 +531,25 @@ class TopologyDiagram:
 
     def _get_role_class(self, role: str) -> str:
         """Get CSS class for agent role (clean 4-role system)."""
-        return {
-            "worker": "work",
-            "supervisor": "super",
-            "autonomous": "auto",
-            "reviewer": "review",
-        }.get(role, "work")
+        return ROLE_CLASS_MAP.get(role, "work")
 
-    def _make_agent_node(self, name: str, shape: str = "rect") -> str:
-        """Create clean agent node."""
+    def _make_agent_node(self, name: str, show_tools: bool = True) -> str:
+        """Create standardized agent node with name, role, and optional tools."""
         agent = self.topology.agents.get(name)
         role = agent.role.value if agent else "worker"
         role_class = self._get_role_class(role)
         node_id = _make_node_id(name)
-        escaped = _escape_label(name)
         
-        # Shape variants - clean labels without tool counts
-        if shape == "circle":
-            node_def = f'{node_id}(("{escaped}")):::{role_class}'
-        elif shape == "stadium":
-            node_def = f'{node_id}(["{escaped}"]):::{role_class}'
-        elif shape == "subroutine":
-            node_def = f'{node_id}[["{escaped}"]]:::{role_class}'
-        elif shape == "hex":
-            node_def = f'{node_id}' + '{{{"' + escaped + '"}}}'+ f':::{role_class}'
-        else:  # rect with rounded corners
-            node_def = f'{node_id}["{escaped}"]:::{role_class}'
+        # Get tools if enabled
+        tools = None
+        if show_tools and agent and agent.config.tools:
+            tools = agent.config.tools
         
-        return f"    {node_def}"
+        label = _make_node_label(name, role, tools)
+        return f'    {node_id}["{label}"]:::{role_class}'
 
     def _generate_supervisor_diagram(self) -> list[str]:
-        """Generate clean supervisor topology diagram with optional tools."""
+        """Generate clean supervisor topology diagram."""
         lines = []
         cfg = self.config
         
@@ -560,90 +560,40 @@ class TopologyDiagram:
             supervisor_name = next(iter(self.topology.agents), "supervisor")
             worker_names = [n for n in self.topology.agents if n != supervisor_name]
 
-        sup_id = _make_node_id(supervisor_name)
-        
-        # Supervisor at top (circle shape) with tools as subtitle
-        sup_agent = self.topology.agents.get(supervisor_name)
-        if cfg.show_tools and sup_agent and sup_agent.config.tools:
-            tools_str = ", ".join(sup_agent.config.tools[:3])
-            if len(sup_agent.config.tools) > 3:
-                tools_str += "..."
-            lines.append(f'    {sup_id}((("`**{_escape_label(supervisor_name)}**\n_{tools_str}_`"))):::orch')
-        else:
-            lines.append(self._make_agent_node(supervisor_name, "circle"))
-        
+        # Supervisor node
+        lines.append(self._make_agent_node(supervisor_name, cfg.show_tools))
         lines.append("")
         
-        # Workers in subgraph with tools shown as subtitle
+        sup_id = _make_node_id(supervisor_name)
+        
+        # Workers in subgraph
         if len(worker_names) > 1:
             lines.append('    subgraph Workers[" "]')
             lines.append("        direction LR")
             for worker_name in worker_names:
-                agent = self.topology.agents.get(worker_name)
-                role = agent.role.value if agent else "worker"
-                role_class = self._get_role_class(role)
-                worker_id = _make_node_id(worker_name)
-                
-                if cfg.show_tools and agent and agent.config.tools:
-                    tools_str = ", ".join(agent.config.tools[:3])
-                    if len(agent.config.tools) > 3:
-                        tools_str += "..."
-                    lines.append(f'        {worker_id}["`**{_escape_label(worker_name)}**\n_{tools_str}_`"]:::{role_class}')
-                else:
-                    lines.append(f'        {worker_id}["{_escape_label(worker_name)}"]:::{role_class}')
+                node_line = self._make_agent_node(worker_name, cfg.show_tools)
+                # Indent for subgraph
+                lines.append("    " + node_line)
             lines.append("    end")
             lines.append("")
             lines.append(f"    {sup_id} --> Workers")
         else:
             # Single worker - direct connection
             for worker_name in worker_names:
-                agent = self.topology.agents.get(worker_name)
-                role = agent.role.value if agent else "worker"
-                role_class = self._get_role_class(role)
-                worker_id = _make_node_id(worker_name)
-                
-                if cfg.show_tools and agent and agent.config.tools:
-                    tools_str = ", ".join(agent.config.tools[:3])
-                    if len(agent.config.tools) > 3:
-                        tools_str += "..."
-                    lines.append(f'    {worker_id}["`**{_escape_label(worker_name)}**\n_{tools_str}_`"]:::{role_class}')
-                else:
-                    lines.append(f'    {worker_id}["{_escape_label(worker_name)}"]:::{role_class}')
-                lines.append(f"    {sup_id} --> {worker_id}")
+                lines.append(self._make_agent_node(worker_name, cfg.show_tools))
+                lines.append(f"    {sup_id} --> {_make_node_id(worker_name)}")
 
         return lines
 
     def _generate_pipeline_diagram(self) -> list[str]:
-        """Generate clean pipeline topology diagram with optional tools."""
+        """Generate clean pipeline topology diagram."""
         lines = []
         cfg = self.config
         stages = getattr(self.topology, "stages", list(self.topology.agents.keys()))
         
-        # Define all nodes with tools as subtitle
-        for i, stage_name in enumerate(stages):
-            agent = self.topology.agents.get(stage_name)
-            role = agent.role.value if agent else "worker"
-            role_class = self._get_role_class(role)
-            node_id = _make_node_id(stage_name)
-            
-            # Shape based on position
-            if i == 0:
-                shape_start, shape_end = "([", "])"  # stadium
-            elif i == len(stages) - 1:
-                shape_start, shape_end = "[[", "]]"  # subroutine
-            else:
-                shape_start, shape_end = "[", "]"  # rect
-            
-            if cfg.show_tools and agent and agent.config.tools:
-                tools_str = ", ".join(agent.config.tools[:3])
-                if len(agent.config.tools) > 3:
-                    tools_str += "..."
-                # Use markdown for multi-line label
-                label = f'"`**{_escape_label(stage_name)}**\n_{tools_str}_`"'
-            else:
-                label = f'"{_escape_label(stage_name)}"'
-            
-            lines.append(f"    {node_id}{shape_start}{label}{shape_end}:::{role_class}")
+        # Define all nodes with standardized format
+        for stage_name in stages:
+            lines.append(self._make_agent_node(stage_name, cfg.show_tools))
         
         lines.append("")
         
@@ -655,29 +605,17 @@ class TopologyDiagram:
         return lines
 
     def _generate_mesh_diagram(self) -> list[str]:
-        """Generate clean mesh topology diagram with optional tools."""
+        """Generate clean mesh topology diagram."""
         lines = []
         cfg = self.config
         agent_names = list(self.topology.agents.keys())
-        
-        # All nodes with hexagon shape, tools as subtitle
+
+        # All nodes with standardized format
         for name in agent_names:
-            agent = self.topology.agents.get(name)
-            role = agent.role.value if agent else "worker"
-            role_class = self._get_role_class(role)
-            node_id = _make_node_id(name)
-            
-            if cfg.show_tools and agent and agent.config.tools:
-                tools_str = ", ".join(agent.config.tools[:3])
-                if len(agent.config.tools) > 3:
-                    tools_str += "..."
-                # Hexagon with markdown label
-                lines.append(f'    {node_id}' + '{{"`**' + _escape_label(name) + '**\n_' + tools_str + '_`"}}' + f':::{role_class}')
-            else:
-                lines.append(f'    {node_id}' + '{{"' + _escape_label(name) + '"}}' + f':::{role_class}')
-        
+            lines.append(self._make_agent_node(name, cfg.show_tools))
+
         lines.append("")
-        
+
         # Mesh connections
         node_ids = [_make_node_id(n) for n in agent_names]
         for i in range(len(node_ids)):
@@ -697,29 +635,13 @@ class TopologyDiagram:
             return self._generate_generic_diagram()
 
         added = set()
-        
-        def add_node(name: str, is_root: bool = False) -> None:
+
+        def add_node(name: str) -> None:
             if name in added:
                 return
             added.add(name)
-            
-            agent = self.topology.agents.get(name)
-            role = agent.role.value if agent else "worker"
-            role_class = self._get_role_class(role)
-            node_id = _make_node_id(name)
-            
-            if cfg.show_tools and agent and agent.config.tools:
-                tools_str = ", ".join(agent.config.tools[:3])
-                if len(agent.config.tools) > 3:
-                    tools_str += "..."
-                if is_root:
-                    lines.append(f'    {node_id}((("`**{_escape_label(name)}**\n_{tools_str}_`"))):::{role_class}')
-                else:
-                    lines.append(f'    {node_id}["`**{_escape_label(name)}**\n_{tools_str}_`"]:::{role_class}')
-            else:
-                shape = "circle" if is_root else "rect"
-                lines.append(self._make_agent_node(name, shape))
-            
+            lines.append(self._make_agent_node(name, cfg.show_tools))
+
             children = hierarchy.get(name, [])
             if children:
                 parent_id = _make_node_id(name)
@@ -727,34 +649,23 @@ class TopologyDiagram:
                     add_node(child)
                     lines.append(f"    {parent_id} --> {_make_node_id(child)}")
 
-        add_node(root, is_root=True)
+        add_node(root)
         return lines
 
     def _generate_generic_diagram(self) -> list[str]:
         """Generate generic diagram using policy edges if available.
-        
+
         For unknown topologies, uses policy edges or falls back to sequential.
         """
         lines = []
         cfg = self.config
         agent_names = list(self.topology.agents.keys())
-        
+
         for name in agent_names:
-            agent = self.topology.agents.get(name)
-            role = agent.role.value if agent else "worker"
-            role_class = self._get_role_class(role)
-            node_id = _make_node_id(name)
-            
-            if cfg.show_tools and agent and agent.config.tools:
-                tools_str = ", ".join(agent.config.tools[:3])
-                if len(agent.config.tools) > 3:
-                    tools_str += "..."
-                lines.append(f'    {node_id}["`**{_escape_label(name)}**\n_{tools_str}_`"]:::{role_class}')
-            else:
-                lines.append(self._make_agent_node(name, "rect"))
-        
+            lines.append(self._make_agent_node(name, cfg.show_tools))
+
         lines.append("")
-        
+
         # Try to get edges from policy
         policy_edges = self._get_edges_from_policy()
         if policy_edges:
@@ -769,7 +680,7 @@ class TopologyDiagram:
             # Fallback to sequential connections
             node_ids = [_make_node_id(n) for n in agent_names]
             lines.append(f"    {' --> '.join(node_ids)}")
-        
+
         return lines
 
     def _generate_custom_diagram(self) -> list[str]:
@@ -779,64 +690,33 @@ class TopologyDiagram:
         """
         lines = []
         cfg = self.config
-        
+
         # Get edges from CustomTopology
         edges = getattr(self.topology, "edges", [])
-        entry_point = getattr(self.topology, "entry_point", None)
-        
-        # Determine which agents have incoming/outgoing edges
-        sources = {e.source for e in edges}
-        targets = {e.target for e in edges}
-        
-        # Generate nodes
+
+        # Generate nodes with standardized format
         for name in self.topology.agents:
-            agent = self.topology.agents.get(name)
-            role = agent.role.value if agent else "worker"
-            role_class = self._get_role_class(role)
-            node_id = _make_node_id(name)
-            
-            # Determine shape based on role in the flow
-            is_entry = (name == entry_point)
-            is_terminal = (name not in sources and name in targets)
-            
-            if is_entry:
-                shape_start, shape_end = "([", "])"  # stadium for entry
-            elif is_terminal:
-                shape_start, shape_end = "[[", "]]"  # subroutine for terminal
-            elif role == "orchestrator":
-                shape_start, shape_end = "((", "))"  # circle for orchestrator
-            else:
-                shape_start, shape_end = "[", "]"  # rect for others
-            
-            if cfg.show_tools and agent and agent.config.tools:
-                tools_str = ", ".join(agent.config.tools[:3])
-                if len(agent.config.tools) > 3:
-                    tools_str += "..."
-                label = f'"`**{_escape_label(name)}**\n_{tools_str}_`"'
-            else:
-                label = f'"{_escape_label(name)}"'
-            
-            lines.append(f"    {node_id}{shape_start}{label}{shape_end}:::{role_class}")
-        
+            lines.append(self._make_agent_node(name, cfg.show_tools))
+
         lines.append("")
-        
+
         # Generate edges
         for edge in edges:
             source_id = _make_node_id(edge.source)
             target_id = _make_node_id(edge.target)
-            
+
             if edge.bidirectional:
                 arrow = " <--> "
             else:
                 arrow = " --> "
-            
+
             if edge.label:
                 lines.append(f"    {source_id}{arrow}|{edge.label}|{target_id}")
             elif edge.condition:
                 lines.append(f"    {source_id}{arrow}|{edge.condition}|{target_id}")
             else:
                 lines.append(f"    {source_id}{arrow}{target_id}")
-        
+
         return lines
 
     def _get_class_definitions(self) -> str:

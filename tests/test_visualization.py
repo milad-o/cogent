@@ -156,11 +156,12 @@ class TestAgentDiagram:
         diagram = AgentDiagram(sample_agent, config=config)
         mermaid = diagram.to_mermaid()
 
-        # Compact mode shows tools as comma-separated list
+        # New compact format shows tools inline in the node label
         assert "web_search" in mermaid
         assert "doc_summarizer" in mermaid
         assert "text_writer" in mermaid
-        assert ":::tool" in mermaid
+        # Tools are shown inline, not as separate nodes
+        assert "<small>" in mermaid
 
     def test_diagram_without_tools(self, sample_agent: Agent) -> None:
         """Test agent diagram hides tools when configured."""
