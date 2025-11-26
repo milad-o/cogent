@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="11/26/2025"
+  DTS:CreatorName="DataTeam"
+  DTS:DTSID="{C3D4E5F6-3456-789A-BCDE-F01234567890}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:ObjectName="ExtractOrders"
+  DTS:PackageType="DTSPackage">
+  <DTS:Property DTS:Name="ObjectName">ExtractOrders</DTS:Property>
+  <DTS:Property DTS:Name="Description">Extract order and order detail data from ERP</DTS:Property>
+  
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[SourceERP]"
+      DTS:CreationName="OLEDB"
+      DTS:ObjectName="SourceERP">
+      <DTS:Property DTS:Name="ObjectName">SourceERP</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=ERPSERVER;Initial Catalog=ERP_Production;Provider=SQLNCLI11.1;Integrated Security=SSPI;"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[StagingDB]"
+      DTS:CreationName="OLEDB"
+      DTS:ObjectName="StagingDB">
+      <DTS:Property DTS:Name="ObjectName">StagingDB</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=SQLSERVER01;Initial Catalog=Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[FlatFileArchive]"
+      DTS:CreationName="FLATFILE"
+      DTS:ObjectName="FlatFileArchive">
+      <DTS:Property DTS:Name="ObjectName">FlatFileArchive</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="\\FileServer\ETL\Archive\Orders_Archive.csv"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  
+  <DTS:Variables>
+    <DTS:Variable DTS:Name="LastExtractDate" DTS:Namespace="User" DTS:DataType="7">
+      <DTS:Property DTS:Name="ObjectName">LastExtractDate</DTS:Property>
+      <DTS:Property DTS:Name="Namespace">User</DTS:Property>
+    </DTS:Variable>
+  </DTS:Variables>
+  
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\Get Last Extract Date"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Get Last Extract Date">
+      <DTS:Property DTS:Name="ObjectName">Get Last Extract Date</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="SELECT MAX(ExtractDate) FROM ETL_Watermark WHERE TableName = 'Orders'"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Sequence Container - Load Orders"
+      DTS:CreationName="STOCK:SEQUENCE"
+      DTS:ObjectName="Sequence Container - Load Orders">
+      <DTS:Property DTS:Name="ObjectName">Sequence Container - Load Orders</DTS:Property>
+      <DTS:Property DTS:Name="Description">Container for order loading tasks</DTS:Property>
+      
+      <DTS:Executables>
+        <DTS:Executable
+          DTS:refId="Package\Sequence Container - Load Orders\DFT Orders"
+          DTS:CreationName="Microsoft.Pipeline"
+          DTS:ObjectName="DFT Orders">
+          <DTS:Property DTS:Name="ObjectName">DFT Orders</DTS:Property>
+          <DTS:ObjectData>
+            <pipeline>
+              <components>
+                <component refId="Package\Sequence Container - Load Orders\DFT Orders\OLE DB Source" name="OLE DB Source" componentClassID="Microsoft.OLEDBSource" contactInfo="OLE DB Source;Microsoft">
+                  <outputs>
+                    <output refId="Package\Sequence Container - Load Orders\DFT Orders\OLE DB Source.Outputs[Output]" name="Output">
+                      <outputColumns>
+                        <outputColumn name="OrderID" dataType="i4"/>
+                        <outputColumn name="CustomerID" dataType="i4"/>
+                        <outputColumn name="OrderDate" dataType="dbTimeStamp"/>
+                        <outputColumn name="TotalAmount" dataType="cy"/>
+                        <outputColumn name="Status" dataType="wstr" length="20"/>
+                      </outputColumns>
+                    </output>
+                  </outputs>
+                </component>
+                
+                <component refId="Package\Sequence Container - Load Orders\DFT Orders\Lookup CustomerKey" name="Lookup CustomerKey" componentClassID="Microsoft.Lookup" contactInfo="Lookup;Microsoft">
+                </component>
+                
+                <component refId="Package\Sequence Container - Load Orders\DFT Orders\Conditional Split" name="Conditional Split" componentClassID="Microsoft.ConditionalSplit" contactInfo="Conditional Split;Microsoft">
+                  <outputs>
+                    <output name="Valid Orders"/>
+                    <output name="Invalid Orders"/>
+                  </outputs>
+                </component>
+                
+                <component refId="Package\Sequence Container - Load Orders\DFT Orders\OLE DB Destination" name="OLE DB Destination" componentClassID="Microsoft.OLEDBDestination" contactInfo="OLE DB Destination;Microsoft">
+                </component>
+                
+                <component refId="Package\Sequence Container - Load Orders\DFT Orders\Flat File Destination" name="Flat File Destination - Errors" componentClassID="Microsoft.FlatFileDestination" contactInfo="Flat File Destination;Microsoft">
+                </component>
+              </components>
+              
+              <paths>
+                <path name="Source to Lookup" startId="Package\Sequence Container - Load Orders\DFT Orders\OLE DB Source.Outputs[Output]" endId="Package\Sequence Container - Load Orders\DFT Orders\Lookup CustomerKey.Inputs[Input]"/>
+                <path name="Lookup to Split" startId="Package\Sequence Container - Load Orders\DFT Orders\Lookup CustomerKey.Outputs[Output]" endId="Package\Sequence Container - Load Orders\DFT Orders\Conditional Split.Inputs[Input]"/>
+                <path name="Valid to Destination" startId="Package\Sequence Container - Load Orders\DFT Orders\Conditional Split.Outputs[Valid Orders]" endId="Package\Sequence Container - Load Orders\DFT Orders\OLE DB Destination.Inputs[Input]"/>
+                <path name="Invalid to Error File" startId="Package\Sequence Container - Load Orders\DFT Orders\Conditional Split.Outputs[Invalid Orders]" endId="Package\Sequence Container - Load Orders\DFT Orders\Flat File Destination - Errors.Inputs[Input]"/>
+              </paths>
+            </pipeline>
+          </DTS:ObjectData>
+        </DTS:Executable>
+        
+        <DTS:Executable
+          DTS:refId="Package\Sequence Container - Load Orders\DFT Order Details"
+          DTS:CreationName="Microsoft.Pipeline"
+          DTS:ObjectName="DFT Order Details">
+          <DTS:Property DTS:Name="ObjectName">DFT Order Details</DTS:Property>
+          <DTS:ObjectData>
+            <pipeline>
+              <components>
+                <component refId="Package\Sequence Container - Load Orders\DFT Order Details\Source" name="OLE DB Source" componentClassID="Microsoft.OLEDBSource">
+                  <outputs>
+                    <output name="Output">
+                      <outputColumns>
+                        <outputColumn name="OrderDetailID" dataType="i4"/>
+                        <outputColumn name="OrderID" dataType="i4"/>
+                        <outputColumn name="ProductID" dataType="i4"/>
+                        <outputColumn name="Quantity" dataType="i4"/>
+                        <outputColumn name="UnitPrice" dataType="cy"/>
+                      </outputColumns>
+                    </output>
+                  </outputs>
+                </component>
+                <component refId="Package\Sequence Container - Load Orders\DFT Order Details\Destination" name="OLE DB Destination" componentClassID="Microsoft.OLEDBDestination">
+                </component>
+              </components>
+              <paths>
+                <path startId="Package\Sequence Container - Load Orders\DFT Order Details\Source.Outputs[Output]" endId="Package\Sequence Container - Load Orders\DFT Order Details\Destination.Inputs[Input]"/>
+              </paths>
+            </pipeline>
+          </DTS:ObjectData>
+        </DTS:Executable>
+      </DTS:Executables>
+      
+      <DTS:PrecedenceConstraints>
+        <DTS:PrecedenceConstraint>
+          <DTS:Property DTS:Name="From">DFT Orders</DTS:Property>
+          <DTS:Property DTS:Name="To">DFT Order Details</DTS:Property>
+          <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+        </DTS:PrecedenceConstraint>
+      </DTS:PrecedenceConstraints>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Update Watermark"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Update Watermark">
+      <DTS:Property DTS:Name="ObjectName">Update Watermark</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="UPDATE ETL_Watermark SET ExtractDate = GETDATE() WHERE TableName = 'Orders'"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+  
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint>
+      <DTS:Property DTS:Name="From">Get Last Extract Date</DTS:Property>
+      <DTS:Property DTS:Name="To">Sequence Container - Load Orders</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint>
+      <DTS:Property DTS:Name="From">Sequence Container - Load Orders</DTS:Property>
+      <DTS:Property DTS:Name="To">Update Watermark</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+  </DTS:PrecedenceConstraints>
+</DTS:Executable>

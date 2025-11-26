@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="11/26/2025"
+  DTS:CreatorName="DataTeam"
+  DTS:DTSID="{B2C3D4E5-2345-6789-ABCD-EF0123456789}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:ObjectName="ExtractCustomers"
+  DTS:PackageType="DTSPackage">
+  <DTS:Property DTS:Name="ObjectName">ExtractCustomers</DTS:Property>
+  <DTS:Property DTS:Name="Description">Extract customer data from source CRM system</DTS:Property>
+  
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[SourceCRM]"
+      DTS:CreationName="OLEDB"
+      DTS:ObjectName="SourceCRM">
+      <DTS:Property DTS:Name="ObjectName">SourceCRM</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=CRMSERVER;Initial Catalog=CRM_Production;Provider=SQLNCLI11.1;User ID=etl_user;Password=secret123;"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager
+      DTS:refId="Package.ConnectionManagers[StagingDB]"
+      DTS:CreationName="OLEDB"
+      DTS:ObjectName="StagingDB">
+      <DTS:Property DTS:Name="ObjectName">StagingDB</DTS:Property>
+      <DTS:ObjectData>
+        <DTS:ConnectionManager
+          DTS:ConnectionString="Data Source=SQLSERVER01;Initial Catalog=Staging;Provider=SQLNCLI11.1;Integrated Security=SSPI;"/>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+  
+  <DTS:Executables>
+    <DTS:Executable
+      DTS:refId="Package\Truncate Staging"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Truncate Staging">
+      <DTS:Property DTS:Name="ObjectName">Truncate Staging</DTS:Property>
+      <DTS:Property DTS:Name="Description">Clear staging table before load</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="TRUNCATE TABLE stg.Customers"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\DFT Load Customers"
+      DTS:CreationName="Microsoft.Pipeline"
+      DTS:ObjectName="DFT Load Customers">
+      <DTS:Property DTS:Name="ObjectName">DFT Load Customers</DTS:Property>
+      <DTS:Property DTS:Name="Description">Data Flow: Extract and load customer data</DTS:Property>
+      <DTS:ObjectData>
+        <pipeline>
+          <components>
+            <component refId="Package\DFT Load Customers\OLE DB Source" name="OLE DB Source" componentClassID="Microsoft.OLEDBSource" contactInfo="OLE DB Source;Microsoft">
+              <outputs>
+                <output refId="Package\DFT Load Customers\OLE DB Source.Outputs[Output]" name="Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT Load Customers\OLE DB Source.Outputs[Output].Columns[CustomerID]" name="CustomerID" dataType="i4"/>
+                    <outputColumn refId="Package\DFT Load Customers\OLE DB Source.Outputs[Output].Columns[CustomerName]" name="CustomerName" dataType="wstr" length="100"/>
+                    <outputColumn refId="Package\DFT Load Customers\OLE DB Source.Outputs[Output].Columns[Email]" name="Email" dataType="wstr" length="255"/>
+                    <outputColumn refId="Package\DFT Load Customers\OLE DB Source.Outputs[Output].Columns[Phone]" name="Phone" dataType="wstr" length="20"/>
+                    <outputColumn refId="Package\DFT Load Customers\OLE DB Source.Outputs[Output].Columns[CreatedDate]" name="CreatedDate" dataType="dbTimeStamp"/>
+                    <outputColumn refId="Package\DFT Load Customers\OLE DB Source.Outputs[Output].Columns[CustomerType]" name="CustomerType" dataType="wstr" length="50"/>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+            
+            <component refId="Package\DFT Load Customers\Derived Column" name="Derived Column" componentClassID="Microsoft.DerivedColumn" contactInfo="Derived Column;Microsoft">
+              <outputs>
+                <output refId="Package\DFT Load Customers\Derived Column.Outputs[Output]" name="Output">
+                  <outputColumns>
+                    <outputColumn refId="Package\DFT Load Customers\Derived Column.Outputs[Output].Columns[LoadDate]" name="LoadDate" dataType="dbTimeStamp"/>
+                    <outputColumn refId="Package\DFT Load Customers\Derived Column.Outputs[Output].Columns[SourceSystem]" name="SourceSystem" dataType="wstr" length="50"/>
+                  </outputColumns>
+                </output>
+              </outputs>
+            </component>
+            
+            <component refId="Package\DFT Load Customers\Data Conversion" name="Data Conversion" componentClassID="Microsoft.DataConvert" contactInfo="Data Conversion;Microsoft">
+            </component>
+            
+            <component refId="Package\DFT Load Customers\OLE DB Destination" name="OLE DB Destination" componentClassID="Microsoft.OLEDBDestination" contactInfo="OLE DB Destination;Microsoft">
+            </component>
+          </components>
+          
+          <paths>
+            <path refId="Package\DFT Load Customers.Paths[Path1]" name="Path1" startId="Package\DFT Load Customers\OLE DB Source.Outputs[Output]" endId="Package\DFT Load Customers\Derived Column.Inputs[Input]"/>
+            <path refId="Package\DFT Load Customers.Paths[Path2]" name="Path2" startId="Package\DFT Load Customers\Derived Column.Outputs[Output]" endId="Package\DFT Load Customers\Data Conversion.Inputs[Input]"/>
+            <path refId="Package\DFT Load Customers.Paths[Path3]" name="Path3" startId="Package\DFT Load Customers\Data Conversion.Outputs[Output]" endId="Package\DFT Load Customers\OLE DB Destination.Inputs[Input]"/>
+          </paths>
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+    
+    <DTS:Executable
+      DTS:refId="Package\Update Row Counts"
+      DTS:CreationName="Microsoft.ExecuteSQLTask"
+      DTS:ObjectName="Update Row Counts">
+      <DTS:Property DTS:Name="ObjectName">Update Row Counts</DTS:Property>
+      <DTS:ObjectData>
+        <SQLTask:SqlTaskData
+          xmlns:SQLTask="www.microsoft.com/sqlserver/dts/tasks/sqltask"
+          SQLTask:SqlStatementSource="UPDATE ETL_Stats SET RowCount = (SELECT COUNT(*) FROM stg.Customers) WHERE TableName = 'stg.Customers'"/>
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+  
+  <DTS:PrecedenceConstraints>
+    <DTS:PrecedenceConstraint DTS:refId="Package.PrecedenceConstraints[Constraint1]">
+      <DTS:Property DTS:Name="From">Truncate Staging</DTS:Property>
+      <DTS:Property DTS:Name="To">DFT Load Customers</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+    <DTS:PrecedenceConstraint DTS:refId="Package.PrecedenceConstraints[Constraint2]">
+      <DTS:Property DTS:Name="From">DFT Load Customers</DTS:Property>
+      <DTS:Property DTS:Name="To">Update Row Counts</DTS:Property>
+      <DTS:Property DTS:Name="EvalOp">Constraint</DTS:Property>
+    </DTS:PrecedenceConstraint>
+  </DTS:PrecedenceConstraints>
+</DTS:Executable>
