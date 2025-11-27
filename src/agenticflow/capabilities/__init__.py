@@ -8,11 +8,12 @@ Capabilities are reusable building blocks that add tools to agents:
 - WebSearch: Web search and page fetching (DuckDuckGo, free)
 - CodeSandbox: Safe Python code execution
 - SSISAnalyzer: SSIS package analysis and data lineage tracing
+- MCP: Connect to local/remote MCP servers and use their tools
 
 Example:
     ```python
     from agenticflow import Agent
-    from agenticflow.capabilities import KnowledgeGraph, FileSystem, WebSearch, CodeSandbox
+    from agenticflow.capabilities import KnowledgeGraph, FileSystem, WebSearch, CodeSandbox, MCP
     
     agent = Agent(
         name="Assistant",
@@ -22,6 +23,7 @@ Example:
             FileSystem(allowed_paths=["./data"]), # Adds read, write, search tools
             WebSearch(),                          # Adds web_search, news_search, fetch tools
             CodeSandbox(),                        # Adds execute_python, run_function tools
+            MCP.stdio(command="npx", args=["-y", "@modelcontextprotocol/server-filesystem", "."]),
         ],
     )
     
@@ -35,6 +37,7 @@ from agenticflow.capabilities.codebase import CodebaseAnalyzer
 from agenticflow.capabilities.code_sandbox import CodeSandbox
 from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
+from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPTransport
 from agenticflow.capabilities.ssis import SSISAnalyzer
 from agenticflow.capabilities.web_search import WebSearch
 
@@ -44,6 +47,9 @@ __all__ = [
     "CodeSandbox",
     "FileSystem",
     "KnowledgeGraph",
+    "MCP",
+    "MCPServerConfig",
+    "MCPTransport",
     "SSISAnalyzer",
     "WebSearch",
 ]
