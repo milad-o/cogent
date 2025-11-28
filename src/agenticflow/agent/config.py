@@ -115,9 +115,8 @@ class AgentConfig:
     role: AgentRole = AgentRole.WORKER
     description: str = ""
 
-    # LLM Configuration - accepts LangChain model OR native BaseChatModel
+    # LLM Configuration - native BaseChatModel
     # Native models: from agenticflow.models.openai, azure, anthropic, groq, gemini, etc.
-    # LangChain models: ChatOpenAI, AzureChatOpenAI, ChatAnthropic, etc.
     model: "BaseChatModel | OpenAIChat | AzureChat | AnthropicChat | None" = None
     temperature: float = 0.7  # Used only if model is None (for lazy creation)
     max_tokens: int | None = None  # Used only if model is None
@@ -356,7 +355,7 @@ class AgentConfig:
         
         Returns the model if set, otherwise None.
         Lazy model creation from model_name is no longer supported -
-        users should pass LangChain model instances directly.
+        users should pass native model instances directly.
         """
         return self.model
 
@@ -404,7 +403,7 @@ class AgentConfig:
         
         Args:
             data: Configuration dictionary.
-            model: LangChain model instance to use.
+            model: Chat model instance to use.
         """
         return cls(
             name=data["name"],

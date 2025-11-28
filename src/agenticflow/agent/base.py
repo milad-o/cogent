@@ -174,11 +174,11 @@ class Agent:
             tool_registry: Registry of available tools (optional, Flow provides this)
             memory: Memory backend for conversation persistence. Accepts:
                 - True: Use built-in InMemoryCheckpointer (for testing)
-                - LangGraph checkpointer: MemorySaver, SqliteSaver, PostgresSaver
+                - Checkpointer instance: MemorySaver, SqliteSaver, etc.
                 - AgentMemory instance: For custom configuration
-            store: LangGraph store for long-term memory across threads.
+            store: Store for long-term memory across threads.
             name: Agent name (simplified API)
-            model: LangChain model (simplified API)
+            model: Chat model (simplified API)
             role: Agent role (simplified API)
             description: Agent description (simplified API)
             instructions: Instructions for the agent - defines behavior and personality
@@ -407,37 +407,67 @@ class Agent:
         return None
     
     def _setup_memory(self, memory: Any = None, store: Any = None) -> None:
-        """Setup memory manager.
+        """Setup memory manager and memory tools.
         
         Args:
             memory: Memory backend - can be:
                 - None: No persistence (in-memory only for session)
-                - True: Use built-in InMemorySaver
-                - LangGraph saver (MemorySaver, SqliteSaver, etc.)
-                - AgentMemory instance
-            store: LangGraph BaseStore for long-term memory.
+                - True: Use default MemoryManager (conversation only)
+                - MemoryManager: Use the new unified memory system
+                - MemoryConfig: Create MemoryManager from config
+                - dict: Create MemoryManager from kwargs
+                - AgentMemory: Legacy support
+                - LangGraph saver: Legacy support
+            store: LangGraph BaseStore for long-term memory (legacy).
         """
         from agenticflow.agent.memory import AgentMemory, InMemorySaver
+        from agenticflow.memory import MemoryManager, MemoryConfig, create_memory
         
-        # Handle different memory input types
+        # Try the new memory system first
+        if isinstance(memory, (MemoryManager, MemoryConfig)) or isinstance(memory, dict):
+            self._memory_manager = create_memory(memory)
+            # Create a wrapper AgentMemory for backward compatibility
+            self._memory = AgentMemory(store=store)
+            # Add memory tools if long_term is enabled
+            self._add_memory_tools()
+            return
+        
+        if memory is True:
+            # Default: use new MemoryManager
+            self._memory_manager = MemoryManager.default()
+            self._memory = AgentMemory(backend=InMemorySaver(), store=store)
+            return
+        
+        # Legacy support for AgentMemory and LangGraph savers
+        self._memory_manager = None
+        
         if isinstance(memory, AgentMemory):
-            # Already an AgentMemory instance
             self._memory = memory
-        elif memory is True:
-            # Convenience: True means use built-in in-memory
-            self._memory = AgentMemory(
-                backend=InMemorySaver(),
-                store=store,
-            )
         elif memory is not None:
             # Assume it's a LangGraph saver
-            self._memory = AgentMemory(
-                backend=memory,
-                store=store,
-            )
+            self._memory = AgentMemory(backend=memory, store=store)
         else:
             # No persistence
             self._memory = AgentMemory(store=store)
+
+    def _add_memory_tools(self) -> None:
+        """Add memory tools to agent if long_term memory is enabled."""
+        if not self._memory_manager or not self._memory_manager.has_long_term:
+            return
+        
+        from agenticflow.memory.tools import create_memory_tools
+        
+        memory_tools = create_memory_tools(self._memory_manager)
+        for tool in memory_tools:
+            if tool not in self._direct_tools:
+                self._direct_tools.append(tool)
+                # Also add to config.tools for consistency
+                if tool.name not in self.config.tools:
+                    self.config.tools.append(tool.name)
+        
+        # Invalidate caches since tools changed
+        self._cached_tool_descriptions = None
+        self._cached_bound_model = None
     
     @property
     def memory(self):
@@ -459,6 +489,23 @@ class Agent:
             ```
         """
         return self._memory
+    
+    @property
+    def memory_manager(self):
+        """Access the new unified memory manager (if configured).
+        
+        Returns:
+            MemoryManager instance or None if using legacy AgentMemory.
+            
+        Example:
+            ```python
+            if agent.memory_manager:
+                # Use new memory system
+                await agent.memory_manager.remember("name", "Alice", user_id="user-1")
+                facts = await agent.memory_manager.get_user_facts("user-1")
+            ```
+        """
+        return getattr(self, "_memory_manager", None)
     
     @property
     def has_memory(self) -> bool:
@@ -711,6 +758,12 @@ class Agent:
             
             if appendix_parts:
                 result = f"{result}\n\n" + "\n\n".join(appendix_parts)
+        
+        # Add memory system prompt if long_term memory is enabled
+        if self._memory_manager and self._memory_manager.has_long_term:
+            from agenticflow.memory.tools import get_memory_prompt_addition
+            memory_prompt = get_memory_prompt_addition(has_tools=True)
+            result = f"{result}\n\n{memory_prompt}"
         
         return result
 
@@ -975,6 +1028,7 @@ class Agent:
         message: str,
         thread_id: str | None = None,
         *,
+        user_id: str | None = None,
         stream: bool | None = None,
         correlation_id: str | None = None,
         metadata: dict | None = None,
@@ -994,6 +1048,9 @@ class Agent:
             message: The user's message.
             thread_id: Unique identifier for the conversation thread.
                 If None, uses a default thread for this agent.
+            user_id: Optional user identifier for long-term memory.
+                When provided, the agent can remember facts about the user
+                across different conversation threads.
             stream: Enable streaming response. If None, uses agent's default
                 (set via stream=True in constructor). When True, returns an
                 async iterator of StreamChunk objects.
@@ -1035,6 +1092,31 @@ class Agent:
             response = await agent.chat("What's my name?", thread_id="user-123")
             # Response will mention Alice!
             ```
+            
+        Example - With user memory (long-term):
+            ```python
+            from agenticflow.memory import MemoryManager
+            
+            agent = Agent(
+                name="Assistant",
+                model=model,
+                memory=MemoryManager(short_term=True, long_term=True),
+            )
+            
+            # Save preference in one conversation
+            await agent.chat(
+                "Remember I prefer dark mode",
+                thread_id="conv-1",
+                user_id="user-123",
+            )
+            
+            # Different conversation, same user - still remembers!
+            response = await agent.chat(
+                "What are my preferences?",
+                thread_id="conv-2",
+                user_id="user-123",
+            )
+            ```
         """
         # Determine if streaming based on parameter or agent default
         use_streaming = stream if stream is not None else self.config.stream
@@ -1044,6 +1126,7 @@ class Agent:
             return self.chat_stream(
                 message,
                 thread_id=thread_id,
+                user_id=user_id,
                 correlation_id=correlation_id,
                 metadata=metadata,
             )
@@ -1052,6 +1135,7 @@ class Agent:
         return self._chat_impl(
             message,
             thread_id=thread_id,
+            user_id=user_id,
             correlation_id=correlation_id,
             metadata=metadata,
         )
@@ -1061,6 +1145,7 @@ class Agent:
         message: str,
         thread_id: str | None = None,
         *,
+        user_id: str | None = None,
         correlation_id: str | None = None,
         metadata: dict | None = None,
     ) -> str:
@@ -1080,6 +1165,7 @@ class Agent:
                 "agent_id": self.id,
                 "agent_name": self.name,
                 "thread_id": thread_id,
+                "user_id": user_id,
                 "prompt_preview": message[:200],
             },
             correlation_id,
@@ -1088,14 +1174,29 @@ class Agent:
         start_time = now_utc()
         
         try:
-            # Load conversation history from memory
-            history = await self._memory.get_messages(thread_id)
-            
             # Build messages with effective system prompt (includes tools)
             messages: list[Any] = []
             effective_prompt = self.get_effective_system_prompt()
+            
+            # Inject memory context if using new memory system
+            memory_context = ""
+            if self._memory_manager and user_id:
+                memory_context = await self._memory_manager.get_context_for_prompt(
+                    thread_id=thread_id,
+                    user_id=user_id,
+                )
+                if memory_context:
+                    from agenticflow.memory.tools import format_memory_context
+                    effective_prompt = (effective_prompt or "") + "\n\n" + format_memory_context(memory_context)
+            
             if effective_prompt:
                 messages.append(SystemMessage(content=effective_prompt))
+            
+            # Load conversation history from memory
+            if self._memory_manager:
+                history = await self._memory_manager.get_messages(thread_id)
+            else:
+                history = await self._memory.get_messages(thread_id)
             
             # Add conversation history
             messages.extend(history)
@@ -1115,17 +1216,22 @@ class Agent:
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
             self.state.add_thinking_time(duration_ms)
             
-            # Save messages to memory (both user and assistant)
+            # Save messages to memory
             ai_message = AIMessage(content=result)
-            await self._memory.add_messages(
-                thread_id=thread_id,
-                messages=[user_message, ai_message],
-                metadata={
-                    **(metadata or {}),
-                    "agent_name": self.name,
-                    "agent_id": self.id,
-                },
-            )
+            
+            if self._memory_manager:
+                await self._memory_manager.add_message(thread_id, user_message, metadata)
+                await self._memory_manager.add_message(thread_id, ai_message, metadata)
+            else:
+                await self._memory.add_messages(
+                    thread_id=thread_id,
+                    messages=[user_message, ai_message],
+                    metadata={
+                        **(metadata or {}),
+                        "agent_name": self.name,
+                        "agent_id": self.id,
+                    },
+                )
             
             # Also update local state
             self.state.add_message(user_message)
@@ -1228,7 +1334,7 @@ class Agent:
         """
         from agenticflow.agent.streaming import (
             StreamChunk,
-            chunk_from_langchain,
+            chunk_from_message,
             extract_tool_calls,
         )
         
@@ -1272,7 +1378,7 @@ class Agent:
 
         try:
             async for chunk in self.model.astream(dict_messages):
-                stream_chunk = chunk_from_langchain(chunk, index)
+                stream_chunk = chunk_from_message(chunk, index)
                 accumulated_content += stream_chunk.content
                 index += 1
                 
@@ -1335,6 +1441,7 @@ class Agent:
         message: str,
         thread_id: str | None = None,
         *,
+        user_id: str | None = None,
         correlation_id: str | None = None,
         metadata: dict | None = None,
     ) -> "AsyncIterator[StreamChunk]":
@@ -1347,6 +1454,7 @@ class Agent:
         Args:
             message: The user's message.
             thread_id: Unique identifier for the conversation thread.
+            user_id: Optional user identifier for long-term memory.
             correlation_id: Optional correlation ID for event tracking.
             metadata: Optional metadata to store with the conversation.
             
@@ -1360,7 +1468,7 @@ class Agent:
             print()
             ```
         """
-        from agenticflow.agent.streaming import StreamChunk, chunk_from_langchain
+        from agenticflow.agent.streaming import StreamChunk, chunk_from_message
         
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
@@ -1376,6 +1484,7 @@ class Agent:
                 "agent_id": self.id,
                 "agent_name": self.name,
                 "thread_id": thread_id,
+                "user_id": user_id,
                 "prompt_preview": message[:200],
                 "streaming": True,
             },
@@ -1385,14 +1494,29 @@ class Agent:
         start_time = now_utc()
 
         try:
-            # Load conversation history
-            history = await self._memory.get_messages(thread_id)
-
             # Build messages
             messages: list[Any] = []
             effective_prompt = self.get_effective_system_prompt()
+            
+            # Inject memory context if using new memory system
+            if self._memory_manager and user_id:
+                memory_context = await self._memory_manager.get_context_for_prompt(
+                    thread_id=thread_id,
+                    user_id=user_id,
+                )
+                if memory_context:
+                    from agenticflow.memory.tools import format_memory_context
+                    effective_prompt = (effective_prompt or "") + "\n\n" + format_memory_context(memory_context)
+            
             if effective_prompt:
                 messages.append(SystemMessage(content=effective_prompt))
+            
+            # Load conversation history
+            if self._memory_manager:
+                history = await self._memory_manager.get_messages(thread_id)
+            else:
+                history = await self._memory.get_messages(thread_id)
+            
             messages.extend(history)
             
             user_message = HumanMessage(content=message)
@@ -1405,7 +1529,7 @@ class Agent:
             index = 0
 
             async for chunk in self.model.astream(dict_messages):
-                stream_chunk = chunk_from_langchain(chunk, index)
+                stream_chunk = chunk_from_message(chunk, index)
                 accumulated_content += stream_chunk.content
                 index += 1
                 
@@ -1430,15 +1554,26 @@ class Agent:
 
             # Save to memory
             ai_message = AIMessage(content=accumulated_content)
-            await self._memory.add_messages(
-                thread_id=thread_id,
-                messages=[user_message, ai_message],
-                metadata={
-                    **(metadata or {}),
-                    "agent_name": self.name,
-                    "agent_id": self.id,
-                },
-            )
+            if self._memory_manager:
+                await self._memory_manager.add_messages(
+                    thread_id=thread_id,
+                    messages=[user_message, ai_message],
+                    metadata={
+                        **(metadata or {}),
+                        "agent_name": self.name,
+                        "agent_id": self.id,
+                    },
+                )
+            else:
+                await self._memory.add_messages(
+                    thread_id=thread_id,
+                    messages=[user_message, ai_message],
+                    metadata={
+                        **(metadata or {}),
+                        "agent_name": self.name,
+                        "agent_id": self.id,
+                    },
+                )
 
             # Update local state
             self.state.add_message(user_message)
@@ -1517,7 +1652,7 @@ class Agent:
         from agenticflow.agent.streaming import (
             StreamEvent,
             StreamEventType,
-            chunk_from_langchain,
+            chunk_from_message,
             extract_tool_calls,
             ToolCallChunk,
         )
@@ -1563,7 +1698,7 @@ class Agent:
 
         try:
             async for chunk in self.model.astream(dict_messages):
-                stream_chunk = chunk_from_langchain(chunk, index)
+                stream_chunk = chunk_from_message(chunk, index)
                 
                 # Handle text content
                 if stream_chunk.content:

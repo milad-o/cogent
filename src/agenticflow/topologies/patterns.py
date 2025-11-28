@@ -17,6 +17,7 @@ from .core import AgentConfig, BaseTopology, TopologyResult, TopologyType
 
 if TYPE_CHECKING:
     from ..agent import Agent
+    from ..memory import TeamMemory
 
 
 @dataclass
@@ -50,11 +51,20 @@ class Supervisor(BaseTopology):
 
     topology_type: TopologyType = field(default=TopologyType.SUPERVISOR, init=False)
 
-    async def run(self, task: str) -> TopologyResult:
+    async def run(
+        self,
+        task: str,
+        *,
+        team_memory: TeamMemory | None = None,
+    ) -> TopologyResult:
         """Execute supervisor coordination pattern."""
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []
         coord_name = self.coordinator.name or "coordinator"
+
+        # Report coordinator starting
+        if team_memory:
+            await team_memory.report_status(coord_name, "planning")
 
         # Step 1: Coordinator analyzes task and creates delegation plan
         worker_names = [w.name for w in self.workers]
@@ -78,9 +88,19 @@ Format your response as:
         agent_outputs[coord_name] = plan_response
         execution_order.append(coord_name)
 
+        # Share plan in team memory
+        if team_memory:
+            await team_memory.share_result(coord_name, {"plan": plan_response})
+            await team_memory.report_status(coord_name, "delegating")
+
         # Step 2: Workers execute their assignments
         async def run_worker(worker: AgentConfig, plan: str) -> tuple[str, str]:
             w_name = worker.name or "worker"
+            
+            # Report worker starting
+            if team_memory:
+                await team_memory.report_status(w_name, "working")
+            
             worker_prompt = f"""You are working on a team task.
 
 ORIGINAL TASK: {task}
@@ -93,6 +113,12 @@ YOUR ROLE: {worker.role or "team member"}
 Complete your assigned portion of the work. Be thorough and specific."""
 
             result = await worker.agent.run(worker_prompt)
+            
+            # Share result and report completion
+            if team_memory:
+                await team_memory.share_result(w_name, {"output": result})
+                await team_memory.report_status(w_name, "done")
+            
             return w_name, result
 
         if self.parallel:
@@ -110,6 +136,9 @@ Complete your assigned portion of the work. Be thorough and specific."""
                 execution_order.append(name)
 
         # Step 3: Coordinator synthesizes results
+        if team_memory:
+            await team_memory.report_status(coord_name, "synthesizing")
+
         synthesis_prompt = f"""You coordinated a team on this task:
 
 ORIGINAL TASK: {task}
@@ -123,6 +152,13 @@ Ensure quality, coherence, and completeness."""
         final_output = await self.coordinator.agent.run(synthesis_prompt)
         agent_outputs[f"{coord_name}_synthesis"] = final_output
         execution_order.append(f"{coord_name}_synthesis")
+
+        # Report completion
+        if team_memory:
+            await team_memory.share_result(
+                coord_name, {"synthesis": final_output, "final": True}
+            )
+            await team_memory.report_status(coord_name, "done")
 
         return TopologyResult(
             output=final_output,
@@ -161,7 +197,12 @@ class Pipeline(BaseTopology):
 
     topology_type: TopologyType = field(default=TopologyType.PIPELINE, init=False)
 
-    async def run(self, task: str) -> TopologyResult:
+    async def run(
+        self,
+        task: str,
+        *,
+        team_memory: TeamMemory | None = None,
+    ) -> TopologyResult:
         """Execute pipeline pattern: A → B → C."""
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []
@@ -172,6 +213,10 @@ class Pipeline(BaseTopology):
             name = stage.name or f"stage_{i}"
             is_first = i == 0
             is_last = i == len(self.stages) - 1
+
+            # Report stage starting
+            if team_memory:
+                await team_memory.report_status(name, "working")
 
             if is_first:
                 prompt = f"""You are the first stage in a processing pipeline.
@@ -197,6 +242,13 @@ YOUR ROLE: {stage.role or "continue processing"}
             agent_outputs[name] = result
             execution_order.append(name)
             current_input = result
+
+            # Share result and report completion
+            if team_memory:
+                await team_memory.share_result(
+                    name, {"output": result, "stage": i, "final": is_last}
+                )
+                await team_memory.report_status(name, "done")
 
         return TopologyResult(
             output=current_input,  # Last stage output is final
@@ -246,7 +298,12 @@ class Mesh(BaseTopology):
 
     topology_type: TopologyType = field(default=TopologyType.MESH, init=False)
 
-    async def run(self, task: str) -> TopologyResult:
+    async def run(
+        self,
+        task: str,
+        *,
+        team_memory: TeamMemory | None = None,
+    ) -> TopologyResult:
         """Execute mesh collaboration pattern."""
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []
@@ -266,10 +323,17 @@ class Mesh(BaseTopology):
                         history_context += f"\n{name}:\n{output}\n"
 
             # All agents contribute in parallel
-            async def get_contribution(agent_cfg: AgentConfig) -> tuple[str, str]:
+            async def get_contribution(
+                agent_cfg: AgentConfig,
+                round_n: int = round_num,
+            ) -> tuple[str, str]:
                 name = agent_cfg.name or "agent"
 
-                if round_num == 1:
+                # Report agent starting this round
+                if team_memory:
+                    await team_memory.report_status(name, f"round_{round_n}")
+
+                if round_n == 1:
                     prompt = f"""You are collaborating with a team on this task.
 
 TASK: {task}
@@ -278,7 +342,7 @@ YOUR PERSPECTIVE: {agent_cfg.role or "general"}
 
 Provide your initial analysis and contribution."""
                 else:
-                    prompt = f"""You are in round {round_num} of team collaboration.
+                    prompt = f"""You are in round {round_n} of team collaboration.
 
 TASK: {task}
 {history_context}
@@ -289,6 +353,14 @@ Review your colleagues' contributions and provide your updated analysis.
 Build on good ideas, offer corrections, and add new insights."""
 
                 result = await agent_cfg.agent.run(prompt)
+
+                # Share result in team memory
+                if team_memory:
+                    await team_memory.share_result(
+                        name,
+                        {"output": result, "round": round_n},
+                    )
+
                 return name, result
 
             tasks = [get_contribution(a) for a in self.agents]
@@ -310,6 +382,10 @@ Build on good ideas, offer corrections, and add new insights."""
 
         if self.synthesizer:
             synth_name = self.synthesizer.name or "synthesizer"
+            
+            if team_memory:
+                await team_memory.report_status(synth_name, "synthesizing")
+
             synthesis_prompt = f"""Synthesize the team's collaborative work.
 
 TASK: {task}
@@ -321,10 +397,20 @@ from all contributors and all rounds of refinement."""
             final_output = await self.synthesizer.agent.run(synthesis_prompt)
             agent_outputs[synth_name] = final_output
             execution_order.append(synth_name)
+
+            if team_memory:
+                await team_memory.share_result(
+                    synth_name, {"synthesis": final_output, "final": True}
+                )
+                await team_memory.report_status(synth_name, "done")
         else:
             # Use first agent as synthesizer
             synth = self.agents[0]
             synth_name = synth.name or "synthesizer"
+
+            if team_memory:
+                await team_memory.report_status(synth_name, "synthesizing")
+
             synthesis_prompt = f"""As a final step, synthesize all contributions.
 
 TASK: {task}
@@ -335,6 +421,12 @@ Create a comprehensive final output that represents the team's consensus."""
             final_output = await synth.agent.run(synthesis_prompt)
             agent_outputs[f"{synth_name}_synthesis"] = final_output
             execution_order.append(f"{synth_name}_synthesis")
+
+            if team_memory:
+                await team_memory.share_result(
+                    synth_name, {"synthesis": final_output, "final": True}
+                )
+                await team_memory.report_status(synth_name, "done")
 
         return TopologyResult(
             output=final_output,
@@ -390,7 +482,12 @@ class Hierarchical(BaseTopology):
 
     topology_type: TopologyType = field(default=TopologyType.HIERARCHICAL, init=False)
 
-    async def run(self, task: str) -> TopologyResult:
+    async def run(
+        self,
+        task: str,
+        *,
+        team_memory: TeamMemory | None = None,
+    ) -> TopologyResult:
         """Execute hierarchical delegation pattern."""
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []
@@ -406,6 +503,9 @@ class Hierarchical(BaseTopology):
 
             if not subordinates:
                 # Leaf node - just do the work
+                if team_memory:
+                    await team_memory.report_status(manager_name, "working")
+
                 prompt = f"""Complete this task:
 
 TASK: {subtask}
@@ -417,9 +517,17 @@ Provide a complete and thorough response."""
                 result = await manager.agent.run(prompt)
                 agent_outputs[manager_name] = result
                 execution_order.append(manager_name)
+
+                if team_memory:
+                    await team_memory.share_result(manager_name, {"output": result})
+                    await team_memory.report_status(manager_name, "done")
+
                 return result
 
             # Manager with subordinates - delegate and synthesize
+            if team_memory:
+                await team_memory.report_status(manager_name, "delegating")
+
             sub_names = [s.name for s in subordinates]
             delegation_prompt = f"""You are a manager delegating work to your team.
 
@@ -439,6 +547,9 @@ Format as:
             agent_outputs[f"{manager_name}_plan"] = plan
             execution_order.append(f"{manager_name}_plan")
 
+            if team_memory:
+                await team_memory.share_result(manager_name, {"plan": plan})
+
             # Delegate to subordinates in parallel
             async def run_subordinate(sub: AgentConfig) -> tuple[str, str]:
                 sub_name = sub.name or "subordinate"
@@ -452,6 +563,9 @@ Format as:
             sub_results = dict(results)
 
             # Manager synthesizes subordinate work
+            if team_memory:
+                await team_memory.report_status(manager_name, "synthesizing")
+
             synthesis_prompt = f"""Synthesize your team's work.
 
 ORIGINAL TASK: {subtask}
@@ -464,6 +578,12 @@ Create a cohesive deliverable from your team's contributions."""
             synthesis = await manager.agent.run(synthesis_prompt)
             agent_outputs[f"{manager_name}_synthesis"] = synthesis
             execution_order.append(f"{manager_name}_synthesis")
+
+            if team_memory:
+                await team_memory.share_result(
+                    manager_name, {"synthesis": synthesis, "depth": depth}
+                )
+                await team_memory.report_status(manager_name, "done")
 
             return synthesis
 

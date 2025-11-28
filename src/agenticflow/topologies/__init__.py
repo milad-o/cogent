@@ -44,6 +44,16 @@ Quick Start:
     ... )
     >>> result = await topology.run("Evaluate this product idea")
 
+With TeamMemory:
+    Share state between agents during execution:
+    
+    >>> from agenticflow.memory import TeamMemory
+    >>> team_memory = TeamMemory(team_id="content-team")
+    >>> result = await topology.run("Write article", team_memory=team_memory)
+    >>> # Check agent statuses and shared results
+    >>> statuses = await team_memory.get_agent_statuses()
+    >>> results = await team_memory.get_agent_results()
+
 Convenience Functions:
     For quick setup without AgentConfig boilerplate:
     

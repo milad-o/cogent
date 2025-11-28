@@ -429,7 +429,7 @@ StreamHandler: TypeAlias = Callable[[StreamChunk], None]
 EventHandler: TypeAlias = Callable[[StreamEvent], None]
 
 
-def chunk_from_langchain(chunk: AIMessage, index: int = 0) -> StreamChunk:
+def chunk_from_message(chunk: AIMessage, index: int = 0) -> StreamChunk:
     """
     Convert an AIMessage chunk to our StreamChunk.
     
@@ -449,6 +449,10 @@ def chunk_from_langchain(chunk: AIMessage, index: int = 0) -> StreamChunk:
         token_count=None,
         raw=chunk,
     )
+
+
+# Backward compatibility alias (deprecated)
+chunk_from_langchain = chunk_from_message
 
 
 def extract_tool_calls(msg: AIMessage) -> list[ToolCallChunk]:

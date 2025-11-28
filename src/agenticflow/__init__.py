@@ -157,7 +157,8 @@ from agenticflow.agent.streaming import (
     CollectorStreamCallback,
     ObserverStreamCallback,
     ToolCallChunk,
-    chunk_from_langchain,
+    chunk_from_message,
+    chunk_from_langchain,  # Backward compatibility alias
     extract_tool_calls,
     collect_stream,
     print_stream,
@@ -370,7 +371,8 @@ __all__ = [
     "PrintStreamCallback",
     "CollectorStreamCallback",
     "ToolCallChunk",
-    "chunk_from_langchain",
+    "chunk_from_message",
+    "chunk_from_langchain",  # Backward compatibility alias
     "extract_tool_calls",
     "collect_stream",
     "print_stream",

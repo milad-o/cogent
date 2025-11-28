@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..agent import Agent
+    from ..memory import TeamMemory
 
 
 class TopologyType(str, Enum):
@@ -89,11 +90,17 @@ class BaseTopology(ABC):
     topology_type: TopologyType
 
     @abstractmethod
-    async def run(self, task: str) -> TopologyResult:
+    async def run(
+        self,
+        task: str,
+        *,
+        team_memory: TeamMemory | None = None,
+    ) -> TopologyResult:
         """Execute the topology with the given task.
 
         Args:
             task: The task or query to process.
+            team_memory: Optional TeamMemory for agents to share state.
 
         Returns:
             TopologyResult with outputs from all agents and final synthesis.
@@ -103,7 +110,12 @@ class BaseTopology(ABC):
     def get_agents(self) -> list[AgentConfig]:
         """Get all agents in this topology."""
 
-    async def stream(self, task: str):
+    async def stream(
+        self,
+        task: str,
+        *,
+        team_memory: TeamMemory | None = None,
+    ):
         """Stream execution updates as they happen.
 
         Yields status updates and partial results during execution.
@@ -111,11 +123,12 @@ class BaseTopology(ABC):
 
         Args:
             task: The task to process.
+            team_memory: Optional TeamMemory for agents to share state.
 
         Yields:
             Dict with 'type' (status/output/error) and 'data'.
         """
         yield {"type": "status", "data": f"Starting {self.topology_type.value} execution"}
-        result = await self.run(task)
+        result = await self.run(task, team_memory=team_memory)
         yield {"type": "output", "data": result.output}
         yield {"type": "complete", "data": result}

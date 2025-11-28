@@ -224,7 +224,7 @@ class BaseEmbedding(ABC):
         result = await self.aembed([text])
         return result[0]
     
-    # Aliases for LangChain compatibility
+    # Aliases for common interface compatibility
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents (alias for embed)."""
         return self.embed(texts)

@@ -91,7 +91,7 @@ class BaseCapability(ABC):
         time (not cached) to ensure proper closure over capability state.
         
         Returns:
-            List of LangChain BaseTool instances.
+            List of BaseTool instances.
         """
         ...
     

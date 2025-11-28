@@ -166,7 +166,7 @@ class MCP(BaseCapability):
         self._sessions: dict[str, ClientSession] = {}
         self._contexts: list[Any] = []  # Context managers for cleanup
         self._discovered_tools: dict[str, MCPToolInfo] = {}
-        self._langchain_tools: list[BaseTool] = []
+        self._native_tools: list[BaseTool] = []
         self._initialized = False
 
     @classmethod
@@ -314,7 +314,7 @@ class MCP(BaseCapability):
     @property
     def tools(self) -> list[BaseTool]:
         """Tools discovered from MCP servers."""
-        return self._langchain_tools
+        return self._native_tools
 
     @property
     def servers(self) -> list[MCPServerConfig]:
@@ -368,7 +368,7 @@ class MCP(BaseCapability):
         sends a tools/list_changed notification.
         """
         self._discovered_tools.clear()
-        self._langchain_tools.clear()
+        self._native_tools.clear()
 
         for server_name, session in self._sessions.items():
             try:
@@ -400,7 +400,7 @@ class MCP(BaseCapability):
         self._contexts.clear()
         self._sessions.clear()
         self._discovered_tools.clear()
-        self._langchain_tools.clear()
+        self._native_tools.clear()
         self._initialized = False
 
     async def _connect_server(self, config: MCPServerConfig) -> None:
@@ -525,9 +525,9 @@ class MCP(BaseCapability):
                 server_name=server_name,
             )
 
-            # Create LangChain tool
-            lc_tool = self._create_langchain_tool(tool, server_name, tool_name)
-            self._langchain_tools.append(lc_tool)
+            # Create native tool
+            native_tool = self._create_native_tool(tool, server_name, tool_name)
+            self._native_tools.append(native_tool)
 
             logger.debug("Discovered tool: %s from %s", tool_name, server_name)
 
@@ -547,7 +547,7 @@ class MCP(BaseCapability):
 
         return name
 
-    def _create_langchain_tool(
+    def _create_native_tool(
         self,
         mcp_tool: MCPTool,
         server_name: str,

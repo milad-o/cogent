@@ -4,26 +4,34 @@ Prebuilt RAG (Retrieval-Augmented Generation) Agent.
 A complete, ready-to-use RAG system with:
 - Document loading (PDF, TXT, MD, HTML)
 - Text splitting
-- Vector embeddings
-- Semantic search
+- Vector embeddings (native)
+- Semantic search with optional hybrid retrieval
+- Reranking support
 - LLM-powered Q&A
 
-NOTE: This module uses LangChain for document loaders and vector stores.
-For native-only RAG, use the SimpleRAG class which has no external dependencies.
+This module uses the native agenticflow vector store and retriever - no LangChain required.
 """
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-from agenticflow.tools.base import tool
+from typing import TYPE_CHECKING, Any, Literal
 
 from agenticflow import Agent, AgentRole
+from agenticflow.tools.base import tool
+from agenticflow.vectorstore import (
+    Document,
+    OpenAIEmbeddings,
+    SearchResult,
+    VectorStore,
+    split_text,
+)
+from agenticflow.vectorstore.base import EmbeddingProvider
 
 if TYPE_CHECKING:
-    from agenticflow.models.base import BaseChatModel, BaseEmbeddingModel
+    from agenticflow.models.base import BaseChatModel
+    from agenticflow.retriever.base import Retriever
+    from agenticflow.retriever.rerankers.base import Reranker
 
 
 class RAGAgent:
@@ -33,11 +41,10 @@ class RAGAgent:
     This provides a complete document Q&A system out of the box:
     - Load documents from files or text
     - Automatically chunk and embed
-    - Semantic search retrieval
+    - Semantic search retrieval with optional hybrid/reranking
     - LLM-powered answer generation with citations
     
-    NOTE: This class uses LangChain for document loaders and vector stores.
-    Make sure to install: `uv add langchain-openai langchain-community`
+    Uses the native agenticflow vector store and retriever - no external dependencies.
     
     Example:
         ```python
@@ -56,32 +63,57 @@ class RAGAgent:
         
         # Query
         answer = await rag.query("What are the key findings?")
+        
+        # Advanced: hybrid retrieval with reranking
+        rag = RAGAgent(
+            model=ChatModel(model="gpt-4o-mini"),
+            retrieval_mode="hybrid",  # dense + BM25
+            reranker="llm",  # LLM-based reranking
+        )
         ```
     """
     
     def __init__(
         self,
         model: BaseChatModel,
-        embeddings: Any | None = None,
+        embeddings: EmbeddingProvider | None = None,
         *,
         name: str = "RAG_Assistant",
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         top_k: int = 4,
         instructions: str | None = None,
+        backend: str = "inmemory",
+        retrieval_mode: Literal["dense", "hybrid", "ensemble"] = "dense",
+        sparse_weight: float = 0.3,
+        reranker: Literal["none", "llm", "cross_encoder", "cohere"] | Reranker | None = None,
+        initial_k: int | None = None,
     ) -> None:
         """
         Create a RAG agent.
         
         Args:
             model: Native chat model for answer generation.
-            embeddings: LangChain embedding model for vectorization.
+            embeddings: Embedding provider for vectorization.
                 If None, uses OpenAI text-embedding-3-small.
             name: Agent name.
             chunk_size: Size of text chunks (default: 1000 chars).
             chunk_overlap: Overlap between chunks (default: 200 chars).
             top_k: Number of passages to retrieve (default: 4).
             instructions: Custom instructions for the agent.
+            backend: Vector store backend ("inmemory", "faiss", "chroma", "qdrant", "pgvector").
+            retrieval_mode: Retrieval strategy:
+                - "dense": Vector similarity only (default)
+                - "hybrid": Dense + BM25 sparse retrieval
+                - "ensemble": Multiple retrievers with RRF fusion
+            sparse_weight: Weight for sparse retrieval in hybrid mode (0-1, default: 0.3).
+            reranker: Optional reranker for two-stage retrieval:
+                - "none": No reranking (default)
+                - "llm": Use the same LLM for reranking
+                - "cross_encoder": sentence-transformers cross-encoder (requires: sentence-transformers)
+                - "cohere": Cohere Rerank API (requires: cohere, COHERE_API_KEY)
+                - Or pass a custom Reranker instance
+            initial_k: Documents to retrieve before reranking (default: top_k * 3).
         """
         self._model = model
         self._embeddings = embeddings
@@ -90,27 +122,138 @@ class RAGAgent:
         self._top_k = top_k
         self._name = name
         self._custom_instructions = instructions
+        self._backend_name = backend
+        self._retrieval_mode = retrieval_mode
+        self._sparse_weight = sparse_weight
+        self._reranker_config = reranker
+        self._initial_k = initial_k or (top_k * 3)
         
-        # Vector store (lazy initialized) - uses LangChain types
-        self._vector_store: Any = None
-        self._documents: list[Any] = []
+        # Vector store (lazy initialized) - native type
+        self._vector_store: VectorStore | None = None
+        self._documents: list[Document] = []
         self._doc_info: dict[str, Any] = {}
+        
+        # Retriever (lazy initialized)
+        self._retriever: Retriever | None = None
+        self._reranker: Reranker | None = None
         
         # Agent (lazy initialized after documents loaded)
         self._agent: Agent | None = None
     
-    def _get_embeddings(self) -> Any:
-        """Get or create embeddings model (LangChain Embeddings)."""
+    def _get_embeddings(self) -> EmbeddingProvider:
+        """Get or create embeddings model (native EmbeddingProvider)."""
         if self._embeddings is None:
-            try:
-                from langchain_openai import OpenAIEmbeddings
-                self._embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-            except ImportError as e:
-                raise ImportError(
-                    "RAGAgent requires langchain-openai for embeddings. "
-                    "Install with: uv add langchain-openai"
-                ) from e
+            self._embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
         return self._embeddings
+    
+    def _create_backend(self):
+        """Create backend instance from name."""
+        from agenticflow.vectorstore.backends import InMemoryBackend
+        
+        if self._backend_name == "inmemory":
+            return InMemoryBackend()
+        elif self._backend_name == "faiss":
+            from agenticflow.vectorstore.backends import FAISSBackend
+            # FAISS needs dimension - get from embeddings
+            embeddings = self._get_embeddings()
+            dim = getattr(embeddings, "dimension", 1536)
+            return FAISSBackend(dimension=dim)
+        elif self._backend_name == "chroma":
+            from agenticflow.vectorstore.backends import ChromaBackend
+            return ChromaBackend(collection_name="rag_documents")
+        elif self._backend_name == "qdrant":
+            from agenticflow.vectorstore.backends import QdrantBackend
+            return QdrantBackend(collection_name="rag_documents", location=":memory:")
+        elif self._backend_name == "pgvector":
+            from agenticflow.vectorstore.backends import PgVectorBackend
+            import os
+            conninfo = os.environ.get("DATABASE_URL", "")
+            return PgVectorBackend(conninfo=conninfo, table_name="rag_documents")
+        else:
+            raise ValueError(f"Unknown backend: {self._backend_name}")
+    
+    def _create_vector_store(self) -> VectorStore:
+        """Create vector store with configured backend."""
+        embeddings = self._get_embeddings()
+        backend = self._create_backend()
+        return VectorStore(embeddings=embeddings, backend=backend)
+    
+    def _create_retriever(self, documents: list[Document]) -> Retriever:
+        """Create retriever based on retrieval_mode."""
+        from agenticflow.retriever import DenseRetriever
+        
+        # Always need the vector store for dense retrieval
+        assert self._vector_store is not None
+        
+        if self._retrieval_mode == "dense":
+            return DenseRetriever(self._vector_store)
+        
+        elif self._retrieval_mode == "hybrid":
+            from agenticflow.retriever import HybridRetriever
+            return HybridRetriever(
+                vectorstore=self._vector_store,
+                documents=documents,
+                sparse_weight=self._sparse_weight,
+            )
+        
+        elif self._retrieval_mode == "ensemble":
+            from agenticflow.retriever import BM25Retriever, DenseRetriever, EnsembleRetriever
+            
+            dense = DenseRetriever(self._vector_store)
+            sparse = BM25Retriever(documents)
+            
+            return EnsembleRetriever(
+                retrievers=[dense, sparse],
+                weights=[1.0 - self._sparse_weight, self._sparse_weight],
+            )
+        
+        else:
+            raise ValueError(f"Unknown retrieval mode: {self._retrieval_mode}")
+    
+    def _create_reranker(self) -> Reranker | None:
+        """Create reranker based on configuration."""
+        if self._reranker_config is None or self._reranker_config == "none":
+            return None
+        
+        # If already a Reranker instance, return it
+        from agenticflow.retriever.rerankers.base import Reranker as RerankerProtocol
+        if isinstance(self._reranker_config, RerankerProtocol):
+            return self._reranker_config
+        
+        if self._reranker_config == "llm":
+            from agenticflow.retriever.rerankers import LLMReranker
+            return LLMReranker(model=self._model)
+        
+        elif self._reranker_config == "cross_encoder":
+            from agenticflow.retriever.rerankers import CrossEncoderReranker
+            return CrossEncoderReranker()
+        
+        elif self._reranker_config == "cohere":
+            from agenticflow.retriever.rerankers import CohereReranker
+            return CohereReranker()
+        
+        else:
+            raise ValueError(f"Unknown reranker: {self._reranker_config}")
+    
+    async def _retrieve(self, query: str, k: int) -> list[tuple[Document, float]]:
+        """Internal retrieval method using configured retriever and reranker."""
+        if self._retriever is None:
+            # Fallback to direct vector store search
+            if self._vector_store is None:
+                return []
+            results = await self._vector_store.search(query, k=k)
+            return [(r.document, r.score) for r in results]
+        
+        # Use retriever
+        if self._reranker:
+            # Two-stage retrieval: get more candidates, then rerank
+            results = await self._retriever.retrieve_with_scores(query, k=self._initial_k)
+            docs = [r.document for r in results]
+            reranked = await self._reranker.rerank(query, docs, top_n=k)
+            return [(r.document, r.score) for r in reranked]
+        else:
+            results = await self._retriever.retrieve_with_scores(query, k=k)
+            return [(r.document, r.score) for r in results]
     
     def _create_tools(self) -> list:
         """Create RAG tools that reference this instance."""
@@ -118,7 +261,7 @@ class RAGAgent:
         rag_self = self
         
         @tool
-        def search_documents(query: str, num_results: int = 4) -> str:
+        async def search_documents(query: str, num_results: int = 4) -> str:
             """Search documents for relevant passages.
             
             Args:
@@ -132,16 +275,18 @@ class RAGAgent:
                 return "Error: No documents loaded."
             
             num_results = min(num_results, rag_self._top_k, 10)
-            results = rag_self._vector_store.similarity_search(query, k=num_results)
+            
+            # Use internal retrieve method (handles retriever + reranker)
+            results = await rag_self._retrieve(query, k=num_results)
             
             if not results:
                 return "No relevant passages found."
             
             formatted = []
-            for i, doc in enumerate(results, 1):
-                content = doc.page_content.strip()
+            for i, (doc, score) in enumerate(results, 1):
+                content = doc.text.strip()
                 source = doc.metadata.get("source", "unknown")
-                formatted.append(f"[{i}] (Source: {source})\n{content}")
+                formatted.append(f"[{i}] (Source: {source}, Score: {score:.3f})\n{content}")
             
             return "\n\n---\n\n".join(formatted)
         
@@ -202,16 +347,7 @@ When answering questions:
             paths: List of file paths to load.
             show_progress: Print progress messages.
         """
-        from langchain_community.document_loaders import (
-            CSVLoader,
-            JSONLoader,
-            TextLoader,
-            UnstructuredHTMLLoader,
-        )
-        from langchain_core.vectorstores import InMemoryVectorStore
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-        
-        all_docs: list[Document] = []
+        all_texts: list[tuple[str, str]] = []  # (text, source)
         sources: list[str] = []
         
         for path in paths:
@@ -230,69 +366,137 @@ When answering questions:
             ext = path.suffix.lower()
             try:
                 if ext in (".txt", ".md"):
-                    loader = TextLoader(str(path), encoding="utf-8")
+                    text = path.read_text(encoding="utf-8")
+                    all_texts.append((text, path.name))
                 elif ext == ".pdf":
-                    try:
-                        from langchain_community.document_loaders import PyPDFLoader
-                        loader = PyPDFLoader(str(path))
-                    except ImportError:
-                        print(f"  ⚠ PDF support requires: uv add pypdf")
-                        continue
+                    text = await self._load_pdf(path)
+                    if text:
+                        all_texts.append((text, path.name))
+                    else:
+                        if show_progress:
+                            print(f"  ⚠ Could not extract text from PDF: {path.name}")
                 elif ext in (".html", ".htm"):
-                    loader = UnstructuredHTMLLoader(str(path))
+                    text = await self._load_html(path)
+                    all_texts.append((text, path.name))
                 elif ext == ".csv":
-                    loader = CSVLoader(str(path))
+                    text = await self._load_csv(path)
+                    all_texts.append((text, path.name))
                 elif ext == ".json":
-                    loader = JSONLoader(str(path), jq_schema=".", text_content=False)
+                    text = await self._load_json(path)
+                    all_texts.append((text, path.name))
                 else:
                     # Try as text
-                    loader = TextLoader(str(path), encoding="utf-8")
-                
-                docs = loader.load()
-                all_docs.extend(docs)
+                    text = path.read_text(encoding="utf-8")
+                    all_texts.append((text, path.name))
             except Exception as e:
                 if show_progress:
                     print(f"  ⚠ Error loading {path.name}: {e}")
         
-        if not all_docs:
+        if not all_texts:
             raise ValueError("No documents were loaded successfully")
         
-        # Split documents
+        # Split documents into chunks
         if show_progress:
-            print(f"  ✂️  Splitting into chunks...")
+            print("  ✂️  Splitting into chunks...")
         
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self._chunk_size,
-            chunk_overlap=self._chunk_overlap,
-            length_function=len,
-            separators=["\n\n", "\n", ". ", " ", ""],
-        )
-        chunks = splitter.split_documents(all_docs)
-        
-        if show_progress:
-            print(f"  ✓ {len(chunks)} chunks created")
-        
-        # Create embeddings
-        if show_progress:
-            print(f"  🧮 Creating embeddings...")
-        
-        embeddings = self._get_embeddings()
-        self._vector_store = InMemoryVectorStore.from_documents(chunks, embeddings)
-        self._documents = chunks
+        all_chunks: list[Document] = []
+        for text, source in all_texts:
+            chunks = split_text(
+                text,
+                chunk_size=self._chunk_size,
+                chunk_overlap=self._chunk_overlap,
+            )
+            for chunk in chunks:
+                all_chunks.append(Document(text=chunk, metadata={"source": source}))
         
         if show_progress:
-            print(f"  ✓ Vector store ready")
+            print(f"  ✓ {len(all_chunks)} chunks created")
+        
+        # Create vector store and add documents
+        if show_progress:
+            print("  🧮 Creating embeddings...")
+        
+        self._vector_store = self._create_vector_store()
+        await self._vector_store.add_documents(all_chunks)
+        self._documents = all_chunks
+        
+        if show_progress:
+            print("  ✓ Vector store ready")
+        
+        # Create retriever if using advanced retrieval
+        if self._retrieval_mode != "dense" or self._reranker_config:
+            if show_progress:
+                print(f"  🔍 Setting up {self._retrieval_mode} retriever...")
+            self._retriever = self._create_retriever(all_chunks)
+            self._reranker = self._create_reranker()
+            if show_progress:
+                if self._reranker:
+                    print(f"  ✓ Retriever ready with {self._reranker_config} reranking")
+                else:
+                    print("  ✓ Retriever ready")
         
         # Update doc info
         self._doc_info = {
             "sources": sources,
-            "total_chunks": len(chunks),
+            "total_chunks": len(all_chunks),
             "chunk_size": self._chunk_size,
             "overlap": self._chunk_overlap,
+            "retrieval_mode": self._retrieval_mode,
+            "reranker": str(self._reranker_config) if self._reranker_config else None,
         }
         
         # Create agent with tools
         self._agent = self._create_agent()
+    
+    async def _load_pdf(self, path: Path) -> str | None:
+        """Load PDF file text."""
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(str(path))
+            text_parts = []
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    text_parts.append(text)
+            return "\n\n".join(text_parts) if text_parts else None
+        except ImportError:
+            print("  ⚠ PDF support requires: uv add pypdf")
+            return None
+    
+    async def _load_html(self, path: Path) -> str:
+        """Load HTML file and extract text."""
+        html = path.read_text(encoding="utf-8")
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, "html.parser")
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            return soup.get_text(separator="\n", strip=True)
+        except ImportError:
+            # Fallback: basic regex extraction
+            import re
+            text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r"<[^>]+>", " ", text)
+            text = re.sub(r"\s+", " ", text)
+            return text.strip()
+    
+    async def _load_csv(self, path: Path) -> str:
+        """Load CSV file as text."""
+        import csv
+        rows = []
+        with path.open(encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                rows.append(", ".join(row))
+        return "\n".join(rows)
+    
+    async def _load_json(self, path: Path) -> str:
+        """Load JSON file as text."""
+        import json
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return json.dumps(data, indent=2)
     
     async def load_text(
         self,
@@ -309,40 +513,47 @@ When answering questions:
             source: Source name for citations.
             show_progress: Print progress messages.
         """
-        from langchain_core.documents import Document as LCDocument
-        from langchain_core.vectorstores import InMemoryVectorStore
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-        
         if show_progress:
             print(f"  📝 Loading text from: {source}")
         
-        doc = LCDocument(page_content=text, metadata={"source": source})
-        
-        # Split
-        splitter = RecursiveCharacterTextSplitter(
+        # Split into chunks
+        chunks = split_text(
+            text,
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
-            length_function=len,
-            separators=["\n\n", "\n", ". ", " ", ""],
         )
-        chunks = splitter.split_documents([doc])
+        documents = [Document(text=chunk, metadata={"source": source}) for chunk in chunks]
         
         if show_progress:
-            print(f"  ✓ {len(chunks)} chunks created")
-            print(f"  🧮 Creating embeddings...")
+            print(f"  ✓ {len(documents)} chunks created")
+            print("  🧮 Creating embeddings...")
         
-        embeddings = self._get_embeddings()
-        self._vector_store = InMemoryVectorStore.from_documents(chunks, embeddings)
-        self._documents = chunks
+        self._vector_store = self._create_vector_store()
+        await self._vector_store.add_documents(documents)
+        self._documents = documents
         
         if show_progress:
-            print(f"  ✓ Vector store ready")
+            print("  ✓ Vector store ready")
+        
+        # Create retriever if using advanced retrieval
+        if self._retrieval_mode != "dense" or self._reranker_config:
+            if show_progress:
+                print(f"  🔍 Setting up {self._retrieval_mode} retriever...")
+            self._retriever = self._create_retriever(documents)
+            self._reranker = self._create_reranker()
+            if show_progress:
+                if self._reranker:
+                    print(f"  ✓ Retriever ready with {self._reranker_config} reranking")
+                else:
+                    print("  ✓ Retriever ready")
         
         self._doc_info = {
             "sources": [source],
-            "total_chunks": len(chunks),
+            "total_chunks": len(documents),
             "chunk_size": self._chunk_size,
             "overlap": self._chunk_overlap,
+            "retrieval_mode": self._retrieval_mode,
+            "reranker": str(self._reranker_config) if self._reranker_config else None,
         }
         
         self._agent = self._create_agent()
@@ -369,6 +580,22 @@ When answering questions:
             response = await client.get(url)
             response.raise_for_status()
             text = response.text
+        
+        # Extract text from HTML if needed
+        if "text/html" in response.headers.get("content-type", ""):
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(text, "html.parser")
+                for script in soup(["script", "style"]):
+                    script.decompose()
+                text = soup.get_text(separator="\n", strip=True)
+            except ImportError:
+                import re
+                text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+                text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+                text = re.sub(r"<[^>]+>", " ", text)
+                text = re.sub(r"\s+", " ", text)
+                text = text.strip()
         
         await self.load_text(text, source=url, show_progress=show_progress)
     
@@ -404,7 +631,7 @@ When answering questions:
         self,
         query: str,
         k: int | None = None,
-    ) -> list[Any]:
+    ) -> list[SearchResult]:
         """
         Direct semantic search (without LLM).
         
@@ -413,13 +640,13 @@ When answering questions:
             k: Number of results (default: top_k).
             
         Returns:
-            List of matching Document objects (LangChain Document type).
+            List of SearchResult objects with document and score.
         """
         if self._vector_store is None:
             raise RuntimeError("No documents loaded.")
         
         k = k or self._top_k
-        return self._vector_store.similarity_search(query, k=k)
+        return await self._vector_store.search(query, k=k)
     
     @property
     def agent(self) -> Agent | None:
@@ -439,7 +666,7 @@ When answering questions:
 
 def create_rag_agent(
     model: BaseChatModel,
-    embeddings: Any | None = None,
+    embeddings: EmbeddingProvider | None = None,
     *,
     documents: list[str | Path] | None = None,
     chunk_size: int = 1000,
@@ -447,6 +674,11 @@ def create_rag_agent(
     top_k: int = 4,
     name: str = "RAG_Assistant",
     instructions: str | None = None,
+    backend: str = "inmemory",
+    retrieval_mode: Literal["dense", "hybrid", "ensemble"] = "dense",
+    sparse_weight: float = 0.3,
+    reranker: Literal["none", "llm", "cross_encoder", "cohere"] | None = None,
+    initial_k: int | None = None,
 ) -> RAGAgent:
     """
     Create a RAG agent for document Q&A.
@@ -454,18 +686,22 @@ def create_rag_agent(
     This is a convenience function that creates and optionally
     initializes a RAGAgent.
     
-    NOTE: This uses LangChain for document loaders and vector stores.
-    Make sure to install: `uv add langchain-openai langchain-community`
+    Uses the native agenticflow vector store and retriever - no external dependencies.
     
     Args:
         model: Native chat model.
-        embeddings: LangChain embedding model (default: OpenAI text-embedding-3-small).
+        embeddings: Embedding provider (default: OpenAI text-embedding-3-small).
         documents: Optional list of document paths to load immediately.
         chunk_size: Text chunk size (default: 1000).
         chunk_overlap: Chunk overlap (default: 200).
         top_k: Passages to retrieve (default: 4).
         name: Agent name.
         instructions: Custom instructions.
+        backend: Vector store backend ("inmemory", "faiss", "chroma", "qdrant", "pgvector").
+        retrieval_mode: Retrieval strategy ("dense", "hybrid", "ensemble").
+        sparse_weight: Weight for sparse retrieval in hybrid mode.
+        reranker: Reranker type ("none", "llm", "cross_encoder", "cohere").
+        initial_k: Documents to retrieve before reranking.
         
     Returns:
         Configured RAGAgent instance.
@@ -475,14 +711,18 @@ def create_rag_agent(
         from agenticflow.models import ChatModel
         from agenticflow.prebuilt import create_rag_agent
         
-        # Create and load in one step
+        # Simple: dense retrieval (default)
         rag = create_rag_agent(
             model=ChatModel(model="gpt-4o-mini"),
             documents=["report.pdf", "data.csv"],
         )
         
-        # Or create empty and load later
-        rag = create_rag_agent(model=ChatModel(model="gpt-4o-mini"))
+        # Advanced: hybrid retrieval with LLM reranking
+        rag = create_rag_agent(
+            model=ChatModel(model="gpt-4o-mini"),
+            retrieval_mode="hybrid",
+            reranker="llm",
+        )
         await rag.load_documents(["doc1.txt", "doc2.txt"])
         
         # Query
@@ -497,12 +737,17 @@ def create_rag_agent(
         chunk_overlap=chunk_overlap,
         top_k=top_k,
         instructions=instructions,
+        backend=backend,
+        retrieval_mode=retrieval_mode,
+        sparse_weight=sparse_weight,
+        reranker=reranker,
+        initial_k=initial_k,
     )
     
     # Note: If documents provided, user needs to await load_documents()
     # We can't do async in a regular function
     if documents:
         # Return with a hint that documents need loading
-        rag._pending_documents = documents
+        rag._pending_documents = documents  # type: ignore
     
     return rag

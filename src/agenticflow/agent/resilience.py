@@ -1012,9 +1012,9 @@ class ToolResilience:
             args: Arguments dict for the tool
             tool_obj: Optional tool object (for ainvoke detection)
         """
-        # Check if the tool object has ainvoke (LangChain async tools)
+        # Check if the tool object has ainvoke (async tool interface)
         if tool_obj is not None and hasattr(tool_obj, "ainvoke"):
-            # LangChain tool - use ainvoke for proper async support
+            # Tool with async interface - use ainvoke for proper async support
             return await tool_obj.ainvoke(args)
         elif inspect.iscoroutinefunction(tool_fn):
             return await tool_fn(args)

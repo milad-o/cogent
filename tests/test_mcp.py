@@ -417,14 +417,14 @@ class TestMCPInitialization:
         mcp._initialized = True
         mcp._sessions["test"] = MagicMock()
         mcp._discovered_tools["tool1"] = MagicMock()
-        mcp._langchain_tools.append(MagicMock())
+        mcp._native_tools.append(MagicMock())
 
         await mcp.shutdown()
 
         assert mcp._initialized is False
         assert mcp._sessions == {}
         assert mcp._discovered_tools == {}
-        assert mcp._langchain_tools == []
+        assert mcp._native_tools == []
 
 
 class TestMCPToolDiscovery:
@@ -494,10 +494,10 @@ class TestMCPToolExecution:
         mock_mcp_tool.description = "Get weather"
         mock_mcp_tool.inputSchema = {}
 
-        lc_tool = mcp._create_langchain_tool(mock_mcp_tool, "test-server", "get_weather")
+        native_tool = mcp._create_native_tool(mock_mcp_tool, "test-server", "get_weather")
 
         # Execute the tool
-        result = await lc_tool.ainvoke({"city": "San Francisco"})
+        result = await native_tool.ainvoke({"city": "San Francisco"})
 
         assert "Weather: 72°F, Sunny" in result
 
@@ -512,9 +512,9 @@ class TestMCPToolExecution:
         mock_mcp_tool.description = "Test"
         mock_mcp_tool.inputSchema = {}
 
-        lc_tool = mcp._create_langchain_tool(mock_mcp_tool, "unknown-server", "test_tool")
+        native_tool = mcp._create_native_tool(mock_mcp_tool, "unknown-server", "test_tool")
 
-        result = await lc_tool.ainvoke({})
+        result = await native_tool.ainvoke({})
 
         assert "Error" in result
         assert "Not connected" in result
@@ -539,8 +539,8 @@ class TestMCPToolExecution:
         mock_mcp_tool.description = "Get weather"
         mock_mcp_tool.inputSchema = {}
 
-        lc_tool = mcp._create_langchain_tool(mock_mcp_tool, "test-server", "get_weather")
-        result = await lc_tool.ainvoke({})
+        native_tool = mcp._create_native_tool(mock_mcp_tool, "test-server", "get_weather")
+        result = await native_tool.ainvoke({})
 
         assert "Success" in result
         assert "Structured" in result
@@ -557,13 +557,13 @@ class TestMCPRefreshTools:
 
         # Add some existing tools
         mcp._discovered_tools["old_tool"] = MagicMock()
-        mcp._langchain_tools.append(MagicMock())
+        mcp._native_tools.append(MagicMock())
 
         # Refresh with no sessions
         await mcp.refresh_tools()
 
         assert len(mcp._discovered_tools) == 0
-        assert len(mcp._langchain_tools) == 0
+        assert len(mcp._native_tools) == 0
 
     @pytest.mark.asyncio
     async def test_refresh_tools_rediscovers_from_sessions(self) -> None:

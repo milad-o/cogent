@@ -422,3 +422,162 @@ class TestTopologyIntegration:
         # Should have status and output events
         event_types = [e["type"] for e in events]
         assert "status" in event_types or "output" in event_types
+
+
+# ==================== TeamMemory Integration Tests ====================
+
+
+class TestTeamMemoryIntegration:
+    """Tests for TeamMemory integration with topologies."""
+
+    @pytest.mark.asyncio
+    async def test_supervisor_with_team_memory(self, mock_agents):
+        """Test that Supervisor uses TeamMemory correctly."""
+        from agenticflow.memory import TeamMemory
+
+        team_memory = TeamMemory(team_id="test-supervisor")
+
+        topo = Supervisor(
+            coordinator=AgentConfig(agent=mock_agents["researcher"], role="coordinator"),
+            workers=[
+                AgentConfig(agent=mock_agents["writer"], role="writer"),
+                AgentConfig(agent=mock_agents["editor"], role="editor"),
+            ],
+        )
+
+        await topo.run("Write an article", team_memory=team_memory)
+
+        # Check that statuses were reported
+        statuses = await team_memory.get_agent_statuses()
+        assert "researcher" in statuses
+        assert statuses["researcher"] == "done"
+        assert "writer" in statuses
+        assert statuses["writer"] == "done"
+        assert "editor" in statuses
+        assert statuses["editor"] == "done"
+
+        # Check that results were shared
+        results = await team_memory.get_agent_results()
+        assert "researcher" in results
+        # Coordinator's final result is the synthesis
+        assert "synthesis" in results["researcher"]
+        assert results["researcher"]["final"] is True
+
+    @pytest.mark.asyncio
+    async def test_pipeline_with_team_memory(self, mock_agents):
+        """Test that Pipeline uses TeamMemory correctly."""
+        from agenticflow.memory import TeamMemory
+
+        team_memory = TeamMemory(team_id="test-pipeline")
+
+        topo = Pipeline(
+            stages=[
+                AgentConfig(agent=mock_agents["researcher"], role="research"),
+                AgentConfig(agent=mock_agents["writer"], role="draft"),
+                AgentConfig(agent=mock_agents["editor"], role="polish"),
+            ]
+        )
+
+        await topo.run("Create content", team_memory=team_memory)
+
+        # Check statuses
+        statuses = await team_memory.get_agent_statuses()
+        assert all(status == "done" for status in statuses.values())
+
+        # Check results
+        results = await team_memory.get_agent_results()
+        assert len(results) == 3
+
+    @pytest.mark.asyncio
+    async def test_mesh_with_team_memory(self, mock_agents):
+        """Test that Mesh uses TeamMemory correctly."""
+        from agenticflow.memory import TeamMemory
+
+        team_memory = TeamMemory(team_id="test-mesh")
+
+        topo = Mesh(
+            agents=[
+                AgentConfig(agent=mock_agents["researcher"], role="analyst1"),
+                AgentConfig(agent=mock_agents["writer"], role="analyst2"),
+            ],
+            max_rounds=2,
+        )
+
+        await topo.run("Analyze topic", team_memory=team_memory)
+
+        # Check statuses - all agents should be done
+        statuses = await team_memory.get_agent_statuses()
+        assert "researcher" in statuses
+        # First agent synthesizes by default
+        assert statuses["researcher"] == "done"
+
+        # Check results
+        results = await team_memory.get_agent_results()
+        assert "researcher" in results
+        # Final synthesis should be stored
+        assert "synthesis" in results["researcher"] or "output" in results["researcher"]
+
+    @pytest.mark.asyncio
+    async def test_hierarchical_with_team_memory(self, mock_agent):
+        """Test that Hierarchical uses TeamMemory correctly."""
+        from agenticflow.memory import TeamMemory
+
+        team_memory = TeamMemory(team_id="test-hierarchical")
+
+        root = mock_agent("manager")
+        worker1 = mock_agent("worker1")
+        worker2 = mock_agent("worker2")
+
+        topo = Hierarchical(
+            root=AgentConfig(agent=root, role="manager"),
+            structure={
+                "manager": [
+                    AgentConfig(agent=worker1, role="developer"),
+                    AgentConfig(agent=worker2, role="tester"),
+                ]
+            },
+        )
+
+        await topo.run("Build feature", team_memory=team_memory)
+
+        # Check statuses
+        statuses = await team_memory.get_agent_statuses()
+        assert "manager" in statuses
+        assert statuses["manager"] == "done"
+        assert "worker1" in statuses
+        assert "worker2" in statuses
+
+    @pytest.mark.asyncio
+    async def test_topology_without_team_memory(self, mock_agents):
+        """Test that topologies still work without TeamMemory."""
+        topo = Pipeline(
+            stages=[
+                AgentConfig(agent=mock_agents["researcher"]),
+                AgentConfig(agent=mock_agents["writer"]),
+            ]
+        )
+
+        # Should work fine without team_memory
+        result = await topo.run("Test task")
+        assert result.success
+        assert len(result.agent_outputs) == 2
+
+    @pytest.mark.asyncio
+    async def test_stream_with_team_memory(self, mock_agents):
+        """Test that stream works with TeamMemory."""
+        from agenticflow.memory import TeamMemory
+
+        team_memory = TeamMemory(team_id="test-stream")
+
+        topo = Pipeline(
+            stages=[AgentConfig(agent=mock_agents["researcher"])]
+        )
+
+        events = []
+        async for event in topo.stream("Test task", team_memory=team_memory):
+            events.append(event)
+
+        assert len(events) >= 1
+        # Check memory was updated
+        statuses = await team_memory.get_agent_statuses()
+        assert "researcher" in statuses
