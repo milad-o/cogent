@@ -1,74 +1,60 @@
-# AgenticFlow Capabilities Workboard
+# Agent Resilience & Intelligence Workboard
 
-## Goal
-Build composable **capabilities** that plug into any agent, starting with KnowledgeGraph.
+## Overview
+Making single agents more resilient, self-correcting, and capable.
 
-## Architecture
-```
-Agent(capabilities=[KnowledgeGraph(), WebSearch(), ...])
-       ↓
-  Auto-registers tools from each capability
-```
+## Tasks
 
-## Progress
+### 1. Self-Correcting Tool Calls ✅
+**Status**: ✅ Complete  
+**Files**: `graphs/react.py`, `graphs/dag.py`, `graphs/plan.py`
 
-### Phase 1: Infrastructure ✅
-- [x] `capabilities/base.py` - BaseCapability class
-- [x] `capabilities/__init__.py` - Exports
-- [x] Agent integration - `capabilities` param
-- [x] Tests for capability infrastructure
+When tool call fails, parse error → ask LLM to fix → retry with corrected args.
 
-### Phase 2: KnowledgeGraph ✅
-- [x] `capabilities/knowledge_graph.py`
-  - [x] Multiple backends: memory, sqlite, json
-  - [x] In-memory graph (networkx fallback to dict)
-  - [x] SQLite for persistence and large graphs
-  - [x] JSON file with auto-save option
-  - [x] Tools: remember, recall, query, connect, forget, list
-  - [x] Multi-hop path finding
-  - [x] Pattern-based queries
-  - [x] Save/load for memory backend
-  - [x] Context manager support
-- [x] Tests: 50 tests passing (including persistence)
-- [x] Example: `examples/12_knowledge_graph.py`
+**Implementation**:
+- Added `max_correction_attempts = 2` to all executors
+- Added `_attempt_correction()` method with error analysis
+- Added `_build_correction_prompt()` for LLM guidance
+- On error: parse error → ask LLM to analyze → generate corrected args → retry
 
-### Phase 3: CodebaseAnalyzer ✅
-- [x] `capabilities/codebase.py`
-  - [x] Python AST parsing
-  - [x] Tools: find_classes, find_functions, find_callers, find_usages, find_subclasses, find_imports, get_definition
-  - [x] Builds KnowledgeGraph of code structure
-- [x] Tests: test_capabilities_extended.py
-- [x] Example: `examples/13_codebase_analyzer.py`
+### 2. Expert Agentic System Prompts ✅
+**Status**: ✅ Complete  
+**Files**: `agent/roles.py`
 
-### Phase 4: FileSystem ✅
-- [x] `capabilities/filesystem.py`
-  - [x] Sandboxed access (allowed_paths)
-  - [x] Tools: read_file, write_file, list_directory, search_files, file_info, create_directory, copy_file, move_file, delete_file
-  - [x] Path validation & security (deny patterns, traversal protection)
-  - [x] Configurable write/delete permissions
-- [x] Tests: 49 tests passing
-- [x] Example: `examples/14_filesystem.py`
+Updated ROLE_PROMPTS with chain-of-thought, self-reflection, verification:
+- Explicit step-by-step reasoning guidance
+- Error recovery instructions
+- Self-verification before finalizing
+- FINAL ANSWER format for clear conclusions
 
-### Phase 5: WebSearch ✅
-- [x] `capabilities/web_search.py`
-  - [x] DuckDuckGo integration (free, no API key)
-  - [x] Tools: web_search, news_search, fetch_webpage
-  - [x] HTML content extraction (BeautifulSoup)
-  - [x] Page caching
-- [x] Tests: 27 tests (2 skipped integration)
-- [x] Example: `examples/15_web_search.py`
+### 3. Agent Todo List & Scratchpad ✅
+**Status**: ✅ Complete  
+**Files**: `agent/scratchpad.py` (new), `agent/base.py`
 
-### Phase 6: CodeSandbox ✅
-- [x] `capabilities/code_sandbox.py`
-  - [x] Safe Python execution with restricted builtins
-  - [x] Configurable timeout and output limits
-  - [x] Blocked dangerous operations (file/network/subprocess)
-  - [x] Safe imports (math, json, datetime, statistics, etc.)
-  - [x] Tools: execute_python, run_function
-  - [x] Execution history tracking
-- [x] Tests: 47 tests passing
-- [x] Example: `examples/16_code_sandbox.py`
+**Implementation**:
+- `TodoItem` - tasks with status (pending/in_progress/done/blocked)
+- `Note` - categorized observations (insight/observation/question/plan/decision)
+- `ErrorRecord` - error tracking with context and recovery attempts
+- `Scratchpad` class with methods:
+  - `add_todo()`, `mark_done()`, `mark_in_progress()`, `mark_blocked()`
+  - `add_note()`, `get_notes_by_category()`
+  - `record_error()`, `get_similar_errors()`, `get_error_context()`
+  - `set_plan()`, `add_plan_step()`, `complete_plan_step()`
+  - `get_context_for_llm()` - formatted summary for prompts
+- Integrated into Agent via `agent.scratchpad` property
+
+### 4. Completion Verification ✅
+**Status**: ✅ Complete  
+**Files**: `graphs/base.py`
+
+**Implementation**:
+- `CompletionCheck` dataclass (is_complete, confidence, missing, summary)
+- `_verify_completion()` method - asks LLM to verify task completion
+- `_address_missing_elements()` method - enhances incomplete results
+- `verify_completion` flag on executors (opt-in)
 
 ---
-**Status**: All 6 capabilities complete, 465 tests passing
-**Last Updated**: 2025-11-26
+## Progress Log
+- ✅ All 5 features implemented
+- ✅ All 641 tests passing
+- ✅ New capabilities: self-correction, expert prompts, scratchpad, completion verification

@@ -18,17 +18,18 @@ from agenticflow.graphs.models import ExecutionPlan
 
 class PlanExecutor(BaseExecutor):
     """
-    Plan-and-Execute strategy.
+    Plan-and-Execute strategy with self-correction.
     
-    Pattern: Plan all steps → Execute sequentially
+    Pattern: Plan all steps → Execute sequentially → Self-correct on errors
     
     The agent first creates a complete plan of what tools to call,
-    then executes them one by one.
+    then executes them one by one, with self-correction on failures.
     
     Pros:
         - Planning is done once upfront
         - Faster than ReAct for multi-step tasks
         - Clear execution structure
+        - Self-corrects tool call errors
         
     Cons:
         - Still sequential execution
@@ -40,12 +41,15 @@ class PlanExecutor(BaseExecutor):
         result = await executor.execute("Research topic X and summarize")
     """
     
+    # Maximum correction attempts per failed call
+    max_correction_attempts: int = 2
+    
     async def execute(
         self,
         task: str,
         context: dict[str, Any] | None = None,
     ) -> Any:
-        """Execute using plan-and-execute pattern.
+        """Execute using plan-and-execute pattern with self-correction.
         
         Args:
             task: The task to execute.
@@ -62,7 +66,7 @@ class PlanExecutor(BaseExecutor):
             # No tools needed, just think
             return await self.agent.think(task)
         
-        # Phase 2: Execute plan sequentially
+        # Phase 2: Execute plan sequentially with self-correction
         results: dict[str, Any] = {}
         for call in plan.calls:
             self._emit_step("executing", {"tool": call.tool_name, "id": call.id})
@@ -84,15 +88,146 @@ class PlanExecutor(BaseExecutor):
                 # Track the result
                 self._track_tool_result(call.tool_name, result, call.duration_ms)
             except Exception as e:
-                call.error = str(e)
-                call.status = "failed"
-                results[call.id] = f"ERROR: {e}"
-                
+                error_str = str(e)
                 # Track the error
-                self._track_tool_error(call.tool_name, str(e))
+                self._track_tool_error(call.tool_name, error_str)
+                
+                # Attempt self-correction
+                corrected_result = await self._attempt_correction(
+                    call, args, error_str, results
+                )
+                
+                if corrected_result is not None:
+                    call.result = corrected_result
+                    call.status = "completed"
+                    results[call.id] = corrected_result
+                else:
+                    call.error = error_str
+                    call.status = "failed"
+                    results[call.id] = f"ERROR: {e}"
         
         # Phase 3: Synthesize final answer
         return await self._synthesize(task, plan, results)
+    
+    async def _attempt_correction(
+        self,
+        call: Any,
+        original_args: dict[str, Any],
+        error: str,
+        prior_results: dict[str, Any],
+    ) -> Any | None:
+        """Attempt to self-correct a failed tool call.
+        
+        Asks the LLM to analyze the error and provide corrected arguments.
+        
+        Args:
+            call: The failed ToolCall.
+            original_args: The arguments that caused the error.
+            error: The error message.
+            prior_results: Results from previous calls.
+            
+        Returns:
+            The result if correction succeeds, None otherwise.
+        """
+        for attempt in range(self.max_correction_attempts):
+            self._emit_step("self_correction", {
+                "call_id": call.id,
+                "tool": call.tool_name,
+                "attempt": attempt + 1,
+                "max_attempts": self.max_correction_attempts,
+                "error": error,
+            })
+            
+            # Ask LLM to analyze and correct
+            correction_prompt = self._build_correction_prompt(
+                call, original_args, error, prior_results
+            )
+            
+            try:
+                response = await self.agent.think(
+                    correction_prompt,
+                    include_tools=False,
+                    system_prompt_override="You are debugging a tool call error. Analyze the error and provide corrected arguments as JSON only.",
+                )
+                
+                # Parse corrected args from response
+                corrected_args = self._parse_corrected_args(response)
+                
+                if corrected_args and corrected_args != original_args:
+                    # Track the correction attempt
+                    self._track_tool_call(call.tool_name, corrected_args)
+                    
+                    result = await self.agent.act(call.tool_name, corrected_args)
+                    self._track_tool_result(call.tool_name, result, 0)
+                    return result
+                    
+            except Exception as retry_error:
+                error = str(retry_error)
+                self._track_tool_error(call.tool_name, error)
+                continue
+        
+        return None
+    
+    def _build_correction_prompt(
+        self,
+        call: Any,
+        args: dict[str, Any],
+        error: str,
+        prior_results: dict[str, Any],
+    ) -> str:
+        """Build a prompt asking LLM to correct the tool call.
+        
+        Args:
+            call: The failed ToolCall.
+            args: The arguments that caused the error.
+            error: The error message.
+            prior_results: Results from previous calls for context.
+            
+        Returns:
+            Prompt for the correction request.
+        """
+        # Get tool schema for reference
+        tool = self.agent._get_tool(call.tool_name)
+        schema_info = ""
+        if tool and hasattr(tool, "parameters"):
+            schema_info = f"\nTool schema: {json.dumps(tool.parameters, default=str)}"
+        
+        return f"""A tool call failed. Analyze the error and provide corrected arguments.
+
+Tool: {call.tool_name}{schema_info}
+
+Original arguments:
+{json.dumps(args, indent=2, default=str)}
+
+Error:
+{error}
+
+{f"Available results from prior steps: {list(prior_results.keys())}" if prior_results else ""}
+
+Think about what caused this error:
+1. Are the argument types correct?
+2. Are required arguments missing?
+3. Are there invalid values?
+
+Respond with ONLY a JSON object containing the corrected arguments:
+{{"arg_name": "corrected_value", ...}}"""
+    
+    def _parse_corrected_args(self, response: str) -> dict[str, Any] | None:
+        """Parse corrected arguments from LLM response.
+        
+        Args:
+            response: LLM response with corrected args.
+            
+        Returns:
+            Corrected arguments dict or None if parsing fails.
+        """
+        json_match = re.search(r"\{[\s\S]*?\}", response)
+        if json_match:
+            try:
+                return json.loads(json_match.group())
+            except json.JSONDecodeError:
+                pass
+        return None
     
     async def _create_plan(
         self,
@@ -110,26 +245,33 @@ class PlanExecutor(BaseExecutor):
         """
         tools_desc = self.agent.get_tool_descriptions()
         
-        prompt = f"""Create a step-by-step plan to accomplish this task:
+        prompt = f"""Analyze this task and create an execution plan.
 
 Task: {task}
 {f"Context: {json.dumps(context)}" if context else ""}
 
-Available tools:
+Available tools (you can ONLY use these):
 {tools_desc}
 
-Respond with ONLY a JSON plan (no other text):
+First, think step by step:
+1. What information do I need to accomplish this task?
+2. Which of the available tools can provide that information?
+3. In what order should I call the tools?
+4. What will I do with the results after getting them?
+
+Then output a JSON plan:
 {{
+  "reasoning": "Brief explanation of your approach and what you'll do with results",
   "steps": [
-    {{"tool": "tool_name", "args": {{}}}},
-    ...
+    {{"tool": "tool_name", "args": {{}}}}
   ]
 }}
 
 Rules:
-- Only use tools from the list above
-- If no tools are needed, respond with: {{"steps": []}}
-- Output ONLY the JSON, nothing else
+- Only include steps that require tools from the list above
+- Use $call_N in args to reference the result from step N (0-indexed), e.g., $call_0 for first step's result
+- After tool execution, you will synthesize the final answer yourself
+- If no tools needed, use: {{"reasoning": "...", "steps": []}}
 """
         
         # Use neutral planner persona

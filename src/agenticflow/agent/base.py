@@ -15,6 +15,7 @@ from langchain_core.tools import BaseTool
 
 from agenticflow.agent.config import AgentConfig
 from agenticflow.agent.state import AgentState
+from agenticflow.agent.scratchpad import Scratchpad
 from agenticflow.agent.hitl import (
     should_interrupt,
     PendingAction,
@@ -250,7 +251,45 @@ class Agent:
                 stream=stream,
             )
         else:
+            # Using AgentConfig directly - still need to process tools parameter
             self._direct_tools = []
+            if tools:
+                for tool in tools:
+                    if isinstance(tool, str):
+                        if tool not in config.tools:
+                            config.tools.append(tool)
+                    elif isinstance(tool, BaseTool):
+                        if tool.name not in config.tools:
+                            config.tools.append(tool.name)
+                        self._direct_tools.append(tool)
+                    else:
+                        tool_name = getattr(tool, "name", str(tool))
+                        if tool_name not in config.tools:
+                            config.tools.append(tool_name)
+            
+            # Apply default role prompt if no system_prompt provided
+            if not config.system_prompt:
+                from agenticflow.agent.roles import get_role_prompt
+                config = AgentConfig(
+                    name=config.name,
+                    role=config.role,
+                    description=config.description,
+                    model=config.model,
+                    temperature=config.temperature,
+                    max_tokens=config.max_tokens,
+                    system_prompt=get_role_prompt(config.role),
+                    model_kwargs=config.model_kwargs,
+                    stream=config.stream,
+                    tools=config.tools,
+                    max_concurrent_tasks=config.max_concurrent_tasks,
+                    timeout_seconds=config.timeout_seconds,
+                    retry_on_error=config.retry_on_error,
+                    max_retries=config.max_retries,
+                    resilience_config=config.resilience_config,
+                    fallback_tools=config.fallback_tools,
+                    interrupt_on=config.interrupt_on,
+                    metadata=config.metadata,
+                )
         
         self.id = generate_id()
         self.config = config
@@ -273,6 +312,9 @@ class Agent:
         
         # Setup memory
         self._setup_memory(memory, store)
+        
+        # Setup scratchpad (working memory for todos, notes, errors)
+        self._scratchpad = Scratchpad()
 
     def _setup_resilience(self) -> None:
         """Setup resilience layer if configured."""
@@ -419,6 +461,31 @@ class Agent:
         return self._memory.has_persistence
     
     @property
+    def scratchpad(self) -> Scratchpad:
+        """Access the agent's scratchpad (working memory).
+        
+        The scratchpad provides:
+        - Todo list: Track tasks with status
+        - Notes: Store observations and insights
+        - Error log: Context for self-correction
+        
+        Example:
+            ```python
+            # Track todos
+            agent.scratchpad.add_todo("Search for Python tutorials")
+            agent.scratchpad.mark_done("Search", "Found 5 articles")
+            
+            # Take notes
+            agent.scratchpad.note("Python is popular for data science")
+            
+            # Check completion
+            if agent.scratchpad.all_done():
+                print("All tasks complete!")
+            ```
+        """
+        return self._scratchpad
+    
+    @property
     def resilience(self) -> ToolResilience:
         """Access the resilience layer for this agent."""
         if self._resilience is None:
@@ -552,17 +619,23 @@ class Agent:
         - {capabilities}: Replaced with capability descriptions
         
         If no placeholders are present and tools exist, they are appended.
+        If no system prompt but tools exist, generates a minimal prompt with tools.
         
         Returns:
-            The system prompt with tools/capabilities injected, or None if no prompt.
+            The system prompt with tools/capabilities injected, or None if no prompt and no tools.
         """
         base_prompt = self.config.system_prompt
-        if not base_prompt:
-            return None
-        
         tools = self.all_tools
         tools_desc = self.get_tool_descriptions()
         caps_desc = self.get_capabilities_description()
+        
+        # If no base prompt but we have tools, generate a minimal prompt
+        if not base_prompt:
+            if tools or caps_desc:
+                from agenticflow.agent.roles import get_role_prompt
+                base_prompt = get_role_prompt(self.config.role)
+            else:
+                return None
         
         result = base_prompt
         

@@ -32,7 +32,11 @@ def create_executor(
         Configured executor instance.
         
     Example:
-        # Use DAG executor (recommended for complex tasks)
+        # Use TreeSearch for complex tasks requiring exploration
+        executor = create_executor(agent, ExecutionStrategy.TREE_SEARCH)
+        result = await executor.execute("Solve this complex problem")
+        
+        # Use DAG executor (recommended for parallelizable tasks)
         executor = create_executor(agent, ExecutionStrategy.DAG)
         result = await executor.execute("Search for X and Y, then combine")
         
@@ -49,11 +53,13 @@ def create_executor(
     from agenticflow.graphs.dag import DAGExecutor
     from agenticflow.graphs.plan import PlanExecutor
     from agenticflow.graphs.react import ReActExecutor
+    from agenticflow.graphs.tree_search import TreeSearchExecutor
     
     executors = {
         ExecutionStrategy.REACT: ReActExecutor,
         ExecutionStrategy.PLAN_EXECUTE: PlanExecutor,
         ExecutionStrategy.DAG: DAGExecutor,
+        ExecutionStrategy.TREE_SEARCH: TreeSearchExecutor,
         ExecutionStrategy.ADAPTIVE: AdaptiveExecutor,
     }
     
