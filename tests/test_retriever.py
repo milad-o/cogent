@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import pytest
 
 from agenticflow.retriever.base import (
@@ -10,12 +13,26 @@ from agenticflow.retriever.base import (
     RetrievalResult,
     Retriever,
 )
+from agenticflow.retriever.loaders import (
+    Document,
+    DocumentLoader,
+    load_documents,
+)
+from agenticflow.retriever.splitters import (
+    CharacterSplitter,
+    CodeSplitter,
+    MarkdownSplitter,
+    RecursiveCharacterSplitter,
+    SentenceSplitter,
+    TextChunk,
+    split_text,
+)
 from agenticflow.retriever.utils.fusion import (
     deduplicate_results,
     fuse_results,
     normalize_scores,
 )
-from agenticflow.vectorstore import Document
+from agenticflow.vectorstore import Document as VectorStoreDocument
 
 
 # ============================================================================
@@ -24,14 +41,14 @@ from agenticflow.vectorstore import Document
 
 
 @pytest.fixture
-def sample_documents() -> list[Document]:
+def sample_documents() -> list[VectorStoreDocument]:
     """Create sample documents for testing."""
     return [
-        Document(text="Python is a programming language", metadata={"id": "1", "topic": "python"}),
-        Document(text="Machine learning uses algorithms", metadata={"id": "2", "topic": "ml"}),
-        Document(text="Deep learning is a subset of ML", metadata={"id": "3", "topic": "ml"}),
-        Document(text="JavaScript runs in browsers", metadata={"id": "4", "topic": "js"}),
-        Document(text="Python is great for data science", metadata={"id": "5", "topic": "python"}),
+        VectorStoreDocument(text="Python is a programming language", metadata={"id": "1", "topic": "python"}),
+        VectorStoreDocument(text="Machine learning uses algorithms", metadata={"id": "2", "topic": "ml"}),
+        VectorStoreDocument(text="Deep learning is a subset of ML", metadata={"id": "3", "topic": "ml"}),
+        VectorStoreDocument(text="JavaScript runs in browsers", metadata={"id": "4", "topic": "js"}),
+        VectorStoreDocument(text="Python is great for data science", metadata={"id": "5", "topic": "python"}),
     ]
 
 
@@ -40,21 +57,475 @@ def sample_results() -> list[RetrievalResult]:
     """Create sample retrieval results."""
     return [
         RetrievalResult(
-            document=Document(text="Doc A", metadata={"id": "a"}),
+            document=VectorStoreDocument(text="Doc A", metadata={"id": "a"}),
             score=0.9,
             retriever_name="test",
         ),
         RetrievalResult(
-            document=Document(text="Doc B", metadata={"id": "b"}),
+            document=VectorStoreDocument(text="Doc B", metadata={"id": "b"}),
             score=0.7,
             retriever_name="test",
         ),
         RetrievalResult(
-            document=Document(text="Doc C", metadata={"id": "c"}),
+            document=VectorStoreDocument(text="Doc C", metadata={"id": "c"}),
             score=0.5,
             retriever_name="test",
         ),
     ]
+
+
+# ============================================================================
+# Test Document Loader
+# ============================================================================
+
+
+class TestDocument:
+    """Tests for Document dataclass."""
+
+    def test_create_document(self) -> None:
+        """Test creating a document."""
+        doc = Document(content="Test content", metadata={"key": "value"})
+        assert doc.content == "Test content"
+        assert doc.metadata["key"] == "value"
+
+    def test_document_auto_source(self) -> None:
+        """Test that source is auto-added to metadata."""
+        doc = Document(content="Test")
+        assert "source" in doc.metadata
+
+    def test_document_repr(self) -> None:
+        """Test document string representation."""
+        doc = Document(content="Short content")
+        assert "Short content" in repr(doc)
+
+
+class TestDocumentLoader:
+    """Tests for DocumentLoader."""
+
+    @pytest.fixture
+    def temp_dir(self) -> Path:
+        """Create a temporary directory with test files."""
+        with tempfile.TemporaryDirectory() as tmp:
+            yield Path(tmp)
+
+    @pytest.mark.asyncio
+    async def test_load_text_file(self, temp_dir: Path) -> None:
+        """Test loading a text file."""
+        text_file = temp_dir / "test.txt"
+        text_file.write_text("Hello, World!")
+
+        loader = DocumentLoader()
+        docs = await loader.load(text_file)
+
+        assert len(docs) == 1
+        assert docs[0].content == "Hello, World!"
+        assert docs[0].metadata["file_type"] == ".txt"
+
+    @pytest.mark.asyncio
+    async def test_load_markdown_file(self, temp_dir: Path) -> None:
+        """Test loading a markdown file."""
+        md_file = temp_dir / "test.md"
+        md_file.write_text("# Title\n\nContent here")
+
+        loader = DocumentLoader()
+        docs = await loader.load(md_file)
+
+        assert len(docs) == 1
+        assert "Title" in docs[0].content
+        assert docs[0].metadata["file_type"] == ".md"
+
+    @pytest.mark.asyncio
+    async def test_load_markdown_with_frontmatter(self, temp_dir: Path) -> None:
+        """Test loading markdown with YAML frontmatter."""
+        md_file = temp_dir / "test.md"
+        md_file.write_text("---\ntitle: My Doc\nauthor: Test\n---\n\n# Content")
+
+        loader = DocumentLoader()
+        docs = await loader.load(md_file)
+
+        assert docs[0].metadata.get("title") == "My Doc"
+        assert docs[0].metadata.get("author") == "Test"
+
+    @pytest.mark.asyncio
+    async def test_load_json_file(self, temp_dir: Path) -> None:
+        """Test loading a JSON file."""
+        json_file = temp_dir / "test.json"
+        json_file.write_text('{"key": "value", "number": 42}')
+
+        loader = DocumentLoader()
+        docs = await loader.load(json_file)
+
+        assert len(docs) == 1
+        assert "key" in docs[0].content
+        assert "value" in docs[0].content
+
+    @pytest.mark.asyncio
+    async def test_load_json_array(self, temp_dir: Path) -> None:
+        """Test loading a JSON array file."""
+        json_file = temp_dir / "test.json"
+        json_file.write_text('[{"id": 1}, {"id": 2}, {"id": 3}]')
+
+        loader = DocumentLoader()
+        docs = await loader.load(json_file)
+
+        assert len(docs) == 3
+        assert docs[0].metadata["index"] == 0
+
+    @pytest.mark.asyncio
+    async def test_load_csv_file(self, temp_dir: Path) -> None:
+        """Test loading a CSV file."""
+        csv_file = temp_dir / "test.csv"
+        csv_file.write_text("name,age\nAlice,30\nBob,25")
+
+        loader = DocumentLoader()
+        docs = await loader.load(csv_file)
+
+        assert len(docs) == 1
+        assert "Alice" in docs[0].content
+        assert docs[0].metadata["row_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_load_html_file(self, temp_dir: Path) -> None:
+        """Test loading an HTML file."""
+        html_file = temp_dir / "test.html"
+        html_file.write_text("<html><head><title>Test</title></head><body><p>Content</p></body></html>")
+
+        loader = DocumentLoader()
+        docs = await loader.load(html_file)
+
+        assert len(docs) == 1
+        assert "Content" in docs[0].content
+        # Tags should be removed
+        assert "<p>" not in docs[0].content
+
+    @pytest.mark.asyncio
+    async def test_load_code_file(self, temp_dir: Path) -> None:
+        """Test loading a Python file."""
+        py_file = temp_dir / "test.py"
+        py_file.write_text("def hello():\n    print('Hello')")
+
+        loader = DocumentLoader()
+        docs = await loader.load(py_file)
+
+        assert len(docs) == 1
+        assert "def hello" in docs[0].content
+        assert docs[0].metadata["language"] == "python"
+
+    @pytest.mark.asyncio
+    async def test_load_many(self, temp_dir: Path) -> None:
+        """Test loading multiple files."""
+        (temp_dir / "file1.txt").write_text("Content 1")
+        (temp_dir / "file2.txt").write_text("Content 2")
+
+        loader = DocumentLoader()
+        docs = await loader.load_many([
+            temp_dir / "file1.txt",
+            temp_dir / "file2.txt",
+        ])
+
+        assert len(docs) == 2
+
+    @pytest.mark.asyncio
+    async def test_load_directory(self, temp_dir: Path) -> None:
+        """Test loading all files from a directory."""
+        (temp_dir / "file1.txt").write_text("Content 1")
+        (temp_dir / "file2.md").write_text("# Content 2")
+        (temp_dir / "subdir").mkdir()
+        (temp_dir / "subdir" / "file3.txt").write_text("Content 3")
+
+        loader = DocumentLoader()
+        docs = await loader.load_directory(temp_dir, glob="**/*.txt")
+
+        assert len(docs) == 2  # Only .txt files
+
+    @pytest.mark.asyncio
+    async def test_load_unsupported_file(self, temp_dir: Path) -> None:
+        """Test that unsupported files raise ValueError."""
+        binary_file = temp_dir / "test.xyz"
+        binary_file.write_bytes(b"\x00\x01\x02")
+
+        loader = DocumentLoader()
+        with pytest.raises(ValueError, match="Unsupported file type"):
+            await loader.load(binary_file)
+
+    @pytest.mark.asyncio
+    async def test_load_missing_file(self) -> None:
+        """Test that missing files raise FileNotFoundError."""
+        loader = DocumentLoader()
+        with pytest.raises(FileNotFoundError):
+            await loader.load("/nonexistent/file.txt")
+
+    @pytest.mark.asyncio
+    async def test_register_custom_loader(self, temp_dir: Path) -> None:
+        """Test registering a custom loader."""
+        custom_file = temp_dir / "test.custom"
+        custom_file.write_text("custom content")
+
+        async def custom_loader(path: Path) -> list[Document]:
+            return [Document(content=f"CUSTOM: {path.read_text()}", metadata={"source": str(path)})]
+
+        loader = DocumentLoader()
+        loader.register_loader(".custom", custom_loader)
+        docs = await loader.load(custom_file)
+
+        assert "CUSTOM:" in docs[0].content
+
+
+class TestLoadDocuments:
+    """Tests for load_documents convenience function."""
+
+    @pytest.fixture
+    def temp_dir(self) -> Path:
+        with tempfile.TemporaryDirectory() as tmp:
+            yield Path(tmp)
+
+    @pytest.mark.asyncio
+    async def test_load_single_file(self, temp_dir: Path) -> None:
+        """Test loading a single file."""
+        text_file = temp_dir / "test.txt"
+        text_file.write_text("Test content")
+
+        docs = await load_documents(text_file)
+        assert len(docs) == 1
+
+    @pytest.mark.asyncio
+    async def test_load_directory_path(self, temp_dir: Path) -> None:
+        """Test loading from directory path."""
+        (temp_dir / "file.txt").write_text("Content")
+
+        docs = await load_documents(temp_dir)
+        assert len(docs) >= 1
+
+
+# ============================================================================
+# Test Text Splitters
+# ============================================================================
+
+
+class TestTextChunk:
+    """Tests for TextChunk dataclass."""
+
+    def test_create_chunk(self) -> None:
+        """Test creating a text chunk."""
+        chunk = TextChunk(content="Test content", metadata={"index": 0})
+        assert chunk.content == "Test content"
+        assert chunk.metadata["index"] == 0
+
+    def test_chunk_length(self) -> None:
+        """Test chunk length."""
+        chunk = TextChunk(content="Hello")
+        assert len(chunk) == 5
+
+    def test_chunk_repr(self) -> None:
+        """Test chunk string representation."""
+        chunk = TextChunk(content="Short")
+        assert "Short" in repr(chunk)
+
+
+class TestRecursiveCharacterSplitter:
+    """Tests for RecursiveCharacterSplitter."""
+
+    def test_basic_split(self) -> None:
+        """Test basic recursive splitting."""
+        text = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
+        splitter = RecursiveCharacterSplitter(chunk_size=30, chunk_overlap=0)
+        chunks = splitter.split_text(text)
+
+        assert len(chunks) >= 2
+        assert all(isinstance(c, TextChunk) for c in chunks)
+
+    def test_split_respects_chunk_size(self) -> None:
+        """Test that chunks respect size limit."""
+        text = "A" * 100 + "\n\n" + "B" * 100 + "\n\n" + "C" * 100
+        splitter = RecursiveCharacterSplitter(chunk_size=150, chunk_overlap=0)
+        chunks = splitter.split_text(text)
+
+        for chunk in chunks:
+            assert len(chunk.content) <= 150 + 10  # Some tolerance
+
+    def test_split_with_overlap(self) -> None:
+        """Test splitting with overlap."""
+        text = "Word1 Word2 Word3 Word4 Word5 Word6 Word7 Word8"
+        splitter = RecursiveCharacterSplitter(chunk_size=20, chunk_overlap=5)
+        chunks = splitter.split_text(text)
+
+        assert len(chunks) >= 2
+        # Check for some overlap between consecutive chunks
+        # (exact overlap depends on separator positions)
+
+    def test_split_documents(self) -> None:
+        """Test splitting multiple documents."""
+        docs = [
+            Document(content="First document content", metadata={"id": "1"}),
+            Document(content="Second document content", metadata={"id": "2"}),
+        ]
+        splitter = RecursiveCharacterSplitter(chunk_size=15, chunk_overlap=0)
+        chunks = splitter.split_documents(docs)
+
+        # Should have chunks from both documents
+        assert len(chunks) >= 2
+        # Chunks should inherit document metadata
+        ids = {c.metadata.get("id") for c in chunks}
+        assert "1" in ids or "2" in ids
+
+
+class TestCharacterSplitter:
+    """Tests for CharacterSplitter."""
+
+    def test_basic_split(self) -> None:
+        """Test basic character splitting."""
+        text = "Para 1.\n\nPara 2.\n\nPara 3."
+        splitter = CharacterSplitter(separator="\n\n", chunk_size=20, chunk_overlap=0)
+        chunks = splitter.split_text(text)
+
+        assert len(chunks) >= 1
+
+    def test_custom_separator(self) -> None:
+        """Test with custom separator."""
+        text = "Part1---Part2---Part3"
+        splitter = CharacterSplitter(separator="---", chunk_size=10, chunk_overlap=0)
+        chunks = splitter.split_text(text)
+
+        assert len(chunks) >= 2
+
+
+class TestSentenceSplitter:
+    """Tests for SentenceSplitter."""
+
+    def test_split_sentences(self) -> None:
+        """Test sentence-based splitting."""
+        text = "First sentence. Second sentence. Third sentence. Fourth sentence."
+        splitter = SentenceSplitter(chunk_size=40, chunk_overlap=0)
+        chunks = splitter.split_text(text)
+
+        assert len(chunks) >= 1
+
+    def test_handles_abbreviations(self) -> None:
+        """Test that abbreviations don't cause false splits."""
+        text = "Dr. Smith went to the store. He bought apples."
+        splitter = SentenceSplitter(chunk_size=100, chunk_overlap=0)
+        chunks = splitter.split_text(text)
+
+        # Should not split on "Dr."
+        assert any("Dr. Smith" in c.content for c in chunks)
+
+
+class TestMarkdownSplitter:
+    """Tests for MarkdownSplitter."""
+
+    def test_split_by_headers(self) -> None:
+        """Test markdown splitting by headers."""
+        text = """# Introduction
+
+This is the intro.
+
+## Section 1
+
+Content for section 1.
+
+## Section 2
+
+Content for section 2.
+"""
+        splitter = MarkdownSplitter(chunk_size=200, chunk_overlap=0)
+        chunks = splitter.split_text(text)
+
+        assert len(chunks) >= 1
+        # Should have header metadata
+        assert any("headers" in c.metadata for c in chunks)
+
+    def test_return_each_section(self) -> None:
+        """Test returning each section as separate chunk."""
+        text = """# Title
+
+Intro.
+
+## Part 1
+
+Part 1 content.
+
+## Part 2
+
+Part 2 content.
+"""
+        splitter = MarkdownSplitter(chunk_size=1000, return_each_section=True)
+        chunks = splitter.split_text(text)
+
+        # Should have multiple sections
+        assert len(chunks) >= 2
+
+
+class TestCodeSplitter:
+    """Tests for CodeSplitter."""
+
+    def test_split_python_code(self) -> None:
+        """Test splitting Python code."""
+        code = """
+def function_one():
+    print("one")
+
+def function_two():
+    print("two")
+
+class MyClass:
+    def method(self):
+        pass
+"""
+        splitter = CodeSplitter(language="python", chunk_size=100, chunk_overlap=0)
+        chunks = splitter.split_text(code)
+
+        assert len(chunks) >= 1
+        assert all(c.metadata.get("language") == "python" for c in chunks)
+
+    def test_split_javascript_code(self) -> None:
+        """Test splitting JavaScript code."""
+        code = """
+function hello() {
+    console.log("hello");
+}
+
+class MyClass {
+    constructor() {}
+}
+"""
+        splitter = CodeSplitter(language="javascript", chunk_size=100, chunk_overlap=0)
+        chunks = splitter.split_text(code)
+
+        assert len(chunks) >= 1
+        assert all(c.metadata.get("language") == "javascript" for c in chunks)
+
+
+class TestSplitTextFunction:
+    """Tests for split_text convenience function."""
+
+    def test_recursive_splitter(self) -> None:
+        """Test using recursive splitter type."""
+        text = "Content " * 100
+        chunks = split_text(text, chunk_size=500, chunk_overlap=50, splitter_type="recursive")
+        assert len(chunks) >= 1
+
+    def test_sentence_splitter(self) -> None:
+        """Test using sentence splitter type."""
+        text = "First. Second. Third. Fourth."
+        chunks = split_text(text, chunk_size=100, chunk_overlap=10, splitter_type="sentence")
+        assert len(chunks) >= 1
+
+    def test_markdown_splitter(self) -> None:
+        """Test using markdown splitter type."""
+        text = "# Title\n\nContent"
+        chunks = split_text(text, chunk_size=500, chunk_overlap=50, splitter_type="markdown")
+        assert len(chunks) >= 1
+
+    def test_code_splitter(self) -> None:
+        """Test using code splitter type."""
+        code = "def foo():\n    pass"
+        chunks = split_text(code, chunk_size=500, chunk_overlap=50, splitter_type="code", language="python")
+        assert len(chunks) >= 1
+
+    def test_invalid_splitter_type(self) -> None:
+        """Test that invalid splitter type raises error."""
+        with pytest.raises(ValueError, match="Unknown splitter type"):
+            split_text("text", splitter_type="invalid")
 
 
 # ============================================================================
@@ -67,7 +538,7 @@ class TestRetrievalResult:
     
     def test_create_result(self) -> None:
         """Test creating a retrieval result."""
-        doc = Document(text="test", metadata={"key": "value"})
+        doc = VectorStoreDocument(text="test", metadata={"key": "value"})
         result = RetrievalResult(
             document=doc,
             score=0.85,
@@ -81,7 +552,7 @@ class TestRetrievalResult:
     
     def test_result_with_metadata(self) -> None:
         """Test result with custom metadata."""
-        doc = Document(text="test", metadata={})
+        doc = VectorStoreDocument(text="test", metadata={})
         result = RetrievalResult(
             document=doc,
             score=0.5,
@@ -151,7 +622,7 @@ class TestNormalizeScores:
     def test_normalize_single(self) -> None:
         """Test normalizing single result."""
         result = RetrievalResult(
-            document=Document(text="test", metadata={}),
+            document=VectorStoreDocument(text="test", metadata={}),
             score=0.5,
             retriever_name="test",
         )
@@ -166,17 +637,17 @@ class TestDeduplicateResults:
         """Test deduplication by document text."""
         results = [
             RetrievalResult(
-                document=Document(text="same text", metadata={}),
+                document=VectorStoreDocument(text="same text", metadata={}),
                 score=0.9,
                 retriever_name="r1",
             ),
             RetrievalResult(
-                document=Document(text="same text", metadata={}),
+                document=VectorStoreDocument(text="same text", metadata={}),
                 score=0.7,
                 retriever_name="r2",
             ),
             RetrievalResult(
-                document=Document(text="different text", metadata={}),
+                document=VectorStoreDocument(text="different text", metadata={}),
                 score=0.5,
                 retriever_name="r1",
             ),
@@ -193,12 +664,12 @@ class TestDeduplicateResults:
         """Test deduplication by document ID."""
         results = [
             RetrievalResult(
-                document=Document(text="text A", metadata={"id": "1"}),
+                document=VectorStoreDocument(text="text A", metadata={"id": "1"}),
                 score=0.9,
                 retriever_name="r1",
             ),
             RetrievalResult(
-                document=Document(text="text B", metadata={"id": "1"}),
+                document=VectorStoreDocument(text="text B", metadata={"id": "1"}),
                 score=0.7,
                 retriever_name="r2",
             ),
@@ -214,8 +685,8 @@ class TestFuseResults:
     def test_rrf_fusion(self) -> None:
         """Test RRF (Reciprocal Rank Fusion)."""
         # Use same document ID for merging
-        doc_a = Document("A", {"id": "doc_a"})
-        doc_b = Document("B", {"id": "doc_b"})
+        doc_a = VectorStoreDocument("A", {"id": "doc_a"})
+        doc_b = VectorStoreDocument("B", {"id": "doc_b"})
         
         results_list = [
             [
@@ -223,8 +694,8 @@ class TestFuseResults:
                 RetrievalResult(doc_b, 0.8, "r1"),
             ],
             [
-                RetrievalResult(Document("B", {"id": "doc_b"}), 0.95, "r2"),
-                RetrievalResult(Document("A", {"id": "doc_a"}), 0.7, "r2"),
+                RetrievalResult(VectorStoreDocument("B", {"id": "doc_b"}), 0.95, "r2"),
+                RetrievalResult(VectorStoreDocument("A", {"id": "doc_a"}), 0.7, "r2"),
             ],
         ]
         
@@ -239,8 +710,8 @@ class TestFuseResults:
         """Test linear weighted fusion."""
         # Use same document ID for merging
         results_list = [
-            [RetrievalResult(Document("A", {"id": "shared"}), 0.8, "r1")],
-            [RetrievalResult(Document("A", {"id": "shared"}), 0.6, "r2")],
+            [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.8, "r1")],
+            [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.6, "r2")],
         ]
         
         fused = fuse_results(
@@ -258,8 +729,8 @@ class TestFuseResults:
         """Test max score fusion."""
         # Use same document ID for merging
         results_list = [
-            [RetrievalResult(Document("A", {"id": "shared"}), 0.6, "r1")],
-            [RetrievalResult(Document("A", {"id": "shared"}), 0.9, "r2")],
+            [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.6, "r1")],
+            [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.9, "r2")],
         ]
         
         fused = fuse_results(results_list, strategy=FusionStrategy.MAX)
@@ -272,15 +743,15 @@ class TestFuseResults:
         # Use same document IDs for merging
         results_list = [
             [
-                RetrievalResult(Document("A", {"id": "a"}), 0.9, "r1"),
-                RetrievalResult(Document("B", {"id": "b"}), 0.8, "r1"),
+                RetrievalResult(VectorStoreDocument("A", {"id": "a"}), 0.9, "r1"),
+                RetrievalResult(VectorStoreDocument("B", {"id": "b"}), 0.8, "r1"),
             ],
             [
-                RetrievalResult(Document("A", {"id": "a"}), 0.7, "r2"),
-                RetrievalResult(Document("C", {"id": "c"}), 0.9, "r2"),
+                RetrievalResult(VectorStoreDocument("A", {"id": "a"}), 0.7, "r2"),
+                RetrievalResult(VectorStoreDocument("C", {"id": "c"}), 0.9, "r2"),
             ],
             [
-                RetrievalResult(Document("A", {"id": "a"}), 0.5, "r3"),
+                RetrievalResult(VectorStoreDocument("A", {"id": "a"}), 0.5, "r3"),
             ],
         ]
         
@@ -338,13 +809,13 @@ class TestDenseRetriever:
         results = await retriever.retrieve("Python programming", k=3)
         
         assert len(results) <= 3
-        assert all(isinstance(r, Document) for r in results)
+        assert all(isinstance(r, VectorStoreDocument) for r in results)
     
     @pytest.mark.asyncio
     async def test_dense_retriever_with_scores(
         self,
         mock_vectorstore,
-        sample_documents: list[Document],
+        sample_documents: list[VectorStoreDocument],
     ) -> None:
         """Test dense retrieval with scores."""
         from agenticflow.retriever.dense import DenseRetriever
@@ -597,7 +1068,7 @@ class TestParentDocumentRetriever:
         vs = VectorStore(embeddings=MockEmbed(), backend=InMemoryBackend())
         
         # Large parent document
-        parent_doc = Document(
+        parent_doc = VectorStoreDocument(
             text="This is a long document about Python. " * 50 +
                  "Python is great for machine learning. " * 50,
             metadata={"id": "parent1", "topic": "python"},
@@ -635,8 +1106,8 @@ class TestParentDocumentRetriever:
         vs = VectorStore(embeddings=MockEmbed(), backend=InMemoryBackend())
         
         docs = [
-            Document(text="Long document A. " * 20, metadata={"id": "1"}),
-            Document(text="Long document B. " * 20, metadata={"id": "2"}),
+            VectorStoreDocument(text="Long document A. " * 20, metadata={"id": "1"}),
+            VectorStoreDocument(text="Long document B. " * 20, metadata={"id": "2"}),
         ]
         
         retriever = ParentDocumentRetriever(vs, chunk_size=50)
@@ -668,7 +1139,7 @@ class TestSentenceWindowRetriever:
         
         vs = VectorStore(embeddings=MockEmbed(), backend=InMemoryBackend())
         
-        doc = Document(
+        doc = VectorStoreDocument(
             text="First sentence. Second sentence about Python. Third sentence. "
                  "Fourth sentence. Fifth sentence.",
             metadata={"id": "1"},
