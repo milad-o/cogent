@@ -28,9 +28,9 @@ from agenticflow.agent.hitl import (
 )
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.models.event import Event
-from agenticflow.models.message import Message
-from agenticflow.models.task import Task
+from agenticflow.schemas.event import Event
+from agenticflow.schemas.message import Message
+from agenticflow.schemas.task import Task
 
 if TYPE_CHECKING:
     from agenticflow.events.bus import EventBus
@@ -315,6 +315,12 @@ class Agent:
         
         # Setup scratchpad (working memory for todos, notes, errors)
         self._scratchpad = Scratchpad()
+        
+        # Performance caches (invalidated when tools change)
+        self._cached_tool_descriptions: str | None = None
+        self._cached_system_prompt: str | None = None
+        self._cached_bound_model: BaseChatModel | None = None
+        self._turbo_mode: bool = False  # Skip events for max speed
 
     def _setup_resilience(self) -> None:
         """Setup resilience layer if configured."""
@@ -575,11 +581,14 @@ class Agent:
         return None
 
     def get_tool_descriptions(self) -> str:
-        """Get formatted descriptions of all available tools.
+        """Get formatted descriptions of all available tools (cached).
         
         Returns:
             Formatted string with tool names and descriptions.
         """
+        if self._cached_tool_descriptions is not None:
+            return self._cached_tool_descriptions
+        
         tools = self.all_tools
         if not tools:
             return "No tools available."
@@ -589,7 +598,49 @@ class Agent:
             desc = getattr(tool, "description", "No description")
             descriptions.append(f"- {tool.name}: {desc}")
         
-        return "\n".join(descriptions)
+        self._cached_tool_descriptions = "\n".join(descriptions)
+        return self._cached_tool_descriptions
+    
+    def invalidate_caches(self) -> None:
+        """Invalidate all performance caches. Call when tools change."""
+        self._cached_tool_descriptions = None
+        self._cached_system_prompt = None
+        self._cached_bound_model = None
+    
+    @property
+    def bound_model(self) -> BaseChatModel:
+        """Get model with tools bound (cached for performance).
+        
+        This is faster than calling model.bind_tools() repeatedly.
+        """
+        if self._cached_bound_model is not None:
+            return self._cached_bound_model
+        
+        if not self.model:
+            raise RuntimeError(f"Agent {self.name} has no model configured")
+        
+        tools = self.all_tools
+        if tools:
+            self._cached_bound_model = self.model.bind_tools(tools)
+        else:
+            self._cached_bound_model = self.model
+        
+        return self._cached_bound_model
+    
+    def enable_turbo_mode(self, enabled: bool = True) -> None:
+        """Enable turbo mode for maximum speed.
+        
+        In turbo mode:
+        - Events are skipped (no observability overhead)
+        - Status updates are skipped
+        - Minimal logging
+        
+        Use when latency is critical and you don't need observability.
+        
+        Args:
+            enabled: Whether to enable turbo mode.
+        """
+        self._turbo_mode = enabled
 
     def get_capabilities_description(self) -> str:
         """Get formatted descriptions of all capabilities and their tools.
@@ -695,15 +746,21 @@ class Agent:
     def model(self) -> BaseChatModel | None:
         """Get the LLM model.
         
-        The model should be passed directly as a LangChain BaseChatModel
-        instance in the AgentConfig.
+        Accepts either:
+        - LangChain BaseChatModel (ChatOpenAI, AzureChatOpenAI, etc.)
+        - Native AgenticFlow models (ChatModel, AzureOpenAIModel, AnthropicModel)
+        
+        Native models are automatically wrapped for LangChain compatibility.
         
         Example:
             ```python
+            # LangChain model
             from langchain_openai import ChatOpenAI
+            config = AgentConfig(name="Agent", model=ChatOpenAI(model="gpt-4o"))
             
-            model = ChatOpenAI(model="gpt-4o")
-            config = AgentConfig(name="Agent", model=model)
+            # Native model (recommended for performance)
+            from agenticflow.models import ChatModel
+            config = AgentConfig(name="Agent", model=ChatModel(model="gpt-4o"))
             ```
         """
         if self._model is None:
@@ -712,12 +769,16 @@ class Agent:
                 if isinstance(model_spec, BaseChatModel):
                     self._model = model_spec
                 else:
-                    raise TypeError(
-                        f"model must be a LangChain BaseChatModel instance, "
-                        f"got {type(model_spec).__name__}. "
-                        f"Use: from langchain_openai import ChatOpenAI; "
-                        f"model = ChatOpenAI(model='gpt-4o')"
-                    )
+                    # Check for native models and wrap them
+                    from agenticflow.models.adapter import is_native_model, wrap_native_model
+                    if is_native_model(model_spec):
+                        self._model = wrap_native_model(model_spec)
+                    else:
+                        raise TypeError(
+                            f"model must be a LangChain BaseChatModel or native ChatModel, "
+                            f"got {type(model_spec).__name__}. "
+                            f"Use: ChatModel(model='gpt-4o') or ChatOpenAI(model='gpt-4o')"
+                        )
         return self._model
 
     async def _set_status(
@@ -730,6 +791,9 @@ class Agent:
         self.state.status = status
         self.state.record_activity()
 
+        # Skip event in turbo mode
+        if self._turbo_mode:
+            return
         if self.event_bus:
             await self.event_bus.publish(
                 Event(
@@ -752,6 +816,9 @@ class Agent:
         correlation_id: str | None = None,
     ) -> None:
         """Emit an event from this agent."""
+        # Skip events in turbo mode for max speed
+        if self._turbo_mode:
+            return
         if self.event_bus:
             await self.event_bus.publish(
                 Event(
@@ -2309,6 +2376,7 @@ class Agent:
             "plan": ExecutionStrategy.PLAN_EXECUTE,
             "dag": ExecutionStrategy.DAG,
             "adaptive": ExecutionStrategy.ADAPTIVE,
+            "turbo": ExecutionStrategy.TURBO,
         }
         
         exec_strategy = strategy_map.get(strategy, ExecutionStrategy.DAG)
@@ -2317,6 +2385,55 @@ class Agent:
         executor.tracker = tracker  # Pass tracker to executor
         
         return await executor.execute(task, context)
+
+    async def run_turbo(
+        self,
+        task: str,
+        context: dict[str, Any] | None = None,
+    ) -> Any:
+        """
+        Execute a task with maximum speed using native tool binding.
+        
+        This is the FASTEST execution method. It uses:
+        - Native LLM tool binding (no text parsing)
+        - Parallel tool execution
+        - Minimal overhead (no events, no status updates)
+        - Cached bound model
+        
+        Trade-offs:
+        - No self-correction on failures
+        - No observability (events skipped)
+        - No scratchpad/working memory
+        
+        Best for:
+        - Simple tasks (1-3 tool calls)
+        - Latency-critical applications
+        - High-throughput scenarios
+        
+        Args:
+            task: The task description.
+            context: Optional context dict.
+            
+        Returns:
+            The final result.
+            
+        Example:
+            ```python
+            # Fastest possible execution
+            result = await agent.run_turbo("Get weather in NYC")
+            ```
+        """
+        from agenticflow.graphs import TurboExecutor
+        
+        # Enable turbo mode temporarily
+        old_turbo = self._turbo_mode
+        self._turbo_mode = True
+        
+        try:
+            executor = TurboExecutor(self)
+            return await executor.execute(task, context)
+        finally:
+            self._turbo_mode = old_turbo
 
     async def send_message(
         self,

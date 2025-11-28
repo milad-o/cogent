@@ -1106,6 +1106,75 @@ class PipelineTopology(BaseTopology):
         self.allow_skip = allow_skip
         self.allow_repeat = allow_repeat
 
+    async def run_fast(
+        self,
+        task: str,
+        context: dict[str, Any] | None = None,
+    ) -> TopologyState:
+        """Run pipeline with direct sequential execution (no graph overhead).
+        
+        This is much faster than the standard run() for simple pipelines
+        because it skips LangGraph routing and directly chains agents.
+        Uses TurboReActExecutor for native tool binding and parallel execution.
+        
+        Args:
+            task: The task to process.
+            context: Optional initial context.
+            
+        Returns:
+            Final topology state.
+            
+        Example:
+            >>> result = await pipeline.run_fast("Analyze this data")
+            >>> print(result.results[-1]["thought"])  # Final agent's output
+        """
+        from agenticflow.graphs import TurboReActExecutor
+        
+        results: list[dict[str, Any]] = []
+        messages: list[dict[str, Any]] = []
+        current_context = context or {}
+        
+        # Execute agents in sequence, passing output as context
+        for i, stage_name in enumerate(self.stages):
+            agent = self.agents[stage_name]
+            
+            # First agent gets the task, subsequent agents get context
+            if i == 0:
+                prompt = task
+            else:
+                # Pass previous agent's output as context (like CrewAI)
+                prev_result = results[-1]["thought"]
+                prompt = f"{task}\n\nContext from previous step:\n{prev_result}"
+            
+            # Run agent with TurboReActExecutor (native tool binding, fastest)
+            if agent.all_tools:
+                executor = TurboReActExecutor(agent)
+                executor.max_iterations = 3  # Quick execution
+                thought = await executor.execute(prompt)
+                if not isinstance(thought, str):
+                    thought = str(thought)
+            else:
+                thought = await agent.think(prompt)
+            
+            # Accumulate results
+            results.append({"agent": stage_name, "thought": thought})
+            messages.append({
+                "role": "assistant",
+                "content": thought,
+                "agent": stage_name,
+            })
+        
+        # Build final state
+        return TopologyState(
+            messages=messages,
+            current_agent=self.stages[-1] if self.stages else None,
+            task=task,
+            context=current_context,
+            iteration=len(self.stages),
+            completed=True,
+            results=results,
+        )
+
 
 class MeshTopology(BaseTopology):
     """Mesh pattern: all agents can communicate with each other.

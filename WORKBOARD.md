@@ -1,60 +1,45 @@
-# Agent Resilience & Intelligence Workboard
+# WORKBOARD: Remove LangChain/LangGraph Dependencies
 
-## Overview
-Making single agents more resilient, self-correcting, and capable.
+## Goal
+Completely remove langchain and langgraph dependencies. Use native OpenAI SDK directly.
 
-## Tasks
+## Status: Phase 1 - Native Types Created ✅
 
-### 1. Self-Correcting Tool Calls ✅
-**Status**: ✅ Complete  
-**Files**: `graphs/react.py`, `graphs/dag.py`, `graphs/plan.py`
+### Completed
+- [x] Created `core/messages.py` - Native message types
+- [x] Created `core/models.py` - Native ChatModel wrapper  
+- [x] Created `tools/base.py` - Native BaseTool and @tool decorator
+- [x] Renamed HyperExecutor → NativeExecutor
+- [x] Removed old executors (dag, react, plan, turbo, adaptive)
 
-When tool call fails, parse error → ask LLM to fix → retry with corrected args.
+### In Progress
+- [ ] **Update NativeExecutor to work standalone** (without Agent's LangChain model)
+- [ ] **Create standalone execution API** for quick testing
+- [ ] **Update graphs/__init__.py and factory.py**
 
-**Implementation**:
-- Added `max_correction_attempts = 2` to all executors
-- Added `_attempt_correction()` method with error analysis
-- Added `_build_correction_prompt()` for LLM guidance
-- On error: parse error → ask LLM to analyze → generate corrected args → retry
+### Phase 2 - Agent Migration (Next)
+- [ ] Add native model support to AgentConfig
+- [ ] Support both LangChain and native tools in Agent
+- [ ] Gradually replace langchain_core imports
 
-### 2. Expert Agentic System Prompts ✅
-**Status**: ✅ Complete  
-**Files**: `agent/roles.py`
+### Phase 3 - Full Migration (Later)
+- [ ] Remove all langchain imports from Agent
+- [ ] Update pyproject.toml dependencies
+- [ ] Update all examples and tests
 
-Updated ROLE_PROMPTS with chain-of-thought, self-reflection, verification:
-- Explicit step-by-step reasoning guidance
-- Error recovery instructions
-- Self-verification before finalizing
-- FINAL ANSWER format for clear conclusions
+## Quick Test API (Target)
+```python
+from agenticflow import quick_agent, tool
 
-### 3. Agent Todo List & Scratchpad ✅
-**Status**: ✅ Complete  
-**Files**: `agent/scratchpad.py` (new), `agent/base.py`
+@tool
+def search(query: str) -> str:
+    '''Search the web.'''
+    return f"Results for {query}"
 
-**Implementation**:
-- `TodoItem` - tasks with status (pending/in_progress/done/blocked)
-- `Note` - categorized observations (insight/observation/question/plan/decision)
-- `ErrorRecord` - error tracking with context and recovery attempts
-- `Scratchpad` class with methods:
-  - `add_todo()`, `mark_done()`, `mark_in_progress()`, `mark_blocked()`
-  - `add_note()`, `get_notes_by_category()`
-  - `record_error()`, `get_similar_errors()`, `get_error_context()`
-  - `set_plan()`, `add_plan_step()`, `complete_plan_step()`
-  - `get_context_for_llm()` - formatted summary for prompts
-- Integrated into Agent via `agent.scratchpad` property
+result = await quick_agent(
+    "Search for Python tutorials",
+    tools=[search],
+    model="gpt-4o-mini",
+)
+```
 
-### 4. Completion Verification ✅
-**Status**: ✅ Complete  
-**Files**: `graphs/base.py`
-
-**Implementation**:
-- `CompletionCheck` dataclass (is_complete, confidence, missing, summary)
-- `_verify_completion()` method - asks LLM to verify task completion
-- `_address_missing_elements()` method - enhances incomplete results
-- `verify_completion` flag on executors (opt-in)
-
----
-## Progress Log
-- ✅ All 5 features implemented
-- ✅ All 641 tests passing
-- ✅ New capabilities: self-correction, expert prompts, scratchpad, completion verification

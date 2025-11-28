@@ -107,9 +107,9 @@ from agenticflow.core.enums import (
 from agenticflow.core.utils import generate_id, now_utc
 
 # Models
-from agenticflow.models.event import Event
-from agenticflow.models.message import Message, MessageType
-from agenticflow.models.task import Task
+from agenticflow.schemas.event import Event
+from agenticflow.schemas.message import Message, MessageType
+from agenticflow.schemas.task import Task
 
 # Agents (THIS IS WHERE WE ADD VALUE)
 from agenticflow.agent.base import Agent
@@ -161,15 +161,15 @@ from agenticflow.agent.streaming import (
     print_stream,
 )
 
-# Graphs - Execution strategies (DAG is our superior approach)
+# Graphs - Execution strategies
 from agenticflow.graphs import (
     ExecutionStrategy,
     ExecutionPlan,
     ToolCall,
-    DAGExecutor,
-    ReActExecutor,
-    PlanExecutor,
-    AdaptiveExecutor,
+    NativeExecutor,
+    SequentialExecutor,
+    TreeSearchExecutor,
+    run,
     create_executor,
 )
 
@@ -267,6 +267,16 @@ from agenticflow.observability import (
     render_dag_ascii,
 )
 
+# LLM & Embedding Models (native, no LangChain required)
+from agenticflow.models import (
+    ChatModel,
+    EmbeddingModel,
+    create_chat,
+    create_embedding,
+)
+# Provider-specific model imports for convenience
+from agenticflow.models.azure import AzureChat, AzureEmbedding
+
 # Visualization (THIS IS WHERE WE ADD VALUE)
 from agenticflow.visualization import (
     MermaidConfig,
@@ -334,10 +344,10 @@ __all__ = [
     "ExecutionStrategy",
     "ExecutionPlan",
     "ToolCall",
-    "DAGExecutor",
-    "ReActExecutor",
-    "PlanExecutor",
-    "AdaptiveExecutor",
+    "NativeExecutor",
+    "SequentialExecutor",
+    "TreeSearchExecutor",
+    "run",
     "create_executor",
     # Resilience
     "ResilienceConfig",
@@ -470,7 +480,14 @@ __all__ = [
     # Capabilities
     "BaseCapability",
     "KnowledgeGraph",
-    # LangChain messages
+    # LLM & Embedding Models (native)
+    "ChatModel",
+    "EmbeddingModel",
+    "AzureChat",
+    "AzureEmbedding",
+    "create_chat",
+    "create_embedding",
+    # LangChain messages (for backward compat)
     "BaseMessage",
     "HumanMessage",
     "AIMessage",

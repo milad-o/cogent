@@ -7,7 +7,7 @@ from unittest.mock import Mock, AsyncMock
 
 from agenticflow.core.enums import EventType
 from agenticflow.events.bus import EventBus, get_event_bus, set_event_bus
-from agenticflow.models.event import Event
+from agenticflow.schemas.event import Event
 
 
 class TestEventBus:

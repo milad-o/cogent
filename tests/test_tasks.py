@@ -221,7 +221,7 @@ class TestTaskManager:
 
     def test_get_task_tree(self, task_manager: TaskManager) -> None:
         # Synchronously add tasks for tree test
-        from agenticflow.models.task import Task
+        from agenticflow.schemas.task import Task
 
         parent = Task(name="Parent")
         child1 = Task(name="Child 1", parent_id=parent.id)

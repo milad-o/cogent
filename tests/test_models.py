@@ -7,9 +7,9 @@ import pytest
 from datetime import datetime, timezone
 
 from agenticflow.core.enums import EventType, Priority, TaskStatus
-from agenticflow.models.event import Event
-from agenticflow.models.message import Message, MessageType
-from agenticflow.models.task import Task
+from agenticflow.schemas.event import Event
+from agenticflow.schemas.message import Message, MessageType
+from agenticflow.schemas.task import Task
 
 
 class TestEvent:

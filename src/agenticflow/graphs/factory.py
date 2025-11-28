@@ -16,51 +16,41 @@ if TYPE_CHECKING:
 
 def create_executor(
     agent: Agent,
-    strategy: ExecutionStrategy = ExecutionStrategy.DAG,
+    strategy: ExecutionStrategy = ExecutionStrategy.NATIVE,
 ) -> BaseExecutor:
     """Create an executor with the specified strategy.
     
     This is the recommended way to create executors.
-    DAG is the default because it provides the best performance
-    for complex tasks with parallelizable steps.
+    NATIVE is the default for best performance.
     
     Args:
         agent: The agent to execute with.
-        strategy: Execution strategy to use. Defaults to DAG.
+        strategy: Execution strategy to use. Defaults to NATIVE.
         
     Returns:
         Configured executor instance.
         
     Example:
+        # Use Native executor (recommended for most tasks)
+        executor = create_executor(agent, ExecutionStrategy.NATIVE)
+        result = await executor.execute("Do something")
+        
         # Use TreeSearch for complex tasks requiring exploration
         executor = create_executor(agent, ExecutionStrategy.TREE_SEARCH)
         result = await executor.execute("Solve this complex problem")
         
-        # Use DAG executor (recommended for parallelizable tasks)
-        executor = create_executor(agent, ExecutionStrategy.DAG)
-        result = await executor.execute("Search for X and Y, then combine")
-        
-        # Use ReAct for simple tasks
-        executor = create_executor(agent, ExecutionStrategy.REACT)
-        result = await executor.execute("What is 2+2?")
-        
-        # Let the system choose
-        executor = create_executor(agent, ExecutionStrategy.ADAPTIVE)
+        # Use Sequential for ordered tool execution
+        executor = create_executor(agent, ExecutionStrategy.SEQUENTIAL)
         result = await executor.execute(task)
     """
     # Import here to avoid circular imports at module load time
-    from agenticflow.graphs.adaptive import AdaptiveExecutor
-    from agenticflow.graphs.dag import DAGExecutor
-    from agenticflow.graphs.plan import PlanExecutor
-    from agenticflow.graphs.react import ReActExecutor
+    from agenticflow.graphs.native import NativeExecutor, SequentialExecutor
     from agenticflow.graphs.tree_search import TreeSearchExecutor
     
     executors = {
-        ExecutionStrategy.REACT: ReActExecutor,
-        ExecutionStrategy.PLAN_EXECUTE: PlanExecutor,
-        ExecutionStrategy.DAG: DAGExecutor,
+        ExecutionStrategy.NATIVE: NativeExecutor,
+        ExecutionStrategy.SEQUENTIAL: SequentialExecutor,
         ExecutionStrategy.TREE_SEARCH: TreeSearchExecutor,
-        ExecutionStrategy.ADAPTIVE: AdaptiveExecutor,
     }
     
     executor_class = executors.get(strategy)

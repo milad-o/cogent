@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from agenticflow.core.enums import EventType
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.models.event import Event
+from agenticflow.schemas.event import Event
 
 if TYPE_CHECKING:
     from agenticflow.events.bus import EventBus

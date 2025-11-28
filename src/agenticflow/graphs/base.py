@@ -21,18 +21,14 @@ class ExecutionStrategy(Enum):
     """Available execution strategies.
     
     Choose based on task complexity:
-    - REACT: Simple tasks, sequential execution
-    - PLAN_EXECUTE: Clear structure, plan then execute
-    - DAG: Complex tasks, maximize parallelism (RECOMMENDED)
+    - NATIVE: High-performance parallel execution (DEFAULT)
+    - SEQUENTIAL: Sequential tool execution for ordered tasks
     - TREE_SEARCH: LATS-style exploration with backtracking (BEST ACCURACY)
-    - ADAPTIVE: Let the system choose
     """
     
-    REACT = "react"  # Think-Act-Observe loop
-    PLAN_EXECUTE = "plan_execute"  # Plan then execute
-    DAG = "dag"  # Dependency graph with parallel execution
+    NATIVE = "native"  # Default - parallel tool execution
+    SEQUENTIAL = "sequential"  # Sequential tool execution
     TREE_SEARCH = "tree_search"  # LATS Monte Carlo tree search
-    ADAPTIVE = "adaptive"  # Auto-select based on task
 
 
 @dataclass

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TextIO
 
 from agenticflow.core.enums import EventType
-from agenticflow.models.event import Event
+from agenticflow.schemas.event import Event
 
 
 class ConsoleEventHandler:

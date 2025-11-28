@@ -12,6 +12,9 @@ from agenticflow.core.enums import AgentRole
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
     from agenticflow.agent.resilience import ResilienceConfig
+    from agenticflow.models.openai import OpenAIChat
+    from agenticflow.models.azure import AzureChat
+    from agenticflow.models.anthropic import AnthropicChat
 
 # Type for interrupt rules - bool or callable that takes (tool_name, args) -> bool
 InterruptRule = bool | Callable[[str, dict[str, Any]], bool]
@@ -62,7 +65,7 @@ class AgentConfig:
             model=ChatAnthropic(model="claude-3-5-sonnet-latest"),
         )
         
-        # Azure OpenAI with Managed Identity
+        # Azure OpenAI with Managed Identity (LangChain)
         from langchain_openai import AzureChatOpenAI
         from azure.identity import DefaultAzureCredential, get_bearer_token_provider
         
@@ -79,11 +82,31 @@ class AgentConfig:
             ),
         )
         
-        # Local with Ollama
-        from langchain_ollama import ChatOllama
+        # Native models (no LangChain required) - RECOMMENDED
+        from agenticflow.models.openai import OpenAIChat
+        from agenticflow.models.azure import AzureChat
+        from agenticflow.models.anthropic import AnthropicChat
+        
+        # OpenAI native
         config = AgentConfig(
-            name="LocalAgent",
-            model=ChatOllama(model="llama3.2"),
+            name="FastAgent",
+            model=OpenAIChat(model="gpt-4o"),
+        )
+        
+        # Azure native with Managed Identity
+        config = AgentConfig(
+            name="AzureNative",
+            model=AzureChat(
+                deployment="gpt-4o",
+                azure_endpoint="https://my-resource.openai.azure.com",
+                use_managed_identity=True,
+            ),
+        )
+        
+        # Anthropic native
+        config = AgentConfig(
+            name="ClaudeAgent",
+            model=AnthropicChat(model="claude-sonnet-4-20250514"),
         )
         ```
     """
@@ -92,8 +115,10 @@ class AgentConfig:
     role: AgentRole = AgentRole.WORKER
     description: str = ""
 
-    # LLM Configuration - accepts LangChain model directly
-    model: BaseChatModel | None = None
+    # LLM Configuration - accepts LangChain model OR native BaseChatModel
+    # Native models: from agenticflow.models.openai, azure, anthropic, groq, gemini, etc.
+    # LangChain models: ChatOpenAI, AzureChatOpenAI, ChatAnthropic, etc.
+    model: "BaseChatModel | OpenAIChat | AzureChat | AnthropicChat | None" = None
     temperature: float = 0.7  # Used only if model is None (for lazy creation)
     max_tokens: int | None = None  # Used only if model is None
     system_prompt: str | None = None

@@ -74,3 +74,6 @@ applyTo: **/*.py
 - Prioritize performance: minimize bundle size, lazy load components, optimize renders.
 - All frontend code lives in the `frontend/` directory.
 - Keep UI simple and functional; avoid over-engineering.
+
+# Environment Variables and Secrets
+- Use the `.env` in the project root to look for environment variables during development.

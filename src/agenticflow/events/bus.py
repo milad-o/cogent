@@ -10,7 +10,7 @@ from collections import defaultdict
 from typing import Callable, Awaitable
 
 from agenticflow.core.enums import EventType
-from agenticflow.models.event import Event
+from agenticflow.schemas.event import Event
 
 
 # Type alias for event handlers
@@ -149,7 +149,7 @@ class EventBus:
         # Handle simple string/dict API
         if isinstance(event, str):
             from agenticflow.core.enums import EventType
-            from agenticflow.models.event import Event as EventClass
+            from agenticflow.schemas.event import Event as EventClass
             
             # Try to parse as EventType enum, otherwise use custom type
             try:
