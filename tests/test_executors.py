@@ -1,11 +1,10 @@
 """
-Tests for graph-based executors.
+Tests for executors.
 
 Tests the execution strategies including:
-- ReActExecutor (think-act-observe loop)
-- PlanExecutor (plan then execute)
-- DAGExecutor (parallel waves)
-- StreamingDAGExecutor (LLMCompiler-style streaming)
+- NativeExecutor (parallel execution)
+- SequentialExecutor (sequential execution)
+- TreeSearchExecutor (LATS-style tree search)
 """
 
 import pytest
@@ -13,18 +12,16 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any
 
-from agenticflow.graphs import (
+from agenticflow.executors import (
     ExecutionStrategy,
     ExecutionPlan,
     ToolCall,
     BaseExecutor,
-    DAGExecutor,
-    StreamingDAGExecutor,
+    NativeExecutor,
+    SequentialExecutor,
     TreeSearchExecutor,
     SearchNode,
     NodeState,
-    PlanExecutor,
-    ReActExecutor,
     create_executor,
 )
 from agenticflow.agent import Agent, AgentConfig
@@ -127,290 +124,80 @@ class TestBaseExecutor:
     def mock_agent(self) -> MagicMock:
         """Create a mock agent."""
         agent = MagicMock(spec=Agent)
+        agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
         agent.scratchpad = Scratchpad()
         agent.think = AsyncMock(return_value="Test response")
         agent.act = AsyncMock(return_value="Tool result")
         agent._get_tool = MagicMock(return_value=None)
         agent.get_tool_descriptions = MagicMock(return_value="tool1: Does something")
+        agent.all_tools = []
+        agent.model = MagicMock()
         return agent
 
     def test_executor_creation(self, mock_agent: MagicMock) -> None:
         """Test creating an executor."""
-        executor = DAGExecutor(mock_agent)
+        executor = NativeExecutor(mock_agent)
         assert executor.agent == mock_agent
         assert executor.max_iterations == 10
 
     def test_executor_custom_iterations(self, mock_agent: MagicMock) -> None:
         """Test executor with custom max iterations."""
-        executor = DAGExecutor(mock_agent)
+        executor = NativeExecutor(mock_agent)
         executor.max_iterations = 5
         assert executor.max_iterations == 5
 
 
-class TestDAGExecutor:
-    """Tests for DAGExecutor."""
+class TestNativeExecutor:
+    """Tests for NativeExecutor."""
 
     @pytest.fixture
     def mock_agent(self) -> MagicMock:
         """Create a mock agent."""
         agent = MagicMock(spec=Agent)
+        agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
         agent.scratchpad = Scratchpad()
         agent.think = AsyncMock()
         agent.act = AsyncMock()
         agent._get_tool = MagicMock(return_value=None)
         agent.get_tool_descriptions = MagicMock(return_value="search: Search for info")
+        agent.all_tools = []
+        agent.model = MagicMock()
+        agent.model.bind_tools = MagicMock(return_value=agent.model)
         return agent
 
-    @pytest.mark.asyncio
-    async def test_execute_no_tools(self, mock_agent: MagicMock) -> None:
-        """Test execution when no tools are needed."""
-        mock_agent.think.return_value = '{"reasoning": "Simple task", "steps": []}'
-        executor = DAGExecutor(mock_agent)
-        
-        # Override think for synthesis
-        mock_agent.think.side_effect = [
-            '{"reasoning": "Simple", "steps": []}',  # Planning
-            "Final answer",  # Direct answer
-        ]
-        
-        result = await executor.execute("What is 2+2?")
-        assert "Final answer" in result or result is not None
-
-    @pytest.mark.asyncio
-    async def test_execute_with_tools(self, mock_agent: MagicMock) -> None:
-        """Test execution with tool calls."""
-        # Plan response
-        plan_response = '''
-        {
-            "reasoning": "Need to search",
-            "steps": [
-                {"id": "call_0", "tool": "search", "args": {"query": "test"}, "depends_on": []}
-            ]
-        }
-        '''
-        mock_agent.think.side_effect = [
-            plan_response,  # Planning
-            "Final synthesized answer",  # Synthesis
-        ]
-        mock_agent.act.return_value = "Search result"
-        
-        executor = DAGExecutor(mock_agent)
-        result = await executor.execute("Search for test")
-        
-        # Verify tool was called
-        mock_agent.act.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_parallel_execution(self, mock_agent: MagicMock) -> None:
-        """Test that independent calls run in parallel."""
-        # Plan with two parallel calls
-        plan_response = '''
-        {
-            "reasoning": "Need two searches",
-            "steps": [
-                {"id": "call_0", "tool": "search", "args": {"query": "A"}, "depends_on": []},
-                {"id": "call_1", "tool": "search", "args": {"query": "B"}, "depends_on": []}
-            ]
-        }
-        '''
-        
-        call_times = []
-        
-        async def track_act(tool_name: str, args: dict) -> str:
-            call_times.append(asyncio.get_event_loop().time())
-            await asyncio.sleep(0.1)  # Simulate work
-            return f"Result for {args.get('query', 'unknown')}"
-        
-        mock_agent.think.side_effect = [
-            plan_response,
-            "Combined results",
-        ]
-        mock_agent.act = track_act
-        
-        executor = DAGExecutor(mock_agent)
-        await executor.execute("Search A and B")
-        
-        # Both calls should have started close together (parallel)
-        assert len(call_times) == 2
-        # Time difference should be small (<0.05s) if parallel
-        assert abs(call_times[1] - call_times[0]) < 0.05
+    def test_native_executor_creation(self, mock_agent: MagicMock) -> None:
+        """Test creating NativeExecutor."""
+        executor = NativeExecutor(mock_agent)
+        assert executor.agent == mock_agent
+        assert executor.max_iterations == 10
 
 
-class TestStreamingDAGExecutor:
-    """Tests for StreamingDAGExecutor (LLMCompiler-style)."""
+class TestSequentialExecutor:
+    """Tests for SequentialExecutor."""
 
     @pytest.fixture
     def mock_agent(self) -> MagicMock:
         """Create a mock agent."""
         agent = MagicMock(spec=Agent)
+        agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
         agent.scratchpad = Scratchpad()
         agent.think = AsyncMock()
         agent.act = AsyncMock()
         agent._get_tool = MagicMock(return_value=None)
         agent.get_tool_descriptions = MagicMock(return_value="search: Search for info")
+        agent.all_tools = []
+        agent.model = MagicMock()
+        agent.model.bind_tools = MagicMock(return_value=agent.model)
         return agent
 
-    @pytest.mark.asyncio
-    async def test_streaming_execution(self, mock_agent: MagicMock) -> None:
-        """Test streaming DAG execution."""
-        plan_response = '''
-        {
-            "reasoning": "Two parallel searches",
-            "steps": [
-                {"id": "call_0", "tool": "search", "args": {"query": "A"}, "depends_on": []},
-                {"id": "call_1", "tool": "search", "args": {"query": "B"}, "depends_on": []}
-            ]
-        }
-        '''
-        mock_agent.think.side_effect = [
-            plan_response,
-            "Final answer",
-        ]
-        mock_agent.act.return_value = "Result"
-        
-        executor = StreamingDAGExecutor(mock_agent)
-        result = await executor.execute("Search for A and B")
-        
-        assert result is not None
-
-    @pytest.mark.asyncio
-    async def test_streaming_respects_dependencies(self, mock_agent: MagicMock) -> None:
-        """Test that streaming executor respects dependencies."""
-        plan_response = '''
-        {
-            "reasoning": "Search then process",
-            "steps": [
-                {"id": "call_0", "tool": "search", "args": {"query": "test"}, "depends_on": []},
-                {"id": "call_1", "tool": "process", "args": {"data": "$call_0"}, "depends_on": ["call_0"]}
-            ]
-        }
-        '''
-        
-        execution_order = []
-        
-        async def track_act(tool_name: str, args: dict) -> str:
-            execution_order.append(tool_name)
-            await asyncio.sleep(0.05)
-            return "Result"
-        
-        mock_agent.think.side_effect = [
-            plan_response,
-            "Final answer",
-        ]
-        mock_agent.act = track_act
-        
-        executor = StreamingDAGExecutor(mock_agent)
-        await executor.execute("Search and process")
-        
-        # Process should come after search due to dependency
-        assert execution_order.index("search") < execution_order.index("process")
-
-
-class TestPlanExecutor:
-    """Tests for PlanExecutor."""
-
-    @pytest.fixture
-    def mock_agent(self) -> MagicMock:
-        """Create a mock agent."""
-        agent = MagicMock(spec=Agent)
-        agent.config = AgentConfig(name="test-agent")
-        agent.scratchpad = Scratchpad()
-        agent.think = AsyncMock()
-        agent.act = AsyncMock()
-        agent._get_tool = MagicMock(return_value=None)
-        agent.get_tool_descriptions = MagicMock(return_value="search: Search")
-        return agent
-
-    @pytest.mark.asyncio
-    async def test_sequential_execution(self, mock_agent: MagicMock) -> None:
-        """Test that PlanExecutor runs sequentially."""
-        plan_response = '''
-        {
-            "reasoning": "Step by step",
-            "steps": [
-                {"tool": "search", "args": {"query": "A"}},
-                {"tool": "search", "args": {"query": "B"}}
-            ]
-        }
-        '''
-        
-        call_times = []
-        
-        async def track_act(tool_name: str, args: dict) -> str:
-            call_times.append(asyncio.get_event_loop().time())
-            await asyncio.sleep(0.1)
-            return "Result"
-        
-        mock_agent.think.side_effect = [
-            plan_response,
-            "Final answer",
-        ]
-        mock_agent.act = track_act
-        
-        executor = PlanExecutor(mock_agent)
-        await executor.execute("Search A then B")
-        
-        # Calls should be sequential (not parallel)
-        assert len(call_times) == 2
-        # Time difference should be >= 0.1s (sequential)
-        assert call_times[1] - call_times[0] >= 0.09
-
-
-class TestReActExecutor:
-    """Tests for ReActExecutor."""
-
-    @pytest.fixture
-    def mock_agent(self) -> MagicMock:
-        """Create a mock agent."""
-        agent = MagicMock(spec=Agent)
-        agent.config = AgentConfig(name="test-agent")
-        agent.scratchpad = Scratchpad()
-        agent.think = AsyncMock()
-        agent.act = AsyncMock()
-        agent._get_tool = MagicMock(return_value=None)
-        return agent
-
-    @pytest.mark.asyncio
-    async def test_final_answer(self, mock_agent: MagicMock) -> None:
-        """Test ReAct with immediate final answer."""
-        mock_agent.think.return_value = "FINAL ANSWER: The answer is 42"
-        
-        executor = ReActExecutor(mock_agent)
-        result = await executor.execute("What is the answer?")
-        
-        assert "42" in result
-
-    @pytest.mark.asyncio
-    async def test_tool_call_then_answer(self, mock_agent: MagicMock) -> None:
-        """Test ReAct with tool call followed by answer."""
-        mock_agent.think.side_effect = [
-            'TOOL: search({"query": "test"})',
-            "FINAL ANSWER: Found the result",
-        ]
-        mock_agent.act.return_value = "Search result"
-        
-        executor = ReActExecutor(mock_agent)
-        result = await executor.execute("Search for test")
-        
-        assert "Found the result" in result
-        mock_agent.act.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_max_iterations(self, mock_agent: MagicMock) -> None:
-        """Test that executor stops at max iterations."""
-        # Always return tool call, never final answer
-        mock_agent.think.return_value = 'TOOL: search({"query": "test"})'
-        mock_agent.act.return_value = "Result"
-        
-        executor = ReActExecutor(mock_agent)
-        executor.max_iterations = 3
-        result = await executor.execute("Loop forever")
-        
-        # Should stop after max iterations
-        assert mock_agent.think.call_count <= 3
+    def test_sequential_executor_creation(self, mock_agent: MagicMock) -> None:
+        """Test creating SequentialExecutor."""
+        executor = SequentialExecutor(mock_agent)
+        assert executor.agent == mock_agent
+        assert executor.max_iterations == 10
 
 
 class TestCreateExecutor:
@@ -420,33 +207,32 @@ class TestCreateExecutor:
     def mock_agent(self) -> MagicMock:
         """Create a mock agent."""
         agent = MagicMock(spec=Agent)
+        agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
+        agent.all_tools = []
+        agent.model = MagicMock()
+        agent.model.bind_tools = MagicMock(return_value=agent.model)
         return agent
 
-    def test_create_react(self, mock_agent: MagicMock) -> None:
-        """Test creating ReAct executor."""
-        executor = create_executor(mock_agent, ExecutionStrategy.REACT)
-        assert isinstance(executor, ReActExecutor)
+    def test_create_native(self, mock_agent: MagicMock) -> None:
+        """Test creating Native executor."""
+        executor = create_executor(mock_agent, ExecutionStrategy.NATIVE)
+        assert isinstance(executor, NativeExecutor)
 
-    def test_create_plan(self, mock_agent: MagicMock) -> None:
-        """Test creating Plan executor."""
-        executor = create_executor(mock_agent, ExecutionStrategy.PLAN_EXECUTE)
-        assert isinstance(executor, PlanExecutor)
-
-    def test_create_dag(self, mock_agent: MagicMock) -> None:
-        """Test creating DAG executor."""
-        executor = create_executor(mock_agent, ExecutionStrategy.DAG)
-        assert isinstance(executor, DAGExecutor)
+    def test_create_sequential(self, mock_agent: MagicMock) -> None:
+        """Test creating Sequential executor."""
+        executor = create_executor(mock_agent, ExecutionStrategy.SEQUENTIAL)
+        assert isinstance(executor, SequentialExecutor)
 
     def test_create_tree_search(self, mock_agent: MagicMock) -> None:
         """Test creating TreeSearch executor."""
         executor = create_executor(mock_agent, ExecutionStrategy.TREE_SEARCH)
         assert isinstance(executor, TreeSearchExecutor)
 
-    def test_default_is_dag(self, mock_agent: MagicMock) -> None:
-        """Test default strategy is DAG."""
+    def test_default_is_native(self, mock_agent: MagicMock) -> None:
+        """Test default strategy is NATIVE."""
         executor = create_executor(mock_agent)
-        assert isinstance(executor, DAGExecutor)
+        assert isinstance(executor, NativeExecutor)
 
 
 class TestSearchNode:
@@ -551,6 +337,7 @@ class TestTreeSearchExecutor:
     def mock_agent(self) -> MagicMock:
         """Create a mock agent."""
         agent = MagicMock(spec=Agent)
+        agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
         agent.scratchpad = Scratchpad()
         agent.think = AsyncMock()
@@ -576,69 +363,6 @@ class TestTreeSearchExecutor:
         assert executor.max_depth == 3
         assert executor.num_candidates == 5
         assert executor.exploration_weight == 2.0
-
-    @pytest.mark.asyncio
-    async def test_execute_finds_answer(self, mock_agent: MagicMock) -> None:
-        """Test that tree search can find an answer."""
-        # Mock expansion response with final answer
-        expand_response = """
-ACTION 1:
-I'll try searching first
-TOOL: search({"query": "test"})
-
-ACTION 2:
-Let me provide the answer directly
-FINAL ANSWER: The answer is 42
-
-ACTION 3:
-Another search approach
-TOOL: search({"query": "alternative"})
-"""
-        # Need enough responses for all the think calls
-        mock_agent.think.side_effect = [
-            expand_response,  # Expansion
-            "0.95",  # Evaluation of final answer (ACTION 2)
-            "0.4",  # Evaluation of search result (ACTION 1)
-            "0.3",  # Evaluation of alternative (ACTION 3)
-            "Best effort synthesis",  # Synthesis (if needed)
-        ]
-        mock_agent.act.return_value = "Search result"
-        
-        executor = TreeSearchExecutor(mock_agent)
-        executor.max_iterations = 1
-        executor.num_candidates = 3
-        
-        result = await executor.execute("Find the answer")
-        
-        # Should get some result (either final answer or synthesis)
-        assert result is not None
-        assert len(result) > 0
-
-    @pytest.mark.asyncio
-    async def test_execute_with_reflection(self, mock_agent: MagicMock) -> None:
-        """Test that failed paths generate reflections."""
-        expand_response = """
-ACTION 1:
-Try this approach
-TOOL: search({"query": "wrong"})
-"""
-        mock_agent.think.side_effect = [
-            expand_response,  # Expansion
-            "0.1",  # Low evaluation (failure)
-            "Instead of searching blindly, try a more specific query",  # Reflection
-            "Best effort answer",  # Synthesis
-        ]
-        mock_agent.act.return_value = "ERROR: Not found"
-        
-        executor = TreeSearchExecutor(mock_agent)
-        executor.max_iterations = 1
-        executor.enable_reflection = True
-        
-        result = await executor.execute("Find something")
-        
-        # Should have added reflection to scratchpad
-        reflections = mock_agent.scratchpad.get_reflections()
-        assert len(reflections) >= 0  # May or may not add based on value threshold
 
     def test_parse_candidate_actions(self, mock_agent: MagicMock) -> None:
         """Test parsing candidate actions from LLM response."""

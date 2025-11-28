@@ -11,60 +11,62 @@ warnings.filterwarnings(
 AgenticFlow - Event-Driven Multi-Agent System Framework
 ========================================================
 
-Built on top of LangChain and LangGraph, AgenticFlow adds value where it matters:
+A lightweight, native multi-agent framework with:
 - Multi-agent topologies (supervisor, mesh, pipeline, hierarchical)
 - Intelligent resilience (retry, circuit breakers, fallbacks)
-- Advanced execution strategies (DAG, ReAct, Plan-Execute)
+- Native model support for OpenAI, Azure, Anthropic, Groq, Gemini, Ollama
 - Full observability (tracing, metrics, progress tracking)
 - Event-driven architecture with pub/sub patterns
 - Mermaid visualization for agents and topologies
 
-Philosophy: USE LangChain/LangGraph DIRECTLY. We don't wrap what they do well.
-
-For models, embeddings, vector stores, memory, graphs - use LangChain/LangGraph:
+Quick Start (Standalone Execution):
     ```python
-    # Models - use LangChain directly
-    from langchain_openai import ChatOpenAI
-    from langchain_anthropic import ChatAnthropic
+    from agenticflow import run, tool
     
-    # Embeddings - use LangChain directly
-    from langchain_openai import OpenAIEmbeddings
+    @tool
+    def search(query: str) -> str:
+        '''Search the web.'''
+        return f"Results for {query}"
     
-    # Vector stores - use LangChain directly
-    from langchain_core.vectorstores import InMemoryVectorStore
-    from langchain_community.vectorstores import FAISS
-    
-    # Document loading - use LangChain directly
-    from langchain_community.document_loaders import WebBaseLoader
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-    
-    # Graphs - use LangGraph directly
-    from langgraph.graph import StateGraph, START, END
-    from langgraph.checkpoint.memory import MemorySaver
-    from langgraph.store.memory import InMemoryStore
+    # Execute a task with tools - no Agent class needed!
+    result = await run(
+        "Search for Python tutorials",
+        tools=[search],
+        model="gpt-4o-mini",
+    )
     ```
 
-AgenticFlow adds value with:
-    - Agent: Autonomous entity with resilience, execution strategies
-    - EventBus: Pub/sub event system for agent communication
-    - ToolRegistry: Tool management with permissions
-    - Topologies: Multi-agent coordination patterns
-    - Observability: Progress tracking, metrics, tracing
-    - Visualization: Mermaid diagrams for agents/topologies
-
-Quick Start:
+Native Models (Recommended):
     ```python
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models.openai import OpenAIChat
+    from agenticflow.models.azure import AzureChat
+    from agenticflow.models.anthropic import AnthropicChat
+    from agenticflow.models import create_chat, create_embedding
+    
+    # Direct usage
+    llm = OpenAIChat(model="gpt-4o")
+    response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
+    
+    # Factory function
+    llm = create_chat("anthropic", model="claude-sonnet-4-20250514")
+    
+    # Azure with Managed Identity
+    llm = AzureChat(
+        deployment="gpt-4o",
+        azure_endpoint="https://my-resource.openai.azure.com",
+        use_managed_identity=True,
+    )
+    ```
+
+With Agent Class:
+    ```python
     from agenticflow import Agent, AgentConfig, EventBus
+    from agenticflow.models.openai import OpenAIChat
     
-    # Create model using LangChain directly
-    model = ChatOpenAI(model="gpt-4o")
-    
-    # Create an agent with AgenticFlow's resilience
     agent = Agent(
         config=AgentConfig(
             name="Assistant",
-            model=model,  # Pass LangChain model directly
+            model=OpenAIChat(model="gpt-4o"),
         ),
         event_bus=EventBus(),
     )
@@ -72,8 +74,8 @@ Quick Start:
     # Think with automatic retry on failures
     response = await agent.think("What should I do?")
     
-    # Act with circuit breakers and fallbacks
-    result = await agent.act("search", {"query": "Python"})
+    # Execute complex tasks
+    result = await agent.run_turbo("Search and analyze data")
     ```
 
 Multi-Agent Topology:
@@ -162,7 +164,7 @@ from agenticflow.agent.streaming import (
 )
 
 # Graphs - Execution strategies
-from agenticflow.graphs import (
+from agenticflow.executors import (
     ExecutionStrategy,
     ExecutionPlan,
     ToolCall,

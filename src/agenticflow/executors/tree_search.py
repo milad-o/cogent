@@ -25,7 +25,7 @@ from enum import Enum
 from typing import Any
 
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.graphs.base import BaseExecutor
+from agenticflow.executors.base import BaseExecutor
 
 
 class NodeState(Enum):

@@ -36,7 +36,7 @@ from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
 from agenticflow import Agent, AgentConfig
-from agenticflow.graphs import ReActExecutor, DAGExecutor, PlanExecutor
+from agenticflow.executors import NativeExecutor, SequentialExecutor, TreeSearchExecutor
 
 
 # =============================================================================

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agenticflow.graphs.base import BaseExecutor, ExecutionStrategy
+from agenticflow.executors.base import BaseExecutor, ExecutionStrategy
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -44,8 +44,8 @@ def create_executor(
         result = await executor.execute(task)
     """
     # Import here to avoid circular imports at module load time
-    from agenticflow.graphs.native import NativeExecutor, SequentialExecutor
-    from agenticflow.graphs.tree_search import TreeSearchExecutor
+    from agenticflow.executors.native import NativeExecutor, SequentialExecutor
+    from agenticflow.executors.tree_search import TreeSearchExecutor
     
     executors = {
         ExecutionStrategy.NATIVE: NativeExecutor,

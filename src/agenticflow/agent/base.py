@@ -2366,20 +2366,18 @@ class Agent:
             )
             ```
         """
-        from agenticflow.graphs import (
+        from agenticflow.executors import (
             ExecutionStrategy,
             create_executor,
         )
         
         strategy_map = {
-            "react": ExecutionStrategy.REACT,
-            "plan": ExecutionStrategy.PLAN_EXECUTE,
-            "dag": ExecutionStrategy.DAG,
-            "adaptive": ExecutionStrategy.ADAPTIVE,
-            "turbo": ExecutionStrategy.TURBO,
+            "native": ExecutionStrategy.NATIVE,
+            "sequential": ExecutionStrategy.SEQUENTIAL,
+            "tree_search": ExecutionStrategy.TREE_SEARCH,
         }
         
-        exec_strategy = strategy_map.get(strategy, ExecutionStrategy.DAG)
+        exec_strategy = strategy_map.get(strategy, ExecutionStrategy.NATIVE)
         executor = create_executor(self, exec_strategy)
         executor.on_step = on_step
         executor.tracker = tracker  # Pass tracker to executor
@@ -2423,14 +2421,14 @@ class Agent:
             result = await agent.run_turbo("Get weather in NYC")
             ```
         """
-        from agenticflow.graphs import TurboExecutor
+        from agenticflow.executors import NativeExecutor
         
         # Enable turbo mode temporarily
         old_turbo = self._turbo_mode
         self._turbo_mode = True
         
         try:
-            executor = TurboExecutor(self)
+            executor = NativeExecutor(self)
             return await executor.execute(task, context)
         finally:
             self._turbo_mode = old_turbo

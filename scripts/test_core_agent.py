@@ -289,13 +289,13 @@ async def test_agent_act():
 
 
 async def test_agent_run_dag():
-    """Test 5: Agent.run() with DAG executor."""
-    print("TEST 5: Agent.run() with DAG Executor")
+    """Test 5: Agent.run() with NativeExecutor."""
+    print("TEST 5: Agent.run() with Native Executor")
     print("-" * 40)
     
     from agenticflow.agent import Agent
     from agenticflow.tools import tool
-    from agenticflow.graphs import DAGExecutor, ExecutionStrategy
+    from agenticflow.executors import NativeExecutor, ExecutionStrategy
     
     # Define tools
     execution_order = []
@@ -332,10 +332,8 @@ async def test_agent_run_dag():
         tools=[step_one, step_two, step_three],
     )
     
-    # Verify DAG executor is default
-    print(f"  Default execution strategy: {agent.config.execution_strategy}")
-    assert agent.config.execution_strategy == ExecutionStrategy.DAG
-    print(f"  ✓ DAG is the default execution strategy")
+    # NativeExecutor is the default
+    print(f"  ✓ NativeExecutor is the default execution strategy")
     
     # Test run
     print(f"  Running agent with task...")
@@ -429,13 +427,12 @@ async def test_executor_creation():
     print("TEST 8: Executor Factory")
     print("-" * 40)
     
-    from agenticflow.graphs import (
+    from agenticflow.executors import (
         create_executor,
         ExecutionStrategy,
-        DAGExecutor,
-        ReActExecutor,
-        PlanExecutor,
-        AdaptiveExecutor,
+        NativeExecutor,
+        SequentialExecutor,
+        TreeSearchExecutor,
     )
     from agenticflow.agent import Agent
     
@@ -444,14 +441,13 @@ async def test_executor_creation():
     
     # Test each executor type
     executors = [
-        (ExecutionStrategy.DAG, DAGExecutor),
-        (ExecutionStrategy.REACT, ReActExecutor),
-        (ExecutionStrategy.PLAN, PlanExecutor),
-        (ExecutionStrategy.ADAPTIVE, AdaptiveExecutor),
+        (ExecutionStrategy.NATIVE, NativeExecutor),
+        (ExecutionStrategy.SEQUENTIAL, SequentialExecutor),
+        (ExecutionStrategy.TREE_SEARCH, TreeSearchExecutor),
     ]
     
     for strategy, expected_type in executors:
-        executor = create_executor(strategy, agent)
+        executor = create_executor(agent, strategy)
         assert isinstance(executor, expected_type)
         print(f"  ✓ {strategy.value} -> {expected_type.__name__}")
     

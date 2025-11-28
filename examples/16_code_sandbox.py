@@ -18,7 +18,7 @@ import asyncio
 
 from agenticflow import Agent
 from agenticflow.capabilities import CodeSandbox
-from agenticflow.graphs import ExecutionStrategy
+from agenticflow.executors import ExecutionStrategy
 
 
 def separator(title: str) -> None:

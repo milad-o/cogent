@@ -20,7 +20,7 @@ Standalone Execution:
 
 Usage:
     # Standalone execution (no Agent needed):
-    from agenticflow.graphs import run
+    from agenticflow.executors import run
     from agenticflow.tools import tool
     
     @tool
@@ -31,26 +31,26 @@ Usage:
     result = await run("Search for Python tutorials", tools=[search])
     
     # With Agent:
-    from agenticflow.graphs import NativeExecutor
+    from agenticflow.executors import NativeExecutor
     
     executor = NativeExecutor(agent)
     result = await executor.execute("Research and calculate metrics")
 """
 
 # Base classes and enums
-from agenticflow.graphs.base import BaseExecutor, CompletionCheck, ExecutionStrategy
+from agenticflow.executors.base import BaseExecutor, CompletionCheck, ExecutionStrategy
 
 # Data models
-from agenticflow.graphs.models import ExecutionPlan, ToolCall
+from agenticflow.executors.models import ExecutionPlan, ToolCall
 
 # Native executors (default)
-from agenticflow.graphs.native import NativeExecutor, SequentialExecutor, run
+from agenticflow.executors.native import NativeExecutor, SequentialExecutor, run
 
 # Tree search executor
-from agenticflow.graphs.tree_search import TreeSearchExecutor, SearchNode, NodeState, TreeSearchResult
+from agenticflow.executors.tree_search import TreeSearchExecutor, SearchNode, NodeState, TreeSearchResult
 
 # Factory
-from agenticflow.graphs.factory import create_executor
+from agenticflow.executors.factory import create_executor
 
 __all__ = [
     # Strategy enum

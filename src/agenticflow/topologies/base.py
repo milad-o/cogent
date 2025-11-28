@@ -1115,7 +1115,7 @@ class PipelineTopology(BaseTopology):
         
         This is much faster than the standard run() for simple pipelines
         because it skips LangGraph routing and directly chains agents.
-        Uses TurboReActExecutor for native tool binding and parallel execution.
+        Uses NativeExecutor for native tool binding and parallel execution.
         
         Args:
             task: The task to process.
@@ -1128,7 +1128,7 @@ class PipelineTopology(BaseTopology):
             >>> result = await pipeline.run_fast("Analyze this data")
             >>> print(result.results[-1]["thought"])  # Final agent's output
         """
-        from agenticflow.graphs import TurboReActExecutor
+        from agenticflow.executors import NativeExecutor
         
         results: list[dict[str, Any]] = []
         messages: list[dict[str, Any]] = []
@@ -1146,9 +1146,9 @@ class PipelineTopology(BaseTopology):
                 prev_result = results[-1]["thought"]
                 prompt = f"{task}\n\nContext from previous step:\n{prev_result}"
             
-            # Run agent with TurboReActExecutor (native tool binding, fastest)
+            # Run agent with NativeExecutor (native tool binding, fastest)
             if agent.all_tools:
-                executor = TurboReActExecutor(agent)
+                executor = NativeExecutor(agent)
                 executor.max_iterations = 3  # Quick execution
                 thought = await executor.execute(prompt)
                 if not isinstance(thought, str):

@@ -9,6 +9,7 @@ Key optimizations:
 5. No event emission in hot path
 
 Includes standalone `run()` function for quick execution without Agent class.
+All native - no LangChain/LangGraph dependencies.
 """
 
 from __future__ import annotations
@@ -16,25 +17,17 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-# Native message types for standalone run() function (uses native OpenAIChat)
+# Native message types (no LangChain)
 from agenticflow.core.messages import (
-    AIMessage as NativeAIMessage,
-    BaseMessage as NativeBaseMessage,
-    HumanMessage as NativeHumanMessage,
-    SystemMessage as NativeSystemMessage,
-    ToolMessage as NativeToolMessage,
-)
-from agenticflow.models.openai import OpenAIChat
-from agenticflow.tools.base import BaseTool
-
-# LangChain message types for NativeExecutor (which works with Agent's LangChain model)
-from langchain_core.messages import (
     AIMessage,
     BaseMessage,
     HumanMessage,
     SystemMessage,
     ToolMessage,
 )
+from agenticflow.models.base import BaseChatModel
+from agenticflow.models.openai import OpenAIChat
+from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
@@ -43,20 +36,20 @@ if TYPE_CHECKING:
 async def run(
     task: str,
     tools: list[BaseTool] | None = None,
-    model: str | OpenAIChat = "gpt-4o-mini",
+    model: str | BaseChatModel = "gpt-4o-mini",
     system_prompt: str | None = None,
     max_iterations: int = 10,
     max_tool_calls: int = 20,
 ) -> str:
     """Execute a task with tools using native execution.
     
-    Standalone function - no Agent class or LangChain required.
-    Uses native OpenAI SDK for maximum performance.
+    Standalone function - no Agent class required.
+    Uses native SDK for maximum performance.
     
     Args:
         task: The task to execute.
         tools: List of tools (created with @tool decorator).
-        model: Model name or OpenAIChat instance.
+        model: Model name or any native chat model instance.
         system_prompt: Optional system prompt.
         max_iterations: Maximum LLM call iterations.
         max_tool_calls: Maximum total tool calls.
@@ -76,6 +69,14 @@ async def run(
             "Search for Python tutorials",
             tools=[search],
         )
+        
+        # With different providers
+        from agenticflow.models.anthropic import AnthropicChat
+        
+        result = await run(
+            "Explain quantum computing",
+            model=AnthropicChat(model="claude-sonnet-4-20250514"),
+        )
     """
     # Create or use model
     if isinstance(model, str):
@@ -92,18 +93,18 @@ async def run(
     else:
         bound_model = chat_model
     
-    # Build initial messages using NATIVE message types
-    messages: list[NativeBaseMessage] = []
+    # Build initial messages using native message types
+    messages: list[BaseMessage] = []
     if system_prompt:
-        messages.append(NativeSystemMessage(system_prompt))
-    messages.append(NativeHumanMessage(task))
+        messages.append(SystemMessage(system_prompt))
+    messages.append(HumanMessage(task))
     
     # Execution loop
     total_tool_calls = 0
     
     for _ in range(max_iterations):
-        # Native ChatModel returns NativeAIMessage
-        response: NativeAIMessage = await bound_model.ainvoke(messages)
+        # ChatModel returns AIMessage
+        response: AIMessage = await bound_model.ainvoke(messages)
         messages.append(response)
         
         if not response.tool_calls:
@@ -122,7 +123,7 @@ async def run(
         for result, tc in zip(tool_results, response.tool_calls):
             tool_id = tc.get("id", "")
             if isinstance(result, Exception):
-                messages.append(NativeToolMessage(f"Error: {result}", tool_call_id=tool_id))
+                messages.append(ToolMessage(f"Error: {result}", tool_call_id=tool_id))
             else:
                 messages.append(result)
         
@@ -134,7 +135,7 @@ async def run(
 async def _execute_tool_native(
     tool_call: dict[str, Any],
     tool_map: dict[str, BaseTool],
-) -> NativeToolMessage:
+) -> ToolMessage:
     """Execute a single tool call (returns native ToolMessage)."""
     tool_name = tool_call.get("name", "")
     args = tool_call.get("args", {})
@@ -142,23 +143,17 @@ async def _execute_tool_native(
     
     tool = tool_map.get(tool_name)
     if tool is None:
-        return NativeToolMessage(f"Error: Unknown tool '{tool_name}'", tool_call_id=tool_id)
+        return ToolMessage(f"Error: Unknown tool '{tool_name}'", tool_call_id=tool_id)
     
     try:
         result = await tool.ainvoke(args)
-        return NativeToolMessage(str(result) if result is not None else "", tool_call_id=tool_id)
+        return ToolMessage(str(result) if result is not None else "", tool_call_id=tool_id)
     except Exception as e:
-        return NativeToolMessage(f"Error: {e}", tool_call_id=tool_id)
+        return ToolMessage(f"Error: {e}", tool_call_id=tool_id)
 
 
-# Import BaseExecutor here to avoid circular import at module level
-def _get_base_executor():
-    from agenticflow.graphs.base import BaseExecutor
-    return BaseExecutor
-
-
-# We need BaseExecutor at class definition time, so import it
-from agenticflow.graphs.base import BaseExecutor
+# We need BaseExecutor at class definition time
+from agenticflow.executors.base import BaseExecutor
 
 
 class NativeExecutor(BaseExecutor):
@@ -184,7 +179,7 @@ class NativeExecutor(BaseExecutor):
     - Simple to complex multi-tool tasks
     
     Example:
-        from agenticflow.graphs import NativeExecutor
+        from agenticflow.executors import NativeExecutor
         
         executor = NativeExecutor(agent)
         result = await executor.execute("Research ACME Corp and calculate metrics")

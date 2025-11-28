@@ -10,7 +10,7 @@ This module defines WHO does the work:
 - Resilience: Retry, circuit breaker, fallback patterns
 
 For HOW agents execute tasks (execution strategies), see:
-    agenticflow.graphs - DAGExecutor, ReActExecutor, etc.
+    agenticflow.executors - NativeExecutor, SequentialExecutor, TreeSearchExecutor
 
 Example:
     # Create role-specific agents
@@ -20,13 +20,13 @@ Example:
     # Or use the generic constructor
     agent = Agent(name="Helper", model=model, role="worker")
     
-    # With memory (LangGraph compatible)
-    from langgraph.checkpoint.memory import MemorySaver
+    # With memory
+    from agenticflow.agent.memory import InMemorySaver
     
     agent = Agent(
         name="Assistant",
         model=model,
-        memory=MemorySaver(),  # Enables conversation memory
+        memory=InMemorySaver(),  # Enables conversation memory
     )
     
     # Chat with thread-based memory

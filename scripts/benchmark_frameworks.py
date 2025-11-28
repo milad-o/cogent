@@ -246,7 +246,7 @@ class AgenticFlowBenchmark:
     async def run_single_agent(self, task: TaskConfig) -> BenchmarkResult:
         """Run a single-agent task."""
         from agenticflow import Agent, AgentConfig
-        from agenticflow.graphs import NativeExecutor
+        from agenticflow.executors import NativeExecutor
 
         reset_tool_log()
         start = time.time()
