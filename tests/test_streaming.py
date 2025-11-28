@@ -15,7 +15,7 @@ from agenticflow.agent.streaming import (
     ToolCallChunk,
     PrintStreamCallback,
     CollectorStreamCallback,
-    chunk_from_langchain,
+    chunk_from_message,
     extract_tool_calls,
     collect_stream,
     print_stream,
@@ -287,15 +287,15 @@ class TestCollectorStreamCallback:
 # Utility Function Tests
 # =============================================================================
 
-class TestChunkFromLangchain:
-    """Tests for chunk_from_langchain function (uses native AIMessage)."""
+class TestChunkFromMessage:
+    """Tests for chunk_from_message function (uses native AIMessage)."""
     
     def test_string_content(self):
         """Test extracting string content."""
         from agenticflow.core.messages import AIMessage
         
         ai_chunk = AIMessage(content="Hello")
-        chunk = chunk_from_langchain(ai_chunk, index=0)
+        chunk = chunk_from_message(ai_chunk, index=0)
         
         assert chunk.content == "Hello"
         assert chunk.index == 0
@@ -306,7 +306,7 @@ class TestChunkFromLangchain:
         from agenticflow.core.messages import AIMessage
         
         ai_chunk = AIMessage(content="")
-        chunk = chunk_from_langchain(ai_chunk, index=1)
+        chunk = chunk_from_message(ai_chunk, index=1)
         
         assert chunk.content == ""
         assert chunk.index == 1

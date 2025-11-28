@@ -61,9 +61,6 @@ from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding
 # Default models (OpenAI)
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
 
-# Adapter for LangChain compatibility
-from agenticflow.models.adapter import NativeModelAdapter
-
 # Aliases for convenience
 ChatModel = OpenAIChat
 EmbeddingModel = OpenAIEmbedding
@@ -213,27 +210,6 @@ def create_embedding(
         )
 
 
-def wrap_native_model(model: BaseChatModel) -> NativeModelAdapter:
-    """Wrap a native model for LangChain compatibility.
-    
-    Args:
-        model: Native AgenticFlow chat model.
-    
-    Returns:
-        LangChain-compatible adapter.
-    
-    Example:
-        from agenticflow.models import ChatModel, wrap_native_model
-        
-        native = ChatModel(model="gpt-4o")
-        langchain_compat = wrap_native_model(native)
-        
-        # Use with LangChain code
-        result = langchain_compat.invoke(messages)
-    """
-    return NativeModelAdapter(model)
-
-
 def is_native_model(model: Any) -> bool:
     """Check if a model is a native AgenticFlow model.
     
@@ -259,8 +235,6 @@ __all__ = [
     # Factory functions
     "create_chat",
     "create_embedding",
-    # Adapter utilities
-    "NativeModelAdapter",
-    "wrap_native_model",
+    # Utilities
     "is_native_model",
 ]

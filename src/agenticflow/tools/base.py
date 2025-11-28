@@ -1,8 +1,7 @@
 """
 Native tool abstraction for AgenticFlow.
 
-Replaces langchain_core.tools with lightweight native implementations.
-Compatible with OpenAI function calling format.
+Lightweight tool implementations compatible with OpenAI function calling format.
 """
 
 from __future__ import annotations

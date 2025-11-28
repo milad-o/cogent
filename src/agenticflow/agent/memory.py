@@ -45,12 +45,11 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class MemorySaver(Protocol):
-    """Protocol matching LangGraph's persistence backend interface.
+    """Protocol for persistence backend interface.
     
-    This allows agenticflow to accept any LangGraph saver:
-    - MemorySaver / InMemorySaver (in-memory)
-    - SqliteSaver / AsyncSqliteSaver (local file)
-    - PostgresSaver / AsyncPostgresSaver (production)
+    This allows agenticflow to accept any compatible saver:
+    - InMemorySaver (in-memory for testing)
+    - SQL-based backends for production
     - Custom implementations
     """
     
@@ -85,7 +84,7 @@ class MemorySaver(Protocol):
 
 @runtime_checkable  
 class MemoryStore(Protocol):
-    """Protocol matching LangGraph's BaseStore interface for long-term memory.
+    """Protocol for long-term memory store interface.
     
     Stores support key-value operations across namespaces:
     - mget: Get multiple values
@@ -113,10 +112,7 @@ class MemoryStore(Protocol):
 
 @dataclass
 class MemorySnapshot:
-    """Snapshot of agent memory state.
-    
-    Compatible with LangGraph format for interoperability.
-    """
+    """Snapshot of agent memory state."""
     
     id: str = field(default_factory=generate_id)
     thread_id: str | None = None
@@ -136,8 +132,8 @@ class MemorySnapshot:
     created_at: datetime = field(default_factory=now_utc)
     updated_at: datetime = field(default_factory=now_utc)
     
-    def to_langgraph_format(self) -> dict:
-        """Convert to LangGraph format."""
+    def to_checkpoint_format(self) -> dict:
+        """Convert to checkpoint format for persistence."""
         return {
             "v": 1,
             "id": self.version or self.id,
@@ -152,8 +148,8 @@ class MemorySnapshot:
         }
     
     @classmethod
-    def from_langgraph_format(cls, data: dict, thread_id: str | None = None) -> MemorySnapshot:
-        """Create from LangGraph format."""
+    def from_checkpoint_format(cls, data: dict, thread_id: str | None = None) -> MemorySnapshot:
+        """Create from checkpoint format."""
         channel_values = data.get("channel_values", {})
         return cls(
             id=data.get("id", generate_id()),
@@ -171,17 +167,14 @@ MemoryCheckpoint = MemorySnapshot
 
 @dataclass
 class ThreadConfig:
-    """Configuration for a conversation thread.
-    
-    Compatible with LangGraph's configurable format.
-    """
+    """Configuration for a conversation thread."""
     
     thread_id: str
     version: str | None = None
     namespace: str = ""
     
     def to_config(self) -> dict:
-        """Convert to LangGraph config format."""
+        """Convert to config dict format."""
         return {
             "configurable": {
                 "thread_id": self.thread_id,
@@ -192,7 +185,7 @@ class ThreadConfig:
     
     @classmethod
     def from_config(cls, config: dict) -> ThreadConfig:
-        """Create from LangGraph config format."""
+        """Create from config dict format."""
         configurable = config.get("configurable", config)
         return cls(
             thread_id=configurable.get("thread_id", generate_id()),
@@ -209,18 +202,18 @@ class AgentMemory:
     """Memory manager for agents.
     
     Handles both short-term (conversation) and long-term memory,
-    with full compatibility with LangGraph's persistence system.
+    with pluggable persistence backends.
     
     Args:
-        backend: Optional persistence backend (LangGraph saver).
-            - MemorySaver: For testing
-            - SqliteSaver: For local persistence  
-            - PostgresSaver: For production
-        store: Optional LangGraph store for long-term memory.
+        backend: Optional persistence backend.
+            - InMemorySaver: For testing/development
+            - SQL backends: For production persistence  
+        store: Optional store for long-term memory.
         max_history: Maximum messages to keep in short-term memory.
         
     Example:
         ```python
+        from agenticflow import Agent
         from agenticflow.agent.memory import InMemorySaver
         
         # In-memory for development/testing
@@ -352,7 +345,7 @@ class AgentMemory:
             try:
                 await self._backend.aput(
                     config,
-                    snapshot.to_langgraph_format(),
+                    snapshot.to_checkpoint_format(),
                     {"source": "agenticflow", "agent": agent_name},
                     {},
                 )
@@ -360,7 +353,7 @@ class AgentMemory:
                 # Fall back to sync method if async not available
                 self._backend.put(
                     config,
-                    snapshot.to_langgraph_format(),
+                    snapshot.to_checkpoint_format(),
                     {"source": "agenticflow", "agent": agent_name},
                     {},
                 )
@@ -403,7 +396,7 @@ class AgentMemory:
                 result = self._backend.get_tuple(config)
             
             if result and result.checkpoint:
-                snapshot = MemorySnapshot.from_langgraph_format(
+                snapshot = MemorySnapshot.from_checkpoint_format(
                     result.checkpoint, thread_id
                 )
                 self._cache[thread_id] = snapshot

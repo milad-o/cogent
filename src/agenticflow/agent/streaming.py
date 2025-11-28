@@ -451,10 +451,6 @@ def chunk_from_message(chunk: AIMessage, index: int = 0) -> StreamChunk:
     )
 
 
-# Backward compatibility alias (deprecated)
-chunk_from_langchain = chunk_from_message
-
-
 def extract_tool_calls(msg: AIMessage) -> list[ToolCallChunk]:
     """
     Extract tool call chunks from an AI message.

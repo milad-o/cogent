@@ -431,8 +431,8 @@ class TestMCPToolDiscovery:
     """Tests for tool discovery (mocked)."""
 
     @pytest.mark.asyncio
-    async def test_discover_tools_creates_langchain_tools(self) -> None:
-        """Test that discovered tools are converted to LangChain tools."""
+    async def test_discover_tools_creates_native_tools(self) -> None:
+        """Test that discovered tools are converted to native tools."""
         pytest.importorskip("mcp", reason="MCP SDK not installed")
 
         mcp = MCP.stdio(command="test")
@@ -460,11 +460,11 @@ class TestMCPToolDiscovery:
 
         # Check tools were created
         assert len(mcp._discovered_tools) == 1
-        assert len(mcp._langchain_tools) == 1
+        assert len(mcp._native_tools) == 1
         assert "search" in mcp._discovered_tools
 
-        # Check LangChain tool properties
-        lc_tool = mcp._langchain_tools[0]
+        # Check native tool properties
+        lc_tool = mcp._native_tools[0]
         assert lc_tool.name == "search"
         assert "Search the web" in lc_tool.description
 
@@ -587,4 +587,4 @@ class TestMCPRefreshTools:
         await mcp.refresh_tools()
 
         assert "new_tool" in mcp._discovered_tools
-        assert len(mcp._langchain_tools) == 1
+        assert len(mcp._native_tools) == 1

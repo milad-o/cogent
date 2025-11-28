@@ -1,8 +1,7 @@
 """
 Native message types for AgenticFlow.
 
-Replaces langchain_core.messages with lightweight native implementations.
-Compatible with OpenAI API message format.
+Lightweight message implementations compatible with OpenAI API message format.
 """
 
 from __future__ import annotations
