@@ -12,12 +12,12 @@ Streaming Modes:
 Example:
     ```python
     from agenticflow import Agent
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
     
     # Create agent with streaming-capable model
     agent = Agent(
         name="Assistant",
-        model=ChatOpenAI(model="gpt-4o", streaming=True),
+        model=ChatModel(model="gpt-4o"),
     )
     
     # Stream tokens as they arrive
@@ -47,7 +47,7 @@ from typing import (
     TypeAlias,
 )
 
-from langchain_core.messages import AIMessageChunk
+from agenticflow.core.messages import AIMessage
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -113,7 +113,7 @@ class StreamChunk:
     """Number of tokens in this chunk."""
     
     raw: Any = None
-    """The raw chunk from the provider (AIMessageChunk)."""
+    """The raw chunk from the provider (AIMessage)."""
     
     def __str__(self) -> str:
         return self.content
@@ -429,77 +429,48 @@ StreamHandler: TypeAlias = Callable[[StreamChunk], None]
 EventHandler: TypeAlias = Callable[[StreamEvent], None]
 
 
-def chunk_from_langchain(chunk: AIMessageChunk, index: int = 0) -> StreamChunk:
+def chunk_from_langchain(chunk: AIMessage, index: int = 0) -> StreamChunk:
     """
-    Convert a LangChain AIMessageChunk to our StreamChunk.
+    Convert an AIMessage chunk to our StreamChunk.
     
     Args:
-        chunk: The LangChain message chunk.
+        chunk: The AIMessage chunk from streaming.
         index: Position in the stream.
         
     Returns:
         A StreamChunk with the content extracted.
     """
-    content = ""
-    if isinstance(chunk.content, str):
-        content = chunk.content
-    elif isinstance(chunk.content, list):
-        # Handle content blocks (e.g., from Anthropic)
-        for block in chunk.content:
-            if isinstance(block, str):
-                content += block
-            elif isinstance(block, dict) and block.get("type") == "text":
-                content += block.get("text", "")
-    
-    # Extract finish reason if available
-    finish_reason = None
-    if hasattr(chunk, "response_metadata"):
-        finish_reason = chunk.response_metadata.get("finish_reason")
-    
-    # Extract token count if available
-    token_count = None
-    if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
-        token_count = chunk.usage_metadata.get("output_tokens")
+    content = chunk.content if isinstance(chunk.content, str) else ""
     
     return StreamChunk(
         content=content,
-        finish_reason=finish_reason,
+        finish_reason=None,
         index=index,
-        token_count=token_count,
+        token_count=None,
         raw=chunk,
     )
 
 
-def extract_tool_calls(chunk: AIMessageChunk) -> list[ToolCallChunk]:
+def extract_tool_calls(msg: AIMessage) -> list[ToolCallChunk]:
     """
-    Extract tool call chunks from a LangChain message chunk.
+    Extract tool call chunks from an AI message.
     
     Args:
-        chunk: The LangChain message chunk.
+        msg: The AIMessage to extract tool calls from.
         
     Returns:
         List of ToolCallChunk objects found in the message.
     """
     tool_calls = []
     
-    # Check for tool_call_chunks (streaming format)
-    if hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks:
-        for tc in chunk.tool_call_chunks:
+    # Check tool_calls list
+    if msg.tool_calls:
+        for i, tc in enumerate(msg.tool_calls):
             tool_calls.append(ToolCallChunk(
                 id=tc.get("id"),
                 name=tc.get("name"),
-                args=tc.get("args", ""),
-                index=tc.get("index", 0),
-            ))
-    
-    # Also check tool_calls (complete format)
-    if hasattr(chunk, "tool_calls") and chunk.tool_calls:
-        for tc in chunk.tool_calls:
-            tool_calls.append(ToolCallChunk(
-                id=tc.get("id"),
-                name=tc.get("name"),
-                args=str(tc.get("args", {})),
-                index=len(tool_calls),
+                args=str(tc.get("args", {})) if isinstance(tc.get("args"), dict) else tc.get("args", ""),
+                index=i,
             ))
     
     return tool_calls

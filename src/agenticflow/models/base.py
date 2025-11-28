@@ -11,6 +11,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncIterator
 
+# Import AIMessage from core messages - single source of truth
+from agenticflow.core.messages import AIMessage
+
 
 class ModelProvider(str, Enum):
     """Supported model providers."""
@@ -22,20 +25,6 @@ class ModelProvider(str, Enum):
     GROQ = "groq"
     OLLAMA = "ollama"
     CUSTOM = "custom"
-
-
-@dataclass
-class AIMessage:
-    """AI response message with optional tool calls."""
-    
-    content: str = ""
-    tool_calls: list[dict[str, Any]] = field(default_factory=list)
-    
-    def __str__(self) -> str:
-        return self.content
-    
-    def __bool__(self) -> bool:
-        return bool(self.content or self.tool_calls)
 
 
 @dataclass

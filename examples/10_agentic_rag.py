@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
-from langchain_core.tools import tool
+from agenticflow.tools.base import tool
 
 # Load .env file for API keys
 load_dotenv()
@@ -257,9 +257,9 @@ async def main() -> None:
 
     # Step 3: Create agent with LLM
     print("\n🤖 Step 3: Creating RAG agent...")
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
 
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatModel(model="gpt-4o-mini", temperature=0)
     agent = create_rag_agent(model)
     print(f"  ✓ Agent: {agent.name} ({agent.role.value})")
     print(f"  ✓ Tools: {', '.join(t.name for t in agent._direct_tools)}")

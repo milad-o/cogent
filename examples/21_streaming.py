@@ -40,46 +40,49 @@ def create_mock_model(response_text: str):
     """
     Create a mock model that works with Agent's type checking.
     
-    This creates a proper LangChain BaseChatModel subclass that
+    This creates a native BaseChatModel subclass that
     simulates streaming by yielding token chunks with delays.
     """
-    from langchain_core.language_models import BaseChatModel
-    from langchain_core.messages import AIMessageChunk, AIMessage, BaseMessage
-    from langchain_core.outputs import ChatGeneration, ChatResult, ChatGenerationChunk
-    from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
-    from typing import Any, AsyncIterator, Iterator
+    from collections.abc import AsyncIterator, Iterator
+    from typing import Any
+    
+    from agenticflow.models.base import BaseChatModel
+    from agenticflow.core.messages import AIMessage
     
     class MockChatModel(BaseChatModel):
         """Mock chat model for testing/demo with streaming support."""
         
-        response: str = response_text
+        def __init__(self, response: str):
+            self._response = response
         
         @property
-        def _llm_type(self) -> str:
+        def model_name(self) -> str:
             return "mock-streaming"
         
-        def _generate(
+        def invoke(
             self,
-            messages: list[BaseMessage],
-            stop: list[str] | None = None,
-            run_manager: CallbackManagerForLLMRun | None = None,
+            messages: list[dict[str, Any]],
             **kwargs: Any,
-        ) -> ChatResult:
-            message = AIMessage(content=self.response)
-            return ChatResult(generations=[ChatGeneration(message=message)])
+        ) -> AIMessage:
+            return AIMessage(content=self._response)
         
-        def _stream(
+        async def ainvoke(
             self,
-            messages: list[BaseMessage],
-            stop: list[str] | None = None,
-            run_manager: CallbackManagerForLLMRun | None = None,
+            messages: list[dict[str, Any]],
             **kwargs: Any,
-        ) -> Iterator[ChatGenerationChunk]:
+        ) -> AIMessage:
+            return AIMessage(content=self._response)
+        
+        def stream(
+            self,
+            messages: list[dict[str, Any]],
+            **kwargs: Any,
+        ) -> Iterator[AIMessage]:
             """Synchronous streaming implementation."""
             import time
             tokens = []
             i = 0
-            text = self.response
+            text = self._response
             while i < len(text):
                 chunk_len = min(4, len(text) - i)
                 tokens.append(text[i:i + chunk_len])
@@ -87,22 +90,17 @@ def create_mock_model(response_text: str):
             
             for token in tokens:
                 time.sleep(0.02)
-                chunk = ChatGenerationChunk(message=AIMessageChunk(content=token))
-                if run_manager:
-                    run_manager.on_llm_new_token(token, chunk=chunk)
-                yield chunk
+                yield AIMessage(content=token)
         
-        async def _astream(
+        async def astream(
             self,
-            messages: list[BaseMessage],
-            stop: list[str] | None = None,
-            run_manager: AsyncCallbackManagerForLLMRun | None = None,
+            messages: list[dict[str, Any]],
             **kwargs: Any,
-        ) -> AsyncIterator[ChatGenerationChunk]:
+        ) -> AsyncIterator[AIMessage]:
             """Async streaming implementation."""
             tokens = []
             i = 0
-            text = self.response
+            text = self._response
             while i < len(text):
                 chunk_len = min(4, len(text) - i)
                 tokens.append(text[i:i + chunk_len])
@@ -110,10 +108,7 @@ def create_mock_model(response_text: str):
             
             for token in tokens:
                 await asyncio.sleep(0.02)
-                chunk = ChatGenerationChunk(message=AIMessageChunk(content=token))
-                if run_manager:
-                    await run_manager.on_llm_new_token(token, chunk=chunk)
-                yield chunk
+                yield AIMessage(content=token)
     
     return MockChatModel(response=response_text)
 
@@ -123,8 +118,8 @@ def get_model(response_for_mock: str = "Hello!"):
     if MOCK_MODE:
         return create_mock_model(response_for_mock)
     else:
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(model="gpt-4o-mini", streaming=True)
+        from agenticflow.models import ChatModel
+        return ChatModel(model="gpt-4o-mini", streaming=True)
 
 
 # =============================================================================

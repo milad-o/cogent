@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from langchain_core.tools import BaseTool, tool
+from agenticflow.tools.base import BaseTool, tool
 
 from agenticflow.capabilities.base import BaseCapability
 

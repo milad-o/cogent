@@ -12,7 +12,7 @@ from agenticflow.core.enums import AgentStatus
 from agenticflow.core.utils import now_utc
 
 if TYPE_CHECKING:
-    from langchain_core.messages import BaseMessage
+    from agenticflow.core.messages import BaseMessage
 
 
 @dataclass

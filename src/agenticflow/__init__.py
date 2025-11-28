@@ -189,44 +189,34 @@ from agenticflow.tasks.manager import TaskManager
 
 # Tools (THIS IS WHERE WE ADD VALUE)
 from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
+from agenticflow.tools.base import BaseTool, tool
 
 # Flow - THE MAIN ENTRY POINT
 from agenticflow.flow import (
     Flow,
     FlowConfig,
-    TopologyPattern,
     create_flow,
     supervisor_flow,
     pipeline_flow,
     mesh_flow,
 )
 
-# Topologies (THIS IS WHERE WE ADD VALUE)
+# Topologies (simple coordination patterns)
 from agenticflow.topologies import (
+    # Core classes
+    AgentConfig as TopologyAgentConfig,
     BaseTopology,
-    TopologyConfig,
-    TopologyState,
-    SupervisorTopology,
-    MeshTopology,
-    PipelineTopology,
-    HierarchicalTopology,
-    TopologyFactory,
+    TopologyResult,
     TopologyType,
-    # New API - Enums
-    TopologyPattern,
-    DelegationStrategy,
-    CompletionCondition,
-    # New API - Policies
-    DelegationPolicy,
-    EventHooks,
-    # New API - Main spec
-    TopologySpec,
-    # New API - Factory functions (preferred)
-    supervisor_topology,
-    coordinator_topology,
-    pipeline_topology,
-    mesh_topology,
-    hierarchical_topology,
+    # Pattern classes
+    Supervisor,
+    Pipeline,
+    Mesh,
+    Hierarchical,
+    # Convenience functions
+    supervisor,
+    pipeline,
+    mesh,
 )
 
 # Observability (THIS IS WHERE WE ADD VALUE)
@@ -303,8 +293,8 @@ from agenticflow.capabilities import (
     KnowledgeGraph,
 )
 
-# LangChain message types (re-export for convenience)
-from langchain_core.messages import (
+# Native message types (from core.messages)
+from agenticflow.core.messages import (
     BaseMessage,
     HumanMessage,
     AIMessage,
@@ -397,39 +387,27 @@ __all__ = [
     # Tools
     "ToolRegistry",
     "create_tool_from_function",
+    "BaseTool",
+    "tool",
     # Flow (MAIN ENTRY POINT)
     "Flow",
     "FlowConfig",
-    "TopologyPattern",
     "create_flow",
     "supervisor_flow",
     "pipeline_flow",
     "mesh_flow",
-    # Topologies
+    # Topologies (coordination patterns)
+    "TopologyAgentConfig",
     "BaseTopology",
-    "TopologyConfig",
-    "TopologyState",
-    "SupervisorTopology",
-    "MeshTopology",
-    "PipelineTopology",
-    "HierarchicalTopology",
-    "TopologyFactory",
+    "TopologyResult",
     "TopologyType",
-    # Topology API - Enums
-    "TopologyPattern",
-    "DelegationStrategy",
-    "CompletionCondition",
-    # Topology API - Policies
-    "DelegationPolicy",
-    "EventHooks",
-    # Topology API - Main spec
-    "TopologySpec",
-    # Topology API - Factory functions (preferred)
-    "supervisor_topology",
-    "coordinator_topology",
-    "pipeline_topology",
-    "mesh_topology",
-    "hierarchical_topology",
+    "Supervisor",
+    "Pipeline",
+    "Mesh",
+    "Hierarchical",
+    "supervisor",
+    "pipeline",
+    "mesh",
     # Observability
     "Tracer",
     "Span",
@@ -489,7 +467,7 @@ __all__ = [
     "AzureEmbedding",
     "create_chat",
     "create_embedding",
-    # LangChain messages (for backward compat)
+    # Native message types
     "BaseMessage",
     "HumanMessage",
     "AIMessage",

@@ -113,11 +113,11 @@ async def agent_demo():
         print("⚠️  OPENAI_API_KEY not set - skipping agent demo")
         return
     
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import WebSearch, KnowledgeGraph
     
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatModel(model="gpt-4o-mini", temperature=0)
     
     # Combine WebSearch with KnowledgeGraph for research + memory
     ws = WebSearch(max_results=5)
@@ -165,13 +165,13 @@ async def combined_demo():
         print("⚠️  OPENAI_API_KEY not set - skipping")
         return
     
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import WebSearch, KnowledgeGraph, FileSystem
     import tempfile
     from pathlib import Path
     
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatModel(model="gpt-4o-mini", temperature=0)
     
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace).resolve()

@@ -61,6 +61,12 @@ class AIMessage(BaseMessage):
         self.role = "assistant"
         self.tool_calls = tool_calls or []
     
+    def __str__(self) -> str:
+        return self.content
+    
+    def __bool__(self) -> bool:
+        return bool(self.content or self.tool_calls)
+    
     def to_openai(self) -> dict[str, Any]:
         """Convert to OpenAI API format."""
         msg: dict[str, Any] = {"role": self.role, "content": self.content}

@@ -15,15 +15,15 @@ load_dotenv()
 
 
 async def demo():
-    from langchain_openai import ChatOpenAI
-    from langchain_core.tools import tool
+    from agenticflow.models import ChatModel
+    from agenticflow.tools.base import tool
     from agenticflow import Agent, AgentRole
     
     print("=" * 60)
     print("👔 Supervisor Chatbot Pattern")
     print("=" * 60)
     
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatModel(model="gpt-4o-mini", temperature=0)
     
     # === Step 1: Create worker agents ===
     

@@ -7,10 +7,9 @@ This module provides memory capabilities for agents:
 - **Long-term memory**: Persist information across threads and sessions
 - **Save/Restore**: Persist agent state across sessions
 
-Memory is compatible with LangGraph's persistence backends:
+Memory uses native message types and provides pluggable backends:
 - `MemorySaver` / `InMemorySaver` - For testing and development
-- `SqliteSaver` / `AsyncSqliteSaver` - For local persistence
-- `PostgresSaver` / `AsyncPostgresSaver` - For production
+- SQL backends can be added for production persistence
 
 Example:
     ```python
@@ -19,25 +18,12 @@ Example:
     # Simple: just pass True for in-memory
     agent = Agent(name="Assistant", model=model, memory=True)
     
-    # Or use LangGraph's persistence backends
-    from langgraph.checkpoint.memory import MemorySaver
-    agent = Agent(name="Assistant", model=model, memory=MemorySaver())
-    
     # Chat within a thread (maintains history)
     response1 = await agent.chat("Hi, I'm Alice", thread_id="conv-1")
     response2 = await agent.chat("What's my name?", thread_id="conv-1")  # Remembers!
     
     # Different thread = fresh context
     response3 = await agent.chat("What's my name?", thread_id="conv-2")  # Doesn't know
-    ```
-
-For production persistence:
-    ```python
-    from langgraph.checkpoint.postgres import AsyncPostgresSaver
-    
-    async with AsyncPostgresSaver.from_conn_string(DATABASE_URL) as saver:
-        agent = Agent(name="Assistant", model=model, memory=saver)
-        # State persisted to PostgreSQL
     ```
 """
 
@@ -50,11 +36,11 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
-    from langchain_core.messages import BaseMessage
+    from agenticflow.core.messages import BaseMessage
 
 
 # ============================================================
-# Protocols for LangGraph Compatibility
+# Protocols for Memory Backends
 # ============================================================
 
 @runtime_checkable
@@ -235,9 +221,13 @@ class AgentMemory:
         
     Example:
         ```python
-        from langgraph.checkpoint.memory import MemorySaver
+        from agenticflow.agent.memory import InMemorySaver
         
-        memory = AgentMemory(backend=MemorySaver())
+        # In-memory for development/testing
+        memory = AgentMemory(backend=InMemorySaver())
+        
+        # Or just pass True to Agent
+        agent = Agent(name="Assistant", model=model, memory=True)
         
         # Save state
         await memory.save(

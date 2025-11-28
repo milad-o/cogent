@@ -3,7 +3,7 @@ Base capability class for composable agent tools.
 
 A Capability is a pluggable module that adds tools to any agent.
 It encapsulates related functionality (memory, search, execution)
-and exposes it through LangChain tools.
+and exposes it through native tools.
 
 Example:
     ```python
@@ -30,7 +30,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.tools import BaseTool
+from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent

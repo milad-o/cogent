@@ -11,15 +11,15 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 from agenticflow import Agent, Flow, FlowObserver
+from agenticflow.models import ChatModel
 
 load_dotenv()
 
 
 async def main():
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
     assistant = Agent(
         name="Assistant",

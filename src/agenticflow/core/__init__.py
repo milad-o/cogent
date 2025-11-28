@@ -1,10 +1,10 @@
 """
 Core module - foundational types and utilities for AgenticFlow.
 
-For models and embeddings, use LangChain directly:
-    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-    from langchain_anthropic import ChatAnthropic
-    from langchain_google_genai import ChatGoogleGenerativeAI
+For models and embeddings, use native AgenticFlow models:
+    from agenticflow.models import ChatModel, create_chat
+    from agenticflow.models.anthropic import AnthropicChat
+    from agenticflow.models.gemini import GeminiChat
 """
 
 from agenticflow.core.enums import (

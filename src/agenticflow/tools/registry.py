@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable
 
-from langchain.tools import BaseTool
+from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
     from agenticflow.events.bus import EventBus
@@ -18,7 +18,7 @@ class ToolRegistry:
     
     The ToolRegistry manages available tools that agents can use.
     It supports:
-    - Registering LangChain tools
+    - Registering native AgenticFlow tools
     - Getting tool by name
     - Generating tool descriptions for LLM prompts
     - Event emission for tool registration
@@ -28,7 +28,7 @@ class ToolRegistry:
         
     Example:
         ```python
-        from langchain.tools import tool
+        from agenticflow.tools import tool
         
         @tool
         def search_web(query: str) -> str:
@@ -212,7 +212,7 @@ def create_tool_from_function(
     description: str | None = None,
 ) -> BaseTool:
     """
-    Create a LangChain tool from a function.
+    Create a native tool from a function.
     
     This is a convenience wrapper around @tool decorator.
     
@@ -222,9 +222,9 @@ def create_tool_from_function(
         description: Tool description (defaults to docstring)
         
     Returns:
-        A LangChain tool
+        A native BaseTool
     """
-    from langchain_core.tools import tool as tool_decorator
+    from agenticflow.tools.base import tool as tool_decorator
     
     # The tool decorator creates a tool from the function
     # We can override the name by setting __name__ and description via docstring

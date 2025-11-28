@@ -51,7 +51,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.tools import BaseTool, StructuredTool
+from agenticflow.tools.base import BaseTool
 
 from agenticflow.capabilities.base import BaseCapability
 
@@ -553,7 +553,7 @@ class MCP(BaseCapability):
         server_name: str,
         tool_name: str,
     ) -> BaseTool:
-        """Create a LangChain tool wrapper for an MCP tool."""
+        """Create a native tool wrapper for an MCP tool."""
 
         async def call_mcp_tool(**kwargs: Any) -> str:
             """Call the MCP tool."""
@@ -586,13 +586,28 @@ class MCP(BaseCapability):
 
         # Build args schema from input schema
         input_schema = mcp_tool.inputSchema if isinstance(mcp_tool.inputSchema, dict) else {}
+        args_schema = self._build_args_schema_dict(input_schema)
 
-        return StructuredTool.from_function(
-            coroutine=call_mcp_tool,
+        return BaseTool(
             name=tool_name,
             description=mcp_tool.description or f"MCP tool: {mcp_tool.name}",
-            args_schema=self._build_args_schema(tool_name, input_schema),
+            func=call_mcp_tool,
+            args_schema=args_schema,
         )
+
+    def _build_args_schema_dict(self, input_schema: dict[str, Any]) -> dict[str, Any]:
+        """Build args schema dict from JSON schema for native BaseTool."""
+        properties = input_schema.get("properties", {})
+        args_schema: dict[str, Any] = {}
+        
+        for prop_name, prop_schema in properties.items():
+            args_schema[prop_name] = {
+                "type": prop_schema.get("type", "string"),
+            }
+            if "description" in prop_schema:
+                args_schema[prop_name]["description"] = prop_schema["description"]
+        
+        return args_schema
 
     def _build_args_schema(self, tool_name: str, input_schema: dict[str, Any]) -> type | None:
         """Build a Pydantic model for tool arguments from JSON schema."""

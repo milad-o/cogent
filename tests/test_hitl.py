@@ -499,7 +499,7 @@ class TestAgentHITL:
     @pytest.fixture
     def simple_tool(self):
         """Create a simple tool for testing."""
-        from langchain_core.tools import tool
+        from agenticflow.tools.base import tool
         
         @tool
         def delete_file(path: str) -> str:
@@ -511,7 +511,7 @@ class TestAgentHITL:
     @pytest.fixture
     def safe_tool(self):
         """Create a safe tool for testing."""
-        from langchain_core.tools import tool
+        from agenticflow.tools.base import tool
         
         @tool
         def read_file(path: str) -> str:

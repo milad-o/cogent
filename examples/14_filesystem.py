@@ -189,7 +189,7 @@ async def agent_demo():
         print("⚠️  OPENAI_API_KEY not set - skipping agent demo")
         return
     
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import FileSystem
     
@@ -201,7 +201,7 @@ async def agent_demo():
         print(f"⚠️  Data directory not found: {data_dir}")
         return
     
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatModel(model="gpt-4o-mini", temperature=0)
     
     fs = FileSystem(
         allowed_paths=[str(data_dir.resolve())],

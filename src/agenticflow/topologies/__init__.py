@@ -1,114 +1,75 @@
-"""Multi-agent topology patterns.
+"""Topologies - Multi-agent coordination patterns.
 
-This module provides extensible multi-agent coordination patterns
-built on LangGraph's StateGraph and Command primitives.
+This module provides simple, native coordination patterns for multi-agent workflows:
 
-Topologies are defined by policies that specify handoff rules:
-- Who can send tasks to whom
-- Who accepts tasks from whom
-- Under what conditions handoffs occur
+- **Supervisor**: One agent coordinates and delegates to workers
+- **Pipeline**: Sequential processing A → B → C  
+- **Mesh**: All agents collaborate in rounds until consensus
+- **Hierarchical**: Tree structure with delegation levels
 
-Example:
-    >>> from agenticflow.topologies import BaseTopology, TopologyConfig, TopologyPolicy
+Quick Start:
+    >>> from agenticflow import Agent, ChatModel
+    >>> from agenticflow.topologies import Supervisor, Pipeline, Mesh, AgentConfig
     >>>
-    >>> # Simple pipeline with policy
-    >>> policy = TopologyPolicy.pipeline(["researcher", "writer", "reviewer"])
-    >>> topology = BaseTopology(
-    ...     config=TopologyConfig(name="content-pipeline"),
-    ...     agents=agents,
-    ...     policy=policy,
-    ... )
+    >>> model = ChatModel(provider="openai", model="gpt-4o-mini")
+    >>> researcher = Agent(name="researcher", model=model)
+    >>> writer = Agent(name="writer", model=model)
+    >>> editor = Agent(name="editor", model=model)
     >>>
-    >>> # Or use convenience classes
-    >>> topology = PipelineTopology(
-    ...     config=TopologyConfig(name="content-pipeline"),
-    ...     agents=agents,
+    >>> # Supervisor pattern
+    >>> topology = Supervisor(
+    ...     coordinator=AgentConfig(agent=researcher, role="coordinator"),
+    ...     workers=[
+    ...         AgentConfig(agent=writer, role="content writer"),
+    ...         AgentConfig(agent=editor, role="editor"),
+    ...     ]
     ... )
+    >>> result = await topology.run("Write a blog post about AI")
+    >>>
+    >>> # Pipeline pattern  
+    >>> topology = Pipeline(stages=[
+    ...     AgentConfig(agent=researcher, role="research"),
+    ...     AgentConfig(agent=writer, role="draft"),
+    ...     AgentConfig(agent=editor, role="polish"),
+    ... ])
+    >>> result = await topology.run("Create technical documentation")
+    >>>
+    >>> # Mesh collaboration
+    >>> topology = Mesh(
+    ...     agents=[
+    ...         AgentConfig(agent=researcher, role="business analyst"),
+    ...         AgentConfig(agent=writer, role="technical analyst"),
+    ...     ],
+    ...     max_rounds=2,
+    ... )
+    >>> result = await topology.run("Evaluate this product idea")
+
+Convenience Functions:
+    For quick setup without AgentConfig boilerplate:
+    
+    >>> from agenticflow.topologies import supervisor, pipeline, mesh
+    >>>
+    >>> topology = supervisor(coordinator=researcher, workers=[writer, editor])
+    >>> topology = pipeline(stages=[researcher, writer, editor])
+    >>> topology = mesh(agents=[analyst1, analyst2], max_rounds=2)
 """
 
-from agenticflow.topologies.base import (
-    BaseTopology,
-    TopologyConfig,
-    TopologyState,
-    HandoffStrategy,
-    # Convenience classes
-    SupervisorTopology,
-    PipelineTopology,
-    MeshTopology,
-    HierarchicalTopology,
-)
-from agenticflow.topologies.policies import (
-    TopologyPolicy,
-    AgentPolicy,
-    HandoffRule,
-    HandoffCondition,
-    AcceptancePolicy,
-    ExecutionMode,
-)
-from agenticflow.topologies.custom import CustomTopology, CustomTopologyConfig, Edge
-from agenticflow.topologies.factory import TopologyFactory, TopologyType
-from agenticflow.topologies.builder import (
-    # Enums
-    TopologyPattern,
-    DelegationStrategy,
-    CompletionCondition,
-    # Policies
-    DelegationPolicy,
-    EventHooks,
-    # Main spec
-    TopologySpec,
-    # Factory functions (preferred API)
-    supervisor_topology,
-    coordinator_topology,
-    pipeline_topology,
-    mesh_topology,
-    hierarchical_topology,
-    # Validation
-    validate_roles,
-    TOPOLOGY_ROLE_REQUIREMENTS,
-)
+from .core import AgentConfig, BaseTopology, TopologyResult, TopologyType
+from .patterns import Hierarchical, Mesh, Pipeline, Supervisor, mesh, pipeline, supervisor
 
 __all__ = [
-    # Base
+    # Core classes
+    "AgentConfig",
     "BaseTopology",
-    "TopologyConfig",
-    "TopologyState",
-    "HandoffStrategy",
-    # Policies
-    "TopologyPolicy",
-    "AgentPolicy",
-    "HandoffRule",
-    "HandoffCondition",
-    "AcceptancePolicy",
-    "ExecutionMode",
-    # Convenience classes
-    "SupervisorTopology",
-    "MeshTopology",
-    "PipelineTopology",
-    "HierarchicalTopology",
-    # Custom topology (explicit edges)
-    "CustomTopology",
-    "CustomTopologyConfig",
-    "Edge",
-    # Factory (old API)
-    "TopologyFactory",
+    "TopologyResult",
     "TopologyType",
-    # New API - Enums
-    "TopologyPattern",
-    "DelegationStrategy",
-    "CompletionCondition",
-    # New API - Policies
-    "DelegationPolicy",
-    "EventHooks",
-    # New API - Main spec
-    "TopologySpec",
-    # New API - Factory functions (preferred)
-    "supervisor_topology",
-    "coordinator_topology",
-    "pipeline_topology",
-    "mesh_topology",
-    "hierarchical_topology",
-    # New API - Validation
-    "validate_roles",
-    "TOPOLOGY_ROLE_REQUIREMENTS",
+    # Pattern classes
+    "Supervisor",
+    "Pipeline",
+    "Mesh",
+    "Hierarchical",
+    # Convenience functions
+    "supervisor",
+    "pipeline",
+    "mesh",
 ]

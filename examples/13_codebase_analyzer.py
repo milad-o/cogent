@@ -91,14 +91,14 @@ def demo_programmatic():
 
 async def demo_agent(analyzer):
     """Demo an agent using CodebaseAnalyzer to answer questions."""
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
     from agenticflow import Agent
 
     print("\n" + "=" * 60)
     print("🤖 Agent with CodebaseAnalyzer Demo")
     print("=" * 60)
 
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatModel(model="gpt-4o-mini", temperature=0)
 
     agent = Agent(
         name="CodeExpert",

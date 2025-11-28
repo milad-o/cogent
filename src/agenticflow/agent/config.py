@@ -10,7 +10,7 @@ from typing import Any, TYPE_CHECKING, Callable
 from agenticflow.core.enums import AgentRole
 
 if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
+    from agenticflow.models.base import BaseChatModel
     from agenticflow.agent.resilience import ResilienceConfig
     from agenticflow.models.openai import OpenAIChat
     from agenticflow.models.azure import AzureChat
@@ -32,13 +32,14 @@ class AgentConfig:
         name: Human-readable agent name
         role: Agent's role in the system
         description: Detailed description of agent's purpose
-        model: LLM model - must be a LangChain chat model instance.
-            Use LangChain directly to create your model:
-            - ChatOpenAI(model="gpt-4o")
-            - AzureChatOpenAI(...)
-            - ChatAnthropic(model="claude-3-5-sonnet-latest")
-            - ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-            - ChatOllama(model="llama3.2")
+        model: LLM model - must be a native AgenticFlow chat model instance.
+            Use native models:
+            - ChatModel(model="gpt-4o")
+            - AzureChat(...)
+            - AnthropicChat(model="claude-3-5-sonnet-latest")
+            - GeminiChat(model="gemini-2.0-flash")
+            - OllamaChat(model="llama3.2")
+            Or use create_chat() factory function.
         temperature: LLM temperature parameter (0.0-2.0) - only used if model is None
         max_tokens: Maximum tokens in LLM response - only used if model is None
         system_prompt: System prompt defining agent behavior
@@ -49,24 +50,23 @@ class AgentConfig:
         
     Example:
         ```python
-        from langchain_openai import ChatOpenAI
-        from langchain_anthropic import ChatAnthropic
+        from agenticflow.models import ChatModel, create_chat
         
         # OpenAI
         config = AgentConfig(
             name="DataAnalyst",
             role=AgentRole.SPECIALIST,
-            model=ChatOpenAI(model="gpt-4o"),
+            model=ChatModel(model="gpt-4o"),
         )
         
         # Anthropic
         config = AgentConfig(
             name="Writer",
-            model=ChatAnthropic(model="claude-3-5-sonnet-latest"),
+            model=AnthropicChat(model="claude-3-5-sonnet-latest"),
         )
         
-        # Azure OpenAI with Managed Identity (LangChain)
-        from langchain_openai import AzureChatOpenAI
+        # Azure OpenAI with Managed Identity
+        from agenticflow.models import AzureChat
         from azure.identity import DefaultAzureCredential, get_bearer_token_provider
         
         token_provider = get_bearer_token_provider(
@@ -75,14 +75,14 @@ class AgentConfig:
         )
         config = AgentConfig(
             name="AzureAgent",
-            model=AzureChatOpenAI(
+            model=AzureChat(
                 azure_deployment="gpt-4o",
                 azure_endpoint="https://my-resource.openai.azure.com",
                 azure_ad_token_provider=token_provider,
             ),
         )
         
-        # Native models (no LangChain required) - RECOMMENDED
+        # Native models - RECOMMENDED
         from agenticflow.models.openai import OpenAIChat
         from agenticflow.models.azure import AzureChat
         from agenticflow.models.anthropic import AnthropicChat

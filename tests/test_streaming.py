@@ -288,31 +288,27 @@ class TestCollectorStreamCallback:
 # =============================================================================
 
 class TestChunkFromLangchain:
-    """Tests for chunk_from_langchain function."""
+    """Tests for chunk_from_langchain function (uses native AIMessage)."""
     
     def test_string_content(self):
         """Test extracting string content."""
-        from langchain_core.messages import AIMessageChunk
+        from agenticflow.core.messages import AIMessage
         
-        lc_chunk = AIMessageChunk(content="Hello")
-        chunk = chunk_from_langchain(lc_chunk, index=0)
+        ai_chunk = AIMessage(content="Hello")
+        chunk = chunk_from_langchain(ai_chunk, index=0)
         
         assert chunk.content == "Hello"
         assert chunk.index == 0
-        assert chunk.raw == lc_chunk
+        assert chunk.raw == ai_chunk
     
-    def test_list_content(self):
-        """Test extracting content from list of blocks."""
-        from langchain_core.messages import AIMessageChunk
+    def test_empty_content(self):
+        """Test chunk with empty content."""
+        from agenticflow.core.messages import AIMessage
         
-        lc_chunk = AIMessageChunk(content=[
-            {"type": "text", "text": "Hello"},
-            " ",
-            {"type": "text", "text": "World"},
-        ])
-        chunk = chunk_from_langchain(lc_chunk, index=1)
+        ai_chunk = AIMessage(content="")
+        chunk = chunk_from_langchain(ai_chunk, index=1)
         
-        assert chunk.content == "Hello World"
+        assert chunk.content == ""
         assert chunk.index == 1
 
 
@@ -321,24 +317,24 @@ class TestExtractToolCalls:
     
     def test_no_tool_calls(self):
         """Test chunk with no tool calls."""
-        from langchain_core.messages import AIMessageChunk
+        from agenticflow.core.messages import AIMessage
         
-        chunk = AIMessageChunk(content="Hello")
-        tool_calls = extract_tool_calls(chunk)
+        msg = AIMessage(content="Hello")
+        tool_calls = extract_tool_calls(msg)
         
         assert tool_calls == []
     
     def test_with_tool_calls(self):
         """Test extracting tool calls."""
-        from langchain_core.messages import AIMessageChunk
+        from agenticflow.core.messages import AIMessage
         
-        chunk = AIMessageChunk(
+        msg = AIMessage(
             content="",
             tool_calls=[
                 {"id": "123", "name": "search", "args": {"q": "test"}},
             ],
         )
-        tool_calls = extract_tool_calls(chunk)
+        tool_calls = extract_tool_calls(msg)
         
         # May extract from both tool_call_chunks and tool_calls
         assert len(tool_calls) >= 1
@@ -425,39 +421,35 @@ class TestStreamingIntegration:
     async def test_think_stream_integration(self):
         """Test think_stream with mock model."""
         from agenticflow import Agent
-        from langchain_core.language_models import BaseChatModel
-        from langchain_core.messages import AIMessageChunk, AIMessage, BaseMessage
-        from langchain_core.outputs import ChatGeneration, ChatResult, ChatGenerationChunk
-        from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
-        from typing import Any, AsyncIterator, Iterator
+        from agenticflow.models.base import BaseChatModel
+        from agenticflow.core.messages import AIMessage
+        from dataclasses import dataclass, field
+        from typing import Any, AsyncIterator
         
+        @dataclass
         class MockModel(BaseChatModel):
-            response: str = "Test response"
+            response: str = "Hi!"
+            model: str = "mock"
+            _tools: list = field(default_factory=list, repr=False)
             
-            @property
-            def _llm_type(self) -> str:
-                return "mock"
+            def _init_client(self) -> None:
+                pass
             
-            def _generate(
+            def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            def bind_tools(self, tools: list[Any], **kwargs) -> "MockModel":
+                return self
+            
+            async def astream(
                 self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: CallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> ChatResult:
-                return ChatResult(
-                    generations=[ChatGeneration(message=AIMessage(content=self.response))]
-                )
-            
-            async def _astream(
-                self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: AsyncCallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> AsyncIterator[ChatGenerationChunk]:
+                messages: list[dict[str, Any]],
+            ) -> AsyncIterator[AIMessage]:
                 for char in self.response:
-                    yield ChatGenerationChunk(message=AIMessageChunk(content=char))
+                    yield AIMessage(content=char)
         
         agent = Agent(name="TestAgent", model=MockModel(response="Hi!"))
         
@@ -471,39 +463,35 @@ class TestStreamingIntegration:
     async def test_stream_events_integration(self):
         """Test stream_events with mock model."""
         from agenticflow import Agent, StreamEventType
-        from langchain_core.language_models import BaseChatModel
-        from langchain_core.messages import AIMessageChunk, AIMessage, BaseMessage
-        from langchain_core.outputs import ChatGeneration, ChatResult, ChatGenerationChunk
-        from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
+        from agenticflow.models.base import BaseChatModel
+        from agenticflow.core.messages import AIMessage
+        from dataclasses import dataclass, field
         from typing import Any, AsyncIterator
         
+        @dataclass
         class MockModel(BaseChatModel):
-            response: str = "OK"
+            response: str = "Hi"
+            model: str = "mock"
+            _tools: list = field(default_factory=list, repr=False)
             
-            @property
-            def _llm_type(self) -> str:
-                return "mock"
+            def _init_client(self) -> None:
+                pass
             
-            def _generate(
+            def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            def bind_tools(self, tools: list[Any], **kwargs) -> "MockModel":
+                return self
+            
+            async def astream(
                 self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: CallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> ChatResult:
-                return ChatResult(
-                    generations=[ChatGeneration(message=AIMessage(content=self.response))]
-                )
-            
-            async def _astream(
-                self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: AsyncCallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> AsyncIterator[ChatGenerationChunk]:
+                messages: list[dict[str, Any]],
+            ) -> AsyncIterator[AIMessage]:
                 for char in self.response:
-                    yield ChatGenerationChunk(message=AIMessageChunk(content=char))
+                    yield AIMessage(content=char)
         
         agent = Agent(name="TestAgent", model=MockModel(response="Hi"))
         
@@ -531,39 +519,35 @@ class TestAgentStreamParameter:
     async def test_chat_stream_parameter(self):
         """Test that chat(stream=True) returns an async iterator."""
         from agenticflow import Agent
-        from langchain_core.language_models import BaseChatModel
-        from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
-        from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
-        from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
+        from agenticflow.models.base import BaseChatModel
+        from agenticflow.core.messages import AIMessage
+        from dataclasses import dataclass, field
         from typing import Any, AsyncIterator
         
+        @dataclass
         class MockModel(BaseChatModel):
             response: str = "Hello from stream!"
+            model: str = "mock"
+            _tools: list = field(default_factory=list, repr=False)
             
-            @property
-            def _llm_type(self) -> str:
-                return "mock"
+            def _init_client(self) -> None:
+                pass
             
-            def _generate(
+            def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            def bind_tools(self, tools: list[Any], **kwargs) -> "MockModel":
+                return self
+            
+            async def astream(
                 self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: CallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> ChatResult:
-                return ChatResult(
-                    generations=[ChatGeneration(message=AIMessage(content=self.response))]
-                )
-            
-            async def _astream(
-                self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: AsyncCallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> AsyncIterator[ChatGenerationChunk]:
+                messages: list[dict[str, Any]],
+            ) -> AsyncIterator[AIMessage]:
                 for char in self.response:
-                    yield ChatGenerationChunk(message=AIMessageChunk(content=char))
+                    yield AIMessage(content=char)
         
         agent = Agent(name="TestAgent", model=MockModel())
         
@@ -581,30 +565,29 @@ class TestAgentStreamParameter:
     async def test_chat_no_stream_returns_coroutine(self):
         """Test that chat(stream=False) returns a coroutine."""
         from agenticflow import Agent
-        from langchain_core.language_models import BaseChatModel
-        from langchain_core.messages import AIMessage, BaseMessage
-        from langchain_core.outputs import ChatGeneration, ChatResult
-        from langchain_core.callbacks import CallbackManagerForLLMRun
+        from agenticflow.models.base import BaseChatModel
+        from agenticflow.core.messages import AIMessage
+        from dataclasses import dataclass, field
         from typing import Any
         import inspect
         
+        @dataclass
         class MockModel(BaseChatModel):
             response: str = "Hello direct!"
+            model: str = "mock"
+            _tools: list = field(default_factory=list, repr=False)
             
-            @property
-            def _llm_type(self) -> str:
-                return "mock"
+            def _init_client(self) -> None:
+                pass
             
-            def _generate(
-                self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: CallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> ChatResult:
-                return ChatResult(
-                    generations=[ChatGeneration(message=AIMessage(content=self.response))]
-                )
+            def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            def bind_tools(self, tools: list[Any], **kwargs) -> "MockModel":
+                return self
         
         agent = Agent(name="TestAgent", model=MockModel())
         
@@ -619,39 +602,35 @@ class TestAgentStreamParameter:
     async def test_agent_default_stream_true(self):
         """Test Agent(stream=True) makes streaming the default."""
         from agenticflow import Agent
-        from langchain_core.language_models import BaseChatModel
-        from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
-        from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
-        from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
+        from agenticflow.models.base import BaseChatModel
+        from agenticflow.core.messages import AIMessage
+        from dataclasses import dataclass, field
         from typing import Any, AsyncIterator
         
+        @dataclass
         class MockModel(BaseChatModel):
             response: str = "Default stream!"
+            model: str = "mock"
+            _tools: list = field(default_factory=list, repr=False)
             
-            @property
-            def _llm_type(self) -> str:
-                return "mock"
+            def _init_client(self) -> None:
+                pass
             
-            def _generate(
+            def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            def bind_tools(self, tools: list[Any], **kwargs) -> "MockModel":
+                return self
+            
+            async def astream(
                 self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: CallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> ChatResult:
-                return ChatResult(
-                    generations=[ChatGeneration(message=AIMessage(content=self.response))]
-                )
-            
-            async def _astream(
-                self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: AsyncCallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> AsyncIterator[ChatGenerationChunk]:
+                messages: list[dict[str, Any]],
+            ) -> AsyncIterator[AIMessage]:
                 for char in self.response:
-                    yield ChatGenerationChunk(message=AIMessageChunk(content=char))
+                    yield AIMessage(content=char)
         
         # Create agent with stream=True as default
         agent = Agent(name="StreamAgent", model=MockModel(), stream=True)
@@ -670,39 +649,35 @@ class TestAgentStreamParameter:
     async def test_think_stream_parameter(self):
         """Test that think(stream=True) returns an async iterator."""
         from agenticflow import Agent
-        from langchain_core.language_models import BaseChatModel
-        from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
-        from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
-        from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
+        from agenticflow.models.base import BaseChatModel
+        from agenticflow.core.messages import AIMessage
+        from dataclasses import dataclass, field
         from typing import Any, AsyncIterator
         
+        @dataclass
         class MockModel(BaseChatModel):
             response: str = "Thinking..."
+            model: str = "mock"
+            _tools: list = field(default_factory=list, repr=False)
             
-            @property
-            def _llm_type(self) -> str:
-                return "mock"
+            def _init_client(self) -> None:
+                pass
             
-            def _generate(
+            def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+                return AIMessage(content=self.response)
+            
+            def bind_tools(self, tools: list[Any], **kwargs) -> "MockModel":
+                return self
+            
+            async def astream(
                 self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: CallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> ChatResult:
-                return ChatResult(
-                    generations=[ChatGeneration(message=AIMessage(content=self.response))]
-                )
-            
-            async def _astream(
-                self,
-                messages: list[BaseMessage],
-                stop: list[str] | None = None,
-                run_manager: AsyncCallbackManagerForLLMRun | None = None,
-                **kwargs: Any,
-            ) -> AsyncIterator[ChatGenerationChunk]:
+                messages: list[dict[str, Any]],
+            ) -> AsyncIterator[AIMessage]:
                 for char in self.response:
-                    yield ChatGenerationChunk(message=AIMessageChunk(content=char))
+                    yield AIMessage(content=char)
         
         agent = Agent(name="TestAgent", model=MockModel())
         

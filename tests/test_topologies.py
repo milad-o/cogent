@@ -1,326 +1,424 @@
-"""Tests for the topologies module."""
+"""Tests for the native topologies module."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from agenticflow.topologies import (
-    TopologyConfig,
-    TopologyState,
-    TopologyFactory,
+    AgentConfig,
+    BaseTopology,
+    TopologyResult,
     TopologyType,
-    SupervisorTopology,
-    MeshTopology,
-    PipelineTopology,
-    HierarchicalTopology,
+    Supervisor,
+    Pipeline,
+    Mesh,
+    Hierarchical,
+    supervisor,
+    pipeline,
+    mesh,
 )
-from agenticflow.topologies.base import HandoffStrategy
-from agenticflow.agent import Agent, AgentConfig
-from agenticflow.core.enums import AgentRole
 
 
-class TestTopologyConfig:
-    """Tests for TopologyConfig."""
+# ==================== Fixtures ====================
 
-    def test_default_config(self):
-        """Test default configuration values."""
-        config = TopologyConfig(name="test-topology")
 
-        assert config.name == "test-topology"
-        assert config.max_iterations == 100
-        assert config.handoff_strategy == HandoffStrategy.AUTOMATIC
-        assert config.enable_checkpointing is True
+@pytest.fixture
+def mock_agent():
+    """Create a mock agent."""
+    def _create(name: str, role: str | None = None):
+        agent = MagicMock()
+        agent.name = name
+        agent.run = AsyncMock(return_value=f"Output from {name}")
+        return agent
+    return _create
 
-    def test_custom_config(self):
-        """Test custom configuration."""
-        config = TopologyConfig(
-            name="custom",
-            description="A custom topology",
-            max_iterations=50,
-            handoff_strategy=HandoffStrategy.COMMAND,
+
+@pytest.fixture
+def mock_agents(mock_agent):
+    """Create a set of mock agents."""
+    return {
+        "researcher": mock_agent("researcher", "research"),
+        "writer": mock_agent("writer", "writing"),
+        "editor": mock_agent("editor", "editing"),
+    }
+
+
+# ==================== Core Classes Tests ====================
+
+
+class TestAgentConfig:
+    """Tests for AgentConfig."""
+
+    def test_creation(self, mock_agent):
+        """Test basic creation."""
+        agent = mock_agent("test")
+        config = AgentConfig(agent=agent, name="test", role="tester")
+
+        assert config.agent is agent
+        assert config.name == "test"
+        assert config.role == "tester"
+
+    def test_auto_name_from_agent(self, mock_agent):
+        """Test name is taken from agent if not provided."""
+        agent = mock_agent("my_agent")
+        config = AgentConfig(agent=agent)
+
+        assert config.name == "my_agent"
+
+
+class TestTopologyResult:
+    """Tests for TopologyResult."""
+
+    def test_creation(self):
+        """Test basic creation."""
+        result = TopologyResult(
+            output="Final output",
+            agent_outputs={"a": "output a", "b": "output b"},
+            execution_order=["a", "b"],
         )
 
-        assert config.name == "custom"
-        assert config.max_iterations == 50
-        assert config.handoff_strategy == HandoffStrategy.COMMAND
+        assert result.output == "Final output"
+        assert result.agent_outputs == {"a": "output a", "b": "output b"}
+        assert result.execution_order == ["a", "b"]
+        assert result.rounds == 1
+
+    def test_success_property(self):
+        """Test success property."""
+        result = TopologyResult(output="Success")
+        assert result.success is True
+
+        empty_result = TopologyResult(output="")
+        assert empty_result.success is False
 
 
-class TestTopologyState:
-    """Tests for TopologyState."""
+class TestTopologyType:
+    """Tests for TopologyType enum."""
 
-    def test_default_state(self):
-        """Test default state values."""
-        state = TopologyState()
-
-        assert state.messages == []
-        assert state.current_agent is None
-        assert state.task == ""
-        assert state.iteration == 0
-        assert state.completed is False
-
-    def test_state_to_dict(self):
-        """Test converting state to dictionary."""
-        state = TopologyState(
-            task="test task",
-            current_agent="agent-1",
-            iteration=5,
-        )
-
-        data = state.to_dict()
-        assert data["task"] == "test task"
-        assert data["current_agent"] == "agent-1"
-        assert data["iteration"] == 5
-
-    def test_state_from_dict(self):
-        """Test creating state from dictionary."""
-        data = {
-            "task": "test task",
-            "current_agent": "agent-1",
-            "iteration": 3,
-            "completed": True,
-        }
-
-        state = TopologyState.from_dict(data)
-        assert state.task == "test task"
-        assert state.current_agent == "agent-1"
-        assert state.iteration == 3
-        assert state.completed is True
+    def test_values(self):
+        """Test enum values."""
+        assert TopologyType.SUPERVISOR.value == "supervisor"
+        assert TopologyType.PIPELINE.value == "pipeline"
+        assert TopologyType.MESH.value == "mesh"
+        assert TopologyType.HIERARCHICAL.value == "hierarchical"
 
 
-class TestTopologyFactory:
-    """Tests for TopologyFactory."""
+# ==================== Supervisor Tests ====================
+
+
+class TestSupervisor:
+    """Tests for Supervisor topology."""
 
     @pytest.fixture
-    def mock_agents(self):
-        """Create mock agents."""
-        agents = []
-        for name in ["supervisor", "worker1", "worker2"]:
-            config = AgentConfig(name=name, role=AgentRole.WORKER)
-            agent = MagicMock(spec=Agent)
-            agent.config = config
-            agents.append(agent)
-        return agents
-
-    def test_create_supervisor_topology(self, mock_agents):
-        """Test creating supervisor topology."""
-        topology = TopologyFactory.create(
-            TopologyType.SUPERVISOR,
-            "test-supervisor",
-            mock_agents,
-            supervisor_name="supervisor",
-        )
-
-        assert isinstance(topology, SupervisorTopology)
-        assert topology.config.name == "test-supervisor"
-        assert topology.supervisor_name == "supervisor"
-
-    def test_create_mesh_topology(self, mock_agents):
-        """Test creating mesh topology."""
-        topology = TopologyFactory.create(
-            TopologyType.MESH,
-            "test-mesh",
-            mock_agents,
-        )
-
-        assert isinstance(topology, MeshTopology)
-        assert len(topology.agents) == 3
-
-    def test_create_pipeline_topology(self, mock_agents):
-        """Test creating pipeline topology."""
-        topology = TopologyFactory.create(
-            TopologyType.PIPELINE,
-            "test-pipeline",
-            mock_agents,
-            stages=["supervisor", "worker1", "worker2"],
-        )
-
-        assert isinstance(topology, PipelineTopology)
-        assert topology.stages == ["supervisor", "worker1", "worker2"]
-
-    def test_available_types(self):
-        """Test getting available topology types."""
-        types = TopologyFactory.available_types()
-
-        assert TopologyType.SUPERVISOR in types
-        assert TopologyType.MESH in types
-        assert TopologyType.PIPELINE in types
-        assert TopologyType.HIERARCHICAL in types
-
-    def test_quick_supervisor(self, mock_agents):
-        """Test quick supervisor helper."""
-        supervisor = mock_agents[0]
-        workers = mock_agents[1:]
-
-        topology = TopologyFactory.quick_supervisor(
-            "quick-test",
-            supervisor,
-            workers,
-        )
-
-        assert isinstance(topology, SupervisorTopology)
-        assert topology.supervisor_name == "supervisor"
-
-    def test_quick_pipeline(self, mock_agents):
-        """Test quick pipeline helper."""
-        topology = TopologyFactory.quick_pipeline(
-            "quick-pipeline",
-            mock_agents,
-        )
-
-        assert isinstance(topology, PipelineTopology)
-
-
-class TestSupervisorTopology:
-    """Tests for SupervisorTopology."""
-
-    @pytest.fixture
-    def topology(self):
-        """Create supervisor topology with mocks."""
-        agents = []
-        for name in ["supervisor", "researcher", "writer"]:
-            config = AgentConfig(name=name, role=AgentRole.WORKER)
-            agent = MagicMock(spec=Agent)
-            agent.config = config
-            agent.think = AsyncMock(return_value="Test thought")
-            agents.append(agent)
-
-        return SupervisorTopology(
-            config=TopologyConfig(name="test"),
-            agents=agents,
-            supervisor_name="supervisor",
-        )
-
-    def test_supervisor_identified(self, topology):
-        """Test supervisor is correctly identified."""
-        assert topology.supervisor_name == "supervisor"
-        assert "researcher" in topology.worker_names
-        assert "writer" in topology.worker_names
-        assert "supervisor" not in topology.worker_names
-
-    def test_parse_agent_output_finish(self, topology):
-        """Test parsing finish decision from agent output."""
-        output = "The task is now complete. FINAL ANSWER: Done."
-        # Get the supervisor agent from the topology
-        supervisor = topology.agents["supervisor"]
-        next_agent = topology._parse_agent_output(output, supervisor)
-        assert next_agent == "__end__"
-
-    def test_parse_agent_output_worker(self, topology):
-        """Test parsing worker delegation from agent output."""
-        output = "DELEGATE TO [researcher]: Look up more info."
-        # Get the supervisor agent from the topology
-        supervisor = topology.agents["supervisor"]
-        next_agent = topology._parse_agent_output(output, supervisor)
-        assert next_agent == "researcher"
-
-    def test_policy_allows_supervisor_to_worker(self, topology):
-        """Test policy allows supervisor to delegate to workers."""
-        policy = topology.policy
-        assert policy.can_handoff("supervisor", "researcher", {})
-        assert policy.can_handoff("supervisor", "writer", {})
-
-    def test_policy_workers_report_to_supervisor(self, topology):
-        """Test policy allows workers to report back to supervisor."""
-        policy = topology.policy
-        assert policy.can_handoff("researcher", "supervisor", {})
-        assert policy.can_handoff("writer", "supervisor", {})
-
-
-class TestPipelineTopology:
-    """Tests for PipelineTopology."""
-
-    @pytest.fixture
-    def topology(self):
-        """Create pipeline topology with mocks."""
-        agents = []
-        for name in ["extractor", "transformer", "loader"]:
-            config = AgentConfig(name=name, role=AgentRole.WORKER)
-            agent = MagicMock(spec=Agent)
-            agent.config = config
-            agent.think = AsyncMock(return_value="Test output")
-            agents.append(agent)
-
-        return PipelineTopology(
-            config=TopologyConfig(name="etl-pipeline"),
-            agents=agents,
-            stages=["extractor", "transformer", "loader"],
-        )
-
-    def test_stages_defined(self, topology):
-        """Test stages are defined correctly."""
-        assert topology.stages == ["extractor", "transformer", "loader"]
-
-    def test_invalid_stage_raises(self):
-        """Test invalid stage name raises error."""
-        agents = []
-        for name in ["a", "b"]:
-            config = AgentConfig(name=name, role=AgentRole.WORKER)
-            agent = MagicMock(spec=Agent)
-            agent.config = config
-            agents.append(agent)
-
-        with pytest.raises(ValueError, match="not in agents"):
-            PipelineTopology(
-                config=TopologyConfig(name="test"),
-                agents=agents,
-                stages=["a", "nonexistent"],
-            )
-
-
-class TestHierarchicalTopology:
-    """Tests for HierarchicalTopology."""
-
-    @pytest.fixture
-    def topology(self):
-        """Create hierarchical topology with mocks."""
-        agents = []
-        for name in ["ceo", "eng_lead", "dev1", "dev2"]:
-            config = AgentConfig(name=name, role=AgentRole.WORKER)
-            agent = MagicMock(spec=Agent)
-            agent.config = config
-            agent.think = AsyncMock(return_value="Test output")
-            agents.append(agent)
-
-        return HierarchicalTopology(
-            config=TopologyConfig(name="org-chart"),
-            agents=agents,
-            levels=[
-                ["ceo"],
-                ["eng_lead"],
-                ["dev1", "dev2"],
+    def supervisor_topology(self, mock_agents):
+        """Create a supervisor topology."""
+        return Supervisor(
+            coordinator=AgentConfig(
+                agent=mock_agents["researcher"],
+                role="coordinator",
+            ),
+            workers=[
+                AgentConfig(agent=mock_agents["writer"], role="content"),
+                AgentConfig(agent=mock_agents["editor"], role="editing"),
             ],
         )
 
-    def test_levels_structure(self, topology):
-        """Test levels are structured correctly."""
-        assert topology.levels == [["ceo"], ["eng_lead"], ["dev1", "dev2"]]
+    def test_creation(self, supervisor_topology):
+        """Test supervisor topology creation."""
+        assert supervisor_topology.topology_type == TopologyType.SUPERVISOR
+        assert supervisor_topology.coordinator.name == "researcher"
+        assert len(supervisor_topology.workers) == 2
 
-    def test_policy_allows_delegation_down(self, topology):
-        """Test policy allows delegation from higher to lower levels."""
-        policy = topology.policy
-        # CEO can delegate to eng_lead
-        assert policy.can_handoff("ceo", "eng_lead", {})
-        # eng_lead can delegate to devs
-        assert policy.can_handoff("eng_lead", "dev1", {})
-        assert policy.can_handoff("eng_lead", "dev2", {})
+    def test_get_agents(self, supervisor_topology):
+        """Test get_agents returns all agents."""
+        agents = supervisor_topology.get_agents()
+        names = [a.name for a in agents]
 
-    def test_policy_allows_reporting_up(self, topology):
-        """Test policy allows reporting from lower to higher levels."""
-        policy = topology.policy
-        # Devs can report to eng_lead
-        assert policy.can_handoff("dev1", "eng_lead", {})
-        assert policy.can_handoff("dev2", "eng_lead", {})
-        # eng_lead can report to CEO
-        assert policy.can_handoff("eng_lead", "ceo", {})
+        assert "researcher" in names
+        assert "writer" in names
+        assert "editor" in names
 
-    def test_invalid_agent_in_level_raises(self):
-        """Test invalid agent name in levels raises error."""
-        config = AgentConfig(name="a", role=AgentRole.WORKER)
-        agent = MagicMock(spec=Agent)
-        agent.config = config
+    @pytest.mark.asyncio
+    async def test_run(self, supervisor_topology):
+        """Test supervisor run execution."""
+        result = await supervisor_topology.run("Test task")
 
-        with pytest.raises(ValueError, match="not in agents"):
-            HierarchicalTopology(
-                config=TopologyConfig(name="test"),
-                agents=[agent],
-                levels=[["nonexistent"]],
-            )
+        assert isinstance(result, TopologyResult)
+        assert result.output  # Has final output
+        assert "researcher" in result.execution_order[0]  # Coordinator starts
+
+    def test_parallel_flag(self, mock_agents):
+        """Test parallel flag."""
+        parallel = Supervisor(
+            coordinator=AgentConfig(agent=mock_agents["researcher"]),
+            workers=[AgentConfig(agent=mock_agents["writer"])],
+            parallel=True,
+        )
+        assert parallel.parallel is True
+
+        sequential = Supervisor(
+            coordinator=AgentConfig(agent=mock_agents["researcher"]),
+            workers=[AgentConfig(agent=mock_agents["writer"])],
+            parallel=False,
+        )
+        assert sequential.parallel is False
+
+
+# ==================== Pipeline Tests ====================
+
+
+class TestPipeline:
+    """Tests for Pipeline topology."""
+
+    @pytest.fixture
+    def pipeline_topology(self, mock_agents):
+        """Create a pipeline topology."""
+        return Pipeline(
+            stages=[
+                AgentConfig(agent=mock_agents["researcher"], role="research"),
+                AgentConfig(agent=mock_agents["writer"], role="draft"),
+                AgentConfig(agent=mock_agents["editor"], role="polish"),
+            ]
+        )
+
+    def test_creation(self, pipeline_topology):
+        """Test pipeline topology creation."""
+        assert pipeline_topology.topology_type == TopologyType.PIPELINE
+        assert len(pipeline_topology.stages) == 3
+
+    def test_get_agents(self, pipeline_topology):
+        """Test get_agents returns all stages."""
+        agents = pipeline_topology.get_agents()
+        assert len(agents) == 3
+
+    @pytest.mark.asyncio
+    async def test_run(self, pipeline_topology):
+        """Test pipeline run execution."""
+        result = await pipeline_topology.run("Test task")
+
+        assert isinstance(result, TopologyResult)
+        assert result.output  # Has final output
+        # Should execute in order
+        assert result.execution_order == ["researcher", "writer", "editor"]
+
+    @pytest.mark.asyncio
+    async def test_sequential_execution(self, mock_agents):
+        """Test that stages run sequentially."""
+        call_order = []
+
+        mock_agents["researcher"].run = AsyncMock(
+            side_effect=lambda _: (call_order.append("researcher"), "Output from researcher")[1]
+        )
+        mock_agents["writer"].run = AsyncMock(
+            side_effect=lambda _: (call_order.append("writer"), "Output from writer")[1]
+        )
+
+        topo = Pipeline(
+            stages=[
+                AgentConfig(agent=mock_agents["researcher"]),
+                AgentConfig(agent=mock_agents["writer"]),
+            ]
+        )
+
+        await topo.run("Test")
+        assert "researcher" in call_order
+        assert "writer" in call_order
+
+
+# ==================== Mesh Tests ====================
+
+
+class TestMesh:
+    """Tests for Mesh topology."""
+
+    @pytest.fixture
+    def mesh_topology(self, mock_agents):
+        """Create a mesh topology."""
+        return Mesh(
+            agents=[
+                AgentConfig(agent=mock_agents["researcher"], role="analyst1"),
+                AgentConfig(agent=mock_agents["writer"], role="analyst2"),
+            ],
+            max_rounds=2,
+        )
+
+    def test_creation(self, mesh_topology):
+        """Test mesh topology creation."""
+        assert mesh_topology.topology_type == TopologyType.MESH
+        assert len(mesh_topology.agents) == 2
+        assert mesh_topology.max_rounds == 2
+
+    def test_get_agents(self, mesh_topology):
+        """Test get_agents returns all agents."""
+        agents = mesh_topology.get_agents()
+        assert len(agents) == 2
+
+    @pytest.mark.asyncio
+    async def test_run(self, mesh_topology):
+        """Test mesh run execution."""
+        result = await mesh_topology.run("Test task")
+
+        assert isinstance(result, TopologyResult)
+        assert result.output  # Has final output
+        assert result.rounds == 2  # Used max_rounds
+
+    def test_with_synthesizer(self, mock_agents, mock_agent):
+        """Test mesh with dedicated synthesizer."""
+        synth = mock_agent("synthesizer")
+        topo = Mesh(
+            agents=[
+                AgentConfig(agent=mock_agents["researcher"]),
+                AgentConfig(agent=mock_agents["writer"]),
+            ],
+            synthesizer=AgentConfig(agent=synth),
+        )
+
+        assert topo.synthesizer is not None
+        assert topo.synthesizer.name == "synthesizer"
+
+
+# ==================== Hierarchical Tests ====================
+
+
+class TestHierarchical:
+    """Tests for Hierarchical topology."""
+
+    @pytest.fixture
+    def hierarchical_topology(self, mock_agents, mock_agent):
+        """Create a hierarchical topology."""
+        ceo = mock_agent("ceo")
+        return Hierarchical(
+            root=AgentConfig(agent=ceo, role="executive"),
+            structure={
+                "ceo": [
+                    AgentConfig(agent=mock_agents["researcher"], role="lead"),
+                    AgentConfig(agent=mock_agents["writer"], role="lead"),
+                ],
+            },
+        )
+
+    def test_creation(self, hierarchical_topology):
+        """Test hierarchical topology creation."""
+        assert hierarchical_topology.topology_type == TopologyType.HIERARCHICAL
+        assert hierarchical_topology.root.name == "ceo"
+        assert "ceo" in hierarchical_topology.structure
+
+    def test_get_agents(self, hierarchical_topology):
+        """Test get_agents returns all agents."""
+        agents = hierarchical_topology.get_agents()
+        names = [a.name for a in agents]
+
+        assert "ceo" in names
+        assert "researcher" in names
+        assert "writer" in names
+
+    @pytest.mark.asyncio
+    async def test_run(self, hierarchical_topology):
+        """Test hierarchical run execution."""
+        result = await hierarchical_topology.run("Test task")
+
+        assert isinstance(result, TopologyResult)
+        assert result.output  # Has final output
+
+
+# ==================== Convenience Functions Tests ====================
+
+
+class TestConvenienceFunctions:
+    """Tests for convenience factory functions."""
+
+    def test_supervisor_function(self, mock_agents):
+        """Test supervisor() convenience function."""
+        topo = supervisor(
+            coordinator=mock_agents["researcher"],
+            workers=[mock_agents["writer"], mock_agents["editor"]],
+            parallel=False,
+        )
+
+        assert isinstance(topo, Supervisor)
+        assert topo.coordinator.name == "researcher"
+        assert len(topo.workers) == 2
+        assert topo.parallel is False
+
+    def test_pipeline_function(self, mock_agents):
+        """Test pipeline() convenience function."""
+        topo = pipeline(
+            stages=[
+                mock_agents["researcher"],
+                mock_agents["writer"],
+                mock_agents["editor"],
+            ],
+            roles=["research", "draft", "polish"],
+        )
+
+        assert isinstance(topo, Pipeline)
+        assert len(topo.stages) == 3
+        assert topo.stages[0].role == "research"
+        assert topo.stages[1].role == "draft"
+        assert topo.stages[2].role == "polish"
+
+    def test_mesh_function(self, mock_agents):
+        """Test mesh() convenience function."""
+        topo = mesh(
+            agents=[mock_agents["researcher"], mock_agents["writer"]],
+            max_rounds=5,
+            roles=["analyst1", "analyst2"],
+        )
+
+        assert isinstance(topo, Mesh)
+        assert len(topo.agents) == 2
+        assert topo.max_rounds == 5
+        assert topo.agents[0].role == "analyst1"
+
+
+# ==================== Integration Tests ====================
+
+
+class TestTopologyIntegration:
+    """Integration tests for topologies."""
+
+    @pytest.mark.asyncio
+    async def test_pipeline_passes_output(self, mock_agent):
+        """Test that pipeline passes output between stages."""
+        outputs = []
+
+        async def stage1_run(prompt):
+            outputs.append(("stage1", prompt))
+            return "Stage 1 output"
+
+        async def stage2_run(prompt):
+            outputs.append(("stage2", prompt))
+            return "Stage 2 output"
+
+        agent1 = mock_agent("stage1")
+        agent1.run = AsyncMock(side_effect=stage1_run)
+
+        agent2 = mock_agent("stage2")
+        agent2.run = AsyncMock(side_effect=stage2_run)
+
+        topo = Pipeline(
+            stages=[
+                AgentConfig(agent=agent1),
+                AgentConfig(agent=agent2),
+            ]
+        )
+
+        result = await topo.run("Initial task")
+
+        # Stage 2 should have received context from stage 1
+        assert len(outputs) == 2
+        assert "Stage 1 output" in outputs[1][1]  # Stage 2 saw stage 1's output
+
+    @pytest.mark.asyncio
+    async def test_stream_yields_events(self, mock_agents):
+        """Test that stream yields status events."""
+        topo = Pipeline(
+            stages=[AgentConfig(agent=mock_agents["researcher"])]
+        )
+
+        events = []
+        async for event in topo.stream("Test task"):
+            events.append(event)
+
+        assert len(events) >= 1
+        # Should have status and output events
+        event_types = [e["type"] for e in events]
+        assert "status" in event_types or "output" in event_types

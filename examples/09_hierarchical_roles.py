@@ -25,10 +25,10 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 from agenticflow import Agent, Flow, FlowObserver
 from agenticflow.core.enums import AgentRole
+from agenticflow.models import ChatModel
 
 load_dotenv()
 
@@ -38,7 +38,7 @@ async def main() -> None:
     print("  Hierarchical Topology: Clean Role-Based System")
     print("=" * 60)
 
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
     # Define agents with roles - hierarchy is auto-inferred!
     

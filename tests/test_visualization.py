@@ -7,8 +7,6 @@ from agenticflow import (
     AgentConfig,
     AgentRole,
     EventBus,
-    TopologyFactory,
-    TopologyType,
 )
 from agenticflow.visualization import (
     AgentDiagram,
@@ -16,7 +14,6 @@ from agenticflow.visualization import (
     MermaidDirection,
     MermaidRenderer,
     MermaidTheme,
-    TopologyDiagram,
 )
 
 
@@ -37,41 +34,6 @@ def sample_agent(event_bus: EventBus) -> Agent:
             tools=["web_search", "doc_summarizer", "text_writer"],
         ),
         event_bus=event_bus,
-    )
-
-
-@pytest.fixture
-def sample_topology(event_bus: EventBus) -> TopologyFactory:
-    """Create a sample supervisor topology."""
-    supervisor = Agent(
-        config=AgentConfig(
-            name="Supervisor",
-            role=AgentRole.SUPERVISOR,
-            tools=["coordinate"],
-        ),
-        event_bus=event_bus,
-    )
-    worker1 = Agent(
-        config=AgentConfig(
-            name="Worker1",
-            role=AgentRole.WORKER,
-            tools=["task_a"],
-        ),
-        event_bus=event_bus,
-    )
-    worker2 = Agent(
-        config=AgentConfig(
-            name="Worker2",
-            role=AgentRole.WORKER,
-            tools=["task_b"],
-        ),
-        event_bus=event_bus,
-    )
-    return TopologyFactory.create(
-        TopologyType.SUPERVISOR,
-        "test-team",
-        agents=[supervisor, worker1, worker2],
-        supervisor_name="Supervisor",
     )
 
 
@@ -234,98 +196,6 @@ class TestAgentDiagram:
         assert "mermaid" in html
 
 
-class TestTopologyDiagram:
-    """Tests for TopologyDiagram class."""
-
-    def test_supervisor_topology_diagram(self, sample_topology) -> None:
-        """Test supervisor topology diagram."""
-        diagram = TopologyDiagram(sample_topology)
-        mermaid = diagram.to_mermaid()
-
-        # Check structure
-        assert "flowchart" in mermaid
-        assert "Supervisor" in mermaid
-        assert "Worker1" in mermaid
-        assert "Worker2" in mermaid
-
-        # Check connection to Workers subgraph
-        assert "-->" in mermaid
-
-    def test_topology_with_tools(self, sample_topology) -> None:
-        """Test topology diagram structure."""
-        config = MermaidConfig(show_tools=True)
-        diagram = TopologyDiagram(sample_topology, config=config)
-        mermaid = diagram.to_mermaid()
-
-        # Clean diagram shows agents grouped
-        assert "subgraph" in mermaid or "-->" in mermaid
-
-    def test_topology_without_tools(self, sample_topology) -> None:
-        """Test topology diagram hides tools."""
-        config = MermaidConfig(show_tools=False)
-        diagram = TopologyDiagram(sample_topology, config=config)
-        mermaid = diagram.to_mermaid()
-
-        # Tools should not appear as subgraphs
-        assert "🛠️" not in mermaid
-
-    def test_pipeline_topology(self, event_bus: EventBus) -> None:
-        """Test pipeline topology diagram."""
-        agents = [
-            Agent(
-                config=AgentConfig(name=f"Stage{i}", role=AgentRole.WORKER),
-                event_bus=event_bus,
-            )
-            for i in range(3)
-        ]
-        topology = TopologyFactory.create(
-            TopologyType.PIPELINE,
-            "pipeline",
-            agents=agents,
-        )
-        diagram = TopologyDiagram(topology)
-        mermaid = diagram.to_mermaid()
-
-        # Check sequential connections
-        assert "-->" in mermaid  # Arrow for pipeline
-        assert "Stage0" in mermaid
-        assert "Stage1" in mermaid
-        assert "Stage2" in mermaid
-
-    def test_mesh_topology(self, event_bus: EventBus) -> None:
-        """Test mesh topology diagram."""
-        agents = [
-            Agent(
-                config=AgentConfig(name=f"Node{i}", role=AgentRole.WORKER),
-                event_bus=event_bus,
-            )
-            for i in range(3)
-        ]
-        topology = TopologyFactory.create(
-            TopologyType.MESH,
-            "mesh",
-            agents=agents,
-        )
-        diagram = TopologyDiagram(topology)
-        mermaid = diagram.to_mermaid()
-
-        # Check undirected connections (peer-to-peer)
-        assert "---" in mermaid
-        assert "Node0" in mermaid
-        assert "Node1" in mermaid
-        assert "Node2" in mermaid
-
-    def test_topology_frontmatter(self, sample_topology) -> None:
-        """Test topology diagram frontmatter."""
-        config = MermaidConfig(title="My Team", theme=MermaidTheme.DARK)
-        diagram = TopologyDiagram(sample_topology, config=config)
-        mermaid = diagram.to_mermaid()
-
-        assert "---" in mermaid
-        assert "title: My Team" in mermaid
-        assert "theme: dark" in mermaid
-
-
 class TestMermaidRenderer:
     """Tests for MermaidRenderer class."""
 
@@ -376,30 +246,6 @@ class TestAgentDrawMermaid:
         assert "flowchart LR" in mermaid
         assert "title: My Agent" in mermaid
         assert "web_search" in mermaid
-
-
-class TestTopologyDrawMermaid:
-    """Tests for BaseTopology.draw_mermaid() method."""
-
-    def test_draw_mermaid_basic(self, sample_topology) -> None:
-        """Test basic draw_mermaid call."""
-        mermaid = sample_topology.draw_mermaid()
-
-        assert "flowchart" in mermaid
-        assert "Supervisor" in mermaid
-
-    def test_draw_mermaid_with_options(self, sample_topology) -> None:
-        """Test draw_mermaid with options."""
-        mermaid = sample_topology.draw_mermaid(
-            theme="dark",
-            direction="LR",
-            title="My Team",
-            show_tools=False,
-        )
-
-        assert "theme: dark" in mermaid
-        assert "flowchart LR" in mermaid
-        assert "title: My Team" in mermaid
 
 
 class TestClassDefinitions:
@@ -459,24 +305,3 @@ class TestEdgeCases:
         assert "Agent" in mermaid
         # Parentheses should be escaped
         assert "&#40;" in mermaid or "(" not in mermaid.split("[")[1].split("]")[0]
-
-    def test_single_agent_topology(self, event_bus: EventBus) -> None:
-        """Test topology with single agent."""
-        agent = Agent(
-            config=AgentConfig(
-                name="Solo",
-                role=AgentRole.WORKER,
-            ),
-            event_bus=event_bus,
-        )
-        topology = TopologyFactory.create(
-            TopologyType.SUPERVISOR,
-            "solo-team",
-            agents=[agent],
-            supervisor_name="Solo",
-        )
-        diagram = TopologyDiagram(topology)
-        mermaid = diagram.to_mermaid()
-
-        assert "Solo" in mermaid
-        assert "flowchart" in mermaid

@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from langchain_core.tools import BaseTool, tool
+from agenticflow.tools.base import BaseTool, tool
 
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph

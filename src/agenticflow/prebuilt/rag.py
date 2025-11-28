@@ -7,6 +7,9 @@ A complete, ready-to-use RAG system with:
 - Vector embeddings
 - Semantic search
 - LLM-powered Q&A
+
+NOTE: This module uses LangChain for document loaders and vector stores.
+For native-only RAG, use the SimpleRAG class which has no external dependencies.
 """
 
 from __future__ import annotations
@@ -15,15 +18,12 @@ import asyncio
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.tools import tool
+from agenticflow.tools.base import tool
 
 from agenticflow import Agent, AgentRole
 
 if TYPE_CHECKING:
-    from langchain_core.documents import Document
-    from langchain_core.embeddings import Embeddings
-    from langchain_core.language_models import BaseChatModel
-    from langchain_core.vectorstores import VectorStore
+    from agenticflow.models.base import BaseChatModel, BaseEmbeddingModel
 
 
 class RAGAgent:
@@ -36,14 +36,16 @@ class RAGAgent:
     - Semantic search retrieval
     - LLM-powered answer generation with citations
     
+    NOTE: This class uses LangChain for document loaders and vector stores.
+    Make sure to install: `uv add langchain-openai langchain-community`
+    
     Example:
         ```python
-        from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+        from agenticflow.models import ChatModel
         from agenticflow.prebuilt import RAGAgent
         
         rag = RAGAgent(
-            model=ChatOpenAI(model="gpt-4o-mini"),
-            embeddings=OpenAIEmbeddings(),
+            model=ChatModel(model="gpt-4o-mini"),
         )
         
         # Load documents
@@ -60,7 +62,7 @@ class RAGAgent:
     def __init__(
         self,
         model: BaseChatModel,
-        embeddings: Embeddings | None = None,
+        embeddings: Any | None = None,
         *,
         name: str = "RAG_Assistant",
         chunk_size: int = 1000,
@@ -72,8 +74,8 @@ class RAGAgent:
         Create a RAG agent.
         
         Args:
-            model: LangChain chat model for answer generation.
-            embeddings: Embedding model for vectorization.
+            model: Native chat model for answer generation.
+            embeddings: LangChain embedding model for vectorization.
                 If None, uses OpenAI text-embedding-3-small.
             name: Agent name.
             chunk_size: Size of text chunks (default: 1000 chars).
@@ -89,19 +91,25 @@ class RAGAgent:
         self._name = name
         self._custom_instructions = instructions
         
-        # Vector store (lazy initialized)
-        self._vector_store: VectorStore | None = None
-        self._documents: list[Document] = []
+        # Vector store (lazy initialized) - uses LangChain types
+        self._vector_store: Any = None
+        self._documents: list[Any] = []
         self._doc_info: dict[str, Any] = {}
         
         # Agent (lazy initialized after documents loaded)
         self._agent: Agent | None = None
     
-    def _get_embeddings(self) -> Embeddings:
-        """Get or create embeddings model."""
+    def _get_embeddings(self) -> Any:
+        """Get or create embeddings model (LangChain Embeddings)."""
         if self._embeddings is None:
-            from langchain_openai import OpenAIEmbeddings
-            self._embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+            try:
+                from langchain_openai import OpenAIEmbeddings
+                self._embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+            except ImportError as e:
+                raise ImportError(
+                    "RAGAgent requires langchain-openai for embeddings. "
+                    "Install with: uv add langchain-openai"
+                ) from e
         return self._embeddings
     
     def _create_tools(self) -> list:
@@ -396,7 +404,7 @@ When answering questions:
         self,
         query: str,
         k: int | None = None,
-    ) -> list[Document]:
+    ) -> list[Any]:
         """
         Direct semantic search (without LLM).
         
@@ -405,7 +413,7 @@ When answering questions:
             k: Number of results (default: top_k).
             
         Returns:
-            List of matching Document objects.
+            List of matching Document objects (LangChain Document type).
         """
         if self._vector_store is None:
             raise RuntimeError("No documents loaded.")
@@ -431,7 +439,7 @@ When answering questions:
 
 def create_rag_agent(
     model: BaseChatModel,
-    embeddings: Embeddings | None = None,
+    embeddings: Any | None = None,
     *,
     documents: list[str | Path] | None = None,
     chunk_size: int = 1000,
@@ -446,9 +454,12 @@ def create_rag_agent(
     This is a convenience function that creates and optionally
     initializes a RAGAgent.
     
+    NOTE: This uses LangChain for document loaders and vector stores.
+    Make sure to install: `uv add langchain-openai langchain-community`
+    
     Args:
-        model: LangChain chat model.
-        embeddings: Embedding model (default: OpenAI text-embedding-3-small).
+        model: Native chat model.
+        embeddings: LangChain embedding model (default: OpenAI text-embedding-3-small).
         documents: Optional list of document paths to load immediately.
         chunk_size: Text chunk size (default: 1000).
         chunk_overlap: Chunk overlap (default: 200).
@@ -461,17 +472,17 @@ def create_rag_agent(
         
     Example:
         ```python
-        from langchain_openai import ChatOpenAI
+        from agenticflow.models import ChatModel
         from agenticflow.prebuilt import create_rag_agent
         
         # Create and load in one step
         rag = create_rag_agent(
-            model=ChatOpenAI(model="gpt-4o-mini"),
+            model=ChatModel(model="gpt-4o-mini"),
             documents=["report.pdf", "data.csv"],
         )
         
         # Or create empty and load later
-        rag = create_rag_agent(model=ChatOpenAI(model="gpt-4o-mini"))
+        rag = create_rag_agent(model=ChatModel(model="gpt-4o-mini"))
         await rag.load_documents(["doc1.txt", "doc2.txt"])
         
         # Query

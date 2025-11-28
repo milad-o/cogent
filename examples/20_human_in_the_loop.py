@@ -14,7 +14,7 @@ Human-in-the-Loop is essential for:
 """
 
 import asyncio
-from langchain_core.tools import tool
+from agenticflow.tools.base import tool
 
 # Import HITL components
 from agenticflow import (

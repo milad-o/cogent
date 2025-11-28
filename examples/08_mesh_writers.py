@@ -24,11 +24,11 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 from agenticflow import Agent, Flow, FlowObserver
 from agenticflow.core.enums import AgentRole
 from agenticflow.flow import FlowConfig
+from agenticflow.models import ChatModel
 
 load_dotenv()
 
@@ -38,7 +38,7 @@ async def main() -> None:
     print("  Mesh Topology: Collaborative Blog Writing")
     print("=" * 60)
 
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
     # Workers - they add their expertise but can't finish
     technical = Agent(

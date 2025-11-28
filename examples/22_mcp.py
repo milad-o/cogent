@@ -100,12 +100,12 @@ async def demo_agent_integration() -> None:
     
     from agenticflow import Agent
     from agenticflow.capabilities import MCP
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
     
     # Create agent with MCP capability
     agent = Agent(
         name="Assistant",
-        model=ChatOpenAI(model="gpt-4"),
+        model=ChatModel(model="gpt-4"),
         capabilities=[
             # Connect to a local filesystem server
             MCP.stdio(

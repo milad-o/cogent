@@ -2,14 +2,13 @@
 
 A production-grade event-driven multi-agent system framework for building sophisticated AI applications.
 
-Built on top of LangChain and LangGraph, AgenticFlow adds value where it matters:
+**Native-first design** - no LangChain required for core functionality:
+- **Native model wrappers** for OpenAI, Azure, Anthropic, Groq, Gemini, Ollama
 - **Multi-agent topologies** (supervisor, mesh, pipeline, hierarchical)
 - **Intelligent resilience** (retry, circuit breakers, fallbacks)
 - **Advanced execution strategies** (DAG, ReAct, Plan-Execute)
 - **Full observability** (tracing, metrics, progress tracking)
 - **Event-driven architecture** with pub/sub patterns
-
-**Philosophy**: USE LangChain/LangGraph DIRECTLY. We don't wrap what they do well.
 
 ## Overview
 
@@ -69,55 +68,79 @@ uv add agenticflow[dev]
 
 ```python
 import asyncio
-from langchain_openai import ChatOpenAI  # Use LangChain directly for models
-from agenticflow import (
-    Agent, AgentConfig, AgentRole,
-    EventBus, TaskManager, Orchestrator,
-    ToolRegistry, create_tool_from_function,
-)
+from agenticflow import Agent, Flow, FlowObserver
+from agenticflow.models import ChatModel
+from agenticflow.tools import tool
 
-# Create the system
+# Define tools using the native @tool decorator
+@tool
+def write_poem(subject: str) -> str:
+    """Write a poem about a subject."""
+    return f"A poem about {subject}..."
+
 async def main():
-    # Initialize components
-    event_bus = EventBus()
-    task_manager = TaskManager(event_bus)
-    
-    # Create tools
-    def write_poem(subject: str) -> str:
-        """Write a poem about a subject."""
-        return f"A poem about {subject}..."
-    
-    tool_registry = ToolRegistry()
-    tool_registry.register(create_tool_from_function(write_poem))
-    
-    # Create a model using LangChain directly
-    model = ChatOpenAI(model="gpt-4o")
+    # Create a native model (no LangChain required)
+    model = ChatModel(model="gpt-4o")
     
     # Create an agent
     writer = Agent(
-        config=AgentConfig(
-            name="Writer",
-            role=AgentRole.WORKER,
-            model=model,  # Pass LangChain model directly
-            tools=["write_poem"],
-        ),
-        event_bus=event_bus,
-        tool_registry=tool_registry,
+        name="Writer",
+        model=model,
+        tools=[write_poem],
+        instructions="You are a creative writer.",
     )
     
-    # Create orchestrator
-    orchestrator = Orchestrator(
-        event_bus=event_bus,
-        task_manager=task_manager,
-        tool_registry=tool_registry,
+    # Create a flow with observability
+    flow = Flow(
+        name="writing-team",
+        agents=[writer],
+        topology="pipeline",
+        observer=FlowObserver.verbose(),
     )
-    orchestrator.register_agent(writer)
     
-    # Run a request
-    result = await orchestrator.run("Write a poem about the ocean")
+    # Run the flow
+    result = await flow.run("Write a poem about the ocean")
     print(result)
 
 asyncio.run(main())
+```
+
+## Native Models
+
+AgenticFlow provides native model wrappers for all major providers:
+
+```python
+from agenticflow.models import ChatModel, create_chat, create_embedding
+from agenticflow.models.azure import AzureChat, AzureEmbedding
+from agenticflow.models.anthropic import AnthropicChat
+from agenticflow.models.groq import GroqChat
+from agenticflow.models.gemini import GeminiChat
+from agenticflow.models.ollama import OllamaChat
+
+# OpenAI (default)
+model = ChatModel(model="gpt-4o")
+
+# Azure OpenAI with Managed Identity
+model = AzureChat(
+    deployment="gpt-4o",
+    azure_endpoint="https://my-resource.openai.azure.com",
+    use_managed_identity=True,
+)
+
+# Anthropic
+model = AnthropicChat(model="claude-sonnet-4-20250514")
+
+# Groq (fast inference)
+model = GroqChat(model="llama-3.1-70b-versatile")
+
+# Gemini
+model = GeminiChat(model="gemini-1.5-pro")
+
+# Ollama (local)
+model = OllamaChat(model="llama3.1")
+
+# Factory function
+model = create_chat("anthropic", model="claude-sonnet-4-20250514")
 ```
 
 ## Core Concepts
@@ -127,60 +150,70 @@ asyncio.run(main())
 An autonomous entity that can think, act, and communicate with intelligent resilience:
 
 ```python
-from langchain_openai import ChatOpenAI
-from agenticflow import Agent, AgentConfig, AgentRole
+from agenticflow import Agent
+from agenticflow.models import ChatModel
+from agenticflow.tools import tool
 
-# Create model using LangChain directly
-model = ChatOpenAI(model="gpt-4o", temperature=0.3)
+@tool
+def analyze_data(dataset: str) -> str:
+    """Analyze a dataset."""
+    return f"Analysis of {dataset}..."
+
+model = ChatModel(model="gpt-4o")
 
 agent = Agent(
-    config=AgentConfig(
-        name="Analyst",
-        role=AgentRole.SPECIALIST,
-        description="Analyzes data and provides insights",
-        model=model,  # Pass LangChain model directly
-        system_prompt="You are a data analyst...",
-        tools=["analyze_data", "create_chart"],
-    ),
-    event_bus=event_bus,
-    tool_registry=tool_registry,
+    name="Analyst",
+    model=model,
+    tools=[analyze_data],
+    instructions="You are a data analyst. Provide clear insights.",
 )
+
+# Simple chat
+response = await agent.chat("What's in the sales data?")
+
+# Run with tools
+result = await agent.run("Analyze the Q4 sales dataset")
 ```
 
-### Using LangChain Directly
+### Multi-Agent Topologies
 
-For models, embeddings, vector stores, memory - use LangChain/LangGraph directly:
+Coordinate multiple agents using different patterns:
 
 ```python
-# Models
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import ChatGoogleGenerativeAI
+from agenticflow import Agent, Flow, FlowObserver
+from agenticflow.models import ChatModel
 
-model = ChatOpenAI(model="gpt-4o")
-model = ChatAnthropic(model="claude-3-5-sonnet-latest")
+model = ChatModel(model="gpt-4o")
 
-# Embeddings
-from langchain_openai import OpenAIEmbeddings
-embeddings = OpenAIEmbeddings()
+# Create specialized agents
+researcher = Agent(name="Researcher", model=model, instructions="Research topics thoroughly.")
+writer = Agent(name="Writer", model=model, instructions="Write clear, engaging content.")
+editor = Agent(name="Editor", model=model, instructions="Review and improve content.")
 
-# Vector stores
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_community.vectorstores import FAISS, Chroma
+# Pipeline: Sequential workflow
+flow = Flow(
+    name="content-team",
+    agents=[researcher, writer, editor],
+    topology="pipeline",
+    observer=FlowObserver.verbose(),
+)
 
-vectorstore = InMemoryVectorStore(embeddings)
+result = await flow.run("Create a blog post about AI trends")
 
-# Document loading
-from langchain_community.document_loaders import WebBaseLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+# Supervisor: One agent delegates to others
+flow = Flow(
+    name="team",
+    agents=[supervisor, researcher, writer],
+    topology="supervisor",
+    supervisor_name="supervisor",
+)
 
-docs = WebBaseLoader("https://example.com").load()
-chunks = RecursiveCharacterTextSplitter(chunk_size=1000).split_documents(docs)
-
-# Graphs and memory - use LangGraph directly
-from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.store.memory import InMemoryStore
+# Mesh: All agents can communicate
+flow = Flow(
+    name="collaborative",
+    agents=[agent1, agent2, agent3],
+    topology="mesh",
+)
 ```
 
 ### Task

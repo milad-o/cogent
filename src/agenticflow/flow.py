@@ -1,773 +1,377 @@
 """
 Flow - the main entry point for AgenticFlow.
 
-A Flow is a complete multi-agent system that handles:
-- Agent coordination via topologies
-- Tool registration (automatic)
-- Event management (internal)
-- Observability (configurable)
-- Resilience (configurable)
-
-Users only need to define agents and choose a topology pattern.
-Everything else is wired automatically.
+A Flow orchestrates multiple agents using simple coordination patterns:
+- Supervisor: One agent coordinates and delegates to workers
+- Pipeline: Sequential processing A → B → C
+- Mesh: All agents collaborate in rounds
+- Hierarchical: Tree structure with delegation levels
 
 Example:
     ```python
-    from langchain_openai import ChatOpenAI
-    from langchain.tools import tool
-    from agenticflow import Flow, Agent
+    from agenticflow import Agent, Flow
+    from agenticflow.models import ChatModel
 
-    # Create model
-    model = ChatOpenAI(model="gpt-4o")
+    model = ChatModel(model="gpt-4o")
+    
+    researcher = Agent(name="researcher", model=model)
+    writer = Agent(name="writer", model=model)
+    editor = Agent(name="editor", model=model)
 
-    # Define tools
-    @tool
-    def search(query: str) -> str:
-        '''Search for information.'''
-        return f"Results for {query}"
-
-    @tool
-    def write(content: str) -> str:
-        '''Write content.'''
-        return f"Written: {content}"
-
-    # Create agents (simplified API)
-    researcher = Agent(
-        name="Researcher",
-        model=model,
-        tools=[search],
-    )
-
-    writer = Agent(
-        name="Writer",
-        model=model,
-        tools=[write],
-    )
-
-    # Create flow
+    # Pipeline: research → write → edit
     flow = Flow(
         name="content-team",
-        agents=[researcher, writer],
+        agents=[researcher, writer, editor],
         topology="pipeline",
     )
 
-    # Run
-    result = await flow.run("Research AI and write a summary")
+    result = await flow.run("Create a blog post about AI")
+    print(result.output)
     ```
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any
 
-from langchain_core.tools import BaseTool
-
-from agenticflow.agent.base import Agent
-from agenticflow.core.enums import AgentRole
 from agenticflow.events.bus import EventBus
 from agenticflow.events.handlers import ConsoleEventHandler
-from agenticflow.observability.observer import FlowObserver, ObservabilityLevel, Channel
-from agenticflow.observability.progress import OutputConfig, ProgressTracker, Verbosity
-from agenticflow.tasks.manager import TaskManager
+from agenticflow.tools.base import BaseTool
 from agenticflow.tools.registry import ToolRegistry
-from agenticflow.topologies.base import (
+from agenticflow.topologies import (
+    AgentConfig,
     BaseTopology,
-    HierarchicalTopology,
-    MeshTopology,
-    PipelineTopology,
-    SupervisorTopology,
-    TopologyConfig,
-    TopologyState,
+    Hierarchical,
+    Mesh,
+    Pipeline,
+    Supervisor,
+    TopologyResult,
+    TopologyType,
 )
-from agenticflow.topologies.policies import TopologyPolicy
 
-
-class TopologyPattern(str, Enum):
-    """Available topology patterns.
-    
-    Each pattern has specific requirements and behaviors:
-    
-    - SUPERVISOR: One coordinator delegates to workers. Requires a supervisor agent.
-    - PIPELINE: Sequential processing through stages.
-    - MESH: All agents can communicate with each other.
-    - HIERARCHICAL: Agents organized in levels (org chart style).
-    - CUSTOM: User-defined routing via policy.
-    """
-    
-    SUPERVISOR = "supervisor"
-    PIPELINE = "pipeline"
-    MESH = "mesh"
-    HIERARCHICAL = "hierarchical"
-    CUSTOM = "custom"
+if TYPE_CHECKING:
+    from agenticflow.agent import Agent
+    from agenticflow.observability.observer import FlowObserver
 
 
 @dataclass
 class FlowConfig:
-    """Configuration options for a Flow.
-    
-    Most users won't need this - Flow has sensible defaults.
-    Use this for advanced customization.
-    """
-    
-    # Execution
-    max_iterations: int = 100
-    recursion_limit: int = 50
-    
-    # Observability
+    """Configuration options for a Flow."""
+
+    max_rounds: int = 3
+    """Maximum rounds for mesh collaboration."""
+
+    parallel: bool = True
+    """Run workers in parallel (for supervisor pattern)."""
+
     verbose: bool = False
-    log_events: bool = False
-    
-    # Resilience (applied to all agents)
-    enable_resilience: bool = True
-    
-    # Memory
-    enable_checkpointing: bool = True
-    
-    # Metadata
+    """Enable verbose logging."""
+
     metadata: dict[str, Any] = field(default_factory=dict)
+    """Additional metadata."""
 
 
 class Flow:
     """
-    The main entry point for AgenticFlow.
-    
-    A Flow orchestrates multiple agents to accomplish complex tasks.
-    It automatically handles:
-    - Event bus setup and agent subscriptions
-    - Tool registration from agent tool lists
-    - Topology construction based on pattern
-    - Progress tracking and observability
-    
-    Topology Patterns:
-        - "supervisor": One agent coordinates others (requires supervisor role)
-        - "pipeline": Sequential processing through agents
-        - "mesh": All agents can communicate freely
-        - "hierarchical": Org-chart style levels
-        - "custom": User-defined routing
-    
-    Example - Basic Pipeline:
+    Orchestrate multiple agents using coordination patterns.
+
+    A Flow wraps agents in a topology (supervisor, pipeline, mesh, hierarchical)
+    and provides a simple run() interface.
+
+    Patterns:
+        - **supervisor**: One agent coordinates, others do the work
+        - **pipeline**: Sequential processing through stages
+        - **mesh**: All agents collaborate with rounds of feedback
+        - **hierarchical**: Tree structure with managers delegating to teams
+
+    Example - Pipeline:
         ```python
-        from langchain_openai import ChatOpenAI
-        from agenticflow import Flow, Agent
-        
-        model = ChatOpenAI(model="gpt-4o")
-        
-        researcher = Agent(name="Researcher", model=model, tools=[search])
-        writer = Agent(name="Writer", model=model, tools=[write])
-        
+        from agenticflow import Agent, Flow
+        from agenticflow.models import ChatModel
+
+        model = ChatModel(model="gpt-4o")
+
         flow = Flow(
-            name="content-team",
-            agents=[researcher, writer],
+            name="content",
+            agents=[
+                Agent(name="researcher", model=model),
+                Agent(name="writer", model=model),
+            ],
             topology="pipeline",
         )
-        
-        result = await flow.run("Research AI trends and write a summary")
+
+        result = await flow.run("Write about quantum computing")
+        print(result.output)
         ```
-    
-    Example - Supervisor with Workers:
+
+    Example - Supervisor:
         ```python
-        supervisor = Agent(
-            name="Manager", 
-            role="supervisor",  # Required for supervisor topology
-            model=model,
-        )
-        worker1 = Agent(name="Analyst", model=model, tools=[analyze])
-        worker2 = Agent(name="Writer", model=model, tools=[write])
-        
         flow = Flow(
-            name="managed-team",
-            agents=[supervisor, worker1, worker2],
+            name="team",
+            agents=[manager, analyst, writer],
             topology="supervisor",
+            supervisor="manager",  # Who coordinates
         )
         ```
-    
-    Example - Streaming Progress:
+
+    Example - Mesh:
         ```python
-        async for state in flow.stream("Do complex task"):
-            agent = state.current_agent
-            if state.results:
-                print(f"[{agent}]: {state.results[-1]['thought'][:100]}...")
+        flow = Flow(
+            name="brainstorm",
+            agents=[analyst1, analyst2, analyst3],
+            topology="mesh",
+            max_rounds=2,  # Collaboration rounds
+        )
         ```
     """
-    
+
     def __init__(
         self,
         name: str,
         agents: Sequence[Agent],
-        topology: TopologyPattern | str = "mesh",
+        topology: str = "pipeline",
         *,
-        # Supervisor-specific
+        # Supervisor options
         supervisor: Agent | str | None = None,
-        # Pipeline-specific
-        stages: Sequence[str] | None = None,
-        # Hierarchical-specific
-        levels: list[list[str]] | None = None,
-        # Custom policy
-        policy: TopologyPolicy | None = None,
-        # Configuration
+        parallel: bool = True,
+        # Mesh options
+        max_rounds: int = 3,
+        synthesizer: Agent | None = None,
+        # Hierarchical options
+        structure: dict[str, list[Agent]] | None = None,
+        # General options
         config: FlowConfig | None = None,
-        # Observability shortcuts
         verbose: bool = False,
         observer: FlowObserver | None = None,
-        tracer: "ExecutionTracer | None" = None,
     ) -> None:
         """
         Create a Flow.
-        
+
         Args:
-            name: Name for this flow (for logging/debugging).
-            agents: List of agents to include.
-            topology: Coordination pattern ("supervisor", "pipeline", "mesh", etc).
-            supervisor: For supervisor topology - the supervisor agent or its name.
-            stages: For pipeline topology - ordered list of agent names.
-            levels: For hierarchical topology - list of levels (each a list of names).
-            policy: For custom topology - explicit routing policy.
-            config: Advanced configuration options.
-            verbose: Shortcut to enable verbose output (legacy, prefer observer).
-            observer: FlowObserver for fine-grained observability control.
-            tracer: ExecutionTracer for deep execution tracing.
+            name: Name for this flow.
+            agents: List of agents to coordinate.
+            topology: Pattern - "supervisor", "pipeline", "mesh", "hierarchical".
+            supervisor: For supervisor pattern - which agent coordinates.
+            parallel: For supervisor - run workers in parallel.
+            max_rounds: For mesh - number of collaboration rounds.
+            synthesizer: For mesh - dedicated agent to synthesize results.
+            structure: For hierarchical - {manager_name: [subordinate_agents]}.
+            config: Advanced configuration.
+            verbose: Enable console logging.
+            observer: FlowObserver for observability.
         """
         self.name = name
         self._agents = list(agents)
         self._config = config or FlowConfig()
         self._observer = observer
-        self._tracer = tracer
-        
+
         if verbose:
             self._config.verbose = True
-        
-        # Parse topology pattern
-        if isinstance(topology, str):
-            topology = TopologyPattern(topology.lower())
-        self._topology_pattern = topology
-        
+
+        # Override config with explicit params
+        if max_rounds != 3:
+            self._config.max_rounds = max_rounds
+        if not parallel:
+            self._config.parallel = parallel
+
         # Store topology-specific params
         self._supervisor_param = supervisor
-        self._stages_param = stages
-        self._levels_param = levels
-        self._policy_param = policy
-        
-        # Internal infrastructure (hidden from users)
+        self._synthesizer_param = synthesizer
+        self._structure_param = structure
+
+        # Normalize topology name
+        self._topology_type = TopologyType(topology.lower())
+
+        # Internal infrastructure
         self._event_bus = EventBus()
-        self._task_manager = TaskManager(self._event_bus)
         self._tool_registry = ToolRegistry()
-        
+
         # Setup
         self._setup_tools()
         self._setup_agents()
         self._setup_event_handlers()
-        
+
         # Build topology
         self._topology = self._build_topology()
-    
+
     def _setup_tools(self) -> None:
-        """Collect and register tools from all agents."""
-        seen_tools: set[str] = set()
-        
+        """Register tools from all agents."""
+        seen: set[str] = set()
         for agent in self._agents:
-            # Get tools from agent config
             for tool in agent.config.tools:
-                if isinstance(tool, str):
-                    # Tool name reference - skip, will be resolved later
-                    continue
-                elif isinstance(tool, BaseTool):
-                    if tool.name not in seen_tools:
-                        self._tool_registry.register(tool)
-                        seen_tools.add(tool.name)
-    
+                if isinstance(tool, BaseTool) and tool.name not in seen:
+                    self._tool_registry.register(tool)
+                    seen.add(tool.name)
+
     def _setup_agents(self) -> None:
-        """Wire agents to internal infrastructure."""
+        """Wire agents to infrastructure."""
         for agent in self._agents:
-            # Connect to event bus (agents auto-subscribe internally)
             agent.event_bus = self._event_bus
-            
-            # Connect to shared tool registry
             agent.tool_registry = self._tool_registry
-    
+
     def _setup_event_handlers(self) -> None:
-        """Setup observability based on config."""
-        # Legacy verbose mode (ConsoleEventHandler)
-        if self._config.verbose or self._config.log_events:
-            handler = ConsoleEventHandler(verbose=self._config.verbose)
+        """Setup event handlers."""
+        if self._config.verbose:
+            handler = ConsoleEventHandler(verbose=True)
             self._event_bus.subscribe_all(handler)
-        
-        # New FlowObserver system
         if self._observer is not None:
             self._observer.attach(self._event_bus)
-    
+
     def _build_topology(self) -> BaseTopology:
-        """Build the topology based on pattern and agents."""
-        topology_config = TopologyConfig(
-            name=self.name,
-            max_iterations=self._config.max_iterations,
-            enable_checkpointing=self._config.enable_checkpointing,
-            recursion_limit=self._config.recursion_limit,
-        )
-        
-        if self._topology_pattern == TopologyPattern.SUPERVISOR:
-            return self._build_supervisor_topology(topology_config)
-        elif self._topology_pattern == TopologyPattern.PIPELINE:
-            return self._build_pipeline_topology(topology_config)
-        elif self._topology_pattern == TopologyPattern.MESH:
-            return self._build_mesh_topology(topology_config)
-        elif self._topology_pattern == TopologyPattern.HIERARCHICAL:
-            return self._build_hierarchical_topology(topology_config)
-        elif self._topology_pattern == TopologyPattern.CUSTOM:
-            return self._build_custom_topology(topology_config)
+        """Build the coordination topology."""
+        # Convert agents to AgentConfig
+        agent_configs = [
+            AgentConfig(
+                agent=a,
+                name=a.name,
+                role=getattr(a.config, "role", None),
+            )
+            for a in self._agents
+        ]
+
+        if self._topology_type == TopologyType.SUPERVISOR:
+            return self._build_supervisor(agent_configs)
+        elif self._topology_type == TopologyType.PIPELINE:
+            return self._build_pipeline(agent_configs)
+        elif self._topology_type == TopologyType.MESH:
+            return self._build_mesh(agent_configs)
+        elif self._topology_type == TopologyType.HIERARCHICAL:
+            return self._build_hierarchical(agent_configs)
         else:
-            raise ValueError(f"Unknown topology pattern: {self._topology_pattern}")
-    
-    def _build_supervisor_topology(self, config: TopologyConfig) -> SupervisorTopology:
-        """Build supervisor topology, auto-detecting supervisor if needed."""
-        supervisor_name: str | None = None
-        
-        # Check explicit supervisor param
-        if self._supervisor_param:
-            if isinstance(self._supervisor_param, Agent):
-                supervisor_name = self._supervisor_param.name
+            raise ValueError(f"Unknown topology: {self._topology_type}")
+
+    def _build_supervisor(self, configs: list[AgentConfig]) -> Supervisor:
+        """Build supervisor topology."""
+        # Determine coordinator
+        coord_name = self._supervisor_param
+        if isinstance(coord_name, Agent):
+            coord_name = coord_name.name
+        elif coord_name is None:
+            # Use first agent as coordinator
+            coord_name = configs[0].name
+
+        # Find coordinator config
+        coordinator = None
+        workers = []
+        for cfg in configs:
+            if cfg.name == coord_name:
+                coordinator = cfg
             else:
-                supervisor_name = self._supervisor_param
-        else:
-            # Auto-detect: look for agent with SUPERVISOR role
-            for agent in self._agents:
-                if agent.role == AgentRole.SUPERVISOR:
-                    supervisor_name = agent.name
-                    break
-        
-        if not supervisor_name:
-            raise ValueError(
-                "Supervisor topology requires a supervisor agent. Either:\n"
-                "1. Pass supervisor=<agent> to Flow()\n"
-                "2. Create an agent with role='supervisor'\n"
-                "3. Use a different topology pattern"
-            )
-        
-        return SupervisorTopology(
-            config=config,
-            agents=self._agents,
-            supervisor_name=supervisor_name,
-            event_bus=self._event_bus,
+                workers.append(cfg)
+
+        if coordinator is None:
+            raise ValueError(f"Supervisor '{coord_name}' not found in agents")
+
+        return Supervisor(
+            coordinator=coordinator,
+            workers=workers,
+            parallel=self._config.parallel,
         )
-    
-    def _build_pipeline_topology(self, config: TopologyConfig) -> PipelineTopology:
+
+    def _build_pipeline(self, configs: list[AgentConfig]) -> Pipeline:
         """Build pipeline topology."""
-        stages = self._stages_param
-        if stages is None:
-            # Default: use agent order
-            stages = [a.name for a in self._agents]
-        
-        return PipelineTopology(
-            config=config,
-            agents=self._agents,
-            stages=list(stages),
-            event_bus=self._event_bus,
-        )
-    
-    def _build_mesh_topology(self, config: TopologyConfig) -> MeshTopology:
+        return Pipeline(stages=configs)
+
+    def _build_mesh(self, configs: list[AgentConfig]) -> Mesh:
         """Build mesh topology."""
-        return MeshTopology(
-            config=config,
-            agents=self._agents,
-            event_bus=self._event_bus,
+        synthesizer_cfg = None
+        if self._synthesizer_param:
+            for cfg in configs:
+                if cfg.agent is self._synthesizer_param:
+                    synthesizer_cfg = cfg
+                    break
+
+        return Mesh(
+            agents=configs,
+            max_rounds=self._config.max_rounds,
+            synthesizer=synthesizer_cfg,
         )
-    
-    def _build_hierarchical_topology(self, config: TopologyConfig) -> HierarchicalTopology:
-        """Build hierarchical topology.
-        
-        If levels are not provided, they are auto-inferred from agent roles:
-        - Level 0 (top): LEAD, ORCHESTRATOR
-        - Level 1 (middle): SUPERVISOR, COORDINATOR, PLANNER
-        - Level 2 (bottom): WORKER, CONTRIBUTOR, etc.
-        """
-        return HierarchicalTopology(
-            config=config,
-            agents=self._agents,
-            levels=self._levels_param,  # None is OK - will auto-infer
-            event_bus=self._event_bus,
-        )
-    
-    def _build_custom_topology(self, config: TopologyConfig) -> BaseTopology:
-        """Build custom topology from policy."""
-        if self._policy_param is None:
-            raise ValueError(
-                "Custom topology requires a policy parameter.\n"
-                "Example: policy=TopologyPolicy.pipeline(['a', 'b', 'c'])"
-            )
-        
-        return BaseTopology(
-            config=config,
-            agents=self._agents,
-            policy=self._policy_param,
-            event_bus=self._event_bus,
-        )
-    
+
+    def _build_hierarchical(self, configs: list[AgentConfig]) -> Hierarchical:
+        """Build hierarchical topology."""
+        # Map agents to configs
+        agent_to_config = {cfg.agent: cfg for cfg in configs}
+
+        # Root is first agent
+        root = configs[0]
+
+        # Convert structure (Agent -> AgentConfig)
+        structure: dict[str, list[AgentConfig]] = {}
+        if self._structure_param:
+            for manager_name, subordinates in self._structure_param.items():
+                structure[manager_name] = [
+                    agent_to_config[s] for s in subordinates if s in agent_to_config
+                ]
+
+        return Hierarchical(root=root, structure=structure)
+
     # ==================== Public API ====================
-    
+
     @property
     def agents(self) -> dict[str, Agent]:
         """Get agents by name."""
         return {a.name: a for a in self._agents}
-    
+
     @property
     def topology(self) -> BaseTopology:
         """Access the underlying topology."""
         return self._topology
-    
+
     @property
     def event_bus(self) -> EventBus:
-        """Access the event bus (for advanced use)."""
+        """Access the event bus."""
         return self._event_bus
-    
-    @property
-    def tool_registry(self) -> ToolRegistry:
-        """Access the tool registry (for advanced use)."""
-        return self._tool_registry
-    
-    @property
-    def observer(self) -> FlowObserver | None:
-        """Access the flow observer."""
-        return self._observer
-    
-    def get_metrics(self) -> dict[str, Any] | None:
-        """Get metrics from the observer if enabled.
-        
-        Returns:
-            Metrics dict or None if no observer.
-        """
-        if self._observer is not None:
-            return self._observer.metrics()
-        return None
-    
-    def get_event_history(
-        self,
-        event_type: str | None = None,
-        limit: int | None = None,
-    ) -> list[dict[str, Any]]:
-        """Get event history from the observer.
-        
-        Args:
-            event_type: Optional filter by event type.
-            limit: Optional limit on number of events.
-        
-        Returns:
-            List of event dicts (most recent last).
-        """
-        if self._observer is not None:
-            events = self._observer.events(limit=limit)
-            result = []
-            for e in events:
-                if event_type and e.type.value != event_type:
-                    continue
-                result.append({
-                    "event_type": e.type.value,
-                    "timestamp": e.timestamp.isoformat(),
-                    "data": e.data,
-                })
-            return result
-        return []
-    
-    async def run(
-        self,
-        task: str,
-        context: dict[str, Any] | None = None,
-        *,
-        thread_id: str | None = None,
-        on_step: Callable[[dict[str, Any]], None] | None = None,
-    ) -> TopologyState:
+
+    async def run(self, task: str) -> TopologyResult:
         """
         Run the flow on a task.
-        
+
         Args:
             task: The task description.
-            context: Optional context dict.
-            thread_id: Optional thread ID for memory/checkpointing.
-            on_step: Optional callback after each agent step.
-        
+
         Returns:
-            Final topology state with results.
-        
+            TopologyResult with output and agent outputs.
+
         Example:
             ```python
             result = await flow.run("Analyze sales data and write a report")
-            
-            print(f"Completed in {result.iteration} steps")
-            for r in result.results:
-                print(f"[{r['agent']}]: {r['thought'][:100]}...")
+            print(result.output)
+
+            for name, output in result.agent_outputs.items():
+                print(f"[{name}]: {output[:100]}...")
             ```
         """
-        return await self._topology.run(
-            task=task,
-            context=context,
-            thread_id=thread_id,
-            on_step=on_step,
-        )
-    
-    async def stream(
-        self,
-        task: str,
-        context: dict[str, Any] | None = None,
-        *,
-        thread_id: str | None = None,
-    ) -> AsyncIterator[dict[str, Any]]:
+        return await self._topology.run(task)
+
+    async def stream(self, task: str):
         """
-        Stream flow execution, yielding state after each step.
-        
+        Stream flow execution.
+
         Args:
             task: The task description.
-            context: Optional context dict.
-            thread_id: Optional thread ID for memory.
-        
+
         Yields:
-            State dict after each agent step.
-        
+            Status updates and results.
+
         Example:
             ```python
-            async for state in flow.stream("Do complex task"):
-                if state.get("results"):
-                    latest = state["results"][-1]
-                    print(f"[{latest['agent']}]: {latest['thought'][:100]}...")
+            async for event in flow.stream("Do complex task"):
+                print(event["type"], event.get("data", ""))
             ```
         """
-        async for state in self._topology.stream(
-            task=task,
-            context=context,
-            thread_id=thread_id,
-        ):
-            yield state
-    
-    async def run_parallel(
-        self,
-        task: str,
-        context: dict[str, Any] | None = None,
-        *,
-        agent_names: list[str] | None = None,
-        merge_strategy: Literal["combine", "first", "vote"] = "combine",
-    ) -> dict[str, Any]:
-        """
-        Run multiple agents in parallel on the same task.
-        
-        Useful for getting diverse perspectives or fan-out patterns.
-        
-        Args:
-            task: Task for all agents.
-            context: Optional shared context.
-            agent_names: Which agents to run (default: all).
-            merge_strategy: How to combine results.
-        
-        Returns:
-            Dict with results, timing, errors, and merged result.
-        
-        Example:
-            ```python
-            results = await flow.run_parallel(
-                "Analyze this data",
-                agent_names=["analyst1", "analyst2", "analyst3"],
-            )
-            
-            for name, thought in results["results"].items():
-                print(f"[{name}]: {thought[:100]}...")
-            ```
-        """
-        return await self._topology.run_parallel(
-            task=task,
-            context=context,
-            agent_names=agent_names,
-            merge_strategy=merge_strategy,
-        )
-    
-    # =========================================================================
-    # Human-in-the-Loop Methods
-    # =========================================================================
-    
-    @property
-    def is_interrupted(self) -> bool:
-        """Check if any agent in the flow has pending actions awaiting human decision."""
-        return any(agent.is_interrupted for agent in self._agents)
-    
-    def get_pending_actions(self) -> list[tuple[str, Any]]:
-        """
-        Get all pending actions from all agents.
-        
-        Returns:
-            List of (agent_name, PendingAction) tuples.
-        """
-        from agenticflow.agent.hitl import PendingAction
-        
-        pending: list[tuple[str, PendingAction]] = []
-        for agent in self._agents:
-            for action in agent.pending_actions:
-                pending.append((agent.name, action))
-        return pending
-    
-    def get_interrupted_agent(self) -> Agent | None:
-        """Get the first interrupted agent, if any."""
-        for agent in self._agents:
-            if agent.is_interrupted:
-                return agent
-        return None
-    
-    async def resume(
-        self,
-        decision: Any,
-        *,
-        agent_name: str | None = None,
-        thread_id: str | None = None,
-    ) -> Any:
-        """
-        Resume an interrupted flow with a human decision.
-        
-        After a flow is interrupted for human approval, call this method
-        with the human's decision to continue execution.
-        
-        Args:
-            decision: HumanDecision object with the decision.
-            agent_name: Name of agent to resume (auto-detected if only one interrupted).
-            thread_id: Thread ID for memory continuity.
-        
-        Returns:
-            Result of the resumed action.
-        
-        Raises:
-            ValueError: If no interrupted agent found or multiple interrupted without specifying.
-        
-        Example:
-            ```python
-            from agenticflow.agent import HumanDecision, InterruptedException
-            
-            try:
-                result = await flow.run("Delete old files")
-            except InterruptedException as e:
-                # Show pending action to human
-                pending = e.state.pending_actions[0]
-                print(f"Approve '{pending.describe()}'? [y/n]")
-                
-                if input() == 'y':
-                    decision = HumanDecision.approve(pending.action_id)
-                else:
-                    decision = HumanDecision.reject(pending.action_id)
-                
-                result = await flow.resume(decision)
-            ```
-        """
-        # Find the interrupted agent
-        if agent_name:
-            agent = self.get_agent(agent_name)
-            if not agent:
-                raise ValueError(f"Agent not found: {agent_name}")
-            if not agent.is_interrupted:
-                raise ValueError(f"Agent '{agent_name}' is not interrupted")
-        else:
-            interrupted_agents = [a for a in self._agents if a.is_interrupted]
-            if not interrupted_agents:
-                raise ValueError("No agents are currently interrupted")
-            if len(interrupted_agents) > 1:
-                names = [a.name for a in interrupted_agents]
-                raise ValueError(
-                    f"Multiple agents interrupted ({names}). Specify agent_name."
-                )
-            agent = interrupted_agents[0]
-        
-        # Resume the agent
-        return await agent.resume_action(
-            decision=decision,
-            correlation_id=thread_id,
-        )
-    
-    def clear_interrupts(self) -> None:
-        """Clear all pending actions across all agents."""
-        for agent in self._agents:
-            agent.clear_pending_actions()
-    
-    def describe_pending_actions(self) -> str:
-        """Get a human-readable description of all pending actions."""
-        pending = self.get_pending_actions()
-        if not pending:
-            return "No pending actions."
-        
-        lines = [f"Pending actions ({len(pending)}):"]
-        for agent_name, action in pending:
-            lines.append(f"  [{agent_name}] {action.describe()}")
-        return "\n".join(lines)
-    
-    def add_agent(self, agent: Agent) -> None:
-        """
-        Add an agent to the flow.
-        
-        Note: This rebuilds the topology graph.
-        
-        Args:
-            agent: Agent to add.
-        """
-        # Wire agent
-        agent.event_bus = self._event_bus
-        agent.tool_registry = self._tool_registry
-        
-        # Add to list
-        self._agents.append(agent)
-        
-        # Register any new tools
-        for tool in agent.config.tools:
-            if isinstance(tool, BaseTool):
-                if tool.name not in self._tool_registry:
-                    self._tool_registry.register(tool)
-        
-        # Rebuild topology
-        self._topology = self._build_topology()
-    
-    def remove_agent(self, name: str) -> bool:
-        """
-        Remove an agent from the flow.
-        
-        Note: This rebuilds the topology graph.
-        
-        Args:
-            name: Name of agent to remove.
-        
-        Returns:
-            True if agent was removed.
-        """
-        for i, agent in enumerate(self._agents):
-            if agent.name == name:
-                self._agents.pop(i)
-                self._topology = self._build_topology()
-                return True
-        return False
-    
-    def draw_mermaid(
-        self,
-        *,
-        theme: str = "default",
-        direction: str = "TB",
-        show_tools: bool = True,
-        show_roles: bool = True,
-    ) -> str:
-        """
-        Generate a Mermaid diagram of the flow.
-        
-        Args:
-            theme: Mermaid theme.
-            direction: Graph direction (TB, LR, etc).
-            show_tools: Show agent tools.
-            show_roles: Show agent roles.
-        
-        Returns:
-            Mermaid diagram code.
-        """
-        return self._topology.draw_mermaid(
-            theme=theme,
-            direction=direction,
-            title=self.name,
-            show_tools=show_tools,
-            show_roles=show_roles,
-        )
-    
+        async for event in self._topology.stream(task):
+            yield event
+
+    def get_agent(self, name: str) -> Agent | None:
+        """Get an agent by name."""
+        return self.agents.get(name)
+
     def __repr__(self) -> str:
         return (
             f"Flow(name={self.name!r}, "
-            f"topology={self._topology_pattern.value!r}, "
+            f"topology={self._topology_type.value!r}, "
             f"agents={[a.name for a in self._agents]})"
         )
 
@@ -778,23 +382,10 @@ class Flow:
 def create_flow(
     name: str,
     agents: Sequence[Agent],
-    topology: str = "mesh",
+    topology: str = "pipeline",
     **kwargs: Any,
 ) -> Flow:
-    """
-    Create a flow with the given agents and topology.
-    
-    This is a convenience function equivalent to Flow(...).
-    
-    Args:
-        name: Flow name.
-        agents: List of agents.
-        topology: Topology pattern.
-        **kwargs: Additional Flow arguments.
-    
-    Returns:
-        Configured Flow instance.
-    """
+    """Create a flow with the given agents and topology."""
     return Flow(name=name, agents=agents, topology=topology, **kwargs)
 
 
@@ -804,18 +395,7 @@ def supervisor_flow(
     workers: Sequence[Agent],
     **kwargs: Any,
 ) -> Flow:
-    """
-    Create a supervisor flow quickly.
-    
-    Args:
-        name: Flow name.
-        supervisor: The supervisor agent.
-        workers: Worker agents.
-        **kwargs: Additional Flow arguments.
-    
-    Returns:
-        Configured supervisor Flow.
-    """
+    """Create a supervisor flow."""
     return Flow(
         name=name,
         agents=[supervisor, *workers],
@@ -830,44 +410,21 @@ def pipeline_flow(
     stages: Sequence[Agent],
     **kwargs: Any,
 ) -> Flow:
-    """
-    Create a pipeline flow quickly.
-    
-    Args:
-        name: Flow name.
-        stages: Agents in pipeline order.
-        **kwargs: Additional Flow arguments.
-    
-    Returns:
-        Configured pipeline Flow.
-    """
-    return Flow(
-        name=name,
-        agents=stages,
-        topology="pipeline",
-        **kwargs,
-    )
+    """Create a pipeline flow."""
+    return Flow(name=name, agents=stages, topology="pipeline", **kwargs)
 
 
 def mesh_flow(
     name: str,
     agents: Sequence[Agent],
+    max_rounds: int = 3,
     **kwargs: Any,
 ) -> Flow:
-    """
-    Create a mesh flow quickly.
-    
-    Args:
-        name: Flow name.
-        agents: Peer agents.
-        **kwargs: Additional Flow arguments.
-    
-    Returns:
-        Configured mesh Flow.
-    """
+    """Create a mesh flow."""
     return Flow(
         name=name,
         agents=agents,
         topology="mesh",
+        max_rounds=max_rounds,
         **kwargs,
     )

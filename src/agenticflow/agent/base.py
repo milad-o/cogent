@@ -9,9 +9,9 @@ import json
 import uuid
 from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Sequence, overload
 
-from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.tools import BaseTool
+from agenticflow.models.base import BaseChatModel
+from agenticflow.core.messages import AIMessage, HumanMessage, SystemMessage
+from agenticflow.tools.base import BaseTool
 
 from agenticflow.agent.config import AgentConfig
 from agenticflow.agent.state import AgentState
@@ -58,15 +58,15 @@ class Agent:
     
     Simplified API (recommended):
         ```python
-        from langchain_openai import ChatOpenAI
-        from langchain.tools import tool
+        from agenticflow.models import ChatModel
+        from agenticflow.tools import tool
         
         @tool
         def search(query: str) -> str:
             '''Search for information.'''
             return f"Results for {query}"
         
-        model = ChatOpenAI(model="gpt-4o")
+        model = ChatModel(model="gpt-4o")
         
         agent = Agent(
             name="Researcher",
@@ -190,13 +190,12 @@ class Agent:
             
         Example with memory:
             ```python
-            from langgraph.checkpoint.memory import MemorySaver
-            
             # Simple: just pass True for in-memory
             agent = Agent(name="Assistant", model=model, memory=True)
             
-            # LangGraph checkpointer for persistence
-            agent = Agent(name="Assistant", model=model, memory=MemorySaver())
+            # Or use InMemorySaver directly
+            from agenticflow.agent.memory import InMemorySaver
+            agent = Agent(name="Assistant", model=model, memory=InMemorySaver())
             
             # Chat with thread-based memory
             response = await agent.chat("Hi, I'm Alice", thread_id="conv-1")
@@ -746,21 +745,17 @@ class Agent:
     def model(self) -> BaseChatModel | None:
         """Get the LLM model.
         
-        Accepts either:
-        - LangChain BaseChatModel (ChatOpenAI, AzureChatOpenAI, etc.)
-        - Native AgenticFlow models (ChatModel, AzureOpenAIModel, AnthropicModel)
-        
-        Native models are automatically wrapped for LangChain compatibility.
+        Accepts native AgenticFlow models:
+        - ChatModel, AzureChat, AnthropicChat, GroqChat, etc.
         
         Example:
             ```python
-            # LangChain model
-            from langchain_openai import ChatOpenAI
-            config = AgentConfig(name="Agent", model=ChatOpenAI(model="gpt-4o"))
-            
-            # Native model (recommended for performance)
             from agenticflow.models import ChatModel
             config = AgentConfig(name="Agent", model=ChatModel(model="gpt-4o"))
+            
+            # Or use factory function
+            from agenticflow.models import create_chat
+            config = AgentConfig(name="Agent", model=create_chat("openai", model="gpt-4o"))
             ```
         """
         if self._model is None:
@@ -769,16 +764,10 @@ class Agent:
                 if isinstance(model_spec, BaseChatModel):
                     self._model = model_spec
                 else:
-                    # Check for native models and wrap them
-                    from agenticflow.models.adapter import is_native_model, wrap_native_model
-                    if is_native_model(model_spec):
-                        self._model = wrap_native_model(model_spec)
-                    else:
-                        raise TypeError(
-                            f"model must be a LangChain BaseChatModel or native ChatModel, "
-                            f"got {type(model_spec).__name__}. "
-                            f"Use: ChatModel(model='gpt-4o') or ChatOpenAI(model='gpt-4o')"
-                        )
+                    raise TypeError(
+                        f"model must be a native BaseChatModel, got {type(model_spec).__name__}. "
+                        f"Use: ChatModel(model='gpt-4o') or create_chat('openai', model='gpt-4o')"
+                    )
         return self._model
 
     async def _set_status(
@@ -920,7 +909,7 @@ class Agent:
         start_time = now_utc()
 
         # Build messages - determine which system prompt to use
-        messages = []
+        messages: list[Any] = []
         if system_prompt_override is not None:
             effective_prompt = system_prompt_override
         elif include_tools:
@@ -934,8 +923,11 @@ class Agent:
         messages.extend(self.state.get_recent_history(10))
         messages.append(HumanMessage(content=prompt))
 
+        # Convert to dict format for native models
+        dict_messages = [msg.to_openai() for msg in messages]
+
         try:
-            response = await self.model.ainvoke(messages)
+            response = await self.model.ainvoke(dict_messages)
             result = response.content
 
             # Track timing
@@ -1100,7 +1092,7 @@ class Agent:
             history = await self._memory.get_messages(thread_id)
             
             # Build messages with effective system prompt (includes tools)
-            messages = []
+            messages: list[Any] = []
             effective_prompt = self.get_effective_system_prompt()
             if effective_prompt:
                 messages.append(SystemMessage(content=effective_prompt))
@@ -1112,8 +1104,11 @@ class Agent:
             user_message = HumanMessage(content=message)
             messages.append(user_message)
             
+            # Convert to dict format for native models
+            dict_messages = [msg.to_openai() for msg in messages]
+            
             # Get response from model
-            response = await self.model.ainvoke(messages)
+            response = await self.model.ainvoke(dict_messages)
             result = response.content
             
             # Track timing
@@ -1256,7 +1251,7 @@ class Agent:
         start_time = now_utc()
 
         # Build messages
-        messages = []
+        messages: list[Any] = []
         if system_prompt_override is not None:
             effective_prompt = system_prompt_override
         elif include_tools:
@@ -1269,11 +1264,14 @@ class Agent:
         messages.extend(self.state.get_recent_history(10))
         messages.append(HumanMessage(content=prompt))
 
+        # Convert to dict format for native models
+        dict_messages = [msg.to_openai() for msg in messages]
+
         accumulated_content = ""
         index = 0
 
         try:
-            async for chunk in self.model.astream(messages):
+            async for chunk in self.model.astream(dict_messages):
                 stream_chunk = chunk_from_langchain(chunk, index)
                 accumulated_content += stream_chunk.content
                 index += 1
@@ -1391,7 +1389,7 @@ class Agent:
             history = await self._memory.get_messages(thread_id)
 
             # Build messages
-            messages = []
+            messages: list[Any] = []
             effective_prompt = self.get_effective_system_prompt()
             if effective_prompt:
                 messages.append(SystemMessage(content=effective_prompt))
@@ -1400,10 +1398,13 @@ class Agent:
             user_message = HumanMessage(content=message)
             messages.append(user_message)
 
+            # Convert to dict format for native models
+            dict_messages = [msg.to_openai() for msg in messages]
+
             accumulated_content = ""
             index = 0
 
-            async for chunk in self.model.astream(messages):
+            async for chunk in self.model.astream(dict_messages):
                 stream_chunk = chunk_from_langchain(chunk, index)
                 accumulated_content += stream_chunk.content
                 index += 1
@@ -1529,7 +1530,7 @@ class Agent:
         start_time = now_utc()
 
         # Build messages
-        messages = []
+        messages: list[Any] = []
         if system_prompt_override is not None:
             effective_prompt = system_prompt_override
         elif include_tools:
@@ -1541,6 +1542,9 @@ class Agent:
 
         messages.extend(self.state.get_recent_history(10))
         messages.append(HumanMessage(content=prompt))
+
+        # Convert to dict format for native models
+        dict_messages = [msg.to_openai() for msg in messages]
 
         # Emit start event
         yield StreamEvent(
@@ -1558,7 +1562,7 @@ class Agent:
         active_tool_calls: dict[int, ToolCallChunk] = {}
 
         try:
-            async for chunk in self.model.astream(messages):
+            async for chunk in self.model.astream(dict_messages):
                 stream_chunk = chunk_from_langchain(chunk, index)
                 
                 # Handle text content

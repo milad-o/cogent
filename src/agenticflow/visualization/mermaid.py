@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
-    from agenticflow.topologies.base import BaseTopology
+    from agenticflow.topologies import BaseTopology
 
 
 class MermaidTheme(Enum):

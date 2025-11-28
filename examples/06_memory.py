@@ -6,7 +6,7 @@ Demonstrates memory capabilities for conversation persistence.
 Features:
 - Short-term memory: Thread-based conversation history
 - Long-term memory: Cross-thread key-value storage
-- LangGraph compatibility: Use MemorySaver, SqliteSaver, etc.
+- Memory checkpointing with InMemorySaver
 
 Usage:
     uv run python examples/06_memory.py
@@ -16,9 +16,9 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 
 from agenticflow import Agent, InMemorySaver
+from agenticflow.models import ChatModel
 
 load_dotenv()
 
@@ -27,7 +27,7 @@ async def demo_conversation_memory():
     """Show thread-based conversation memory."""
     print("\n--- Thread-Based Memory ---")
     
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
     
     # Create agent with memory
     assistant = Agent(

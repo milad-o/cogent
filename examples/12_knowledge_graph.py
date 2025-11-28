@@ -64,7 +64,7 @@ def load_knowledge_file(kg, filepath: str) -> dict:
 
 
 async def demo():
-    from langchain_openai import ChatOpenAI
+    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import KnowledgeGraph
     
@@ -72,7 +72,7 @@ async def demo():
     print("🧠 Knowledge Graph Capability Demo")
     print("=" * 60)
     
-    model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    model = ChatModel(model="gpt-4o-mini", temperature=0)
     
     # === Step 1: Load KnowledgeGraph from file ===
     print("\n📂 Step 1: Load Knowledge from File")

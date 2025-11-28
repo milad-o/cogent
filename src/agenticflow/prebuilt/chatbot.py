@@ -2,7 +2,7 @@
 Prebuilt Chatbot with conversation memory.
 
 A simple, ready-to-use chatbot that maintains conversation history
-across sessions using LangGraph checkpointing.
+across sessions using memory checkpointing.
 """
 
 from __future__ import annotations
@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, Any
 from agenticflow import Agent, AgentRole
 
 if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
-    from langchain_core.tools import BaseTool
+    from agenticflow.models.base import BaseChatModel
+    from agenticflow.tools.base import BaseTool
 
 
 class Chatbot:
@@ -28,11 +28,11 @@ class Chatbot:
     
     Example:
         ```python
-        from langchain_openai import ChatOpenAI
+        from agenticflow.models import ChatModel
         from agenticflow.prebuilt import Chatbot
         
         bot = Chatbot(
-            model=ChatOpenAI(model="gpt-4o-mini"),
+            model=ChatModel(model="gpt-4o-mini"),
             personality="You are a friendly coding assistant.",
         )
         
@@ -56,7 +56,7 @@ class Chatbot:
         Create a chatbot.
         
         Args:
-            model: LangChain chat model (e.g., ChatOpenAI).
+            model: Native chat model (e.g., ChatModel, AzureChat).
             name: Name for the chatbot.
             personality: Optional personality/system prompt.
                 If not provided, uses a default helpful assistant prompt.
@@ -162,7 +162,7 @@ def create_chatbot(
     This is a convenience function that creates a Chatbot instance.
     
     Args:
-        model: LangChain chat model.
+        model: Native chat model.
         name: Chatbot name.
         personality: Optional system prompt / personality.
         tools: Optional tools for the chatbot.
@@ -173,11 +173,11 @@ def create_chatbot(
         
     Example:
         ```python
-        from langchain_openai import ChatOpenAI
+        from agenticflow.models import ChatModel
         from agenticflow.prebuilt import create_chatbot
         
         bot = create_chatbot(
-            model=ChatOpenAI(model="gpt-4o-mini"),
+            model=ChatModel(model="gpt-4o-mini"),
             personality="You are a pirate who speaks in pirate slang.",
         )
         

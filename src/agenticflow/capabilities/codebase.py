@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.tools import BaseTool, tool
+from agenticflow.tools.base import BaseTool, tool
 
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
