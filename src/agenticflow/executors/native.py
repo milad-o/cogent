@@ -6,7 +6,7 @@ Key optimizations:
 2. Parallel tool execution with asyncio.gather
 3. Cached model binding for zero-overhead tool calls
 4. Minimal prompt construction
-5. No event emission in hot path
+5. LLM resilience with automatic retry for rate limits
 
 Includes standalone `run()` function for quick execution without Agent class.
 All native - no LangChain/LangGraph dependencies.
@@ -28,6 +28,7 @@ from agenticflow.core.messages import (
 from agenticflow.models.base import BaseChatModel
 from agenticflow.models.openai import OpenAIChat
 from agenticflow.tools.base import BaseTool
+from agenticflow.agent.resilience import ModelResilience, RetryPolicy
 
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
@@ -40,6 +41,8 @@ async def run(
     system_prompt: str | None = None,
     max_iterations: int = 10,
     max_tool_calls: int = 20,
+    resilience: bool = True,
+    verbose: bool = False,
 ) -> str:
     """Execute a task with tools using native execution.
     
@@ -53,6 +56,8 @@ async def run(
         system_prompt: Optional system prompt.
         max_iterations: Maximum LLM call iterations.
         max_tool_calls: Maximum total tool calls.
+        resilience: Enable automatic retry for rate limits (default: True).
+        verbose: Print retry/error information (default: False).
         
     Returns:
         The final answer string.
@@ -93,6 +98,23 @@ async def run(
     else:
         bound_model = chat_model
     
+    # Setup resilience for LLM calls
+    model_resilience = None
+    if resilience:
+        def on_retry(attempt: int, error: Exception, delay: float) -> None:
+            if verbose:
+                print(f"⏳ LLM retry {attempt}: {str(error)[:80]}... (waiting {delay:.1f}s)")
+        
+        def on_error(error: Exception, attempts: int) -> None:
+            if verbose:
+                print(f"❌ LLM failed after {attempts} attempts: {error}")
+        
+        model_resilience = ModelResilience(
+            retry_policy=RetryPolicy.aggressive(),
+            on_retry=on_retry,
+            on_error=on_error,
+        )
+    
     # Build initial messages using native message types
     messages: list[BaseMessage] = []
     if system_prompt:
@@ -103,8 +125,15 @@ async def run(
     total_tool_calls = 0
     
     for _ in range(max_iterations):
-        # ChatModel returns AIMessage
-        response: AIMessage = await bound_model.ainvoke(messages)
+        # LLM call with resilience
+        if model_resilience:
+            exec_result = await model_resilience.execute(bound_model.ainvoke, messages)
+            if not exec_result.success:
+                raise exec_result.error or RuntimeError("LLM call failed after retries")
+            response: AIMessage = exec_result.result
+        else:
+            response: AIMessage = await bound_model.ainvoke(messages)
+        
         messages.append(response)
         
         if not response.tool_calls:
@@ -165,13 +194,12 @@ class NativeExecutor(BaseExecutor):
     - Parallel tool execution with asyncio.gather
     - Cached bound model for fast tool binding
     - Minimal prompt construction
-    - No event emission in hot path
+    - LLM resilience with automatic retry for rate limits
     
     Trade-offs:
-    - No resilience features (retry, circuit breaker)
     - No scratchpad/working memory
     - No event streaming
-    - Limited error recovery
+    - Limited tool error recovery (but LLM calls are resilient)
     
     Use for:
     - Most agent tasks (default executor)
@@ -185,18 +213,20 @@ class NativeExecutor(BaseExecutor):
         result = await executor.execute("Research ACME Corp and calculate metrics")
     """
     
-    __slots__ = ("_bound_model", "_tool_map", "_max_tool_calls")
+    __slots__ = ("_bound_model", "_tool_map", "_max_tool_calls", "_model_resilience")
     
     def __init__(
         self,
         agent: "Agent",
         max_tool_calls: int = 20,
+        resilience: bool = True,
     ) -> None:
         """Initialize NativeExecutor.
         
         Args:
             agent: The agent to execute.
             max_tool_calls: Maximum total tool calls across all iterations.
+            resilience: Enable automatic retry for LLM rate limits (default: True).
         """
         super().__init__(agent)
         self._max_tool_calls = max_tool_calls
@@ -204,6 +234,15 @@ class NativeExecutor(BaseExecutor):
         # Pre-cache everything at construction time
         self._bound_model = None
         self._tool_map: dict[str, Any] = {}
+        self._model_resilience: ModelResilience | None = None
+        
+        # Setup model resilience
+        if resilience:
+            self._model_resilience = ModelResilience(
+                retry_policy=RetryPolicy.aggressive(),
+                tracker=getattr(self, "tracker", None),
+            )
+        
         self._initialize_cache()
     
     def _initialize_cache(self) -> None:
@@ -229,6 +268,7 @@ class NativeExecutor(BaseExecutor):
         
         Uses a tight asyncio loop with parallel tool execution.
         Emits events for observability when event_bus is attached.
+        Automatically retries on rate limits and transient errors.
         
         Args:
             task: The task to execute.
@@ -243,6 +283,10 @@ class NativeExecutor(BaseExecutor):
         # Get observability components
         event_bus = getattr(self.agent, 'event_bus', None)
         agent_name = self.agent.name or "agent"
+        
+        # Update resilience tracker if we have one
+        if self._model_resilience and hasattr(self, "tracker"):
+            self._model_resilience.tracker = self.tracker
         
         # Track execution timing
         execution_start = time.perf_counter()
@@ -273,8 +317,28 @@ class NativeExecutor(BaseExecutor):
                     "iteration": iteration + 1,
                 })
             
-            # Direct LLM call with bound tools
-            response: AIMessage = await self._bound_model.ainvoke(messages)
+            # LLM call with resilience (automatic retry for rate limits)
+            if self._model_resilience:
+                exec_result = await self._model_resilience.execute(
+                    self._bound_model.ainvoke, messages
+                )
+                if not exec_result.success:
+                    # Emit error event
+                    if event_bus:
+                        await event_bus.publish(EventType.AGENT_ERROR.value, {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "error": str(exec_result.error),
+                            "error_type": exec_result.error_type,
+                            "attempts": exec_result.attempts,
+                        })
+                    raise exec_result.error or RuntimeError(
+                        f"LLM call failed after {exec_result.attempts} attempts"
+                    )
+                response: AIMessage = exec_result.result
+            else:
+                response: AIMessage = await self._bound_model.ainvoke(messages)
+            
             messages.append(response)
             
             # Check for tool calls
@@ -458,7 +522,8 @@ class SequentialExecutor(NativeExecutor):
     NativeExecutor with sequential tool execution.
     
     Like NativeExecutor but executes tools one at a time for
-    tasks that require step-by-step reasoning.
+    tasks that require step-by-step reasoning. Also includes
+    LLM resilience for automatic retry on rate limits.
     
     Use when:
     - Tools depend on previous tool results
@@ -484,7 +549,17 @@ class SequentialExecutor(NativeExecutor):
         total_tool_calls = 0
         
         for _ in range(self.max_iterations):
-            response: AIMessage = await self._bound_model.ainvoke(messages)
+            # LLM call with resilience
+            if self._model_resilience:
+                exec_result = await self._model_resilience.execute(
+                    self._bound_model.ainvoke, messages
+                )
+                if not exec_result.success:
+                    raise exec_result.error or RuntimeError("LLM call failed")
+                response: AIMessage = exec_result.result
+            else:
+                response: AIMessage = await self._bound_model.ainvoke(messages)
+            
             messages.append(response)
             
             if not response.tool_calls:

@@ -108,6 +108,28 @@ class RetryPolicy:
         PermissionError,
         KeyError,
     )
+    # Message patterns that indicate retryable errors (rate limits, server errors)
+    retryable_patterns: tuple[str, ...] = (
+        "rate limit",
+        "rate_limit",
+        "ratelimit",
+        "too many requests",
+        "429",
+        "resource exhausted",
+        "resourceexhausted",
+        "quota exceeded",
+        "quota_exceeded",
+        "temporarily unavailable",
+        "service unavailable",
+        "503",
+        "502",
+        "500",
+        "server error",
+        "overloaded",
+        "capacity",
+        "try again",
+        "retry",
+    )
     
     def get_delay(self, attempt: int) -> float:
         """
@@ -166,17 +188,26 @@ class RetryPolicy:
         if isinstance(exception, self.retryable_exceptions):
             return True
         
-        # Default: retry most runtime errors
+        # Check error message for retryable patterns (rate limits, server errors)
+        error_msg = str(exception).lower()
+        error_type = type(exception).__name__.lower()
+        
+        # Check for rate limit and server error patterns
+        if any(pattern in error_msg or pattern in error_type for pattern in self.retryable_patterns):
+            return True
+        
+        # Default: retry most runtime errors, but check for non-retryable patterns
         if isinstance(exception, (RuntimeError, Exception)):
-            # Don't retry programming errors
-            error_msg = str(exception).lower()
             non_retryable_patterns = [
                 "not found",
                 "unauthorized",
                 "forbidden",
-                "invalid",
+                "invalid argument",
+                "invalid_argument",
                 "not supported",
                 "not implemented",
+                "authentication",
+                "permission denied",
             ]
             if any(pattern in error_msg for pattern in non_retryable_patterns):
                 return False
@@ -1114,3 +1145,251 @@ class ToolResilience:
         if self.failure_memory:
             return self.failure_memory.get_suggestions(tool_name)
         return None
+
+
+@dataclass
+class ModelExecutionResult:
+    """Result of a resilient model (LLM) execution."""
+    
+    success: bool
+    result: Any = None
+    error: Exception | None = None
+    attempts: int = 1
+    total_time_ms: float = 0.0
+    recovery_action: RecoveryAction | None = None
+    error_type: str | None = None  # e.g., "rate_limit", "timeout", "api_error"
+
+
+class ModelResilience:
+    """
+    Resilience layer specifically for LLM model calls.
+    
+    Provides retry with exponential backoff for API errors like:
+    - Rate limits (429, ResourceExhausted)
+    - Server errors (500, 502, 503)
+    - Timeouts
+    - Connection errors
+    
+    Designed to wrap model.ainvoke() calls with intelligent retry.
+    
+    Example:
+        ```python
+        from agenticflow.agent.resilience import ModelResilience, RetryPolicy
+        
+        # Create resilience with aggressive retry for rate limits
+        resilience = ModelResilience(
+            retry_policy=RetryPolicy(
+                max_retries=5,
+                base_delay=2.0,  # Start with 2s delay
+                max_delay=60.0,  # Cap at 60s
+            ),
+            on_retry=lambda attempt, error, delay: print(
+                f"⚠️ Retry {attempt}: {error} (waiting {delay:.1f}s)"
+            ),
+        )
+        
+        # Wrap LLM call
+        result = await resilience.execute(
+            model.ainvoke,
+            messages,
+        )
+        
+        if result.success:
+            response = result.result
+        else:
+            raise result.error
+        ```
+    """
+    
+    def __init__(
+        self,
+        retry_policy: RetryPolicy | None = None,
+        timeout_seconds: float = 120.0,
+        on_retry: Callable[[int, Exception, float], None] | None = None,
+        on_error: Callable[[Exception, int], None] | None = None,
+        on_success: Callable[[int], None] | None = None,
+        tracker: "ProgressTracker | None" = None,
+    ) -> None:
+        """Initialize ModelResilience.
+        
+        Args:
+            retry_policy: Retry configuration. Defaults to aggressive policy.
+            timeout_seconds: Timeout for each LLM call.
+            on_retry: Callback(attempt, error, delay) before each retry.
+            on_error: Callback(error, attempts) on final failure.
+            on_success: Callback(attempts) on success.
+            tracker: Optional progress tracker for observability.
+        """
+        self.retry_policy = retry_policy or RetryPolicy.aggressive()
+        self.timeout = timeout_seconds
+        self.on_retry = on_retry
+        self.on_error = on_error
+        self.on_success = on_success
+        self.tracker = tracker
+        
+        # Stats
+        self._total_calls = 0
+        self._total_retries = 0
+        self._total_failures = 0
+    
+    def _classify_error(self, error: Exception) -> str:
+        """Classify error type for reporting."""
+        error_str = str(error).lower()
+        error_type = type(error).__name__.lower()
+        
+        if any(p in error_str or p in error_type for p in ["rate", "429", "resourceexhausted", "quota"]):
+            return "rate_limit"
+        if any(p in error_str for p in ["timeout", "timed out"]):
+            return "timeout"
+        if any(p in error_str for p in ["connection", "network"]):
+            return "connection"
+        if any(p in error_str for p in ["500", "502", "503", "server error", "unavailable"]):
+            return "server_error"
+        if any(p in error_str for p in ["invalid", "malformed"]):
+            return "invalid_request"
+        return "api_error"
+    
+    def _emit(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emit progress event if tracker is available."""
+        if not self.tracker:
+            return
+        
+        if event_type == "retry":
+            attempt = data.get("attempt", 1)
+            max_retries = data.get("max_retries", 3)
+            delay = data.get("delay", 0)
+            error = data.get("error", "unknown")
+            error_type = data.get("error_type", "error")
+            
+            emoji = "🔄" if error_type != "rate_limit" else "⏳"
+            self.tracker.update(
+                f"{emoji} LLM retry {attempt}/{max_retries} ({error_type}) - "
+                f"waiting {delay:.1f}s..."
+            )
+        elif event_type == "error":
+            error_type = data.get("error_type", "error")
+            attempts = data.get("attempts", 1)
+            self.tracker.update(
+                f"❌ LLM failed after {attempts} attempts ({error_type})"
+            )
+        elif event_type == "success":
+            attempts = data.get("attempts", 1)
+            if attempts > 1:
+                self.tracker.update(
+                    f"✅ LLM succeeded after {attempts} attempts"
+                )
+    
+    async def execute(
+        self,
+        model_fn: Callable[..., Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> ModelExecutionResult:
+        """
+        Execute an LLM call with resilience.
+        
+        Args:
+            model_fn: The model method to call (e.g., model.ainvoke).
+            *args: Positional arguments for the model method.
+            **kwargs: Keyword arguments for the model method.
+            
+        Returns:
+            ModelExecutionResult with success/failure details.
+            
+        Example:
+            ```python
+            result = await resilience.execute(model.ainvoke, messages)
+            if result.success:
+                ai_message = result.result
+            ```
+        """
+        self._total_calls += 1
+        start_time = time.time()
+        result = ModelExecutionResult(success=False)
+        last_error: Exception | None = None
+        
+        for attempt in range(self.retry_policy.max_retries + 1):
+            result.attempts = attempt + 1
+            
+            try:
+                # Execute with timeout
+                call_result = await asyncio.wait_for(
+                    model_fn(*args, **kwargs),
+                    timeout=self.timeout,
+                )
+                
+                # Success!
+                result.success = True
+                result.result = call_result
+                result.total_time_ms = (time.time() - start_time) * 1000
+                
+                # Callbacks and tracking
+                if self.on_success:
+                    self.on_success(attempt + 1)
+                
+                if attempt > 0:
+                    self._emit("success", {"attempts": attempt + 1})
+                
+                return result
+                
+            except asyncio.TimeoutError:
+                last_error = TimeoutError(f"LLM call timed out after {self.timeout}s")
+            except Exception as e:
+                last_error = e
+            
+            # Classify error and check if retryable
+            error_type = self._classify_error(last_error)
+            result.error_type = error_type
+            
+            # Check if we should retry
+            if last_error and self.retry_policy.should_retry(last_error, attempt + 1):
+                delay = self.retry_policy.get_delay(attempt + 1)
+                self._total_retries += 1
+                
+                # Callbacks
+                if self.on_retry:
+                    self.on_retry(attempt + 1, last_error, delay)
+                
+                self._emit("retry", {
+                    "attempt": attempt + 1,
+                    "max_retries": self.retry_policy.max_retries,
+                    "delay": delay,
+                    "error": str(last_error)[:100],
+                    "error_type": error_type,
+                })
+                
+                await asyncio.sleep(delay)
+            else:
+                break
+        
+        # All retries exhausted
+        result.error = last_error
+        result.total_time_ms = (time.time() - start_time) * 1000
+        result.recovery_action = RecoveryAction.ABORT
+        self._total_failures += 1
+        
+        # Callbacks
+        if self.on_error:
+            self.on_error(last_error, result.attempts)
+        
+        self._emit("error", {
+            "attempts": result.attempts,
+            "error_type": result.error_type,
+        })
+        
+        return result
+    
+    @property
+    def stats(self) -> dict[str, int]:
+        """Get resilience statistics."""
+        return {
+            "total_calls": self._total_calls,
+            "total_retries": self._total_retries,
+            "total_failures": self._total_failures,
+        }
+    
+    def reset_stats(self) -> None:
+        """Reset statistics."""
+        self._total_calls = 0
+        self._total_retries = 0
+        self._total_failures = 0

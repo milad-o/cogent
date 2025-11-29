@@ -68,6 +68,8 @@ from agenticflow.agent.resilience import (
     ResilienceConfig,
     ExecutionResult,
     ToolResilience,
+    ModelResilience,
+    ModelExecutionResult,
 )
 from agenticflow.agent.hitl import (
     InterruptReason,
@@ -118,6 +120,8 @@ __all__ = [
     "ResilienceConfig",
     "ExecutionResult",
     "ToolResilience",
+    "ModelResilience",
+    "ModelExecutionResult",
     # Human-in-the-Loop
     "InterruptReason",
     "DecisionType",
