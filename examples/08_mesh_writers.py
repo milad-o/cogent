@@ -16,7 +16,7 @@ import os
 
 from dotenv import load_dotenv
 
-from agenticflow import Agent, Flow, FlowObserver
+from agenticflow import Agent, Flow, FlowObserver, Channel, ObservabilityLevel
 from agenticflow.core.enums import AgentRole
 from agenticflow.models import ChatModel
 
@@ -57,12 +57,23 @@ async def main() -> None:
     # Round 2: 3 parallel calls (agents read & refine based on others' work)
     # Synthesis: 1 call
     # Total: ~7 LLM calls
+    
+    # Full observability - see everything with no truncation
+    observer = FlowObserver(
+        level=ObservabilityLevel.TRACE,
+        channels=[Channel.ALL],
+        truncate=0,           # No truncation - show full content
+        show_timestamps=True,
+        show_duration=True,
+        show_trace_ids=True,  # Show correlation IDs
+    )
+    
     flow = Flow(
         name="writer-collaboration",
         agents=[technical, creative, seo],
         topology="mesh",
         max_rounds=2,  # Two rounds so agents can see each other's contributions
-        observer=FlowObserver.debug(),  # Full detail including messages
+        observer=observer,
     )
 
     task = "Write a 100-word blog post about '5 Tips for Better Sleep'."

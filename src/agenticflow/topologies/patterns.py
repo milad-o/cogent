@@ -387,10 +387,10 @@ Build on good ideas, offer corrections, and add new insights."""
                 # Emit message sent event - agent shares their contribution
                 if agent_event_bus:
                     await agent_event_bus.publish(EventType.MESSAGE_SENT.value, {
-                        "agent": name,
+                        "sender_id": name,
+                        "receiver_id": "team",
                         "agent_name": name,
-                        "to": "team",
-                        "content": result[:200] + "..." if len(result) > 200 else result,
+                        "content": result,  # Full content - observer handles truncation
                     })
 
                 # Share result in team memory
