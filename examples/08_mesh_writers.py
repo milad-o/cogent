@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 from agenticflow import Agent, Flow, FlowObserver, Channel, ObservabilityLevel
 from agenticflow.core.enums import AgentRole
-from agenticflow.models import ChatModel
+from agenticflow.models.gemini import GeminiChat
 
 load_dotenv()
 
@@ -28,7 +28,7 @@ async def main() -> None:
     print("  Mesh Topology: Collaborative Blog Writing")
     print("=" * 60)
 
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = GeminiChat(model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
 
     # Three specialists collaborate
     technical = Agent(

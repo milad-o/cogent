@@ -946,7 +946,7 @@ class FlowObserver:
             if self.config.truncate and len(content) > self.config.truncate:
                 content = content[:self.config.truncate] + "..."
             content_str = f' "{content}"' if content else ""
-            return f"{prefix}{s.dim('📥')} {receiver} {s.dim('←')} {sender}{s.dim(content_str)}"
+            return f"{prefix}{s.dim('📥')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
         
         elif event_type == EventType.MESSAGE_BROADCAST:
             sender = data.get("sender_id", "?")

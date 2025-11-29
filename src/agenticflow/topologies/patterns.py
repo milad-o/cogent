@@ -365,11 +365,12 @@ Provide your initial analysis and contribution."""
                 else:
                     # Emit message received event - agent sees other agents' work
                     if agent_event_bus:
+                        # Show the actual context being received (summarized)
+                        contributors = ", ".join(round_history[-1].keys()) if round_history else "team"
                         await agent_event_bus.publish(EventType.MESSAGE_RECEIVED.value, {
-                            "agent": name,
                             "agent_name": name,
-                            "from": "team",
-                            "content": f"Received {len(round_history)} rounds of contributions from teammates",
+                            "from": contributors,
+                            "content": ctx.strip() if ctx else f"Context from {len(round_history)} round(s)",
                         })
                     
                     prompt = f"""You are in round {round_n} of team collaboration.

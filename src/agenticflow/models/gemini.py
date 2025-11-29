@@ -20,13 +20,26 @@ from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding
 
 
 def _messages_to_gemini(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
-    """Convert messages to Gemini format."""
+    """Convert messages to Gemini format.
+    
+    Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
+    """
     system_instruction = None
     gemini_messages = []
     
     for msg in messages:
-        role = msg.get("role", "")
-        content = msg.get("content", "")
+        # Handle message objects (SystemMessage, HumanMessage, AIMessage, ToolMessage)
+        if hasattr(msg, "role"):
+            role = msg.role
+            content = getattr(msg, "content", "")
+            tool_calls = getattr(msg, "tool_calls", [])
+            name = getattr(msg, "name", "")
+        else:
+            # Handle dict messages
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            tool_calls = msg.get("tool_calls", [])
+            name = msg.get("name", "")
         
         if role == "system":
             system_instruction = content
@@ -36,16 +49,22 @@ def _messages_to_gemini(messages: list[dict[str, Any]]) -> tuple[str | None, lis
                 "parts": [{"text": content}],
             })
         elif role == "assistant":
-            tool_calls = msg.get("tool_calls", [])
             if tool_calls:
                 parts = []
                 if content:
                     parts.append({"text": content})
                 for tc in tool_calls:
+                    # Handle tool call dicts or objects
+                    if hasattr(tc, "name"):
+                        tc_name = tc.name
+                        tc_args = getattr(tc, "args", {})
+                    else:
+                        tc_name = tc.get("name", tc.get("function", {}).get("name", ""))
+                        tc_args = tc.get("args", tc.get("function", {}).get("arguments", {}))
                     parts.append({
                         "functionCall": {
-                            "name": tc.get("name", tc.get("function", {}).get("name", "")),
-                            "args": tc.get("args", tc.get("function", {}).get("arguments", {})),
+                            "name": tc_name,
+                            "args": tc_args,
                         }
                     })
                 gemini_messages.append({"role": "model", "parts": parts})
@@ -59,7 +78,7 @@ def _messages_to_gemini(messages: list[dict[str, Any]]) -> tuple[str | None, lis
                 "role": "user",
                 "parts": [{
                     "functionResponse": {
-                        "name": msg.get("name", ""),
+                        "name": name,
                         "response": {"result": content},
                     }
                 }],
