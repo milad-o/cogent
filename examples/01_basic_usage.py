@@ -8,18 +8,14 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model, settings
 
 from agenticflow import Agent, Flow
-from agenticflow.models.gemini import GeminiChat
-
-load_dotenv()
 
 
 async def main():
-    model = GeminiChat(model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
+    model = get_model()  # Automatically uses first available provider
 
     assistant = Agent(
         name="Assistant",
@@ -33,7 +29,7 @@ async def main():
         name="basic",
         agents=[assistant],
         topology="pipeline",
-        verbose=True,  # Simple progress output
+        verbose=settings.verbose_level,
     )
 
     result = await flow.run("What is 2 + 2? Explain briefly.")

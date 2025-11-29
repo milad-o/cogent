@@ -18,16 +18,12 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model, settings
 
 from agenticflow import Agent, Flow, FlowObserver
 from agenticflow.agent import parse_delegation, get_role_prompt, get_role_behavior
 from agenticflow.core.enums import AgentRole
-from agenticflow.models import ChatModel
-
-load_dotenv()
 
 
 async def demo_role_system():
@@ -46,7 +42,7 @@ async def demo_role_factories():
     """Show role-specific factory methods."""
     print("\n--- Role Factory Methods ---")
     
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     # Create role-specific agents
     supervisor = Agent.as_supervisor(
@@ -114,7 +110,7 @@ async def demo_supervisor_flow():
     print("  Pattern: SUPERVISOR ↔ [WORKER, WORKER]")
     print("  SUPERVISOR delegates and finishes; WORKERs do tool work")
     
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     # Create team
     supervisor = Agent.as_supervisor(
@@ -154,7 +150,7 @@ async def demo_review_flow():
     print("  Pattern: WORKER → REVIEWER")
     print("  WORKER does work; REVIEWER approves/rejects and finishes")
     
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     writer = Agent.as_worker(
         name="Writer",
@@ -186,7 +182,7 @@ async def demo_autonomous():
     print("  Pattern: Single AUTONOMOUS agent")
     print("  Can use tools AND finish (perfect for solo tasks)")
     
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     assistant = Agent(
         name="Assistant",

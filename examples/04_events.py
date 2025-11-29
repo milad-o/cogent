@@ -8,18 +8,14 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model
 
 from agenticflow import Agent, Flow, FlowObserver, ObservabilityLevel
-from agenticflow.models import ChatModel
-
-load_dotenv()
 
 
 async def main():
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
 
     planner = Agent(name="Planner", model=model, instructions="Create a plan.")
     executor = Agent(name="Executor", model=model, instructions="Execute the plan.")
@@ -47,7 +43,7 @@ async def main():
         print(f"  - {event}")
     
     print(f"\nMetrics: {observer.metrics().get('by_channel', {})}")
-    print(f"\nResult: {result.results[-1]['thought'][:100]}...")
+    print(f"\nResult: {result.output[:100]}...")
 
 
 if __name__ == "__main__":

@@ -9,18 +9,14 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model, settings
 
 from agenticflow import Agent, Flow
-from agenticflow.models.gemini import GeminiChat
-
-load_dotenv()
 
 
 async def main():
-    model = GeminiChat(model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
+    model = get_model()
 
     analyst = Agent(name="Analyst", model=model, instructions="Analyze the topic briefly. Keep response under 50 words.")
     writer = Agent(name="Writer", model=model, instructions="Write a short summary. Keep response under 50 words.")

@@ -15,15 +15,12 @@ Usage:
 """
 
 import asyncio
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+from config import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.capabilities import SSISAnalyzer
-
-load_dotenv()
 
 
 # Challenging questions that require deep analysis
@@ -66,15 +63,8 @@ async def main():
     
     print(f"\n📊 Total: {ssis.stats()['total_entities']} entities, {ssis.stats()['total_relationships']} relationships")
     
-    # Check for LLM configuration
-    try:
-        from agenticflow.models import ChatModel
-        model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
-    except Exception as e:
-        print(f"\n⚠️  Could not initialize LLM: {e}")
-        print("   Set OPENAI_API_KEY environment variable or run with --direct flag.")
-        ssis.close()
-        return
+    # Create model from config
+    model = get_model()
     
     # Create an agent with the SSIS capability
     print("\n🤖 Creating agent with SSISAnalyzer capability...")

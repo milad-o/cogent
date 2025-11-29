@@ -22,15 +22,11 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model
 
 from agenticflow import Agent, Flow, FlowObserver
 from agenticflow.core.enums import AgentRole
-from agenticflow.models import ChatModel
-
-load_dotenv()
 
 
 async def main() -> None:
@@ -38,7 +34,7 @@ async def main() -> None:
     print("  Hierarchical Topology: Clean Role-Based System")
     print("=" * 60)
 
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
 
     # Define agents with roles - hierarchy is auto-inferred!
     
@@ -99,13 +95,14 @@ You cannot finish - pass your results back.""",
     print("-" * 60)
     print("\n✅ Final Result:")
     
-    final = result.results[-1]["thought"] if result.results else "No result"
+    # TopologyResult has .output for final result
+    final = result.output
     if "FINAL ANSWER:" in final:
         final = final.split("FINAL ANSWER:", 1)[1].strip()
     print(final[:500] + "..." if len(final) > 500 else final)
     
-    print(f"\n   Completed in {result.iteration} iterations")
-    print(f"   Agents involved: {[r['agent'] for r in result.results]}")
+    print(f"\n   Completed in {result.rounds} round(s)")
+    print(f"   Agents involved: {result.execution_order}")
 
 
 if __name__ == "__main__":

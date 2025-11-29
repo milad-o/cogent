@@ -156,6 +156,8 @@ class Agent:
         resilience: ResilienceConfig | None = None,
         interrupt_on: dict[str, Any] | None = None,  # HITL: tool approval rules
         stream: bool = False,  # Enable streaming by default for this agent
+        # Observability
+        verbose: bool | str = False,  # Simple observability for standalone usage
     ) -> None:
         """
         Initialize an Agent.
@@ -187,6 +189,12 @@ class Agent:
             resilience: Resilience configuration (simplified API)
             stream: Enable token-by-token streaming by default for this agent.
                    When True, chat() and think() return async iterators.
+            verbose: Enable observability for standalone agent usage:
+                - False: No output (silent)
+                - True: Progress (thinking/responding with timing)
+                - "verbose": Show agent outputs/thoughts
+                - "debug": Show everything including tool calls
+                - "trace": Maximum detail + execution graph
             
         Example with memory:
             ```python
@@ -200,6 +208,20 @@ class Agent:
             # Chat with thread-based memory
             response = await agent.chat("Hi, I'm Alice", thread_id="conv-1")
             response = await agent.chat("What's my name?", thread_id="conv-1")  # Remembers!
+            ```
+            
+        Example with verbose (standalone usage):
+            ```python
+            # See tool calls and agent reasoning
+            agent = Agent(
+                name="Researcher",
+                model=model,
+                tools=[search, read_url],
+                verbose="debug",  # Shows all tool calls
+            )
+            
+            result = await agent.run("Find info about Python")
+            # Output shows: thinking... → tool calls → results → response
             ```
         """
         # Handle simplified API
@@ -299,7 +321,11 @@ class Agent:
         self._lock = asyncio.Lock()
         self._resilience: ToolResilience | None = None
         self._capabilities: list[Any] = []
+        self._observer = None  # FlowObserver for standalone usage
         self._setup_resilience()
+        
+        # Setup observer for standalone agent usage (when verbose is set)
+        self._setup_verbose_observer(verbose)
         
         # Human-in-the-loop state
         self._pending_actions: dict[str, PendingAction] = {}  # action_id -> pending action
@@ -354,6 +380,45 @@ class Agent:
             config=resilience_config,
             fallback_registry=fallback_registry,
         )
+    
+    def _setup_verbose_observer(self, verbose: bool | str) -> None:
+        """Setup observer for standalone agent usage.
+        
+        Args:
+            verbose: Verbosity level for observability:
+                - False: No output (silent)
+                - True: Progress (thinking/responding with timing)
+                - "verbose": Show agent outputs/thoughts  
+                - "debug": Show everything including tool calls
+                - "trace": Maximum detail + execution graph
+        """
+        if not verbose:
+            return
+        
+        # Create an event bus if agent doesn't have one (standalone usage)
+        if self.event_bus is None:
+            from agenticflow.events import EventBus
+            self.event_bus = EventBus()
+        
+        # Map verbose levels to FlowObserver presets
+        from agenticflow.observability import FlowObserver
+        
+        if verbose is True or verbose == "minimal":
+            self._observer = FlowObserver.minimal()
+        elif verbose == "verbose":
+            self._observer = FlowObserver.verbose()
+        elif verbose == "debug":
+            self._observer = FlowObserver.debug()
+        elif verbose == "trace":
+            self._observer = FlowObserver.trace()
+        else:
+            raise ValueError(
+                f"Invalid verbose level: {verbose!r}. "
+                "Use: False, True, 'minimal', 'verbose', 'debug', or 'trace'"
+            )
+        
+        # Connect observer to event bus
+        self._observer.attach(self.event_bus)
     
     def _setup_capabilities(self, capabilities: Sequence[Any]) -> None:
         """Setup capabilities and extract their tools.

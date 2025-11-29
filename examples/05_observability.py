@@ -12,19 +12,15 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model
 
 from agenticflow import Agent, Flow, FlowObserver, Channel, ObservabilityLevel
-from agenticflow.models import ChatModel
-
-load_dotenv()
 
 
 async def demo_levels():
     """Show different verbosity levels."""
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     analyst = Agent(name="Analyst", model=model)
     writer = Agent(name="Writer", model=model)
@@ -52,7 +48,7 @@ async def demo_levels():
 
 async def demo_trace():
     """Show deep tracing with execution graph."""
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     researcher = Agent(name="Researcher", model=model)
     analyst = Agent(name="Analyst", model=model)
@@ -86,7 +82,7 @@ async def demo_trace():
 
 async def demo_callbacks():
     """Custom callbacks with silent display."""
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     analyst = Agent(name="Analyst", model=model)
     writer = Agent(name="Writer", model=model)

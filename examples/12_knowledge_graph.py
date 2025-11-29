@@ -17,13 +17,10 @@ Key features demonstrated:
 
 import asyncio
 import json
-import os
 from pathlib import Path
 import tempfile
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import get_model
 
 
 def load_knowledge_file(kg, filepath: str) -> dict:
@@ -64,7 +61,6 @@ def load_knowledge_file(kg, filepath: str) -> dict:
 
 
 async def demo():
-    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import KnowledgeGraph
     
@@ -72,7 +68,7 @@ async def demo():
     print("🧠 Knowledge Graph Capability Demo")
     print("=" * 60)
     
-    model = ChatModel(model="gpt-4o-mini", temperature=0)
+    model = get_model()
     
     # === Step 1: Load KnowledgeGraph from file ===
     print("\n📂 Step 1: Load Knowledge from File")
@@ -221,7 +217,4 @@ to trace the path and provide complete answers.""",
 
 
 if __name__ == "__main__":
-    if not os.getenv("OPENAI_API_KEY"):
-        print("❌ Set OPENAI_API_KEY first")
-    else:
-        asyncio.run(demo())
+    asyncio.run(demo())

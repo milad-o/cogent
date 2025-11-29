@@ -28,15 +28,12 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dotenv import load_dotenv
-from agenticflow.tools.base import tool
+from config import get_model, settings
 
-# Load .env file for API keys
-load_dotenv()
+from agenticflow.tools.base import tool
 
 from agenticflow import Agent, AgentRole
 from agenticflow.visualization import AgentDiagram, MermaidConfig
@@ -235,9 +232,10 @@ async def main() -> None:
     print("🌿 Agentic RAG - The Secret Garden")
     print("=" * 60)
 
-    # Check for API key
-    if not os.getenv("OPENAI_API_KEY"):
+    # Check for OpenAI API key (needed for embeddings)
+    if not settings.openai_api_key:
         print("\n❌ Error: OPENAI_API_KEY not found in environment")
+        print("   OpenAI embeddings are required for RAG.")
         print("   Please set it in .env file or export it")
         return
 
@@ -257,13 +255,12 @@ async def main() -> None:
 
     # Step 3: Create agent with LLM
     print("\n🤖 Step 3: Creating RAG agent...")
-    from agenticflow.models import ChatModel
 
-    model = ChatModel(model="gpt-4o-mini", temperature=0)
+    model = get_model()
     agent = create_rag_agent(model)
     print(f"  ✓ Agent: {agent.name} ({agent.role.value})")
     print(f"  ✓ Tools: {', '.join(t.name for t in agent._direct_tools)}")
-    print(f"  ✓ Model: gpt-4o-mini")
+    print(f"  ✓ Model: {settings.default_provider}")
 
     # Step 4: Generate visualization
     print("\n📊 Step 4: Generating diagram...")
@@ -310,7 +307,7 @@ async def main() -> None:
     print(f"  • Chunks: {len(chunks)}")
     print(f"  • Agent: {agent.name} (autonomous)")
     print(f"  • Tools: search_documents, get_document_info")
-    print(f"  • Model: gpt-4o-mini")
+    print(f"  • Model: {settings.default_provider}")
 
     print(f"\n📝 Mermaid Diagram:")
     print(mermaid)

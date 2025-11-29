@@ -12,15 +12,11 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model, settings
 
 from agenticflow import Agent, Flow
 from agenticflow.core.enums import AgentRole
-from agenticflow.models.gemini import GeminiChat
-
-load_dotenv()
 
 
 async def main() -> None:
@@ -28,7 +24,7 @@ async def main() -> None:
     print("  Mesh Topology: Collaborative Blog Writing")
     print("=" * 60)
 
-    model = GeminiChat(model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
+    model = get_model()
 
     # Three specialists collaborate
     technical = Agent(

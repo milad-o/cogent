@@ -53,8 +53,10 @@ from agenticflow.topologies import (
 )
 
 if TYPE_CHECKING:
-    from agenticflow.agent import Agent
     from agenticflow.observability.observer import FlowObserver
+
+# Import Agent for runtime isinstance checks
+from agenticflow.agent import Agent
 
 # Type for simple verbosity levels
 VerbosityLevel = Literal[False, True, "minimal", "verbose", "debug", "trace"]

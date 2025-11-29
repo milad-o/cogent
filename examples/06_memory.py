@@ -13,21 +13,17 @@ Usage:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
+from config import get_model
 
 from agenticflow import Agent, InMemorySaver
-from agenticflow.models import ChatModel
-
-load_dotenv()
 
 
 async def demo_conversation_memory():
     """Show thread-based conversation memory."""
     print("\n--- Thread-Based Memory ---")
     
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     # Create agent with memory
     assistant = Agent(
@@ -67,7 +63,7 @@ async def demo_long_term_memory():
     """Show cross-thread long-term memory."""
     print("\n--- Long-Term Memory ---")
     
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     assistant = Agent(
         name="Assistant",
@@ -95,7 +91,7 @@ async def demo_memory_operations():
     """Show direct memory operations."""
     print("\n--- Memory Operations ---")
     
-    model = ChatOpenAI(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = get_model()
     
     assistant = Agent(
         name="Assistant",

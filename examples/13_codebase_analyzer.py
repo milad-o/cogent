@@ -13,12 +13,9 @@ Use cases:
 """
 
 import asyncio
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import get_model
 
 
 def demo_programmatic():
@@ -91,14 +88,13 @@ def demo_programmatic():
 
 async def demo_agent(analyzer):
     """Demo an agent using CodebaseAnalyzer to answer questions."""
-    from agenticflow.models import ChatModel
     from agenticflow import Agent
 
     print("\n" + "=" * 60)
     print("🤖 Agent with CodebaseAnalyzer Demo")
     print("=" * 60)
 
-    model = ChatModel(model="gpt-4o-mini", temperature=0)
+    model = get_model()
 
     agent = Agent(
         name="CodeExpert",
@@ -143,11 +139,8 @@ def main():
     # First run programmatic demo (no API key needed)
     analyzer = demo_programmatic()
 
-    # Then run agent demo if API key available
-    if os.getenv("OPENAI_API_KEY"):
-        asyncio.run(demo_agent(analyzer))
-    else:
-        print("\n⚠️  Set OPENAI_API_KEY to run the agent demo")
+    # Then run agent demo
+    asyncio.run(demo_agent(analyzer))
 
 
 if __name__ == "__main__":

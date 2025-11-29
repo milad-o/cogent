@@ -7,15 +7,11 @@ that delegates to workers using just Agent + tools.
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import get_model, settings
 
 
 async def demo():
-    from agenticflow.models import ChatModel
     from agenticflow.tools.base import tool
     from agenticflow import Agent, AgentRole
     
@@ -23,7 +19,7 @@ async def demo():
     print("👔 Supervisor Chatbot Pattern")
     print("=" * 60)
     
-    model = ChatModel(model="gpt-4o-mini", temperature=0)
+    model = get_model()
     
     # === Step 1: Create worker agents ===
     
@@ -118,7 +114,4 @@ Be conversational and friendly.""",
 
 
 if __name__ == "__main__":
-    if not os.getenv("OPENAI_API_KEY"):
-        print("❌ Set OPENAI_API_KEY first")
-    else:
-        asyncio.run(demo())
+    asyncio.run(demo())

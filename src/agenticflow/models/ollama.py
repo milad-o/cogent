@@ -45,6 +45,58 @@ def _tools_to_openai(tools: list[Any]) -> list[dict[str, Any]]:
     return openai_tools
 
 
+def _convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
+    """Convert messages to OpenAI dict format.
+    
+    Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
+    """
+    result = []
+    for msg in messages:
+        # Already a dict
+        if isinstance(msg, dict):
+            result.append(msg)
+            continue
+        
+        # Message object with to_openai method
+        if hasattr(msg, "to_openai"):
+            result.append(msg.to_openai())
+            continue
+        
+        # Message object with role and content attributes
+        if hasattr(msg, "role") and hasattr(msg, "content"):
+            msg_dict: dict[str, Any] = {
+                "role": msg.role,
+                "content": msg.content or "",
+            }
+            # Handle tool calls on assistant messages
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                msg_dict["tool_calls"] = [
+                    {
+                        "id": tc.get("id", f"call_{i}") if isinstance(tc, dict) else getattr(tc, "id", f"call_{i}"),
+                        "type": "function",
+                        "function": {
+                            "name": tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", ""),
+                            "arguments": __import__("json").dumps(
+                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                            ),
+                        },
+                    }
+                    for i, tc in enumerate(msg.tool_calls)
+                ]
+            # Handle tool result messages
+            if hasattr(msg, "tool_call_id") and msg.tool_call_id:
+                msg_dict["tool_call_id"] = msg.tool_call_id
+            if hasattr(msg, "name") and msg.name:
+                msg_dict["name"] = msg.name
+            result.append(msg_dict)
+            continue
+        
+        # Fallback: try to convert to string
+        result.append({"role": "user", "content": str(msg)})
+    
+    return result
+
+
 def _parse_response(response: Any) -> AIMessage:
     """Parse Ollama response into AIMessage."""
     choice = response.choices[0]
@@ -165,11 +217,14 @@ class OllamaChat(BaseChatModel):
             if chunk.choices and chunk.choices[0].delta.content:
                 yield AIMessage(content=chunk.choices[0].delta.content)
     
-    def _build_request(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
-        """Build API request."""
+    def _build_request(self, messages: list[Any]) -> dict[str, Any]:
+        """Build API request, converting messages to dict format."""
+        # Convert message objects to dicts
+        converted_messages = _convert_messages(messages)
+        
         kwargs: dict[str, Any] = {
             "model": self.model,
-            "messages": messages,
+            "messages": converted_messages,
             "temperature": self.temperature,
         }
         if self.max_tokens:

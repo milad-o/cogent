@@ -12,11 +12,8 @@ Features:
 """
 
 import asyncio
-import os
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import get_model
 
 
 # ============================================================
@@ -108,16 +105,10 @@ async def agent_demo():
     print("🤖 Agent with WebSearch Demo")
     print("=" * 60)
     
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        print("⚠️  OPENAI_API_KEY not set - skipping agent demo")
-        return
-    
-    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import WebSearch, KnowledgeGraph
     
-    model = ChatModel(model="gpt-4o-mini", temperature=0)
+    model = get_model()
     
     # Combine WebSearch with KnowledgeGraph for research + memory
     ws = WebSearch(max_results=5)
@@ -160,18 +151,12 @@ async def combined_demo():
     print("🔗 Combined Capabilities Demo")
     print("=" * 60)
     
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        print("⚠️  OPENAI_API_KEY not set - skipping")
-        return
-    
-    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import WebSearch, KnowledgeGraph, FileSystem
     import tempfile
     from pathlib import Path
     
-    model = ChatModel(model="gpt-4o-mini", temperature=0)
+    model = get_model()
     
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace).resolve()

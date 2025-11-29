@@ -26,10 +26,16 @@ Run:
 """
 
 import asyncio
-import os
 
-# For demo without real API
-MOCK_MODE = not os.getenv("OPENAI_API_KEY")
+from config import get_model as config_get_model, settings
+
+# For demo without real API - check if any provider is configured
+MOCK_MODE = not any([
+    settings.openai_api_key,
+    settings.groq_api_key,
+    settings.anthropic_api_key,
+    settings.gemini_api_key,
+])
 
 
 # =============================================================================
@@ -118,8 +124,7 @@ def get_model(response_for_mock: str = "Hello!"):
     if MOCK_MODE:
         return create_mock_model(response_for_mock)
     else:
-        from agenticflow.models import ChatModel
-        return ChatModel(model="gpt-4o-mini", streaming=True)
+        return config_get_model()
 
 
 # =============================================================================

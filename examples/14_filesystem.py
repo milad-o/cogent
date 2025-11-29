@@ -12,13 +12,10 @@ Features:
 """
 
 import asyncio
-import os
 import tempfile
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import get_model
 
 # ============================================================
 # Programmatic Demo (no LLM needed)
@@ -184,12 +181,6 @@ async def agent_demo():
     print("🤖 Agent with FileSystem Demo")
     print("=" * 60)
     
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        print("⚠️  OPENAI_API_KEY not set - skipping agent demo")
-        return
-    
-    from agenticflow.models import ChatModel
     from agenticflow import Agent
     from agenticflow.capabilities import FileSystem
     
@@ -201,7 +192,7 @@ async def agent_demo():
         print(f"⚠️  Data directory not found: {data_dir}")
         return
     
-    model = ChatModel(model="gpt-4o-mini", temperature=0)
+    model = get_model()
     
     fs = FileSystem(
         allowed_paths=[str(data_dir.resolve())],
