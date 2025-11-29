@@ -2,7 +2,7 @@
 Demo: Pipeline Topology
 
 Sequential workflow: Analyst → Writer → Editor
-With detailed observability showing agent thoughts.
+With observability showing agent thoughts.
 
 Usage:
     uv run python examples/02_topologies.py
@@ -13,7 +13,7 @@ import os
 
 from dotenv import load_dotenv
 
-from agenticflow import Agent, Flow, FlowObserver
+from agenticflow import Agent, Flow
 from agenticflow.models.gemini import GeminiChat
 
 load_dotenv()
@@ -26,11 +26,13 @@ async def main():
     writer = Agent(name="Writer", model=model, instructions="Write a short summary. Keep response under 50 words.")
     editor = Agent(name="Editor", model=model, instructions="Polish and finalize. Keep response under 50 words.")
 
+    # Simple observability: verbose="verbose" shows agent outputs
+    # Options: True (progress), "verbose" (outputs), "debug" (tools), "trace" (all)
     flow = Flow(
         name="pipeline",
         agents=[analyst, writer, editor],
         topology="pipeline",
-        observer=FlowObserver.verbose(),
+        verbose="verbose",  # Simple! Shows agent thoughts with timing
     )
 
     result = await flow.run("Topic: Benefits of exercise")

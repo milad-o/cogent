@@ -23,6 +23,7 @@ Example:
         name="content-team",
         agents=[researcher, writer, editor],
         topology="pipeline",
+        verbose=True,  # Simple observability
     )
 
     result = await flow.run("Create a blog post about AI")
@@ -34,7 +35,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from agenticflow.events.bus import EventBus
 from agenticflow.events.handlers import ConsoleEventHandler
@@ -54,6 +55,37 @@ from agenticflow.topologies import (
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
     from agenticflow.observability.observer import FlowObserver
+
+# Type for simple verbosity levels
+VerbosityLevel = Literal[False, True, "minimal", "verbose", "debug", "trace"]
+
+
+def _create_observer_from_verbose(verbose: VerbosityLevel) -> FlowObserver:
+    """Create a FlowObserver from a simple verbosity level.
+    
+    Args:
+        verbose: Verbosity level setting
+        
+    Returns:
+        Configured FlowObserver instance
+    """
+    from agenticflow.observability.observer import FlowObserver
+    
+    if verbose is True or verbose == "minimal":
+        # Basic progress - agent start/complete with timing
+        return FlowObserver.progress()
+    elif verbose == "verbose":
+        # Show agent outputs/thoughts
+        return FlowObserver.verbose()
+    elif verbose == "debug":
+        # Show everything including tool calls
+        return FlowObserver.debug()
+    elif verbose == "trace":
+        # Maximum detail + execution graph
+        return FlowObserver.trace()
+    else:
+        # Default to progress for any truthy value
+        return FlowObserver.progress()
 
 
 @dataclass
@@ -125,6 +157,15 @@ class Flow:
             max_rounds=2,  # Collaboration rounds
         )
         ```
+    
+    Observability Levels:
+        verbose=False      - No output (silent)
+        verbose=True       - Progress updates (agent start/complete with timing)
+        verbose="verbose"  - Show agent outputs/thoughts
+        verbose="debug"    - Show everything including tool calls
+        verbose="trace"    - Maximum detail + execution graph
+        
+        Or pass a FlowObserver for full customization.
     """
 
     def __init__(
@@ -143,7 +184,9 @@ class Flow:
         structure: dict[str, list[Agent]] | None = None,
         # General options
         config: FlowConfig | None = None,
-        verbose: bool = False,
+        # Observability - simple API
+        verbose: VerbosityLevel = False,
+        # Observability - advanced API
         observer: FlowObserver | None = None,
     ) -> None:
         """
@@ -159,16 +202,47 @@ class Flow:
             synthesizer: For mesh - dedicated agent to synthesize results.
             structure: For hierarchical - {manager_name: [subordinate_agents]}.
             config: Advanced configuration.
-            verbose: Enable console logging.
-            observer: FlowObserver for observability.
+            verbose: Simple observability control:
+                - False: Silent (no output)
+                - True: Progress (agent transitions with timing)
+                - "verbose": Show agent outputs/thoughts
+                - "debug": Show everything including tool calls
+                - "trace": Maximum detail + execution graph
+            observer: FlowObserver for full customization (overrides verbose).
+            
+        Example:
+            ```python
+            # Simple - just see progress
+            flow = Flow(..., verbose=True)
+            
+            # See agent thoughts
+            flow = Flow(..., verbose="verbose")
+            
+            # See everything including tools
+            flow = Flow(..., verbose="debug")
+            
+            # Full customization
+            from agenticflow import FlowObserver
+            observer = FlowObserver(
+                level=ObservabilityLevel.DEBUG,
+                channels=[Channel.AGENTS, Channel.TOOLS],
+                show_timestamps=True,
+                on_error=my_error_handler,
+            )
+            flow = Flow(..., observer=observer)
+            ```
         """
         self.name = name
         self._agents = list(agents)
         self._config = config or FlowConfig()
-        self._observer = observer
-
-        if verbose:
-            self._config.verbose = True
+        
+        # Handle observability
+        if observer is not None:
+            self._observer = observer
+        elif verbose:
+            self._observer = _create_observer_from_verbose(verbose)
+        else:
+            self._observer = None
 
         # Override config with explicit params
         if max_rounds != 3:
@@ -213,9 +287,7 @@ class Flow:
 
     def _setup_event_handlers(self) -> None:
         """Setup event handlers."""
-        if self._config.verbose:
-            handler = ConsoleEventHandler(verbose=True)
-            self._event_bus.subscribe_all(handler)
+        # FlowObserver handles all observability now
         if self._observer is not None:
             self._observer.attach(self._event_bus)
 

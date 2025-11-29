@@ -1,7 +1,7 @@
 """
-Demo: Streaming Progress
+Demo: Flow Streaming
 
-Watch agents work in real-time using flow.stream().
+Watch flow execution updates in real-time using flow.stream().
 
 Usage:
     uv run python examples/03_flow.py
@@ -21,20 +21,28 @@ load_dotenv()
 async def main():
     model = GeminiChat(model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
 
-    researcher = Agent(name="Researcher", model=model, instructions="Research the topic.")
-    writer = Agent(name="Writer", model=model, instructions="Write a summary.")
-    reviewer = Agent(name="Reviewer", model=model, instructions="Review and finalize.")
+    researcher = Agent(name="Researcher", model=model, instructions="Research the topic briefly.")
+    writer = Agent(name="Writer", model=model, instructions="Write a short summary.")
+    reviewer = Agent(name="Reviewer", model=model, instructions="Review and finalize briefly.")
 
+    # verbose=True for basic progress, "verbose" for outputs, "debug" for everything
     flow = Flow(
         name="content",
         agents=[researcher, writer, reviewer],
         topology="pipeline",
+        verbose="verbose",
     )
 
-    print("Streaming progress:")
-    async for state in flow.stream("Topic: AI in healthcare"):
-        agent = state.get("current_agent", "starting")
-        print(f"  [{agent}] completed")
+    print("Streaming execution updates:\n")
+    async for event in flow.stream("Topic: AI in healthcare"):
+        event_type = event.get("type", "unknown")
+        if event_type == "status":
+            print(f"  📌 Status: {event.get('data', '')}")
+        elif event_type == "output":
+            output = event.get('data', '')[:100]
+            print(f"  📝 Output preview: {output}...")
+        elif event_type == "complete":
+            print("  ✅ Complete!")
 
     print("\nDone!")
 
