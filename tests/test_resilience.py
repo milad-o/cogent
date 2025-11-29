@@ -102,12 +102,17 @@ class TestRetryPolicy:
         assert len(unique_delays) > 1
 
     def test_should_retry_max_retries(self):
-        """Test that should_retry respects max_retries."""
+        """Test that should_retry respects max_retries.
+        
+        max_retries=3 means we can retry 3 times after the initial attempt.
+        So attempts 1, 2, 3 can trigger retry, attempt 4 cannot.
+        """
         policy = RetryPolicy(max_retries=3)
         error = RuntimeError("test")
-        assert policy.should_retry(error, 1) is True
-        assert policy.should_retry(error, 2) is True
-        assert policy.should_retry(error, 3) is False
+        assert policy.should_retry(error, 1) is True   # Can retry after attempt 1
+        assert policy.should_retry(error, 2) is True   # Can retry after attempt 2
+        assert policy.should_retry(error, 3) is True   # Can retry after attempt 3
+        assert policy.should_retry(error, 4) is False  # Cannot retry after attempt 4
 
     def test_should_retry_no_retry_strategy(self):
         """Test that NONE strategy doesn't retry."""

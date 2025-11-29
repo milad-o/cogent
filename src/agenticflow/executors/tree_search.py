@@ -293,10 +293,10 @@ class TreeSearchExecutor(BaseExecutor):
                                     child.reflection = reflection
                                     
                                     # Store in agent's Reflexion memory
-                                    self.agent.scratchpad.add_reflection(
+                                    self.agent.taskboard.add_reflection(
                                         reflection, 
                                         "failure",
-                                        task_context=task[:100],
+                                        task[:100],
                                     )
             else:
                 # Max depth reached
@@ -533,9 +533,7 @@ ACTION 3:
                 self._track_tool_error(tool_name, error_msg)
                 
                 # Learn from this error
-                self.agent.scratchpad.learn_failure_pattern(
-                    tool_name, error_msg
-                )
+                self.agent.taskboard.record_error(tool_name, e)
                 
                 return f"ERROR: {error_msg}"
         

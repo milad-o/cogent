@@ -197,7 +197,7 @@ class NativeExecutor(BaseExecutor):
     - LLM resilience with automatic retry for rate limits
     
     Trade-offs:
-    - No scratchpad/working memory
+    - No taskboard/working memory
     - No event streaming
     - Limited tool error recovery (but LLM calls are resilient)
     
@@ -238,9 +238,30 @@ class NativeExecutor(BaseExecutor):
         
         # Setup model resilience
         if resilience:
+            # Create on_retry callback that logs to event bus
+            async def _log_retry(attempt: int, error: Exception, delay: float) -> None:
+                """Log retry attempt via event bus."""
+                event_bus = getattr(self.agent, "event_bus", None)
+                if event_bus:
+                    from agenticflow.core.enums import EventType
+                    await event_bus.publish(EventType.AGENT_THINKING.value, {
+                        "agent": self.agent.name or "agent",
+                        "agent_name": self.agent.name or "agent",
+                        "message": f"⏳ LLM retry {attempt}: {str(error)[:60]}... (waiting {delay:.1f}s)",
+                    })
+            
+            def on_retry_sync(attempt: int, error: Exception, delay: float) -> None:
+                """Sync wrapper that prints retry info."""
+                import sys
+                print(
+                    f"⏳ LLM retry {attempt}: {str(error)[:80]}... (waiting {delay:.1f}s)",
+                    file=sys.stderr,
+                )
+            
             self._model_resilience = ModelResilience(
                 retry_policy=RetryPolicy.aggressive(),
                 tracker=getattr(self, "tracker", None),
+                on_retry=on_retry_sync,
             )
         
         self._initialize_cache()

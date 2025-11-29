@@ -15,7 +15,7 @@ from agenticflow.tools.base import BaseTool
 
 from agenticflow.agent.config import AgentConfig
 from agenticflow.agent.state import AgentState
-from agenticflow.agent.scratchpad import Scratchpad
+from agenticflow.agent.taskboard import TaskBoard, TaskBoardConfig, create_taskboard_tools, TASKBOARD_INSTRUCTIONS
 from agenticflow.agent.hitl import (
     should_interrupt,
     PendingAction,
@@ -120,6 +120,7 @@ class Agent:
         resilience: ResilienceConfig | None = None,
         memory: Any = None,
         store: Any = None,
+        taskboard: bool | TaskBoardConfig | None = None,
     ) -> None:
         """Simplified constructor - create agent with direct parameters."""
         ...
@@ -158,6 +159,8 @@ class Agent:
         stream: bool = False,  # Enable streaming by default for this agent
         # Observability
         verbose: bool | str = False,  # Simple observability for standalone usage
+        # TaskBoard: Human-like task tracking
+        taskboard: bool | TaskBoardConfig | None = None,
     ) -> None:
         """
         Initialize an Agent.
@@ -222,6 +225,22 @@ class Agent:
             
             result = await agent.run("Find info about Python")
             # Output shows: thinking... → tool calls → results → response
+            ```
+            
+        Example with taskboard:
+            ```python
+            # Enable task tracking - agent gets tools to manage its own work
+            agent = Agent(
+                name="Researcher",
+                model=model,
+                tools=[search, summarize],
+                taskboard=True,  # Adds task management tools + instructions
+            )
+            
+            result = await agent.run("Research Python async patterns")
+            
+            # Check what the agent tracked
+            print(agent.taskboard.summary())
             ```
         """
         # Handle simplified API
@@ -338,8 +357,8 @@ class Agent:
         # Setup memory
         self._setup_memory(memory, store)
         
-        # Setup scratchpad (working memory for todos, notes, errors)
-        self._scratchpad = Scratchpad()
+        # Setup taskboard (task tracking and working memory)
+        self._setup_taskboard(taskboard)
         
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
@@ -419,6 +438,61 @@ class Agent:
         
         # Connect observer to event bus
         self._observer.attach(self.event_bus)
+    
+    def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
+        """Setup taskboard for task tracking.
+        
+        Args:
+            taskboard: TaskBoard configuration:
+                - None/False: Create basic taskboard (no tools)
+                - True: Enable with default config (adds tools + instructions)
+                - TaskBoardConfig: Enable with custom config
+        """
+        # Always create a taskboard for internal use
+        if taskboard is None or taskboard is False:
+            self._taskboard = TaskBoard()
+            self._taskboard_enabled = False
+            return
+        
+        # Enable taskboard with tools
+        if taskboard is True:
+            config = TaskBoardConfig()
+        else:
+            config = taskboard
+        
+        self._taskboard = TaskBoard(config)
+        self._taskboard_enabled = True
+        
+        # Add taskboard tools to agent
+        taskboard_tools = create_taskboard_tools(self._taskboard)
+        for tool in taskboard_tools:
+            if tool not in self._direct_tools:
+                self._direct_tools.append(tool)
+                if tool.name not in self.config.tools:
+                    self.config.tools.append(tool.name)
+        
+        # Inject taskboard instructions into system prompt
+        if config.include_instructions and self.config.system_prompt:
+            self.config = AgentConfig(
+                name=self.config.name,
+                role=self.config.role,
+                description=self.config.description,
+                model=self.config.model,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+                system_prompt=self.config.system_prompt + "\n\n" + TASKBOARD_INSTRUCTIONS,
+                model_kwargs=self.config.model_kwargs,
+                stream=self.config.stream,
+                tools=self.config.tools,
+                max_concurrent_tasks=self.config.max_concurrent_tasks,
+                timeout_seconds=self.config.timeout_seconds,
+                retry_on_error=self.config.retry_on_error,
+                max_retries=self.config.max_retries,
+                resilience_config=self.config.resilience_config,
+                fallback_tools=self.config.fallback_tools,
+                interrupt_on=self.config.interrupt_on,
+                metadata=self.config.metadata,
+            )
     
     def _setup_capabilities(self, capabilities: Sequence[Any]) -> None:
         """Setup capabilities and extract their tools.
@@ -578,29 +652,29 @@ class Agent:
         return self._memory.has_persistence
     
     @property
-    def scratchpad(self) -> Scratchpad:
-        """Access the agent's scratchpad (working memory).
+    def taskboard(self) -> TaskBoard:
+        """Access the agent's taskboard for task tracking.
         
-        The scratchpad provides:
-        - Todo list: Track tasks with status
+        The taskboard provides:
+        - Tasks: Track work items with status
         - Notes: Store observations and insights
-        - Error log: Context for self-correction
+        - Learning: Remember what worked/didn't (Reflexion-style)
         
         Example:
             ```python
-            # Track todos
-            agent.scratchpad.add_todo("Search for Python tutorials")
-            agent.scratchpad.mark_done("Search", "Found 5 articles")
+            # Track tasks
+            agent.taskboard.add_task("Search for Python tutorials")
+            agent.taskboard.complete_task("Search", "Found 5 articles")
             
             # Take notes
-            agent.scratchpad.note("Python is popular for data science")
+            agent.taskboard.add_note("Python is great for data science")
             
             # Check completion
-            if agent.scratchpad.all_done():
-                print("All tasks complete!")
+            if agent.taskboard.is_complete():
+                print("All tasks done!")
             ```
         """
-        return self._scratchpad
+        return self._taskboard
     
     @property
     def resilience(self) -> ToolResilience:
@@ -2537,6 +2611,7 @@ class Agent:
         strategy: str = "dag",
         on_step: Callable[[str, Any], None] | None = None,
         tracker: ProgressTracker | None = None,
+        max_iterations: int = 10,
     ) -> Any:
         """
         Execute a complex task using an advanced execution strategy.
@@ -2555,6 +2630,7 @@ class Agent:
                 - "adaptive": Auto-select based on task complexity
             on_step: Optional callback(step_type, data) for progress.
             tracker: Optional ProgressTracker for real-time output.
+            max_iterations: Maximum LLM call iterations (default: 10).
             
         Returns:
             The final result.
@@ -2585,6 +2661,7 @@ class Agent:
         executor = create_executor(self, exec_strategy)
         executor.on_step = on_step
         executor.tracker = tracker  # Pass tracker to executor
+        executor.max_iterations = max_iterations
         
         return await executor.execute(task, context)
 

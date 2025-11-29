@@ -84,6 +84,12 @@ from agenticflow.agent.hitl import (
     HumanResponse,
     should_interrupt,
 )
+from agenticflow.agent.taskboard import (
+    TaskBoard,
+    TaskBoardConfig,
+    Task,
+    TaskStatus,
+)
 
 __all__ = [
     # Core
@@ -134,4 +140,9 @@ __all__ = [
     "GuidanceResult",
     "HumanResponse",
     "should_interrupt",
+    # TaskBoard
+    "TaskBoard",
+    "TaskBoardConfig",
+    "Task",
+    "TaskStatus",
 ]

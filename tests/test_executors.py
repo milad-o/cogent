@@ -25,7 +25,7 @@ from agenticflow.executors import (
     create_executor,
 )
 from agenticflow.agent import Agent, AgentConfig
-from agenticflow.agent.scratchpad import Scratchpad
+from agenticflow.agent.taskboard import TaskBoard
 
 
 class TestToolCall:
@@ -126,7 +126,7 @@ class TestBaseExecutor:
         agent = MagicMock(spec=Agent)
         agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
-        agent.scratchpad = Scratchpad()
+        agent._taskboard = TaskBoard()
         agent.think = AsyncMock(return_value="Test response")
         agent.act = AsyncMock(return_value="Tool result")
         agent._get_tool = MagicMock(return_value=None)
@@ -157,7 +157,7 @@ class TestNativeExecutor:
         agent = MagicMock(spec=Agent)
         agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
-        agent.scratchpad = Scratchpad()
+        agent._taskboard = TaskBoard()
         agent.think = AsyncMock()
         agent.act = AsyncMock()
         agent._get_tool = MagicMock(return_value=None)
@@ -183,7 +183,7 @@ class TestSequentialExecutor:
         agent = MagicMock(spec=Agent)
         agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
-        agent.scratchpad = Scratchpad()
+        agent._taskboard = TaskBoard()
         agent.think = AsyncMock()
         agent.act = AsyncMock()
         agent._get_tool = MagicMock(return_value=None)
@@ -339,7 +339,7 @@ class TestTreeSearchExecutor:
         agent = MagicMock(spec=Agent)
         agent.name = "test-agent"
         agent.config = AgentConfig(name="test-agent")
-        agent.scratchpad = Scratchpad()
+        agent._taskboard = TaskBoard()
         agent.think = AsyncMock()
         agent.act = AsyncMock()
         agent._get_tool = MagicMock(return_value=None)

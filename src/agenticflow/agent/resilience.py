@@ -174,7 +174,9 @@ class RetryPolicy:
         Returns:
             True if should retry, False otherwise
         """
-        if attempt >= self.max_retries:
+        # attempt is 1-based, max_retries means we can retry that many times
+        # So if max_retries=5, we allow attempts 1,2,3,4,5 to retry
+        if attempt > self.max_retries:
             return False
         
         if self.strategy == RetryStrategy.NONE:
