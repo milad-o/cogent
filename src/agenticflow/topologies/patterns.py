@@ -305,13 +305,29 @@ class Mesh(BaseTopology):
         team_memory: TeamMemory | None = None,
     ) -> TopologyResult:
         """Execute mesh collaboration pattern."""
+        from agenticflow.core.enums import EventType
+        from agenticflow.events.bus import EventBus
+        
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []
-
         round_history: list[dict[str, str]] = []
+        
+        # Get event bus from first agent if available (must be real EventBus)
+        first_agent = self.agents[0].agent if self.agents else None
+        event_bus = getattr(first_agent, 'event_bus', None)
+        if event_bus is not None and not isinstance(event_bus, EventBus):
+            event_bus = None  # Don't use mocked or invalid event bus
 
         for round_num in range(1, self.max_rounds + 1):
             round_outputs: dict[str, str] = {}
+            
+            # Emit round start event
+            if event_bus:
+                await event_bus.publish(EventType.TASK_STARTED.value, {
+                    "task": f"Mesh Round {round_num}/{self.max_rounds}",
+                    "round": round_num,
+                    "agents": [a.name for a in self.agents],
+                })
 
             # Build context from previous rounds
             history_context = ""
@@ -326,8 +342,13 @@ class Mesh(BaseTopology):
             async def get_contribution(
                 agent_cfg: AgentConfig,
                 round_n: int = round_num,
+                ctx: str = history_context,
             ) -> tuple[str, str]:
                 name = agent_cfg.name or "agent"
+                agent_event_bus = getattr(agent_cfg.agent, 'event_bus', None)
+                # Only use real EventBus, not mocked
+                if agent_event_bus is not None and not isinstance(agent_event_bus, EventBus):
+                    agent_event_bus = None
 
                 # Report agent starting this round
                 if team_memory:
@@ -342,10 +363,19 @@ YOUR PERSPECTIVE: {agent_cfg.role or "general"}
 
 Provide your initial analysis and contribution."""
                 else:
+                    # Emit message received event - agent sees other agents' work
+                    if agent_event_bus:
+                        await agent_event_bus.publish(EventType.MESSAGE_RECEIVED.value, {
+                            "agent": name,
+                            "agent_name": name,
+                            "from": "team",
+                            "content": f"Received {len(round_history)} rounds of contributions from teammates",
+                        })
+                    
                     prompt = f"""You are in round {round_n} of team collaboration.
 
 TASK: {task}
-{history_context}
+{ctx}
 
 YOUR PERSPECTIVE: {agent_cfg.role or "general"}
 
@@ -353,6 +383,15 @@ Review your colleagues' contributions and provide your updated analysis.
 Build on good ideas, offer corrections, and add new insights."""
 
                 result = await agent_cfg.agent.run(prompt)
+                
+                # Emit message sent event - agent shares their contribution
+                if agent_event_bus:
+                    await agent_event_bus.publish(EventType.MESSAGE_SENT.value, {
+                        "agent": name,
+                        "agent_name": name,
+                        "to": "team",
+                        "content": result[:200] + "..." if len(result) > 200 else result,
+                    })
 
                 # Share result in team memory
                 if team_memory:
@@ -370,6 +409,16 @@ Build on good ideas, offer corrections, and add new insights."""
                 round_outputs[name] = output
                 agent_outputs[f"{name}_round{round_num}"] = output
                 execution_order.append(f"{name}_round{round_num}")
+
+            round_history.append(round_outputs)
+            
+            # Emit round complete event
+            if event_bus:
+                await event_bus.publish(EventType.TASK_COMPLETED.value, {
+                    "task": f"Mesh Round {round_num}/{self.max_rounds}",
+                    "round": round_num,
+                    "contributions": list(round_outputs.keys()),
+                })
 
             round_history.append(round_outputs)
 

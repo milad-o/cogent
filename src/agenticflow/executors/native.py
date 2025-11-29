@@ -225,10 +225,10 @@ class NativeExecutor(BaseExecutor):
         task: str,
         context: dict[str, Any] | None = None,
     ) -> Any:
-        """Execute task with maximum performance.
+        """Execute task with observability support.
         
         Uses a tight asyncio loop with parallel tool execution.
-        No LangGraph overhead, no event emission in hot path.
+        Emits events for observability when event_bus is attached.
         
         Args:
             task: The task to execute.
@@ -237,6 +237,20 @@ class NativeExecutor(BaseExecutor):
         Returns:
             The final answer string.
         """
+        from agenticflow.core.enums import EventType
+        
+        # Get observability components
+        event_bus = getattr(self.agent, 'event_bus', None)
+        agent_name = self.agent.name or "agent"
+        
+        # Emit agent invoked event
+        if event_bus:
+            await event_bus.publish(EventType.AGENT_INVOKED.value, {
+                "agent": agent_name,
+                "agent_name": agent_name,
+                "task": task[:200] + "..." if len(task) > 200 else task,
+            })
+        
         # Build messages once
         messages = self._build_messages(task, context)
         
@@ -245,6 +259,14 @@ class NativeExecutor(BaseExecutor):
         
         # Main execution loop (no graph, just async)
         for iteration in range(self.max_iterations):
+            # Emit thinking event
+            if event_bus:
+                await event_bus.publish(EventType.AGENT_THINKING.value, {
+                    "agent": agent_name,
+                    "agent_name": agent_name,
+                    "iteration": iteration + 1,
+                })
+            
             # Direct LLM call with bound tools
             response: AIMessage = await self._bound_model.ainvoke(messages)
             messages.append(response)
@@ -252,7 +274,26 @@ class NativeExecutor(BaseExecutor):
             # Check for tool calls
             if not response.tool_calls:
                 # No tool calls - we have our final answer
+                if event_bus:
+                    await event_bus.publish(EventType.AGENT_RESPONDED.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "thought": response.content or "",
+                        "content": response.content or "",
+                    })
                 return response.content or ""
+            
+            # Emit tool call events
+            if event_bus:
+                for tc in response.tool_calls:
+                    tool_name = tc.get("name", "unknown")
+                    await event_bus.publish(EventType.TOOL_CALLED.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "tool": tool_name,
+                        "tool_name": tool_name,
+                        "args": tc.get("args", {}),
+                    })
             
             # Check tool call limit
             num_calls = len(response.tool_calls)
@@ -264,6 +305,19 @@ class NativeExecutor(BaseExecutor):
             tool_results = await self._execute_tools_parallel(response.tool_calls)
             messages.extend(tool_results)
             total_tool_calls += num_calls
+            
+            # Emit tool result events
+            if event_bus:
+                for i, result in enumerate(tool_results):
+                    tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
+                    tool_name = tc.get("name", "unknown")
+                    await event_bus.publish(EventType.TOOL_RESULT.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "tool": tool_name,
+                        "tool_name": tool_name,
+                        "result": result.content[:500] if len(result.content) > 500 else result.content,
+                    })
         
         # Max iterations reached
         if messages:

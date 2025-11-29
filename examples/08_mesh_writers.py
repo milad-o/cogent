@@ -1,20 +1,11 @@
 """
 Demo: Mesh Topology - Collaborative Writers
 
-Three writers with different specialties collaborate in a mesh topology.
-- Workers: Technical and Creative writers contribute their expertise
-- Supervisor: SEO writer leads, reviews and decides when done
+Mesh topology is for COMPLEX tasks requiring multiple perspectives and iterations.
+For simple tasks, use pipeline or single agent instead.
 
-The SUPERVISOR role is the only one who can finish the flow.
-Workers can use tools but cannot finish.
-
-Role System:
-┌─────────────┬────────────┬──────────────┬───────────────┐
-│ Role        │ can_finish │ can_delegate │ can_use_tools │
-├─────────────┼────────────┼──────────────┼───────────────┤
-│ WORKER      │     ❌     │      ❌      │      ✅       │
-│ SUPERVISOR  │     ✅     │      ✅      │      ❌       │
-└─────────────┴────────────┴──────────────┴───────────────┘
+This demo shows mesh with max_rounds=1 (minimal collaboration).
+For max collaboration, increase max_rounds (but expect more LLM calls).
 
 Usage:
     uv run python examples/08_mesh_writers.py
@@ -27,7 +18,6 @@ from dotenv import load_dotenv
 
 from agenticflow import Agent, Flow, FlowObserver
 from agenticflow.core.enums import AgentRole
-from agenticflow.flow import FlowConfig
 from agenticflow.models import ChatModel
 
 load_dotenv()
@@ -40,68 +30,53 @@ async def main() -> None:
 
     model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
-    # Workers - they add their expertise but can't finish
+    # Three specialists collaborate
     technical = Agent(
         name="Technical",
         model=model,
-        role=AgentRole.WORKER,  # Can contribute, cannot finish
-        instructions="Add technical accuracy and facts. Pass to Creative or SEO.",
+        role=AgentRole.WORKER,
+        instructions="Add technical accuracy and scientific facts.",
     )
 
     creative = Agent(
-        name="Creative",
+        name="Creative", 
         model=model,
-        role=AgentRole.WORKER,  # Can contribute, cannot finish
-        instructions="Add engaging storytelling. Pass to Technical or SEO.",
+        role=AgentRole.WORKER,
+        instructions="Add engaging storytelling and emotional hooks.",
     )
 
-    # Supervisor - leads the team AND decides when done
     seo = Agent(
         name="SEO",
         model=model,
-        role=AgentRole.SUPERVISOR,  # Can finish the flow
-        instructions="""Optimize structure and formatting. You are the team lead.
-
-IMPORTANT: Before finishing, ensure BOTH Technical AND Creative have contributed.
-Check "Previous contributions" - if either is missing, pass to them first.
-
-When ALL contributors have added their input and the post is polished,
-output "FINAL ANSWER:" followed by the complete blog post.""",
+        role=AgentRole.SUPERVISOR,
+        instructions="Optimize structure, add keywords, finalize the post.",
     )
 
-    # Create mesh topology - all writers can talk to each other
+    # Mesh with max_rounds=2: agents see each other's work and refine
+    # Round 1: 3 parallel calls (initial contributions)
+    # Round 2: 3 parallel calls (agents read & refine based on others' work)
+    # Synthesis: 1 call
+    # Total: ~7 LLM calls
     flow = Flow(
         name="writer-collaboration",
         agents=[technical, creative, seo],
         topology="mesh",
-        observer=FlowObserver.verbose(),
-        config=FlowConfig(max_iterations=10),  # Allow multiple rounds of collaboration
+        max_rounds=2,  # Two rounds so agents can see each other's contributions
+        observer=FlowObserver.debug(),  # Full detail including messages
     )
 
-    task = """Write a short blog post (200-300 words) about "5 Tips for Better Sleep".
-Each contributor should add their expertise, then SEO (lead) finalizes."""
+    task = "Write a 100-word blog post about '5 Tips for Better Sleep'."
 
-    print(f"\nTask: {task}\n")
+    print(f"\nTask: {task}")
+    print(f"Topology: mesh (3 agents × 2 rounds + synthesis = ~7 LLM calls)")
+    print(f"Communication: Agents share outputs after each round")
     print("-" * 60)
 
     result = await flow.run(task)
 
     print("-" * 60)
-    print("\n📝 FINAL BLOG POST:")
-    print("=" * 60)
-    
-    # Get the final result
-    final = result.results[-1]["thought"] if result.results else "No result"
-    
-    # Extract just the final answer if present
-    if "FINAL ANSWER:" in final:
-        final = final.split("FINAL ANSWER:", 1)[1].strip()
-    
-    print(final)
-    
-    print("=" * 60)
-    print(f"\n✅ Completed in {result.iteration} iterations")
-    print(f"   Writers involved: {[r['agent'] for r in result.results]}")
+    print("\n📝 FINAL OUTPUT:")
+    print(result.output)
 
 
 if __name__ == "__main__":
