@@ -13,20 +13,23 @@ from agenticflow.retriever.base import (
     RetrievalResult,
     Retriever,
 )
-from agenticflow.retriever.loaders import (
+
+# Test both import paths - new document module and backward-compatible retriever imports
+from agenticflow.document import (
     Document,
     DocumentLoader,
     load_documents,
 )
-from agenticflow.retriever.splitters import (
+from agenticflow.document.splitters import (
     CharacterSplitter,
     CodeSplitter,
     MarkdownSplitter,
     RecursiveCharacterSplitter,
     SentenceSplitter,
-    TextChunk,
     split_text,
 )
+from agenticflow.document.types import TextChunk
+
 from agenticflow.retriever.utils.fusion import (
     deduplicate_results,
     fuse_results,

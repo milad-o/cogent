@@ -2,19 +2,6 @@
 
 This module provides a comprehensive retrieval system with:
 
-**Document Loading:**
-- DocumentLoader: Universal loader for multiple file types
-- Supports: PDF, DOCX, TXT, MD, HTML, CSV, JSON, XLSX, code files
-
-**Text Splitting:**
-- RecursiveCharacterSplitter: Hierarchical separator-based splitting
-- SentenceSplitter: Sentence boundary detection
-- MarkdownSplitter: Markdown structure-aware splitting
-- HTMLSplitter: HTML tag-based splitting  
-- CodeSplitter: Language-aware code splitting
-- SemanticSplitter: Embedding-based semantic chunking
-- TokenSplitter: Token count-based splitting
-
 **Core Retrievers:**
 - DenseRetriever: Vector similarity search
 - BM25Retriever: Sparse lexical retrieval (BM25 algorithm)
@@ -40,10 +27,12 @@ This module provides a comprehensive retrieval system with:
 
 Example:
     >>> from agenticflow.retriever import (
-    ...     DocumentLoader,
-    ...     RecursiveCharacterSplitter,
     ...     DenseRetriever,
     ...     HybridRetriever,
+    ... )
+    >>> from agenticflow.document import (
+    ...     DocumentLoader,
+    ...     RecursiveCharacterSplitter,
     ... )
     >>> from agenticflow.vectorstore import VectorStore
     >>> 
@@ -73,12 +62,26 @@ from agenticflow.retriever.contextual import (
 from agenticflow.retriever.dense import DenseRetriever
 from agenticflow.retriever.ensemble import EnsembleRetriever
 from agenticflow.retriever.hybrid import HybridRetriever
-from agenticflow.retriever.loaders import (
+
+# Re-export document types for backward compatibility
+from agenticflow.document import (
     Document,
     DocumentLoader,
-    LOADERS,
+    TextChunk,
     load_documents,
     load_documents_sync,
+    # Splitters
+    RecursiveCharacterSplitter,
+    CharacterSplitter,
+    SentenceSplitter,
+    MarkdownSplitter,
+    HTMLSplitter,
+    CodeSplitter,
+    SemanticSplitter,
+    TokenSplitter,
+    BaseSplitter as TextSplitter,
+    split_text,
+    LOADERS,
 )
 from agenticflow.retriever.rerankers import (
     BaseReranker,
@@ -94,29 +97,16 @@ from agenticflow.retriever.self_query import (
     SelfQueryRetriever,
 )
 from agenticflow.retriever.sparse import BM25Retriever
-from agenticflow.retriever.splitters import (
-    CharacterSplitter,
-    CodeSplitter,
-    HTMLSplitter,
-    MarkdownSplitter,
-    RecursiveCharacterSplitter,
-    SemanticSplitter,
-    SentenceSplitter,
-    TextChunk,
-    TextSplitter,
-    TokenSplitter,
-    split_text,
-)
 from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores
 
 __all__ = [
-    # Document Loading
+    # Document types (re-exported from agenticflow.document)
     "Document",
     "DocumentLoader",
     "LOADERS",
     "load_documents",
     "load_documents_sync",
-    # Text Splitting
+    # Text Splitting (re-exported from agenticflow.document)
     "TextChunk",
     "TextSplitter",
     "RecursiveCharacterSplitter",

@@ -1,0 +1,114 @@
+"""Document processing module for AgenticFlow.
+
+This module provides comprehensive document loading and text splitting capabilities
+for building RAG (Retrieval Augmented Generation) systems.
+
+**Document Loading:**
+The loaders submodule supports loading documents from various file formats:
+- Text: .txt, .md, .rst
+- Documents: .pdf, .docx
+- Data: .csv, .json, .jsonl, .xlsx
+- Web: .html, .htm
+- Code: .py, .js, .ts, .java, and many more
+
+**Text Splitting:**
+The splitters submodule provides multiple strategies for chunking text:
+- RecursiveCharacterSplitter: Hierarchical separator-based splitting
+- SentenceSplitter: Sentence boundary detection
+- MarkdownSplitter: Markdown structure-aware splitting
+- HTMLSplitter: HTML tag-based splitting
+- CodeSplitter: Language-aware code splitting
+- SemanticSplitter: Embedding-based semantic chunking
+- TokenSplitter: Token count-based splitting
+
+Example:
+    >>> from agenticflow.document import (
+    ...     Document,
+    ...     DocumentLoader,
+    ...     RecursiveCharacterSplitter,
+    ... )
+    >>> 
+    >>> # Load documents
+    >>> loader = DocumentLoader()
+    >>> docs = await loader.load_directory("./documents")
+    >>> 
+    >>> # Split into chunks
+    >>> splitter = RecursiveCharacterSplitter(chunk_size=1000, chunk_overlap=200)
+    >>> chunks = splitter.split_documents(docs)
+"""
+
+# Types
+from agenticflow.document.types import (
+    Document,
+    FileType,
+    SplitterType,
+    TextChunk,
+)
+
+# Loaders
+from agenticflow.document.loaders import (
+    LOADERS,
+    BaseLoader,
+    CodeLoader,
+    CSVLoader,
+    DocumentLoader,
+    HTMLLoader,
+    JSONLoader,
+    MarkdownLoader,
+    PDFLoader,
+    TextLoader,
+    WordLoader,
+    XLSXLoader,
+    load_documents,
+    load_documents_sync,
+    register_loader,
+)
+
+# Splitters
+from agenticflow.document.splitters import (
+    BaseSplitter,
+    CharacterSplitter,
+    CodeSplitter,
+    HTMLSplitter,
+    MarkdownSplitter,
+    RecursiveCharacterSplitter,
+    SemanticSplitter,
+    SentenceSplitter,
+    TokenSplitter,
+    split_text,
+)
+
+__all__ = [
+    # Types
+    "Document",
+    "TextChunk",
+    "FileType",
+    "SplitterType",
+    # Loaders
+    "BaseLoader",
+    "DocumentLoader",
+    "TextLoader",
+    "MarkdownLoader",
+    "HTMLLoader",
+    "PDFLoader",
+    "WordLoader",
+    "CSVLoader",
+    "JSONLoader",
+    "XLSXLoader",
+    "CodeLoader",
+    "LOADERS",
+    "load_documents",
+    "load_documents_sync",
+    "register_loader",
+    # Splitters
+    "BaseSplitter",
+    "RecursiveCharacterSplitter",
+    "CharacterSplitter",
+    "SentenceSplitter",
+    "MarkdownSplitter",
+    "HTMLSplitter",
+    "CodeSplitter",
+    "SemanticSplitter",
+    "TokenSplitter",
+    "split_text",
+]

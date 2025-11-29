@@ -302,6 +302,9 @@ from agenticflow.core.messages import (
     ToolMessage,
 )
 
+# Document processing module
+from agenticflow import document
+
 # All public exports
 __all__ = [
     # Version
@@ -473,4 +476,6 @@ __all__ = [
     "AIMessage",
     "SystemMessage",
     "ToolMessage",
+    # Document processing
+    "document",
 ]

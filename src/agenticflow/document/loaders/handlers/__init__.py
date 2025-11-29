@@ -1,0 +1,27 @@
+"""File type handlers for document loading.
+
+This submodule contains specialized loaders for different file types.
+Each loader inherits from BaseLoader and implements format-specific loading logic.
+"""
+
+from agenticflow.document.loaders.handlers.code import CodeLoader
+from agenticflow.document.loaders.handlers.csv import CSVLoader
+from agenticflow.document.loaders.handlers.html import HTMLLoader
+from agenticflow.document.loaders.handlers.json import JSONLoader
+from agenticflow.document.loaders.handlers.markdown import MarkdownLoader
+from agenticflow.document.loaders.handlers.pdf import PDFLoader
+from agenticflow.document.loaders.handlers.text import TextLoader
+from agenticflow.document.loaders.handlers.word import WordLoader
+from agenticflow.document.loaders.handlers.xlsx import XLSXLoader
+
+__all__ = [
+    "TextLoader",
+    "MarkdownLoader",
+    "HTMLLoader",
+    "PDFLoader",
+    "WordLoader",
+    "CSVLoader",
+    "JSONLoader",
+    "XLSXLoader",
+    "CodeLoader",
+]
