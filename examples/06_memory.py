@@ -1,146 +1,253 @@
 """
-Demo: Agent Memory
+Demo: Memory-First Architecture with LLM
 
-Demonstrates memory capabilities for conversation persistence.
+Demonstrates the new unified Memory system with actual LLM interactions.
 
 Features:
-- Short-term memory: Thread-based conversation history
-- Long-term memory: Cross-thread key-value storage
-- Memory checkpointing with InMemorySaver
+- Thread-based conversation memory (agent remembers within a thread)
+- Cross-thread memory sharing via scoped namespaces  
+- Persistence with SQLAlchemyStore
+- Memory tools for long-term facts
 
 Usage:
     uv run python examples/06_memory.py
 """
 
 import asyncio
+import tempfile
+from pathlib import Path
 
-from config import get_model
+from config import get_model, settings
 
-from agenticflow import Agent, InMemorySaver
+from agenticflow import Agent
+from agenticflow.memory import Memory
 
 
 async def demo_conversation_memory():
-    """Show thread-based conversation memory."""
-    print("\n--- Thread-Based Memory ---")
+    """Show LLM remembering conversation context via chat()."""
+    print("\n--- Conversation Memory (Thread-Based) ---")
+    
+    model = get_model()
+    memory = Memory()
+    
+    # Create agent with the new Memory class
+    agent = Agent(
+        name="Assistant",
+        model=model,
+        instructions="You are a helpful assistant. Be concise (1-2 sentences max).",
+        memory=memory,  # Plug in our Memory!
+    )
+    
+    # Chat in a thread - agent automatically remembers!
+    thread_id = "user-alice-123"
+    
+    print(f"\n[Thread: {thread_id}]")
+    
+    # Turn 1: User introduces themselves
+    response1 = await agent.chat(
+        "Hi! My name is Alice and I'm a Python developer.",
+        thread_id=thread_id,
+    )
+    print(f"  User: Hi! My name is Alice and I'm a Python developer.")
+    print(f"  Assistant: {response1}")
+    
+    # Turn 2: Ask something that requires memory
+    response2 = await agent.chat(
+        "What's my name and what do I do?",
+        thread_id=thread_id,  # Same thread - remembers!
+    )
+    print(f"\n  User: What's my name and what do I do?")
+    print(f"  Assistant: {response2}")
+    
+    # Show what's stored in long-term memory (via remember() tool)
+    print(f"\n  📝 Long-term facts (stored via remember() tool):")
+    keys = await memory.keys()
+    for key in keys:
+        if not key.startswith("thread:") and not key.startswith("_"):
+            value = await memory.recall(key)
+            print(f"    • {key}: {value}")
+    
+    # Different thread - should know from context injection!
+    print(f"\n[Thread: different-thread] (fresh thread, but knows from memory)")
+    response3 = await agent.chat(
+        "What's my name and occupation?",
+        thread_id="different-thread",
+    )
+    print(f"  User: What's my name and occupation?")
+    print(f"  Assistant: {response3}")
+
+
+async def demo_persistent_memory():
+    """Show memory persisting across agent restarts."""
+    print("\n--- Persistent Memory (SQLite) ---")
+    
+    try:
+        from agenticflow.memory.stores import SQLAlchemyStore
+    except ImportError:
+        print("  ⚠ SQLAlchemy not installed. Run: uv add sqlalchemy aiosqlite")
+        return
     
     model = get_model()
     
-    # Create agent with memory
-    assistant = Agent(
-        name="Assistant",
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "agent_memory.db"
+        db_url = f"sqlite+aiosqlite:///{db_path}"
+        
+        print(f"  📁 Database: {db_path}")
+        
+        # --- Session 1: Have a conversation ---
+        print("\n  [Session 1]")
+        store = SQLAlchemyStore(db_url)
+        await store.initialize()
+        memory = Memory(store=store)
+        
+        agent = Agent(
+            name="PersistentAgent",
+            model=model,
+            instructions="Be very concise (one sentence max).",
+            memory=memory,
+        )
+        
+        response = await agent.chat(
+            "My favorite programming language is Rust.",
+            thread_id="session-demo",
+        )
+        print(f"  User: My favorite programming language is Rust.")
+        print(f"  Assistant: {response}")
+        
+        await store.close()
+        print("  ✓ Session 1 ended, database closed")
+        
+        # --- Session 2: New agent, same database ---
+        print("\n  [Session 2] (simulating app restart)")
+        store2 = SQLAlchemyStore(db_url)
+        await store2.initialize()
+        memory2 = Memory(store=store2)
+        
+        agent2 = Agent(
+            name="PersistentAgent",
+            model=model,
+            instructions="Be very concise (one sentence max).",
+            memory=memory2,
+        )
+        
+        response2 = await agent2.chat(
+            "What's my favorite programming language?",
+            thread_id="session-demo",  # Same thread!
+        )
+        print(f"  User: What's my favorite programming language?")
+        print(f"  Assistant: {response2}")
+        
+        await store2.close()
+
+
+async def demo_memory_tools():
+    """Show agent automatically using memory tools."""
+    print("\n--- Agent with Memory Tools (Auto-configured) ---")
+    
+    model = get_model()
+    memory = Memory()
+    
+    # Just pass memory - tools and instructions are auto-added!
+    agent = Agent(
+        name="MemoryAgent",
         model=model,
-        instructions="You are a helpful assistant. Remember user details.",
-        memory=InMemorySaver(),  # Enable memory
+        instructions="You are a helpful assistant. Be concise.",
+        memory=memory,  # Tools are automatically added!
     )
     
-    # Chat in thread 1
-    print("\n[Thread: user-123]")
-    response1 = await assistant.chat(
-        "Hi! My name is Alice and I love Python.",
-        thread_id="user-123",
-    )
-    print(f"  User: Hi! My name is Alice and I love Python.")
-    print(f"  Assistant: {response1[:100]}...")
+    # Show what tools the agent has
+    tool_names = [t.name for t in agent._direct_tools]
+    print(f"  🔧 Auto-added tools: {tool_names}")
     
-    response2 = await assistant.chat(
-        "What's my name and what do I love?",
-        thread_id="user-123",  # Same thread - remembers!
+    # Conversation
+    print("\n  User: My favorite color is blue and I was born in 1990.")
+    response1 = await agent.chat(
+        "My favorite color is blue and I was born in 1990.",
+        thread_id="facts-demo",
     )
-    print(f"  User: What's my name and what do I love?")
-    print(f"  Assistant: {response2[:100]}...")
+    print(f"  Agent: {response1}")
     
-    # Different thread - fresh context
-    print("\n[Thread: user-456] (different thread)")
-    response3 = await assistant.chat(
-        "What's my name?",
-        thread_id="user-456",  # Different thread
+    print("\n  User: What do you remember about me?")
+    response2 = await agent.chat(
+        "What do you remember about me?",
+        thread_id="facts-demo",
     )
-    print(f"  User: What's my name?")
-    print(f"  Assistant: {response3[:100]}...")
+    print(f"  Agent: {response2}")
+    
+    # Show what's been stored
+    print("\n  📦 Long-term facts stored in memory:")
+    keys = await memory.keys()
+    for key in keys:
+        if not key.startswith("thread:") and not key.startswith("_"):
+            value = await memory.recall(key)
+            print(f"    {key}: {value}")
 
 
-async def demo_long_term_memory():
-    """Show cross-thread long-term memory."""
-    print("\n--- Long-Term Memory ---")
+async def demo_shared_memory():
+    """Show multiple agents sharing memory."""
+    print("\n--- Shared Memory (Multi-Agent) ---")
     
     model = get_model()
     
-    assistant = Agent(
-        name="Assistant",
+    # Create shared memory
+    shared_memory = Memory()
+    
+    # Research scope for the team
+    research = shared_memory.scoped("team:research")
+    
+    # Two agents sharing memory
+    researcher = Agent(
+        name="Researcher",
         model=model,
-        memory=True,  # Shorthand for InMemorySaver()
+        instructions="You are a researcher. When asked to research, provide 2-3 bullet points. Be concise.",
+        memory=shared_memory,
     )
     
-    # Store facts
-    await assistant.memory.remember("user_name", "Bob", namespace="user_facts")
-    await assistant.memory.remember("favorite_color", "blue", namespace="user_facts")
-    print("  Stored: user_name=Bob, favorite_color=blue")
-    
-    # Recall from anywhere
-    name = await assistant.memory.recall("user_name", namespace="user_facts")
-    color = await assistant.memory.recall("favorite_color", namespace="user_facts")
-    print(f"  Recalled: user_name={name}, favorite_color={color}")
-    
-    # Forget
-    await assistant.memory.forget("favorite_color", namespace="user_facts")
-    color_after = await assistant.memory.recall("favorite_color", namespace="user_facts")
-    print(f"  After forget: favorite_color={color_after}")
-
-
-async def demo_memory_operations():
-    """Show direct memory operations."""
-    print("\n--- Memory Operations ---")
-    
-    model = get_model()
-    
-    assistant = Agent(
-        name="Assistant",
+    writer = Agent(
+        name="Writer",
         model=model,
-        memory=InMemorySaver(),
+        instructions="You are a writer. Summarize findings into one paragraph.",
+        memory=shared_memory,
     )
     
-    # Save state directly
-    await assistant.memory.save(
-        thread_id="demo-thread",
-        messages=[
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi there!"},
-        ],
-        metadata={"user_id": "user-789"},
+    # Researcher stores findings
+    print("\n  [Researcher working...]")
+    findings = await researcher.chat(
+        "Research: What are 3 benefits of Python for AI?",
+        thread_id="research-session",
     )
-    print("  Saved state to demo-thread")
+    print(f"  Researcher: {findings}")
     
-    # Load state
-    snapshot = await assistant.memory.load("demo-thread")
-    print(f"  Loaded: {len(snapshot.messages)} messages")
-    print(f"  Metadata: {snapshot.metadata}")
+    # Store in shared memory
+    await research.remember("python_ai_benefits", str(findings))
+    print("  ✓ Findings saved to team memory")
     
-    # Get messages
-    messages = await assistant.memory.get_messages("demo-thread")
-    print(f"  Messages: {messages}")
+    # Writer retrieves and uses findings
+    print("\n  [Writer working...]")
+    stored = await research.recall("python_ai_benefits")
     
-    # Set context
-    await assistant.memory.set_context("demo-thread", "mood", "happy")
-    mood = await assistant.memory.get_context("demo-thread", "mood")
-    print(f"  Context mood={mood}")
-    
-    # Summary
-    summary = assistant.memory.summary()
-    print(f"  Summary: {summary}")
+    summary = await writer.chat(
+        f"Summarize these findings in one paragraph: {stored}",
+        thread_id="writing-session",
+    )
+    print(f"  Writer: {summary}")
 
 
 async def main():
-    print("\n" + "=" * 50)
-    print("  Agent Memory Demo")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("  Memory-First Architecture Demo (with LLM)")
+    print(f"  Provider: {settings.get_preferred_provider()}")
+    print("=" * 60)
     
     await demo_conversation_memory()
-    await demo_long_term_memory()
-    await demo_memory_operations()
+    await demo_persistent_memory()
+    await demo_memory_tools()
+    await demo_shared_memory()
     
-    print("\n" + "=" * 50)
-    print("✅ Done!")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("✅ All demos completed!")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

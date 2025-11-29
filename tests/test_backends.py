@@ -1,7 +1,8 @@
 """Tests for storage backends.
 
 Tests for:
-- SQLite memory backend
+- SQLAlchemy store (SQLite and PostgreSQL)
+- Redis store
 - Vector store backends (FAISS, Chroma, Qdrant, pgvector)
 
 Note: Most backends require optional dependencies.
@@ -18,192 +19,291 @@ import pytest
 
 
 # =============================================================================
-# SQLite Memory Backend Tests
+# SQLAlchemy Store Tests (New Memory Architecture)
 # =============================================================================
 
 
-class TestSQLiteBackend:
-    """Tests for SQLite memory backend."""
+class TestSQLAlchemyStore:
+    """Tests for SQLAlchemy-based memory store."""
     
     @pytest.fixture
     def temp_db(self):
         """Create temporary database path."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             yield f.name
-        # Cleanup happens automatically after test
     
     @pytest.mark.asyncio
-    async def test_import_sqlite_backend(self):
-        """Test SQLite backend can be imported."""
-        pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteBackend, SQLiteConversationBackend
-        assert SQLiteBackend is not None
-        assert SQLiteConversationBackend is not None
+    async def test_import_sqlalchemy_store(self):
+        """Test SQLAlchemyStore can be imported."""
+        pytest.importorskip("sqlalchemy")
+        from agenticflow.memory.stores import SQLAlchemyStore
+        assert SQLAlchemyStore is not None
     
     @pytest.mark.asyncio
-    async def test_sqlite_backend_set_get(self, temp_db):
-        """Test basic set and get operations."""
+    async def test_sqlite_set_get(self, temp_db):
+        """Test basic set and get operations with SQLite."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        # Set a value
-        await backend.set("test_key", {"data": "value"}, scope="user", scope_id="user1")
-        
-        # Get it back
-        result = await backend.get("test_key", scope="user", scope_id="user1")
+        await store.set("test_key", {"data": "value"})
+        result = await store.get("test_key")
         assert result == {"data": "value"}
         
-        await backend.close()
+        await store.close()
     
     @pytest.mark.asyncio
-    async def test_sqlite_backend_scope_isolation(self, temp_db):
-        """Test that different scopes are isolated."""
+    async def test_sqlite_get_nonexistent(self, temp_db):
+        """Test get returns None for non-existent key."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        # Set same key in different scopes
-        await backend.set("key", "user1_value", scope="user", scope_id="user1")
-        await backend.set("key", "user2_value", scope="user", scope_id="user2")
-        await backend.set("key", "team_value", scope="team", scope_id="team1")
+        result = await store.get("nonexistent")
+        assert result is None
         
-        # Each should have its own value
-        assert await backend.get("key", scope="user", scope_id="user1") == "user1_value"
-        assert await backend.get("key", scope="user", scope_id="user2") == "user2_value"
-        assert await backend.get("key", scope="team", scope_id="team1") == "team_value"
-        
-        await backend.close()
+        await store.close()
     
     @pytest.mark.asyncio
-    async def test_sqlite_backend_delete(self, temp_db):
+    async def test_sqlite_delete(self, temp_db):
         """Test delete operation."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        await backend.set("key", "value", scope="user", scope_id="user1")
-        assert await backend.get("key", scope="user", scope_id="user1") == "value"
+        await store.set("key", "value")
+        assert await store.get("key") == "value"
         
-        await backend.delete("key", scope="user", scope_id="user1")
-        assert await backend.get("key", scope="user", scope_id="user1") is None
+        result = await store.delete("key")
+        assert result is True
+        assert await store.get("key") is None
         
-        await backend.close()
+        await store.close()
     
     @pytest.mark.asyncio
-    async def test_sqlite_backend_list_keys(self, temp_db):
+    async def test_sqlite_keys(self, temp_db):
         """Test listing keys."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        await backend.set("key1", "v1", scope="user", scope_id="user1")
-        await backend.set("key2", "v2", scope="user", scope_id="user1")
-        await backend.set("key3", "v3", scope="user", scope_id="user2")
+        await store.set("user:1", "v1")
+        await store.set("user:2", "v2")
+        await store.set("team:1", "v3")
         
-        keys = await backend.list_keys(scope="user", scope_id="user1")
-        assert set(keys) == {"key1", "key2"}
+        all_keys = await store.keys()
+        assert set(all_keys) == {"user:1", "user:2", "team:1"}
         
-        await backend.close()
+        user_keys = await store.keys(prefix="user:")
+        assert set(user_keys) == {"user:1", "user:2"}
+        
+        await store.close()
     
     @pytest.mark.asyncio
-    async def test_sqlite_backend_search(self, temp_db):
-        """Test search functionality."""
+    async def test_sqlite_clear(self, temp_db):
+        """Test clearing keys."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        await backend.set("pref_color", "blue", scope="user", scope_id="user1")
-        await backend.set("pref_size", "large", scope="user", scope_id="user1")
-        await backend.set("other_key", "value", scope="user", scope_id="user1")
+        await store.set("user:1", "v1")
+        await store.set("user:2", "v2")
+        await store.set("team:1", "v3")
         
-        results = await backend.search("pref_", scope="user", scope_id="user1")
-        assert len(results) == 2
-        assert "pref_color" in results
-        assert "pref_size" in results
+        # Clear only user: keys
+        await store.clear(prefix="user:")
         
-        await backend.close()
+        keys = await store.keys()
+        assert keys == ["team:1"]
+        
+        # Clear all
+        await store.clear()
+        keys = await store.keys()
+        assert keys == []
+        
+        await store.close()
     
     @pytest.mark.asyncio
-    async def test_sqlite_conversation_backend(self, temp_db):
-        """Test conversation message history."""
+    async def test_sqlite_get_many(self, temp_db):
+        """Test batch get."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteConversationBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteConversationBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        # Add messages
-        await backend.add_message(
-            {"role": "user", "content": "Hello"},
-            conversation_id="conv1",
-        )
-        await backend.add_message(
-            {"role": "assistant", "content": "Hi there!"},
-            conversation_id="conv1",
-        )
+        await store.set("a", "1")
+        await store.set("b", "2")
+        await store.set("c", "3")
         
-        # Get messages
-        messages = await backend.get_messages(conversation_id="conv1")
-        assert len(messages) == 2
-        assert messages[0]["role"] == "user"
-        assert messages[1]["role"] == "assistant"
+        # get_many only returns found keys (more efficient)
+        result = await store.get_many(["a", "c", "nonexistent"])
+        assert result == {"a": "1", "c": "3"}
         
-        await backend.close()
+        await store.close()
     
     @pytest.mark.asyncio
-    async def test_sqlite_conversation_max_messages(self, temp_db):
-        """Test message limit."""
+    async def test_sqlite_set_many(self, temp_db):
+        """Test batch set."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteConversationBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteConversationBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        # Add many messages
-        for i in range(10):
-            await backend.add_message(
-                {"role": "user", "content": f"Message {i}"},
-                conversation_id="conv1",
-            )
+        await store.set_many({"x": "10", "y": "20", "z": "30"})
         
-        # Get limited messages
-        messages = await backend.get_messages(conversation_id="conv1", max_messages=5)
-        assert len(messages) == 5
-        # Should be last 5 messages
-        assert messages[0]["content"] == "Message 5"
+        assert await store.get("x") == "10"
+        assert await store.get("y") == "20"
+        assert await store.get("z") == "30"
         
-        await backend.close()
+        await store.close()
     
     @pytest.mark.asyncio
-    async def test_sqlite_conversation_clear(self, temp_db):
-        """Test clearing conversation."""
+    async def test_sqlite_upsert(self, temp_db):
+        """Test that set updates existing values."""
+        pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.backends import SQLiteConversationBackend
+        from agenticflow.memory.stores import SQLAlchemyStore
         
-        backend = SQLiteConversationBackend(db_path=temp_db)
-        await backend.initialize()
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
         
-        await backend.add_message(
-            {"role": "user", "content": "Hello"},
-            conversation_id="conv1",
-        )
+        await store.set("key", "original")
+        assert await store.get("key") == "original"
         
-        await backend.clear(conversation_id="conv1")
-        messages = await backend.get_messages(conversation_id="conv1")
-        assert len(messages) == 0
+        await store.set("key", "updated")
+        assert await store.get("key") == "updated"
         
-        await backend.close()
+        # Should still have only one key
+        keys = await store.keys()
+        assert keys == ["key"]
+        
+        await store.close()
+    
+    @pytest.mark.asyncio
+    async def test_sqlite_stores_complex_types(self, temp_db):
+        """Test storing complex JSON-serializable types."""
+        pytest.importorskip("sqlalchemy")
+        pytest.importorskip("aiosqlite")
+        from agenticflow.memory.stores import SQLAlchemyStore
+        
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
+        
+        data = {
+            "name": "test",
+            "values": [1, 2, 3],
+            "nested": {"a": 1, "b": [4, 5]},
+            "boolean": True,
+            "null": None,
+        }
+        await store.set("complex", data)
+        result = await store.get("complex")
+        assert result == data
+        
+        await store.close()
+
+
+class TestRedisStore:
+    """Tests for Redis memory store."""
+    
+    @pytest.mark.asyncio
+    async def test_import_redis_store(self):
+        """Test RedisStore can be imported."""
+        pytest.importorskip("redis")
+        from agenticflow.memory.stores import RedisStore
+        assert RedisStore is not None
+    
+    @pytest.mark.asyncio
+    async def test_redis_connection_error_handling(self):
+        """Test Redis handles connection errors gracefully."""
+        pytest.importorskip("redis")
+        from agenticflow.memory.stores import RedisStore
+        
+        # Invalid host should fail to connect
+        store = RedisStore(url="redis://invalid-host:6379")
+        # Don't actually test connection as it may hang
+        # Just ensure the store can be created
+        assert store is not None
+
+
+class TestMemoryWithStores:
+    """Integration tests: Memory with different stores."""
+    
+    @pytest.fixture
+    def temp_db(self):
+        """Create temporary database path."""
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+            yield f.name
+    
+    @pytest.mark.asyncio
+    async def test_memory_with_sqlalchemy_store(self, temp_db):
+        """Test Memory class with SQLAlchemy store."""
+        pytest.importorskip("sqlalchemy")
+        pytest.importorskip("aiosqlite")
+        from agenticflow.memory import Memory
+        from agenticflow.memory.stores import SQLAlchemyStore
+        
+        store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
+        await store.initialize()
+        
+        memory = Memory(store=store)
+        
+        await memory.remember("user", "alice")
+        assert await memory.recall("user") == "alice"
+        
+        # Test scoped memory
+        user_mem = memory.scoped("user:1")
+        await user_mem.remember("preference", "dark")
+        assert await user_mem.recall("preference") == "dark"
+        
+        # Verify namespacing in store
+        assert await store.get("user:1:preference") == "dark"
+        
+        await store.close()
+    
+    @pytest.mark.asyncio
+    async def test_memory_persistence(self, temp_db):
+        """Test that memory persists across instances."""
+        pytest.importorskip("sqlalchemy")
+        pytest.importorskip("aiosqlite")
+        from agenticflow.memory import Memory
+        from agenticflow.memory.stores import SQLAlchemyStore
+        
+        db_url = f"sqlite+aiosqlite:///{temp_db}"
+        
+        # First instance - write data
+        store1 = SQLAlchemyStore(db_url)
+        await store1.initialize()
+        memory1 = Memory(store=store1)
+        await memory1.remember("persistent_key", "persistent_value")
+        await store1.close()
+        
+        # Second instance - read data
+        store2 = SQLAlchemyStore(db_url)
+        await store2.initialize()
+        memory2 = Memory(store=store2)
+        result = await memory2.recall("persistent_key")
+        assert result == "persistent_value"
+        await store2.close()
 
 
 # =============================================================================
@@ -474,8 +574,8 @@ class TestPgVectorBackend:
 class TestLazyImports:
     """Test that backends are lazily imported."""
     
-    def test_backends_module_exports(self):
-        """Test backends module exports correct names."""
+    def test_vectorstore_backends_module_exports(self):
+        """Test vectorstore backends module exports correct names."""
         from agenticflow.vectorstore import backends
         
         assert "InMemoryBackend" in backends.__all__
@@ -489,13 +589,24 @@ class TestLazyImports:
         from agenticflow.vectorstore.backends import InMemoryBackend
         assert InMemoryBackend is not None
     
-    def test_memory_backends_module_exports(self):
-        """Test memory backends module exports."""
-        from agenticflow.memory import backends
+    def test_memory_stores_available(self):
+        """Test memory stores can be imported."""
+        from agenticflow.memory import InMemoryStore, Memory
         
-        assert "InMemoryBackend" in backends.__all__
-        assert "SQLiteBackend" in backends.__all__
-        assert "SQLiteConversationBackend" in backends.__all__
+        assert InMemoryStore is not None
+        assert Memory is not None
+    
+    def test_memory_sqlalchemy_store_import(self):
+        """Test SQLAlchemyStore import with optional dep."""
+        pytest.importorskip("sqlalchemy")
+        from agenticflow.memory.stores import SQLAlchemyStore
+        assert SQLAlchemyStore is not None
+    
+    def test_memory_redis_store_import(self):
+        """Test RedisStore import with optional dep."""
+        pytest.importorskip("redis")
+        from agenticflow.memory.stores import RedisStore
+        assert RedisStore is not None
 
 
 # =============================================================================

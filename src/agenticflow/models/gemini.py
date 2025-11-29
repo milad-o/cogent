@@ -62,6 +62,15 @@ def _messages_to_gemini(messages: list[dict[str, Any]], protos: Any) -> tuple[st
                     else:
                         tc_name = tc.get("name", tc.get("function", {}).get("name", ""))
                         tc_args = tc.get("args", tc.get("function", {}).get("arguments", {}))
+                    
+                    # Parse args if it's a JSON string (OpenAI format)
+                    if isinstance(tc_args, str):
+                        import json
+                        try:
+                            tc_args = json.loads(tc_args)
+                        except json.JSONDecodeError:
+                            tc_args = {}
+                    
                     parts.append(protos.Part(
                         function_call=protos.FunctionCall(
                             name=tc_name,

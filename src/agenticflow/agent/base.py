@@ -560,21 +560,20 @@ class Agent:
             store: LangGraph BaseStore for long-term memory (legacy).
         """
         from agenticflow.agent.memory import AgentMemory, InMemorySaver
-        from agenticflow.memory import MemoryManager, MemoryConfig, create_memory
+        from agenticflow.memory import Memory
         
-        # Try the new memory system first
-        if isinstance(memory, (MemoryManager, MemoryConfig)) or isinstance(memory, dict):
-            self._memory_manager = create_memory(memory)
-            # Create a wrapper AgentMemory for backward compatibility
-            self._memory = AgentMemory(store=store)
-            # Add memory tools if long_term is enabled
-            self._add_memory_tools()
+        # New Memory class support
+        if isinstance(memory, Memory):
+            self._memory_manager = memory
+            self._memory = AgentMemory(backend=InMemorySaver(), store=store)
+            self._add_memory_tools()  # Auto-add memory tools!
             return
         
         if memory is True:
-            # Default: use new MemoryManager
-            self._memory_manager = MemoryManager.default()
+            # Default: use new Memory
+            self._memory_manager = Memory()
             self._memory = AgentMemory(backend=InMemorySaver(), store=store)
+            self._add_memory_tools()  # Auto-add memory tools!
             return
         
         # Legacy support for AgentMemory and LangGraph savers
@@ -582,7 +581,7 @@ class Agent:
         
         if isinstance(memory, AgentMemory):
             self._memory = memory
-        elif memory is not None:
+        elif memory is not None and memory is not False:
             # Assume it's a LangGraph saver
             self._memory = AgentMemory(backend=memory, store=store)
         else:
@@ -590,23 +589,22 @@ class Agent:
             self._memory = AgentMemory(store=store)
 
     def _add_memory_tools(self) -> None:
-        """Add memory tools to agent if long_term memory is enabled."""
-        if not self._memory_manager or not self._memory_manager.has_long_term:
+        """Add memory tools to agent when Memory is configured."""
+        if not self._memory_manager:
             return
         
         from agenticflow.memory.tools import create_memory_tools
         
         memory_tools = create_memory_tools(self._memory_manager)
         for tool in memory_tools:
-            if tool not in self._direct_tools:
+            # Avoid duplicates
+            if not any(t.name == tool.name for t in self._direct_tools):
                 self._direct_tools.append(tool)
-                # Also add to config.tools for consistency
-                if tool.name not in self.config.tools:
-                    self.config.tools.append(tool.name)
         
         # Invalidate caches since tools changed
         self._cached_tool_descriptions = None
         self._cached_bound_model = None
+        pass
     
     @property
     def memory(self):
@@ -898,8 +896,8 @@ class Agent:
             if appendix_parts:
                 result = f"{result}\n\n" + "\n\n".join(appendix_parts)
         
-        # Add memory system prompt if long_term memory is enabled
-        if self._memory_manager and self._memory_manager.has_long_term:
+        # Add memory system prompt if Memory is configured
+        if self._memory_manager:
             from agenticflow.memory.tools import get_memory_prompt_addition
             memory_prompt = get_memory_prompt_addition(has_tools=True)
             result = f"{result}\n\n{memory_prompt}"
@@ -1319,7 +1317,7 @@ class Agent:
             
             # Inject memory context if using new memory system
             memory_context = ""
-            if self._memory_manager and user_id:
+            if self._memory_manager:
                 memory_context = await self._memory_manager.get_context_for_prompt(
                     thread_id=thread_id,
                     user_id=user_id,
@@ -1333,7 +1331,7 @@ class Agent:
             
             # Load conversation history from memory
             if self._memory_manager:
-                history = await self._memory_manager.get_messages(thread_id)
+                history = await self._memory_manager.get_thread_messages(thread_id)
             else:
                 history = await self._memory.get_messages(thread_id)
             
@@ -1347,9 +1345,73 @@ class Agent:
             # Convert to dict format for native models
             dict_messages = [msg.to_openai() for msg in messages]
             
-            # Get response from model
-            response = await self.model.ainvoke(dict_messages)
-            result = response.content
+            # Use bound model (with tools) and handle tool calls
+            bound_model = self.bound_model
+            tools = self.all_tools
+            
+            # Agentic loop - keep calling until no more tool calls
+            max_iterations = 10
+            final_content = ""
+            
+            for _ in range(max_iterations):
+                response = await bound_model.ainvoke(dict_messages)
+                
+                # Check for tool calls
+                tool_calls = getattr(response, 'tool_calls', None) or []
+                
+                if not tool_calls:
+                    # No tool calls - we're done
+                    final_content = response.content or ""
+                    break
+                
+                # Add assistant message with tool calls to history
+                ai_msg = response.to_openai() if hasattr(response, 'to_openai') else {
+                    "role": "assistant",
+                    "content": response.content or "",
+                }
+                dict_messages.append(ai_msg)
+                
+                # Execute each tool call
+                for tc in tool_calls:
+                    # Handle different tool call formats
+                    if isinstance(tc, dict):
+                        tool_name = tc.get("name", "")
+                        tool_args = tc.get("args", {})
+                        tool_id = tc.get("id", "call_0")
+                    else:
+                        tool_name = getattr(tc, 'name', '')
+                        tool_args = getattr(tc, 'args', {})
+                        tool_id = getattr(tc, 'id', 'call_0')
+                    
+                    # Parse args if string
+                    if isinstance(tool_args, str):
+                        import json
+                        try:
+                            tool_args = json.loads(tool_args)
+                        except json.JSONDecodeError:
+                            tool_args = {}
+                    
+                    # Find and execute tool
+                    result = f"Tool '{tool_name}' not found"
+                    for tool in tools:
+                        if tool.name == tool_name:
+                            try:
+                                if asyncio.iscoroutinefunction(tool.func):
+                                    result = await tool.func(**tool_args)
+                                else:
+                                    result = tool.func(**tool_args)
+                            except Exception as e:
+                                result = f"Error: {e}"
+                            break
+                    
+                    # Add tool result to messages
+                    dict_messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_id,
+                        "content": str(result),
+                    })
+            
+            result = final_content
             
             # Track timing
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
@@ -1359,8 +1421,8 @@ class Agent:
             ai_message = AIMessage(content=result)
             
             if self._memory_manager:
-                await self._memory_manager.add_message(thread_id, user_message, metadata)
-                await self._memory_manager.add_message(thread_id, ai_message, metadata)
+                await self._memory_manager.add_thread_message(thread_id, user_message, metadata)
+                await self._memory_manager.add_thread_message(thread_id, ai_message, metadata)
             else:
                 await self._memory.add_messages(
                     thread_id=thread_id,
@@ -1652,7 +1714,7 @@ class Agent:
             
             # Load conversation history
             if self._memory_manager:
-                history = await self._memory_manager.get_messages(thread_id)
+                history = await self._memory_manager.get_thread_messages(thread_id)
             else:
                 history = await self._memory.get_messages(thread_id)
             
@@ -1694,7 +1756,7 @@ class Agent:
             # Save to memory
             ai_message = AIMessage(content=accumulated_content)
             if self._memory_manager:
-                await self._memory_manager.add_messages(
+                await self._memory_manager.add_thread_messages(
                     thread_id=thread_id,
                     messages=[user_message, ai_message],
                     metadata={

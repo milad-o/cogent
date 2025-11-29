@@ -6,7 +6,7 @@ Provides tools that allow agents to manage long-term memory:
 - forget: Remove a fact
 - search_memories: Find relevant memories
 
-These tools are automatically added to agents when long_term memory is enabled.
+These tools are automatically added to agents with memory enabled.
 """
 
 from __future__ import annotations
@@ -16,19 +16,11 @@ from typing import TYPE_CHECKING, Any
 from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from agenticflow.memory.manager import MemoryManager
+    from agenticflow.memory.core import Memory
 
 
-def _create_remember_tool(manager: MemoryManager, default_user_id: str | None) -> BaseTool:
-    """Create a remember tool bound to a manager and user.
-    
-    Args:
-        manager: The MemoryManager instance.
-        default_user_id: Default user ID for operations.
-    
-    Returns:
-        BaseTool for remembering facts.
-    """
+def _create_remember_tool(memory: Memory) -> BaseTool:
+    """Create a remember tool bound to a Memory instance."""
     async def remember(key: str, value: str) -> str:
         """Save an important fact to long-term memory.
         
@@ -36,10 +28,7 @@ def _create_remember_tool(manager: MemoryManager, default_user_id: str | None) -
             key: Short descriptive key (e.g., "name", "preferred_language", "project")
             value: The fact to remember
         """
-        if not default_user_id:
-            return "Cannot save: no user_id provided."
-        
-        await manager.remember(key, value, user_id=default_user_id)
+        await memory.remember(key, value)
         return f"Remembered: {key}"
     
     return BaseTool(
@@ -68,26 +57,15 @@ Args:
     )
 
 
-def _create_recall_tool(manager: MemoryManager, default_user_id: str | None) -> BaseTool:
-    """Create a recall tool bound to a manager and user.
-    
-    Args:
-        manager: The MemoryManager instance.
-        default_user_id: Default user ID for operations.
-    
-    Returns:
-        BaseTool for recalling facts.
-    """
+def _create_recall_tool(memory: Memory) -> BaseTool:
+    """Create a recall tool bound to a Memory instance."""
     async def recall(key: str) -> str:
         """Recall a specific fact from long-term memory.
         
         Args:
             key: The key of the fact to recall
         """
-        if not default_user_id:
-            return "Cannot recall: no user_id provided."
-        
-        value = await manager.recall(key, user_id=default_user_id)
+        value = await memory.recall(key)
         if value is None:
             return f"No memory found for: {key}"
         return str(value)
@@ -110,26 +88,15 @@ Returns:
     )
 
 
-def _create_forget_tool(manager: MemoryManager, default_user_id: str | None) -> BaseTool:
-    """Create a forget tool bound to a manager and user.
-    
-    Args:
-        manager: The MemoryManager instance.
-        default_user_id: Default user ID for operations.
-    
-    Returns:
-        BaseTool for forgetting facts.
-    """
+def _create_forget_tool(memory: Memory) -> BaseTool:
+    """Create a forget tool bound to a Memory instance."""
     async def forget(key: str) -> str:
         """Remove a fact from long-term memory.
         
         Args:
             key: The key of the fact to forget
         """
-        if not default_user_id:
-            return "Cannot forget: no user_id provided."
-        
-        success = await manager.forget(key, user_id=default_user_id)
+        success = await memory.forget(key)
         if success:
             return f"Forgot: {key}"
         return f"No memory found for: {key}"
@@ -152,30 +119,35 @@ Args:
     )
 
 
-def _create_search_memories_tool(manager: MemoryManager, default_user_id: str | None) -> BaseTool:
-    """Create a search_memories tool bound to a manager and user.
-    
-    Args:
-        manager: The MemoryManager instance.
-        default_user_id: Default user ID for operations.
-    
-    Returns:
-        BaseTool for searching memories.
-    """
+def _create_search_memories_tool(memory: Memory) -> BaseTool:
+    """Create a search_memories tool bound to a Memory instance."""
     async def search_memories(query: str) -> str:
         """Search long-term memory for relevant facts.
         
         Args:
             query: Search term (matches keys and values)
         """
-        if not default_user_id:
-            return "Cannot search: no user_id provided."
+        # Get all keys and search through them
+        keys = await memory.keys()
+        if not keys:
+            return "No memories stored."
         
-        results = await manager.search_user_memory(query, user_id=default_user_id, limit=5)
-        if not results:
-            return f"No memories found for: {query}"
+        query_lower = query.lower()
+        matches: list[tuple[str, Any]] = []
         
-        lines = [f"- {entry.key}: {entry.value}" for entry in results]
+        for key in keys:
+            if key.startswith("_"):  # Skip internal keys like _messages
+                continue
+            value = await memory.recall(key)
+            if value is not None:
+                # Check if query matches key or value
+                if query_lower in key.lower() or query_lower in str(value).lower():
+                    matches.append((key, value))
+        
+        if not matches:
+            return f"No memories found matching: {query}"
+        
+        lines = [f"- {k}: {v}" for k, v in matches[:5]]
         return "Found:\n" + "\n".join(lines)
     
     return BaseTool(
@@ -196,29 +168,20 @@ Returns:
     )
 
 
-def create_memory_tools(
-    manager: MemoryManager,
-    user_id: str | None = None,
-) -> list[BaseTool]:
-    """Create memory tools bound to a MemoryManager.
-
-    Only creates tools if long-term memory is enabled.
+def create_memory_tools(memory: Memory) -> list[BaseTool]:
+    """Create memory tools bound to a Memory instance.
 
     Args:
-        manager: The MemoryManager instance.
-        user_id: Default user ID for operations.
+        memory: The Memory instance.
 
     Returns:
-        List of memory tools (empty if long_term not enabled).
+        List of memory tools.
     """
-    if not manager.has_long_term:
-        return []
-
     return [
-        _create_remember_tool(manager, user_id),
-        _create_recall_tool(manager, user_id),
-        _create_forget_tool(manager, user_id),
-        _create_search_memories_tool(manager, user_id),
+        _create_remember_tool(memory),
+        _create_recall_tool(memory),
+        _create_forget_tool(memory),
+        _create_search_memories_tool(memory),
     ]
 
 
@@ -229,22 +192,26 @@ def create_memory_tools(
 MEMORY_SYSTEM_PROMPT = """
 ## Long-Term Memory
 
-You can remember important facts about users across conversations:
-- `remember(key, value)` - Save a fact
-- `recall(key)` - Get a specific fact  
-- `forget(key)` - Remove a fact (only when asked)
+You have long-term memory tools. USE THEM to persist important facts.
+
+**IMPORTANT WORKFLOW:**
+1. **At start of conversation** - Call `search_memories("user")` to recall what you know
+2. **When user shares info** - IMMEDIATELY call `remember()` to save it
+3. **When asked about user** - Call `recall()` or `search_memories()` first
+
+**ALWAYS call `remember(key, value)` when user shares:**
+- Their name → remember("name", "Alice")
+- Preferences → remember("favorite_color", "blue")  
+- Personal info → remember("birth_year", "1990")
+- Their work/projects → remember("occupation", "developer")
+
+**Available tools:**
+- `remember(key, value)` - Save a fact (CALL THIS when user shares info!)
+- `recall(key)` - Get a specific saved fact
+- `forget(key)` - Remove a fact (only when user asks)
 - `search_memories(query)` - Find relevant memories
 
-**When to remember:**
-- User shares preferences: "I prefer Python" → remember(key="preferred_language", value="Python")
-- User introduces themselves: "I'm Alice" → remember(key="name", value="Alice")
-- Important context: "I'm building a healthcare app" → remember(key="current_project", value="healthcare app")
-- Corrections: "Actually it's spelled Milad" → remember(key="name", value="Milad")
-
-**When NOT to remember:**
-- Temporary tasks or questions
-- Information already in current conversation
-- Obvious facts that don't need persistence
+**Critical:** When answering questions about user preferences or info, ALWAYS check memory first with `search_memories()` or `recall()` before saying "I don't know".
 """
 
 
@@ -275,16 +242,16 @@ def format_memory_context(facts: dict[str, Any] | str) -> str:
         return ""
 
     if isinstance(facts, str):
-        # Already formatted string
         context = facts
     else:
-        # Dict of facts
         lines = [f"- {k}: {v}" for k, v in facts.items()]
         context = "\n".join(lines)
 
-    return f"""## User Context (from memory)
+    return f"""## IMPORTANT: Known User Information
+
+The following facts are stored in your memory about this user. USE this information to answer their questions:
 
 {context}
 
-Use this context to personalize responses. Update with `remember()` if you learn new facts.
+When the user asks about themselves (name, preferences, etc.), REFER to this information directly. Do NOT say "I don't know" if the answer is here.
 """
