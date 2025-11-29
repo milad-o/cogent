@@ -13,13 +13,13 @@ import os
 from dotenv import load_dotenv
 
 from agenticflow import Agent, Flow
-from agenticflow.models import ChatModel
+from agenticflow.models.gemini import GeminiChat
 
 load_dotenv()
 
 
 async def main():
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = GeminiChat(model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
 
     researcher = Agent(name="Researcher", model=model, instructions="Research the topic.")
     writer = Agent(name="Writer", model=model, instructions="Write a summary.")

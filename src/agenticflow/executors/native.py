@@ -237,11 +237,15 @@ class NativeExecutor(BaseExecutor):
         Returns:
             The final answer string.
         """
+        import time
         from agenticflow.core.enums import EventType
         
         # Get observability components
         event_bus = getattr(self.agent, 'event_bus', None)
         agent_name = self.agent.name or "agent"
+        
+        # Track execution timing
+        execution_start = time.perf_counter()
         
         # Emit agent invoked event
         if event_bus:
@@ -259,6 +263,8 @@ class NativeExecutor(BaseExecutor):
         
         # Main execution loop (no graph, just async)
         for iteration in range(self.max_iterations):
+            iteration_start = time.perf_counter()
+            
             # Emit thinking event
             if event_bus:
                 await event_bus.publish(EventType.AGENT_THINKING.value, {
@@ -274,12 +280,18 @@ class NativeExecutor(BaseExecutor):
             # Check for tool calls
             if not response.tool_calls:
                 # No tool calls - we have our final answer
+                duration_ms = (time.perf_counter() - execution_start) * 1000
                 if event_bus:
+                    content = response.content or ""
                     await event_bus.publish(EventType.AGENT_RESPONDED.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
-                        "thought": response.content or "",
-                        "content": response.content or "",
+                        "response": content,
+                        "response_preview": content[:500] if len(content) > 500 else content,
+                        "thought": content,  # Legacy field
+                        "content": content,  # Legacy field
+                        "duration_ms": duration_ms,
+                        "iteration": iteration + 1,
                     })
                 return response.content or ""
             

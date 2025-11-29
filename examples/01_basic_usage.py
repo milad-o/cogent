@@ -13,13 +13,13 @@ import os
 from dotenv import load_dotenv
 
 from agenticflow import Agent, Flow, FlowObserver
-from agenticflow.models import ChatModel
+from agenticflow.models.gemini import GeminiChat
 
 load_dotenv()
 
 
 async def main():
-    model = ChatModel(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+    model = GeminiChat(model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"))
 
     assistant = Agent(
         name="Assistant",
@@ -35,7 +35,7 @@ async def main():
     )
 
     result = await flow.run("What is 2 + 2? Explain briefly.")
-    print(f"\nResult: {result.results[-1]['thought']}")
+    print(f"\nResult: {result.output}")
 
 
 if __name__ == "__main__":
