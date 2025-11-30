@@ -18,9 +18,10 @@ from dataclasses import dataclass
 from pydantic import BaseModel, Field
 from typing import Literal
 
+from config import get_model
+
 from agenticflow import Agent
 from agenticflow.agent.output import ResponseSchema, OutputMethod
-from agenticflow.models.openai import OpenAIChat
 
 
 # =============================================================================
@@ -44,7 +45,7 @@ async def example_contact_extraction():
     
     agent = Agent(
         name="ContactExtractor",
-        model=OpenAIChat(model="gpt-4o-mini"),
+        model=get_model(),
         output=ContactInfo,  # Enforce this schema
         instructions="You are an expert at extracting contact information from text.",
     )
@@ -91,7 +92,7 @@ async def example_sentiment_analysis():
     
     agent = Agent(
         name="SentimentAnalyzer",
-        model=OpenAIChat(model="gpt-4o-mini"),
+        model=get_model(),
         output=SentimentAnalysis,
         instructions="You are an expert sentiment analyst. Analyze the sentiment of the given text.",
     )
@@ -135,7 +136,7 @@ async def example_meeting_actions():
     
     agent = Agent(
         name="ActionExtractor",
-        model=OpenAIChat(model="gpt-4o-mini"),
+        model=get_model(),
         output=MeetingAction,
         instructions="Extract the most important action item from meeting notes.",
     )
@@ -189,7 +190,7 @@ async def example_advanced_config():
     
     agent = Agent(
         name="ReviewAnalyzer",
-        model=OpenAIChat(model="gpt-4o-mini"),
+        model=get_model(),
         output=config,
         instructions="Parse product reviews into structured format. Be precise with ratings.",
     )
@@ -257,7 +258,7 @@ async def example_json_schema():
     
     agent = Agent(
         name="CalendarParser",
-        model=OpenAIChat(model="gpt-4o-mini"),
+        model=get_model(),
         output=event_schema,
         instructions="Extract calendar event details from natural language.",
     )
