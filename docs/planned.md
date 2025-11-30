@@ -1,39 +1,74 @@
-Let me check what capabilities we currently have and what might be missing: 
+# Planned Features
 
-Here's what we currently have:
+Roadmap for future AgenticFlow capabilities.
 
-| Capability | Purpose |
-|------------|---------|
-| **KnowledgeGraph** | Entity/relationship memory, multi-hop reasoning |
-| **CodebaseAnalyzer** | Python AST parsing, code exploration |
-| **FileSystem** | Sandboxed file operations |
-| **WebSearch** | DuckDuckGo search, page fetching |
-| **CodeSandbox** | Safe Python code execution |
-| **SSISAnalyzer** | SSIS package analysis (domain-specific) |
+---
 
-**Common capabilities we're missing:**
+## A2A Protocol Integration
 
-1. **Database** - SQL query execution, schema exploration, data analysis
-2. **API/HTTP** - Make HTTP requests, call REST APIs, handle auth
-3. **Email** - Send/read emails (SMTP/IMAP)
-4. **Calendar** - Schedule management, event creation
-5. **Shell/Terminal** - Execute shell commands safely
-6. **Image/Vision** - Image analysis, generation, OCR
-7. **Audio/Speech** - Text-to-speech, speech-to-text
-8. **PDF** - Read/generate PDF documents
-9. **Spreadsheet** - Excel/CSV manipulation
-10. **Vector Store** - RAG with embeddings (Chroma, Pinecone, etc.)
-11. **Browser/Playwright** - Web automation, scraping with JS rendering
-12. **Slack/Discord** - Chat platform integration
-13. **Git** - Repository operations, commits, branches
+**Priority:** Medium-Low  
+**Status:** Planned  
+**Target:** When cross-framework agent interop is needed
 
-**Most impactful additions** for a general-purpose agent framework:
+### What is A2A?
 
-| Priority | Capability | Why |
-|----------|------------|-----|
-| 🔴 High | **Database** | Essential for data apps |
-| 🔴 High | **HTTP/API** | Connect to any service |
-| 🔴 High | **VectorStore** | RAG is core to modern AI apps |
-| 🟡 Medium | **Shell** | System automation |
-| 🟡 Medium | **Browser** | Web automation beyond search |
-| 🟢 Nice | **PDF/Docs** | Document processing |
+[Agent2Agent (A2A)](https://a2a-protocol.org) is a Linux Foundation protocol for agent-to-agent communication. It complements MCP:
+
+| Protocol | Purpose | Use Case |
+|----------|---------|----------|
+| **MCP** | Agent → Tool | Access databases, APIs, file systems |
+| **A2A** | Agent → Agent | Collaborate with external agents |
+
+### Key Concepts
+
+- **AgentCard**: JSON manifest with agent identity, skills, auth, endpoint
+- **Task**: Stateful work unit (submitted → working → completed)
+- **Message**: Communication turn with Parts (text, file, data)
+- **Artifact**: Concrete deliverables from agents
+- **Transports**: JSON-RPC, gRPC, HTTP+JSON
+
+### Proposed API
+
+```python
+from agenticflow import Agent
+from agenticflow.capabilities import A2A
+
+# Call remote A2A agent
+agent = Agent(
+    name="coordinator",
+    model=llm,
+    capabilities=[
+        A2A.client("https://external-agent.example.com")
+    ]
+)
+
+# Expose agent as A2A server
+from agenticflow.server import A2AServer
+
+server = A2AServer(
+    agent=my_agent,
+    name="Research Agent",
+    skills=[
+        {"id": "search", "name": "Web Search", "description": "Search the web"}
+    ]
+)
+await server.serve(port=8000)
+```
+
+### When to Implement
+
+- External agent integration (LangGraph, CrewAI, Semantic Kernel)
+- Enterprise cross-team agent interop
+- Exposing AgenticFlow agents as public services
+
+### Resources
+
+- [A2A Protocol Docs](https://a2a-protocol.org/latest/)
+- [Python SDK](https://github.com/a2aproject/a2a-python)
+- [A2A + MCP Comparison](https://a2a-protocol.org/latest/topics/a2a-and-mcp/)
+
+---
+
+## Other Ideas
+
+_Add future feature ideas below._
