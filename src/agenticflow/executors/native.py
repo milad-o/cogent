@@ -28,6 +28,15 @@ from agenticflow.models.base import BaseChatModel
 from agenticflow.models.openai import OpenAIChat
 from agenticflow.tools.base import BaseTool
 from agenticflow.agent.resilience import ModelResilience, RetryPolicy
+from agenticflow.agent.output import (
+    ResponseSchema,
+    OutputMethod,
+    StructuredResult,
+    OutputValidationError,
+    validate_and_parse,
+    build_structured_prompt,
+    get_best_method,
+)
 
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
@@ -293,12 +302,16 @@ class NativeExecutor(BaseExecutor):
         If the agent has reasoning enabled, performs a thinking phase
         before the main execution loop.
         
+        If the agent has structured output configured, validates and parses
+        the response according to the schema.
+        
         Args:
             task: The task to execute.
             context: Optional context dictionary.
             
         Returns:
-            The final answer string.
+            If output schema configured: StructuredResult with parsed data.
+            Otherwise: The final answer string.
         """
         import time
         from agenticflow.core.enums import EventType
@@ -333,105 +346,19 @@ class NativeExecutor(BaseExecutor):
                 task, context, messages, event_bus, agent_name
             )
         
-        # Track tool calls to enforce limit
-        total_tool_calls = 0
+        # === STRUCTURED OUTPUT ===
+        # If structured output is configured, use specialized execution with retry
+        output_config = getattr(self.agent, '_output_config', None)
+        if output_config is not None:
+            return await self._execute_with_structured_output(
+                task, context, messages, event_bus, agent_name
+            )
         
-        # Main execution loop (no graph, just async)
-        for iteration in range(self.max_iterations):
-            iteration_start = time.perf_counter()
-            
-            # Emit thinking event
-            if event_bus:
-                await event_bus.publish(EventType.AGENT_THINKING.value, {
-                    "agent": agent_name,
-                    "agent_name": agent_name,
-                    "iteration": iteration + 1,
-                })
-            
-            # LLM call with resilience (automatic retry for rate limits)
-            if self._model_resilience:
-                exec_result = await self._model_resilience.execute(
-                    self._bound_model.ainvoke, messages
-                )
-                if not exec_result.success:
-                    # Emit error event
-                    if event_bus:
-                        await event_bus.publish(EventType.AGENT_ERROR.value, {
-                            "agent": agent_name,
-                            "agent_name": agent_name,
-                            "error": str(exec_result.error),
-                            "error_type": exec_result.error_type,
-                            "attempts": exec_result.attempts,
-                        })
-                    raise exec_result.error or RuntimeError(
-                        f"LLM call failed after {exec_result.attempts} attempts"
-                    )
-                response: AIMessage = exec_result.result
-            else:
-                response: AIMessage = await self._bound_model.ainvoke(messages)
-            
-            messages.append(response)
-            
-            # Check for tool calls
-            if not response.tool_calls:
-                # No tool calls - we have our final answer
-                duration_ms = (time.perf_counter() - execution_start) * 1000
-                if event_bus:
-                    content = response.content or ""
-                    await event_bus.publish(EventType.AGENT_RESPONDED.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "response": content,
-                        "response_preview": content[:500] if len(content) > 500 else content,
-                        "thought": content,  # Legacy field
-                        "content": content,  # Legacy field
-                        "duration_ms": duration_ms,
-                        "iteration": iteration + 1,
-                    })
-                return response.content or ""
-            
-            # Emit tool call events
-            if event_bus:
-                for tc in response.tool_calls:
-                    tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(EventType.TOOL_CALLED.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "tool": tool_name,
-                        "tool_name": tool_name,
-                        "args": tc.get("args", {}),
-                    })
-            
-            # Check tool call limit
-            num_calls = len(response.tool_calls)
-            if total_tool_calls + num_calls > self._max_tool_calls:
-                # Approaching limit - return what we have
-                return response.content or "Tool call limit reached"
-            
-            # Execute ALL tool calls in parallel (like Agno)
-            tool_results = await self._execute_tools_parallel(response.tool_calls)
-            messages.extend(tool_results)
-            total_tool_calls += num_calls
-            
-            # Emit tool result events
-            if event_bus:
-                for i, result in enumerate(tool_results):
-                    tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
-                    tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(EventType.TOOL_RESULT.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "tool": tool_name,
-                        "tool_name": tool_name,
-                        "result": result.content[:500] if len(result.content) > 500 else result.content,
-                    })
-        
-        # Max iterations reached
-        if messages:
-            last = messages[-1]
-            if isinstance(last, AIMessage):
-                return last.content or "Max iterations reached"
-        return "Max iterations reached"
+        # === STANDARD EXECUTION ===
+        # No structured output - use main loop directly
+        return await self._execute_main_loop(
+            task, context, messages, event_bus, agent_name, execution_start
+        )
     
     def _build_messages(
         self,
@@ -463,6 +390,259 @@ class NativeExecutor(BaseExecutor):
         messages.append(HumanMessage(content=user_content))
         return messages
     
+    def _process_output(
+        self,
+        raw_content: str,
+    ) -> Any:
+        """Process raw output through structured output schema if configured.
+        
+        Args:
+            raw_content: Raw LLM response content.
+            
+        Returns:
+            If output schema configured: StructuredResult with parsed data.
+            Otherwise: The raw content string.
+        """
+        output_config = getattr(self.agent, '_output_config', None)
+        if output_config is None:
+            return raw_content
+        
+        # Try to validate and parse
+        try:
+            data = validate_and_parse(raw_content, output_config.schema)
+            return StructuredResult(
+                data=data,
+                raw=raw_content if output_config.include_raw else None,
+                valid=True,
+                attempts=1,
+                method=get_best_method(self.agent.model, output_config),
+            )
+        except OutputValidationError as e:
+            # Return invalid result
+            return StructuredResult(
+                data=None,
+                raw=raw_content,
+                valid=False,
+                error=str(e),
+                attempts=1,
+                method=get_best_method(self.agent.model, output_config),
+            )
+        except Exception as e:
+            return StructuredResult(
+                data=None,
+                raw=raw_content,
+                valid=False,
+                error=f"Unexpected error: {e}",
+                attempts=1,
+            )
+    
+    async def _execute_with_structured_output(
+        self,
+        task: str,
+        context: dict[str, Any] | None,
+        messages: list[BaseMessage],
+        event_bus: Any | None,
+        agent_name: str,
+    ) -> Any:
+        """Execute with structured output support and retry on validation errors.
+        
+        This wraps the main execution loop with structured output handling,
+        including retry logic when validation fails.
+        
+        Args:
+            task: The task to execute.
+            context: Optional context dict.
+            messages: Initial messages.
+            event_bus: Event bus for observability.
+            agent_name: Agent name for events.
+            
+        Returns:
+            StructuredResult if output schema configured, else raw string.
+        """
+        import time
+        from agenticflow.core.enums import EventType
+        
+        output_config: ResponseSchema | None = getattr(self.agent, '_output_config', None)
+        if output_config is None:
+            # No structured output - delegate to normal flow
+            # This should not be called, but handle gracefully
+            return await self._execute_main_loop(
+                task, context, messages, event_bus, agent_name, time.perf_counter()
+            )
+        
+        # Structured output enabled
+        max_attempts = output_config.max_retries + 1 if output_config.retry_on_error else 1
+        last_error: str | None = None
+        
+        for attempt in range(1, max_attempts + 1):
+            # Modify task with structured output instructions
+            effective_task = build_structured_prompt(
+                task,
+                output_config,
+                error_context=last_error,
+            )
+            
+            # Rebuild messages with structured prompt
+            structured_messages = self._build_messages(effective_task, context)
+            
+            # Execute main loop
+            raw_result = await self._execute_main_loop(
+                effective_task, context, structured_messages, 
+                event_bus, agent_name, time.perf_counter()
+            )
+            
+            # Try to validate
+            try:
+                data = validate_and_parse(raw_result, output_config.schema)
+                return StructuredResult(
+                    data=data,
+                    raw=raw_result if output_config.include_raw else None,
+                    valid=True,
+                    attempts=attempt,
+                    method=get_best_method(self.agent.model, output_config),
+                )
+            except OutputValidationError as e:
+                last_error = str(e)
+                if event_bus:
+                    await event_bus.publish(EventType.AGENT_ERROR.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "error": f"Structured output validation failed (attempt {attempt}): {last_error}",
+                        "error_type": "validation",
+                    })
+                
+                if attempt >= max_attempts:
+                    # Return failed result
+                    return StructuredResult(
+                        data=None,
+                        raw=raw_result,
+                        valid=False,
+                        error=last_error,
+                        attempts=attempt,
+                        method=get_best_method(self.agent.model, output_config),
+                    )
+        
+        # Should not reach here
+        return StructuredResult(data=None, valid=False, error="Max retries exceeded")
+    
+    async def _execute_main_loop(
+        self,
+        task: str,
+        context: dict[str, Any] | None,
+        messages: list[BaseMessage],
+        event_bus: Any | None,
+        agent_name: str,
+        execution_start: float,
+    ) -> str:
+        """Execute the main agent loop (extracted for reuse with structured output).
+        
+        Args:
+            task: The task string.
+            context: Optional context dict.
+            messages: Message list.
+            event_bus: Event bus for observability.
+            agent_name: Agent name for events.
+            execution_start: Start time for duration tracking.
+            
+        Returns:
+            Raw response content string.
+        """
+        import time
+        from agenticflow.core.enums import EventType
+        
+        total_tool_calls = 0
+        
+        for iteration in range(self.max_iterations):
+            # Emit thinking event
+            if event_bus:
+                await event_bus.publish(EventType.AGENT_THINKING.value, {
+                    "agent": agent_name,
+                    "agent_name": agent_name,
+                    "iteration": iteration + 1,
+                })
+            
+            # LLM call with resilience
+            if self._model_resilience:
+                exec_result = await self._model_resilience.execute(
+                    self._bound_model.ainvoke, messages
+                )
+                if not exec_result.success:
+                    if event_bus:
+                        await event_bus.publish(EventType.AGENT_ERROR.value, {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "error": str(exec_result.error),
+                            "error_type": exec_result.error_type,
+                            "attempts": exec_result.attempts,
+                        })
+                    raise exec_result.error or RuntimeError(
+                        f"LLM call failed after {exec_result.attempts} attempts"
+                    )
+                response: AIMessage = exec_result.result
+            else:
+                response: AIMessage = await self._bound_model.ainvoke(messages)
+            
+            messages.append(response)
+            
+            # Check for tool calls
+            if not response.tool_calls:
+                duration_ms = (time.perf_counter() - execution_start) * 1000
+                if event_bus:
+                    content = response.content or ""
+                    await event_bus.publish(EventType.AGENT_RESPONDED.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "response": content,
+                        "response_preview": content[:500] if len(content) > 500 else content,
+                        "thought": content,
+                        "content": content,
+                        "duration_ms": duration_ms,
+                        "iteration": iteration + 1,
+                    })
+                return response.content or ""
+            
+            # Emit tool call events
+            if event_bus:
+                for tc in response.tool_calls:
+                    tool_name = tc.get("name", "unknown")
+                    await event_bus.publish(EventType.TOOL_CALLED.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "tool": tool_name,
+                        "tool_name": tool_name,
+                        "args": tc.get("args", {}),
+                    })
+            
+            # Check tool call limit
+            num_calls = len(response.tool_calls)
+            if total_tool_calls + num_calls > self._max_tool_calls:
+                return response.content or "Tool call limit reached"
+            
+            # Execute tools in parallel
+            tool_results = await self._execute_tools_parallel(response.tool_calls)
+            messages.extend(tool_results)
+            total_tool_calls += num_calls
+            
+            # Emit tool result events
+            if event_bus:
+                for i, result in enumerate(tool_results):
+                    tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
+                    tool_name = tc.get("name", "unknown")
+                    await event_bus.publish(EventType.TOOL_RESULT.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "tool": tool_name,
+                        "tool_name": tool_name,
+                        "result": result.content[:500] if len(result.content) > 500 else result.content,
+                    })
+        
+        # Max iterations reached
+        if messages:
+            last = messages[-1]
+            if isinstance(last, AIMessage):
+                return last.content or "Max iterations reached"
+        return "Max iterations reached"
+
     async def _execute_reasoning(
         self,
         task: str,

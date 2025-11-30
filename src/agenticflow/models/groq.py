@@ -5,9 +5,9 @@ Groq provides extremely fast inference for open-source LLMs.
 Supports Llama, Mixtral, and other models.
 
 Usage:
-    from agenticflow.models.groq import Chat
+    from agenticflow.models.groq import GroqChat
     
-    llm = Chat(model="llama-3.3-70b-versatile")
+    llm = GroqChat(model="llama-3.3-70b-versatile")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
 """
 
@@ -128,16 +128,16 @@ class GroqChat(BaseChatModel):
     - gemma2-9b-it
     
     Example:
-        from agenticflow.models.groq import Chat
+        from agenticflow.models.groq import GroqChat
         
         # Default model
-        llm = Chat()  # Uses llama-3.3-70b-versatile
+        llm = GroqChat()  # Uses llama-3.3-70b-versatile
         
         # Custom model
-        llm = Chat(model="mixtral-8x7b-32768")
+        llm = GroqChat(model="mixtral-8x7b-32768")
         
         # With tools
-        llm = Chat().bind_tools([search_tool])
+        llm = GroqChat().bind_tools([search_tool])
         
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
         

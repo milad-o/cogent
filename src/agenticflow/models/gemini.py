@@ -4,9 +4,9 @@ Google Gemini models for AgenticFlow.
 Supports Gemini 2.0, 1.5 Pro, 1.5 Flash, and other Google AI models.
 
 Usage:
-    from agenticflow.models.gemini import Chat, Embedding
+    from agenticflow.models.gemini import GeminiChat, GeminiEmbedding
     
-    llm = Chat(model="gemini-2.0-flash")
+    llm = GeminiChat(model="gemini-2.0-flash")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
 """
 
@@ -235,16 +235,16 @@ class GeminiChat(BaseChatModel):
     - gemini-1.5-flash-8b
     
     Example:
-        from agenticflow.models.gemini import Chat
+        from agenticflow.models.gemini import GeminiChat
         
         # Default model
-        llm = Chat()  # Uses gemini-2.0-flash-exp
+        llm = GeminiChat()  # Uses gemini-2.0-flash-exp
         
         # Custom model
-        llm = Chat(model="gemini-1.5-pro")
+        llm = GeminiChat(model="gemini-1.5-pro")
         
         # With tools
-        llm = Chat().bind_tools([search_tool])
+        llm = GeminiChat().bind_tools([search_tool])
         
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
         
@@ -411,7 +411,7 @@ class GeminiEmbedding(BaseEmbedding):
     Example:
         from agenticflow.models.gemini import GeminiEmbedding
         
-        embedder = Embedding()  # Uses text-embedding-004
+        embedder = GeminiEmbedding()  # Uses text-embedding-004
         
         vectors = await embedder.aembed(["Hello", "World"])
     """

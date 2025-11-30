@@ -38,6 +38,16 @@ from agenticflow.agent.hitl import (
     InterruptedException,
     AbortedException,
 )
+from agenticflow.agent.output import (
+    ResponseSchema,
+    OutputMethod,
+    StructuredResult,
+    OutputValidationError,
+    validate_and_parse,
+    build_structured_prompt,
+    get_best_method,
+    schema_to_json,
+)
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.schemas.event import Event
@@ -171,6 +181,8 @@ class Agent:
         stream: bool = False,  # Enable streaming by default for this agent
         # Reasoning - extended thinking mode
         reasoning: bool | Any = False,  # ReasoningConfig or True for default
+        # Structured output - enforce response schema
+        output: type | dict | ResponseSchema | None = None,
         # Observability
         verbose: bool | str = False,  # Simple observability for standalone usage
         observer: Any | None = None,  # Observer for rich observability
@@ -207,6 +219,13 @@ class Agent:
             resilience: Resilience configuration (simplified API)
             stream: Enable token-by-token streaming by default for this agent.
                    When True, chat() and think() return async iterators.
+            output: Enforce structured output schema. Accepts:
+                - Pydantic BaseModel class
+                - dataclass class
+                - TypedDict class  
+                - JSON Schema dict
+                - ResponseSchema for fine-grained control
+                When set, agent.run() returns StructuredResult with validated data.
             verbose: Enable observability for standalone agent usage:
                 - False: No output (silent)
                 - True: Progress (thinking/responding with timing)
@@ -242,6 +261,26 @@ class Agent:
             
             result = await agent.run("Find info about Python")
             # Output shows: thinking... → tool calls → results → response
+            ```
+            
+        Example with structured output:
+            ```python
+            from pydantic import BaseModel, Field
+            
+            class ContactInfo(BaseModel):
+                '''Contact information.'''
+                name: str = Field(description="Full name")
+                email: str = Field(description="Email address")
+                phone: str | None = Field(None, description="Phone number")
+            
+            agent = Agent(
+                name="Extractor",
+                model=model,
+                output=ContactInfo,  # Enforce schema
+            )
+            
+            result = await agent.run("Extract: John Doe, john@acme.com")
+            print(result.data)  # ContactInfo(name="John Doe", email="john@acme.com", phone=None)
             ```
             
         Example with taskboard:
@@ -385,6 +424,9 @@ class Agent:
         # Setup reasoning mode
         self._setup_reasoning(reasoning)
         
+        # Setup structured output
+        self._setup_output(output)
+        
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
         self._cached_system_prompt: str | None = None
@@ -518,6 +560,36 @@ class Agent:
             self._reasoning_config = ReasoningConfig()
         else:
             self._reasoning_config = reasoning
+    
+    def _setup_output(self, output: type | dict | ResponseSchema | None) -> None:
+        """Setup structured output for response schema enforcement.
+        
+        Args:
+            output: Structured output configuration:
+                - None: No schema enforcement
+                - Pydantic/dataclass/TypedDict class: Use with default config
+                - dict: JSON Schema with default config
+                - ResponseSchema: Full configuration control
+        """
+        if output is None:
+            self._output_config: ResponseSchema | None = None
+            return
+        
+        if isinstance(output, ResponseSchema):
+            self._output_config = output
+        else:
+            # Wrap schema in default config
+            self._output_config = ResponseSchema(schema=output)
+    
+    @property
+    def output_config(self) -> ResponseSchema | None:
+        """Get the structured output configuration."""
+        return getattr(self, "_output_config", None)
+    
+    @property
+    def has_output_schema(self) -> bool:
+        """Whether the agent has a structured output schema configured."""
+        return self._output_config is not None
     
     def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
         """Setup taskboard for task tracking.

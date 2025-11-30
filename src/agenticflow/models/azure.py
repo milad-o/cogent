@@ -7,24 +7,24 @@ Supports multiple authentication methods:
 - ManagedIdentityCredential (for Azure-hosted services)
 
 Usage:
-    from agenticflow.models.azure import Chat, Embedding
+    from agenticflow.models.azure import AzureChat, AzureEmbedding
     
     # API Key auth
-    llm = Chat(
+    llm = AzureChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         api_key="your-key",
         deployment="gpt-4o",
     )
     
     # DefaultAzureCredential (recommended for Azure)
-    llm = Chat(
+    llm = AzureChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         deployment="gpt-4o",
         use_azure_ad=True,
     )
     
     # ManagedIdentityCredential (for Azure VMs/Functions/etc)
-    llm = Chat(
+    llm = AzureChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         deployment="gpt-4o",
         use_managed_identity=True,
@@ -119,24 +119,24 @@ class AzureChat(BaseChatModel):
     Supports API Key, DefaultAzureCredential, and ManagedIdentityCredential.
     
     Example:
-        from agenticflow.models.azure import Chat
+        from agenticflow.models.azure import AzureChat
         
         # API Key auth (simple)
-        llm = Chat(
+        llm = AzureChat(
             azure_endpoint="https://your-resource.openai.azure.com",
             api_key="your-api-key",
             deployment="gpt-4o",
         )
         
         # DefaultAzureCredential (recommended for Azure)
-        llm = Chat(
+        llm = AzureChat(
             azure_endpoint="https://your-resource.openai.azure.com",
             deployment="gpt-4o",
             use_azure_ad=True,
         )
         
         # ManagedIdentityCredential (for Azure VMs/Functions)
-        llm = Chat(
+        llm = AzureChat(
             azure_endpoint="https://your-resource.openai.azure.com",
             deployment="gpt-4o",
             use_managed_identity=True,
@@ -145,7 +145,7 @@ class AzureChat(BaseChatModel):
         
         # Use environment variables
         # AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT
-        llm = Chat()
+        llm = AzureChat()
         
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
     """
@@ -274,17 +274,17 @@ class AzureEmbedding(BaseEmbedding):
     Supports API Key and Azure AD authentication.
     
     Example:
-        from agenticflow.models.azure import Embedding
+        from agenticflow.models.azure import AzureEmbedding
         
         # API Key auth
-        embedder = Embedding(
+        embedder = AzureEmbedding(
             azure_endpoint="https://your-resource.openai.azure.com",
             api_key="your-api-key",
             deployment="text-embedding-ada-002",
         )
         
         # Azure AD auth
-        embedder = Embedding(
+        embedder = AzureEmbedding(
             azure_endpoint="https://your-resource.openai.azure.com",
             deployment="text-embedding-3-small",
             use_azure_ad=True,

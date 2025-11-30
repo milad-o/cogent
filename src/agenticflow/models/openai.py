@@ -223,7 +223,7 @@ class OpenAIEmbedding(BaseEmbedding):
     Example:
         from agenticflow.models.openai import OpenAIEmbedding
         
-        embedder = Embedding()  # Uses text-embedding-3-small by default
+        embedder = OpenAIEmbedding()  # Uses text-embedding-3-small by default
         
         # Single text
         vector = await embedder.aembed_query("Hello world")
@@ -232,7 +232,7 @@ class OpenAIEmbedding(BaseEmbedding):
         vectors = await embedder.aembed(["Hello", "World"])
         
         # With dimension reduction
-        embedder = Embedding(dimensions=256)
+        embedder = OpenAIEmbedding(dimensions=256)
     """
     
     model: str = "text-embedding-3-small"

@@ -162,6 +162,11 @@ from agenticflow.agent.streaming import (
     collect_stream,
     print_stream,
 )
+from agenticflow.agent.output import (
+    ResponseSchema,
+    OutputMethod,
+    StructuredResult,
+)
 
 # Graphs - Execution strategies
 from agenticflow.executors import (
@@ -377,6 +382,10 @@ __all__ = [
     "extract_tool_calls",
     "collect_stream",
     "print_stream",
+    # Structured Output
+    "ResponseSchema",
+    "OutputMethod",
+    "StructuredResult",
     # Events
     "EventBus",
     "get_event_bus",

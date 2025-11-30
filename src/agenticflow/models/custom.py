@@ -10,16 +10,16 @@ Supports any OpenAI-compatible API endpoint like:
 - Custom deployments
 
 Usage:
-    from agenticflow.models.custom import Chat, Embedding
+    from agenticflow.models.custom import CustomChat, CustomEmbedding
     
     # vLLM endpoint
-    llm = Chat(
+    llm = CustomChat(
         base_url="http://localhost:8000/v1",
         model="meta-llama/Llama-3.2-3B-Instruct",
     )
     
     # Together AI
-    llm = Chat(
+    llm = CustomChat(
         base_url="https://api.together.xyz/v1",
         api_key="your-key",
         model="meta-llama/Llama-3.2-3B-Instruct-Turbo",
@@ -86,29 +86,29 @@ class CustomChat(BaseChatModel):
     Use with any API that implements the OpenAI chat completions format.
     
     Example:
-        from agenticflow.models.custom import Chat
+        from agenticflow.models.custom import CustomChat
         
         # vLLM locally
-        llm = Chat(
+        llm = CustomChat(
             base_url="http://localhost:8000/v1",
             model="meta-llama/Llama-3.2-3B-Instruct",
         )
         
         # Together AI
-        llm = Chat(
+        llm = CustomChat(
             base_url="https://api.together.xyz/v1",
             api_key=os.environ["TOGETHER_API_KEY"],
             model="meta-llama/Llama-3.2-3B-Instruct-Turbo",
         )
         
         # LiteLLM proxy
-        llm = Chat(
+        llm = CustomChat(
             base_url="http://localhost:4000/v1",
             model="gpt-4o",  # Route to configured backend
         )
         
         # Anyscale
-        llm = Chat(
+        llm = CustomChat(
             base_url="https://api.endpoints.anyscale.com/v1",
             api_key="your-key",
             model="meta-llama/Llama-3-8b-chat-hf",
@@ -221,16 +221,16 @@ class CustomEmbedding(BaseEmbedding):
     Use with any API that implements the OpenAI embeddings format.
     
     Example:
-        from agenticflow.models.custom import Embedding
+        from agenticflow.models.custom import CustomEmbedding
         
         # vLLM embedding
-        embedder = Embedding(
+        embedder = CustomEmbedding(
             base_url="http://localhost:8000/v1",
             model="BAAI/bge-small-en-v1.5",
         )
         
         # Together AI
-        embedder = Embedding(
+        embedder = CustomEmbedding(
             base_url="https://api.together.xyz/v1",
             api_key="your-key",
             model="togethercomputer/m2-bert-80M-8k-retrieval",

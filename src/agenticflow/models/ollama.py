@@ -4,14 +4,14 @@ Ollama models for AgenticFlow.
 Ollama runs LLMs locally. Supports Llama, Mistral, Qwen, and other models.
 
 Usage:
-    from agenticflow.models.ollama import Chat, Embedding
+    from agenticflow.models.ollama import OllamaChat, OllamaEmbedding
     
     # Chat
-    llm = Chat(model="llama3.2")
+    llm = OllamaChat(model="llama3.2")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
     
     # Embeddings
-    embedder = Embedding(model="nomic-embed-text")
+    embedder = OllamaEmbedding(model="nomic-embed-text")
     vectors = await embedder.aembed(["Hello", "World"])
 """
 
@@ -125,22 +125,22 @@ class OllamaChat(BaseChatModel):
     Runs LLMs locally using Ollama. Supports Llama, Mistral, Qwen, and many others.
     
     Example:
-        from agenticflow.models.ollama import Chat
+        from agenticflow.models.ollama import OllamaChat
         
         # Default model
-        llm = Chat()  # Uses llama3.2 by default
+        llm = OllamaChat()  # Uses llama3.2 by default
         
         # Custom model
-        llm = Chat(model="mistral")
+        llm = OllamaChat(model="mistral")
         
         # Custom host
-        llm = Chat(
+        llm = OllamaChat(
             model="codellama",
             host="http://192.168.1.100:11434",
         )
         
         # With tools (not all models support this)
-        llm = Chat(model="llama3.2").bind_tools([my_tool])
+        llm = OllamaChat(model="llama3.2").bind_tools([my_tool])
         
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
     """
@@ -243,10 +243,10 @@ class OllamaEmbedding(BaseEmbedding):
     Example:
         from agenticflow.models.ollama import OllamaEmbedding
         
-        embedder = Embedding()  # Uses nomic-embed-text by default
+        embedder = OllamaEmbedding()  # Uses nomic-embed-text by default
         
         # Custom model
-        embedder = Embedding(model="mxbai-embed-large")
+        embedder = OllamaEmbedding(model="mxbai-embed-large")
         
         vectors = await embedder.aembed(["Hello", "World"])
     """

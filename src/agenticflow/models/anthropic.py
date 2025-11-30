@@ -2,9 +2,9 @@
 Anthropic models for AgenticFlow.
 
 Usage:
-    from agenticflow.models.anthropic import Chat
+    from agenticflow.models.anthropic import AnthropicChat
     
-    llm = Chat(model="claude-sonnet-4-20250514")
+    llm = AnthropicChat(model="claude-sonnet-4-20250514")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
 """
 
@@ -114,17 +114,17 @@ class AnthropicChat(BaseChatModel):
     Supports Claude 3.5, Claude 3, and other Anthropic models.
     
     Example:
-        from agenticflow.models.anthropic import Chat
+        from agenticflow.models.anthropic import AnthropicChat
         
         # Simple usage
-        llm = Chat()  # Uses claude-sonnet-4-20250514 by default
+        llm = AnthropicChat()  # Uses claude-sonnet-4-20250514 by default
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
         
         # With custom model
-        llm = Chat(model="claude-3-opus-20240229", temperature=0.7)
+        llm = AnthropicChat(model="claude-3-opus-20240229", temperature=0.7)
         
         # With tools
-        llm = Chat().bind_tools([search_tool, calc_tool])
+        llm = AnthropicChat().bind_tools([search_tool, calc_tool])
         response = await llm.ainvoke(messages)
         
         # Streaming

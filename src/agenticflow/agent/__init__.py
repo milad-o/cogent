@@ -96,6 +96,12 @@ from agenticflow.agent.reasoning import (
     ThinkingStep,
     ReasoningResult,
 )
+from agenticflow.agent.output import (
+    ResponseSchema,
+    OutputMethod,
+    StructuredResult,
+    OutputValidationError,
+)
 
 __all__ = [
     # Core
@@ -156,4 +162,9 @@ __all__ = [
     "ReasoningStyle",
     "ThinkingStep",
     "ReasoningResult",
+    # Structured Output
+    "ResponseSchema",
+    "OutputMethod",
+    "StructuredResult",
+    "OutputValidationError",
 ]
