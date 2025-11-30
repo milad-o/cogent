@@ -90,6 +90,12 @@ from agenticflow.agent.taskboard import (
     Task,
     TaskStatus,
 )
+from agenticflow.agent.reasoning import (
+    ReasoningConfig,
+    ReasoningStyle,
+    ThinkingStep,
+    ReasoningResult,
+)
 
 __all__ = [
     # Core
@@ -145,4 +151,9 @@ __all__ = [
     "TaskBoardConfig",
     "Task",
     "TaskStatus",
+    # Reasoning
+    "ReasoningConfig",
+    "ReasoningStyle",
+    "ThinkingStep",
+    "ReasoningResult",
 ]

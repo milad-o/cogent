@@ -16,6 +16,18 @@ from agenticflow.tools.base import BaseTool
 from agenticflow.agent.config import AgentConfig
 from agenticflow.agent.state import AgentState
 from agenticflow.agent.taskboard import TaskBoard, TaskBoardConfig, create_taskboard_tools, TASKBOARD_INSTRUCTIONS
+from agenticflow.agent.reasoning import (
+    ReasoningConfig,
+    ReasoningStyle,
+    ReasoningResult,
+    ThinkingStep,
+    build_reasoning_prompt,
+    extract_thinking,
+    estimate_confidence,
+    REASONING_SYSTEM_PROMPT,
+    STYLE_INSTRUCTIONS,
+    SELF_CORRECTION_PROMPT,
+)
 from agenticflow.agent.hitl import (
     should_interrupt,
     PendingAction,
@@ -157,6 +169,8 @@ class Agent:
         resilience: ResilienceConfig | None = None,
         interrupt_on: dict[str, Any] | None = None,  # HITL: tool approval rules
         stream: bool = False,  # Enable streaming by default for this agent
+        # Reasoning - extended thinking mode
+        reasoning: bool | Any = False,  # ReasoningConfig or True for default
         # Observability
         verbose: bool | str = False,  # Simple observability for standalone usage
         observer: Any | None = None,  # Observer for rich observability
@@ -368,6 +382,9 @@ class Agent:
         # Setup taskboard (task tracking and working memory)
         self._setup_taskboard(taskboard)
         
+        # Setup reasoning mode
+        self._setup_reasoning(reasoning)
+        
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
         self._cached_system_prompt: str | None = None
@@ -484,6 +501,24 @@ class Agent:
         """
         self._setup_observer(observer)
 
+    def _setup_reasoning(self, reasoning: bool | ReasoningConfig | None) -> None:
+        """Setup reasoning for extended thinking before actions.
+        
+        Args:
+            reasoning: Reasoning configuration:
+                - None/False: Reasoning disabled
+                - True: Enable with default config (budget=5000, deliberate style)
+                - ReasoningConfig: Enable with custom config
+        """
+        if reasoning is None or reasoning is False:
+            self._reasoning_config = None
+            return
+        
+        if reasoning is True:
+            self._reasoning_config = ReasoningConfig()
+        else:
+            self._reasoning_config = reasoning
+    
     def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
         """Setup taskboard for task tracking.
         

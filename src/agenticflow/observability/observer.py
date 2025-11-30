@@ -139,6 +139,7 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.AGENT_UNREGISTERED,
         EventType.AGENT_INVOKED,
         EventType.AGENT_THINKING,
+        EventType.AGENT_REASONING,
         EventType.AGENT_ACTING,
         EventType.AGENT_RESPONDED,
         EventType.AGENT_ERROR,
@@ -653,6 +654,7 @@ class Observer:
             EventType.AGENT_INVOKED,
             EventType.AGENT_RESPONDED,
             EventType.AGENT_THINKING,  # Show thinking at progress level
+            EventType.AGENT_REASONING,  # Show reasoning at progress level
             EventType.TASK_STARTED,
         }:
             return ObservabilityLevel.PROGRESS
@@ -814,6 +816,32 @@ class Observer:
         elif event_type == EventType.AGENT_THINKING:
             agent_name = data.get('agent_name', '?')
             return f"{prefix}{s.agent(f'🧠 [{agent_name}]')} {s.dim('thinking...')}"
+        
+        elif event_type == EventType.AGENT_REASONING:
+            agent_name = data.get('agent_name', '?')
+            round_num = data.get('round', 1)
+            reasoning_type = data.get('reasoning_type', 'thinking')
+            thought_preview = data.get('thought_preview', '')
+            
+            # Type-specific icons
+            type_icons = {
+                'analysis': '🔍',
+                'plan': '📋',
+                'reflection': '🪞',
+                'correction': '🔄',
+            }
+            icon = type_icons.get(reasoning_type, '💭')
+            
+            header = f"{prefix}{s.agent(f'{icon} [{agent_name}]')} {s.dim(f'reasoning (round {round_num})...')}"
+            
+            if thought_preview and self.config.level >= ObservabilityLevel.DETAILED:
+                # Show thought preview for detailed level
+                lines.append(header)
+                for line in thought_preview.split('\n')[:5]:
+                    lines.append(f"      {s.dim(line)}")
+                return "\n".join(lines)
+            else:
+                return header
         
         elif event_type == EventType.AGENT_ACTING:
             agent_name = data.get('agent_name', '?')

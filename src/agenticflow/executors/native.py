@@ -291,6 +291,9 @@ class NativeExecutor(BaseExecutor):
         Emits events for observability when event_bus is attached.
         Automatically retries on rate limits and transient errors.
         
+        If the agent has reasoning enabled, performs a thinking phase
+        before the main execution loop.
+        
         Args:
             task: The task to execute.
             context: Optional context dictionary.
@@ -322,6 +325,14 @@ class NativeExecutor(BaseExecutor):
         
         # Build messages once
         messages = self._build_messages(task, context)
+        
+        # === REASONING PHASE ===
+        # If reasoning is enabled, think through the problem first
+        reasoning_config = getattr(self.agent, '_reasoning_config', None)
+        if reasoning_config is not None:
+            reasoning_result = await self._execute_reasoning(
+                task, context, messages, event_bus, agent_name
+            )
         
         # Track tool calls to enforce limit
         total_tool_calls = 0
@@ -453,6 +464,156 @@ class NativeExecutor(BaseExecutor):
         messages.append(HumanMessage(content=user_content))
         return messages
     
+    async def _execute_reasoning(
+        self,
+        task: str,
+        context: dict[str, Any] | None,
+        messages: list[BaseMessage],
+        event_bus: Any | None,
+        agent_name: str,
+    ) -> dict[str, Any]:
+        """Execute reasoning phase before main loop.
+        
+        Performs a thinking phase where the agent analyzes the task,
+        breaks it down, and plans the approach.
+        
+        Args:
+            task: The task to reason about.
+            context: Optional context dict.
+            messages: Current message list (will be modified in-place).
+            event_bus: Event bus for observability.
+            agent_name: Name of the agent.
+            
+        Returns:
+            Dict with reasoning results (thinking_steps, plan, etc).
+        """
+        from agenticflow.core.enums import EventType
+        from agenticflow.agent.reasoning import (
+            ReasoningConfig,
+            build_reasoning_prompt,
+            extract_thinking,
+            estimate_confidence,
+            ThinkingStep,
+            REASONING_SYSTEM_PROMPT,
+            STYLE_INSTRUCTIONS,
+        )
+        
+        config: ReasoningConfig = getattr(self.agent, '_reasoning_config', None)
+        if config is None:
+            return {}
+        
+        # Prepare reasoning results
+        thinking_steps: list[ThinkingStep] = []
+        
+        # Build reasoning-enhanced system prompt
+        style_instructions = STYLE_INSTRUCTIONS.get(config.style, "")
+        reasoning_system = REASONING_SYSTEM_PROMPT.format(
+            style_instructions=style_instructions
+        )
+        
+        # Emit reasoning event (start)
+        if event_bus:
+            await event_bus.publish(EventType.AGENT_REASONING.value, {
+                "agent": agent_name,
+                "agent_name": agent_name,
+                "phase": "start",
+                "reasoning_type": "analysis",
+                "round": 0,
+                "style": config.style.value,
+                "thought_preview": f"Beginning {config.style.value} reasoning...",
+            })
+        
+        # Create reasoning messages
+        reasoning_messages: list[BaseMessage] = [
+            SystemMessage(content=reasoning_system),
+            HumanMessage(content=build_reasoning_prompt(config, task, context)),
+        ]
+        
+        # Use raw model without tools for reasoning (prevents tool_calls during thinking)
+        reasoning_model = self.agent.model
+        
+        # Run thinking rounds
+        final_thinking = ""
+        for round_num in range(1, config.max_thinking_rounds + 1):
+            # LLM call for thinking (use raw model, not bound model)
+            if self._model_resilience:
+                exec_result = await self._model_resilience.execute(
+                    reasoning_model.ainvoke, reasoning_messages
+                )
+                if not exec_result.success:
+                    break  # Stop reasoning on error, continue to main loop
+                response: AIMessage = exec_result.result
+            else:
+                response: AIMessage = await reasoning_model.ainvoke(reasoning_messages)
+            
+            content = response.content or ""
+            
+            # Extract thinking from response
+            thinking, cleaned = extract_thinking(content)
+            if thinking:
+                final_thinking = thinking
+                confidence = estimate_confidence(thinking)
+                
+                step = ThinkingStep(
+                    round=round_num,
+                    thought=thinking,
+                    reasoning_type="analysis" if round_num == 1 else "refinement",
+                    confidence=confidence,
+                )
+                thinking_steps.append(step)
+                
+                # Emit reasoning event (step)
+                if event_bus:
+                    await event_bus.publish(EventType.AGENT_REASONING.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "phase": "thinking",
+                        "reasoning_type": step.reasoning_type,
+                        "round": round_num,
+                        "thought_preview": thinking[:200] + "..." if len(thinking) > 200 else thinking,
+                        "confidence": confidence,
+                    })
+                
+                # Check if confident enough to stop
+                if config.require_confidence and confidence >= config.require_confidence:
+                    break
+                
+                # Add thinking to messages for next round (if doing multiple rounds)
+                if round_num < config.max_thinking_rounds:
+                    reasoning_messages.append(response)
+                    reasoning_messages.append(HumanMessage(
+                        content="Good analysis. Can you refine your approach further? "
+                        "Consider edge cases or alternative approaches."
+                    ))
+            else:
+                # No <thinking> block found, use content as final plan
+                final_thinking = content[:500]
+                break
+        
+        # Emit reasoning event (complete)
+        if event_bus:
+            await event_bus.publish(EventType.AGENT_REASONING.value, {
+                "agent": agent_name,
+                "agent_name": agent_name,
+                "phase": "complete",
+                "reasoning_type": "reflection",
+                "round": len(thinking_steps),
+                "thinking_rounds": len(thinking_steps),
+                "final_confidence": thinking_steps[-1].confidence if thinking_steps else None,
+                "thought_preview": f"✓ Reasoning complete ({len(thinking_steps)} rounds)",
+            })
+        
+        # Inject reasoning context into main messages
+        if final_thinking and config.show_thinking:
+            # Add thinking as an assistant message so the LLM sees it
+            messages.append(AIMessage(content=f"<thinking>\n{final_thinking}\n</thinking>"))
+        
+        return {
+            "thinking_steps": thinking_steps,
+            "final_thinking": final_thinking,
+            "rounds": len(thinking_steps),
+        }
+
     async def _execute_tools_parallel(
         self,
         tool_calls: list[dict[str, Any]],

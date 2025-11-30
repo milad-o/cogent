@@ -74,6 +74,7 @@ class EventType(Enum):
     AGENT_UNREGISTERED = "agent.unregistered"
     AGENT_INVOKED = "agent.invoked"
     AGENT_THINKING = "agent.thinking"
+    AGENT_REASONING = "agent.reasoning"  # Extended thinking/chain-of-thought
     AGENT_ACTING = "agent.acting"
     AGENT_RESPONDED = "agent.responded"
     AGENT_ERROR = "agent.error"
