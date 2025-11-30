@@ -183,6 +183,8 @@ class Agent:
         reasoning: bool | Any = False,  # ReasoningConfig or True for default
         # Structured output - enforce response schema
         output: type | dict | ResponseSchema | None = None,
+        # Interceptors - composable execution hooks
+        intercept: Sequence[Any] | None = None,
         # Observability
         verbose: bool | str = False,  # Simple observability for standalone usage
         observer: Any | None = None,  # Observer for rich observability
@@ -226,6 +228,11 @@ class Agent:
                 - JSON Schema dict
                 - ResponseSchema for fine-grained control
                 When set, agent.run() returns StructuredResult with validated data.
+            intercept: List of interceptors for execution hooks. Interceptors can:
+                - Limit calls (BudgetGuard)
+                - Compress context (ContextCompressor)
+                - Mask PII (PIIShield)
+                - Log/audit actions (Auditor)
             verbose: Enable observability for standalone agent usage:
                 - False: No output (silent)
                 - True: Progress (thinking/responding with timing)
@@ -427,6 +434,9 @@ class Agent:
         # Setup structured output
         self._setup_output(output)
         
+        # Setup interceptors
+        self._interceptors: list[Any] = list(intercept) if intercept else []
+        
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
         self._cached_system_prompt: str | None = None
@@ -590,6 +600,16 @@ class Agent:
     def has_output_schema(self) -> bool:
         """Whether the agent has a structured output schema configured."""
         return self._output_config is not None
+    
+    @property
+    def interceptors(self) -> list[Any]:
+        """Get the list of interceptors for this agent."""
+        return getattr(self, "_interceptors", [])
+    
+    @property
+    def has_interceptors(self) -> bool:
+        """Whether the agent has interceptors configured."""
+        return bool(getattr(self, "_interceptors", None))
     
     def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
         """Setup taskboard for task tracking.

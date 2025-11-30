@@ -168,6 +168,17 @@ from agenticflow.agent.output import (
     StructuredResult,
 )
 
+# Interceptors (execution flow control)
+from agenticflow.interceptors import (
+    Interceptor,
+    Phase,
+    InterceptContext,
+    InterceptResult,
+    BudgetGuard,
+    StopExecution,
+    run_interceptors,
+)
+
 # Graphs - Execution strategies
 from agenticflow.executors import (
     ExecutionStrategy,
@@ -386,6 +397,14 @@ __all__ = [
     "ResponseSchema",
     "OutputMethod",
     "StructuredResult",
+    # Interceptors
+    "Interceptor",
+    "Phase",
+    "InterceptContext",
+    "InterceptResult",
+    "BudgetGuard",
+    "StopExecution",
+    "run_interceptors",
     # Events
     "EventBus",
     "get_event_bus",

@@ -37,6 +37,14 @@ from agenticflow.agent.output import (
     build_structured_prompt,
     get_best_method,
 )
+from agenticflow.interceptors.base import (
+    Interceptor,
+    InterceptContext,
+    InterceptResult,
+    Phase,
+    StopExecution,
+    run_interceptors,
+)
 
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
@@ -551,8 +559,49 @@ class NativeExecutor(BaseExecutor):
         from agenticflow.core.enums import EventType
         
         total_tool_calls = 0
+        model_calls = 0
+        
+        # Get interceptors from agent
+        interceptors: list[Interceptor] = getattr(self.agent, '_interceptors', [])
+        
+        # Shared state for interceptors across the execution
+        intercept_state: dict[str, Any] = {}
+        
+        # Helper to create context for a phase
+        def make_ctx(
+            phase: Phase,
+            **extra: Any,
+        ) -> InterceptContext:
+            return InterceptContext(
+                agent=self.agent,
+                phase=phase,
+                task=task,
+                messages=[{"role": getattr(m, "role", "unknown"), "content": getattr(m, "content", "")} for m in messages],
+                state=intercept_state,
+                model_calls=model_calls,
+                tool_calls=total_tool_calls,
+                **extra,
+            )
+        
+        # PRE_RUN interceptors
+        if interceptors:
+            try:
+                result = await run_interceptors(interceptors, make_ctx(Phase.PRE_RUN))
+                if not result.proceed:
+                    return result.final_response or "Execution stopped by interceptor"
+            except StopExecution as e:
+                return e.response
         
         for iteration in range(self.max_iterations):
+            # PRE_THINK interceptors
+            if interceptors:
+                try:
+                    result = await run_interceptors(interceptors, make_ctx(Phase.PRE_THINK))
+                    if not result.proceed:
+                        return result.final_response or "Execution stopped by interceptor"
+                except StopExecution as e:
+                    return e.response
+            
             # Emit thinking event
             if event_bus:
                 await event_bus.publish(EventType.AGENT_THINKING.value, {
@@ -582,11 +631,32 @@ class NativeExecutor(BaseExecutor):
             else:
                 response: AIMessage = await self._bound_model.ainvoke(messages)
             
+            model_calls += 1
             messages.append(response)
+            
+            # POST_THINK interceptors
+            if interceptors:
+                try:
+                    result = await run_interceptors(
+                        interceptors, 
+                        make_ctx(Phase.POST_THINK, model_response=response),
+                    )
+                    if not result.proceed:
+                        return result.final_response or "Execution stopped by interceptor"
+                except StopExecution as e:
+                    return e.response
             
             # Check for tool calls
             if not response.tool_calls:
                 duration_ms = (time.perf_counter() - execution_start) * 1000
+                
+                # POST_RUN interceptors
+                if interceptors:
+                    try:
+                        await run_interceptors(interceptors, make_ctx(Phase.POST_RUN))
+                    except StopExecution:
+                        pass  # Already completing, ignore stop
+                
                 if event_bus:
                     content = response.content or ""
                     await event_bus.publish(EventType.AGENT_RESPONDED.value, {
@@ -618,8 +688,12 @@ class NativeExecutor(BaseExecutor):
             if total_tool_calls + num_calls > self._max_tool_calls:
                 return response.content or "Tool call limit reached"
             
-            # Execute tools in parallel
-            tool_results = await self._execute_tools_parallel(response.tool_calls)
+            # Execute tools with PRE_ACT/POST_ACT interceptors
+            tool_results = await self._execute_tools_with_interceptors(
+                response.tool_calls,
+                interceptors,
+                make_ctx,
+            )
             messages.extend(tool_results)
             total_tool_calls += num_calls
             
@@ -636,12 +710,114 @@ class NativeExecutor(BaseExecutor):
                         "result": result.content[:500] if len(result.content) > 500 else result.content,
                     })
         
-        # Max iterations reached
+        # Max iterations reached - POST_RUN
+        if interceptors:
+            try:
+                await run_interceptors(interceptors, make_ctx(Phase.POST_RUN))
+            except StopExecution:
+                pass
+        
         if messages:
             last = messages[-1]
             if isinstance(last, AIMessage):
                 return last.content or "Max iterations reached"
         return "Max iterations reached"
+    
+    async def _execute_tools_with_interceptors(
+        self,
+        tool_calls: list[dict[str, Any]],
+        interceptors: list[Interceptor],
+        make_ctx: Any,
+    ) -> list[ToolMessage]:
+        """Execute tools with PRE_ACT/POST_ACT interceptor hooks.
+        
+        Args:
+            tool_calls: List of tool call dicts from LLM.
+            interceptors: List of interceptors.
+            make_ctx: Context factory function.
+            
+        Returns:
+            List of ToolMessage results.
+        """
+        if not interceptors:
+            # No interceptors - use fast parallel path
+            return await self._execute_tools_parallel(tool_calls)
+        
+        results: list[ToolMessage] = []
+        
+        for tc in tool_calls:
+            tool_name = tc.get("name", "unknown")
+            tool_id = tc.get("id", f"call_{tool_name}")
+            tool_args = tc.get("args", {})
+            
+            # PRE_ACT
+            try:
+                pre_result = await run_interceptors(
+                    interceptors,
+                    make_ctx(
+                        Phase.PRE_ACT,
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                    ),
+                )
+                if not pre_result.proceed:
+                    # Tool blocked by interceptor
+                    results.append(ToolMessage(
+                        content=pre_result.final_response or "Tool call blocked",
+                        tool_call_id=tool_id,
+                    ))
+                    continue
+                if pre_result.skip_action:
+                    results.append(ToolMessage(
+                        content="Tool call skipped",
+                        tool_call_id=tool_id,
+                    ))
+                    continue
+                # Apply modified args if any
+                if pre_result.modified_tool_args:
+                    tool_args = pre_result.modified_tool_args
+            except StopExecution as e:
+                results.append(ToolMessage(
+                    content=e.response,
+                    tool_call_id=tool_id,
+                ))
+                continue
+            
+            # Execute the tool
+            tool = self._tool_map.get(tool_name)
+            if tool:
+                try:
+                    if hasattr(tool, "ainvoke"):
+                        result = await tool.ainvoke(tool_args)
+                    else:
+                        result = tool.invoke(tool_args)
+                    result_str = str(result) if result is not None else ""
+                except Exception as e:
+                    result_str = f"Error: {e}"
+            else:
+                result_str = f"Unknown tool: {tool_name}"
+            
+            # POST_ACT
+            try:
+                post_result = await run_interceptors(
+                    interceptors,
+                    make_ctx(
+                        Phase.POST_ACT,
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        tool_result=result_str,
+                    ),
+                )
+                # POST_ACT can't stop execution, just observe
+            except StopExecution:
+                pass  # Ignore stop in POST_ACT
+            
+            results.append(ToolMessage(
+                content=result_str,
+                tool_call_id=tool_id,
+            ))
+        
+        return results
 
     async def _execute_reasoning(
         self,
