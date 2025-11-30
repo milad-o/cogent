@@ -19,6 +19,17 @@ from agenticflow.interceptors.budget import (
     BudgetExhaustedError,
     ExitBehavior,
 )
+from agenticflow.interceptors.context import (
+    ContextCompressor,
+    TokenLimiter,
+    _estimate_tokens,
+    _messages_to_text,
+)
+from agenticflow.interceptors.security import (
+    PIIShield,
+    PIIAction,
+    ContentFilter,
+)
 
 
 # =============================================================================
@@ -458,3 +469,303 @@ class TestInterceptorChaining:
         await run_interceptors([Writer(), reader], ctx)
         
         assert reader.read_value == 42
+
+
+# =============================================================================
+# Test ContextCompressor
+# =============================================================================
+
+class TestContextCompressor:
+    """Test ContextCompressor interceptor."""
+    
+    def test_default_values(self):
+        compressor = ContextCompressor()
+        assert compressor.threshold_tokens == 8000
+        assert compressor.keep_recent == 4
+    
+    def test_invalid_threshold(self):
+        with pytest.raises(ValueError, match="threshold_tokens must be at least 1000"):
+            ContextCompressor(threshold_tokens=500)
+    
+    def test_invalid_keep_recent(self):
+        with pytest.raises(ValueError, match="keep_recent must be at least 1"):
+            ContextCompressor(keep_recent=0)
+    
+    @pytest.mark.asyncio
+    async def test_no_compression_under_threshold(self):
+        """Should not compress when under token limit."""
+        compressor = ContextCompressor(threshold_tokens=8000)
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "Hello"}]  # Very short
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        result = await compressor.pre_think(ctx)
+        
+        assert result.proceed is True
+        assert result.modified_messages is None
+
+
+class TestTokenLimiter:
+    """Test TokenLimiter interceptor."""
+    
+    def test_default_values(self):
+        limiter = TokenLimiter()
+        assert limiter.max_tokens == 16000
+    
+    @pytest.mark.asyncio
+    async def test_under_limit_continues(self):
+        limiter = TokenLimiter(max_tokens=1000)
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "Hi"}]  # ~1 token
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        result = await limiter.pre_think(ctx)
+        
+        assert result.proceed is True
+    
+    @pytest.mark.asyncio
+    async def test_over_limit_stops(self):
+        limiter = TokenLimiter(max_tokens=5)  # Very low limit
+        
+        mock_agent = MagicMock()
+        # This message is ~60+ chars / 4 = ~15+ tokens, well above limit of 5
+        messages = [{"role": "user", "content": "This is a much longer message that definitely exceeds limit tokens"}]
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        result = await limiter.pre_think(ctx)
+        
+        assert result.proceed is False
+        assert "limit reached" in result.final_response.lower()
+
+
+class TestTokenEstimation:
+    """Test token estimation helpers."""
+    
+    def test_estimate_tokens(self):
+        # 4 chars ≈ 1 token
+        assert _estimate_tokens("1234") == 1
+        assert _estimate_tokens("12345678") == 2
+    
+    def test_messages_to_text(self):
+        messages = [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi there"},
+        ]
+        text = _messages_to_text(messages)
+        assert "Hello" in text
+        assert "Hi there" in text
+
+
+# =============================================================================
+# Test PIIShield
+# =============================================================================
+
+class TestPIIShield:
+    """Test PIIShield interceptor."""
+    
+    def test_default_values(self):
+        shield = PIIShield()
+        assert "all" in shield.patterns
+        assert shield.action == PIIAction.MASK
+    
+    def test_scan_email(self):
+        shield = PIIShield(patterns=["email"])
+        matches = shield._scan_text("Contact me at test@example.com please")
+        assert len(matches) == 1
+        assert matches[0][0] == "email"
+        assert matches[0][1] == "test@example.com"
+    
+    def test_scan_phone(self):
+        shield = PIIShield(patterns=["phone_us"])
+        matches = shield._scan_text("Call me at 555-123-4567")
+        assert len(matches) == 1
+        assert matches[0][0] == "phone_us"
+    
+    def test_scan_ssn(self):
+        shield = PIIShield(patterns=["ssn"])
+        matches = shield._scan_text("SSN: 123-45-6789")
+        assert len(matches) == 1
+        assert matches[0][0] == "ssn"
+    
+    def test_scan_credit_card(self):
+        shield = PIIShield(patterns=["credit_card"])
+        matches = shield._scan_text("Card: 4111111111111111")  # Test Visa
+        assert len(matches) == 1
+        assert matches[0][0] == "credit_card"
+    
+    def test_mask_text(self):
+        shield = PIIShield(patterns=["email"])
+        masked, detections = shield._mask_text("Email: user@test.com")
+        assert "[EMAIL_REDACTED]" in masked
+        assert "user@test.com" not in masked
+        assert len(detections) == 1
+    
+    def test_mask_multiple(self):
+        shield = PIIShield(patterns=["email", "phone_us"])
+        text = "Email: a@b.com, Phone: 555-111-2222"
+        masked, detections = shield._mask_text(text)
+        assert "[EMAIL_REDACTED]" in masked
+        assert "[PHONE_US_REDACTED]" in masked
+        assert len(detections) == 2
+    
+    @pytest.mark.asyncio
+    async def test_mask_action_modifies_messages(self):
+        shield = PIIShield(patterns=["email"], action=PIIAction.MASK)
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "My email is test@example.com"}]
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        result = await shield.pre_think(ctx)
+        
+        assert result.proceed is True
+        assert result.modified_messages is not None
+        assert "[EMAIL_REDACTED]" in result.modified_messages[0]["content"]
+    
+    @pytest.mark.asyncio
+    async def test_block_action_stops(self):
+        shield = PIIShield(patterns=["ssn"], action=PIIAction.BLOCK)
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "My SSN is 123-45-6789"}]
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        with pytest.raises(StopExecution):
+            await shield.pre_think(ctx)
+    
+    @pytest.mark.asyncio
+    async def test_warn_action_continues(self):
+        shield = PIIShield(patterns=["email"], action=PIIAction.WARN)
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "Email: test@test.com"}]
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        result = await shield.pre_think(ctx)
+        
+        assert result.proceed is True
+        # Detections tracked but messages not modified
+        assert result.modified_messages is None
+        assert len(ctx.state["pii_shield"]["detections"]) > 0
+    
+    @pytest.mark.asyncio
+    async def test_no_pii_passes_through(self):
+        shield = PIIShield(patterns=["email", "ssn"])
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "Hello, how are you?"}]
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        result = await shield.pre_think(ctx)
+        
+        assert result.proceed is True
+        assert result.modified_messages is None
+    
+    def test_custom_pattern(self):
+        shield = PIIShield(
+            patterns=[],
+            custom_patterns={"employee_id": r"EMP-\d{6}"},
+        )
+        matches = shield._scan_text("Employee ID: EMP-123456")
+        assert len(matches) == 1
+        assert matches[0][0] == "employee_id"
+
+
+# =============================================================================
+# Test ContentFilter
+# =============================================================================
+
+class TestContentFilter:
+    """Test ContentFilter interceptor."""
+    
+    def test_blocked_words(self):
+        filter_ = ContentFilter(blocked_words=["password", "secret"])
+        matches = filter_._check_text("The password is secret123")
+        assert len(matches) >= 1  # At least "password" matches
+    
+    def test_case_insensitive(self):
+        filter_ = ContentFilter(blocked_words=["password"], case_sensitive=False)
+        matches = filter_._check_text("PASSWORD is here")
+        assert len(matches) == 1
+    
+    def test_case_sensitive(self):
+        filter_ = ContentFilter(blocked_words=["password"], case_sensitive=True)
+        matches_upper = filter_._check_text("PASSWORD is here")
+        matches_lower = filter_._check_text("password is here")
+        assert len(matches_upper) == 0
+        assert len(matches_lower) == 1
+    
+    @pytest.mark.asyncio
+    async def test_block_action(self):
+        filter_ = ContentFilter(blocked_words=["forbidden"], action="block")
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "The forbidden word"}]
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        with pytest.raises(StopExecution):
+            await filter_.pre_think(ctx)
+    
+    @pytest.mark.asyncio
+    async def test_no_match_passes(self):
+        filter_ = ContentFilter(blocked_words=["forbidden"])
+        
+        mock_agent = MagicMock()
+        messages = [{"role": "user", "content": "A normal message"}]
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=messages,
+        )
+        
+        result = await filter_.pre_think(ctx)
+        
+        assert result.proceed is True
+    
+    def test_regex_pattern(self):
+        filter_ = ContentFilter(blocked_patterns=[r"\b\d{3}-\d{2}-\d{4}\b"])
+        matches = filter_._check_text("SSN format: 123-45-6789")
+        assert len(matches) == 1

@@ -13,9 +13,10 @@ Interceptors are composable units that intercept and modify agent execution at k
 | Interceptor | Purpose | Status |
 |-------------|---------|--------|
 | `BudgetGuard` | Limit model/tool calls for cost control | ✅ Done |
-| `ContextCompressor` | Summarize when approaching token limits | 🔜 Planned |
-| `PIIShield` | Detect and mask/block sensitive data | 🔜 Planned |
-| `ToolSelector` | Filter relevant tools for large toolsets | 🔜 Planned |
+| `ContextCompressor` | Summarize when approaching token limits | ✅ Done |
+| `TokenLimiter` | Hard stop when context exceeds limit | ✅ Done |
+| `PIIShield` | Detect and mask/block sensitive data | ✅ Done |
+| `ContentFilter` | Block specific words/patterns | ✅ Done |
 | `RateLimiter` | Rate limit tool calls | 🔜 Planned |
 | `Auditor` | Log all actions for compliance | 🔜 Planned |
 
@@ -26,22 +27,25 @@ Interceptors are composable units that intercept and modify agent execution at k
 - [x] Core: Agent integration (`intercept=` parameter)
 - [x] Core: Executor integration (call interceptors at phases)
 - [x] Built-in: `BudgetGuard` (model/tool call limits)
-- [ ] Built-in: `ContextCompressor` (summarization)
-- [ ] Built-in: `PIIShield` (PII detection)
-- [x] Tests: Core interceptor tests (32 tests)
-- [x] Example: `25_interceptors.py`
+- [x] Built-in: `ContextCompressor` (summarization)
+- [x] Built-in: `TokenLimiter` (hard limit)
+- [x] Built-in: `PIIShield` (PII detection/masking)
+- [x] Built-in: `ContentFilter` (word/pattern blocking)
+- [x] Tests: All interceptor tests (59 tests)
+- [x] Example: `25_interceptors.py` (9 examples)
 - [x] Export to main package `__init__.py`
 
 ## API Design
 
 ```python
-from agenticflow import Agent, BudgetGuard
+from agenticflow import Agent, BudgetGuard, PIIShield, PIIAction
 
 agent = Agent(
     name="assistant",
     model=model,
     intercept=[
         BudgetGuard(max_model_calls=10, max_tool_calls=50),
+        PIIShield(patterns=["email", "ssn"], action=PIIAction.MASK),
     ],
 )
 ```
@@ -53,5 +57,7 @@ agent = Agent(
 | `src/agenticflow/interceptors/__init__.py` | Module exports |
 | `src/agenticflow/interceptors/base.py` | Core: Interceptor, Phase, InterceptContext, InterceptResult |
 | `src/agenticflow/interceptors/budget.py` | BudgetGuard implementation |
-| `tests/test_interceptors.py` | Unit tests (32 tests) |
-| `examples/25_interceptors.py` | Usage examples |
+| `src/agenticflow/interceptors/context.py` | ContextCompressor, TokenLimiter |
+| `src/agenticflow/interceptors/security.py` | PIIShield, ContentFilter |
+| `tests/test_interceptors.py` | Unit tests (59 tests) |
+| `examples/25_interceptors.py` | Usage examples (9 demos) |

@@ -25,6 +25,10 @@ from agenticflow.interceptors import (
     InterceptResult,
     Phase,
     BudgetGuard,
+    PIIShield,
+    PIIAction,
+    TokenLimiter,
+    ContentFilter,
 )
 
 
@@ -281,6 +285,138 @@ async def example_safety_guard():
 
 
 # =============================================================================
+# Example 6: PIIShield - Protect Sensitive Data
+# =============================================================================
+
+async def example_pii_shield():
+    """Mask or block PII in messages."""
+    print("\n" + "=" * 60)
+    print("Example 6: PIIShield - Protect Sensitive Data")
+    print("=" * 60)
+    
+    model = get_model()
+    
+    # Create a PII shield that masks emails and SSNs
+    shield = PIIShield(
+        patterns=["email", "ssn", "credit_card"],
+        action=PIIAction.MASK,
+    )
+    
+    agent = Agent(
+        name="SecureBot",
+        model=model,
+        instructions="Help with user requests.",
+        intercept=[shield],
+    )
+    
+    print("\n--- Masking PII in messages ---")
+    result = await agent.run(
+        "My email is john.doe@company.com and SSN is 123-45-6789. "
+        "Can you help me update my profile?"
+    )
+    print(f"\nAgent response (PII was masked): {result[:200]}...")
+    
+    # Check what was detected
+    print(f"\nPII detections: {len(shield.get_detections(agent._interceptors[0]._last_ctx)) if hasattr(shield, '_last_ctx') else 'tracked internally'}")
+
+
+async def example_pii_shield_block():
+    """Block requests containing credit card info."""
+    print("\n" + "=" * 60)
+    print("Example 7: PIIShield - Block Sensitive Requests")
+    print("=" * 60)
+    
+    model = get_model()
+    
+    # Block if credit card detected
+    shield = PIIShield(
+        patterns=["credit_card"],
+        action=PIIAction.BLOCK,
+        block_message="Request blocked: Credit card information detected.",
+    )
+    
+    agent = Agent(
+        name="StrictBot",
+        model=model,
+        instructions="Help with user requests.",
+        intercept=[shield],
+    )
+    
+    print("\n--- Testing with credit card ---")
+    # Note: This will be blocked before reaching the model
+    try:
+        result = await agent.run(
+            "Here's my card: 4111111111111111. Please process payment."
+        )
+        print(f"Result: {result}")
+    except Exception as e:
+        print(f"Exception: {type(e).__name__}")
+
+
+# =============================================================================
+# Example 8: TokenLimiter - Hard Context Limit
+# =============================================================================
+
+async def example_token_limiter():
+    """Stop execution if context gets too long."""
+    print("\n" + "=" * 60)
+    print("Example 8: TokenLimiter - Hard Context Limit")
+    print("=" * 60)
+    
+    model = get_model()
+    
+    # Set a token limit (this is intentionally low for demo)
+    limiter = TokenLimiter(
+        max_tokens=500,
+        message="Context too long. Please start a new conversation.",
+    )
+    
+    agent = Agent(
+        name="LimitedBot",
+        model=model,
+        instructions="Help with tasks.",
+        intercept=[limiter],
+    )
+    
+    # Short task - should work
+    print("\n--- Short task (under limit) ---")
+    result = await agent.run("Hello!")
+    print(f"Result: {result[:100]}...")
+
+
+# =============================================================================
+# Example 9: ContentFilter - Block Specific Content
+# =============================================================================
+
+async def example_content_filter():
+    """Filter out blocked content."""
+    print("\n" + "=" * 60)
+    print("Example 9: ContentFilter - Block Specific Content")
+    print("=" * 60)
+    
+    model = get_model()
+    
+    filter_ = ContentFilter(
+        blocked_words=["password", "hack"],
+        blocked_patterns=[r"rm -rf"],
+        action="block",
+        message="Request contains blocked content.",
+    )
+    
+    agent = Agent(
+        name="FilteredBot",
+        model=model,
+        instructions="Help with tasks.",
+        intercept=[filter_],
+    )
+    
+    # Safe request
+    print("\n--- Safe request ---")
+    result = await agent.run("What's 2 + 2?")
+    print(f"Result: {result[:100]}...")
+
+
+# =============================================================================
 # Main
 # =============================================================================
 
@@ -293,6 +429,10 @@ async def main():
     await example_query_enhancer()
     await example_chained_interceptors()
     await example_safety_guard()
+    await example_pii_shield()
+    await example_pii_shield_block()
+    await example_token_limiter()
+    await example_content_filter()
     
     print("\n" + "=" * 60)
     print("✅ All interceptor examples completed!")
