@@ -6,7 +6,7 @@ This module defines WHO does the work:
 - AgentConfig: Configuration for agents
 - AgentState: Runtime state management
 - Roles: Role-specific behaviors and prompts
-- Memory: Short-term and long-term memory with LangGraph compatibility
+- Memory: Short-term and long-term memory
 - Resilience: Retry, circuit breaker, fallback patterns
 
 For HOW agents execute tasks (execution strategies), see:

@@ -9,7 +9,7 @@ A complete, ready-to-use RAG system with:
 - Reranking support
 - LLM-powered Q&A
 
-This module uses the native agenticflow vector store and retriever - no LangChain required.
+This module uses the native agenticflow vector store and retriever.
 """
 
 from __future__ import annotations

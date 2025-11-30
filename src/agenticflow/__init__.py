@@ -259,7 +259,7 @@ from agenticflow.observability import (
     render_dag_ascii,
 )
 
-# LLM & Embedding Models (native, no LangChain required)
+# LLM & Embedding Models (native)
 from agenticflow.models import (
     ChatModel,
     EmbeddingModel,
@@ -328,7 +328,7 @@ __all__ = [
     "Agent",
     "AgentConfig",
     "AgentState",
-    # Memory (LangGraph compatible)
+    # Memory
     "AgentMemory",
     "MemorySnapshot",
     "MemoryCheckpoint",  # Backward compat alias

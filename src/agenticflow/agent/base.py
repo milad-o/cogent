@@ -654,8 +654,8 @@ class Agent:
                 - MemoryConfig: Create MemoryManager from config
                 - dict: Create MemoryManager from kwargs
                 - AgentMemory: Legacy support
-                - LangGraph saver: Legacy support
-            store: LangGraph BaseStore for long-term memory (legacy).
+                - External saver: Legacy support
+            store: External BaseStore for long-term memory (legacy).
         """
         from agenticflow.agent.memory import AgentMemory, InMemorySaver
         from agenticflow.memory import Memory
@@ -674,13 +674,13 @@ class Agent:
             self._add_memory_tools()  # Auto-add memory tools!
             return
         
-        # Legacy support for AgentMemory and LangGraph savers
+        # Legacy support for AgentMemory and external savers
         self._memory_manager = None
         
         if isinstance(memory, AgentMemory):
             self._memory = memory
         elif memory is not None and memory is not False:
-            # Assume it's a LangGraph saver
+            # Assume it's an external saver
             self._memory = AgentMemory(backend=memory, store=store)
         else:
             # No persistence

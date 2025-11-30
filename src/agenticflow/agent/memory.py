@@ -630,8 +630,8 @@ class AgentMemory:
 class InMemorySaver:
     """Simple in-memory persistence backend for testing.
     
-    This provides the same interface as LangGraph's MemorySaver but
-    is self-contained. For production, use LangGraph's backends.
+    This is a self-contained memory backend for development and testing.
+    For production, consider using a persistent backend like Redis or PostgreSQL.
     
     Example:
         ```python

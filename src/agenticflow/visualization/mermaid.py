@@ -340,7 +340,7 @@ class AgentDiagram:
             model_info = "no model"
             if self.agent.config.model is not None:
                 model_obj = self.agent.config.model
-                # Try to get model name from LangChain model
+                # Try to get model name from model object
                 model_info = getattr(model_obj, "model_name", None) or getattr(model_obj, "model", "model") or "model"
             lines.append(f'    {config_id}{{"{model_info}"}}:::config')
             lines.append(f"    {agent_id} -.- {config_id}")

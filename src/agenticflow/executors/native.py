@@ -9,7 +9,6 @@ Key optimizations:
 5. LLM resilience with automatic retry for rate limits
 
 Includes standalone `run()` function for quick execution without Agent class.
-All native - no LangChain/LangGraph dependencies.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-# Native message types (no LangChain)
+# Native message types
 from agenticflow.core.messages import (
     AIMessage,
     BaseMessage,

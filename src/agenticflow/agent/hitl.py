@@ -4,7 +4,7 @@ Human-in-the-Loop (HITL) support for AgenticFlow.
 Provides types and utilities for implementing human oversight of agent actions,
 including tool approval workflows and interactive decision-making.
 
-Based on LangGraph's interrupt/resume pattern for seamless integration.
+Uses an interrupt/resume pattern for seamless integration.
 """
 
 from __future__ import annotations

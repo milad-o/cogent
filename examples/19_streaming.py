@@ -562,8 +562,8 @@ Key Takeaways:
 5. stream_events() - structured events (tokens, tool calls, etc.)
 6. print_stream() - streaming + capture helper
 7. collect_stream() - silent collection
-8. Works with any LangChain-compatible streaming model
-""")
+8. Works with any streaming-compatible model
+\"\"\")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 A production-grade event-driven multi-agent system framework for building sophisticated AI applications.
 
-**Native-first design** - no LangChain required for core functionality:
+**Native-first design**:
 - **Native model wrappers** for OpenAI, Azure, Anthropic, Groq, Gemini, Ollama
 - **Multi-agent topologies** (supervisor, mesh, pipeline, hierarchical)
 - **Intelligent resilience** (retry, circuit breakers, fallbacks)
@@ -79,7 +79,7 @@ def write_poem(subject: str) -> str:
     return f"A poem about {subject}..."
 
 async def main():
-    # Create a native model (no LangChain required)
+    # Create a model
     model = ChatModel(model="gpt-4o")
     
     # Create an agent
