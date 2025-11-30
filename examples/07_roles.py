@@ -21,7 +21,7 @@ import asyncio
 
 from config import get_model, settings
 
-from agenticflow import Agent, Flow, FlowObserver
+from agenticflow import Agent, Flow, Observer
 from agenticflow.agent import parse_delegation, get_role_prompt, get_role_behavior
 from agenticflow.core.enums import AgentRole
 
@@ -137,7 +137,7 @@ async def demo_supervisor_flow():
         name="team",
         agents=[supervisor, researcher, writer],
         topology="supervisor",
-        observer=FlowObserver.normal(),
+        observer=Observer.normal(),
     )
     
     result = await flow.run("Benefits of remote work")
@@ -169,7 +169,7 @@ async def demo_review_flow():
         name="review",
         agents=[writer, reviewer],
         topology="pipeline",
-        observer=FlowObserver.normal(),
+        observer=Observer.normal(),
     )
     
     result = await flow.run("Cloud computing benefits")
@@ -195,7 +195,7 @@ async def demo_autonomous():
         name="solo",
         agents=[assistant],
         topology="single",
-        observer=FlowObserver.normal(),
+        observer=Observer.normal(),
     )
     
     result = await flow.run("What's 2+2?")

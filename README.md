@@ -68,7 +68,7 @@ uv add agenticflow[dev]
 
 ```python
 import asyncio
-from agenticflow import Agent, Flow, FlowObserver
+from agenticflow import Agent, Flow, Observer
 from agenticflow.models import ChatModel
 from agenticflow.tools import tool
 
@@ -95,7 +95,7 @@ async def main():
         name="writing-team",
         agents=[writer],
         topology="pipeline",
-        observer=FlowObserver.verbose(),
+        observer=Observer.verbose(),
     )
     
     # Run the flow
@@ -180,7 +180,7 @@ result = await agent.run("Analyze the Q4 sales dataset")
 Coordinate multiple agents using different patterns:
 
 ```python
-from agenticflow import Agent, Flow, FlowObserver
+from agenticflow import Agent, Flow, Observer
 from agenticflow.models import ChatModel
 
 model = ChatModel(model="gpt-4o")
@@ -195,7 +195,7 @@ flow = Flow(
     name="content-team",
     agents=[researcher, writer, editor],
     topology="pipeline",
-    observer=FlowObserver.verbose(),
+    observer=Observer.verbose(),
 )
 
 result = await flow.run("Create a blog post about AI trends")

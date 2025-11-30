@@ -33,7 +33,7 @@ from agenticflow.observability.inspector import (
     EventInspector,
 )
 from agenticflow.observability.observer import (
-    FlowObserver,
+    Observer,
     ObservabilityLevel,
     Channel,
 )
@@ -111,8 +111,8 @@ __all__ = [
     "AgentInspector",
     "TaskInspector",
     "EventInspector",
-    # Flow Observer (integrated observability)
-    "FlowObserver",
+    # Observer (unified observability for agents, flows, teams)
+    "Observer",
     "ObservabilityLevel",
     "Channel",
     # Progress & Output

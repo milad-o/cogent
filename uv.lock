@@ -11,12 +11,15 @@ name = "agenticflow"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "ddgs" },
     { name = "google-generativeai" },
     { name = "httpx" },
+    { name = "mcp" },
     { name = "networkx" },
     { name = "openai" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -101,6 +104,7 @@ requires-dist = [
     { name = "beautifulsoup4", marker = "extra == 'web'", specifier = ">=4.14.2" },
     { name = "crewai", marker = "extra == 'benchmark'", specifier = ">=1.6.0" },
     { name = "crewai", marker = "extra == 'dev'", specifier = ">=1.6.0" },
+    { name = "ddgs", specifier = ">=9.9.1" },
     { name = "ddgs", marker = "extra == 'all'", specifier = ">=9.9.1" },
     { name = "ddgs", marker = "extra == 'dev'", specifier = ">=9.9.1" },
     { name = "ddgs", marker = "extra == 'web'", specifier = ">=9.9.1" },
@@ -112,6 +116,7 @@ requires-dist = [
     { name = "groq", marker = "extra == 'all'", specifier = ">=0.15.0" },
     { name = "groq", marker = "extra == 'groq'", specifier = ">=0.15.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "mcp", specifier = ">=1.22.0" },
     { name = "mcp", marker = "extra == 'all'", specifier = ">=1.0.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13.0" },
@@ -128,6 +133,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7.0" },
     { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.32.0" },
     { name = "uvicorn", marker = "extra == 'api'", specifier = ">=0.32.0" },
+    { name = "websockets", specifier = ">=15.0.1" },
     { name = "websockets", marker = "extra == 'all'", specifier = ">=12.0" },
     { name = "websockets", marker = "extra == 'websocket'", specifier = ">=12.0" },
 ]

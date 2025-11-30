@@ -553,17 +553,17 @@ async def print_stream(
 @dataclass
 class ObserverStreamCallback:
     """
-    Streaming callback that integrates with FlowObserver.
+    Streaming callback that integrates with Observer.
     
     Emits streaming events through the observer for unified observability.
     Also provides real-time console output when observer is configured for it.
     
     Example:
         ```python
-        from agenticflow.observability import FlowObserver
+        from agenticflow.observability import Observer
         from agenticflow.agent.streaming import ObserverStreamCallback
         
-        observer = FlowObserver.verbose()
+        observer = Observer.verbose()
         callback = ObserverStreamCallback(observer, agent_name="writer")
         
         async for chunk in agent.think_stream("Write a story", callback=callback):
@@ -571,14 +571,14 @@ class ObserverStreamCallback:
         ```
     
     Attributes:
-        observer: The FlowObserver instance to emit events to.
+        observer: The Observer instance to emit events to.
         agent_name: Name of the agent for event correlation.
         show_tokens: Print tokens in real-time (default: True if observer is verbose+).
         emit_events: Emit streaming events to observer (default: True).
     """
     
-    observer: Any  # FlowObserver, but we avoid circular import
-    """The FlowObserver to integrate with."""
+    observer: Any  # Observer, but we avoid circular import
+    """The Observer to integrate with."""
     
     agent_name: str = "agent"
     """Name of the agent for event correlation."""

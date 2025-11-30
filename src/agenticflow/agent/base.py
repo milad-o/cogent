@@ -159,6 +159,7 @@ class Agent:
         stream: bool = False,  # Enable streaming by default for this agent
         # Observability
         verbose: bool | str = False,  # Simple observability for standalone usage
+        observer: Any | None = None,  # Observer for rich observability
         # TaskBoard: Human-like task tracking
         taskboard: bool | TaskBoardConfig | None = None,
     ) -> None:
@@ -198,6 +199,8 @@ class Agent:
                 - "verbose": Show agent outputs/thoughts
                 - "debug": Show everything including tool calls
                 - "trace": Maximum detail + execution graph
+            observer: Observer instance for rich observability. Takes precedence
+                over verbose. Use this when you want full control over observability.
             
         Example with memory:
             ```python
@@ -340,11 +343,16 @@ class Agent:
         self._lock = asyncio.Lock()
         self._resilience: ToolResilience | None = None
         self._capabilities: list[Any] = []
-        self._observer = None  # FlowObserver for standalone usage
+        self._capabilities_initialized: bool = False  # Track if async init done
+        self._observer = None  # Observer for standalone usage
         self._setup_resilience()
         
-        # Setup observer for standalone agent usage (when verbose is set)
-        self._setup_verbose_observer(verbose)
+        # Setup observer for standalone agent usage
+        # observer parameter takes precedence over verbose
+        if observer is not None:
+            self._setup_observer(observer)
+        elif verbose:
+            self._setup_verbose_observer(verbose)
         
         # Human-in-the-loop state
         self._pending_actions: dict[str, PendingAction] = {}  # action_id -> pending action
@@ -419,17 +427,17 @@ class Agent:
             from agenticflow.events import EventBus
             self.event_bus = EventBus()
         
-        # Map verbose levels to FlowObserver presets
-        from agenticflow.observability import FlowObserver
+        # Map verbose levels to Observer presets
+        from agenticflow.observability import Observer
         
         if verbose is True or verbose == "minimal":
-            self._observer = FlowObserver.minimal()
+            self._observer = Observer.minimal()
         elif verbose == "verbose":
-            self._observer = FlowObserver.verbose()
+            self._observer = Observer.verbose()
         elif verbose == "debug":
-            self._observer = FlowObserver.debug()
+            self._observer = Observer.debug()
         elif verbose == "trace":
-            self._observer = FlowObserver.trace()
+            self._observer = Observer.trace()
         else:
             raise ValueError(
                 f"Invalid verbose level: {verbose!r}. "
@@ -439,6 +447,43 @@ class Agent:
         # Connect observer to event bus
         self._observer.attach(self.event_bus)
     
+    def _setup_observer(self, observer: Any) -> None:
+        """Setup observer instance for standalone agent usage.
+        
+        Args:
+            observer: Observer instance to attach.
+        """
+        # Create an event bus if agent doesn't have one (standalone usage)
+        if self.event_bus is None:
+            from agenticflow.events import EventBus
+            self.event_bus = EventBus()
+        
+        self._observer = observer
+        self._observer.attach(self.event_bus)
+    
+    def add_observer(self, observer: Any) -> None:
+        """Add an observer for monitoring agent execution.
+        
+        This allows attaching a Observer to a standalone agent for
+        rich observability including event tracking, metrics, and traces.
+        
+        Args:
+            observer: Observer instance to attach.
+        
+        Example:
+            ```python
+            from agenticflow import Agent, Observer
+            
+            observer = Observer.verbose()
+            agent = Agent(name="Worker", model=model)
+            agent.add_observer(observer)
+            
+            await agent.run("Do something")
+            print(observer.summary())
+            ```
+        """
+        self._setup_observer(observer)
+
     def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
         """Setup taskboard for task tracking.
         
@@ -520,18 +565,36 @@ class Agent:
                         self.config.tools.append(tool.name)
     
     async def initialize_capabilities(self) -> None:
-        """Initialize all capabilities (call after agent is fully set up).
+        """Initialize all capabilities asynchronously.
         
-        This is called automatically by Flow, but can be called manually
-        for standalone agents with capabilities.
+        This is called automatically on first agent.run() call.
+        You typically don't need to call this manually.
         """
+        if self._capabilities_initialized:
+            return
+        
+        tools_added = False
         for cap in self._capabilities:
             await cap.initialize(self)
+            # Re-collect tools after initialization (for async capabilities like MCP)
+            for tool in cap.tools:
+                if tool not in self._direct_tools:
+                    self._direct_tools.append(tool)
+                    tools_added = True
+                    if tool.name not in self.config.tools:
+                        self.config.tools.append(tool.name)
+        
+        # Invalidate caches so bound_model gets refreshed with new tools
+        if tools_added:
+            self.invalidate_caches()
+        
+        self._capabilities_initialized = True
     
     async def shutdown_capabilities(self) -> None:
         """Shutdown all capabilities (cleanup resources)."""
         for cap in self._capabilities:
             await cap.shutdown()
+        self._capabilities_initialized = False
     
     @property
     def capabilities(self) -> list[Any]:
@@ -1084,6 +1147,10 @@ class Agent:
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
 
+        # Auto-initialize capabilities on first call
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
+
         await self._set_status(AgentStatus.THINKING, correlation_id)
 
         await self._emit_event(
@@ -1289,6 +1356,10 @@ class Agent:
         """Internal implementation of non-streaming chat."""
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
+        
+        # Auto-initialize capabilities on first call
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
         
         # Default thread ID based on agent
         if thread_id is None:
@@ -1542,6 +1613,10 @@ class Agent:
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
 
+        # Auto-initialize capabilities on first call
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
+
         await self._set_status(AgentStatus.THINKING, correlation_id)
 
         await self._emit_event(
@@ -1673,6 +1748,10 @@ class Agent:
         
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
+
+        # Auto-initialize capabilities on first call
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
 
         if thread_id is None:
             thread_id = f"agent-{self.id}-default"
@@ -1860,6 +1939,10 @@ class Agent:
         
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
+
+        # Auto-initialize capabilities on first call
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
 
         await self._set_status(AgentStatus.THINKING, correlation_id)
 
@@ -2713,6 +2796,11 @@ class Agent:
             create_executor,
         )
         
+        # Auto-initialize capabilities BEFORE creating executor
+        # (executor caches tools in __init__, so they must be ready)
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
+        
         strategy_map = {
             "native": ExecutionStrategy.NATIVE,
             "sequential": ExecutionStrategy.SEQUENTIAL,
@@ -2765,6 +2853,10 @@ class Agent:
             ```
         """
         from agenticflow.executors import NativeExecutor
+        
+        # Auto-initialize capabilities on first run
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
         
         # Enable turbo mode temporarily
         old_turbo = self._turbo_mode

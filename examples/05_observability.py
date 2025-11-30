@@ -1,7 +1,7 @@
 """
-Demo: FlowObserver - Unified Observability System
+Demo: Observer - Unified Observability System
 
-FlowObserver is your single entry point for ALL observability needs:
+Observer is your single entry point for ALL observability needs:
 - Live console output (see agent thoughts in real-time)
 - Deep execution tracing (graph, timeline, spans)
 - Metrics and statistics
@@ -15,7 +15,7 @@ import asyncio
 
 from config import get_model
 
-from agenticflow import Agent, Flow, FlowObserver, Channel, ObservabilityLevel
+from agenticflow import Agent, Flow, Observer, Channel, ObservabilityLevel
 
 
 async def demo_levels():
@@ -31,7 +31,7 @@ async def demo_levels():
         name="demo",
         agents=[analyst, writer],
         topology="pipeline",
-        observer=FlowObserver.verbose(),
+        observer=Observer.verbose(),
     )
     await flow.run("Analyze: What's 2+2? Then summarize.")
     
@@ -41,7 +41,7 @@ async def demo_levels():
         name="demo",
         agents=[analyst, writer],
         topology="pipeline",
-        observer=FlowObserver.json(),
+        observer=Observer.json(),
     )
     await flow.run("Explain why the sky is blue.")
 
@@ -56,7 +56,7 @@ async def demo_trace():
     
     # Trace - maximum observability
     print("\n--- Level: trace() - Deep Execution Tracing ---")
-    observer = FlowObserver.trace()
+    observer = Observer.trace()
     
     flow = Flow(
         name="research-pipeline",
@@ -91,7 +91,7 @@ async def demo_callbacks():
     events = []
     agent_actions = []
     
-    observer = FlowObserver(
+    observer = Observer(
         level=ObservabilityLevel.OFF,  # No console output
         on_event=lambda e: events.append(e.type.value),
         on_agent=lambda name, action, data: agent_actions.append(f"{name}:{action}"),
@@ -118,7 +118,7 @@ async def demo_callbacks():
 
 async def main():
     print("\n" + "="*60)
-    print("  FlowObserver - Unified Observability Demo")
+    print("  Observer - Unified Observability Demo")
     print("="*60)
     
     await demo_levels()
@@ -126,7 +126,7 @@ async def main():
     await demo_callbacks()
     
     print("\n" + "="*60)
-    print("✅ Done! FlowObserver provides complete observability.")
+    print("✅ Done! Observer provides complete observability.")
     print("="*60)
 
 

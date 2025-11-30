@@ -7,12 +7,11 @@ A complete Agentic RAG system with a single AUTONOMOUS agent that has
 tools to search and retrieve from a vector store.
 
 This demonstrates:
-1. Document loading (TextLoader)
-2. Text splitting (RecursiveCharacterTextSplitter)
-3. Embeddings (OpenAI text-embedding-3-small)
-4. Vector store (InMemoryVectorStore)
-5. Single autonomous agent with RAG tools
-6. Agent-driven retrieval and answer generation
+1. Document loading and text splitting (built-in)
+2. Embeddings (OpenAI via our EmbeddingModel)
+3. Vector store (our InMemoryVectorStore)
+4. Single autonomous agent with RAG tools
+5. Agent-driven retrieval and answer generation
 
 The agent has access to:
 - search_documents: Semantic search over document chunks
@@ -28,19 +27,14 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from config import get_model, settings
 
-from agenticflow.tools.base import tool
-
 from agenticflow import Agent, AgentRole
+from agenticflow.tools.base import tool
 from agenticflow.visualization import AgentDiagram, MermaidConfig
-
-if TYPE_CHECKING:
-    from langchain_core.documents import Document
-    from langchain_core.vectorstores import VectorStore
 
 
 # =============================================================================
@@ -56,10 +50,25 @@ TOP_K = 4
 
 
 # =============================================================================
+# Simple Document class (no langchain dependency)
+# =============================================================================
+
+@dataclass
+class Document:
+    """Simple document chunk with content and metadata."""
+    page_content: str
+    metadata: dict = None
+    
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
+
+
+# =============================================================================
 # Global vector store (accessible by tools)
 # =============================================================================
 
-_vector_store: VectorStore | None = None
+_vector_store = None
 _document_info: dict = {}
 
 
@@ -69,7 +78,7 @@ _document_info: dict = {}
 
 
 @tool
-def search_documents(query: str, num_results: int = 4) -> str:
+async def search_documents(query: str, num_results: int = 4) -> str:
     """Search the document for relevant passages.
 
     Args:
@@ -83,15 +92,16 @@ def search_documents(query: str, num_results: int = 4) -> str:
         return "Error: No document loaded. Please load a document first."
 
     num_results = min(num_results, 10)  # Cap at 10
-    results = _vector_store.similarity_search(query, k=num_results)
+    results = await _vector_store.search(query, k=num_results)
 
     if not results:
         return "No relevant passages found for your query."
 
     formatted = []
-    for i, doc in enumerate(results, 1):
-        content = doc.page_content.strip()
-        formatted.append(f"[Passage {i}]\n{content}")
+    for i, result in enumerate(results, 1):
+        content = result.document.text.strip()
+        score = result.score
+        formatted.append(f"[Passage {i}] (relevance: {score:.2f})\n{content}")
 
     return "\n\n---\n\n".join(formatted)
 
@@ -114,7 +124,7 @@ def get_document_info() -> str:
 
 
 # =============================================================================
-# Document Loading & Processing
+# Document Loading & Processing (no langchain!)
 # =============================================================================
 
 
@@ -141,38 +151,132 @@ async def download_document(url: str, filename: str) -> Path:
     return text_path
 
 
-def load_and_split_document(file_path: Path) -> list[Document]:
-    """Load document and split into chunks."""
-    from langchain_community.document_loaders import TextLoader
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-    print(f"\n📄 Loading: {file_path.name}")
-
-    loader = TextLoader(str(file_path), encoding="utf-8")
-    documents = loader.load()
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        length_function=len,
-        separators=["\n\n", "\n", ". ", " ", ""],
-    )
-    chunks = splitter.split_documents(documents)
-    print(f"  ✓ Split into {len(chunks)} chunks")
-
+def split_text(
+    text: str,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200,
+    separators: list[str] | None = None,
+) -> list[str]:
+    """Split text into chunks with overlap.
+    
+    Simple recursive character text splitter implementation.
+    """
+    if separators is None:
+        separators = ["\n\n", "\n", ". ", " ", ""]
+    
+    chunks = []
+    
+    def _split_recursive(text: str, seps: list[str]) -> list[str]:
+        if not text:
+            return []
+        
+        # If text is small enough, return it
+        if len(text) <= chunk_size:
+            return [text]
+        
+        # Try each separator
+        for i, sep in enumerate(seps):
+            if sep and sep in text:
+                parts = text.split(sep)
+                result = []
+                current_chunk = ""
+                
+                for part in parts:
+                    test_chunk = current_chunk + (sep if current_chunk else "") + part
+                    
+                    if len(test_chunk) <= chunk_size:
+                        current_chunk = test_chunk
+                    else:
+                        if current_chunk:
+                            result.append(current_chunk)
+                        # If part itself is too big, split with next separator
+                        if len(part) > chunk_size and i + 1 < len(seps):
+                            result.extend(_split_recursive(part, seps[i + 1:]))
+                            current_chunk = ""
+                        else:
+                            current_chunk = part
+                
+                if current_chunk:
+                    result.append(current_chunk)
+                
+                return result
+        
+        # No separator worked, just split by size
+        result = []
+        for i in range(0, len(text), chunk_size - chunk_overlap):
+            result.append(text[i:i + chunk_size])
+        return result
+    
+    raw_chunks = _split_recursive(text, separators)
+    
+    # Add overlap by including end of previous chunk
+    for i, chunk in enumerate(raw_chunks):
+        if i > 0 and chunk_overlap > 0:
+            # Add overlap from previous chunk
+            prev_chunk = raw_chunks[i - 1]
+            overlap_text = prev_chunk[-chunk_overlap:] if len(prev_chunk) > chunk_overlap else prev_chunk
+            # Only add if it doesn't make chunk too big
+            if len(overlap_text) + len(chunk) <= chunk_size * 1.5:
+                chunks.append(overlap_text + chunk)
+            else:
+                chunks.append(chunk)
+        else:
+            chunks.append(chunk)
+    
     return chunks
 
 
-def create_vector_store(chunks: list[Document]) -> VectorStore:
+def load_and_split_document(file_path: Path) -> list[Document]:
+    """Load document and split into chunks."""
+    print(f"\n📄 Loading: {file_path.name}")
+
+    text = file_path.read_text(encoding="utf-8")
+    
+    # Split into chunks
+    chunk_texts = split_text(
+        text,
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP,
+    )
+    
+    # Convert to Document objects
+    chunks = [
+        Document(
+            page_content=chunk,
+            metadata={"source": file_path.name, "chunk_index": i}
+        )
+        for i, chunk in enumerate(chunk_texts)
+    ]
+    
+    print(f"  ✓ Split into {len(chunks)} chunks")
+    return chunks
+
+
+async def create_vector_store(chunks: list[Document]):
     """Create vector store with OpenAI embeddings."""
-    from langchain_openai import OpenAIEmbeddings
-    from langchain_core.vectorstores import InMemoryVectorStore
+    from agenticflow.vectorstore import VectorStore, OpenAIEmbeddings, backends
 
     print("\n🧮 Creating embeddings...")
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    vector_store = InMemoryVectorStore.from_documents(chunks, embeddings)
+    
+    # Create embedding model
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        api_key=settings.openai_api_key,
+    )
+    
+    # Create vector store with in-memory backend
+    vector_store = VectorStore(
+        backend=backends.InMemoryBackend(),
+        embeddings=embeddings,
+    )
+    
+    # Add documents
+    texts = [chunk.page_content for chunk in chunks]
+    metadatas = [chunk.metadata for chunk in chunks]
+    
+    await vector_store.add_texts(texts, metadatas=metadatas)
+    
     print(f"  ✓ Vector store ready ({len(chunks)} embeddings)")
-
     return vector_store
 
 
@@ -188,8 +292,6 @@ def create_rag_agent(model) -> Agent:
         name="RAG_Assistant",
         role=AgentRole.AUTONOMOUS,
         model=model,
-        # {tools} placeholder is auto-replaced with tool descriptions!
-        # Or if you omit it, tools are appended automatically.
         instructions="""You are a helpful assistant that answers questions about "The Secret Garden" 
 by Frances Hodgson Burnett.
 
@@ -245,7 +347,7 @@ async def main() -> None:
     chunks = load_and_split_document(text_path)
 
     # Step 2: Create vector store
-    _vector_store = create_vector_store(chunks)
+    _vector_store = await create_vector_store(chunks)
     _document_info = {
         "name": text_path.name,
         "chunks": len(chunks),
@@ -260,7 +362,7 @@ async def main() -> None:
     agent = create_rag_agent(model)
     print(f"  ✓ Agent: {agent.name} ({agent.role.value})")
     print(f"  ✓ Tools: {', '.join(t.name for t in agent._direct_tools)}")
-    print(f"  ✓ Model: {settings.default_provider}")
+    print(f"  ✓ Model: {settings.get_preferred_provider()}")
 
     # Step 4: Generate visualization
     print("\n📊 Step 4: Generating diagram...")
@@ -307,7 +409,7 @@ async def main() -> None:
     print(f"  • Chunks: {len(chunks)}")
     print(f"  • Agent: {agent.name} (autonomous)")
     print(f"  • Tools: search_documents, get_document_info")
-    print(f"  • Model: {settings.default_provider}")
+    print(f"  • Model: {settings.get_preferred_provider()}")
 
     print(f"\n📝 Mermaid Diagram:")
     print(mermaid)

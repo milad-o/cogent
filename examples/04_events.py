@@ -1,7 +1,7 @@
 """
 Demo: Custom Callbacks
 
-Use FlowObserver callbacks to track events programmatically.
+Use Observer callbacks to track events programmatically.
 
 Usage:
     uv run python examples/04_events.py
@@ -11,7 +11,7 @@ import asyncio
 
 from config import get_model
 
-from agenticflow import Agent, Flow, FlowObserver, ObservabilityLevel
+from agenticflow import Agent, Flow, Observer, ObservabilityLevel
 
 
 async def main():
@@ -23,7 +23,7 @@ async def main():
     # Track events via callbacks
     events = []
     
-    observer = FlowObserver(
+    observer = Observer(
         level=ObservabilityLevel.OFF,  # Silent - we handle output
         on_event=lambda e: events.append(e.type.value),
     )

@@ -306,43 +306,43 @@ class TestDashboard:
         assert summary["tasks"]["total"] == 1
 
 
-class TestFlowObserver:
-    """Tests for the FlowObserver class."""
+class TestObserver:
+    """Tests for the Observer class."""
 
     def test_factory_methods(self):
         """Test observer factory methods."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         
-        obs = FlowObserver.off()
+        obs = Observer.off()
         assert obs.config.level == ObservabilityLevel.OFF
         
-        obs = FlowObserver.minimal()
+        obs = Observer.minimal()
         assert obs.config.level == ObservabilityLevel.RESULT
         
-        obs = FlowObserver.normal()
+        obs = Observer.normal()
         assert obs.config.level == ObservabilityLevel.PROGRESS
         
-        obs = FlowObserver.detailed()
+        obs = Observer.detailed()
         assert obs.config.level == ObservabilityLevel.DETAILED
         
-        obs = FlowObserver.debug()
+        obs = Observer.debug()
         assert obs.config.level == ObservabilityLevel.DEBUG
         assert Channel.ALL in obs.config.channels
         
-        obs = FlowObserver.trace()
+        obs = Observer.trace()
         assert obs.config.level == ObservabilityLevel.TRACE
         
-        obs = FlowObserver.agents_only()
+        obs = Observer.agents_only()
         assert Channel.AGENTS in obs.config.channels
         
-        obs = FlowObserver.tools_only()
+        obs = Observer.tools_only()
         assert Channel.TOOLS in obs.config.channels
 
     def test_custom_channels(self):
         """Test observer with custom channels."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         
-        obs = FlowObserver(
+        obs = Observer(
             level=ObservabilityLevel.DETAILED,
             channels={Channel.AGENTS, Channel.TOOLS},
         )
@@ -355,13 +355,13 @@ class TestFlowObserver:
     @pytest.mark.asyncio
     async def test_attach_to_event_bus(self):
         """Test attaching observer to event bus."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel
+        from agenticflow.observability import Observer, ObservabilityLevel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         
         bus = EventBus()
-        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        obs = Observer(level=ObservabilityLevel.DEBUG)
         
         obs.attach(bus)
         
@@ -376,7 +376,7 @@ class TestFlowObserver:
     @pytest.mark.asyncio
     async def test_callbacks(self):
         """Test observer callbacks."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
@@ -384,7 +384,7 @@ class TestFlowObserver:
         agent_calls = []
         tool_calls = []
         
-        obs = FlowObserver(
+        obs = Observer(
             level=ObservabilityLevel.DEBUG,
             channels={Channel.AGENTS, Channel.TOOLS},
             on_agent=lambda name, action, data: agent_calls.append(f"{name}:{action}"),
@@ -406,12 +406,12 @@ class TestFlowObserver:
     @pytest.mark.asyncio
     async def test_events_query(self):
         """Test querying observed events."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         
-        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
         obs.attach(bus)
         
@@ -435,12 +435,12 @@ class TestFlowObserver:
     @pytest.mark.asyncio
     async def test_timeline(self):
         """Test timeline generation."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel
+        from agenticflow.observability import Observer, ObservabilityLevel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         
-        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
         obs.attach(bus)
         
@@ -454,12 +454,12 @@ class TestFlowObserver:
     @pytest.mark.asyncio
     async def test_summary(self):
         """Test summary generation."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel
+        from agenticflow.observability import Observer, ObservabilityLevel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         
-        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
         obs.attach(bus)
         
@@ -470,8 +470,8 @@ class TestFlowObserver:
         assert "Total events:" in summary
 
 
-class TestFlowObserverStreaming:
-    """Tests for FlowObserver streaming integration."""
+class TestObserverStreaming:
+    """Tests for Observer streaming integration."""
     
     def test_streaming_channel_exists(self):
         """Test that STREAMING channel is available."""
@@ -481,33 +481,33 @@ class TestFlowObserverStreaming:
         assert Channel.STREAMING.value == "streaming"
     
     def test_streaming_factory_method(self):
-        """Test FlowObserver.streaming() factory method."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        """Test Observer.streaming() factory method."""
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         
-        obs = FlowObserver.streaming()
+        obs = Observer.streaming()
         assert obs.config.level == ObservabilityLevel.DEBUG
         assert Channel.STREAMING in obs.config.channels
         assert Channel.AGENTS in obs.config.channels
         
         # With show_tokens=False
-        obs2 = FlowObserver.streaming(show_tokens=False)
+        obs2 = Observer.streaming(show_tokens=False)
         assert obs2.config.level == ObservabilityLevel.DETAILED
     
     def test_streaming_only_factory_method(self):
-        """Test FlowObserver.streaming_only() factory method."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        """Test Observer.streaming_only() factory method."""
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         
-        obs = FlowObserver.streaming_only()
+        obs = Observer.streaming_only()
         assert obs.config.level == ObservabilityLevel.DEBUG
         assert Channel.STREAMING in obs.config.channels
     
     def test_on_stream_callback_config(self):
         """Test on_stream callback is properly configured."""
-        from agenticflow.observability import FlowObserver
+        from agenticflow.observability import Observer
         
         stream_calls = []
         
-        obs = FlowObserver(
+        obs = Observer(
             on_stream=lambda agent, token, data: stream_calls.append((agent, token)),
         )
         
@@ -516,14 +516,14 @@ class TestFlowObserverStreaming:
     @pytest.mark.asyncio
     async def test_streaming_events_dispatched(self):
         """Test streaming events are dispatched to callback."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         
         stream_calls = []
         
-        obs = FlowObserver(
+        obs = Observer(
             level=ObservabilityLevel.DEBUG,
             channels={Channel.STREAMING},
             on_stream=lambda agent, token, data: stream_calls.append((agent, token)),
@@ -560,12 +560,12 @@ class TestFlowObserverStreaming:
     @pytest.mark.asyncio
     async def test_streaming_events_in_metrics(self):
         """Test streaming events are counted in metrics."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         
-        obs = FlowObserver(level=ObservabilityLevel.DEBUG)
+        obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
         obs.attach(bus)
         
@@ -581,14 +581,14 @@ class TestFlowObserverStreaming:
     @pytest.mark.asyncio
     async def test_streaming_events_formatted(self):
         """Test streaming events are properly formatted."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         from io import StringIO
         
         output = StringIO()
-        obs = FlowObserver(
+        obs = Observer(
             level=ObservabilityLevel.DETAILED,
             channels={Channel.STREAMING},
             stream=output,
@@ -614,14 +614,14 @@ class TestFlowObserverStreaming:
     @pytest.mark.asyncio
     async def test_stream_error_triggers_on_error(self):
         """Test STREAM_ERROR triggers on_error callback."""
-        from agenticflow.observability import FlowObserver, ObservabilityLevel, Channel
+        from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.events.bus import EventBus
         from agenticflow.schemas.event import Event
         from agenticflow.core.enums import EventType
         
         errors = []
         
-        obs = FlowObserver(
+        obs = Observer(
             level=ObservabilityLevel.DEBUG,
             channels={Channel.STREAMING},
             on_error=lambda source, err: errors.append((source, err)),

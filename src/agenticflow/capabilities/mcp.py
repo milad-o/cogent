@@ -2,7 +2,7 @@
 MCP (Model Context Protocol) Capability.
 
 Connect to local and remote MCP servers and use their tools seamlessly.
-Supports both stdio (local) and HTTP/SSE (remote) transports.
+Supports stdio (local), HTTP/SSE, and WebSocket transports.
 
 Example:
     ```python
@@ -21,12 +21,21 @@ Example:
         ],
     )
     
-    # Connect to a remote MCP server (HTTP)
+    # Connect to a remote MCP server (HTTP/Streamable HTTP)
     agent = Agent(
         name="Assistant", 
         model=model,
         capabilities=[
             MCP.http("https://api.example.com/mcp"),
+        ],
+    )
+    
+    # Connect via WebSocket
+    agent = Agent(
+        name="Assistant",
+        model=model,
+        capabilities=[
+            MCP.websocket("ws://localhost:8766"),
         ],
     )
     
@@ -70,6 +79,7 @@ class MCPTransport(str, Enum):
     STDIO = "stdio"
     HTTP = "http"
     SSE = "sse"
+    WEBSOCKET = "websocket"
 
 
 @dataclass
@@ -98,9 +108,9 @@ class MCPServerConfig:
             if not self.command:
                 msg = "command is required for stdio transport"
                 raise ValueError(msg)
-        elif self.transport in (MCPTransport.HTTP, MCPTransport.SSE):
+        elif self.transport in (MCPTransport.HTTP, MCPTransport.SSE, MCPTransport.WEBSOCKET):
             if not self.url:
-                msg = "url is required for HTTP/SSE transport"
+                msg = "url is required for HTTP/SSE/WebSocket transport"
                 raise ValueError(msg)
 
 
@@ -299,6 +309,39 @@ class MCP(BaseCapability):
         )
         return cls(servers=[config], auto_refresh=auto_refresh, tool_name_prefix=tool_name_prefix)
 
+    @classmethod
+    def websocket(
+        cls,
+        url: str,
+        *,
+        name: str | None = None,
+        auto_refresh: bool = True,
+        tool_name_prefix: str | None = None,
+    ) -> MCP:
+        """
+        Create MCP capability with a WebSocket server.
+
+        Args:
+            url: WebSocket URL (ws:// or wss://).
+            name: Optional name for this server connection.
+            auto_refresh: Whether to auto-refresh tools on changes.
+            tool_name_prefix: Optional prefix for tool names.
+
+        Returns:
+            MCP capability configured for WebSocket transport.
+
+        Example:
+            ```python
+            mcp = MCP.websocket("ws://localhost:8766")
+            ```
+        """
+        config = MCPServerConfig(
+            transport=MCPTransport.WEBSOCKET,
+            url=url,
+            name=name,
+        )
+        return cls(servers=[config], auto_refresh=auto_refresh, tool_name_prefix=tool_name_prefix)
+
     @property
     def name(self) -> str:
         """Unique name for this capability."""
@@ -391,9 +434,19 @@ class MCP(BaseCapability):
     async def _disconnect_all(self) -> None:
         """Disconnect from all MCP servers."""
         # Close all context managers
+        # Note: MCP uses anyio internally, which requires contexts to be
+        # entered/exited in the same task. When cleanup happens from a
+        # different task (common in agent shutdown), we may get cancel scope
+        # errors. These are harmless - the underlying resources are still freed.
         for ctx in reversed(self._contexts):
             try:
                 await ctx.__aexit__(None, None, None)
+            except RuntimeError as e:
+                # Suppress anyio cancel scope errors - resources are still freed
+                if "cancel scope" in str(e).lower():
+                    logger.debug("MCP context cleanup from different task (harmless): %s", e)
+                else:
+                    logger.error("Error closing MCP context: %s", e)
             except Exception as e:
                 logger.error("Error closing MCP context: %s", e)
 
@@ -414,6 +467,8 @@ class MCP(BaseCapability):
                 await self._connect_http(config, server_name)
             elif config.transport == MCPTransport.SSE:
                 await self._connect_sse(config, server_name)
+            elif config.transport == MCPTransport.WEBSOCKET:
+                await self._connect_websocket(config, server_name)
             else:
                 msg = f"Unsupported transport: {config.transport}"
                 raise ValueError(msg)
@@ -494,6 +549,27 @@ class MCP(BaseCapability):
             headers=config.headers,
             timeout=config.timeout,
         )
+        read_stream, write_stream = await client_ctx.__aenter__()
+        self._contexts.append(client_ctx)
+
+        # Create and initialize session
+        session_ctx = ClientSession(read_stream, write_stream)
+        session = await session_ctx.__aenter__()
+        self._contexts.append(session_ctx)
+
+        await session.initialize()
+        self._sessions[server_name] = session
+
+        # Discover tools
+        await self._discover_tools(session, server_name)
+
+    async def _connect_websocket(self, config: MCPServerConfig, server_name: str) -> None:
+        """Connect to an MCP server via WebSocket transport."""
+        from mcp import ClientSession
+        from mcp.client.websocket import websocket_client
+
+        # Enter the WebSocket client context
+        client_ctx = websocket_client(config.url)
         read_stream, write_stream = await client_ctx.__aenter__()
         self._contexts.append(client_ctx)
 

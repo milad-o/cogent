@@ -1,5 +1,5 @@
 """
-FlowObserver - THE unified observability system for Flow execution.
+Observer - Unified observability system for agents, flows, and teams.
 
 This is your single entry point for ALL observability needs:
 - Live console output (see what's happening)
@@ -7,15 +7,31 @@ This is your single entry point for ALL observability needs:
 - Metrics and statistics
 - Export to JSON, Mermaid, OpenTelemetry
 
-Example - Quick Start:
+Works with:
+- Single agents: agent.add_observer(observer) or Agent(..., observer=observer)
+- Flows: Flow(..., observer=observer)
+- Teams: Team(..., observer=observer)
+
+Example - Agent with Observer:
     ```python
-    from agenticflow import Flow, Agent
-    from agenticflow.observability import FlowObserver
+    from agenticflow import Agent, Observer
     
-    # Use presets for common needs
-    observer = FlowObserver.verbose()  # See agent thoughts
-    observer = FlowObserver.debug()    # See everything
-    observer = FlowObserver.trace()    # Maximum detail + graph
+    observer = Observer.verbose()
+    agent = Agent(
+        name="Assistant",
+        model=model,
+        observer=observer,  # Attach directly
+    )
+    
+    await agent.run("Do something")
+    print(observer.summary())
+    ```
+
+Example - Flow with Observer:
+    ```python
+    from agenticflow import Flow, Agent, Observer
+    
+    observer = Observer.trace()  # Maximum detail + graph
     
     flow = Flow(
         name="my-flow",
@@ -24,25 +40,16 @@ Example - Quick Start:
         observer=observer,
     )
     
-    result = await flow.run("Do something")
-    
-    # After execution, get insights:
-    print(observer.summary())    # Statistics
-    print(observer.timeline())   # Chronological view
-    print(observer.graph())      # Execution graph (ASCII)
-    
-    # Export for analysis
-    observer.export_json("trace.json")
-    observer.export_mermaid("flow.mmd")
+    await flow.run("Do something")
+    print(observer.graph())  # Execution graph (Mermaid)
     ```
 
 Example - Full Control:
     ```python
-    observer = FlowObserver(
+    observer = Observer(
         level=ObservabilityLevel.DEBUG,
         channels=[Channel.AGENTS, Channel.TOOLS],
         show_timestamps=True,
-        show_graph=True,  # Track execution graph
         on_event=my_callback,
         on_agent=lambda name, action, data: print(f"{name}: {action}"),
         on_tool=lambda name, action, data: log_tool(name, data),
@@ -198,7 +205,7 @@ class ObservedEvent:
 @dataclass
 class ObserverConfig:
     """
-    Configuration for FlowObserver.
+    Configuration for Observer.
     
     Controls what events are captured and how they're displayed.
     """
@@ -230,11 +237,11 @@ class ObserverConfig:
     exclude_tools: set[str] | None = None
 
 
-class FlowObserver:
+class Observer:
     """
     Pluggable observability for Flow execution.
     
-    FlowObserver provides a unified interface for monitoring all aspects
+    Observer provides a unified interface for monitoring all aspects
     of flow execution. It can be configured with:
     
     - Preset levels (OFF, RESULT, PROGRESS, DETAILED, DEBUG, TRACE)
@@ -245,11 +252,11 @@ class FlowObserver:
     Example - Quick setup:
         ```python
         # Use presets
-        observer = FlowObserver.off()       # No output
-        observer = FlowObserver.minimal()   # Results only
-        observer = FlowObserver.progress()  # Key milestones
-        observer = FlowObserver.detailed()  # Tool calls, timing
-        observer = FlowObserver.debug()     # Everything
+        observer = Observer.off()       # No output
+        observer = Observer.minimal()   # Results only
+        observer = Observer.progress()  # Key milestones
+        observer = Observer.detailed()  # Tool calls, timing
+        observer = Observer.debug()     # Everything
         
         flow = Flow(..., observer=observer)
         ```
@@ -257,13 +264,13 @@ class FlowObserver:
     Example - Channel filtering:
         ```python
         # Only see agent events
-        observer = FlowObserver(channels=[Channel.AGENTS])
+        observer = Observer(channels=[Channel.AGENTS])
         
         # See tools and messages
-        observer = FlowObserver(channels=[Channel.TOOLS, Channel.MESSAGES])
+        observer = Observer(channels=[Channel.TOOLS, Channel.MESSAGES])
         
         # Everything except system events
-        observer = FlowObserver(channels=[
+        observer = Observer(channels=[
             Channel.AGENTS, Channel.TOOLS, Channel.MESSAGES, Channel.TASKS
         ])
         ```
@@ -274,7 +281,7 @@ class FlowObserver:
             if action == "error":
                 send_alert(f"Tool {tool_name} failed: {data}")
         
-        observer = FlowObserver(
+        observer = Observer(
             on_tool=on_tool_call,
             on_error=lambda source, err: log.error(f"{source}: {err}"),
         )
@@ -282,7 +289,7 @@ class FlowObserver:
     
     Example - Detailed configuration:
         ```python
-        observer = FlowObserver(
+        observer = Observer(
             level=ObservabilityLevel.DETAILED,
             channels=[Channel.AGENTS, Channel.TOOLS],
             show_timestamps=True,
@@ -321,7 +328,7 @@ class FlowObserver:
         exclude_tools: set[str] | list[str] | None = None,
     ) -> None:
         """
-        Create a FlowObserver.
+        Create a Observer.
         
         Args:
             level: Verbosity level (OFF through TRACE)
@@ -398,12 +405,12 @@ class FlowObserver:
     # ==================== Factory Methods (Presets) ====================
     
     @classmethod
-    def off(cls) -> FlowObserver:
+    def off(cls) -> Observer:
         """Create observer with no output."""
         return cls(level=ObservabilityLevel.OFF)
     
     @classmethod
-    def minimal(cls) -> FlowObserver:
+    def minimal(cls) -> Observer:
         """Create observer showing only results."""
         return cls(
             level=ObservabilityLevel.RESULT,
@@ -411,7 +418,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def progress(cls) -> FlowObserver:
+    def progress(cls) -> Observer:
         """Create observer showing key milestones (default)."""
         return cls(
             level=ObservabilityLevel.PROGRESS,
@@ -419,12 +426,12 @@ class FlowObserver:
         )
     
     @classmethod
-    def normal(cls) -> FlowObserver:
+    def normal(cls) -> Observer:
         """Alias for progress() - key milestones."""
         return cls.progress()
     
     @classmethod
-    def verbose(cls) -> FlowObserver:
+    def verbose(cls) -> Observer:
         """Create observer showing agent thoughts with full content."""
         return cls(
             level=ObservabilityLevel.PROGRESS,
@@ -434,7 +441,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def detailed(cls) -> FlowObserver:
+    def detailed(cls) -> Observer:
         """Create observer showing tool calls and timing."""
         return cls(
             level=ObservabilityLevel.DETAILED,
@@ -444,7 +451,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def debug(cls) -> FlowObserver:
+    def debug(cls) -> Observer:
         """Create observer showing everything."""
         return cls(
             level=ObservabilityLevel.DEBUG,
@@ -456,7 +463,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def trace(cls) -> FlowObserver:
+    def trace(cls) -> Observer:
         """
         Create observer with maximum observability.
         
@@ -477,7 +484,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def json(cls, stream: TextIO | None = None, colored: bool = True) -> FlowObserver:
+    def json(cls, stream: TextIO | None = None, colored: bool = True) -> Observer:
         """
         Create observer with structured JSON-like output.
         
@@ -494,7 +501,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def agents_only(cls) -> FlowObserver:
+    def agents_only(cls) -> Observer:
         """Create observer showing only agent events."""
         return cls(
             level=ObservabilityLevel.DETAILED,
@@ -503,7 +510,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def tools_only(cls) -> FlowObserver:
+    def tools_only(cls) -> Observer:
         """Create observer showing only tool events."""
         return cls(
             level=ObservabilityLevel.DETAILED,
@@ -512,7 +519,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def messages_only(cls) -> FlowObserver:
+    def messages_only(cls) -> Observer:
         """Create observer showing only inter-agent messages."""
         return cls(
             level=ObservabilityLevel.DETAILED,
@@ -520,7 +527,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def resilience_only(cls) -> FlowObserver:
+    def resilience_only(cls) -> Observer:
         """Create observer showing retries, errors, and recovery."""
         return cls(
             level=ObservabilityLevel.DETAILED,
@@ -529,7 +536,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def streaming(cls, show_tokens: bool = True) -> FlowObserver:
+    def streaming(cls, show_tokens: bool = True) -> Observer:
         """
         Create observer optimized for streaming output.
         
@@ -541,7 +548,7 @@ class FlowObserver:
         
         Example:
             ```python
-            observer = FlowObserver.streaming()
+            observer = Observer.streaming()
             flow = Flow(..., observer=observer)
             
             # Will show tokens as they arrive:
@@ -558,7 +565,7 @@ class FlowObserver:
         )
     
     @classmethod
-    def streaming_only(cls) -> FlowObserver:
+    def streaming_only(cls) -> Observer:
         """Create observer showing only streaming events."""
         return cls(
             level=ObservabilityLevel.DEBUG,

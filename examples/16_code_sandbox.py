@@ -18,7 +18,6 @@ import asyncio
 
 from agenticflow import Agent
 from agenticflow.capabilities import CodeSandbox
-from agenticflow.executors import ExecutionStrategy
 
 
 def separator(title: str) -> None:
@@ -289,18 +288,20 @@ async def agent_demo():
     """Demonstrate agent using CodeSandbox for computation."""
     separator("Agent with CodeSandbox")
     
+    from config import get_model
+    
     sandbox = CodeSandbox(allow_imports=True, timeout=5)
+    model = get_model()
     
     agent = Agent(
         name="Compute Agent",
+        model=model,
         instructions="""You are a computation agent that helps users with calculations.
 Use the execute_python tool to run Python code for calculations.
 Always show your code and explain the results clearly.
 
 Safe imports available: math, json, datetime, statistics, random, decimal, fractions, itertools, functools, collections.""",
         capabilities=[sandbox],
-        strategy=ExecutionStrategy.REACT,
-        max_iterations=5,
     )
     
     # Test computation
@@ -310,7 +311,7 @@ Safe imports available: math, json, datetime, statistics, random, decimal, fract
         "Calculate and list all prime factors of 360. Show the code you use."
     )
     
-    print(f"\nAgent response:\n{response.output}")
+    print(f"\nAgent response:\n{response}")
 
 
 # ============================================================
@@ -327,11 +328,5 @@ if __name__ == "__main__":
     history_demo()
     tools_demo()
     
-    # Async agent demo (optional - requires OPENAI_API_KEY)
-    import os
-    if os.environ.get("OPENAI_API_KEY"):
-        asyncio.run(agent_demo())
-    else:
-        print("\n" + "="*60)
-        print("  Skipping agent demo (set OPENAI_API_KEY to enable)")
-        print("="*60)
+    # Async agent demo with LLM
+    asyncio.run(agent_demo())

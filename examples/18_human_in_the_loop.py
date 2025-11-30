@@ -14,12 +14,14 @@ Human-in-the-Loop is essential for:
 """
 
 import asyncio
+
+from config import get_model
+
 from agenticflow.tools.base import tool
 
 # Import HITL components
 from agenticflow import (
     Agent,
-    Flow,
     # HITL types
     HumanDecision,
     InterruptedException,
@@ -72,12 +74,15 @@ async def demo_basic_approval():
     print("Demo 1: Basic Tool Approval")
     print("="*60)
     
+    # Get LLM model
+    model = get_model()
+    
     # Create agent with interrupt_on rules
     agent = Agent(
         name="FileManager",
-        model=None,  # We'll test without LLM for demo
+        model=model,
         tools=[read_file, write_file, delete_file],
-        instructions="You manage files safely.",
+        instructions="You manage files safely. When asked to perform file operations, use your tools.",
         # Configure which tools require approval
         interrupt_on={
             "delete_file": True,  # Always require approval for delete
@@ -143,11 +148,13 @@ async def demo_dynamic_rules():
             print(f"   📧 External email detected: {to}")
         return is_external
     
+    model = get_model()
+    
     agent = Agent(
         name="EmailAssistant",
-        model=None,
+        model=model,
         tools=[send_email, search_web],
-        instructions="You help send emails.",
+        instructions="You help send emails. Use your tools when asked.",
         interrupt_on={
             "send_email": require_external_email_approval,  # Dynamic rule
             "search_web": False,  # Always auto-approve
@@ -198,11 +205,13 @@ async def demo_abort():
     print("Demo 3: Abort Workflow")
     print("="*60)
     
+    model = get_model()
+    
     agent = Agent(
         name="DangerousAgent",
-        model=None,
+        model=model,
         tools=[delete_file],
-        instructions="Delete files as requested.",
+        instructions="Delete files as requested. Use your tools.",
         interrupt_on={
             "*": True,  # Wildcard: require approval for ALL tools
         },
@@ -226,85 +235,22 @@ async def demo_abort():
 
 
 # =============================================================================
-# Demo 4: Flow-Level HITL
-# =============================================================================
-
-async def demo_flow_hitl():
-    """Demonstrate HITL at the Flow level."""
-    print("\n" + "="*60)
-    print("Demo 4: Flow-Level HITL")
-    print("="*60)
-    
-    # Create agents
-    researcher = Agent(
-        name="Researcher",
-        model=None,
-        tools=[search_web],
-        instructions="Research information.",
-        interrupt_on={"search_web": False},  # Auto-approve
-    )
-    
-    file_manager = Agent(
-        name="FileManager",
-        model=None,
-        tools=[write_file, delete_file],
-        instructions="Manage files.",
-        interrupt_on={
-            "write_file": True,
-            "delete_file": True,
-        },
-    )
-    
-    # Create flow with multiple agents
-    flow = Flow(
-        name="research-and-save",
-        agents=[researcher, file_manager],
-        topology="pipeline",
-    )
-    
-    print("\n1. Checking flow state...")
-    print(f"   Any interrupted agents? {flow.is_interrupted}")
-    
-    # Simulate agent being interrupted
-    print("\n2. File manager tries to write...")
-    try:
-        await file_manager.act("write_file", {"path": "/output/report.txt", "content": "Research findings..."})
-    except InterruptedException:
-        print("   ⏸️  Agent interrupted!")
-        print(f"   Flow has pending actions: {flow.is_interrupted}")
-        print(f"   Pending: {flow.describe_pending_actions()}")
-        
-        # Get pending actions via flow
-        pending = flow.get_pending_actions()
-        print(f"\n   Pending actions via flow: {len(pending)}")
-        
-        for agent_name, action in pending:
-            print(f"   - [{agent_name}] {action.describe()}")
-        
-        # Resume via flow
-        print("\n   [Resuming via flow.resume()]")
-        _, action = pending[0]
-        decision = HumanDecision.approve(action.action_id)
-        
-        result = await flow.resume(decision)
-        print(f"   Result: {result}")
-
-
-# =============================================================================
-# Demo 5: Interactive Approval Loop
+# Demo 4: Interactive Approval Loop
 # =============================================================================
 
 async def demo_interactive():
     """Demonstrate an interactive approval loop (simulated)."""
     print("\n" + "="*60)
-    print("Demo 5: Interactive Approval Loop")
+    print("Demo 4: Interactive Approval Loop")
     print("="*60)
+    
+    model = get_model()
     
     agent = Agent(
         name="SystemAdmin",
-        model=None,
+        model=model,
         tools=[delete_file, write_file, read_file],
-        instructions="Perform system administration.",
+        instructions="Perform system administration using your tools.",
         interrupt_on={
             "delete_file": True,
             "write_file": True,
@@ -366,23 +312,25 @@ async def demo_interactive():
 
 async def demo_guidance():
     """
-    Demo 6: Guidance and Response
+    Demo 5: Guidance and Response
     
     Shows how humans can provide guidance/instructions instead of
     just approving or rejecting actions. This is useful when you
     want the agent to reconsider its approach.
     """
     print("\n" + "="*60)
-    print("Demo 6: Guidance and Response")
+    print("Demo 5: Guidance and Response")
     print("="*60)
     
     from agenticflow.agent.hitl import GuidanceResult, HumanResponse
     
+    model = get_model()
+    
     agent = Agent(
         name="FileAssistant",
-        model=None,
+        model=model,
         tools=[delete_file, write_file, read_file],
-        instructions="Help manage files safely.",
+        instructions="Help manage files safely using your tools.",
         interrupt_on={
             "delete_file": True,
             "write_file": True,
@@ -471,7 +419,6 @@ async def main():
     await demo_basic_approval()
     await demo_dynamic_rules()
     await demo_abort()
-    await demo_flow_hitl()
     await demo_interactive()
     await demo_guidance()
     
@@ -485,7 +432,7 @@ Key Takeaways:
 3. Use HumanDecision.approve/reject/edit/skip/abort/guide/respond
 4. Use HumanDecision.guide() to provide guidance for agent to reconsider
 5. Use HumanDecision.respond() to provide direct answers to agent questions
-6. Call agent.resume_action() or flow.resume() to continue execution
+6. Call agent.resume_action() to continue execution
 7. Use dynamic rules (callables) for context-aware approval logic
 """)
 

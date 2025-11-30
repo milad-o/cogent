@@ -25,7 +25,7 @@ import asyncio
 
 from config import get_model
 
-from agenticflow import Agent, Flow, FlowObserver
+from agenticflow import Agent, Flow, Observer
 from agenticflow.core.enums import AgentRole
 
 
@@ -75,7 +75,7 @@ You cannot finish - pass your results back.""",
         name="org-hierarchy",
         agents=[director, analyst, writer],
         topology="hierarchical",  # Auto-infers levels from roles
-        observer=FlowObserver.verbose(),
+        observer=Observer.verbose(),
     )
 
     # Show the inferred levels

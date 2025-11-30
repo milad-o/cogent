@@ -53,7 +53,7 @@ from agenticflow.topologies import (
 )
 
 if TYPE_CHECKING:
-    from agenticflow.observability.observer import FlowObserver
+    from agenticflow.observability.observer import Observer
 
 # Import Agent for runtime isinstance checks
 from agenticflow.agent import Agent
@@ -62,32 +62,32 @@ from agenticflow.agent import Agent
 VerbosityLevel = Literal[False, True, "minimal", "verbose", "debug", "trace"]
 
 
-def _create_observer_from_verbose(verbose: VerbosityLevel) -> FlowObserver:
-    """Create a FlowObserver from a simple verbosity level.
+def _create_observer_from_verbose(verbose: VerbosityLevel) -> Observer:
+    """Create a Observer from a simple verbosity level.
     
     Args:
         verbose: Verbosity level setting
         
     Returns:
-        Configured FlowObserver instance
+        Configured Observer instance
     """
-    from agenticflow.observability.observer import FlowObserver
+    from agenticflow.observability.observer import Observer
     
     if verbose is True or verbose == "minimal":
         # Basic progress - agent start/complete with timing
-        return FlowObserver.progress()
+        return Observer.progress()
     elif verbose == "verbose":
         # Show agent outputs/thoughts
-        return FlowObserver.verbose()
+        return Observer.verbose()
     elif verbose == "debug":
         # Show everything including tool calls
-        return FlowObserver.debug()
+        return Observer.debug()
     elif verbose == "trace":
         # Maximum detail + execution graph
-        return FlowObserver.trace()
+        return Observer.trace()
     else:
         # Default to progress for any truthy value
-        return FlowObserver.progress()
+        return Observer.progress()
 
 
 @dataclass
@@ -167,7 +167,7 @@ class Flow:
         verbose="debug"    - Show everything including tool calls
         verbose="trace"    - Maximum detail + execution graph
         
-        Or pass a FlowObserver for full customization.
+        Or pass a Observer for full customization.
     """
 
     def __init__(
@@ -189,7 +189,7 @@ class Flow:
         # Observability - simple API
         verbose: VerbosityLevel = False,
         # Observability - advanced API
-        observer: FlowObserver | None = None,
+        observer: Observer | None = None,
     ) -> None:
         """
         Create a Flow.
@@ -210,7 +210,7 @@ class Flow:
                 - "verbose": Show agent outputs/thoughts
                 - "debug": Show everything including tool calls
                 - "trace": Maximum detail + execution graph
-            observer: FlowObserver for full customization (overrides verbose).
+            observer: Observer for full customization (overrides verbose).
             
         Example:
             ```python
@@ -224,8 +224,8 @@ class Flow:
             flow = Flow(..., verbose="debug")
             
             # Full customization
-            from agenticflow import FlowObserver
-            observer = FlowObserver(
+            from agenticflow import Observer
+            observer = Observer(
                 level=ObservabilityLevel.DEBUG,
                 channels=[Channel.AGENTS, Channel.TOOLS],
                 show_timestamps=True,
@@ -289,7 +289,7 @@ class Flow:
 
     def _setup_event_handlers(self) -> None:
         """Setup event handlers."""
-        # FlowObserver handles all observability now
+        # Observer handles all observability now
         if self._observer is not None:
             self._observer.attach(self._event_bus)
 
