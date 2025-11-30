@@ -29,6 +29,8 @@ from agenticflow.interceptors.base import (
 from agenticflow.interceptors.budget import BudgetGuard
 from agenticflow.interceptors.context import ContextCompressor, TokenLimiter
 from agenticflow.interceptors.security import PIIAction, PIIShield, ContentFilter
+from agenticflow.interceptors.ratelimit import RateLimiter, ThrottleInterceptor
+from agenticflow.interceptors.audit import Auditor, AuditEvent, AuditEventType
 
 __all__ = [
     # Core
@@ -47,4 +49,11 @@ __all__ = [
     "PIIAction",
     "PIIShield",
     "ContentFilter",
+    # Rate Limiting
+    "RateLimiter",
+    "ThrottleInterceptor",
+    # Audit
+    "Auditor",
+    "AuditEvent",
+    "AuditEventType",
 ]

@@ -30,6 +30,8 @@ from agenticflow.interceptors.security import (
     PIIAction,
     ContentFilter,
 )
+from agenticflow.interceptors.ratelimit import RateLimiter, ThrottleInterceptor
+from agenticflow.interceptors.audit import Auditor, AuditEvent, AuditEventType
 
 
 # =============================================================================
@@ -769,3 +771,294 @@ class TestContentFilter:
         filter_ = ContentFilter(blocked_patterns=[r"\b\d{3}-\d{2}-\d{4}\b"])
         matches = filter_._check_text("SSN format: 123-45-6789")
         assert len(matches) == 1
+
+
+# =============================================================================
+# Test RateLimiter
+# =============================================================================
+
+class TestRateLimiter:
+    """Test RateLimiter interceptor."""
+    
+    def test_default_values(self):
+        limiter = RateLimiter()
+        assert limiter.calls_per_window == 10
+        assert limiter.window_seconds == 60.0
+        assert limiter.action == "wait"
+        assert limiter.per_tool is False
+    
+    def test_invalid_calls(self):
+        with pytest.raises(ValueError, match="calls_per_window must be at least 1"):
+            RateLimiter(calls_per_window=0)
+    
+    def test_invalid_window(self):
+        with pytest.raises(ValueError, match="window_seconds must be positive"):
+            RateLimiter(window_seconds=0)
+    
+    def test_invalid_action(self):
+        with pytest.raises(ValueError, match="action must be"):
+            RateLimiter(action="invalid")
+    
+    @pytest.mark.asyncio
+    async def test_under_limit_passes(self):
+        limiter = RateLimiter(calls_per_window=5, window_seconds=60)
+        
+        mock_agent = MagicMock()
+        mock_agent.name = "test"
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_ACT,
+            task="test",
+            messages=[],
+            tool_name="search",
+        )
+        
+        result = await limiter.pre_act(ctx)
+        assert result.proceed is True
+    
+    @pytest.mark.asyncio
+    async def test_record_call(self):
+        limiter = RateLimiter(calls_per_window=5)
+        
+        mock_agent = MagicMock()
+        mock_agent.name = "test"
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.POST_ACT,
+            task="test",
+            messages=[],
+            tool_name="search",
+        )
+        
+        await limiter.post_act(ctx)
+        
+        usage = limiter.current_usage
+        assert usage["global_calls"] == 1
+    
+    def test_reset(self):
+        limiter = RateLimiter()
+        limiter._record_call("test")
+        assert limiter.current_usage["global_calls"] == 1
+        
+        limiter.reset()
+        assert limiter.current_usage["global_calls"] == 0
+
+
+class TestThrottleInterceptor:
+    """Test ThrottleInterceptor."""
+    
+    def test_default_values(self):
+        throttle = ThrottleInterceptor()
+        assert throttle.min_delay == 0.5
+        assert throttle.per_tool is False
+    
+    def test_invalid_delay(self):
+        with pytest.raises(ValueError, match="min_delay must be non-negative"):
+            ThrottleInterceptor(min_delay=-1)
+    
+    @pytest.mark.asyncio
+    async def test_first_call_no_delay(self):
+        throttle = ThrottleInterceptor(min_delay=1.0)
+        
+        mock_agent = MagicMock()
+        mock_agent.name = "test"
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_ACT,
+            task="test",
+            messages=[],
+            tool_name="search",
+        )
+        
+        import time
+        start = time.monotonic()
+        result = await throttle.pre_act(ctx)
+        elapsed = time.monotonic() - start
+        
+        assert result.proceed is True
+        assert elapsed < 0.1  # First call should be immediate
+
+
+# =============================================================================
+# Test Auditor
+# =============================================================================
+
+class TestAuditor:
+    """Test Auditor interceptor."""
+    
+    def test_default_values(self):
+        auditor = Auditor()
+        assert auditor.log_to_file is None
+        assert auditor.callback is None
+        assert auditor.include_content is True
+        assert auditor.max_content_length == 500
+    
+    @pytest.mark.asyncio
+    async def test_logs_run_start(self):
+        auditor = Auditor()
+        
+        mock_agent = MagicMock()
+        mock_agent.name = "TestAgent"
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_RUN,
+            task="test task",
+            messages=[],
+        )
+        
+        await auditor.pre_run(ctx)
+        
+        assert len(auditor.events) == 1
+        assert auditor.events[0].event_type == AuditEventType.RUN_START
+        assert auditor.events[0].agent_name == "TestAgent"
+    
+    @pytest.mark.asyncio
+    async def test_logs_model_request(self):
+        auditor = Auditor()
+        
+        mock_agent = MagicMock()
+        mock_agent.name = "TestAgent"
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_THINK,
+            task="test",
+            messages=[{"role": "user", "content": "Hello"}],
+            model_calls=0,
+        )
+        
+        await auditor.pre_think(ctx)
+        
+        assert len(auditor.events) == 1
+        assert auditor.events[0].event_type == AuditEventType.MODEL_REQUEST
+        assert auditor.events[0].data["model_call_number"] == 1
+    
+    @pytest.mark.asyncio
+    async def test_logs_tool_request(self):
+        auditor = Auditor()
+        
+        mock_agent = MagicMock()
+        mock_agent.name = "TestAgent"
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_ACT,
+            task="test",
+            messages=[],
+            tool_name="search",
+            tool_args={"query": "hello"},
+            tool_calls=0,
+        )
+        
+        await auditor.pre_act(ctx)
+        
+        assert len(auditor.events) == 1
+        assert auditor.events[0].event_type == AuditEventType.TOOL_REQUEST
+        assert auditor.events[0].data["tool_name"] == "search"
+    
+    @pytest.mark.asyncio
+    async def test_callback_called(self):
+        events_received = []
+        
+        def callback(event):
+            events_received.append(event)
+        
+        auditor = Auditor(callback=callback)
+        
+        mock_agent = MagicMock()
+        mock_agent.name = "TestAgent"
+        ctx = InterceptContext(
+            agent=mock_agent,
+            phase=Phase.PRE_RUN,
+            task="test",
+            messages=[],
+        )
+        
+        await auditor.pre_run(ctx)
+        
+        assert len(events_received) == 1
+        assert events_received[0].event_type == AuditEventType.RUN_START
+    
+    def test_summary(self):
+        auditor = Auditor()
+        auditor._events = [
+            AuditEvent(
+                timestamp="2024-01-01T00:00:00Z",
+                event_type=AuditEventType.RUN_START,
+                agent_name="Test",
+                task="test",
+                phase=Phase.PRE_RUN,
+            ),
+            AuditEvent(
+                timestamp="2024-01-01T00:00:01Z",
+                event_type=AuditEventType.MODEL_REQUEST,
+                agent_name="Test",
+                task="test",
+                phase=Phase.PRE_THINK,
+                duration_ms=100,
+            ),
+        ]
+        
+        summary = auditor.summary()
+        assert summary["total_events"] == 2
+        assert summary["by_type"]["run_start"] == 1
+        assert summary["by_type"]["model_request"] == 1
+    
+    def test_clear(self):
+        auditor = Auditor()
+        auditor._events = [
+            AuditEvent(
+                timestamp="2024-01-01T00:00:00Z",
+                event_type=AuditEventType.RUN_START,
+                agent_name="Test",
+                task="test",
+                phase=Phase.PRE_RUN,
+            ),
+        ]
+        
+        auditor.clear()
+        assert len(auditor.events) == 0
+    
+    def test_redaction(self):
+        auditor = Auditor(redact_patterns=["password=\\w+"])
+        result = auditor._redact("Config: password=secret123")
+        assert "secret123" not in result
+        assert "[REDACTED]" in result
+    
+    def test_truncation(self):
+        auditor = Auditor(max_content_length=10)
+        result = auditor._truncate("This is a very long message")
+        assert len(result) <= 13  # 10 + "..."
+        assert result.endswith("...")
+
+
+class TestAuditEvent:
+    """Test AuditEvent dataclass."""
+    
+    def test_to_dict(self):
+        event = AuditEvent(
+            timestamp="2024-01-01T00:00:00Z",
+            event_type=AuditEventType.RUN_START,
+            agent_name="TestAgent",
+            task="test task",
+            phase=Phase.PRE_RUN,
+            data={"key": "value"},
+            duration_ms=100.5,
+        )
+        
+        d = event.to_dict()
+        assert d["timestamp"] == "2024-01-01T00:00:00Z"
+        assert d["event_type"] == "run_start"
+        assert d["agent_name"] == "TestAgent"
+        assert d["phase"] == "pre_run"
+        assert d["duration_ms"] == 100.5
+    
+    def test_to_json(self):
+        event = AuditEvent(
+            timestamp="2024-01-01T00:00:00Z",
+            event_type=AuditEventType.RUN_START,
+            agent_name="Test",
+            task="test",
+            phase=Phase.PRE_RUN,
+        )
+        
+        json_str = event.to_json()
+        assert '"event_type": "run_start"' in json_str

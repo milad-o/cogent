@@ -17,8 +17,9 @@ Interceptors are composable units that intercept and modify agent execution at k
 | `TokenLimiter` | Hard stop when context exceeds limit | ✅ Done |
 | `PIIShield` | Detect and mask/block sensitive data | ✅ Done |
 | `ContentFilter` | Block specific words/patterns | ✅ Done |
-| `RateLimiter` | Rate limit tool calls | 🔜 Planned |
-| `Auditor` | Log all actions for compliance | 🔜 Planned |
+| `RateLimiter` | Rate limit tool calls (sliding window) | ✅ Done |
+| `ThrottleInterceptor` | Min delay between tool calls | ✅ Done |
+| `Auditor` | Log all actions for compliance | ✅ Done |
 
 ## Implementation Tasks
 
@@ -31,14 +32,17 @@ Interceptors are composable units that intercept and modify agent execution at k
 - [x] Built-in: `TokenLimiter` (hard limit)
 - [x] Built-in: `PIIShield` (PII detection/masking)
 - [x] Built-in: `ContentFilter` (word/pattern blocking)
-- [x] Tests: All interceptor tests (59 tests)
-- [x] Example: `25_interceptors.py` (9 examples)
+- [x] Built-in: `RateLimiter` (sliding window rate limiting)
+- [x] Built-in: `ThrottleInterceptor` (minimum delay)
+- [x] Built-in: `Auditor` (compliance logging)
+- [x] Tests: All interceptor tests (80 tests)
+- [x] Example: `25_interceptors.py` (11 examples)
 - [x] Export to main package `__init__.py`
 
 ## API Design
 
 ```python
-from agenticflow import Agent, BudgetGuard, PIIShield, PIIAction
+from agenticflow import Agent, BudgetGuard, PIIShield, PIIAction, Auditor
 
 agent = Agent(
     name="assistant",
@@ -46,6 +50,7 @@ agent = Agent(
     intercept=[
         BudgetGuard(max_model_calls=10, max_tool_calls=50),
         PIIShield(patterns=["email", "ssn"], action=PIIAction.MASK),
+        Auditor(log_to_file="audit.jsonl"),
     ],
 )
 ```
@@ -59,5 +64,7 @@ agent = Agent(
 | `src/agenticflow/interceptors/budget.py` | BudgetGuard implementation |
 | `src/agenticflow/interceptors/context.py` | ContextCompressor, TokenLimiter |
 | `src/agenticflow/interceptors/security.py` | PIIShield, ContentFilter |
-| `tests/test_interceptors.py` | Unit tests (59 tests) |
-| `examples/25_interceptors.py` | Usage examples (9 demos) |
+| `src/agenticflow/interceptors/ratelimit.py` | RateLimiter, ThrottleInterceptor |
+| `src/agenticflow/interceptors/audit.py` | Auditor, AuditEvent, AuditEventType |
+| `tests/test_interceptors.py` | Unit tests (80 tests) |
+| `examples/25_interceptors.py` | Usage examples (11 demos) |

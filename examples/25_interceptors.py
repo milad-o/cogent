@@ -29,6 +29,8 @@ from agenticflow.interceptors import (
     PIIAction,
     TokenLimiter,
     ContentFilter,
+    RateLimiter,
+    Auditor,
 )
 
 
@@ -417,6 +419,81 @@ async def example_content_filter():
 
 
 # =============================================================================
+# Example 10: RateLimiter - Control API Call Rate
+# =============================================================================
+
+async def example_rate_limiter():
+    """Rate limit tool calls."""
+    print("\n" + "=" * 60)
+    print("Example 10: RateLimiter - Control API Call Rate")
+    print("=" * 60)
+    
+    model = get_model()
+    
+    # Max 5 tool calls per 10 seconds
+    limiter = RateLimiter(
+        calls_per_window=5,
+        window_seconds=10,
+        action="wait",  # Wait if limit hit (vs "block")
+    )
+    
+    agent = Agent(
+        name="RateLimitedBot",
+        model=model,
+        tools=[search, calculate],
+        instructions="Help with tasks.",
+        intercept=[limiter],
+    )
+    
+    print("\n--- Making multiple calls ---")
+    result = await agent.run("Search for Python and calculate 5*5")
+    print(f"Result: {result[:150]}...")
+    
+    usage = limiter.current_usage
+    print(f"\nRate limit usage: {usage['global_calls']}/{usage['limit']} calls")
+
+
+# =============================================================================
+# Example 11: Auditor - Compliance Logging
+# =============================================================================
+
+async def example_auditor():
+    """Log all agent actions for audit trail."""
+    print("\n" + "=" * 60)
+    print("Example 11: Auditor - Compliance Logging")
+    print("=" * 60)
+    
+    model = get_model()
+    
+    # Create auditor with redaction
+    auditor = Auditor(
+        include_content=True,
+        max_content_length=100,
+        redact_patterns=[r"api[-_]?key\s*[:=]\s*\S+"],  # Redact API keys
+    )
+    
+    agent = Agent(
+        name="AuditedBot",
+        model=model,
+        tools=[search],
+        instructions="Help with tasks.",
+        intercept=[auditor],
+    )
+    
+    print("\n--- Running audited task ---")
+    await agent.run("Search for Python tutorials")
+    
+    print(f"\n--- Audit Summary ---")
+    summary = auditor.summary()
+    print(f"Total events: {summary['total_events']}")
+    print(f"Event types: {summary.get('by_type', {})}")
+    
+    print(f"\n--- Event Log ---")
+    for event in auditor.events[:5]:  # Show first 5 events
+        print(f"  [{event.event_type.value}] {event.agent_name}")
+
+
+# =============================================================================
 # Main
 # =============================================================================
 
@@ -433,6 +510,8 @@ async def main():
     await example_pii_shield_block()
     await example_token_limiter()
     await example_content_filter()
+    await example_rate_limiter()
+    await example_auditor()
     
     print("\n" + "=" * 60)
     print("✅ All interceptor examples completed!")

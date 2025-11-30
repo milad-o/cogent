@@ -182,6 +182,11 @@ from agenticflow.interceptors import (
     PIIAction,
     PIIShield,
     ContentFilter,
+    RateLimiter,
+    ThrottleInterceptor,
+    Auditor,
+    AuditEvent,
+    AuditEventType,
 )
 
 # Graphs - Execution strategies
@@ -415,6 +420,11 @@ __all__ = [
     "PIIAction",
     "PIIShield",
     "ContentFilter",
+    "RateLimiter",
+    "ThrottleInterceptor",
+    "Auditor",
+    "AuditEvent",
+    "AuditEventType",
     # Events
     "EventBus",
     "get_event_bus",
