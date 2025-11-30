@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 # Check for websockets availability
 try:
     import websockets
-    from websockets.server import serve
+    from websockets.asyncio.server import serve
 
     WEBSOCKET_AVAILABLE = True
 except ImportError:
