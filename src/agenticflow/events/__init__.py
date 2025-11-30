@@ -1,5 +1,5 @@
 """
-Events module - EventBus and event handlers.
+Events module - EventBus, event handlers, and real-time streaming.
 """
 
 from agenticflow.events.bus import EventBus
@@ -9,6 +9,11 @@ from agenticflow.events.handlers import (
     FilteringEventHandler,
     MetricsEventHandler,
 )
+from agenticflow.events.websocket import (
+    WebSocketServer,
+    start_websocket_server,
+    websocket_handler,
+)
 
 __all__ = [
     "EventBus",
@@ -16,4 +21,7 @@ __all__ = [
     "FileEventHandler",
     "FilteringEventHandler",
     "MetricsEventHandler",
+    "WebSocketServer",
+    "start_websocket_server",
+    "websocket_handler",
 ]

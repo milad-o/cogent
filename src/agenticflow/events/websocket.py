@@ -1,5 +1,8 @@
 """
 WebSocket server for real-time event streaming.
+
+Part of the events module - provides real-time streaming of EventBus
+events to connected WebSocket clients.
 """
 
 from __future__ import annotations

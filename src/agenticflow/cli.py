@@ -70,7 +70,7 @@ async def run_server(args: argparse.Namespace) -> None:
 
     if args.websocket:
         try:
-            from agenticflow.server import start_websocket_server
+            from agenticflow.events import start_websocket_server
         except ImportError:
             print("❌ WebSocket support not available.")
             print("   Install with: uv add websockets")

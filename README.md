@@ -287,7 +287,7 @@ IDLE ──► THINKING ──► ACTING ──► IDLE
 Stream events in real-time:
 
 ```python
-from agenticflow.server import start_websocket_server
+from agenticflow.events import start_websocket_server
 
 # Start WebSocket server
 server = await start_websocket_server(event_bus, port=8765)
