@@ -1462,8 +1462,24 @@ class Agent:
                         except json.JSONDecodeError:
                             tool_args = {}
                     
+                    # Emit tool called event
+                    await self._emit_event(
+                        EventType.TOOL_CALLED,
+                        {
+                            "agent_id": self.id,
+                            "agent_name": self.name,
+                            "tool_name": tool_name,
+                            "tool_id": tool_id,
+                            "args": tool_args,
+                        },
+                        correlation_id,
+                    )
+                    
+                    tool_start = now_utc()
+                    
                     # Find and execute tool
                     result = f"Tool '{tool_name}' not found"
+                    tool_error = None
                     for tool in tools:
                         if tool.name == tool_name:
                             try:
@@ -1472,8 +1488,39 @@ class Agent:
                                 else:
                                     result = tool.func(**tool_args)
                             except Exception as e:
+                                tool_error = e
                                 result = f"Error: {e}"
                             break
+                    
+                    tool_duration_ms = (now_utc() - tool_start).total_seconds() * 1000
+                    
+                    # Emit tool result or error event
+                    if tool_error:
+                        await self._emit_event(
+                            EventType.TOOL_ERROR,
+                            {
+                                "agent_id": self.id,
+                                "agent_name": self.name,
+                                "tool_name": tool_name,
+                                "tool_id": tool_id,
+                                "error": str(tool_error),
+                                "duration_ms": tool_duration_ms,
+                            },
+                            correlation_id,
+                        )
+                    else:
+                        await self._emit_event(
+                            EventType.TOOL_RESULT,
+                            {
+                                "agent_id": self.id,
+                                "agent_name": self.name,
+                                "tool_name": tool_name,
+                                "tool_id": tool_id,
+                                "result_preview": str(result)[:200] if result else "",
+                                "duration_ms": tool_duration_ms,
+                            },
+                            correlation_id,
+                        )
                     
                     # Add tool result to messages
                     dict_messages.append({

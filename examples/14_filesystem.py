@@ -181,7 +181,7 @@ async def agent_demo():
     print("🤖 Agent with FileSystem Demo")
     print("=" * 60)
     
-    from agenticflow import Agent
+    from agenticflow import Agent, Observer
     from agenticflow.capabilities import FileSystem
     
     # Use the examples/data directory from the project
@@ -199,6 +199,9 @@ async def agent_demo():
         allow_write=False,  # Read-only for safety
     )
     
+    # Use Observer for detailed observability
+    observer = Observer.detailed()
+    
     agent = Agent(
         name="FileAssistant",
         model=model,
@@ -209,6 +212,7 @@ async def agent_demo():
             f"Always use full absolute paths when calling file tools."
         ),
         capabilities=[fs],
+        observer=observer,
     )
     
     print(f"\nAgent tools: {[t.name for t in fs.tools]}")
