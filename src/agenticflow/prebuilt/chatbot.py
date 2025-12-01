@@ -7,11 +7,14 @@ across sessions using memory checkpointing.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
-from agenticflow import Agent, AgentRole
+from agenticflow import Agent
 
 if TYPE_CHECKING:
+    from agenticflow.agent.resilience import ResilienceConfig
+    from agenticflow.context import RunContext
     from agenticflow.models.base import BaseChatModel
     from agenticflow.tools.base import BaseTool
 
@@ -51,6 +54,13 @@ class Chatbot:
         personality: str | None = None,
         tools: list[BaseTool] | None = None,
         memory: bool = True,
+        # Agent configuration
+        intercept: Sequence[Any] | None = None,
+        stream: bool = False,
+        reasoning: bool | Any = False,
+        output: type | dict | None = None,
+        verbose: bool | str = False,
+        resilience: ResilienceConfig | None = None,
     ) -> None:
         """
         Create a chatbot.
@@ -62,6 +72,12 @@ class Chatbot:
                 If not provided, uses a default helpful assistant prompt.
             tools: Optional list of tools the chatbot can use.
             memory: Whether to enable conversation memory (default: True).
+            intercept: Interceptors for execution hooks (gates, guards, prompt adapters).
+            stream: Enable streaming responses by default.
+            reasoning: Enable extended thinking mode.
+            output: Structured output schema (Pydantic model, dataclass, etc.).
+            verbose: Observability level (False, True, "verbose", "debug", "trace").
+            resilience: Retry and fallback configuration.
         """
         default_personality = """You are a helpful, friendly assistant.
         
@@ -72,11 +88,16 @@ and provide clear, concise responses. If you don't know something, say so honest
         
         self._agent = Agent(
             name=name,
-            role=AgentRole.AUTONOMOUS,
             model=model,
             instructions=instructions,
             tools=tools or [],
             memory=memory,
+            intercept=intercept,
+            stream=stream,
+            reasoning=reasoning,
+            output=output,
+            verbose=verbose,
+            resilience=resilience,
         )
     
     @property
@@ -112,7 +133,10 @@ and provide clear, concise responses. If you don't know something, say so honest
         message: str,
         thread_id: str | None = None,
         *,
+        context: dict[str, Any] | RunContext | None = None,
+        strategy: str = "dag",
         verbose: bool = False,
+        max_iterations: int = 10,
     ) -> str:
         """
         Chat with tool execution enabled.
@@ -123,7 +147,10 @@ and provide clear, concise responses. If you don't know something, say so honest
         Args:
             message: Your message.
             thread_id: Conversation thread ID.
+            context: Optional context dict or RunContext for tools/interceptors.
+            strategy: Execution strategy ("dag", "react", "plan").
             verbose: Show detailed progress with tool calls.
+            max_iterations: Maximum LLM iterations (default: 10).
             
         Returns:
             The chatbot's response (may include tool results).
@@ -131,9 +158,20 @@ and provide clear, concise responses. If you don't know something, say so honest
         if verbose:
             from agenticflow.observability import OutputConfig, ProgressTracker
             tracker = ProgressTracker(OutputConfig.verbose())
-            return await self._agent.run(message, strategy="dag", tracker=tracker)
+            return await self._agent.run(
+                message,
+                context=context,
+                strategy=strategy,
+                tracker=tracker,
+                max_iterations=max_iterations,
+            )
         
-        return await self._agent.run(message, strategy="dag")
+        return await self._agent.run(
+            message,
+            context=context,
+            strategy=strategy,
+            max_iterations=max_iterations,
+        )
     
     def clear_history(self, thread_id: str) -> None:
         """
@@ -155,6 +193,13 @@ def create_chatbot(
     personality: str | None = None,
     tools: list[BaseTool] | None = None,
     memory: bool = True,
+    # Agent configuration
+    intercept: Sequence[Any] | None = None,
+    stream: bool = False,
+    reasoning: bool | Any = False,
+    output: type | dict | None = None,
+    verbose: bool | str = False,
+    resilience: ResilienceConfig | None = None,
 ) -> Chatbot:
     """
     Create a chatbot with conversation memory.
@@ -167,6 +212,12 @@ def create_chatbot(
         personality: Optional system prompt / personality.
         tools: Optional tools for the chatbot.
         memory: Enable conversation memory (default: True).
+        intercept: Interceptors for execution hooks.
+        stream: Enable streaming responses.
+        reasoning: Enable extended thinking mode.
+        output: Structured output schema.
+        verbose: Observability level.
+        resilience: Retry and fallback configuration.
         
     Returns:
         A configured Chatbot instance.
@@ -191,4 +242,10 @@ def create_chatbot(
         personality=personality,
         tools=tools,
         memory=memory,
+        intercept=intercept,
+        stream=stream,
+        reasoning=reasoning,
+        output=output,
+        verbose=verbose,
+        resilience=resilience,
     )

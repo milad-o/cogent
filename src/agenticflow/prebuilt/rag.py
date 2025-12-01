@@ -14,14 +14,14 @@ This module uses the native agenticflow vector store and retriever.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from agenticflow import Agent, AgentRole
+from agenticflow import Agent
 from agenticflow.tools.base import tool
 from agenticflow.vectorstore import (
     Document,
-    OpenAIEmbeddings,
     SearchResult,
     VectorStore,
     split_text,
@@ -29,6 +29,8 @@ from agenticflow.vectorstore import (
 from agenticflow.vectorstore.base import EmbeddingProvider
 
 if TYPE_CHECKING:
+    from agenticflow.agent.resilience import ResilienceConfig
+    from agenticflow.context import RunContext
     from agenticflow.models.base import BaseChatModel
     from agenticflow.retriever.base import Retriever
     from agenticflow.retriever.rerankers.base import Reranker
@@ -88,6 +90,13 @@ class RAGAgent:
         sparse_weight: float = 0.3,
         reranker: Literal["none", "llm", "cross_encoder", "cohere"] | Reranker | None = None,
         initial_k: int | None = None,
+        # Agent configuration
+        intercept: Sequence[Any] | None = None,
+        stream: bool = False,
+        reasoning: bool | Any = False,
+        output: type | dict | None = None,
+        verbose: bool | str = False,
+        resilience: ResilienceConfig | None = None,
     ) -> None:
         """
         Create a RAG agent.
@@ -114,6 +123,12 @@ class RAGAgent:
                 - "cohere": Cohere Rerank API (requires: cohere, COHERE_API_KEY)
                 - Or pass a custom Reranker instance
             initial_k: Documents to retrieve before reranking (default: top_k * 3).
+            intercept: Interceptors for execution hooks (gates, guards, prompt adapters).
+            stream: Enable streaming responses.
+            reasoning: Enable extended thinking mode.
+            output: Structured output schema (Pydantic model, dataclass, etc.).
+            verbose: Observability level (False, True, "verbose", "debug", "trace").
+            resilience: Retry and fallback configuration.
         """
         self._model = model
         self._embeddings = embeddings
@@ -128,6 +143,14 @@ class RAGAgent:
         self._reranker_config = reranker
         self._initial_k = initial_k or (top_k * 3)
         
+        # Agent configuration
+        self._intercept = intercept
+        self._stream = stream
+        self._reasoning = reasoning
+        self._output = output
+        self._verbose = verbose
+        self._resilience = resilience
+        
         # Vector store (lazy initialized) - native type
         self._vector_store: VectorStore | None = None
         self._documents: list[Document] = []
@@ -141,10 +164,42 @@ class RAGAgent:
         self._agent: Agent | None = None
     
     def _get_embeddings(self) -> EmbeddingProvider:
-        """Get or create embeddings model (native EmbeddingProvider)."""
-        if self._embeddings is None:
+        """Get or create embeddings model (native EmbeddingProvider).
+        
+        Auto-detects the provider based on available environment variables:
+        - OPENAI_API_KEY or AZURE_OPENAI_API_KEY → OpenAIEmbeddings
+        - OLLAMA_HOST or local ollama → OllamaEmbeddings
+        
+        Raises:
+            ValueError: If no embeddings provided and can't auto-detect.
+        """
+        if self._embeddings is not None:
+            return self._embeddings
+        
+        import os
+        
+        # Try OpenAI first (most common)
+        if os.environ.get("OPENAI_API_KEY") or os.environ.get("AZURE_OPENAI_API_KEY"):
+            from agenticflow.vectorstore import OpenAIEmbeddings
             self._embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-        return self._embeddings
+            return self._embeddings
+        
+        # Try Ollama
+        if os.environ.get("OLLAMA_HOST"):
+            from agenticflow.vectorstore import OllamaEmbeddings
+            self._embeddings = OllamaEmbeddings(model="nomic-embed-text")
+            return self._embeddings
+        
+        # No auto-detection possible - raise helpful error
+        raise ValueError(
+            "No embeddings provider configured. Either:\n"
+            "1. Pass embeddings= parameter explicitly:\n"
+            "   RAGAgent(model=..., embeddings=OpenAIEmbeddings())\n"
+            "   RAGAgent(model=..., embeddings=OllamaEmbeddings())\n"
+            "2. Set environment variable:\n"
+            "   OPENAI_API_KEY=sk-...  (for OpenAI)\n"
+            "   OLLAMA_HOST=http://localhost:11434  (for Ollama)"
+        )
     
     def _create_backend(self):
         """Create backend instance from name."""
@@ -326,10 +381,15 @@ When answering questions:
         
         return Agent(
             name=self._name,
-            role=AgentRole.AUTONOMOUS,
             model=self._model,
             instructions=instructions,
             tools=self._create_tools(),
+            intercept=self._intercept,
+            stream=self._stream,
+            reasoning=self._reasoning,
+            output=self._output,
+            verbose=self._verbose,
+            resilience=self._resilience,
         )
     
     async def load_documents(
@@ -603,16 +663,20 @@ When answering questions:
         self,
         question: str,
         *,
+        context: dict[str, Any] | RunContext | None = None,
         strategy: str = "dag",
         verbose: bool = False,
+        max_iterations: int = 10,
     ) -> str:
         """
         Ask a question about the loaded documents.
         
         Args:
             question: Your question.
+            context: Optional context dict or RunContext for tools/interceptors.
             strategy: Execution strategy ("dag", "react", "plan").
             verbose: Show detailed progress with tool calls.
+            max_iterations: Maximum LLM iterations (default: 10).
             
         Returns:
             The answer with citations.
@@ -623,9 +687,20 @@ When answering questions:
         if verbose:
             from agenticflow.observability import OutputConfig, ProgressTracker
             tracker = ProgressTracker(OutputConfig.verbose())
-            return await self._agent.run(question, strategy=strategy, tracker=tracker)
+            return await self._agent.run(
+                question,
+                context=context,
+                strategy=strategy,
+                tracker=tracker,
+                max_iterations=max_iterations,
+            )
         
-        return await self._agent.run(question, strategy=strategy)
+        return await self._agent.run(
+            question,
+            context=context,
+            strategy=strategy,
+            max_iterations=max_iterations,
+        )
     
     async def search(
         self,
@@ -679,6 +754,13 @@ def create_rag_agent(
     sparse_weight: float = 0.3,
     reranker: Literal["none", "llm", "cross_encoder", "cohere"] | None = None,
     initial_k: int | None = None,
+    # Agent configuration
+    intercept: Sequence[Any] | None = None,
+    stream: bool = False,
+    reasoning: bool | Any = False,
+    output: type | dict | None = None,
+    verbose: bool | str = False,
+    resilience: ResilienceConfig | None = None,
 ) -> RAGAgent:
     """
     Create a RAG agent for document Q&A.
@@ -702,6 +784,12 @@ def create_rag_agent(
         sparse_weight: Weight for sparse retrieval in hybrid mode.
         reranker: Reranker type ("none", "llm", "cross_encoder", "cohere").
         initial_k: Documents to retrieve before reranking.
+        intercept: Interceptors for execution hooks.
+        stream: Enable streaming responses.
+        reasoning: Enable extended thinking mode.
+        output: Structured output schema.
+        verbose: Observability level.
+        resilience: Retry and fallback configuration.
         
     Returns:
         Configured RAGAgent instance.
@@ -742,6 +830,12 @@ def create_rag_agent(
         sparse_weight=sparse_weight,
         reranker=reranker,
         initial_k=initial_k,
+        intercept=intercept,
+        stream=stream,
+        reasoning=reasoning,
+        output=output,
+        verbose=verbose,
+        resilience=resilience,
     )
     
     # Note: If documents provided, user needs to await load_documents()
