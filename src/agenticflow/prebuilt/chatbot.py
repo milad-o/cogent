@@ -2,7 +2,8 @@
 Prebuilt Chatbot with conversation memory.
 
 A simple, ready-to-use chatbot that maintains conversation history
-across sessions using memory checkpointing.
+across sessions using memory checkpointing. Inherits from Agent for
+full access to all agent capabilities.
 """
 
 from __future__ import annotations
@@ -13,21 +14,25 @@ from typing import TYPE_CHECKING, Any
 from agenticflow import Agent
 
 if TYPE_CHECKING:
+    from agenticflow.agent.memory import AgentMemory, MemorySaver, MemoryStore
     from agenticflow.agent.resilience import ResilienceConfig
-    from agenticflow.context import RunContext
     from agenticflow.models.base import BaseChatModel
     from agenticflow.tools.base import BaseTool
 
 
-class Chatbot:
+class Chatbot(Agent):
     """
     A prebuilt chatbot with conversation memory.
     
+    Inherits from Agent, so you get full access to all agent capabilities:
+    - tools, capabilities, streaming, reasoning, structured output
+    - memory, store, interceptors, resilience, observability
+    - run(), chat(), think(), and all other Agent methods
+    
     Features:
-    - Maintains conversation history per thread
-    - Optional personality customization
-    - Optional tools for enhanced capabilities
-    - Built-in memory persistence
+    - Default personality for conversational interactions
+    - Memory enabled by default (pass memory=False to disable)
+    - All Agent capabilities available
     
     Example:
         ```python
@@ -43,163 +48,139 @@ class Chatbot:
         response1 = await bot.chat("Hi, I'm learning Python", thread_id="user-1")
         response2 = await bot.chat("What should I learn first?", thread_id="user-1")
         # Bot remembers you're learning Python!
+        
+        # Use any Agent method
+        result = await bot.run("Help me write a function", strategy="react")
+        ```
+    
+    Example with tools:
+        ```python
+        from agenticflow.tools import tool
+        
+        @tool
+        def search_docs(query: str) -> str:
+            '''Search documentation.'''
+            return f"Results for: {query}"
+        
+        bot = Chatbot(
+            model=model,
+            personality="You are a helpful docs assistant.",
+            tools=[search_docs],  # Full tools support!
+        )
+        
+        # Bot can now use tools
+        result = await bot.run("Find info about async/await")
         ```
     """
+    
+    DEFAULT_PERSONALITY = """You are a helpful, friendly assistant.
+
+You engage in natural conversation, remember context from earlier in the chat,
+and provide clear, concise responses. If you don't know something, say so honestly."""
     
     def __init__(
         self,
         model: BaseChatModel,
         *,
-        name: str = "Chatbot",
+        # Chatbot-specific
         personality: str | None = None,
-        tools: list[BaseTool] | None = None,
-        memory: bool = True,
-        # Agent configuration
+        # All Agent parameters
+        name: str = "Chatbot",
+        tools: Sequence[BaseTool | str] | None = None,
+        capabilities: Sequence[Any] | None = None,
+        memory: bool | MemorySaver | AgentMemory | None = True,  # Default: enabled
+        store: MemoryStore | None = None,
         intercept: Sequence[Any] | None = None,
         stream: bool = False,
         reasoning: bool | Any = False,
         output: type | dict | None = None,
         verbose: bool | str = False,
         resilience: ResilienceConfig | None = None,
+        interrupt_on: dict[str, Any] | None = None,
+        observer: Any | None = None,
+        taskboard: bool | Any = None,
     ) -> None:
         """
-        Create a chatbot.
+        Create a chatbot with conversation memory.
         
         Args:
-            model: Native chat model (e.g., ChatModel, AzureChat).
-            name: Name for the chatbot.
+            model: Chat model (e.g., ChatModel, AzureChat).
             personality: Optional personality/system prompt.
                 If not provided, uses a default helpful assistant prompt.
-            tools: Optional list of tools the chatbot can use.
-            memory: Whether to enable conversation memory (default: True).
-            intercept: Interceptors for execution hooks (gates, guards, prompt adapters).
-            stream: Enable streaming responses by default.
+            
+            **All Agent parameters are supported:**
+            name: Name for the chatbot.
+            tools: List of tools the chatbot can use.
+            capabilities: Capabilities to attach.
+            memory: Enable conversation memory (default: True).
+                - True: In-memory persistence
+                - MemorySaver: Custom checkpointer
+                - AgentMemory: Full memory manager
+                - None/False: Disable memory
+            store: Long-term memory store for cross-thread state.
+            intercept: Interceptors (gates, guards, prompt adapters).
+            stream: Enable streaming responses.
             reasoning: Enable extended thinking mode.
             output: Structured output schema (Pydantic model, dataclass, etc.).
             verbose: Observability level (False, True, "verbose", "debug", "trace").
             resilience: Retry and fallback configuration.
+            interrupt_on: HITL tool approval rules.
+            observer: Custom observer for rich observability.
+            taskboard: Enable task tracking.
         """
-        default_personality = """You are a helpful, friendly assistant.
+        instructions = personality or self.DEFAULT_PERSONALITY
         
-You engage in natural conversation, remember context from earlier in the chat,
-and provide clear, concise responses. If you don't know something, say so honestly."""
-        
-        instructions = personality or default_personality
-        
-        self._agent = Agent(
+        super().__init__(
             name=name,
             model=model,
             instructions=instructions,
             tools=tools or [],
+            capabilities=capabilities,
             memory=memory,
+            store=store,
             intercept=intercept,
             stream=stream,
             reasoning=reasoning,
             output=output,
             verbose=verbose,
             resilience=resilience,
+            interrupt_on=interrupt_on,
+            observer=observer,
+            taskboard=taskboard,
         )
     
     @property
-    def agent(self) -> Agent:
-        """Access the underlying Agent if needed."""
-        return self._agent
+    def personality(self) -> str:
+        """Get the chatbot's personality (system prompt)."""
+        return self._config.instructions or self.DEFAULT_PERSONALITY
     
-    @property
-    def name(self) -> str:
-        """Chatbot name."""
-        return self._agent.name
-    
-    async def chat(
-        self,
-        message: str,
-        thread_id: str | None = None,
-    ) -> str:
-        """
-        Send a message and get a response.
+    def set_personality(self, personality: str) -> None:
+        """Update the chatbot's personality.
         
         Args:
-            message: Your message to the chatbot.
-            thread_id: Conversation thread ID. Messages with the same
-                thread_id share conversation history.
-                
-        Returns:
-            The chatbot's response.
+            personality: New personality/system prompt.
         """
-        return await self._agent.chat(message, thread_id=thread_id)
-    
-    async def chat_with_tools(
-        self,
-        message: str,
-        thread_id: str | None = None,
-        *,
-        context: dict[str, Any] | RunContext | None = None,
-        strategy: str = "dag",
-        verbose: bool = False,
-        max_iterations: int = 10,
-    ) -> str:
-        """
-        Chat with tool execution enabled.
-        
-        Use this when you want the chatbot to use its tools
-        to answer your question.
-        
-        Args:
-            message: Your message.
-            thread_id: Conversation thread ID.
-            context: Optional context dict or RunContext for tools/interceptors.
-            strategy: Execution strategy ("dag", "react", "plan").
-            verbose: Show detailed progress with tool calls.
-            max_iterations: Maximum LLM iterations (default: 10).
-            
-        Returns:
-            The chatbot's response (may include tool results).
-        """
-        if verbose:
-            from agenticflow.observability import OutputConfig, ProgressTracker
-            tracker = ProgressTracker(OutputConfig.verbose())
-            return await self._agent.run(
-                message,
-                context=context,
-                strategy=strategy,
-                tracker=tracker,
-                max_iterations=max_iterations,
-            )
-        
-        return await self._agent.run(
-            message,
-            context=context,
-            strategy=strategy,
-            max_iterations=max_iterations,
-        )
-    
-    def clear_history(self, thread_id: str) -> None:
-        """
-        Clear conversation history for a thread.
-        
-        Args:
-            thread_id: The thread to clear.
-        """
-        # Access memory manager to clear
-        if hasattr(self._agent, "_memory"):
-            # Memory clearing would go here
-            pass
+        self._config = self._config.model_copy(update={"instructions": personality})
 
 
 def create_chatbot(
     model: BaseChatModel,
     *,
-    name: str = "Chatbot",
     personality: str | None = None,
-    tools: list[BaseTool] | None = None,
-    memory: bool = True,
-    # Agent configuration
+    name: str = "Chatbot",
+    tools: Sequence[BaseTool | str] | None = None,
+    capabilities: Sequence[Any] | None = None,
+    memory: bool | MemorySaver | AgentMemory | None = True,
+    store: MemoryStore | None = None,
     intercept: Sequence[Any] | None = None,
     stream: bool = False,
     reasoning: bool | Any = False,
     output: type | dict | None = None,
     verbose: bool | str = False,
     resilience: ResilienceConfig | None = None,
+    interrupt_on: dict[str, Any] | None = None,
+    observer: Any | None = None,
+    taskboard: bool | Any = None,
 ) -> Chatbot:
     """
     Create a chatbot with conversation memory.
@@ -207,20 +188,25 @@ def create_chatbot(
     This is a convenience function that creates a Chatbot instance.
     
     Args:
-        model: Native chat model.
-        name: Chatbot name.
+        model: Chat model.
         personality: Optional system prompt / personality.
+        name: Chatbot name.
         tools: Optional tools for the chatbot.
+        capabilities: Capabilities to attach.
         memory: Enable conversation memory (default: True).
+        store: Long-term memory store.
         intercept: Interceptors for execution hooks.
         stream: Enable streaming responses.
         reasoning: Enable extended thinking mode.
         output: Structured output schema.
         verbose: Observability level.
         resilience: Retry and fallback configuration.
+        interrupt_on: HITL tool approval rules.
+        observer: Custom observer.
+        taskboard: Enable task tracking.
         
     Returns:
-        A configured Chatbot instance.
+        A configured Chatbot instance (which is an Agent).
         
     Example:
         ```python
@@ -238,14 +224,19 @@ def create_chatbot(
     """
     return Chatbot(
         model=model,
-        name=name,
         personality=personality,
+        name=name,
         tools=tools,
+        capabilities=capabilities,
         memory=memory,
+        store=store,
         intercept=intercept,
         stream=stream,
         reasoning=reasoning,
         output=output,
         verbose=verbose,
         resilience=resilience,
+        interrupt_on=interrupt_on,
+        observer=observer,
+        taskboard=taskboard,
     )
