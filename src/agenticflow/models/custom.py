@@ -201,11 +201,36 @@ class CustomChat(BaseChatModel):
             if chunk.choices and chunk.choices[0].delta.content:
                 yield AIMessage(content=chunk.choices[0].delta.content)
     
-    def _build_request(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
-        """Build API request."""
+    def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
+        """Build API request.
+        
+        Args:
+            messages: List of messages - can be dicts or BaseMessage objects.
+            
+        Returns:
+            Dict of API request parameters.
+        """
+        from agenticflow.core.messages import BaseMessage
+        
+        # Convert message objects to dicts if needed
+        formatted_messages = []
+        for msg in messages:
+            if isinstance(msg, dict):
+                formatted_messages.append(msg)
+            elif isinstance(msg, BaseMessage):
+                formatted_messages.append(msg.to_dict())
+            else:
+                # Try to use to_dict() method if available
+                if hasattr(msg, "to_dict"):
+                    formatted_messages.append(msg.to_dict())
+                elif hasattr(msg, "to_openai"):  # backward compat
+                    formatted_messages.append(msg.to_openai())
+                else:
+                    raise TypeError(f"Unsupported message type: {type(msg)}")
+        
         kwargs: dict[str, Any] = {
             "model": self.model,
-            "messages": messages,
+            "messages": formatted_messages,
             "temperature": self.temperature,
         }
         if self.max_tokens:
