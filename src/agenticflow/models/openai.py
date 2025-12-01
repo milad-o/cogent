@@ -45,16 +45,18 @@ def _parse_response(response: Any) -> AIMessage:
     )
 
 
-def _tools_to_openai(tools: list[Any]) -> list[dict[str, Any]]:
-    """Convert tools to OpenAI format."""
-    openai_tools = []
+def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
+    """Convert tools to API format."""
+    formatted = []
     for tool in tools:
-        if hasattr(tool, "to_openai"):
-            openai_tools.append(tool.to_openai())
+        if hasattr(tool, "to_dict"):
+            formatted.append(tool.to_dict())
+        elif hasattr(tool, "to_openai"):  # backward compat
+            formatted.append(tool.to_openai())
         elif hasattr(tool, "name") and hasattr(tool, "description"):
             # Our native Tool format
             schema = getattr(tool, "args_schema", {}) or {}
-            openai_tools.append({
+            formatted.append({
                 "type": "function",
                 "function": {
                     "name": tool.name,
@@ -63,8 +65,8 @@ def _tools_to_openai(tools: list[Any]) -> list[dict[str, Any]]:
                 },
             })
         elif isinstance(tool, dict):
-            openai_tools.append(tool)
-    return openai_tools
+            formatted.append(tool)
+    return formatted
 
 
 @dataclass
@@ -185,10 +187,12 @@ class OpenAIChat(BaseChatModel):
             if isinstance(msg, dict):
                 formatted_messages.append(msg)
             elif isinstance(msg, BaseMessage):
-                formatted_messages.append(msg.to_openai())
+                formatted_messages.append(msg.to_dict())
             else:
-                # Try to use to_openai() method if available
-                if hasattr(msg, "to_openai"):
+                # Try to use to_dict() method if available
+                if hasattr(msg, "to_dict"):
+                    formatted_messages.append(msg.to_dict())
+                elif hasattr(msg, "to_openai"):  # backward compat
                     formatted_messages.append(msg.to_openai())
                 else:
                     raise TypeError(f"Unsupported message type: {type(msg)}")
@@ -211,7 +215,7 @@ class OpenAIChat(BaseChatModel):
         if self.max_tokens:
             kwargs["max_tokens"] = self.max_tokens
         if self._tools:
-            kwargs["tools"] = _tools_to_openai(self._tools)
+            kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
         return kwargs
 

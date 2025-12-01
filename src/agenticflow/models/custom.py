@@ -35,15 +35,17 @@ from typing import Any, AsyncIterator
 from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding
 
 
-def _tools_to_openai(tools: list[Any]) -> list[dict[str, Any]]:
-    """Convert tools to OpenAI format."""
-    openai_tools = []
+def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
+    """Convert tools to API format."""
+    formatted = []
     for tool in tools:
-        if hasattr(tool, "to_openai"):
-            openai_tools.append(tool.to_openai())
+        if hasattr(tool, "to_dict"):
+            formatted.append(tool.to_dict())
+        elif hasattr(tool, "to_openai"):  # backward compat
+            formatted.append(tool.to_openai())
         elif hasattr(tool, "name") and hasattr(tool, "description"):
             schema = getattr(tool, "args_schema", {}) or {}
-            openai_tools.append({
+            formatted.append({
                 "type": "function",
                 "function": {
                     "name": tool.name,
@@ -52,8 +54,8 @@ def _tools_to_openai(tools: list[Any]) -> list[dict[str, Any]]:
                 },
             })
         elif isinstance(tool, dict):
-            openai_tools.append(tool)
-    return openai_tools
+            formatted.append(tool)
+    return formatted
 
 
 def _parse_response(response: Any) -> AIMessage:
@@ -209,7 +211,7 @@ class CustomChat(BaseChatModel):
         if self.max_tokens:
             kwargs["max_tokens"] = self.max_tokens
         if self._tools:
-            kwargs["tools"] = _tools_to_openai(self._tools)
+            kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
         return kwargs
 

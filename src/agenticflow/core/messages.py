@@ -1,7 +1,8 @@
 """
 Native message types for AgenticFlow.
 
-Lightweight message implementations compatible with OpenAI API message format.
+Lightweight message implementations compatible with chat API message format.
+All major providers (OpenAI, Azure, Anthropic, etc.) use this same format.
 """
 
 from __future__ import annotations
@@ -17,9 +18,12 @@ class BaseMessage:
     content: str
     role: str = "user"
     
-    def to_openai(self) -> dict[str, Any]:
-        """Convert to OpenAI API format."""
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict format for chat APIs."""
         return {"role": self.role, "content": self.content}
+    
+    # Alias for backward compatibility
+    to_openai = to_dict
 
 
 @dataclass
@@ -66,8 +70,8 @@ class AIMessage(BaseMessage):
     def __bool__(self) -> bool:
         return bool(self.content or self.tool_calls)
     
-    def to_openai(self) -> dict[str, Any]:
-        """Convert to OpenAI API format."""
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict format for chat APIs."""
         msg: dict[str, Any] = {"role": self.role, "content": self.content}
         if self.tool_calls:
             msg["tool_calls"] = [
@@ -82,6 +86,9 @@ class AIMessage(BaseMessage):
                 for tc in self.tool_calls
             ]
         return msg
+    
+    # Alias for backward compatibility
+    to_openai = to_dict
 
 
 @dataclass
@@ -96,18 +103,25 @@ class ToolMessage(BaseMessage):
         self.role = "tool"
         self.tool_call_id = tool_call_id
     
-    def to_openai(self) -> dict[str, Any]:
-        """Convert to OpenAI API format."""
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dict format for chat APIs."""
         return {
             "role": self.role,
             "content": self.content,
             "tool_call_id": self.tool_call_id,
         }
+    
+    # Alias for backward compatibility
+    to_openai = to_dict
 
 
-def messages_to_openai(messages: list[BaseMessage]) -> list[dict[str, Any]]:
-    """Convert a list of messages to OpenAI API format."""
-    return [msg.to_openai() for msg in messages]
+def messages_to_dict(messages: list[BaseMessage]) -> list[dict[str, Any]]:
+    """Convert a list of messages to dict format for chat APIs."""
+    return [msg.to_dict() for msg in messages]
+
+
+# Alias for backward compatibility
+messages_to_openai = messages_to_dict
 
 
 def parse_openai_response(response: Any) -> AIMessage:

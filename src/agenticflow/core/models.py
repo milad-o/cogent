@@ -14,10 +14,10 @@ from typing import Any, Literal
 from agenticflow.core.messages import (
     AIMessage,
     BaseMessage,
-    messages_to_openai,
+    messages_to_dict,
     parse_openai_response,
 )
-from agenticflow.tools.base import BaseTool, tools_to_openai
+from agenticflow.tools.base import BaseTool, tools_to_dict
 
 
 @dataclass
@@ -128,12 +128,12 @@ class ChatModel:
         """Build the API request kwargs."""
         kwargs: dict[str, Any] = {
             "model": self.model,
-            "messages": messages_to_openai(messages),
+            "messages": messages_to_dict(messages),
             "temperature": self.temperature,
         }
         
         if self._tools:
-            kwargs["tools"] = tools_to_openai(self._tools)
+            kwargs["tools"] = tools_to_dict(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
         
         return kwargs

@@ -93,11 +93,11 @@ class BaseTool:
             else:
                 return await asyncio.to_thread(self.func, **args)
     
-    def to_openai(self) -> dict[str, Any]:
-        """Convert to OpenAI function calling format.
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to function calling format for chat APIs.
         
         Returns:
-            OpenAI tool definition dict.
+            Tool definition dict.
         """
         return {
             "type": "function",
@@ -111,6 +111,9 @@ class BaseTool:
                 },
             },
         }
+    
+    # Alias for backward compatibility
+    to_openai = to_dict
 
 
 def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
@@ -219,6 +222,10 @@ def tool(func: Callable[..., Any] | None = None, *, name: str | None = None, des
     return decorator
 
 
-def tools_to_openai(tools: list[BaseTool]) -> list[dict[str, Any]]:
-    """Convert a list of tools to OpenAI format."""
-    return [t.to_openai() for t in tools]
+def tools_to_dict(tools: list[BaseTool]) -> list[dict[str, Any]]:
+    """Convert a list of tools to dict format for chat APIs."""
+    return [t.to_dict() for t in tools]
+
+
+# Alias for backward compatibility
+tools_to_openai = tools_to_dict

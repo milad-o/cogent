@@ -1308,7 +1308,7 @@ class Agent:
         messages.append(HumanMessage(content=prompt))
 
         # Convert to dict format for native models
-        dict_messages = [msg.to_openai() for msg in messages]
+        dict_messages = [msg.to_dict() for msg in messages]
 
         try:
             response = await self.model.ainvoke(dict_messages)
@@ -1541,7 +1541,7 @@ class Agent:
             messages.append(user_message)
             
             # Convert to dict format for native models
-            dict_messages = [msg.to_openai() for msg in messages]
+            dict_messages = [msg.to_dict() for msg in messages]
             
             # Use bound model (with tools) and handle tool calls
             bound_model = self.bound_model
@@ -1563,7 +1563,7 @@ class Agent:
                     break
                 
                 # Add assistant message with tool calls to history
-                ai_msg = response.to_openai() if hasattr(response, 'to_openai') else {
+                ai_msg = response.to_dict() if hasattr(response, 'to_dict') else {
                     "role": "assistant",
                     "content": response.content or "",
                 }
@@ -1821,7 +1821,7 @@ class Agent:
         messages.append(HumanMessage(content=prompt))
 
         # Convert to dict format for native models
-        dict_messages = [msg.to_openai() for msg in messages]
+        dict_messages = [msg.to_dict() for msg in messages]
 
         accumulated_content = ""
         index = 0
@@ -1977,7 +1977,7 @@ class Agent:
             messages.append(user_message)
 
             # Convert to dict format for native models
-            dict_messages = [msg.to_openai() for msg in messages]
+            dict_messages = [msg.to_dict() for msg in messages]
 
             accumulated_content = ""
             index = 0
@@ -2137,7 +2137,7 @@ class Agent:
         messages.append(HumanMessage(content=prompt))
 
         # Convert to dict format for native models
-        dict_messages = [msg.to_openai() for msg in messages]
+        dict_messages = [msg.to_dict() for msg in messages]
 
         # Emit start event
         yield StreamEvent(
