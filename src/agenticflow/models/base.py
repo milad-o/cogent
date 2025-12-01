@@ -225,6 +225,14 @@ class BaseEmbedding(ABC):
         return result[0]
     
     # Aliases for common interface compatibility
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Embed texts (alias for embed)."""
+        return self.embed(texts)
+    
+    async def aembed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Embed texts async (alias for aembed)."""
+        return await self.aembed(texts)
+    
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents (alias for embed)."""
         return self.embed(texts)
@@ -232,6 +240,11 @@ class BaseEmbedding(ABC):
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents async (alias for aembed)."""
         return await self.aembed(texts)
+    
+    @property
+    def dimension(self) -> int:
+        """Return the embedding dimension. Override in subclasses."""
+        return self.dimensions or 1536  # Default to OpenAI dimension
 
 
 # Message helper functions for easy message creation

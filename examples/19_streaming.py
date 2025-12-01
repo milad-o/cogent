@@ -563,7 +563,7 @@ Key Takeaways:
 6. print_stream() - streaming + capture helper
 7. collect_stream() - silent collection
 8. Works with any streaming-compatible model
-\"\"\")
+""")
 
 
 if __name__ == "__main__":

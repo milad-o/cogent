@@ -22,7 +22,8 @@ from agenticflow.vectorstore.base import (
     VectorStoreBackend,
 )
 from agenticflow.vectorstore.document import Document, create_documents
-from agenticflow.vectorstore.embeddings import MockEmbeddings, OpenAIEmbeddings
+from agenticflow.vectorstore.embeddings import MockEmbeddings
+from agenticflow.models.openai import OpenAIEmbedding
 
 
 BackendType = Literal["inmemory", "faiss", "chroma"]
@@ -56,7 +57,7 @@ class VectorStore:
     def __post_init__(self) -> None:
         """Initialize default embeddings and backend if not provided."""
         if self.embeddings is None:
-            self.embeddings = OpenAIEmbeddings()
+            self.embeddings = OpenAIEmbedding()
         
         if self.backend is None:
             self.backend = InMemoryBackend()

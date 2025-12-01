@@ -237,7 +237,7 @@ async def demo_shared_memory():
 async def main():
     print("\n" + "=" * 60)
     print("  Memory-First Architecture Demo (with LLM)")
-    print(f"  Provider: {settings.get_preferred_provider()}")
+    print(f"  Provider: {settings.llm_provider}")
     print("=" * 60)
     
     await demo_conversation_memory()

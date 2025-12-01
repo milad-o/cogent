@@ -32,8 +32,8 @@ async def main():
     
     print("=" * 60)
     print("RAG with Per-File-Type Pipelines")
-    print(f"LLM: {settings.get_preferred_provider()} ({model})")
-    print(f"Embeddings: {settings.get_preferred_embedding_provider()}")
+    print(f"LLM: {settings.llm_provider}")
+    print(f"Embeddings: {settings.embedding_provider}")
     print("=" * 60)
     
     # ============================================================

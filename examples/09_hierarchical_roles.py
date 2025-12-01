@@ -1,21 +1,22 @@
 """
-Demo: Hierarchical Topology with Role-Based Levels
+Demo: Hierarchical Organization with Role-Based Delegation
 
-Uses the clean 4-role system for auto-inferred hierarchy:
-- SUPERVISOR at top: Can finish, can delegate (Directors/Managers)
-- WORKER at bottom: Can use tools, cannot finish (Analysts/Writers)
+Demonstrates a supervisor-worker pattern where:
+- SUPERVISOR (Director): Coordinates and delegates work, can finish
+- WORKERS (Analyst, Writer): Do specialized work, report back
 
-Role System:
-┌─────────────┬────────────┬──────────────┬───────────────┐
-│ Role        │ can_finish │ can_delegate │ can_use_tools │
-├─────────────┼────────────┼──────────────┼───────────────┤
-│ SUPERVISOR  │     ✅     │      ✅      │      ❌       │
-│ WORKER      │     ❌     │      ❌      │      ✅       │
-└─────────────┴────────────┴──────────────┴───────────────┘
+This example shows:
+1. Using supervisor topology for manager-worker coordination
+2. Supervisor delegates to appropriate workers (in parallel)
+3. Workers complete tasks and report back
+4. Supervisor synthesizes results into final answer
 
-Hierarchy is auto-inferred:
-  Level 0: SUPERVISOR (top, can finish)
-  Level 1: WORKER (bottom, does work)
+Note: The supervisor topology makes multiple LLM calls:
+  1. Director plans and assigns work (~2-5s)
+  2. Workers execute in parallel (~2-5s each)
+  3. Director synthesizes results (~2-5s)
+
+For fastest results, use Groq (GROQ_API_KEY) or gpt-4o-mini.
 
 Usage:
     uv run python examples/09_hierarchical_roles.py
@@ -31,62 +32,50 @@ from agenticflow.core.enums import AgentRole
 
 async def main() -> None:
     print("=" * 60)
-    print("  Hierarchical Topology: Clean Role-Based System")
+    print("  Hierarchical Org: Supervisor-Worker Pattern")
     print("=" * 60)
 
     model = get_model()
 
-    # Define agents with roles - hierarchy is auto-inferred!
-    
-    # Top level: SUPERVISOR (can finish, can delegate)
+    # SUPERVISOR: Coordinates work
     director = Agent(
         name="Director",
         model=model,
         role=AgentRole.SUPERVISOR,
-        instructions="""You are the Director overseeing this project.
-
-You manage two teams: Research (Analyst) and Content (Writer).
-Delegate tasks to the right worker, then synthesize results.
-
-When all work is complete, output "FINAL ANSWER:" with the final result.""",
+        instructions="You coordinate research projects. Delegate to Analyst (research) and Writer (content). Synthesize their work into final deliverables.",
     )
 
-    # Bottom level: WORKERS (can use tools, cannot finish)
+    # WORKERS: Do specialized work
     analyst = Agent(
         name="Analyst",
         model=model,
         role=AgentRole.WORKER,
-        instructions="""Research and analyze data.
-Provide factual findings to the Director.
-You cannot finish - pass your results back.""",
+        instructions="Research analyst. Find facts, trends, and data. Be concise.",
     )
 
     writer = Agent(
         name="Writer",
         model=model,
         role=AgentRole.WORKER,
-        instructions="""Write content based on research.
-Create clear, engaging text for the Director.
-You cannot finish - pass your results back.""",
+        instructions="Content writer. Create clear, engaging text. Be concise.",
     )
 
-    # Create flow - levels auto-inferred from roles!
+    # Supervisor topology: Director coordinates workers
     flow = Flow(
         name="org-hierarchy",
         agents=[director, analyst, writer],
-        topology="hierarchical",  # Auto-infers levels from roles
+        topology="supervisor",
+        supervisor=director,
+        parallel=True,  # Workers run in parallel
         observer=Observer.verbose(),
     )
 
-    # Show the inferred levels
-    print("\n📊 Auto-inferred hierarchy from roles:")
-    print(f"   Level 0 (Top):    Director [SUPERVISOR] - can finish, can delegate")
-    print(f"   Level 1 (Bottom): Analyst, Writer [WORKER] - do work, cannot finish")
-    
-    print("\n💡 Key Insight:")
-    print("   Only SUPERVISOR can finish → forces delegation back up")
+    print("\n📊 Organization Structure:")
+    print("   Director [SUPERVISOR] - coordinates, delegates, synthesizes")
+    print("   ├── Analyst [WORKER] - research and analysis")
+    print("   └── Writer [WORKER] - content creation")
 
-    task = "Create a brief analysis of AI trends in 2024"
+    task = "List 3 key AI trends in 2024 with brief explanations"
     print(f"\n📋 Task: {task}")
     print("-" * 60)
 
@@ -94,15 +83,9 @@ You cannot finish - pass your results back.""",
 
     print("-" * 60)
     print("\n✅ Final Result:")
+    print(result.output[:1000] + "..." if len(result.output) > 1000 else result.output)
     
-    # TopologyResult has .output for final result
-    final = result.output
-    if "FINAL ANSWER:" in final:
-        final = final.split("FINAL ANSWER:", 1)[1].strip()
-    print(final[:500] + "..." if len(final) > 500 else final)
-    
-    print(f"\n   Completed in {result.rounds} round(s)")
-    print(f"   Agents involved: {result.execution_order}")
+    print(f"\n   Agents involved: {list(result.agent_outputs.keys())}")
 
 
 if __name__ == "__main__":

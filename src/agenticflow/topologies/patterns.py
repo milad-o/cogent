@@ -68,21 +68,14 @@ class Supervisor(BaseTopology):
 
         # Step 1: Coordinator analyzes task and creates delegation plan
         worker_names = [w.name for w in self.workers]
-        planning_prompt = f"""You are coordinating a team to accomplish this task:
+        worker_list = ", ".join(f"{w.name} ({w.role or 'general'})" for w in self.workers)
+        planning_prompt = f"""Task: {task}
 
-TASK: {task}
+Team: {worker_list}
 
-AVAILABLE TEAM MEMBERS:
-{chr(10).join(f"- {w.name}: {w.role or 'general'}" for w in self.workers)}
-
-Analyze the task and create clear, specific subtasks for each team member.
-Format your response as:
-## Plan
-[Your analysis of how to approach the task]
-
-## Assignments
-{chr(10).join(f"### {w.name}" + chr(10) + "[Specific instructions for this team member]" for w in self.workers)}
-"""
+Create brief assignments for each. Keep assignments under 50 words each.
+### [Name]
+[Assignment]"""
 
         plan_response = await self.coordinator.agent.run(planning_prompt)
         agent_outputs[coord_name] = plan_response
@@ -101,16 +94,12 @@ Format your response as:
             if team_memory:
                 await team_memory.report_status(w_name, "working")
             
-            worker_prompt = f"""You are working on a team task.
+            worker_prompt = f"""Task: {task}
 
-ORIGINAL TASK: {task}
-
-COORDINATOR'S PLAN:
+Your assignment:
 {plan}
 
-YOUR ROLE: {worker.role or "team member"}
-
-Complete your assigned portion of the work. Be thorough and specific."""
+Complete your portion in under 150 words."""
 
             result = await worker.agent.run(worker_prompt)
             
@@ -139,15 +128,13 @@ Complete your assigned portion of the work. Be thorough and specific."""
         if team_memory:
             await team_memory.report_status(coord_name, "synthesizing")
 
-        synthesis_prompt = f"""You coordinated a team on this task:
+        results_text = "\n\n".join(f"### {name}\n{output}" for name, output in agent_outputs.items() if name != coord_name)
+        synthesis_prompt = f"""Task: {task}
 
-ORIGINAL TASK: {task}
+Team results:
+{results_text}
 
-TEAM RESULTS:
-{chr(10).join(f"### {name}" + chr(10) + output for name, output in agent_outputs.items() if name != coord_name)}
-
-Synthesize these results into a comprehensive final deliverable.
-Ensure quality, coherence, and completeness."""
+Synthesize into a brief final answer (under 200 words)."""
 
         final_output = await self.coordinator.agent.run(synthesis_prompt)
         agent_outputs[f"{coord_name}_synthesis"] = final_output

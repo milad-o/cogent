@@ -30,7 +30,7 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import get_model, settings
+from config import get_model, get_embeddings, settings
 
 from agenticflow import Agent, AgentRole
 from agenticflow.tools.base import tool
@@ -253,16 +253,13 @@ def load_and_split_document(file_path: Path) -> list[Document]:
 
 
 async def create_vector_store(chunks: list[Document]):
-    """Create vector store with OpenAI embeddings."""
-    from agenticflow.vectorstore import VectorStore, OpenAIEmbeddings, backends
+    """Create vector store with configured embeddings."""
+    from agenticflow.vectorstore import VectorStore, backends
 
     print("\n🧮 Creating embeddings...")
     
-    # Create embedding model
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        api_key=settings.openai_api_key,
-    )
+    # Create embedding model from config
+    embeddings = get_embeddings()
     
     # Create vector store with in-memory backend
     vector_store = VectorStore(
@@ -334,12 +331,9 @@ async def main() -> None:
     print("🌿 Agentic RAG - The Secret Garden")
     print("=" * 60)
 
-    # Check for OpenAI API key (needed for embeddings)
-    if not settings.openai_api_key:
-        print("\n❌ Error: OPENAI_API_KEY not found in environment")
-        print("   OpenAI embeddings are required for RAG.")
-        print("   Please set it in .env file or export it")
-        return
+    # Config is validated by pydantic-settings, just show what we're using
+    print(f"\n📋 Using LLM: {settings.llm_provider}")
+    print(f"📋 Using Embeddings: {settings.embedding_provider}")
 
     # Step 1: Download and process document
     print("\n📥 Step 1: Loading document...")
@@ -362,7 +356,7 @@ async def main() -> None:
     agent = create_rag_agent(model)
     print(f"  ✓ Agent: {agent.name} ({agent.role.value})")
     print(f"  ✓ Tools: {', '.join(t.name for t in agent._direct_tools)}")
-    print(f"  ✓ Model: {settings.get_preferred_provider()}")
+    print(f"  ✓ LLM: {settings.llm_provider}")
 
     # Step 4: Generate visualization
     print("\n📊 Step 4: Generating diagram...")
@@ -409,7 +403,7 @@ async def main() -> None:
     print(f"  • Chunks: {len(chunks)}")
     print(f"  • Agent: {agent.name} (autonomous)")
     print(f"  • Tools: search_documents, get_document_info")
-    print(f"  • Model: {settings.get_preferred_provider()}")
+    print(f"  • LLM: {settings.llm_provider}")
 
     print(f"\n📝 Mermaid Diagram:")
     print(mermaid)
