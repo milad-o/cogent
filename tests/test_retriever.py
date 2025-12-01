@@ -87,18 +87,18 @@ class TestDocument:
 
     def test_create_document(self) -> None:
         """Test creating a document."""
-        doc = Document(content="Test content", metadata={"key": "value"})
-        assert doc.content == "Test content"
+        doc = Document(text="Test content", metadata={"key": "value"})
+        assert doc.text == "Test content"
         assert doc.metadata["key"] == "value"
 
     def test_document_auto_source(self) -> None:
         """Test that source is auto-added to metadata."""
-        doc = Document(content="Test")
+        doc = Document(text="Test")
         assert "source" in doc.metadata
 
     def test_document_repr(self) -> None:
         """Test document string representation."""
-        doc = Document(content="Short content")
+        doc = Document(text="Short content")
         assert "Short content" in repr(doc)
 
 
@@ -265,13 +265,13 @@ class TestDocumentLoader:
         custom_file.write_text("custom content")
 
         async def custom_loader(path: Path) -> list[Document]:
-            return [Document(content=f"CUSTOM: {path.read_text()}", metadata={"source": str(path)})]
+            return [Document(text=f"CUSTOM: {path.read_text()}", metadata={"source": str(path)})]
 
         loader = DocumentLoader()
         loader.register_loader(".custom", custom_loader)
         docs = await loader.load(custom_file)
 
-        assert "CUSTOM:" in docs[0].content
+        assert "CUSTOM:" in docs[0].text
 
 
 class TestLoadDocuments:
@@ -310,18 +310,18 @@ class TestTextChunk:
 
     def test_create_chunk(self) -> None:
         """Test creating a text chunk."""
-        chunk = TextChunk(content="Test content", metadata={"index": 0})
+        chunk = TextChunk(text="Test content", metadata={"index": 0})
         assert chunk.content == "Test content"
         assert chunk.metadata["index"] == 0
 
     def test_chunk_length(self) -> None:
         """Test chunk length."""
-        chunk = TextChunk(content="Hello")
+        chunk = TextChunk(text="Hello")
         assert len(chunk) == 5
 
     def test_chunk_repr(self) -> None:
         """Test chunk string representation."""
-        chunk = TextChunk(content="Short")
+        chunk = TextChunk(text="Short")
         assert "Short" in repr(chunk)
 
 
@@ -359,8 +359,8 @@ class TestRecursiveCharacterSplitter:
     def test_split_documents(self) -> None:
         """Test splitting multiple documents."""
         docs = [
-            Document(content="First document content", metadata={"id": "1"}),
-            Document(content="Second document content", metadata={"id": "2"}),
+            Document(text="First document content", metadata={"id": "1"}),
+            Document(text="Second document content", metadata={"id": "2"}),
         ]
         splitter = RecursiveCharacterSplitter(chunk_size=15, chunk_overlap=0)
         chunks = splitter.split_documents(docs)

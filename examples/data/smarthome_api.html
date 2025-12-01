@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartHome API Documentation</title>
+</head>
+<body>
+    <header>
+        <h1>SmartHome REST API v2</h1>
+        <p>Complete API reference for the SmartHome IoT Platform</p>
+    </header>
+
+    <nav>
+        <h2>Table of Contents</h2>
+        <ul>
+            <li><a href="#authentication">Authentication</a></li>
+            <li><a href="#devices">Devices</a></li>
+            <li><a href="#automations">Automations</a></li>
+            <li><a href="#energy">Energy</a></li>
+            <li><a href="#errors">Error Handling</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="authentication">
+            <h2>Authentication</h2>
+            <p>All API requests must include a valid Bearer token in the Authorization header.</p>
+            
+            <h3>Obtaining an API Key</h3>
+            <ol>
+                <li>Log in to your SmartHome dashboard</li>
+                <li>Navigate to Settings → Developer → API Keys</li>
+                <li>Click "Generate New Key"</li>
+                <li>Select the required scopes</li>
+                <li>Copy and securely store your API key</li>
+            </ol>
+
+            <h3>Available Scopes</h3>
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Scope</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>devices:read</code></td>
+                        <td>Read device states and attributes</td>
+                    </tr>
+                    <tr>
+                        <td><code>devices:write</code></td>
+                        <td>Send commands to devices</td>
+                    </tr>
+                    <tr>
+                        <td><code>automations:read</code></td>
+                        <td>View automation rules</td>
+                    </tr>
+                    <tr>
+                        <td><code>automations:write</code></td>
+                        <td>Create and modify automations</td>
+                    </tr>
+                    <tr>
+                        <td><code>energy:read</code></td>
+                        <td>Access energy consumption data</td>
+                    </tr>
+                    <tr>
+                        <td><code>admin</code></td>
+                        <td>Full administrative access</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="devices">
+            <h2>Devices API</h2>
+
+            <article>
+                <h3>List All Devices</h3>
+                <p><code>GET /v2/devices</code></p>
+                <p>Returns a paginated list of all devices in your account.</p>
+                
+                <h4>Query Parameters</h4>
+                <ul>
+                    <li><code>room</code> - Filter by room ID</li>
+                    <li><code>type</code> - Filter by device type (light, thermostat, sensor, etc.)</li>
+                    <li><code>state</code> - Filter by state (online, offline)</li>
+                    <li><code>limit</code> - Maximum results per page (default: 20, max: 100)</li>
+                    <li><code>offset</code> - Pagination offset</li>
+                </ul>
+
+                <h4>Response Example</h4>
+                <pre>
+{
+  "devices": [
+    {
+      "id": "light-001",
+      "name": "Living Room Light",
+      "type": "light",
+      "state": "online",
+      "room": "room-001",
+      "attributes": {
+        "power": true,
+        "brightness": 75,
+        "color": "#FFFFFF"
+      }
+    }
+  ],
+  "total": 45,
+  "limit": 20,
+  "offset": 0
+}
+                </pre>
+            </article>
+
+            <article>
+                <h3>Get Device Details</h3>
+                <p><code>GET /v2/devices/{device_id}</code></p>
+                <p>Returns detailed information about a specific device.</p>
+
+                <h4>Response includes:</h4>
+                <ul>
+                    <li>Device metadata (manufacturer, model, firmware)</li>
+                    <li>Current state and all attributes</li>
+                    <li>List of supported capabilities</li>
+                    <li>Last seen timestamp</li>
+                    <li>Connection history</li>
+                </ul>
+            </article>
+
+            <article>
+                <h3>Send Device Command</h3>
+                <p><code>POST /v2/devices/{device_id}/command</code></p>
+                <p>Send a command to control a device.</p>
+
+                <h4>Request Body</h4>
+                <pre>
+{
+  "command": "set_brightness",
+  "params": {
+    "brightness": 50
+  }
+}
+                </pre>
+
+                <h4>Common Commands by Device Type</h4>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Device Type</th>
+                            <th>Commands</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Light</td>
+                            <td>turn_on, turn_off, set_brightness, set_color</td>
+                        </tr>
+                        <tr>
+                            <td>Thermostat</td>
+                            <td>set_temperature, set_mode, set_fan</td>
+                        </tr>
+                        <tr>
+                            <td>Lock</td>
+                            <td>lock, unlock</td>
+                        </tr>
+                        <tr>
+                            <td>Camera</td>
+                            <td>start_recording, stop_recording, take_snapshot</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </article>
+        </section>
+
+        <section id="automations">
+            <h2>Automations API</h2>
+
+            <article>
+                <h3>List Automations</h3>
+                <p><code>GET /v2/automations</code></p>
+                <p>Returns all automation rules configured in your account.</p>
+            </article>
+
+            <article>
+                <h3>Create Automation</h3>
+                <p><code>POST /v2/automations</code></p>
+                <p>Create a new automation rule.</p>
+
+                <h4>Request Body Example</h4>
+                <pre>
+{
+  "name": "Sunset Lights",
+  "enabled": true,
+  "trigger": {
+    "type": "sun",
+    "event": "sunset",
+    "offset_minutes": -30
+  },
+  "conditions": [
+    {
+      "type": "device_state",
+      "device_id": "sensor-presence-001",
+      "attribute": "occupied",
+      "operator": "eq",
+      "value": true
+    }
+  ],
+  "actions": [
+    {
+      "type": "device_command",
+      "device_id": "light-001",
+      "command": "turn_on",
+      "params": {
+        "brightness": 60,
+        "transition_seconds": 30
+      }
+    }
+  ]
+}
+                </pre>
+            </article>
+
+            <article>
+                <h3>Trigger Types</h3>
+                <ul>
+                    <li><strong>time</strong> - Specific time or cron expression</li>
+                    <li><strong>sun</strong> - Sunrise or sunset with optional offset</li>
+                    <li><strong>device_state</strong> - When a device attribute changes</li>
+                    <li><strong>location</strong> - Geofence enter/exit events</li>
+                    <li><strong>webhook</strong> - External HTTP trigger</li>
+                </ul>
+            </article>
+        </section>
+
+        <section id="energy">
+            <h2>Energy API</h2>
+
+            <article>
+                <h3>Get Current Usage</h3>
+                <p><code>GET /v2/energy/current</code></p>
+                <p>Returns real-time power consumption across all devices.</p>
+            </article>
+
+            <article>
+                <h3>Historical Data</h3>
+                <p><code>GET /v2/energy/history</code></p>
+                <p>Query historical energy consumption data.</p>
+
+                <h4>Query Parameters</h4>
+                <ul>
+                    <li><code>start_date</code> - Start of date range (ISO 8601)</li>
+                    <li><code>end_date</code> - End of date range (ISO 8601)</li>
+                    <li><code>resolution</code> - Data granularity (minute, hour, day)</li>
+                    <li><code>device_id</code> - Filter by specific device</li>
+                </ul>
+            </article>
+        </section>
+
+        <section id="errors">
+            <h2>Error Handling</h2>
+            <p>The API uses standard HTTP status codes and returns detailed error information.</p>
+
+            <h3>Error Response Format</h3>
+            <pre>
+{
+  "error": {
+    "code": "DEVICE_OFFLINE",
+    "message": "The requested device is currently offline",
+    "device_id": "light-001",
+    "suggestion": "Check device power and network connectivity"
+  }
+}
+            </pre>
+
+            <h3>Common Error Codes</h3>
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>HTTP Status</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>UNAUTHORIZED</td>
+                        <td>401</td>
+                        <td>Invalid or missing API key</td>
+                    </tr>
+                    <tr>
+                        <td>FORBIDDEN</td>
+                        <td>403</td>
+                        <td>Insufficient permissions</td>
+                    </tr>
+                    <tr>
+                        <td>NOT_FOUND</td>
+                        <td>404</td>
+                        <td>Resource not found</td>
+                    </tr>
+                    <tr>
+                        <td>RATE_LIMITED</td>
+                        <td>429</td>
+                        <td>Too many requests</td>
+                    </tr>
+                    <tr>
+                        <td>DEVICE_OFFLINE</td>
+                        <td>503</td>
+                        <td>Device unavailable</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>SmartHome API v2 Documentation | Last updated: November 2025</p>
+        <p>Need help? Contact <a href="mailto:developers@smarthome.io">developers@smarthome.io</a></p>
+    </footer>
+</body>
+</html>

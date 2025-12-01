@@ -1,89 +1,22 @@
 """Document class for vector store.
 
-Provides the Document dataclass for storing text chunks with metadata and embeddings.
+Re-exports the unified Document class from agenticflow.document.
+Also provides utility functions for document creation and splitting.
 """
 
 from __future__ import annotations
 
-import hashlib
-import uuid
-from dataclasses import dataclass, field
 from typing import Any
 
+# Re-export the unified Document class
+from agenticflow.document.types import Document
 
-@dataclass
-class Document:
-    """A document for storage in a vector store.
-    
-    Attributes:
-        text: The text content of the document.
-        metadata: Optional metadata dictionary.
-        embedding: Optional pre-computed embedding vector.
-        id: Unique identifier (auto-generated if not provided).
-    
-    Example:
-        >>> doc = Document(text="Python is great", metadata={"source": "tutorial"})
-        >>> doc.id
-        'doc_a1b2c3...'
-    """
-    
-    text: str
-    metadata: dict[str, Any] = field(default_factory=dict)
-    embedding: list[float] | None = None
-    id: str = ""
-    
-    def __post_init__(self) -> None:
-        """Generate ID if not provided."""
-        if not self.id:
-            self.id = self._generate_id()
-    
-    def _generate_id(self) -> str:
-        """Generate a unique ID based on content hash.
-        
-        Uses a combination of content hash and UUID for uniqueness.
-        """
-        content_hash = hashlib.sha256(self.text.encode()).hexdigest()[:8]
-        unique_suffix = uuid.uuid4().hex[:8]
-        return f"doc_{content_hash}_{unique_suffix}"
-    
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary representation.
-        
-        Returns:
-            Dictionary with text, metadata, and id.
-        """
-        return {
-            "id": self.id,
-            "text": self.text,
-            "metadata": self.metadata,
-            "embedding": self.embedding,
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Document:
-        """Create Document from dictionary.
-        
-        Args:
-            data: Dictionary with text, metadata, embedding, id.
-            
-        Returns:
-            Document instance.
-        """
-        return cls(
-            text=data.get("text", ""),
-            metadata=data.get("metadata", {}),
-            embedding=data.get("embedding"),
-            id=data.get("id", ""),
-        )
-    
-    def __len__(self) -> int:
-        """Return length of text content."""
-        return len(self.text)
-    
-    def __repr__(self) -> str:
-        """Return string representation."""
-        text_preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
-        return f"Document(id={self.id!r}, text={text_preview!r})"
+__all__ = [
+    "Document",
+    "create_documents",
+    "split_text",
+    "split_documents",
+]
 
 
 def create_documents(

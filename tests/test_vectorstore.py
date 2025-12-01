@@ -37,7 +37,7 @@ class TestDocument:
         """Test basic document creation."""
         doc = Document(text="Hello world")
         assert doc.text == "Hello world"
-        assert doc.metadata == {}
+        assert doc.metadata == {"source": "unknown"}  # Auto-added
         assert doc.embedding is None
         assert doc.id.startswith("doc_")
 
@@ -538,8 +538,9 @@ class TestCreateVectorstore:
         
         results = await store.search("test", k=10)
         metadatas = [r.document.metadata for r in results]
-        assert {"x": 1} in metadatas
-        assert {"x": 2} in metadatas
+        # Metadata includes auto-added source
+        assert any(m.get("x") == 1 for m in metadatas)
+        assert any(m.get("x") == 2 for m in metadatas)
 
 
 class TestVectorStoreWithMockEmbeddings:

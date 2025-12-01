@@ -71,7 +71,7 @@ class SemanticSplitter(BaseSplitter):
         sentences = [c.content for c in sentence_chunks]
         
         if len(sentences) <= 1:
-            return [TextChunk(content=text, metadata={"chunk_index": 0})]
+            return [TextChunk(text=text, metadata={"chunk_index": 0})]
         
         # Get embeddings for all sentences
         embeddings = await self.embedding_model.aembed(sentences)
@@ -100,7 +100,7 @@ class SemanticSplitter(BaseSplitter):
                     chunks.extend(sub_chunks)
                 else:
                     chunks.append(TextChunk(
-                        content=content,
+                        text=content,
                         metadata={"chunk_index": len(chunks)},
                     ))
                 

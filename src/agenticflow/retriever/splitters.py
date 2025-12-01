@@ -180,7 +180,7 @@ class TextSplitter(ABC):
                     content = content.strip()
                 if content:
                     chunks.append(TextChunk(
-                        content=content,
+                        text=content,
                         start_index=current_start,
                         end_index=position,
                         metadata={"chunk_index": len(chunks)},
@@ -210,7 +210,7 @@ class TextSplitter(ABC):
                 content = content.strip()
             if content:
                 chunks.append(TextChunk(
-                    content=content,
+                    text=content,
                     start_index=current_start,
                     end_index=position,
                     metadata={"chunk_index": len(chunks)},
@@ -273,7 +273,7 @@ class RecursiveCharacterSplitter(TextSplitter):
         """Recursively split text."""
         # Base case: no separators left
         if not separators:
-            return [TextChunk(content=text, metadata={"chunk_index": 0})]
+            return [TextChunk(text=text, metadata={"chunk_index": 0})]
         
         separator = separators[0]
         remaining_separators = separators[1:]
@@ -321,7 +321,7 @@ class RecursiveCharacterSplitter(TextSplitter):
                 else:
                     # Can't split further, just add as is
                     chunks.append(TextChunk(
-                        content=split,
+                        text=split,
                         metadata={"chunk_index": len(chunks)},
                     ))
                 continue
@@ -522,7 +522,7 @@ class MarkdownSplitter(TextSplitter):
             chunks = []
             for section in sections:
                 chunks.append(TextChunk(
-                    content=section["content"],
+                    text=section["content"],
                     metadata={
                         "headers": section["headers"],
                         "chunk_index": len(chunks),
@@ -545,7 +545,7 @@ class MarkdownSplitter(TextSplitter):
                 # Save current chunk first
                 if current_content:
                     chunks.append(TextChunk(
-                        content="\n\n".join(current_content),
+                        text="\n\n".join(current_content),
                         metadata={
                             "headers": dict(current_headers),
                             "chunk_index": len(chunks),
@@ -571,7 +571,7 @@ class MarkdownSplitter(TextSplitter):
             # Check if we need to start new chunk
             if current_length + section_length > self.chunk_size and current_content:
                 chunks.append(TextChunk(
-                    content="\n\n".join(current_content),
+                    text="\n\n".join(current_content),
                     metadata={
                         "headers": dict(current_headers),
                         "chunk_index": len(chunks),
@@ -587,7 +587,7 @@ class MarkdownSplitter(TextSplitter):
         # Add final chunk
         if current_content:
             chunks.append(TextChunk(
-                content="\n\n".join(current_content),
+                text="\n\n".join(current_content),
                 metadata={
                     "headers": dict(current_headers),
                     "chunk_index": len(chunks),
@@ -936,7 +936,7 @@ class SemanticSplitter(TextSplitter):
         sentences = [c.content for c in sentence_chunks]
         
         if len(sentences) <= 1:
-            return [TextChunk(content=text, metadata={"chunk_index": 0})]
+            return [TextChunk(text=text, metadata={"chunk_index": 0})]
         
         # Get embeddings for all sentences
         embeddings = await self.embedding_model.aembed(sentences)
@@ -965,7 +965,7 @@ class SemanticSplitter(TextSplitter):
                     chunks.extend(sub_chunks)
                 else:
                     chunks.append(TextChunk(
-                        content=content,
+                        text=content,
                         metadata={"chunk_index": len(chunks)},
                     ))
                 

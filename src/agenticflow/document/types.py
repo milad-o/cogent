@@ -109,53 +109,86 @@ class SplitterType(Enum):
     TOKEN = "token"
 
 
+def _generate_doc_id(text: str) -> str:
+    """Generate a unique ID based on content hash."""
+    import hashlib
+    import uuid
+    content_hash = hashlib.sha256(text.encode()).hexdigest()[:8]
+    unique_suffix = uuid.uuid4().hex[:8]
+    return f"doc_{content_hash}_{unique_suffix}"
+
+
 @dataclass
 class Document:
-    """A loaded document with content and metadata.
+    """A document with text content, metadata, and optional embedding.
     
-    This is the primary data structure for representing loaded documents
-    before they are split into chunks.
+    This is THE unified document type used throughout agenticflow for:
+    - Loading documents from files
+    - Storing in vector stores
+    - Retrieval results
     
     Attributes:
-        content: The text content of the document.
-        metadata: Metadata about the document including source, type, etc.
+        text: The text content of the document (primary field).
+        metadata: Metadata about the document (source, type, etc.).
+        embedding: Optional pre-computed embedding vector.
+        id: Unique identifier (auto-generated if not provided).
         
     Example:
+        >>> doc = Document(text="Hello, World!")
+        >>> doc.id
+        'doc_a1b2c3...'
+        
+        >>> # With metadata
         >>> doc = Document(
-        ...     content="Hello, World!",
-        ...     metadata={"source": "example.txt", "file_type": ".txt"}
+        ...     text="Python is great",
+        ...     metadata={"source": "tutorial.md", "language": "en"},
         ... )
-        >>> print(doc.content)
-        Hello, World!
     """
     
-    content: str
+    text: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    embedding: list[float] | None = None
+    id: str = ""
     
     def __post_init__(self) -> None:
-        """Ensure required metadata fields exist."""
+        """Generate ID if not provided, ensure source in metadata."""
+        if not self.id:
+            self.id = _generate_doc_id(self.text)
         if "source" not in self.metadata:
             self.metadata["source"] = "unknown"
     
+    # Alias for backward compatibility with document loaders
+    @property
+    def content(self) -> str:
+        """Alias for text (backward compatibility)."""
+        return self.text
+    
+    @content.setter
+    def content(self, value: str) -> None:
+        """Set text via content alias."""
+        self.text = value
+    
     def __len__(self) -> int:
-        """Return the length of the content."""
-        return len(self.content)
+        """Return the length of the text."""
+        return len(self.text)
     
     def __repr__(self) -> str:
         """Return a readable representation."""
-        preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
+        preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
         source = self.metadata.get("source", "unknown")
-        return f"Document(content='{preview}', source='{source}')"
+        return f"Document(id={self.id!r}, text={preview!r}, source={source!r})"
     
     def to_dict(self) -> dict[str, Any]:
         """Convert document to dictionary.
         
         Returns:
-            Dictionary with content and metadata.
+            Dictionary with id, text, metadata, and embedding.
         """
         return {
-            "content": self.content,
+            "id": self.id,
+            "text": self.text,
             "metadata": self.metadata,
+            "embedding": self.embedding,
         }
     
     @classmethod
@@ -163,14 +196,18 @@ class Document:
         """Create document from dictionary.
         
         Args:
-            data: Dictionary with content and optional metadata.
+            data: Dictionary with text/content and optional metadata.
             
         Returns:
             New Document instance.
         """
+        # Support both 'text' and 'content' keys
+        text = data.get("text") or data.get("content", "")
         return cls(
-            content=data.get("content", ""),
+            text=text,
             metadata=data.get("metadata", {}),
+            embedding=data.get("embedding"),
+            id=data.get("id", ""),
         )
 
 
@@ -178,37 +215,50 @@ class Document:
 class TextChunk:
     """A chunk of text with metadata and position information.
     
-    This is the primary data structure for representing split text
-    after document processing.
+    This is the data structure for representing split text after
+    document processing. Use `to_document()` to convert to Document
+    for vector store indexing.
     
     Attributes:
-        content: The text content of the chunk.
+        text: The text content of the chunk (primary field).
         metadata: Metadata inherited from source document plus chunk info.
         start_index: Character position in original text (optional).
         end_index: End character position in original text (optional).
         
     Example:
         >>> chunk = TextChunk(
-        ...     content="First paragraph.",
+        ...     text="First paragraph.",
         ...     metadata={"chunk_index": 0, "source": "doc.txt"},
         ...     start_index=0,
-        ...     end_index=16
+        ...     end_index=16,
         ... )
+        >>> doc = chunk.to_document()  # Convert for indexing
     """
     
-    content: str
+    text: str
     metadata: dict[str, Any] = field(default_factory=dict)
     start_index: int | None = None
     end_index: int | None = None
     
+    # Alias for backward compatibility
+    @property
+    def content(self) -> str:
+        """Alias for text (backward compatibility)."""
+        return self.text
+    
+    @content.setter
+    def content(self, value: str) -> None:
+        """Set text via content alias."""
+        self.text = value
+    
     def __len__(self) -> int:
-        """Return the length of the content."""
-        return len(self.content)
+        """Return the length of the text."""
+        return len(self.text)
     
     def __repr__(self) -> str:
         """Return a readable representation."""
-        preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
-        return f"TextChunk(len={len(self.content)}, content='{preview}')"
+        preview = self.text[:50] + "..." if len(self.text) > 50 else self.text
+        return f"TextChunk(len={len(self.text)}, text='{preview}')"
     
     def to_dict(self) -> dict[str, Any]:
         """Convert chunk to dictionary.
@@ -217,7 +267,7 @@ class TextChunk:
             Dictionary with all chunk data.
         """
         return {
-            "content": self.content,
+            "text": self.text,
             "metadata": self.metadata,
             "start_index": self.start_index,
             "end_index": self.end_index,
@@ -233,22 +283,21 @@ class TextChunk:
         Returns:
             New TextChunk instance.
         """
+        text = data.get("text") or data.get("content", "")
         return cls(
-            content=data.get("content", ""),
+            text=text,
             metadata=data.get("metadata", {}),
             start_index=data.get("start_index"),
             end_index=data.get("end_index"),
         )
     
     def to_document(self) -> Document:
-        """Convert chunk to a Document.
-        
-        Useful for further processing or when APIs expect Document type.
+        """Convert chunk to a Document for vector store indexing.
         
         Returns:
-            Document with chunk content and metadata.
+            Document with chunk text and metadata.
         """
-        return Document(content=self.content, metadata=self.metadata.copy())
+        return Document(text=self.text, metadata=self.metadata.copy())
 
 
 __all__ = [

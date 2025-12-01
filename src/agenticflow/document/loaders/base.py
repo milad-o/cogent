@@ -104,7 +104,7 @@ class BaseLoader(ABC):
             "file_type": path.suffix.lower(),
             **extra_metadata,
         }
-        return Document(content=content, metadata=metadata)
+        return Document(text=content, metadata=metadata)
 
 
 __all__ = ["BaseLoader"]

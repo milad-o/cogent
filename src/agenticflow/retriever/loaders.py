@@ -110,7 +110,7 @@ async def _load_markdown(path: Path, encoding: str = "utf-8") -> list[Document]:
                     key, value = line.split(":", 1)
                     metadata[key.strip()] = value.strip()
     
-    return [Document(content=content, metadata=metadata)]
+    return [Document(text=content, metadata=metadata)]
 
 
 async def _load_html(path: Path, encoding: str = "utf-8") -> list[Document]:
@@ -156,7 +156,7 @@ async def _load_html(path: Path, encoding: str = "utf-8") -> list[Document]:
     if title:
         metadata["title"] = title
     
-    return [Document(content=text, metadata=metadata)]
+    return [Document(text=text, metadata=metadata)]
 
 
 async def _load_pdf(path: Path) -> list[Document]:

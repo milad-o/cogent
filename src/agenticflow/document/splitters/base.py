@@ -112,7 +112,7 @@ class BaseSplitter(ABC):
                     content = content.strip()
                 if content:
                     chunks.append(TextChunk(
-                        content=content,
+                        text=content,
                         start_index=current_start,
                         end_index=position,
                         metadata={"chunk_index": len(chunks)},
@@ -142,7 +142,7 @@ class BaseSplitter(ABC):
                 content = content.strip()
             if content:
                 chunks.append(TextChunk(
-                    content=content,
+                    text=content,
                     start_index=current_start,
                     end_index=position,
                     metadata={"chunk_index": len(chunks)},

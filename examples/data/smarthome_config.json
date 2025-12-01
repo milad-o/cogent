@@ -1,0 +1,178 @@
+{
+  "platform": {
+    "name": "SmartHome IoT Platform",
+    "version": "3.2.0",
+    "environment": "production",
+    "region": "us-west-2"
+  },
+  "gateway": {
+    "id": "gw-main-001",
+    "protocols": {
+      "zigbee": {
+        "enabled": true,
+        "channel": 15,
+        "pan_id": "0x1A2B"
+      },
+      "zwave": {
+        "enabled": true,
+        "region": "US",
+        "security": "S2"
+      },
+      "wifi": {
+        "enabled": true,
+        "ssid": "SmartHome_IoT",
+        "band": "2.4GHz"
+      },
+      "bluetooth": {
+        "enabled": true,
+        "mode": "LE"
+      }
+    },
+    "max_devices": 200,
+    "polling_interval_ms": 5000
+  },
+  "automation": {
+    "engine": "v3",
+    "max_rules": 500,
+    "max_actions_per_rule": 20,
+    "execution_timeout_ms": 30000,
+    "retry_policy": {
+      "max_retries": 3,
+      "backoff_multiplier": 2.0,
+      "initial_delay_ms": 1000
+    }
+  },
+  "energy": {
+    "monitoring_enabled": true,
+    "sampling_interval_seconds": 60,
+    "utility_rates": {
+      "currency": "USD",
+      "peak_rate": 0.25,
+      "off_peak_rate": 0.12,
+      "peak_hours": {
+        "start": "14:00",
+        "end": "20:00"
+      }
+    },
+    "solar": {
+      "enabled": false,
+      "panel_capacity_kw": 0
+    }
+  },
+  "security": {
+    "authentication": {
+      "mfa_required": true,
+      "session_timeout_minutes": 60,
+      "password_policy": {
+        "min_length": 12,
+        "require_uppercase": true,
+        "require_numbers": true,
+        "require_special": true
+      }
+    },
+    "encryption": {
+      "algorithm": "AES-256-GCM",
+      "key_rotation_days": 90
+    },
+    "audit_logging": {
+      "enabled": true,
+      "retention_days": 365
+    }
+  },
+  "api": {
+    "base_url": "https://api.smarthome.io",
+    "version": "v2",
+    "rate_limits": {
+      "standard": {
+        "requests_per_minute": 100,
+        "burst_size": 20
+      },
+      "pro": {
+        "requests_per_minute": 1000,
+        "burst_size": 100
+      }
+    },
+    "webhooks": {
+      "enabled": true,
+      "max_endpoints": 10,
+      "retry_attempts": 3
+    }
+  },
+  "integrations": {
+    "voice_assistants": {
+      "alexa": {
+        "enabled": true,
+        "skill_id": "amzn1.ask.skill.xxxxx"
+      },
+      "google_home": {
+        "enabled": true,
+        "project_id": "smarthome-xxxxx"
+      },
+      "siri": {
+        "enabled": false
+      }
+    },
+    "ifttt": {
+      "enabled": true,
+      "service_key": "ifttt_xxxxx"
+    },
+    "home_assistant": {
+      "enabled": false,
+      "mqtt_broker": null
+    }
+  },
+  "notifications": {
+    "channels": {
+      "push": {
+        "enabled": true,
+        "provider": "firebase"
+      },
+      "email": {
+        "enabled": true,
+        "smtp_host": "smtp.sendgrid.net"
+      },
+      "sms": {
+        "enabled": false,
+        "provider": null
+      }
+    },
+    "quiet_hours": {
+      "enabled": true,
+      "start": "22:00",
+      "end": "07:00",
+      "exceptions": ["security", "smoke_detector"]
+    }
+  },
+  "rooms": [
+    {
+      "id": "room-001",
+      "name": "Living Room",
+      "floor": 1,
+      "area_sqft": 350
+    },
+    {
+      "id": "room-002", 
+      "name": "Kitchen",
+      "floor": 1,
+      "area_sqft": 200
+    },
+    {
+      "id": "room-003",
+      "name": "Master Bedroom",
+      "floor": 2,
+      "area_sqft": 280
+    },
+    {
+      "id": "room-004",
+      "name": "Office",
+      "floor": 2,
+      "area_sqft": 150
+    },
+    {
+      "id": "room-005",
+      "name": "Garage",
+      "floor": 1,
+      "area_sqft": 400
+    }
+  ]
+}

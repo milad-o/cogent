@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agenticflow import Agent
-from agenticflow.document import BaseSplitter, Document, DocumentLoader
+from agenticflow.document import BaseSplitter, Document, DocumentLoader, TextChunk
 from agenticflow.tools.base import tool
 from agenticflow.vectorstore import SearchResult, VectorStore
 from agenticflow.vectorstore.base import EmbeddingProvider
@@ -710,16 +710,18 @@ When answering questions:
                 continue
             
             # Split with type-specific splitter
-            chunks = splitter.split_documents(docs)
+            text_chunks = splitter.split_documents(docs)
             
             # Apply post-processing if configured
             if pipeline.post_process:
-                chunks = pipeline.post_process(chunks)
+                text_chunks = pipeline.post_process(text_chunks)
             
-            all_chunks.extend(chunks)
+            # Convert TextChunk to Document for vector store
+            for chunk in text_chunks:
+                all_chunks.append(chunk.to_document())
             
             if show_progress:
-                print(f"    ✓ {len(chunks)} chunks from {len(docs)} docs")
+                print(f"    ✓ {len(text_chunks)} chunks from {len(docs)} docs")
         
         if not all_chunks:
             raise ValueError("No documents were loaded successfully")
@@ -836,7 +838,9 @@ When answering questions:
                 chunk_overlap=self._chunk_overlap,
             )
         
-        chunks = splitter.split_documents(docs)
+        text_chunks = splitter.split_documents(docs)
+        # Convert TextChunk to Document for vector store
+        chunks = [chunk.to_document() for chunk in text_chunks]
         
         if show_progress:
             print(f"  ✓ {len(chunks)} chunks created")

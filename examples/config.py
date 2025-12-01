@@ -78,13 +78,41 @@ class Settings(BaseSettings):
     ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_MODEL")
     
     # ==========================================================================
+    # Embedding Settings
+    # ==========================================================================
+    
+    embedding_provider: Literal["openai", "ollama", "azure"] | None = Field(
+        default=None,
+        alias="EMBEDDING_PROVIDER",
+        description="Preferred embedding provider. If not set, uses OpenAI if available.",
+    )
+    
+    # OpenAI embeddings
+    openai_embedding_model: str = Field(
+        default="text-embedding-3-small",
+        alias="OPENAI_EMBEDDING_MODEL",
+    )
+    
+    # Ollama embeddings
+    ollama_embedding_model: str = Field(
+        default="nomic-embed-text",
+        alias="OLLAMA_EMBEDDING_MODEL",
+    )
+    
+    # Azure OpenAI embeddings
+    azure_openai_embedding_deployment: str | None = Field(
+        default=None,
+        alias="AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+    )
+    
+    # ==========================================================================
     # Default Model Settings
     # ==========================================================================
     
-    default_provider: Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama"] | None = Field(
+    llm_provider: Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama"] | None = Field(
         default=None,
-        alias="DEFAULT_PROVIDER",
-        description="Preferred model provider. If not set, uses first available.",
+        alias="LLM_PROVIDER",
+        description="Preferred LLM provider. If not set, uses first available.",
     )
     
     # Model names per provider (can be overridden in .env)
@@ -139,8 +167,8 @@ class Settings(BaseSettings):
     
     @property
     def has_ollama(self) -> bool:
-        """Check if Ollama is selected as the default provider."""
-        return self.default_provider == "ollama"
+        """Check if Ollama is selected as the LLM provider."""
+        return self.llm_provider == "ollama"
     
     @property
     def available_providers(self) -> list[str]:
@@ -160,12 +188,35 @@ class Settings(BaseSettings):
             providers.append("ollama")
         return providers
     
+    @property
+    def available_embedding_providers(self) -> list[str]:
+        """List of embedding providers that can be used."""
+        providers = []
+        if self.has_openai:
+            providers.append("openai")
+        if self.has_azure and self.azure_openai_embedding_deployment:
+            providers.append("azure")
+        # Ollama is always available if host is set
+        providers.append("ollama")
+        return providers
+    
     def get_preferred_provider(self) -> str | None:
-        """Get the preferred provider based on settings and availability."""
-        if self.default_provider and self.default_provider in self.available_providers:
-            return self.default_provider
+        """Get the preferred LLM provider based on settings and availability."""
+        if self.llm_provider and self.llm_provider in self.available_providers:
+            return self.llm_provider
         # Return first available
         return self.available_providers[0] if self.available_providers else None
+    
+    def get_preferred_embedding_provider(self) -> str | None:
+        """Get the preferred embedding provider."""
+        if self.embedding_provider and self.embedding_provider in self.available_embedding_providers:
+            return self.embedding_provider
+        # Default to OpenAI if available, then Azure, then Ollama
+        if self.has_openai:
+            return "openai"
+        if self.has_azure and self.azure_openai_embedding_deployment:
+            return "azure"
+        return "ollama"
 
 
 @lru_cache
@@ -278,14 +329,81 @@ def get_model(provider: str | None = None):
         )
 
 
+def get_embeddings(provider: str | None = None):
+    """Get an embedding provider for the specified or default provider.
+    
+    Args:
+        provider: Specific provider to use ("openai", "ollama", "azure").
+                  If None, uses default/first available.
+        
+    Returns:
+        A configured embedding provider instance.
+        
+    Raises:
+        ValueError: If provider not available.
+        
+    Example:
+        from config import get_embeddings
+        
+        embeddings = get_embeddings()  # Uses default (OpenAI if available)
+        embeddings = get_embeddings("ollama")  # Use local Ollama
+    """
+    s = settings
+    
+    # Determine which provider to use
+    if provider is None:
+        provider = s.get_preferred_embedding_provider()
+    
+    if provider == "openai":
+        if not s.has_openai:
+            raise ValueError(
+                "OPENAI_API_KEY not configured for embeddings. "
+                "Set OPENAI_API_KEY or use EMBEDDING_PROVIDER=ollama"
+            )
+        from agenticflow.vectorstore import OpenAIEmbeddings
+        return OpenAIEmbeddings(
+            model=s.openai_embedding_model,
+            api_key=s.openai_api_key,
+        )
+    
+    elif provider == "ollama":
+        from agenticflow.vectorstore import OllamaEmbeddings
+        return OllamaEmbeddings(
+            model=s.ollama_embedding_model,
+            base_url=s.ollama_host,
+        )
+    
+    elif provider == "azure":
+        if not s.has_azure or not s.azure_openai_embedding_deployment:
+            raise ValueError(
+                "Azure OpenAI embeddings not configured. Set:\n"
+                "  - AZURE_OPENAI_ENDPOINT\n"
+                "  - AZURE_OPENAI_EMBEDDING_DEPLOYMENT\n"
+                "  - AZURE_OPENAI_API_KEY (or use managed identity)"
+            )
+        from agenticflow.vectorstore import OpenAIEmbeddings
+        return OpenAIEmbeddings(
+            model=s.azure_openai_embedding_deployment,
+            api_key=s.azure_openai_api_key,
+            base_url=f"{s.azure_openai_endpoint}/openai/deployments/{s.azure_openai_embedding_deployment}",
+        )
+    
+    else:
+        raise ValueError(
+            f"Unknown embedding provider: {provider}. "
+            f"Available: openai, ollama, azure"
+        )
+
+
 def print_config():
     """Print current configuration (useful for debugging)."""
     s = settings
     print("=" * 50)
     print("AgenticFlow Example Configuration")
     print("=" * 50)
-    print(f"Available providers: {', '.join(s.available_providers) or 'None!'}")
-    print(f"Default provider: {s.get_preferred_provider() or 'None'}")
+    print(f"Available LLM providers: {', '.join(s.available_providers) or 'None!'}")
+    print(f"LLM provider: {s.get_preferred_provider() or 'None'}")
+    print(f"Embedding provider: {s.get_preferred_embedding_provider() or 'None'}")
     print(f"Verbose level: {s.verbose_level}")
     print()
     print("Configured Models:")
@@ -294,11 +412,18 @@ def print_config():
     print(f"  Anthropic: {'✓ ' + s.anthropic_model if s.has_anthropic else '✗ not set'}")
     print(f"  Groq:      {'✓ ' + s.groq_model if s.has_groq else '✗ not set'}")
     print(f"  Azure:     {'✓ configured' if s.has_azure else '✗ not set'}")
-    print(f"  Ollama:    {'✓ ' + s.ollama_model + ' @ ' + s.ollama_host if s.default_provider == 'ollama' else '(set DEFAULT_PROVIDER=ollama to use)'}")
+    print(f"  Ollama:    {'✓ ' + s.ollama_model + ' @ ' + s.ollama_host if s.llm_provider == 'ollama' else '(set LLM_PROVIDER=ollama to use)'}")
+    print()
+    print("Configured Embeddings:")
+    print(f"  OpenAI:    {'✓ ' + s.openai_embedding_model if s.has_openai else '✗ not set'}")
+    print(f"  Ollama:    ✓ {s.ollama_embedding_model} @ {s.ollama_host}")
+    print(f"  Azure:     {'✓ ' + s.azure_openai_embedding_deployment if s.has_azure and s.azure_openai_embedding_deployment else '✗ not set'}")
     print()
     print("To change provider, add to .env:")
-    print("  DEFAULT_PROVIDER=ollama  # or: gemini, openai, anthropic, groq, azure")
-    print("  OLLAMA_MODEL=qwen2.5:7b  # optional, defaults to qwen2.5:7b")
+    print("  LLM_PROVIDER=ollama            # gemini, openai, anthropic, groq, azure, ollama")
+    print("  EMBEDDING_PROVIDER=ollama      # openai, ollama, azure")
+    print("  OLLAMA_MODEL=qwen2.5:7b")
+    print("  OLLAMA_EMBEDDING_MODEL=nomic-embed-text")
     print("=" * 50)
 
 

@@ -59,7 +59,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
         """Recursively split text."""
         # Base case: no separators left
         if not separators:
-            return [TextChunk(content=text, metadata={"chunk_index": 0})]
+            return [TextChunk(text=text, metadata={"chunk_index": 0})]
         
         separator = separators[0]
         remaining_separators = separators[1:]
@@ -107,7 +107,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
                 else:
                     # Can't split further, just add as is
                     chunks.append(TextChunk(
-                        content=split,
+                        text=split,
                         metadata={"chunk_index": len(chunks)},
                     ))
                 continue

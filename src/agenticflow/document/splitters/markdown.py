@@ -47,7 +47,7 @@ class MarkdownSplitter(BaseSplitter):
             chunks = []
             for section in sections:
                 chunks.append(TextChunk(
-                    content=section["content"],
+                    text=section["content"],
                     metadata={
                         "headers": section["headers"],
                         "chunk_index": len(chunks),
@@ -70,7 +70,7 @@ class MarkdownSplitter(BaseSplitter):
                 # Save current chunk first
                 if current_content:
                     chunks.append(TextChunk(
-                        content="\n\n".join(current_content),
+                        text="\n\n".join(current_content),
                         metadata={
                             "headers": dict(current_headers),
                             "chunk_index": len(chunks),
@@ -96,7 +96,7 @@ class MarkdownSplitter(BaseSplitter):
             # Check if we need to start new chunk
             if current_length + section_length > self.chunk_size and current_content:
                 chunks.append(TextChunk(
-                    content="\n\n".join(current_content),
+                    text="\n\n".join(current_content),
                     metadata={
                         "headers": dict(current_headers),
                         "chunk_index": len(chunks),
@@ -112,7 +112,7 @@ class MarkdownSplitter(BaseSplitter):
         # Add final chunk
         if current_content:
             chunks.append(TextChunk(
-                content="\n\n".join(current_content),
+                text="\n\n".join(current_content),
                 metadata={
                     "headers": dict(current_headers),
                     "chunk_index": len(chunks),
