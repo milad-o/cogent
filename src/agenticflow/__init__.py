@@ -187,7 +187,21 @@ from agenticflow.interceptors import (
     Auditor,
     AuditEvent,
     AuditEventType,
+    # Context Layer
+    ToolGate,
+    PermissionGate,
+    ConversationGate,
+    Failover,
+    ToolGuard,
+    CircuitBreaker,
+    PromptAdapter,
+    ContextPrompt,
+    ConversationPrompt,
+    LambdaPrompt,
 )
+
+# Context - invocation-scoped data
+from agenticflow.context import RunContext, EMPTY_CONTEXT
 
 # Graphs - Execution strategies
 from agenticflow.executors import (
@@ -425,6 +439,20 @@ __all__ = [
     "Auditor",
     "AuditEvent",
     "AuditEventType",
+    # Context Layer
+    "ToolGate",
+    "PermissionGate",
+    "ConversationGate",
+    "Failover",
+    "ToolGuard",
+    "CircuitBreaker",
+    "PromptAdapter",
+    "ContextPrompt",
+    "ConversationPrompt",
+    "LambdaPrompt",
+    # Context
+    "RunContext",
+    "EMPTY_CONTEXT",
     # Events
     "EventBus",
     "get_event_bus",

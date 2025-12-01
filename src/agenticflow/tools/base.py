@@ -2,6 +2,7 @@
 Native tool abstraction for AgenticFlow.
 
 Lightweight tool implementations compatible with OpenAI function calling format.
+Supports context injection via `ctx: RunContext` parameter.
 """
 
 from __future__ import annotations
@@ -10,7 +11,10 @@ import asyncio
 import inspect
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, get_type_hints
+from typing import TYPE_CHECKING, Any, Callable, get_type_hints
+
+if TYPE_CHECKING:
+    from agenticflow.context import RunContext
 
 
 @dataclass
@@ -21,12 +25,19 @@ class BaseTool:
     - Name and description for the LLM
     - JSON schema for parameters
     - Sync and async invocation
+    - Context injection (if function has `ctx: RunContext` param)
     
     Example:
         @tool
         def search(query: str) -> str:
             '''Search the web for information.'''
             return f"Results for: {query}"
+        
+        # With context access:
+        @tool
+        def get_user_data(ctx: RunContext) -> str:
+            '''Get data for the current user.'''
+            return f"User: {ctx.user_id}"
         
         # Or create directly:
         tool = BaseTool(
@@ -41,31 +52,46 @@ class BaseTool:
     description: str
     func: Callable[..., Any]
     args_schema: dict[str, Any] = field(default_factory=dict)
+    _needs_context: bool = field(default=False, repr=False)
     
-    def invoke(self, args: dict[str, Any]) -> Any:
+    def __post_init__(self) -> None:
+        """Check if function needs context injection."""
+        self._needs_context = _function_needs_context(self.func)
+    
+    def invoke(self, args: dict[str, Any], ctx: RunContext | None = None) -> Any:
         """Invoke the tool synchronously.
         
         Args:
             args: Dictionary of arguments matching the schema.
+            ctx: Optional RunContext to inject.
             
         Returns:
             Tool result.
         """
+        if self._needs_context and ctx is not None:
+            return self.func(**args, ctx=ctx)
         return self.func(**args)
     
-    async def ainvoke(self, args: dict[str, Any]) -> Any:
+    async def ainvoke(self, args: dict[str, Any], ctx: RunContext | None = None) -> Any:
         """Invoke the tool asynchronously.
         
         Args:
             args: Dictionary of arguments matching the schema.
+            ctx: Optional RunContext to inject.
             
         Returns:
             Tool result.
         """
-        if asyncio.iscoroutinefunction(self.func):
-            return await self.func(**args)
+        if self._needs_context and ctx is not None:
+            if asyncio.iscoroutinefunction(self.func):
+                return await self.func(**args, ctx=ctx)
+            else:
+                return await asyncio.to_thread(self.func, **args, ctx=ctx)
         else:
-            return await asyncio.to_thread(self.func, **args)
+            if asyncio.iscoroutinefunction(self.func):
+                return await self.func(**args)
+            else:
+                return await asyncio.to_thread(self.func, **args)
     
     def to_openai(self) -> dict[str, Any]:
         """Convert to OpenAI function calling format.
@@ -107,15 +133,26 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
     return type_map.get(py_type, {"type": "string"})
 
 
+def _function_needs_context(func: Callable[..., Any]) -> bool:
+    """Check if function has a `ctx` parameter for context injection."""
+    sig = inspect.signature(func)
+    return "ctx" in sig.parameters
+
+
 def _extract_schema_from_function(func: Callable[..., Any]) -> dict[str, Any]:
-    """Extract JSON schema from function signature and docstring."""
+    """Extract JSON schema from function signature and docstring.
+    
+    Note: The `ctx` parameter is excluded from the schema as it's
+    automatically injected and not passed by the LLM.
+    """
     sig = inspect.signature(func)
     hints = get_type_hints(func) if hasattr(func, "__annotations__") else {}
     
     schema: dict[str, Any] = {}
     
     for param_name, param in sig.parameters.items():
-        if param_name in ("self", "cls"):
+        # Skip self/cls and the special ctx parameter
+        if param_name in ("self", "cls", "ctx"):
             continue
         
         param_schema: dict[str, Any] = {}

@@ -45,6 +45,7 @@ from agenticflow.interceptors.base import (
     StopExecution,
     run_interceptors,
 )
+from agenticflow.context import RunContext, EMPTY_CONTEXT
 
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
@@ -299,7 +300,7 @@ class NativeExecutor(BaseExecutor):
     async def execute(
         self,
         task: str,
-        context: dict[str, Any] | None = None,
+        context: dict[str, Any] | RunContext | None = None,
     ) -> Any:
         """Execute task with observability support.
         
@@ -315,7 +316,9 @@ class NativeExecutor(BaseExecutor):
         
         Args:
             task: The task to execute.
-            context: Optional context dictionary.
+            context: Optional context - can be a dict or RunContext.
+                     If dict, it's used for message building only.
+                     If RunContext, it's also passed to tools and interceptors.
             
         Returns:
             If output schema configured: StructuredResult with parsed data.
@@ -323,6 +326,19 @@ class NativeExecutor(BaseExecutor):
         """
         import time
         from agenticflow.core.enums import EventType
+        
+        # Normalize context: convert dict to RunContext with metadata
+        run_context: RunContext
+        context_dict: dict[str, Any] | None = None
+        if context is None:
+            run_context = EMPTY_CONTEXT
+        elif isinstance(context, RunContext):
+            run_context = context
+            context_dict = context.metadata if context.metadata else None
+        else:
+            # Dict passed - store in metadata
+            run_context = RunContext(metadata=context)
+            context_dict = context
         
         # Get observability components
         event_bus = getattr(self.agent, 'event_bus', None)
@@ -344,14 +360,14 @@ class NativeExecutor(BaseExecutor):
             })
         
         # Build messages once
-        messages = self._build_messages(task, context)
+        messages = self._build_messages(task, context_dict)
         
         # === REASONING PHASE ===
         # If reasoning is enabled, think through the problem first
         reasoning_config = getattr(self.agent, '_reasoning_config', None)
         if reasoning_config is not None:
             reasoning_result = await self._execute_reasoning(
-                task, context, messages, event_bus, agent_name
+                task, context_dict, messages, event_bus, agent_name
             )
         
         # === STRUCTURED OUTPUT ===
@@ -359,13 +375,13 @@ class NativeExecutor(BaseExecutor):
         output_config = getattr(self.agent, '_output_config', None)
         if output_config is not None:
             return await self._execute_with_structured_output(
-                task, context, messages, event_bus, agent_name
+                task, context_dict, messages, event_bus, agent_name, run_context
             )
         
         # === STANDARD EXECUTION ===
         # No structured output - use main loop directly
         return await self._execute_main_loop(
-            task, context, messages, event_bus, agent_name, execution_start
+            task, context_dict, messages, event_bus, agent_name, execution_start, run_context
         )
     
     def _build_messages(
@@ -451,6 +467,7 @@ class NativeExecutor(BaseExecutor):
         messages: list[BaseMessage],
         event_bus: Any | None,
         agent_name: str,
+        run_context: RunContext | None = None,
     ) -> Any:
         """Execute with structured output support and retry on validation errors.
         
@@ -463,6 +480,7 @@ class NativeExecutor(BaseExecutor):
             messages: Initial messages.
             event_bus: Event bus for observability.
             agent_name: Agent name for events.
+            run_context: Optional RunContext for tools and interceptors.
             
         Returns:
             StructuredResult if output schema configured, else raw string.
@@ -475,7 +493,7 @@ class NativeExecutor(BaseExecutor):
             # No structured output - delegate to normal flow
             # This should not be called, but handle gracefully
             return await self._execute_main_loop(
-                task, context, messages, event_bus, agent_name, time.perf_counter()
+                task, context, messages, event_bus, agent_name, time.perf_counter(), run_context
             )
         
         # Structured output enabled
@@ -496,7 +514,7 @@ class NativeExecutor(BaseExecutor):
             # Execute main loop
             raw_result = await self._execute_main_loop(
                 effective_task, context, structured_messages, 
-                event_bus, agent_name, time.perf_counter()
+                event_bus, agent_name, time.perf_counter(), run_context
             )
             
             # Try to validate
@@ -541,6 +559,7 @@ class NativeExecutor(BaseExecutor):
         event_bus: Any | None,
         agent_name: str,
         execution_start: float,
+        run_context: RunContext | None = None,
     ) -> str:
         """Execute the main agent loop (extracted for reuse with structured output).
         
@@ -551,6 +570,7 @@ class NativeExecutor(BaseExecutor):
             event_bus: Event bus for observability.
             agent_name: Agent name for events.
             execution_start: Start time for duration tracking.
+            run_context: Optional RunContext for tools and interceptors.
             
         Returns:
             Raw response content string.
@@ -567,6 +587,15 @@ class NativeExecutor(BaseExecutor):
         # Shared state for interceptors across the execution
         intercept_state: dict[str, Any] = {}
         
+        # Current tools (can be modified by ToolGate interceptors)
+        current_tools = list(self.agent.all_tools) if self.agent.all_tools else []
+        
+        # Current model (can be modified by Failover interceptors)
+        current_model = self._bound_model
+        
+        # Current system prompt (can be modified by PromptAdapter interceptors)
+        current_prompt = self.agent.config.system_prompt
+        
         # Helper to create context for a phase
         def make_ctx(
             phase: Phase,
@@ -578,6 +607,8 @@ class NativeExecutor(BaseExecutor):
                 task=task,
                 messages=[{"role": getattr(m, "role", "unknown"), "content": getattr(m, "content", "")} for m in messages],
                 state=intercept_state,
+                run_context=run_context,
+                tools=current_tools,
                 model_calls=model_calls,
                 tool_calls=total_tool_calls,
                 **extra,
@@ -589,6 +620,17 @@ class NativeExecutor(BaseExecutor):
                 result = await run_interceptors(interceptors, make_ctx(Phase.PRE_RUN))
                 if not result.proceed:
                     return result.final_response or "Execution stopped by interceptor"
+                # Apply tool filtering if modified
+                if result.modified_tools is not None:
+                    current_tools = result.modified_tools
+                # Apply prompt modification if set
+                if result.modified_prompt is not None:
+                    current_prompt = result.modified_prompt
+                    # Rebuild messages with new prompt
+                    if messages and isinstance(messages[0], SystemMessage):
+                        messages[0] = SystemMessage(content=current_prompt)
+                    elif current_prompt:
+                        messages.insert(0, SystemMessage(content=current_prompt))
             except StopExecution as e:
                 return e.response
         
@@ -599,6 +641,19 @@ class NativeExecutor(BaseExecutor):
                     result = await run_interceptors(interceptors, make_ctx(Phase.PRE_THINK))
                     if not result.proceed:
                         return result.final_response or "Execution stopped by interceptor"
+                    # Apply tool filtering if modified
+                    if result.modified_tools is not None:
+                        current_tools = result.modified_tools
+                    # Apply model switch if modified
+                    if result.modified_model is not None:
+                        current_model = result.modified_model
+                        if current_tools:
+                            current_model = current_model.bind_tools(current_tools, parallel_tool_calls=True)
+                    # Apply prompt modification if set
+                    if result.modified_prompt is not None:
+                        current_prompt = result.modified_prompt
+                        if messages and isinstance(messages[0], SystemMessage):
+                            messages[0] = SystemMessage(content=current_prompt)
                 except StopExecution as e:
                     return e.response
             
@@ -693,6 +748,7 @@ class NativeExecutor(BaseExecutor):
                 response.tool_calls,
                 interceptors,
                 make_ctx,
+                run_context,
             )
             messages.extend(tool_results)
             total_tool_calls += num_calls
@@ -728,6 +784,7 @@ class NativeExecutor(BaseExecutor):
         tool_calls: list[dict[str, Any]],
         interceptors: list[Interceptor],
         make_ctx: Any,
+        run_context: RunContext | None = None,
     ) -> list[ToolMessage]:
         """Execute tools with PRE_ACT/POST_ACT interceptor hooks.
         
@@ -735,13 +792,14 @@ class NativeExecutor(BaseExecutor):
             tool_calls: List of tool call dicts from LLM.
             interceptors: List of interceptors.
             make_ctx: Context factory function.
+            run_context: Optional RunContext to pass to tools.
             
         Returns:
             List of ToolMessage results.
         """
         if not interceptors:
             # No interceptors - use fast parallel path
-            return await self._execute_tools_parallel(tool_calls)
+            return await self._execute_tools_parallel(tool_calls, run_context)
         
         results: list[ToolMessage] = []
         
@@ -788,9 +846,9 @@ class NativeExecutor(BaseExecutor):
             if tool:
                 try:
                     if hasattr(tool, "ainvoke"):
-                        result = await tool.ainvoke(tool_args)
+                        result = await tool.ainvoke(tool_args, ctx=run_context)
                     else:
-                        result = tool.invoke(tool_args)
+                        result = tool.invoke(tool_args, ctx=run_context)
                     result_str = str(result) if result is not None else ""
                 except Exception as e:
                     result_str = f"Error: {e}"
@@ -972,6 +1030,7 @@ class NativeExecutor(BaseExecutor):
     async def _execute_tools_parallel(
         self,
         tool_calls: list[dict[str, Any]],
+        run_context: RunContext | None = None,
     ) -> list[ToolMessage]:
         """Execute all tool calls in parallel using asyncio.gather.
         
@@ -979,13 +1038,14 @@ class NativeExecutor(BaseExecutor):
         
         Args:
             tool_calls: List of tool call dictionaries from the LLM.
+            run_context: Optional RunContext to pass to tools.
             
         Returns:
             List of ToolMessage results in the same order.
         """
         # Execute all tools concurrently
         results = await asyncio.gather(
-            *(self._run_single_tool(tc) for tc in tool_calls),
+            *(self._run_single_tool(tc, run_context) for tc in tool_calls),
             return_exceptions=True,
         )
         
@@ -1007,11 +1067,13 @@ class NativeExecutor(BaseExecutor):
     async def _run_single_tool(
         self,
         tool_call: dict[str, Any],
+        run_context: RunContext | None = None,
     ) -> ToolMessage:
         """Execute a single tool call.
         
         Args:
             tool_call: Tool call dict with name, args, id.
+            run_context: Optional RunContext to pass to the tool.
             
         Returns:
             ToolMessage with the result.
@@ -1032,12 +1094,12 @@ class NativeExecutor(BaseExecutor):
             )
         
         try:
-            # Direct invocation - no resilience wrapper
+            # Direct invocation with context support
             if asyncio.iscoroutinefunction(getattr(tool, "func", None)):
-                result = await tool.ainvoke(args)
+                result = await tool.ainvoke(args, ctx=run_context)
             else:
                 # Run sync tools in thread pool to not block
-                result = await asyncio.to_thread(tool.invoke, args)
+                result = await asyncio.to_thread(tool.invoke, args, run_context)
             
             self._track_tool_result(tool_name, result, 0)
             

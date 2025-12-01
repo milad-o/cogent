@@ -1062,3 +1062,535 @@ class TestAuditEvent:
         
         json_str = event.to_json()
         assert '"event_type": "run_start"' in json_str
+
+
+# =============================================================================
+# Test Context Layer Interceptors
+# =============================================================================
+
+from agenticflow.interceptors.gates import ToolGate, PermissionGate, ConversationGate
+from agenticflow.interceptors.failover import Failover, FailoverTrigger
+from agenticflow.interceptors.guards import ToolGuard, CircuitBreaker
+from agenticflow.interceptors.prompt import (
+    PromptAdapter,
+    ContextPrompt,
+    ConversationPrompt,
+    LambdaPrompt,
+)
+from agenticflow.context import RunContext, EMPTY_CONTEXT
+
+
+class TestToolGate:
+    """Test ToolGate base class."""
+
+    @pytest.mark.asyncio
+    async def test_pre_run_filters_tools(self):
+        """ToolGate subclass filters tools via filter method."""
+        class TestGate(ToolGate):
+            async def filter(self, tools, ctx):
+                return [t for t in tools if t.name != "banned"]
+
+        gate = TestGate()
+        
+        # Create mock tools
+        tool1 = MagicMock()
+        tool1.name = "allowed"
+        tool2 = MagicMock()
+        tool2.name = "banned"
+        
+        mock_agent = MagicMock()
+        context = InterceptContext(
+            agent=mock_agent,
+            task="task",
+            phase=Phase.PRE_THINK,
+            messages=[],
+            tools=[tool1, tool2],
+        )
+        
+        result = await gate.pre_think(context)
+        assert result.proceed is True
+        assert result.modified_tools == [tool1]
+
+
+class TestPermissionGate:
+    """Test PermissionGate interceptor."""
+
+    def test_default_values(self):
+        gate = PermissionGate()
+        assert gate.default_tools == []
+
+    def test_custom_default_tools(self):
+        gate = PermissionGate(default_tools=["search", "read"])
+        assert gate.default_tools == ["search", "read"]
+
+    @pytest.mark.asyncio
+    async def test_filter_with_default_tools(self):
+        gate = PermissionGate(default_tools=["search"])
+        
+        tool1 = MagicMock()
+        tool1.name = "search"
+        tool2 = MagicMock()
+        tool2.name = "delete"
+        
+        mock_agent = MagicMock()
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_THINK,
+            messages=[],
+        )
+        
+        filtered = await gate.filter([tool1, tool2], ctx)
+        assert len(filtered) == 1
+        assert filtered[0].name == "search"
+
+    @pytest.mark.asyncio
+    async def test_filter_with_wildcard(self):
+        gate = PermissionGate(default_tools=["*"])
+        
+        tool1 = MagicMock()
+        tool1.name = "search"
+        tool2 = MagicMock()
+        tool2.name = "delete"
+        
+        mock_agent = MagicMock()
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_THINK,
+            messages=[],
+        )
+        
+        filtered = await gate.filter([tool1, tool2], ctx)
+        assert len(filtered) == 2
+
+
+class TestConversationGate:
+    """Test ConversationGate interceptor."""
+
+    def test_creation_with_stages(self):
+        stages = {0: ["greeting"], 5: ["search"]}
+        gate = ConversationGate(stages=stages)
+        assert gate.stages == stages
+
+    @pytest.mark.asyncio
+    async def test_filter_tools_by_message_count(self):
+        stages = {
+            0: ["greeting"],
+            5: ["search"],
+            10: ["write"],
+        }
+        gate = ConversationGate(stages=stages)
+        
+        tool1 = MagicMock()
+        tool1.name = "greeting"
+        tool2 = MagicMock()
+        tool2.name = "search"
+        tool3 = MagicMock()
+        tool3.name = "write"
+        
+        mock_agent = MagicMock()
+        
+        # At 3 messages - only greeting available
+        ctx3 = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_THINK,
+            messages=[{"role": "user", "content": "hi"}] * 3,
+        )
+        filtered = await gate.filter([tool1, tool2, tool3], ctx3)
+        names = [t.name for t in filtered]
+        assert "greeting" in names
+        assert "search" not in names
+        
+        # At 7 messages - greeting + search
+        ctx7 = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_THINK,
+            messages=[{"role": "user", "content": "hi"}] * 7,
+        )
+        filtered = await gate.filter([tool1, tool2, tool3], ctx7)
+        names = [t.name for t in filtered]
+        assert "greeting" in names
+        assert "search" in names
+        assert "write" not in names
+
+
+class TestFailover:
+    """Test Failover interceptor."""
+
+    def test_creation_with_fallbacks(self):
+        failover = Failover(fallbacks=["gpt-4", "gpt-3.5-turbo"])
+        assert failover.fallbacks == ["gpt-4", "gpt-3.5-turbo"]
+
+    def test_default_triggers(self):
+        failover = Failover(fallbacks=["gpt-4"])
+        # Default triggers are rate_limit, timeout, error
+        assert FailoverTrigger.RATE_LIMIT in failover.triggers
+        assert FailoverTrigger.TIMEOUT in failover.triggers
+        assert FailoverTrigger.ERROR in failover.triggers
+
+    def test_custom_triggers(self):
+        failover = Failover(
+            fallbacks=["gpt-4"],
+            on=["rate_limit", "context_length"],
+        )
+        assert FailoverTrigger.RATE_LIMIT in failover.triggers
+        assert FailoverTrigger.CONTEXT_LENGTH in failover.triggers
+        assert FailoverTrigger.TIMEOUT not in failover.triggers
+
+    def test_should_trigger_rate_limit(self):
+        failover = Failover(fallbacks=["gpt-4"], on=["rate_limit"])
+        
+        class RateLimitError(Exception):
+            pass
+        
+        assert failover._should_trigger(RateLimitError("rate limit exceeded")) is True
+        assert failover._should_trigger(Exception("429 error")) is True
+        assert failover._should_trigger(Exception("unknown error")) is False
+
+    def test_should_trigger_timeout(self):
+        failover = Failover(fallbacks=["gpt-4"], on=["timeout"])
+        
+        assert failover._should_trigger(TimeoutError("request timed out")) is True
+        assert failover._should_trigger(Exception("connection timeout")) is True
+
+    def test_should_trigger_error(self):
+        failover = Failover(fallbacks=["gpt-4"], on=["error"])
+        # ERROR trigger matches anything
+        assert failover._should_trigger(Exception("any error")) is True
+
+
+class TestToolGuard:
+    """Test ToolGuard interceptor."""
+
+    def test_default_values(self):
+        guard = ToolGuard()
+        assert guard.max_retries == 3
+        assert guard.backoff == 2.0
+        assert guard.initial_delay == 0.5
+        assert guard.max_delay == 30.0
+
+    def test_custom_values(self):
+        guard = ToolGuard(
+            max_retries=5,
+            backoff=3.0,
+            initial_delay=1.0,
+            max_delay=60.0,
+            retry_on=[TimeoutError, ConnectionError],
+        )
+        assert guard.max_retries == 5
+        assert guard.backoff == 3.0
+        assert guard.initial_delay == 1.0
+        assert guard.max_delay == 60.0
+        assert guard.retry_on == (TimeoutError, ConnectionError)
+
+    def test_should_retry_default(self):
+        guard = ToolGuard()
+        # Default: retry on common transient errors
+        assert guard._should_retry(TimeoutError()) is True
+        assert guard._should_retry(ConnectionError()) is True
+        # But not arbitrary exceptions
+        assert guard._should_retry(ValueError()) is False
+
+    def test_should_retry_specific_errors(self):
+        guard = ToolGuard(retry_on=[ValueError, TypeError])
+        assert guard._should_retry(ValueError()) is True
+        assert guard._should_retry(TypeError()) is True
+        assert guard._should_retry(RuntimeError()) is False
+
+    def test_should_retry_skip_on(self):
+        guard = ToolGuard(skip_on=[KeyboardInterrupt])
+        assert guard._should_retry(KeyboardInterrupt()) is False
+
+    def test_calculate_delay(self):
+        guard = ToolGuard(initial_delay=1.0, backoff=2.0, max_delay=10.0)
+        assert guard._calculate_delay(0) == 1.0
+        assert guard._calculate_delay(1) == 2.0
+        assert guard._calculate_delay(2) == 4.0
+        assert guard._calculate_delay(3) == 8.0
+        # Capped at max_delay
+        assert guard._calculate_delay(4) == 10.0
+
+
+class TestCircuitBreaker:
+    """Test CircuitBreaker interceptor."""
+
+    def test_default_values(self):
+        cb = CircuitBreaker()
+        assert cb.failure_threshold == 5
+        assert cb.reset_timeout == 30.0
+        assert cb.protected_tools is None  # All tools
+
+    def test_custom_values(self):
+        cb = CircuitBreaker(
+            failure_threshold=3,
+            reset_timeout=60.0,
+            tools=["api_call", "database"],
+        )
+        assert cb.failure_threshold == 3
+        assert cb.reset_timeout == 60.0
+        assert cb.protected_tools == {"api_call", "database"}
+
+    def test_is_protected(self):
+        cb = CircuitBreaker(tools=["api_call"])
+        assert cb._is_protected("api_call") is True
+        assert cb._is_protected("other_tool") is False
+
+    def test_is_protected_all(self):
+        cb = CircuitBreaker()  # No specific tools = all protected
+        assert cb._is_protected("any_tool") is True
+
+    @pytest.mark.asyncio
+    async def test_circuit_state_tracking(self):
+        cb = CircuitBreaker(failure_threshold=2)
+        mock_agent = MagicMock()
+        
+        # Simulate failures
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.POST_ACT,
+            messages=[],
+            state={},
+            tool_name="api_call",
+            tool_result="Error: connection failed",
+        )
+        
+        # First failure
+        await cb.post_act(ctx)
+        circuit = ctx.state[cb.STATE_KEY].get("api_call", {})
+        assert circuit.get("failures") == 1
+        assert circuit.get("state") == "closed"
+        
+        # Second failure - should open circuit
+        await cb.post_act(ctx)
+        circuit = ctx.state[cb.STATE_KEY].get("api_call", {})
+        assert circuit.get("failures") == 2
+        assert circuit.get("state") == "open"
+
+
+class TestPromptAdapter:
+    """Test PromptAdapter base class."""
+
+    @pytest.mark.asyncio
+    async def test_pre_run_adapts_prompt(self):
+        class TestAdapter(PromptAdapter):
+            async def adapt(self, prompt, ctx):
+                return f"{prompt}\n\nExtra context!"
+
+        adapter = TestAdapter()
+        
+        mock_agent = MagicMock()
+        mock_agent.config.system_prompt = "You are helpful."
+        
+        context = InterceptContext(
+            agent=mock_agent,
+            task="task",
+            phase=Phase.PRE_RUN,
+            messages=[],
+        )
+        
+        result = await adapter.pre_run(context)
+        assert result.proceed is True
+        assert result.modified_prompt == "You are helpful.\n\nExtra context!"
+
+
+class TestContextPrompt:
+    """Test ContextPrompt interceptor."""
+
+    def test_creation(self):
+        adapter = ContextPrompt(template="User: {user}")
+        assert adapter.template == "User: {user}"
+        assert adapter.separator == "\n\n"
+
+    @pytest.mark.asyncio
+    async def test_adapt_with_context(self):
+        adapter = ContextPrompt(template="User: {user_name}")
+        
+        mock_agent = MagicMock()
+        run_ctx = RunContext(metadata={"user_name": "Alice"})
+        # Simulate accessing user_name from metadata via attribute
+        run_ctx.user_name = "Alice"
+        
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_RUN,
+            messages=[],
+            run_context=run_ctx,
+        )
+        
+        result = await adapter.adapt("Base prompt", ctx)
+        assert "Base prompt" in result
+        assert "Alice" in result
+
+    @pytest.mark.asyncio
+    async def test_adapt_no_context(self):
+        adapter = ContextPrompt(template="Extra: {data}")
+        
+        mock_agent = MagicMock()
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_RUN,
+            messages=[],
+            run_context=None,
+        )
+        
+        result = await adapter.adapt("Base prompt", ctx)
+        assert result == "Base prompt"
+
+
+class TestConversationPrompt:
+    """Test ConversationPrompt interceptor."""
+
+    def test_creation(self):
+        stages = {0: "Be friendly", 10: "Be concise"}
+        adapter = ConversationPrompt(stages=stages)
+        assert adapter.stages == stages
+
+    @pytest.mark.asyncio
+    async def test_adapt_short_conversation(self):
+        adapter = ConversationPrompt(stages={0: "Be verbose"})
+        
+        mock_agent = MagicMock()
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_RUN,
+            messages=[{"role": "user", "content": "Hi"}] * 3,
+        )
+        
+        result = await adapter.adapt("Base", ctx)
+        assert "Be verbose" in result
+
+    @pytest.mark.asyncio
+    async def test_adapt_long_conversation(self):
+        adapter = ConversationPrompt(stages={0: "Start", 10: "Be brief"})
+        
+        mock_agent = MagicMock()
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_RUN,
+            messages=[{"role": "user", "content": "Hi"}] * 15,
+        )
+        
+        result = await adapter.adapt("Base", ctx)
+        assert "Start" in result
+        assert "Be brief" in result
+
+
+class TestLambdaPrompt:
+    """Test LambdaPrompt interceptor."""
+
+    @pytest.mark.asyncio
+    async def test_adapter_function(self):
+        def my_adapter(prompt, ctx):
+            return f"{prompt} [Modified]"
+        
+        adapter = LambdaPrompt(adapter_fn=my_adapter)
+        
+        mock_agent = MagicMock()
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_RUN,
+            messages=[],
+        )
+        
+        result = await adapter.adapt("Test", ctx)
+        assert result == "Test [Modified]"
+
+    @pytest.mark.asyncio
+    async def test_adapter_with_context(self):
+        def my_adapter(prompt, ctx):
+            user = "Guest"
+            if ctx.run_context:
+                user = getattr(ctx.run_context, "user", "Guest")
+            return f"{prompt}\n\nHello, {user}!"
+        
+        adapter = LambdaPrompt(adapter_fn=my_adapter)
+        
+        run_ctx = RunContext()
+        run_ctx.user = "Alice"
+        
+        mock_agent = MagicMock()
+        ctx = InterceptContext(
+            agent=mock_agent,
+            task="test",
+            phase=Phase.PRE_RUN,
+            messages=[],
+            run_context=run_ctx,
+        )
+        
+        result = await adapter.adapt("Welcome", ctx)
+        assert result == "Welcome\n\nHello, Alice!"
+
+
+class TestRunContext:
+    """Test RunContext dataclass."""
+
+    def test_default_empty(self):
+        ctx = RunContext()
+        assert ctx.metadata == {}
+
+    def test_with_metadata(self):
+        ctx = RunContext(metadata={"key": "value"})
+        assert ctx.metadata == {"key": "value"}
+
+    def test_get_existing_key(self):
+        ctx = RunContext(metadata={"name": "Alice"})
+        assert ctx.get("name") == "Alice"
+
+    def test_get_missing_key(self):
+        ctx = RunContext()
+        assert ctx.get("missing") is None
+        assert ctx.get("missing", "default") == "default"
+
+    def test_with_metadata_method(self):
+        ctx = RunContext(metadata={"a": 1})
+        new_ctx = ctx.with_metadata(b=2)
+        
+        # Original unchanged
+        assert ctx.metadata == {"a": 1}
+        # New has merged
+        assert new_ctx.metadata == {"a": 1, "b": 2}
+
+    def test_empty_context_constant(self):
+        assert EMPTY_CONTEXT.metadata == {}
+
+
+class TestInterceptResultModifiers:
+    """Test new InterceptResult modifier fields."""
+
+    def test_modified_tools(self):
+        tool = MagicMock()
+        result = InterceptResult(proceed=True, modified_tools=[tool])
+        assert result.modified_tools == [tool]
+
+    def test_modified_model(self):
+        result = InterceptResult(proceed=True, modified_model="gpt-4")
+        assert result.modified_model == "gpt-4"
+
+    def test_modified_prompt(self):
+        result = InterceptResult(proceed=True, modified_prompt="New prompt")
+        assert result.modified_prompt == "New prompt"
+
+    def test_modify_tools_factory(self):
+        tool = MagicMock()
+        result = InterceptResult.modify_tools([tool])
+        assert result.proceed is True
+        assert result.modified_tools == [tool]
+
+    def test_use_model_factory(self):
+        result = InterceptResult.use_model("gpt-4")
+        assert result.proceed is True
+        assert result.modified_model == "gpt-4"
+
+    def test_modify_prompt_factory(self):
+        result = InterceptResult.modify_prompt("New prompt")
+        assert result.proceed is True
+        assert result.modified_prompt == "New prompt"

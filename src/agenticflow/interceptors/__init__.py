@@ -6,7 +6,7 @@ security, and observability without cluttering core agent logic.
 
 Example:
     from agenticflow import Agent
-    from agenticflow.interceptors import BudgetGuard, PIIShield
+    from agenticflow.interceptors import BudgetGuard, PIIShield, ToolGate
     
     agent = Agent(
         name="assistant",
@@ -31,6 +31,15 @@ from agenticflow.interceptors.context import ContextCompressor, TokenLimiter
 from agenticflow.interceptors.security import PIIAction, PIIShield, ContentFilter
 from agenticflow.interceptors.ratelimit import RateLimiter, ThrottleInterceptor
 from agenticflow.interceptors.audit import Auditor, AuditEvent, AuditEventType
+from agenticflow.interceptors.gates import ToolGate, PermissionGate, ConversationGate
+from agenticflow.interceptors.failover import Failover, FailoverTrigger, FailoverState
+from agenticflow.interceptors.guards import ToolGuard, ToolRetryState, CircuitBreaker
+from agenticflow.interceptors.prompt import (
+    PromptAdapter,
+    ContextPrompt,
+    ConversationPrompt,
+    LambdaPrompt,
+)
 
 __all__ = [
     # Core
@@ -56,4 +65,21 @@ __all__ = [
     "Auditor",
     "AuditEvent",
     "AuditEventType",
+    # Gates (tool filtering)
+    "ToolGate",
+    "PermissionGate",
+    "ConversationGate",
+    # Failover
+    "Failover",
+    "FailoverTrigger",
+    "FailoverState",
+    # Guards (tool retry/circuit breaker)
+    "ToolGuard",
+    "ToolRetryState",
+    "CircuitBreaker",
+    # Prompt adapters
+    "PromptAdapter",
+    "ContextPrompt",
+    "ConversationPrompt",
+    "LambdaPrompt",
 ]

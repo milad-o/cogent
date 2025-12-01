@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
+    from agenticflow.context import RunContext
     from agenticflow.schemas.message import Message
 
 
@@ -57,6 +58,7 @@ class InterceptContext:
         task: The original task/prompt.
         messages: Current message history.
         state: Mutable shared state dict for interceptors.
+        run_context: Invocation-scoped context (from agent.run()).
         tool_name: Name of tool (only in PRE_ACT/POST_ACT).
         tool_args: Tool arguments (only in PRE_ACT/POST_ACT).
         tool_result: Tool result (only in POST_ACT).
@@ -68,6 +70,7 @@ class InterceptContext:
     task: str
     messages: list[dict[str, Any]]
     state: dict[str, Any] = field(default_factory=dict)
+    run_context: RunContext | None = None
     
     # Phase-specific data
     tool_name: str | None = None
@@ -79,6 +82,9 @@ class InterceptContext:
     # Execution counters (updated by executor)
     model_calls: int = 0
     tool_calls: int = 0
+    
+    # Available tools (for ToolGate filtering)
+    tools: list[Any] | None = None
     
     def __post_init__(self) -> None:
         """Initialize state if not provided."""
@@ -97,6 +103,9 @@ class InterceptResult:
         modified_messages: If set, replace messages with these.
         modified_task: If set, replace task with this.
         modified_tool_args: If set, replace tool args (PRE_ACT only).
+        modified_tools: If set, replace available tools (PRE_THINK only).
+        modified_model: If set, use this model for the call (PRE_THINK only).
+        modified_prompt: If set, replace system prompt (PRE_THINK only).
         skip_action: Skip the current action but continue loop.
         final_response: If stopping, use this as final response.
         metadata: Optional metadata to attach to result.
@@ -105,6 +114,9 @@ class InterceptResult:
     modified_messages: list[dict[str, Any]] | None = None
     modified_task: str | None = None
     modified_tool_args: dict[str, Any] | None = None
+    modified_tools: list[Any] | None = None
+    modified_model: Any | None = None
+    modified_prompt: str | None = None
     skip_action: bool = False
     final_response: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -133,6 +145,21 @@ class InterceptResult:
     def modify_args(cls, args: dict[str, Any]) -> InterceptResult:
         """Continue with modified tool arguments."""
         return cls(proceed=True, modified_tool_args=args)
+    
+    @classmethod
+    def modify_tools(cls, tools: list[Any]) -> InterceptResult:
+        """Continue with filtered/modified tools."""
+        return cls(proceed=True, modified_tools=tools)
+    
+    @classmethod
+    def use_model(cls, model: Any) -> InterceptResult:
+        """Use a different model for this call."""
+        return cls(proceed=True, modified_model=model)
+    
+    @classmethod
+    def modify_prompt(cls, prompt: str) -> InterceptResult:
+        """Continue with modified system prompt."""
+        return cls(proceed=True, modified_prompt=prompt)
 
 
 class StopExecution(Exception):
@@ -274,6 +301,16 @@ async def run_interceptors(
             if r.modified_tool_args is not None:
                 result.modified_tool_args = r.modified_tool_args
                 ctx.tool_args = r.modified_tool_args
+            
+            if r.modified_tools is not None:
+                result.modified_tools = r.modified_tools
+                ctx.tools = r.modified_tools
+            
+            if r.modified_model is not None:
+                result.modified_model = r.modified_model
+            
+            if r.modified_prompt is not None:
+                result.modified_prompt = r.modified_prompt
             
             if r.skip_action:
                 result.skip_action = True
