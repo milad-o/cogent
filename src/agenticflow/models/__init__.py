@@ -61,6 +61,9 @@ from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding
 # Default models (OpenAI)
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
 
+# Mock models for testing
+from agenticflow.models.mock import MockEmbedding
+
 # Aliases for convenience
 ChatModel = OpenAIChat
 EmbeddingModel = OpenAIEmbedding
@@ -232,6 +235,8 @@ __all__ = [
     "OpenAIEmbedding",
     "ChatModel",  # Alias for OpenAIChat
     "EmbeddingModel",  # Alias for OpenAIEmbedding
+    # Mock models for testing
+    "MockEmbedding",
     # Factory functions
     "create_chat",
     "create_embedding",

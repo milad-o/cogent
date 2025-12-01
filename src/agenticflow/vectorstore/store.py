@@ -93,7 +93,7 @@ class VectorStore:
         doc_ids = [doc.id for doc in documents]
         
         # Generate embeddings
-        embeddings = await self.embeddings.embed_texts(texts)  # type: ignore
+        embeddings = await self.embeddings.aembed_texts(texts)  # type: ignore
         
         # Store in backend
         await self.backend.add(doc_ids, embeddings, documents)  # type: ignore
@@ -128,7 +128,7 @@ class VectorStore:
         # Generate missing embeddings
         if docs_needing_embeddings:
             texts = [doc.text for _, doc in docs_needing_embeddings]
-            new_embeddings = await self.embeddings.embed_texts(texts)  # type: ignore
+            new_embeddings = await self.embeddings.aembed_texts(texts)  # type: ignore
             
             for (idx, _), embedding in zip(docs_needing_embeddings, new_embeddings):
                 embeddings[idx] = embedding
@@ -161,7 +161,7 @@ class VectorStore:
             ...     print(f"{r.score:.2f}: {r.document.text[:50]}")
         """
         # Generate query embedding
-        query_embedding = await self.embeddings.embed_query(query)  # type: ignore
+        query_embedding = await self.embeddings.aembed_query(query)  # type: ignore
         
         # Search backend
         return await self.backend.search(query_embedding, k, filter)  # type: ignore
@@ -256,7 +256,7 @@ class VectorStore:
         Returns:
             VectorStore with MockEmbeddings backend.
         """
-        return cls(embeddings=MockEmbeddings(_dimension=dimension))
+        return cls(embeddings=MockEmbeddings(dimensions=dimension))
 
 
 # ============================================================

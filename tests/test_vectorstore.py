@@ -348,31 +348,31 @@ class TestInMemoryBackend:
 
 
 class TestMockEmbeddings:
-    """Tests for MockEmbeddings."""
+    """Tests for MockEmbedding (imported as MockEmbeddings for backward compat)."""
 
     @pytest.fixture
     def embeddings(self) -> MockEmbeddings:
         """Create mock embeddings."""
-        return MockEmbeddings(_dimension=128)
+        return MockEmbeddings(dimensions=128)
 
     @pytest.mark.asyncio
     async def test_embed_texts(self, embeddings: MockEmbeddings) -> None:
         """Test embedding multiple texts."""
-        vectors = await embeddings.embed_texts(["Hello", "World"])
+        vectors = await embeddings.aembed_texts(["Hello", "World"])
         assert len(vectors) == 2
         assert all(len(v) == 128 for v in vectors)
 
     @pytest.mark.asyncio
     async def test_embed_query(self, embeddings: MockEmbeddings) -> None:
         """Test embedding a single query."""
-        vector = await embeddings.embed_query("Hello")
+        vector = await embeddings.aembed_query("Hello")
         assert len(vector) == 128
 
     @pytest.mark.asyncio
     async def test_deterministic(self, embeddings: MockEmbeddings) -> None:
         """Test that same text produces same embedding."""
-        v1 = await embeddings.embed_query("Test text")
-        v2 = await embeddings.embed_query("Test text")
+        v1 = await embeddings.aembed_query("Test text")
+        v2 = await embeddings.aembed_query("Test text")
         assert v1 == v2
 
     @pytest.mark.asyncio
@@ -380,8 +380,8 @@ class TestMockEmbeddings:
         self, embeddings: MockEmbeddings
     ) -> None:
         """Test that different texts produce different embeddings."""
-        v1 = await embeddings.embed_query("Hello")
-        v2 = await embeddings.embed_query("World")
+        v1 = await embeddings.aembed_query("Hello")
+        v2 = await embeddings.aembed_query("World")
         assert v1 != v2
 
     def test_dimension_property(self, embeddings: MockEmbeddings) -> None:
@@ -393,9 +393,15 @@ class TestMockEmbeddings:
         """Test that embeddings are normalized."""
         import math
         
-        vector = await embeddings.embed_query("Test")
+        vector = await embeddings.aembed_query("Test")
         magnitude = math.sqrt(sum(x * x for x in vector))
         assert abs(magnitude - 1.0) < 0.01  # Should be ~1
+    
+    def test_sync_embed(self, embeddings: MockEmbeddings) -> None:
+        """Test synchronous embedding."""
+        vectors = embeddings.embed(["Hello", "World"])
+        assert len(vectors) == 2
+        assert all(len(v) == 128 for v in vectors)
 
 
 # ============================================================
