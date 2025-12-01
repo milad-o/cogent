@@ -62,6 +62,16 @@ class Settings(BaseSettings):
     azure_openai_endpoint: str | None = Field(default=None)
     azure_openai_api_version: str = Field(default="2024-02-15-preview")
     azure_openai_deployment: str | None = Field(default=None)
+    azure_auth_type: Literal["api_key", "managed_identity", "default"] = Field(
+        default="api_key",
+        alias="AZURE_AUTH_TYPE",
+        description="Azure auth: api_key, managed_identity, or default (DefaultAzureCredential)",
+    )
+    azure_managed_identity_client_id: str | None = Field(
+        default=None,
+        alias="AZURE_MANAGED_IDENTITY_CLIENT_ID",
+        description="Client ID for user-assigned managed identity (leave empty for system-assigned)",
+    )
     
     # Ollama (local models - no API key needed, just set DEFAULT_PROVIDER=ollama)
     ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")
@@ -119,7 +129,13 @@ class Settings(BaseSettings):
     @property
     def has_azure(self) -> bool:
         """Check if Azure OpenAI is configured."""
-        return bool(self.azure_openai_api_key and self.azure_openai_endpoint)
+        if not self.azure_openai_endpoint:
+            return False
+        # API key auth requires the key
+        if self.azure_auth_type == "api_key":
+            return bool(self.azure_openai_api_key)
+        # Managed identity and default credential don't need API key
+        return True
     
     @property
     def has_ollama(self) -> bool:
@@ -222,13 +238,30 @@ def get_model(provider: str | None = None):
     
     elif provider == "azure":
         if not s.has_azure:
-            raise ValueError("Azure OpenAI not configured (need API key and endpoint)")
+            raise ValueError(
+                "Azure OpenAI not configured. Set AZURE_OPENAI_ENDPOINT and either:\n"
+                "  - AZURE_OPENAI_API_KEY (for api_key auth), or\n"
+                "  - AZURE_AUTH_TYPE=managed_identity (for Azure VMs/Functions), or\n"
+                "  - AZURE_AUTH_TYPE=default (for DefaultAzureCredential)"
+            )
         from agenticflow.models.azure import AzureChat
+        
+        # Build auth kwargs based on auth type
+        auth_kwargs = {}
+        if s.azure_auth_type == "api_key":
+            auth_kwargs["api_key"] = s.azure_openai_api_key
+        elif s.azure_auth_type == "managed_identity":
+            auth_kwargs["use_managed_identity"] = True
+            if s.azure_managed_identity_client_id:
+                auth_kwargs["managed_identity_client_id"] = s.azure_managed_identity_client_id
+        elif s.azure_auth_type == "default":
+            auth_kwargs["use_azure_ad"] = True
+        
         return AzureChat(
             deployment=s.azure_openai_deployment or "gpt-4o",
-            api_key=s.azure_openai_api_key,
-            endpoint=s.azure_openai_endpoint,
+            azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
+            **auth_kwargs,
         )
     
     elif provider == "ollama":
