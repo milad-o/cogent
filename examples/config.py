@@ -5,15 +5,16 @@ Uses Pydantic Settings to automatically load from .env file and environment vari
 All examples should import settings from here instead of manually handling env vars.
 
 Usage:
-    from config import settings, get_model
+    from config import settings, get_model, get_embeddings
     
-    # Get the default model (based on available API keys)
-    model = get_model()
+    model = get_model()       # Uses LLM_PROVIDER from .env
+    embeddings = get_embeddings()  # Uses EMBEDDING_PROVIDER from .env
+
+Required .env configuration:
+    LLM_PROVIDER=openai|gemini|anthropic|groq|azure|ollama
+    EMBEDDING_PROVIDER=openai|azure|ollama
     
-    # Or get a specific provider
-    model = get_model("gemini")
-    model = get_model("openai")
-    model = get_model("anthropic")
+    # Plus the appropriate API key for your chosen provider
 """
 
 from __future__ import annotations
@@ -29,6 +30,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Find project root (where .env is located)
 PROJECT_ROOT = Path(__file__).parent.parent
 
+# Valid provider choices
+LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama"]
+EmbeddingProvider = Literal["openai", "azure", "ollama"]
+
 
 class Settings(BaseSettings):
     """Central settings for all examples.
@@ -37,89 +42,91 @@ class Settings(BaseSettings):
     1. Environment variables
     2. .env file in project root
     
-    API keys are optional - examples will use whichever is available.
+    You MUST set LLM_PROVIDER and EMBEDDING_PROVIDER explicitly in .env.
     """
     
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
-        extra="ignore",  # Ignore extra env vars
-        case_sensitive=False,  # Allow GEMINI_API_KEY or gemini_api_key
-        populate_by_name=True,  # Allow both field name and alias
+        extra="ignore",
+        case_sensitive=False,
+        populate_by_name=True,
     )
     
     # ==========================================================================
-    # API Keys (all optional - examples use what's available)
+    # Required: Provider Selection
     # ==========================================================================
     
-    gemini_api_key: str | None = Field(default=None, description="Google Gemini API key")
-    openai_api_key: str | None = Field(default=None, description="OpenAI API key")
-    anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
-    groq_api_key: str | None = Field(default=None, description="Groq API key")
+    llm_provider: LLMProvider = Field(
+        alias="LLM_PROVIDER",
+        description="LLM provider to use. Required.",
+    )
     
-    # Azure OpenAI (optional)
-    azure_openai_api_key: str | None = Field(default=None)
-    azure_openai_endpoint: str | None = Field(default=None)
-    azure_openai_api_version: str = Field(default="2024-02-15-preview")
-    azure_openai_deployment: str | None = Field(default=None)
+    embedding_provider: EmbeddingProvider = Field(
+        alias="EMBEDDING_PROVIDER",
+        description="Embedding provider to use. Required.",
+    )
+    
+    # ==========================================================================
+    # API Keys
+    # ==========================================================================
+    
+    gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
+    groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
+    
+    # ==========================================================================
+    # Azure OpenAI Configuration
+    # ==========================================================================
+    
+    azure_openai_endpoint: str | None = Field(default=None, alias="AZURE_OPENAI_ENDPOINT")
+    azure_openai_deployment: str | None = Field(default=None, alias="AZURE_OPENAI_DEPLOYMENT")
+    azure_openai_api_version: str = Field(default="2024-02-15-preview", alias="AZURE_OPENAI_API_VERSION")
+    
+    # Azure auth type: api_key, managed_identity, or default (DefaultAzureCredential)
     azure_auth_type: Literal["api_key", "managed_identity", "default"] = Field(
         default="api_key",
         alias="AZURE_AUTH_TYPE",
-        description="Azure auth: api_key, managed_identity, or default (DefaultAzureCredential)",
     )
+    
+    # For api_key auth
+    azure_openai_api_key: str | None = Field(default=None, alias="AZURE_OPENAI_API_KEY")
+    
+    # For managed_identity auth (optional client ID for user-assigned identity)
     azure_managed_identity_client_id: str | None = Field(
         default=None,
         alias="AZURE_MANAGED_IDENTITY_CLIENT_ID",
-        description="Client ID for user-assigned managed identity (leave empty for system-assigned)",
     )
     
-    # Ollama (local models - no API key needed, just set DEFAULT_PROVIDER=ollama)
-    ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")
-    ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_MODEL")
-    
-    # ==========================================================================
-    # Embedding Settings
-    # ==========================================================================
-    
-    embedding_provider: Literal["openai", "ollama", "azure"] | None = Field(
-        default=None,
-        alias="EMBEDDING_PROVIDER",
-        description="Preferred embedding provider. If not set, uses OpenAI if available.",
-    )
-    
-    # OpenAI embeddings
-    openai_embedding_model: str = Field(
-        default="text-embedding-3-small",
-        alias="OPENAI_EMBEDDING_MODEL",
-    )
-    
-    # Ollama embeddings
-    ollama_embedding_model: str = Field(
-        default="nomic-embed-text",
-        alias="OLLAMA_EMBEDDING_MODEL",
-    )
-    
-    # Azure OpenAI embeddings
+    # Azure embedding deployment (separate from chat deployment)
     azure_openai_embedding_deployment: str | None = Field(
         default=None,
         alias="AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
     )
     
     # ==========================================================================
-    # Default Model Settings
+    # Ollama Configuration (local models)
     # ==========================================================================
     
-    llm_provider: Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama"] | None = Field(
-        default=None,
-        alias="LLM_PROVIDER",
-        description="Preferred LLM provider. If not set, uses first available.",
-    )
+    ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")
+    ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_MODEL")
+    ollama_embedding_model: str = Field(default="nomic-embed-text", alias="OLLAMA_EMBEDDING_MODEL")
     
-    # Model names per provider (can be overridden in .env)
+    # ==========================================================================
+    # Model Names (can override defaults per provider)
+    # ==========================================================================
+    
     gemini_model: str = Field(default="gemini-2.0-flash-exp", alias="GEMINI_MODEL")
     openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
     anthropic_model: str = Field(default="claude-sonnet-4-20250514", alias="ANTHROPIC_MODEL")
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+    
+    # ==========================================================================
+    # Embedding Model Names
+    # ==========================================================================
+    
+    openai_embedding_model: str = Field(default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL")
     
     # ==========================================================================
     # Example Settings
@@ -127,96 +134,8 @@ class Settings(BaseSettings):
     
     verbose_level: Literal["minimal", "verbose", "debug", "trace"] = Field(
         default="verbose",
-        description="Default verbosity for examples",
+        alias="VERBOSE_LEVEL",
     )
-    
-    # ==========================================================================
-    # Helper Properties
-    # ==========================================================================
-    
-    @property
-    def has_gemini(self) -> bool:
-        """Check if Gemini API key is configured."""
-        return bool(self.gemini_api_key)
-    
-    @property
-    def has_openai(self) -> bool:
-        """Check if OpenAI API key is configured."""
-        return bool(self.openai_api_key)
-    
-    @property
-    def has_anthropic(self) -> bool:
-        """Check if Anthropic API key is configured."""
-        return bool(self.anthropic_api_key)
-    
-    @property
-    def has_groq(self) -> bool:
-        """Check if Groq API key is configured."""
-        return bool(self.groq_api_key)
-    
-    @property
-    def has_azure(self) -> bool:
-        """Check if Azure OpenAI is configured."""
-        if not self.azure_openai_endpoint:
-            return False
-        # API key auth requires the key
-        if self.azure_auth_type == "api_key":
-            return bool(self.azure_openai_api_key)
-        # Managed identity and default credential don't need API key
-        return True
-    
-    @property
-    def has_ollama(self) -> bool:
-        """Check if Ollama is selected as the LLM provider."""
-        return self.llm_provider == "ollama"
-    
-    @property
-    def available_providers(self) -> list[str]:
-        """List of providers with configured API keys."""
-        providers = []
-        if self.has_gemini:
-            providers.append("gemini")
-        if self.has_openai:
-            providers.append("openai")
-        if self.has_anthropic:
-            providers.append("anthropic")
-        if self.has_groq:
-            providers.append("groq")
-        if self.has_azure:
-            providers.append("azure")
-        if self.has_ollama:
-            providers.append("ollama")
-        return providers
-    
-    @property
-    def available_embedding_providers(self) -> list[str]:
-        """List of embedding providers that can be used."""
-        providers = []
-        if self.has_openai:
-            providers.append("openai")
-        if self.has_azure and self.azure_openai_embedding_deployment:
-            providers.append("azure")
-        # Ollama is always available if host is set
-        providers.append("ollama")
-        return providers
-    
-    def get_preferred_provider(self) -> str | None:
-        """Get the preferred LLM provider based on settings and availability."""
-        if self.llm_provider and self.llm_provider in self.available_providers:
-            return self.llm_provider
-        # Return first available
-        return self.available_providers[0] if self.available_providers else None
-    
-    def get_preferred_embedding_provider(self) -> str | None:
-        """Get the preferred embedding provider."""
-        if self.embedding_provider and self.embedding_provider in self.available_embedding_providers:
-            return self.embedding_provider
-        # Default to OpenAI if available, then Azure, then Ollama
-        if self.has_openai:
-            return "openai"
-        if self.has_azure and self.azure_openai_embedding_deployment:
-            return "azure"
-        return "ollama"
 
 
 @lru_cache
@@ -229,142 +148,122 @@ def get_settings() -> Settings:
 settings = get_settings()
 
 
-def get_model(provider: str | None = None):
-    """Get a chat model for the specified or default provider.
+def get_model(provider: LLMProvider | None = None):
+    """Get a chat model for the specified or configured provider.
     
     Args:
-        provider: Specific provider to use. If None, uses default/first available.
+        provider: Override provider (uses LLM_PROVIDER from .env if None).
         
     Returns:
         A configured chat model instance.
         
     Raises:
-        ValueError: If no API keys are configured or provider not available.
-        
-    Example:
-        from config import get_model
-        
-        model = get_model()  # Uses default/first available
-        model = get_model("gemini")  # Specifically use Gemini
+        ValueError: If provider not configured properly.
     """
     s = settings
-    
-    # Determine which provider to use
-    if provider is None:
-        provider = s.get_preferred_provider()
-    
-    if provider is None:
-        raise ValueError(
-            "No API keys configured! Please set at least one of:\n"
-            "  - GEMINI_API_KEY\n"
-            "  - OPENAI_API_KEY\n"
-            "  - ANTHROPIC_API_KEY\n"
-            "  - GROQ_API_KEY\n"
-            "in your .env file or environment variables."
-        )
+    provider = provider or s.llm_provider
     
     if provider == "gemini":
-        if not s.has_gemini:
-            raise ValueError("GEMINI_API_KEY not configured")
+        if not s.gemini_api_key:
+            raise ValueError("LLM_PROVIDER=gemini requires GEMINI_API_KEY")
         from agenticflow.models.gemini import GeminiChat
         return GeminiChat(model=s.gemini_model, api_key=s.gemini_api_key)
     
     elif provider == "openai":
-        if not s.has_openai:
-            raise ValueError("OPENAI_API_KEY not configured")
-        from agenticflow.models import ChatModel
-        return ChatModel(model=s.openai_model, api_key=s.openai_api_key)
+        if not s.openai_api_key:
+            raise ValueError("LLM_PROVIDER=openai requires OPENAI_API_KEY")
+        from agenticflow.models.openai import OpenAIChat
+        return OpenAIChat(model=s.openai_model, api_key=s.openai_api_key)
     
     elif provider == "anthropic":
-        if not s.has_anthropic:
-            raise ValueError("ANTHROPIC_API_KEY not configured")
+        if not s.anthropic_api_key:
+            raise ValueError("LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY")
         from agenticflow.models.anthropic import AnthropicChat
         return AnthropicChat(model=s.anthropic_model, api_key=s.anthropic_api_key)
     
     elif provider == "groq":
-        if not s.has_groq:
-            raise ValueError("GROQ_API_KEY not configured")
+        if not s.groq_api_key:
+            raise ValueError("LLM_PROVIDER=groq requires GROQ_API_KEY")
         from agenticflow.models.groq import GroqChat
         return GroqChat(model=s.groq_model, api_key=s.groq_api_key)
     
     elif provider == "azure":
-        if not s.has_azure:
-            raise ValueError(
-                "Azure OpenAI not configured. Set AZURE_OPENAI_ENDPOINT and either:\n"
-                "  - AZURE_OPENAI_API_KEY (for api_key auth), or\n"
-                "  - AZURE_AUTH_TYPE=managed_identity (for Azure VMs/Functions), or\n"
-                "  - AZURE_AUTH_TYPE=default (for DefaultAzureCredential)"
-            )
-        from agenticflow.models.azure import AzureChat
-        
-        # Build auth kwargs based on auth type
-        auth_kwargs = {}
-        if s.azure_auth_type == "api_key":
-            auth_kwargs["api_key"] = s.azure_openai_api_key
-        elif s.azure_auth_type == "managed_identity":
-            auth_kwargs["use_managed_identity"] = True
-            if s.azure_managed_identity_client_id:
-                auth_kwargs["managed_identity_client_id"] = s.azure_managed_identity_client_id
-        elif s.azure_auth_type == "default":
-            auth_kwargs["use_azure_ad"] = True
-        
-        return AzureChat(
-            deployment=s.azure_openai_deployment or "gpt-4o",
-            azure_endpoint=s.azure_openai_endpoint,
-            api_version=s.azure_openai_api_version,
-            **auth_kwargs,
-        )
+        return _create_azure_chat(s)
     
     elif provider == "ollama":
         from agenticflow.models.ollama import OllamaChat
-        return OllamaChat(
-            model=s.ollama_model,
-            host=s.ollama_host,
+        return OllamaChat(model=s.ollama_model, host=s.ollama_host)
+    
+    else:
+        raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
+
+
+def _create_azure_chat(s: Settings):
+    """Create Azure OpenAI chat model with appropriate auth method."""
+    if not s.azure_openai_endpoint:
+        raise ValueError("LLM_PROVIDER=azure requires AZURE_OPENAI_ENDPOINT")
+    if not s.azure_openai_deployment:
+        raise ValueError("LLM_PROVIDER=azure requires AZURE_OPENAI_DEPLOYMENT")
+    
+    from agenticflow.models.azure import AzureChat
+    
+    if s.azure_auth_type == "api_key":
+        if not s.azure_openai_api_key:
+            raise ValueError("AZURE_AUTH_TYPE=api_key requires AZURE_OPENAI_API_KEY")
+        return AzureChat(
+            deployment=s.azure_openai_deployment,
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            api_key=s.azure_openai_api_key,
+        )
+    
+    elif s.azure_auth_type == "managed_identity":
+        return AzureChat(
+            deployment=s.azure_openai_deployment,
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            use_managed_identity=True,
+            managed_identity_client_id=s.azure_managed_identity_client_id,
+        )
+    
+    elif s.azure_auth_type == "default":
+        return AzureChat(
+            deployment=s.azure_openai_deployment,
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            use_azure_ad=True,
         )
     
     else:
-        raise ValueError(
-            f"Unknown provider: {provider}. "
-            f"Available: gemini, openai, anthropic, groq, azure, ollama"
-        )
+        raise ValueError(f"Unknown AZURE_AUTH_TYPE: {s.azure_auth_type}")
 
 
-def get_embeddings(provider: str | None = None):
-    """Get an embedding provider for the specified or default provider.
+def get_embeddings(provider: EmbeddingProvider | None = None):
+    """Get an embedding provider for the specified or configured provider.
     
     Args:
-        provider: Specific provider to use ("openai", "ollama", "azure").
-                  If None, uses default/first available.
+        provider: Override provider (uses EMBEDDING_PROVIDER from .env if None).
         
     Returns:
         A configured embedding provider instance.
         
     Raises:
-        ValueError: If provider not available.
-        
-    Example:
-        from config import get_embeddings
-        
-        embeddings = get_embeddings()  # Uses default (OpenAI if available)
-        embeddings = get_embeddings("ollama")  # Use local Ollama
+        ValueError: If provider not configured properly.
     """
     s = settings
-    
-    # Determine which provider to use
-    if provider is None:
-        provider = s.get_preferred_embedding_provider()
+    provider = provider or s.embedding_provider
     
     if provider == "openai":
-        if not s.has_openai:
-            raise ValueError(
-                "OPENAI_API_KEY not configured for embeddings. "
-                "Set OPENAI_API_KEY or use EMBEDDING_PROVIDER=ollama"
-            )
+        if not s.openai_api_key:
+            raise ValueError("EMBEDDING_PROVIDER=openai requires OPENAI_API_KEY")
         from agenticflow.vectorstore import OpenAIEmbeddings
         return OpenAIEmbeddings(
             model=s.openai_embedding_model,
             api_key=s.openai_api_key,
         )
+    
+    elif provider == "azure":
+        return _create_azure_embeddings(s)
     
     elif provider == "ollama":
         from agenticflow.vectorstore import OllamaEmbeddings
@@ -373,60 +272,100 @@ def get_embeddings(provider: str | None = None):
             base_url=s.ollama_host,
         )
     
-    elif provider == "azure":
-        if not s.has_azure or not s.azure_openai_embedding_deployment:
-            raise ValueError(
-                "Azure OpenAI embeddings not configured. Set:\n"
-                "  - AZURE_OPENAI_ENDPOINT\n"
-                "  - AZURE_OPENAI_EMBEDDING_DEPLOYMENT\n"
-                "  - AZURE_OPENAI_API_KEY (or use managed identity)"
-            )
-        from agenticflow.vectorstore import OpenAIEmbeddings
-        return OpenAIEmbeddings(
-            model=s.azure_openai_embedding_deployment,
+    else:
+        raise ValueError(f"Unknown EMBEDDING_PROVIDER: {provider}")
+
+
+def _create_azure_embeddings(s: Settings):
+    """Create Azure OpenAI embeddings with appropriate auth method."""
+    if not s.azure_openai_endpoint:
+        raise ValueError("EMBEDDING_PROVIDER=azure requires AZURE_OPENAI_ENDPOINT")
+    if not s.azure_openai_embedding_deployment:
+        raise ValueError("EMBEDDING_PROVIDER=azure requires AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
+    
+    from agenticflow.models.azure import AzureEmbedding
+    
+    if s.azure_auth_type == "api_key":
+        if not s.azure_openai_api_key:
+            raise ValueError("AZURE_AUTH_TYPE=api_key requires AZURE_OPENAI_API_KEY")
+        return AzureEmbedding(
+            deployment=s.azure_openai_embedding_deployment,
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
             api_key=s.azure_openai_api_key,
-            base_url=f"{s.azure_openai_endpoint}/openai/deployments/{s.azure_openai_embedding_deployment}",
+        )
+    
+    elif s.azure_auth_type == "managed_identity":
+        return AzureEmbedding(
+            deployment=s.azure_openai_embedding_deployment,
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            use_managed_identity=True,
+            managed_identity_client_id=s.azure_managed_identity_client_id,
+        )
+    
+    elif s.azure_auth_type == "default":
+        return AzureEmbedding(
+            deployment=s.azure_openai_embedding_deployment,
+            azure_endpoint=s.azure_openai_endpoint,
+            api_version=s.azure_openai_api_version,
+            use_azure_ad=True,
         )
     
     else:
-        raise ValueError(
-            f"Unknown embedding provider: {provider}. "
-            f"Available: openai, ollama, azure"
-        )
+        raise ValueError(f"Unknown AZURE_AUTH_TYPE: {s.azure_auth_type}")
 
 
 def print_config():
     """Print current configuration (useful for debugging)."""
     s = settings
     print("=" * 50)
-    print("AgenticFlow Example Configuration")
+    print("AgenticFlow Configuration")
     print("=" * 50)
-    print(f"Available LLM providers: {', '.join(s.available_providers) or 'None!'}")
-    print(f"LLM provider: {s.get_preferred_provider() or 'None'}")
-    print(f"Embedding provider: {s.get_preferred_embedding_provider() or 'None'}")
-    print(f"Verbose level: {s.verbose_level}")
+    print(f"LLM Provider:       {s.llm_provider}")
+    print(f"Embedding Provider: {s.embedding_provider}")
+    print(f"Verbose Level:      {s.verbose_level}")
     print()
-    print("Configured Models:")
-    print(f"  Gemini:    {'✓ ' + s.gemini_model if s.has_gemini else '✗ not set'}")
-    print(f"  OpenAI:    {'✓ ' + s.openai_model if s.has_openai else '✗ not set'}")
-    print(f"  Anthropic: {'✓ ' + s.anthropic_model if s.has_anthropic else '✗ not set'}")
-    print(f"  Groq:      {'✓ ' + s.groq_model if s.has_groq else '✗ not set'}")
-    print(f"  Azure:     {'✓ configured' if s.has_azure else '✗ not set'}")
-    print(f"  Ollama:    {'✓ ' + s.ollama_model + ' @ ' + s.ollama_host if s.llm_provider == 'ollama' else '(set LLM_PROVIDER=ollama to use)'}")
+    
+    # Show provider-specific config
+    if s.llm_provider == "gemini":
+        print(f"  Model: {s.gemini_model}")
+        print(f"  API Key: {'✓ set' if s.gemini_api_key else '✗ missing!'}")
+    elif s.llm_provider == "openai":
+        print(f"  Model: {s.openai_model}")
+        print(f"  API Key: {'✓ set' if s.openai_api_key else '✗ missing!'}")
+    elif s.llm_provider == "anthropic":
+        print(f"  Model: {s.anthropic_model}")
+        print(f"  API Key: {'✓ set' if s.anthropic_api_key else '✗ missing!'}")
+    elif s.llm_provider == "groq":
+        print(f"  Model: {s.groq_model}")
+        print(f"  API Key: {'✓ set' if s.groq_api_key else '✗ missing!'}")
+    elif s.llm_provider == "azure":
+        print(f"  Deployment: {s.azure_openai_deployment or '✗ missing!'}")
+        print(f"  Endpoint: {s.azure_openai_endpoint or '✗ missing!'}")
+        print(f"  Auth Type: {s.azure_auth_type}")
+        if s.azure_auth_type == "api_key":
+            print(f"  API Key: {'✓ set' if s.azure_openai_api_key else '✗ missing!'}")
+        elif s.azure_auth_type == "managed_identity":
+            print(f"  Client ID: {s.azure_managed_identity_client_id or '(system-assigned)'}")
+    elif s.llm_provider == "ollama":
+        print(f"  Model: {s.ollama_model}")
+        print(f"  Host: {s.ollama_host}")
+    
     print()
-    print("Configured Embeddings:")
-    print(f"  OpenAI:    {'✓ ' + s.openai_embedding_model if s.has_openai else '✗ not set'}")
-    print(f"  Ollama:    ✓ {s.ollama_embedding_model} @ {s.ollama_host}")
-    print(f"  Azure:     {'✓ ' + s.azure_openai_embedding_deployment if s.has_azure and s.azure_openai_embedding_deployment else '✗ not set'}")
-    print()
-    print("To change provider, add to .env:")
-    print("  LLM_PROVIDER=ollama            # gemini, openai, anthropic, groq, azure, ollama")
-    print("  EMBEDDING_PROVIDER=ollama      # openai, ollama, azure")
-    print("  OLLAMA_MODEL=qwen2.5:7b")
-    print("  OLLAMA_EMBEDDING_MODEL=nomic-embed-text")
+    print("Embedding Config:")
+    if s.embedding_provider == "openai":
+        print(f"  Model: {s.openai_embedding_model}")
+        print(f"  API Key: {'✓ set' if s.openai_api_key else '✗ missing!'}")
+    elif s.embedding_provider == "azure":
+        print(f"  Deployment: {s.azure_openai_embedding_deployment or '✗ missing!'}")
+        print(f"  Auth Type: {s.azure_auth_type}")
+    elif s.embedding_provider == "ollama":
+        print(f"  Model: {s.ollama_embedding_model}")
+        print(f"  Host: {s.ollama_host}")
+    
     print("=" * 50)
 
 
 if __name__ == "__main__":
-    # When run directly, show configuration
     print_config()
