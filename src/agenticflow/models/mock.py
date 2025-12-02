@@ -4,23 +4,112 @@ Provides deterministic mock implementations of chat and embedding models
 that don't require API calls. Perfect for unit tests and development.
 
 Usage:
-    from agenticflow.models.mock import MockEmbedding
+    from agenticflow.models.mock import MockEmbedding, MockChatModel
     
     # Create mock embeddings
     embeddings = MockEmbedding(dimensions=384)
     vectors = embeddings.embed(["Hello", "World"])
     
-    # Async works too
-    vectors = await embeddings.aembed(["Hello", "World"])
+    # Create mock chat model
+    model = MockChatModel(responses=["Hello!", "How can I help?"])
+    response = await model.ainvoke([{"role": "user", "content": "Hi"}])
 """
 
 from __future__ import annotations
 
 import hashlib
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
-from agenticflow.models.base import BaseEmbedding
+from agenticflow.core.messages import AIMessage
+from agenticflow.models.base import BaseChatModel, BaseEmbedding
+
+
+@dataclass
+class MockChatModel(BaseChatModel):
+    """Mock chat model for testing without API calls.
+    
+    Returns predefined responses in sequence, cycling back to start
+    when exhausted. Supports tool calls via mock_tool_calls parameter.
+    
+    Attributes:
+        responses: List of responses to return in sequence.
+        model_name: Model name (default: "mock-chat").
+        mock_tool_calls: Optional list of tool calls to include in responses.
+    
+    Example:
+        >>> from agenticflow.models.mock import MockChatModel
+        >>> model = MockChatModel(responses=["Hello!", "Goodbye!"])
+        >>> response = await model.ainvoke([{"role": "user", "content": "Hi"}])
+        >>> response.content
+        'Hello!'
+        >>> response = await model.ainvoke([{"role": "user", "content": "Bye"}])
+        >>> response.content
+        'Goodbye!'
+    """
+    
+    responses: list[str] = field(default_factory=lambda: ["Mock response"])
+    model_name: str = "mock-chat"
+    mock_tool_calls: list[dict[str, Any]] | None = None
+    
+    _response_index: int = field(default=0, init=False, repr=False)
+    
+    def _init_client(self) -> None:
+        """No client needed for mock."""
+        pass
+    
+    def _get_next_response(self) -> str:
+        """Get the next response in sequence, cycling if needed."""
+        if not self.responses:
+            return "Mock response"
+        response = self.responses[self._response_index % len(self.responses)]
+        self._response_index += 1
+        return response
+    
+    def invoke(self, messages: list[dict[str, Any]], **kwargs: Any) -> AIMessage:
+        """Generate mock response synchronously.
+        
+        Args:
+            messages: List of message dicts (ignored, returns next in sequence).
+            **kwargs: Additional arguments (ignored).
+            
+        Returns:
+            AIMessage with next response.
+        """
+        content = self._get_next_response()
+        return AIMessage(
+            content=content,
+            tool_calls=self.mock_tool_calls or [],
+        )
+    
+    async def ainvoke(self, messages: list[dict[str, Any]], **kwargs: Any) -> AIMessage:
+        """Generate mock response asynchronously.
+        
+        Args:
+            messages: List of message dicts (ignored, returns next in sequence).
+            **kwargs: Additional arguments (ignored).
+            
+        Returns:
+            AIMessage with next response.
+        """
+        return self.invoke(messages, **kwargs)
+    
+    def bind_tools(self, tools: list[Any], **kwargs: Any) -> "MockChatModel":
+        """Return self (tools binding is a no-op for mock).
+        
+        Args:
+            tools: List of tools to bind (ignored).
+            **kwargs: Additional arguments (ignored).
+            
+        Returns:
+            Self (mock doesn't actually bind tools).
+        """
+        return self
+    
+    def reset(self) -> None:
+        """Reset response index to start from beginning."""
+        self._response_index = 0
 
 
 @dataclass
@@ -102,4 +191,4 @@ class MockEmbedding(BaseEmbedding):
         return self.dimensions or 384
 
 
-__all__ = ["MockEmbedding"]
+__all__ = ["MockEmbedding", "MockChatModel"]

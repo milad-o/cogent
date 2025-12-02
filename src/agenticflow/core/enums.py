@@ -82,6 +82,12 @@ class EventType(Enum):
     AGENT_INTERRUPTED = "agent.interrupted"  # HITL: agent paused for human input
     AGENT_RESUMED = "agent.resumed"  # HITL: agent resumed after human decision
     
+    # Agent spawning events (dynamic agent creation)
+    AGENT_SPAWNED = "agent.spawned"  # New agent spawned by parent
+    AGENT_SPAWN_COMPLETED = "agent.spawn_completed"  # Spawned agent finished task
+    AGENT_SPAWN_FAILED = "agent.spawn_failed"  # Spawned agent failed
+    AGENT_DESPAWNED = "agent.despawned"  # Ephemeral agent cleaned up
+    
     # LLM Request/Response events (deep observability)
     LLM_REQUEST = "llm.request"  # Full request being sent to LLM
     LLM_RESPONSE = "llm.response"  # Full response from LLM (before parsing)

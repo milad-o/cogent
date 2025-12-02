@@ -102,6 +102,12 @@ from agenticflow.agent.output import (
     StructuredResult,
     OutputValidationError,
 )
+from agenticflow.agent.spawning import (
+    AgentSpec,
+    SpawningConfig,
+    SpawnedAgentInfo,
+    SpawnManager,
+)
 
 __all__ = [
     # Core
@@ -167,4 +173,9 @@ __all__ = [
     "OutputMethod",
     "StructuredResult",
     "OutputValidationError",
+    # Spawning
+    "AgentSpec",
+    "SpawningConfig",
+    "SpawnedAgentInfo",
+    "SpawnManager",
 ]

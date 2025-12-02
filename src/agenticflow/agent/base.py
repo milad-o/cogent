@@ -185,6 +185,8 @@ class Agent:
         output: type | dict | ResponseSchema | None = None,
         # Interceptors - composable execution hooks
         intercept: Sequence[Any] | None = None,
+        # Spawning - dynamic agent creation
+        spawning: Any | None = None,  # SpawningConfig for dynamic agent spawning
         # Observability
         verbose: bool | str = False,  # Simple observability for standalone usage
         observer: Any | None = None,  # Observer for rich observability
@@ -437,6 +439,10 @@ class Agent:
         # Setup interceptors
         self._interceptors: list[Any] = list(intercept) if intercept else []
         
+        # Spawning support (set externally or via SpawningConfig)
+        self._spawn_manager: Any | None = None
+        self._setup_spawning(spawning)
+        
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
         self._cached_system_prompt: str | None = None
@@ -611,6 +617,109 @@ class Agent:
         """Whether the agent has interceptors configured."""
         return bool(getattr(self, "_interceptors", None))
     
+    def _setup_spawning(self, spawning: Any | None) -> None:
+        """Setup spawning capability for dynamic agent creation.
+        
+        Args:
+            spawning: SpawningConfig for enabling agent spawning.
+                When configured, adds spawn_agent tool for LLM to use.
+        """
+        if spawning is None:
+            return
+        
+        from agenticflow.agent.spawning import (
+            SpawnManager,
+            SpawningConfig,
+            create_spawn_tool,
+        )
+        
+        if not isinstance(spawning, SpawningConfig):
+            raise TypeError(f"spawning must be SpawningConfig, got {type(spawning)}")
+        
+        # Create spawn manager
+        self._spawn_manager = SpawnManager(self, spawning)
+        
+        # Create and add spawn_agent tool
+        spawn_tool = create_spawn_tool(self._spawn_manager, spawning)
+        self._direct_tools.append(spawn_tool)
+        if spawn_tool.name not in self.config.tools:
+            self.config.tools.append(spawn_tool.name)
+        
+        # Invalidate caches since we added a tool
+        self.invalidate_caches()
+    
+    @property
+    def spawn_manager(self) -> Any | None:
+        """Get the spawn manager if spawning is enabled."""
+        return self._spawn_manager
+    
+    @property
+    def can_spawn(self) -> bool:
+        """Whether this agent can spawn child agents."""
+        return self._spawn_manager is not None
+    
+    async def spawn(
+        self,
+        role: str,
+        task: str,
+        system_prompt: str | None = None,
+        tools: list[str] | None = None,
+    ) -> str:
+        """
+        Spawn a specialist agent to execute a task.
+        
+        Convenience method - wraps spawn_manager.spawn().
+        
+        Args:
+            role: Role/type of the specialist.
+            task: Task for the spawned agent.
+            system_prompt: Optional custom system prompt.
+            tools: Optional tool names to enable.
+            
+        Returns:
+            Result from the spawned agent.
+            
+        Raises:
+            RuntimeError: If spawning is not enabled.
+        """
+        if not self._spawn_manager:
+            raise RuntimeError(
+                "Spawning not enabled. Initialize agent with spawning=SpawningConfig(...)"
+            )
+        return await self._spawn_manager.spawn(role, task, system_prompt, tools)
+    
+    async def parallel_map(
+        self,
+        items: list[Any],
+        task_template: str,
+        role: str = "worker",
+    ) -> list[str]:
+        """
+        Map a task template over items in parallel using spawned agents.
+        
+        Args:
+            items: Items to process.
+            task_template: Template with {item} placeholder.
+            role: Role for spawned workers.
+            
+        Returns:
+            List of results in same order as items.
+            
+        Example:
+            ```python
+            results = await agent.parallel_map(
+                items=["Apple", "Google", "Microsoft"],
+                task_template="Research {item} and provide a summary",
+                role="researcher",
+            )
+            ```
+        """
+        if not self._spawn_manager:
+            raise RuntimeError(
+                "Spawning not enabled. Initialize agent with spawning=SpawningConfig(...)"
+            )
+        return await self._spawn_manager.parallel_map(items, task_template, role)
+
     def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
         """Setup taskboard for task tracking.
         

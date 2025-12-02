@@ -147,6 +147,11 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.LLM_REQUEST,
         EventType.LLM_RESPONSE,
         EventType.LLM_TOOL_DECISION,
+        # Spawning events
+        EventType.AGENT_SPAWNED,
+        EventType.AGENT_SPAWN_COMPLETED,
+        EventType.AGENT_SPAWN_FAILED,
+        EventType.AGENT_DESPAWNED,
     },
     Channel.TOOLS: {
         EventType.TOOL_REGISTERED,
@@ -405,6 +410,9 @@ class Observer:
         # Streaming state tracking
         self._streaming_agents: dict[str, dict] = {}  # agent_name -> {tokens, start_time, ...}
         self._stream_buffer: dict[str, str] = {}  # agent_name -> accumulated content
+        
+        # Thinking event deduplication - track iteration count per agent
+        self._agent_thinking_count: dict[str, int] = {}  # agent_name -> iteration count
     
     # ==================== Factory Methods (Presets) ====================
     
@@ -659,6 +667,10 @@ class Observer:
             EventType.AGENT_THINKING,  # Show thinking at progress level
             EventType.AGENT_REASONING,  # Show reasoning at progress level
             EventType.TASK_STARTED,
+            # Spawning events at progress - important milestones
+            EventType.AGENT_SPAWNED,
+            EventType.AGENT_SPAWN_COMPLETED,
+            EventType.AGENT_SPAWN_FAILED,
         }:
             return ObservabilityLevel.PROGRESS
         
@@ -670,6 +682,7 @@ class Observer:
             EventType.AGENT_ACTING,
             EventType.TASK_RETRYING,
             EventType.LLM_TOOL_DECISION,  # Show tool decisions at detailed level
+            EventType.AGENT_DESPAWNED,  # Cleanup at detailed level
         }:
             return ObservabilityLevel.DETAILED
         
@@ -789,8 +802,11 @@ class Observer:
                 action = event.type.value.split(".")[-1]  # "start", "end", "tool_call", "error"
                 self.config.on_stream(agent_name, action, event.data)
     
-    def _format_event(self, event: Event) -> str:
-        """Format an event for output with rich colors and formatting."""
+    def _format_event(self, event: Event) -> str | None:
+        """Format an event for output with rich colors and formatting.
+        
+        Returns None if the event should be suppressed (e.g., duplicate thinking events).
+        """
         if self.config.format == OutputFormat.JSON:
             return self._format_event_json(event)
         
@@ -826,7 +842,20 @@ class Observer:
         
         elif event_type == EventType.AGENT_THINKING:
             agent_name = data.get('agent_name', '?')
-            return f"{prefix}{s.agent(f'🧠 [{agent_name}]')} {s.dim('thinking...')}"
+            iteration = data.get('iteration', 1)
+            
+            # Track thinking iterations per agent to reduce noise
+            if agent_name not in self._agent_thinking_count:
+                self._agent_thinking_count[agent_name] = 0
+            self._agent_thinking_count[agent_name] += 1
+            count = self._agent_thinking_count[agent_name]
+            
+            # Only show first thinking event per agent - subsequent work shows via tool calls
+            if count == 1:
+                return f"{prefix}{s.agent(f'🧠 [{agent_name}]')} {s.dim('thinking...')}"
+            else:
+                # Suppress subsequent thinking events - tool calls will show the actual work
+                return None
         
         elif event_type == EventType.AGENT_REASONING:
             agent_name = data.get('agent_name', '?')
@@ -861,6 +890,10 @@ class Observer:
         elif event_type == EventType.AGENT_RESPONDED:
             agent_name = data.get('agent_name', '?')
             result = data.get("response_preview") or data.get("response") or data.get("result_preview", "")
+            
+            # Reset thinking count for this agent
+            if agent_name in self._agent_thinking_count:
+                del self._agent_thinking_count[agent_name]
             
             # Duration formatting
             duration_str = ""
@@ -901,23 +934,33 @@ class Observer:
             return f"{prefix}{s.error(f'✗ [{agent_name}] ERROR:')} {s.error(error)}"
         
         # ═══════════════════════════════════════════════════════════
-        # TOOL EVENTS - Blue/Cyan theme with indentation
+        # TOOL EVENTS - Blue/Cyan theme with agent context
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.TOOL_CALLED:
-            tool_name = data.get("tool", "?")
+            agent_name = data.get("agent_name", "")
+            tool_name = data.get("tool_name", data.get("tool", "?"))
             args = data.get("args", {})
+            
+            # Agent context for spawned agents
+            agent_ctx = f"{s.dim(f'[{agent_name}]')} " if agent_name else ""
+            
             args_str = ""
             if args and self.config.level >= ObservabilityLevel.DETAILED:
                 args_preview = str(args)
-                if self.config.truncate and len(args_preview) > self.config.truncate:
-                    args_preview = args_preview[:self.config.truncate] + "..."
-                args_str = s.dim(f" args={args_preview}")
-            return f"{prefix}   {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('calling...')}{args_str}"
+                if self.config.truncate and len(args_preview) > 80:
+                    args_preview = args_preview[:80] + "..."
+                args_str = f"\n{prefix}      {s.dim(f'args: {args_preview}')}"
+            
+            return f"{prefix}   {agent_ctx}{s.info('↳')} {s.tool(f'🔧 {tool_name}')}{args_str}"
         
         elif event_type == EventType.TOOL_RESULT:
-            tool_name = data.get("tool", "")
+            agent_name = data.get("agent_name", "")
+            tool_name = data.get("tool_name", data.get("tool", "?"))
             result = data.get("result_preview", str(data.get("result", "")))
+            
+            # Agent context
+            agent_ctx = f"{s.dim(f'[{agent_name}]')} " if agent_name else ""
             
             # Duration
             duration_str = ""
@@ -928,17 +971,23 @@ class Observer:
                 else:
                     duration_str = s.dim(f" ({ms:.0f}ms)")
             
-            # Truncate result
-            if self.config.truncate and len(result) > self.config.truncate:
-                result = result[:self.config.truncate] + "..."
+            # Truncate result - show more context
+            truncate_len = min(self.config.truncate or 200, 200)
+            if len(result) > truncate_len:
+                result = result[:truncate_len] + "..."
             
-            result_preview = f" → {s.dim(result)}" if result else ""
-            return f"{prefix}   {s.success('✓')} {s.tool(f'🔧 {tool_name}')}{duration_str}{result_preview}"
+            # Clean up result for single line display
+            result_clean = result.replace("\n", " ").strip()
+            result_preview = f"\n{prefix}      {s.dim(f'→ {result_clean}')}" if result_clean else ""
+            
+            return f"{prefix}   {agent_ctx}{s.success('✓')} {s.tool(f'🔧 {tool_name}')}{duration_str}{result_preview}"
         
         elif event_type == EventType.TOOL_ERROR:
-            tool_name = data.get("tool", "?")
+            agent_name = data.get("agent_name", "")
+            tool_name = data.get("tool_name", data.get("tool", "?"))
             error = data.get("error", "Unknown error")
-            return f"{prefix}   {s.error('✗')} {s.tool(f'🔧 {tool_name}')} {s.error(f'FAILED: {error}')}"
+            agent_ctx = f"{s.dim(f'[{agent_name}]')} " if agent_name else ""
+            return f"{prefix}   {agent_ctx}{s.error('✗')} {s.tool(f'🔧 {tool_name}')} {s.error(f'FAILED: {error}')}"
         
         # ═══════════════════════════════════════════════════════════
         # TASK EVENTS - Green theme with clear status
@@ -1200,6 +1249,64 @@ class Observer:
                 return "\n".join(lines)
             
             return header
+        
+        # ═══════════════════════════════════════════════════════════
+        # SPAWNING EVENTS - Dynamic agent creation
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.AGENT_SPAWNED:
+            parent = data.get("parent_agent", "?")
+            role = data.get("role", "?")
+            task = data.get("task", "")[:80]
+            depth = data.get("depth", 1)
+            active = data.get("active_spawns", 0)
+            total = data.get("total_spawns", 0)
+            
+            # Tree-style indentation for nested spawns
+            indent = "   " * depth
+            tree_char = "├─" if depth > 1 else ""
+            
+            header = f"{prefix}{indent}{tree_char}{s.info('🚀')} {s.agent(f'[{parent}]')} spawned {s.success(s.bold(role))}"
+            lines.append(header)
+            if task:
+                lines.append(f"{prefix}{indent}   {s.dim('Task:')} {s.dim(task)}")
+            lines.append(f"{prefix}{indent}   {s.dim(f'Active: {active}, Total: {total}, Depth: {depth}')}")
+            return "\n".join(lines)
+        
+        elif event_type == EventType.AGENT_SPAWN_COMPLETED:
+            role = data.get("role", "?")
+            result = data.get("result_preview", "")
+            depth = data.get("depth", 1)
+            
+            # Tree-style indentation
+            indent = "   " * depth
+            tree_char = "└─" if depth > 1 else ""
+            
+            header = f"{prefix}{indent}{tree_char}{s.success('✓')} {s.success(role)} completed"
+            if result:
+                # Truncate and clean up result preview
+                result_clean = result[:120].replace("\n", " ").strip()
+                if len(result) > 120:
+                    result_clean += "..."
+                lines.append(header)
+                lines.append(f"{prefix}{indent}   {s.dim(result_clean)}")
+                return "\n".join(lines)
+            return header
+        
+        elif event_type == EventType.AGENT_SPAWN_FAILED:
+            role = data.get("role", "?")
+            error = data.get("error", "Unknown error")
+            depth = data.get("depth", 1)
+            
+            indent = "   " * depth
+            tree_char = "└─" if depth > 1 else ""
+            return f"{prefix}{indent}{tree_char}{s.error('✗')} {s.error(role)} {s.error(f'FAILED: {error[:80]}')}"
+        
+        elif event_type == EventType.AGENT_DESPAWNED:
+            role = data.get("role", "?")
+            depth = data.get("depth", 1)
+            indent = "   " * depth
+            return f"{prefix}{indent}{s.dim(f'🗑️ {role} cleaned up')}"
         
         # ═══════════════════════════════════════════════════════════
         # DEFAULT - System/custom events (dimmed)
