@@ -508,7 +508,7 @@ class Spreadsheet(BaseCapability):
             path: str,
             sheet_name: str | None = None,
             has_header: bool = True,
-            max_rows: int | None = None,
+            max_rows: int = 1000,
         ) -> dict[str, Any]:
             """Read data from an Excel or CSV file.
             
@@ -516,13 +516,17 @@ class Spreadsheet(BaseCapability):
                 path: Path to the spreadsheet file (.xlsx, .csv, .tsv)
                 sheet_name: Sheet name for Excel files (uses active sheet if not specified)
                 has_header: Whether first row contains column headers
-                max_rows: Maximum rows to read (default: 100000)
+                max_rows: Maximum rows to read (default: 1000)
             
             Returns:
                 Dictionary with data, columns, row_count, and sheet_name
             """
             file_path = self._validate_path(path)
             self._check_file_size(file_path)
+            
+            # Handle string conversion
+            if isinstance(max_rows, str):
+                max_rows = int(max_rows) if max_rows else 1000
             
             fmt = self._detect_format(file_path)
             
@@ -593,8 +597,9 @@ class Spreadsheet(BaseCapability):
         @tool
         def query_spreadsheet(
             path: str,
-            filters: dict[str, Any] | None = None,
-            columns: list[str] | None = None,
+            columns: str | None = None,
+            filter_column: str | None = None,
+            filter_value: str | None = None,
             sort_by: str | None = None,
             sort_desc: bool = False,
             limit: int = 100,
@@ -604,12 +609,9 @@ class Spreadsheet(BaseCapability):
             
             Args:
                 path: Path to the spreadsheet file
-                filters: Filter conditions. Examples:
-                    - {"status": "active"} - exact match
-                    - {"age": {"$gt": 18}} - greater than
-                    - {"name": {"$contains": "john"}} - contains text
-                    - {"category": {"$in": ["A", "B"]}} - in list
-                columns: List of columns to include (all if not specified)
+                columns: Comma-separated column names to include (e.g., "name,sales,region")
+                filter_column: Column name to filter on
+                filter_value: Value to filter for (exact match)
                 sort_by: Column name to sort by
                 sort_desc: Sort in descending order
                 limit: Maximum rows to return
@@ -621,6 +623,10 @@ class Spreadsheet(BaseCapability):
             file_path = self._validate_path(path)
             self._check_file_size(file_path)
             
+            # Handle string limit
+            if isinstance(limit, str):
+                limit = int(limit) if limit else 100
+            
             fmt = self._detect_format(file_path)
             
             if fmt == "xlsx":
@@ -630,13 +636,18 @@ class Spreadsheet(BaseCapability):
             
             data = result.data
             
-            # Apply filters
-            if filters:
-                data = self._filter_data(data, filters)
+            # Apply simple filter
+            if filter_column and filter_value:
+                data = [row for row in data if str(row.get(filter_column, "")) == str(filter_value)]
+            
+            # Parse columns string
+            col_list = None
+            if columns:
+                col_list = [c.strip() for c in columns.split(",")]
             
             # Select columns
-            if columns:
-                data = [{k: v for k, v in row.items() if k in columns} for row in data]
+            if col_list:
+                data = [{k: v for k, v in row.items() if k in col_list} for row in data]
             
             # Sort
             if sort_by and data:
@@ -652,30 +663,28 @@ class Spreadsheet(BaseCapability):
             return {
                 "data": data,
                 "total_matching": len(data),
-                "columns": columns or result.columns,
+                "columns": col_list or result.columns,
             }
         
         @tool
         def aggregate_spreadsheet(
             path: str,
-            aggregations: dict[str, str],
-            group_by: list[str] | None = None,
-            filters: dict[str, Any] | None = None,
+            column: str,
+            operation: str = "sum",
+            group_by: str | None = None,
             sheet_name: str | None = None,
         ) -> dict[str, Any]:
-            """Compute aggregations on spreadsheet data.
+            """Compute aggregation on a spreadsheet column.
             
             Args:
                 path: Path to the spreadsheet file
-                aggregations: Column to aggregation function mapping.
-                    Functions: sum, avg, min, max, count, first, last
-                    Example: {"sales": "sum", "quantity": "avg"}
-                group_by: Columns to group by (optional)
-                filters: Filter conditions to apply before aggregation
+                column: Column name to aggregate (e.g., "sales")
+                operation: Aggregation function: sum, avg, min, max, count
+                group_by: Column to group by (e.g., "region")
                 sheet_name: Sheet name for Excel files
             
             Returns:
-                Aggregated data
+                Aggregated data with results
             """
             file_path = self._validate_path(path)
             self._check_file_size(file_path)
@@ -691,24 +700,24 @@ class Spreadsheet(BaseCapability):
             
             # Convert string numbers to floats for aggregation
             for row in data:
-                for col in aggregations:
-                    if col in row and isinstance(row[col], str):
-                        try:
-                            row[col] = float(row[col].replace(",", ""))
-                        except (ValueError, AttributeError):
-                            pass
+                if column in row and isinstance(row[column], str):
+                    try:
+                        row[column] = float(row[column].replace(",", ""))
+                    except (ValueError, AttributeError):
+                        pass
             
-            # Apply filters
-            if filters:
-                data = self._filter_data(data, filters)
+            # Build aggregations dict
+            aggregations = {column: operation}
+            group_by_list = [group_by] if group_by else None
             
             # Aggregate
-            aggregated = self._aggregate_data(data, group_by, aggregations)
+            aggregated = self._aggregate_data(data, group_by_list, aggregations)
             
             return {
                 "data": aggregated,
                 "group_by": group_by,
-                "aggregations": aggregations,
+                "column": column,
+                "operation": operation,
                 "source_rows": len(data),
             }
         
