@@ -225,8 +225,8 @@ class Auditor(Interceptor):
             if tool_calls:
                 data["tool_calls"] = [
                     {
-                        "name": getattr(tc.function, "name", "unknown"),
-                        "id": getattr(tc, "id", ""),
+                        "name": tc.get("name", "unknown") if isinstance(tc, dict) else getattr(tc, "name", "unknown"),
+                        "id": tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", ""),
                     }
                     for tc in tool_calls
                 ]
