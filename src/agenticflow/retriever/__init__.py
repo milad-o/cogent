@@ -1,52 +1,56 @@
 """Retriever module for advanced document retrieval.
 
-This module provides a comprehensive retrieval system with:
+This module provides a comprehensive retrieval system with multiple strategies.
 
 **Core Retrievers:**
-- DenseRetriever: Vector similarity search
+- DenseRetriever: Vector similarity search (wraps VectorStore)
 - BM25Retriever: Sparse lexical retrieval (BM25 algorithm)
-- HybridRetriever: Combines dense and sparse for best of both
-- EnsembleRetriever: Combine any N retrievers with fusion
+- HybridRetriever: Combines dense + sparse for best of both
+- EnsembleRetriever: Combine N retrievers with fusion strategies
 
 **Contextual Retrievers:**
-- ParentDocumentRetriever: Index chunks, retrieve full documents
-- SentenceWindowRetriever: Index sentences, return with context
+- ParentDocumentRetriever: Index chunks, retrieve full parent documents
+- SentenceWindowRetriever: Index sentences, return with surrounding context
+
+**Specialized Indexes:**
+- SummaryIndex: LLM-generated summaries for efficient retrieval
+- TreeIndex: Hierarchical tree of summaries for large documents
+- KeywordTableIndex: Inverted keyword index for fast lookup
+- KnowledgeGraphIndex: Graph-based retrieval with KG integration
+- HierarchicalIndex: Multi-level structure (doc → section → chunk)
+- TimeBasedIndex: Time-decay scoring for recency-aware retrieval
+- MultiRepresentationIndex: Multiple embeddings per document
 
 **Advanced Retrievers:**
-- SelfQueryRetriever: LLM-parsed filters from natural language
+- SelfQueryRetriever: LLM-parsed natural language to structured filters
 
 **Rerankers:**
 - CrossEncoderReranker: Local cross-encoder models
+- FlashRankReranker: Lightweight neural reranker
 - CohereReranker: Cohere Rerank API
-- LLMReranker: Any LLM for scoring
+- LLMReranker: Any LLM for pointwise scoring
 - ListwiseLLMReranker: LLM ranking all docs at once
 
 **Utilities:**
-- FusionStrategy: RRF, linear, max, voting
+- FusionStrategy: RRF, linear, max, voting strategies
 - fuse_results: Combine results from multiple retrievers
 
 Example:
-    >>> from agenticflow.retriever import (
-    ...     DenseRetriever,
-    ...     HybridRetriever,
-    ... )
-    >>> from agenticflow.document import (
-    ...     DocumentLoader,
-    ...     RecursiveCharacterSplitter,
-    ... )
+    >>> from agenticflow.retriever import DenseRetriever, HybridRetriever
+    >>> from agenticflow.document import DocumentLoader, RecursiveCharacterSplitter
     >>> from agenticflow.vectorstore import VectorStore
     >>> 
     >>> # Load and split documents
-    >>> loader = DocumentLoader()
-    >>> docs = await loader.load_directory("./documents")
+    >>> docs = await DocumentLoader().load_directory("./documents")
+    >>> chunks = RecursiveCharacterSplitter(chunk_size=1000).split_documents(docs)
     >>> 
-    >>> splitter = RecursiveCharacterSplitter(chunk_size=1000)
-    >>> chunks = splitter.split_documents(docs)
-    >>> 
-    >>> # Create retrievers
+    >>> # Create vector store and retriever
     >>> vs = VectorStore()
-    >>> vs.add_texts([c.content for c in chunks])
+    >>> await vs.add_documents(chunks)
     >>> retriever = DenseRetriever(vs)
+    >>> 
+    >>> # Retrieve
+    >>> results = await retriever.retrieve("search query", k=5)
 """
 
 from agenticflow.retriever.base import (
@@ -104,6 +108,20 @@ from agenticflow.retriever.summary import (
     SummaryIndex,
     TreeIndex,
 )
+from agenticflow.retriever.hierarchical import (
+    HierarchicalIndex,
+    HierarchyLevel,
+    HierarchyNode,
+)
+from agenticflow.retriever.temporal import (
+    DecayFunction,
+    TimeBasedIndex,
+    TimeRange,
+)
+from agenticflow.retriever.multi_representation import (
+    MultiRepresentationIndex,
+    RepresentationType,
+)
 from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores
 
 __all__ = [
@@ -144,6 +162,17 @@ __all__ = [
     "KeywordTableIndex",
     "KnowledgeGraphIndex",
     "DocumentSummary",
+    # Hierarchical index
+    "HierarchicalIndex",
+    "HierarchyLevel",
+    "HierarchyNode",
+    # Temporal index
+    "TimeBasedIndex",
+    "DecayFunction",
+    "TimeRange",
+    # Multi-representation index
+    "MultiRepresentationIndex",
+    "RepresentationType",
     # Advanced retrievers
     "SelfQueryRetriever",
     "AttributeInfo",

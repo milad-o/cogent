@@ -9,20 +9,31 @@ Capabilities are reusable building blocks that add tools to agents:
 - CodeSandbox: Safe Python code execution
 - SSISAnalyzer: SSIS package analysis and data lineage tracing
 - MCP: Connect to local/remote MCP servers and use their tools
+- Spreadsheet: Excel/CSV reading, writing, and analysis
+- PDF: PDF reading, creation, merging, and text extraction
+- Browser: Headless browser automation with Playwright
+- Shell: Sandboxed terminal command execution
 
 Example:
     ```python
     from agenticflow import Agent
-    from agenticflow.capabilities import KnowledgeGraph, FileSystem, WebSearch, CodeSandbox, MCP
+    from agenticflow.capabilities import (
+        KnowledgeGraph, FileSystem, WebSearch, CodeSandbox, MCP,
+        Spreadsheet, PDF, Browser, Shell,
+    )
     
     agent = Agent(
         name="Assistant",
         model=model,
         capabilities=[
-            KnowledgeGraph(),                    # Adds remember, recall, query tools
+            KnowledgeGraph(),                     # Adds remember, recall, query tools
             FileSystem(allowed_paths=["./data"]), # Adds read, write, search tools
             WebSearch(),                          # Adds web_search, news_search, fetch tools
             CodeSandbox(),                        # Adds execute_python, run_function tools
+            Spreadsheet(),                        # Adds read/write spreadsheet tools
+            PDF(),                                # Adds read/create PDF tools
+            Browser(headless=True),               # Adds browser automation tools
+            Shell(allowed_commands=["ls", "cat"]), # Adds shell command tools
             MCP.stdio(command="npx", args=["-y", "@modelcontextprotocol/server-filesystem", "."]),
         ],
     )
@@ -33,16 +44,21 @@ Example:
 """
 
 from agenticflow.capabilities.base import BaseCapability
+from agenticflow.capabilities.browser import Browser
 from agenticflow.capabilities.codebase import CodebaseAnalyzer
 from agenticflow.capabilities.code_sandbox import CodeSandbox
 from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPTransport
+from agenticflow.capabilities.pdf import PDF
+from agenticflow.capabilities.shell import Shell
+from agenticflow.capabilities.spreadsheet import Spreadsheet
 from agenticflow.capabilities.ssis import SSISAnalyzer
 from agenticflow.capabilities.web_search import WebSearch
 
 __all__ = [
     "BaseCapability",
+    "Browser",
     "CodebaseAnalyzer",
     "CodeSandbox",
     "FileSystem",
@@ -50,6 +66,9 @@ __all__ = [
     "MCP",
     "MCPServerConfig",
     "MCPTransport",
+    "PDF",
+    "Shell",
+    "Spreadsheet",
     "SSISAnalyzer",
     "WebSearch",
 ]
