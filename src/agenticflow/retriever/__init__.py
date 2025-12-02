@@ -97,6 +97,13 @@ from agenticflow.retriever.self_query import (
     SelfQueryRetriever,
 )
 from agenticflow.retriever.sparse import BM25Retriever
+from agenticflow.retriever.summary import (
+    DocumentSummary,
+    KeywordTableIndex,
+    KnowledgeGraphIndex,
+    SummaryIndex,
+    TreeIndex,
+)
 from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores
 
 __all__ = [
@@ -131,6 +138,12 @@ __all__ = [
     # Contextual retrievers
     "ParentDocumentRetriever",
     "SentenceWindowRetriever",
+    # Summary-based indexes
+    "SummaryIndex",
+    "TreeIndex",
+    "KeywordTableIndex",
+    "KnowledgeGraphIndex",
+    "DocumentSummary",
     # Advanced retrievers
     "SelfQueryRetriever",
     "AttributeInfo",
