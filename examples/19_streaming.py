@@ -549,21 +549,7 @@ async def main():
     await demo_print_stream_helper()  # Demo 7: print_stream()
     await demo_collect_stream()       # Demo 8: collect_stream()
     
-    print("\n" + "=" * 60)
-    print("All Streaming Demos Complete!")
-    print("=" * 60)
-    
-    print("""
-Key Takeaways:
-1. Simple: agent.chat("...", stream=True) - just add stream=True!
-2. Default: Agent(stream=True) - enable streaming by default
-3. think_stream() - lower-level streaming without history
-4. chat_stream() - streaming with conversation history
-5. stream_events() - structured events (tokens, tool calls, etc.)
-6. print_stream() - streaming + capture helper
-7. collect_stream() - silent collection
-8. Works with any streaming-compatible model
-""")
+    print("\n✅ All Streaming demos completed!")
 
 
 if __name__ == "__main__":

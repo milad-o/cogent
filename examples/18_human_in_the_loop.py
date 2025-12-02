@@ -422,19 +422,7 @@ async def main():
     await demo_interactive()
     await demo_guidance()
     
-    print("\n" + "="*60)
-    print("All HITL demos completed!")
-    print("="*60)
-    print("""
-Key Takeaways:
-1. Configure interrupt_on in AgentConfig to control which tools need approval
-2. Catch InterruptedException to handle pending actions
-3. Use HumanDecision.approve/reject/edit/skip/abort/guide/respond
-4. Use HumanDecision.guide() to provide guidance for agent to reconsider
-5. Use HumanDecision.respond() to provide direct answers to agent questions
-6. Call agent.resume_action() to continue execution
-7. Use dynamic rules (callables) for context-aware approval logic
-""")
+    print("\n✅ All HITL demos completed!")
 
 
 if __name__ == "__main__":

@@ -26,13 +26,7 @@ from agenticflow.capabilities import SSISAnalyzer
 
 async def main():
     """Run agent-powered SSIS analysis demo."""
-    print("=" * 70)
-    print("🤖 Agent-Powered SSIS Analysis")
-    print("=" * 70)
-    print()
-    print("This demo shows how an agent uses the SSISAnalyzer capability")
-    print("to intelligently answer questions about SSIS packages.")
-    print()
+    print("🤖 Agent-Powered SSIS Analysis\n")
     
     # Check for sample SSIS project
     project_dir = Path(__file__).parent / "data" / "ssis_project"
@@ -101,15 +95,7 @@ Be specific with package names, task names, and connection details.""",
     # Cleanup
     analyzer.close()
     
-    print("\n" + "=" * 70)
-    print("✅ Demo complete!")
-    print()
-    print("Key takeaways:")
-    print("  • SSISAnalyzer capability gives agents SSIS domain expertise")
-    print("  • Agent intelligently selects tools based on the question")
-    print("  • Can analyze single packages or entire projects")
-    print("  • Observer shows the agent's reasoning process")
-    print("=" * 70)
+    print("\n✅ Demo complete!")
 
 
 if __name__ == "__main__":
