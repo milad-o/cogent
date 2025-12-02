@@ -665,6 +665,21 @@ class NativeExecutor(BaseExecutor):
                     "iteration": iteration + 1,
                 })
             
+            # Emit LLM request event (for deep observability)
+            if event_bus:
+                await event_bus.publish(EventType.LLM_REQUEST.value, {
+                    "agent_name": agent_name,
+                    "model": self.agent.model.model_name if hasattr(self.agent.model, 'model_name') else str(self.agent.model),
+                    "messages": [{"role": getattr(m, "role", "unknown"), "content": str(getattr(m, "content", ""))[:500]} for m in messages],
+                    "message_count": len(messages),
+                    "system_prompt": (current_prompt or "")[:300] if current_prompt else "",
+                    "tools_available": [t.name for t in current_tools] if current_tools else [],
+                    "prompt": task,
+                    "iteration": iteration + 1,
+                })
+            
+            loop_start = time.perf_counter()
+            
             # LLM call with resilience
             if self._model_resilience:
                 exec_result = await self._model_resilience.execute(
@@ -686,8 +701,35 @@ class NativeExecutor(BaseExecutor):
             else:
                 response: AIMessage = await self._bound_model.ainvoke(messages)
             
+            loop_duration_ms = (time.perf_counter() - loop_start) * 1000
             model_calls += 1
             messages.append(response)
+            
+            # Emit LLM response event (for deep observability)
+            tool_calls = response.tool_calls or []
+            if event_bus:
+                await event_bus.publish(EventType.LLM_RESPONSE.value, {
+                    "agent_name": agent_name,
+                    "iteration": iteration + 1,
+                    "content": (response.content or "")[:500],
+                    "content_length": len(response.content or ""),
+                    "tool_calls": [
+                        {"name": tc.get("name", "?"), "args": str(tc.get("args", {}))[:100]}
+                        for tc in tool_calls[:5]
+                    ] if tool_calls else [],
+                    "has_tool_calls": bool(tool_calls),
+                    "finish_reason": "tool_calls" if tool_calls else "stop",
+                    "duration_ms": loop_duration_ms,
+                })
+            
+            # Emit tool decision event if tools were selected
+            if tool_calls and event_bus:
+                await event_bus.publish(EventType.LLM_TOOL_DECISION.value, {
+                    "agent_name": agent_name,
+                    "iteration": iteration + 1,
+                    "tools_selected": [tc.get("name", "?") for tc in tool_calls],
+                    "reasoning": (response.content or "")[:200] if response.content else "",
+                })
             
             # POST_THINK interceptors
             if interceptors:
@@ -701,8 +743,8 @@ class NativeExecutor(BaseExecutor):
                 except StopExecution as e:
                     return e.response
             
-            # Check for tool calls
-            if not response.tool_calls:
+            # Check for tool calls (use already extracted tool_calls)
+            if not tool_calls:
                 duration_ms = (time.perf_counter() - execution_start) * 1000
                 
                 # POST_RUN interceptors

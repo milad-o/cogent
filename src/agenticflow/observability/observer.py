@@ -144,6 +144,9 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.AGENT_RESPONDED,
         EventType.AGENT_ERROR,
         EventType.AGENT_STATUS_CHANGED,
+        EventType.LLM_REQUEST,
+        EventType.LLM_RESPONSE,
+        EventType.LLM_TOOL_DECISION,
     },
     Channel.TOOLS: {
         EventType.TOOL_REGISTERED,
@@ -666,8 +669,16 @@ class Observer:
             EventType.TOOL_ERROR,
             EventType.AGENT_ACTING,
             EventType.TASK_RETRYING,
+            EventType.LLM_TOOL_DECISION,  # Show tool decisions at detailed level
         }:
             return ObservabilityLevel.DETAILED
+        
+        # Debug-level events - LLM requests/responses (more verbose)
+        if event.type in {
+            EventType.LLM_REQUEST,
+            EventType.LLM_RESPONSE,
+        }:
+            return ObservabilityLevel.DEBUG
         
         # Debug-level events
         if event.type in {
@@ -1074,6 +1085,121 @@ class Observer:
             self._streaming_agents.pop(agent_name, None)
             self._stream_buffer.pop(agent_name, None)
             return f"{prefix}{s.error('✗')} {s.agent(f'[{agent_name}]')} {s.error(f'Stream error: {error}')}"
+        
+        # ═══════════════════════════════════════════════════════════
+        # LLM OBSERVABILITY EVENTS - Deep insight into LLM interactions
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.LLM_REQUEST:
+            agent_name = data.get("agent_name", "?")
+            message_count = data.get("message_count", 0)
+            tools_available = data.get("tools_available", [])
+            prompt = data.get("prompt", "")
+            messages = data.get("messages", [])
+            system_prompt = data.get("system_prompt", "")
+            
+            tools_str = f", tools=[{', '.join(tools_available[:5])}{'...' if len(tools_available) > 5 else ''}]" if tools_available else ""
+            
+            header = f"{prefix}{s.info('📤')} {s.agent(f'[{agent_name}]')} {s.bold('LLM Request')} {s.dim(f'({message_count} messages{tools_str})')}"
+            lines.append(header)
+            
+            # Show system prompt preview
+            if system_prompt:
+                sys_preview = system_prompt[:150] + "..." if len(system_prompt) > 150 else system_prompt
+                lines.append(f"      {s.dim('System:')} {s.dim(sys_preview)}")
+            
+            # Show user prompt
+            if prompt:
+                prompt_preview = prompt[:200] + "..." if len(prompt) > 200 else prompt
+                lines.append(f"      {s.dim('Prompt:')} {prompt_preview}")
+            
+            # Show message history at DEBUG level
+            if self.config.level >= ObservabilityLevel.DEBUG and messages:
+                lines.append(f"      {s.dim('─── Messages ───')}")
+                for i, msg in enumerate(messages[-5:]):  # Last 5 messages
+                    role = msg.get("role", "?")
+                    content = msg.get("content", "")
+                    if isinstance(content, str):
+                        content_preview = content[:100] + "..." if len(content) > 100 else content
+                    else:
+                        content_preview = str(content)[:100]
+                    role_color = s.success if role == "assistant" else (s.info if role == "user" else s.dim)
+                    lines.append(f"      {role_color(role)}: {s.dim(content_preview)}")
+                if len(messages) > 5:
+                    lines.append(f"      {s.dim(f'... and {len(messages) - 5} earlier messages')}")
+            
+            return "\n".join(lines)
+        
+        elif event_type == EventType.LLM_RESPONSE:
+            agent_name = data.get("agent_name", "?")
+            content = data.get("content", "")
+            tool_calls = data.get("tool_calls", [])
+            finish_reason = data.get("finish_reason", "")
+            usage = data.get("usage", {})
+            duration_ms = data.get("duration_ms", 0)
+            
+            # Duration formatting
+            duration_str = ""
+            if duration_ms:
+                if duration_ms > 1000:
+                    duration_str = s.success(f" ({duration_ms/1000:.1f}s)")
+                else:
+                    duration_str = s.dim(f" ({duration_ms:.0f}ms)")
+            
+            # Usage info
+            usage_str = ""
+            if usage:
+                prompt_tokens = usage.get("prompt_tokens", 0)
+                completion_tokens = usage.get("completion_tokens", 0)
+                total = usage.get("total_tokens", prompt_tokens + completion_tokens)
+                if total:
+                    usage_str = s.dim(f" [{total} tokens]")
+            
+            tool_str = f", {len(tool_calls)} tool calls" if tool_calls else ""
+            header = f"{prefix}{s.success('📥')} {s.agent(f'[{agent_name}]')} {s.bold('LLM Response')}{duration_str}{usage_str}{s.dim(f' ({finish_reason}{tool_str})')}"
+            lines.append(header)
+            
+            # Show content preview
+            if content:
+                content_preview = content[:300] + "..." if len(content) > 300 else content
+                for line in content_preview.split('\n')[:5]:
+                    lines.append(f"      {line}")
+                if len(content.split('\n')) > 5:
+                    lines.append(f"      {s.dim('... (more content)')}")
+            
+            # Show tool calls
+            if tool_calls:
+                lines.append(f"      {s.dim('─── Tool Calls ───')}")
+                for tc in tool_calls[:3]:
+                    tc_name = tc.get("name", tc.get("function", {}).get("name", "?"))
+                    tc_args = tc.get("arguments", tc.get("function", {}).get("arguments", ""))
+                    args_preview = str(tc_args)[:80] + "..." if len(str(tc_args)) > 80 else str(tc_args)
+                    lines.append(f"      {s.tool(f'🔧 {tc_name}')} {s.dim(args_preview)}")
+                if len(tool_calls) > 3:
+                    lines.append(f"      {s.dim(f'... and {len(tool_calls) - 3} more tools')}")
+            
+            return "\n".join(lines)
+        
+        elif event_type == EventType.LLM_TOOL_DECISION:
+            agent_name = data.get("agent_name", "?")
+            tools_selected = data.get("tools_selected", [])
+            reasoning = data.get("reasoning", "")
+            
+            if tools_selected:
+                tools_str = ", ".join(tools_selected[:5])
+                if len(tools_selected) > 5:
+                    tools_str += f" ... (+{len(tools_selected) - 5})"
+                header = f"{prefix}{s.info('🎯')} {s.agent(f'[{agent_name}]')} {s.bold('Tool Decision:')} {s.tool(tools_str)}"
+            else:
+                header = f"{prefix}{s.info('🎯')} {s.agent(f'[{agent_name}]')} {s.bold('Tool Decision:')} {s.dim('(no tools selected)')}"
+            
+            if reasoning:
+                lines.append(header)
+                reasoning_preview = reasoning[:200] + "..." if len(reasoning) > 200 else reasoning
+                lines.append(f"      {s.dim('Reasoning:')} {reasoning_preview}")
+                return "\n".join(lines)
+            
+            return header
         
         # ═══════════════════════════════════════════════════════════
         # DEFAULT - System/custom events (dimmed)

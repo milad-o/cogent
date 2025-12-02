@@ -81,6 +81,11 @@ class EventType(Enum):
     AGENT_STATUS_CHANGED = "agent.status_changed"
     AGENT_INTERRUPTED = "agent.interrupted"  # HITL: agent paused for human input
     AGENT_RESUMED = "agent.resumed"  # HITL: agent resumed after human decision
+    
+    # LLM Request/Response events (deep observability)
+    LLM_REQUEST = "llm.request"  # Full request being sent to LLM
+    LLM_RESPONSE = "llm.response"  # Full response from LLM (before parsing)
+    LLM_TOOL_DECISION = "llm.tool_decision"  # LLM decided to call tool(s)
 
     # Streaming events (token-by-token LLM output)
     STREAM_START = "stream.start"  # Streaming has started

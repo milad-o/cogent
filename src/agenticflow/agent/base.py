@@ -1310,6 +1310,21 @@ class Agent:
         # Convert to dict format for native models
         dict_messages = [msg.to_dict() for msg in messages]
 
+        # Emit detailed LLM request event (for deep observability)
+        await self._emit_event(
+            EventType.LLM_REQUEST,
+            {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "model": self.model.model_name if hasattr(self.model, 'model_name') else str(self.model),
+                "messages": dict_messages,
+                "message_count": len(dict_messages),
+                "system_prompt_length": len(effective_prompt) if effective_prompt else 0,
+                "tools_available": [t.name for t in self.all_tools] if include_tools and self.all_tools else [],
+            },
+            correlation_id,
+        )
+
         try:
             response = await self.model.ainvoke(dict_messages)
             result = response.content
@@ -1317,6 +1332,20 @@ class Agent:
             # Track timing
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
             self.state.add_thinking_time(duration_ms)
+
+            # Emit raw LLM response event (before any parsing)
+            await self._emit_event(
+                EventType.LLM_RESPONSE,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "response": result,
+                    "response_length": len(result) if result else 0,
+                    "duration_ms": duration_ms,
+                    "has_tool_calls": hasattr(response, 'tool_calls') and bool(response.tool_calls),
+                },
+                correlation_id,
+            )
 
             # Update history
             self.state.add_message(HumanMessage(content=prompt))
@@ -1547,20 +1576,76 @@ class Agent:
             bound_model = self.bound_model
             tools = self.all_tools
             
+            # Emit LLM request event before agentic loop
+            await self._emit_event(
+                EventType.LLM_REQUEST,
+                {
+                    "agent_id": self.id,
+                    "agent_name": self.name,
+                    "model": self.model.model_name if hasattr(self.model, 'model_name') else str(self.model),
+                    "messages": dict_messages,
+                    "message_count": len(dict_messages),
+                    "system_prompt": (effective_prompt or "")[:500],
+                    "tools_available": [t.name for t in tools] if tools else [],
+                    "prompt": message,
+                },
+                correlation_id,
+            )
+            
             # Agentic loop - keep calling until no more tool calls
             max_iterations = 10
             final_content = ""
+            iteration = 0
             
-            for _ in range(max_iterations):
+            for iteration in range(max_iterations):
+                loop_start = now_utc()
                 response = await bound_model.ainvoke(dict_messages)
+                loop_duration_ms = (now_utc() - loop_start).total_seconds() * 1000
                 
                 # Check for tool calls
                 tool_calls = getattr(response, 'tool_calls', None) or []
+                
+                # Emit LLM response event
+                await self._emit_event(
+                    EventType.LLM_RESPONSE,
+                    {
+                        "agent_id": self.id,
+                        "agent_name": self.name,
+                        "iteration": iteration + 1,
+                        "content": (response.content or "")[:500],
+                        "content_length": len(response.content or ""),
+                        "tool_calls": [
+                            {"name": getattr(tc, 'name', tc.get('name', '?') if isinstance(tc, dict) else '?'),
+                             "args": str(getattr(tc, 'args', tc.get('args', {}) if isinstance(tc, dict) else {}))[:100]}
+                            for tc in tool_calls[:5]
+                        ],
+                        "has_tool_calls": bool(tool_calls),
+                        "finish_reason": "tool_calls" if tool_calls else "stop",
+                        "duration_ms": loop_duration_ms,
+                    },
+                    correlation_id,
+                )
                 
                 if not tool_calls:
                     # No tool calls - we're done
                     final_content = response.content or ""
                     break
+                
+                # Emit tool decision event (shows which tools were selected and why)
+                await self._emit_event(
+                    EventType.LLM_TOOL_DECISION,
+                    {
+                        "agent_id": self.id,
+                        "agent_name": self.name,
+                        "iteration": iteration + 1,
+                        "tools_selected": [
+                            getattr(tc, 'name', tc.get('name', '?') if isinstance(tc, dict) else '?')
+                            for tc in tool_calls
+                        ],
+                        "reasoning": (response.content or "")[:200] if response.content else "",
+                    },
+                    correlation_id,
+                )
                 
                 # Add assistant message with tool calls to history
                 ai_msg = response.to_dict() if hasattr(response, 'to_dict') else {
