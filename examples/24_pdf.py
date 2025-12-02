@@ -29,14 +29,16 @@ async def main() -> None:
 
         # Create a sample PDF
         pdf_path = Path(tmpdir) / "report.pdf"
-        content = [
-            {"type": "title", "text": "Q4 2024 Financial Summary"},
-            {"type": "paragraph", "text": "Revenue: $4.2M (+15% YoY)"},
-            {"type": "paragraph", "text": "Operating costs decreased by 8% due to automation."},
-            {"type": "paragraph", "text": "Key growth drivers: Enterprise segment (+22%), API services (+18%)."},
-            {"type": "paragraph", "text": "Outlook: Projecting 20% growth in Q1 2025."},
-        ]
-        pdf._create_pdf(pdf_path, content)
+        content = """Q4 2024 Financial Summary
+
+Revenue: $4.2M (+15% YoY)
+
+Operating costs decreased by 8% due to automation.
+
+Key growth drivers: Enterprise segment (+22%), API services (+18%).
+
+Outlook: Projecting 20% growth in Q1 2025."""
+        pdf._create_pdf(pdf_path, content, title="Q4 2024 Financial Summary")
 
         model = get_model()
         analyst = Agent(

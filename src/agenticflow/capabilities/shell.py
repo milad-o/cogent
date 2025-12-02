@@ -341,7 +341,9 @@ class Shell(BaseCapability):
         if env:
             run_env.update(env)
         
-        # Set timeout
+        # Set timeout (handle string conversion)
+        if isinstance(timeout, str):
+            timeout = int(timeout) if timeout else None
         timeout = timeout or self.timeout_seconds
         
         start_time = time.time()
@@ -415,7 +417,7 @@ class Shell(BaseCapability):
             
             Args:
                 command: The shell command to execute
-                working_dir: Working directory for the command (optional)
+                working_dir: Working directory for the command (optional, defaults to configured working_dir)
                 timeout_seconds: Maximum execution time (optional)
             
             Returns:
@@ -425,7 +427,14 @@ class Shell(BaseCapability):
                 Commands are validated against security rules before execution.
                 Some commands may be blocked for security reasons.
             """
-            cwd = Path(working_dir) if working_dir else None
+            # Resolve working directory relative to self.working_dir
+            cwd = None
+            if working_dir:
+                wd_path = Path(working_dir)
+                if not wd_path.is_absolute():
+                    cwd = self.working_dir / wd_path
+                else:
+                    cwd = wd_path
             result = await self._run_command(command, cwd, timeout_seconds)
             return result.to_dict()
         
@@ -470,7 +479,14 @@ class Shell(BaseCapability):
             # Build command with heredoc
             command = f"{interpreter} << 'EOF'\n{script}\nEOF"
             
-            cwd = Path(working_dir) if working_dir else None
+            # Resolve working directory relative to self.working_dir
+            cwd = None
+            if working_dir:
+                wd_path = Path(working_dir)
+                if not wd_path.is_absolute():
+                    cwd = self.working_dir / wd_path
+                else:
+                    cwd = wd_path
             result = await self._run_command(command, cwd, timeout_seconds)
             return result.to_dict()
         
