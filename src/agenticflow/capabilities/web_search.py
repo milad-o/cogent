@@ -161,6 +161,317 @@ class DuckDuckGoProvider(SearchProvider):
         return results
 
 
+class BraveSearchProvider(SearchProvider):
+    """
+    Brave Search API provider.
+
+    Brave Search offers an independent index (not Google/Bing), 
+    privacy-focused search with no user tracking.
+
+    Get an API key at: https://api.search.brave.com/
+
+    Args:
+        api_key: Brave Search API key
+        timeout: Request timeout in seconds (default: 10)
+
+    Example:
+        ```python
+        from agenticflow.capabilities import WebSearch
+        from agenticflow.capabilities.web_search import BraveSearchProvider
+
+        ws = WebSearch(provider=BraveSearchProvider(api_key="your-key"))
+        ```
+    """
+
+    def __init__(self, api_key: str, timeout: int = 10):
+        self._api_key = api_key
+        self._timeout = timeout
+
+    @property
+    def name(self) -> str:
+        return "brave"
+
+    def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """Search the web using Brave Search API."""
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required for Brave Search. Install: uv add httpx")
+
+        results = []
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    headers={
+                        "X-Subscription-Token": self._api_key,
+                        "Accept": "application/json",
+                    },
+                    params={"q": query, "count": max_results},
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for i, item in enumerate(data.get("web", {}).get("results", [])):
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("url", ""),
+                        snippet=item.get("description", ""),
+                        source=self.name,
+                        position=i + 1,
+                    ))
+        except Exception:
+            pass
+
+        return results
+
+    def news(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """Search news using Brave Search API."""
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required for Brave Search. Install: uv add httpx")
+
+        results = []
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.get(
+                    "https://api.search.brave.com/res/v1/news/search",
+                    headers={
+                        "X-Subscription-Token": self._api_key,
+                        "Accept": "application/json",
+                    },
+                    params={"q": query, "count": max_results},
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for i, item in enumerate(data.get("results", [])):
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("url", ""),
+                        snippet=item.get("description", ""),
+                        source=self.name,
+                        position=i + 1,
+                    ))
+        except Exception:
+            pass
+
+        return results
+
+
+class TavilyProvider(SearchProvider):
+    """
+    Tavily AI Search API provider.
+
+    Tavily is specifically designed for AI agents, offering AI-optimized 
+    search results with content extraction included.
+
+    Get an API key at: https://tavily.com/
+
+    Args:
+        api_key: Tavily API key
+        search_depth: "basic" or "advanced" (default: "basic")
+        timeout: Request timeout in seconds (default: 10)
+
+    Example:
+        ```python
+        from agenticflow.capabilities import WebSearch
+        from agenticflow.capabilities.web_search import TavilyProvider
+
+        ws = WebSearch(provider=TavilyProvider(api_key="your-key"))
+        ```
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        search_depth: str = "basic",
+        timeout: int = 10,
+    ):
+        self._api_key = api_key
+        self._search_depth = search_depth
+        self._timeout = timeout
+
+    @property
+    def name(self) -> str:
+        return "tavily"
+
+    def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """Search using Tavily AI Search API."""
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required for Tavily. Install: uv add httpx")
+
+        results = []
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.post(
+                    "https://api.tavily.com/search",
+                    json={
+                        "api_key": self._api_key,
+                        "query": query,
+                        "search_depth": self._search_depth,
+                        "max_results": max_results,
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for i, item in enumerate(data.get("results", [])):
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("url", ""),
+                        snippet=item.get("content", ""),
+                        source=self.name,
+                        position=i + 1,
+                    ))
+        except Exception:
+            pass
+
+        return results
+
+    def news(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """Search news using Tavily (uses topic filter)."""
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required for Tavily. Install: uv add httpx")
+
+        results = []
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.post(
+                    "https://api.tavily.com/search",
+                    json={
+                        "api_key": self._api_key,
+                        "query": query,
+                        "search_depth": self._search_depth,
+                        "topic": "news",
+                        "max_results": max_results,
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for i, item in enumerate(data.get("results", [])):
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("url", ""),
+                        snippet=item.get("content", ""),
+                        source=self.name,
+                        position=i + 1,
+                    ))
+        except Exception:
+            pass
+
+        return results
+
+
+class SerpAPIProvider(SearchProvider):
+    """
+    SerpAPI provider for Google, Bing, and other search engines.
+
+    Get an API key at: https://serpapi.com/
+
+    Args:
+        api_key: SerpAPI key
+        engine: Search engine ("google", "bing", "yahoo", etc.) (default: "google")
+        timeout: Request timeout in seconds (default: 10)
+
+    Example:
+        ```python
+        from agenticflow.capabilities import WebSearch
+        from agenticflow.capabilities.web_search import SerpAPIProvider
+
+        # Google Search
+        ws = WebSearch(provider=SerpAPIProvider(api_key="your-key"))
+
+        # Bing Search
+        ws = WebSearch(provider=SerpAPIProvider(api_key="your-key", engine="bing"))
+        ```
+    """
+
+    def __init__(self, api_key: str, engine: str = "google", timeout: int = 10):
+        self._api_key = api_key
+        self._engine = engine
+        self._timeout = timeout
+
+    @property
+    def name(self) -> str:
+        return f"serpapi_{self._engine}"
+
+    def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """Search using SerpAPI."""
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required for SerpAPI. Install: uv add httpx")
+
+        results = []
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.get(
+                    "https://serpapi.com/search",
+                    params={
+                        "api_key": self._api_key,
+                        "engine": self._engine,
+                        "q": query,
+                        "num": max_results,
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for i, item in enumerate(data.get("organic_results", [])):
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("link", ""),
+                        snippet=item.get("snippet", ""),
+                        source=self.name,
+                        position=item.get("position", i + 1),
+                    ))
+        except Exception:
+            pass
+
+        return results
+
+    def news(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """Search news using SerpAPI (Google News)."""
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required for SerpAPI. Install: uv add httpx")
+
+        results = []
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.get(
+                    "https://serpapi.com/search",
+                    params={
+                        "api_key": self._api_key,
+                        "engine": "google_news",
+                        "q": query,
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for i, item in enumerate(data.get("news_results", [])[:max_results]):
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("link", ""),
+                        snippet=item.get("snippet", ""),
+                        source=self.name,
+                        position=i + 1,
+                    ))
+        except Exception:
+            pass
+
+        return results
+
+
 class WebSearch(BaseCapability):
     """
     WebSearch capability for searching the web and fetching pages.

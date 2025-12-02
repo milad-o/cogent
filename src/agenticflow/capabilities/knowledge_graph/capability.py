@@ -102,9 +102,13 @@ class KnowledgeGraph(BaseCapability):
             if not path:
                 raise ValueError("Path required for json backend")
             self.graph = JSONFileGraph(path, auto_save=auto_save)
+        elif isinstance(backend, GraphBackend):
+            # Allow passing a custom backend instance directly
+            self.graph = backend
+            self._backend = "custom"
         else:
             raise ValueError(
-                f"Unknown backend: {backend}. Supported: 'memory', 'sqlite', 'json'"
+                f"Unknown backend: {backend}. Supported: 'memory', 'sqlite', 'json', or GraphBackend instance"
             )
 
     @classmethod
@@ -157,6 +161,66 @@ class KnowledgeGraph(BaseCapability):
                 "Use .db/.sqlite for SQLite or .json for JSON. "
                 "Or use KnowledgeGraph(backend=..., path=...) directly."
             )
+
+    @classmethod
+    def neo4j(
+        cls,
+        uri: str = "bolt://localhost:7687",
+        user: str = "neo4j",
+        password: str = "",
+        database: str = "neo4j",
+        name: str | None = None,
+    ) -> "KnowledgeGraph":
+        """
+        Create a KnowledgeGraph with Neo4j backend.
+
+        Neo4j is a production-grade graph database with:
+        - Native graph storage and Cypher query language
+        - ACID transactions and horizontal scaling
+        - Built-in graph algorithms
+
+        Requires: uv add neo4j
+
+        Args:
+            uri: Neo4j connection URI (default: "bolt://localhost:7687")
+            user: Neo4j username (default: "neo4j")
+            password: Neo4j password
+            database: Database name (default: "neo4j")
+            name: Optional custom name for this capability instance
+
+        Returns:
+            KnowledgeGraph with Neo4j backend
+
+        Example:
+            ```python
+            # Connect to local Neo4j
+            kg = KnowledgeGraph.neo4j(password="your-password")
+
+            # Connect to remote Neo4j Aura
+            kg = KnowledgeGraph.neo4j(
+                uri="neo4j+s://xxxx.databases.neo4j.io",
+                user="neo4j",
+                password="your-password",
+            )
+
+            # Use with agent
+            agent = Agent(
+                name="Assistant",
+                capabilities=[kg],
+            )
+            ```
+        """
+        from agenticflow.capabilities.knowledge_graph.backends.neo4j import Neo4jGraph
+        
+        backend = Neo4jGraph(
+            uri=uri,
+            user=user,
+            password=password,
+            database=database,
+        )
+        instance = cls(backend=backend, name=name)  # type: ignore
+        instance._backend = "neo4j"
+        return instance
 
     @property
     def name(self) -> str:
