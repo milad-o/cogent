@@ -230,6 +230,13 @@ from agenticflow.tasks.manager import TaskManager
 # Tools (THIS IS WHERE WE ADD VALUE)
 from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 from agenticflow.tools.base import BaseTool, tool
+from agenticflow.tools.deferred import (
+    DeferredResult,
+    DeferredStatus,
+    DeferredManager,
+    DeferredRetry,
+    is_deferred,
+)
 
 # Flow - THE MAIN ENTRY POINT
 from agenticflow.flow import (
@@ -468,6 +475,12 @@ __all__ = [
     "create_tool_from_function",
     "BaseTool",
     "tool",
+    # Deferred Tools (event-driven completion)
+    "DeferredResult",
+    "DeferredStatus",
+    "DeferredManager",
+    "DeferredRetry",
+    "is_deferred",
     # Flow (MAIN ENTRY POINT)
     "Flow",
     "FlowConfig",

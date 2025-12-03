@@ -105,6 +105,16 @@ class EventType(Enum):
     TOOL_CALLED = "tool.called"
     TOOL_RESULT = "tool.result"
     TOOL_ERROR = "tool.error"
+    
+    # Deferred tool events (async/event-driven completion)
+    TOOL_DEFERRED = "tool.deferred"  # Tool returned DeferredResult
+    TOOL_DEFERRED_WAITING = "tool.deferred.waiting"  # Waiting for completion
+    TOOL_DEFERRED_COMPLETED = "tool.deferred.completed"  # Deferred completed
+    TOOL_DEFERRED_TIMEOUT = "tool.deferred.timeout"  # Deferred timed out
+    TOOL_DEFERRED_CANCELLED = "tool.deferred.cancelled"  # Deferred cancelled
+    
+    # Webhook/external events
+    WEBHOOK_RECEIVED = "webhook.received"  # External webhook callback
 
     # Planning events
     PLAN_CREATED = "plan.created"

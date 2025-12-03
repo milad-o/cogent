@@ -420,6 +420,9 @@ class Agent:
         self._pending_actions: dict[str, PendingAction] = {}  # action_id -> pending action
         self._interrupted_state: InterruptedState | None = None
         
+        # Deferred tool execution manager (event-driven completion)
+        self._deferred_manager: Any | None = None
+        
         # Setup capabilities (adds tools from each capability)
         if capabilities:
             self._setup_capabilities(capabilities)
@@ -654,6 +657,24 @@ class Agent:
         return self._spawn_manager
     
     @property
+    def deferred_manager(self) -> Any:
+        """Get the deferred manager for async tool completion.
+        
+        Lazily initialized on first access.
+        """
+        if self._deferred_manager is None:
+            from agenticflow.tools.deferred import DeferredManager
+            
+            # Ensure event bus exists
+            if self.event_bus is None:
+                from agenticflow.events.bus import EventBus
+                self.event_bus = EventBus()
+            
+            self._deferred_manager = DeferredManager(self.event_bus)
+        
+        return self._deferred_manager
+    
+    @property
     def can_spawn(self) -> bool:
         """Whether this agent can spawn child agents."""
         return self._spawn_manager is not None
@@ -719,6 +740,130 @@ class Agent:
                 "Spawning not enabled. Initialize agent with spawning=SpawningConfig(...)"
             )
         return await self._spawn_manager.parallel_map(items, task_template, role)
+
+    async def _execute_tool(
+        self,
+        tool: Any,
+        tool_args: dict[str, Any],
+        tool_id: str,
+        correlation_id: str | None = None,
+    ) -> tuple[Any, Exception | None]:
+        """
+        Execute a tool with support for deferred/async completion.
+        
+        Handles:
+        - Sync tools
+        - Async tools  
+        - Deferred tools (return DeferredResult for async completion)
+        - Tools with func attribute (AgenticFlow BaseTool)
+        - Tools with ainvoke/invoke methods (LangChain-style)
+        
+        Args:
+            tool: The tool to execute.
+            tool_args: Arguments to pass to the tool.
+            tool_id: Unique ID for this tool call.
+            correlation_id: Correlation ID for tracing.
+            
+        Returns:
+            Tuple of (result, error). Error is None on success.
+        """
+        from agenticflow.tools.deferred import DeferredResult, is_deferred
+        
+        result = None
+        error = None
+        
+        try:
+            # Execute the tool - support multiple interfaces
+            if hasattr(tool, "func"):
+                # AgenticFlow BaseTool with func attribute
+                if asyncio.iscoroutinefunction(tool.func):
+                    result = await tool.func(**tool_args)
+                else:
+                    result = tool.func(**tool_args)
+            elif hasattr(tool, "ainvoke"):
+                # Async invoke interface
+                result = await tool.ainvoke(tool_args)
+            elif hasattr(tool, "invoke"):
+                # Sync invoke interface
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(None, lambda: tool.invoke(tool_args))
+            else:
+                # Callable tool
+                if asyncio.iscoroutinefunction(tool):
+                    result = await tool(**tool_args)
+                else:
+                    result = tool(**tool_args)
+            
+            # Check if result is deferred (async completion)
+            if is_deferred(result):
+                deferred: DeferredResult = result
+                
+                # Emit deferred event
+                await self._emit_event(
+                    EventType.TOOL_DEFERRED,
+                    {
+                        "agent_id": self.id,
+                        "agent_name": self.name,
+                        "tool_name": tool.name,
+                        "tool_id": tool_id,
+                        "job_id": deferred.job_id,
+                        "wait_for": str(deferred.wait_for),
+                        "timeout": deferred.timeout,
+                    },
+                    correlation_id,
+                )
+                
+                # Emit waiting event
+                await self._emit_event(
+                    EventType.TOOL_DEFERRED_WAITING,
+                    {
+                        "agent_id": self.id,
+                        "agent_name": self.name,
+                        "tool_name": tool.name,
+                        "job_id": deferred.job_id,
+                    },
+                    correlation_id,
+                )
+                
+                try:
+                    # Wait for async completion
+                    result = await self.deferred_manager.wait_for(deferred)
+                    
+                    # Emit completion event
+                    await self._emit_event(
+                        EventType.TOOL_DEFERRED_COMPLETED,
+                        {
+                            "agent_id": self.id,
+                            "agent_name": self.name,
+                            "tool_name": tool.name,
+                            "job_id": deferred.job_id,
+                            "result_preview": str(result)[:200] if result else "",
+                            "elapsed_seconds": deferred.elapsed_seconds,
+                        },
+                        correlation_id,
+                    )
+                    
+                except TimeoutError as e:
+                    # Emit timeout event
+                    await self._emit_event(
+                        EventType.TOOL_DEFERRED_TIMEOUT,
+                        {
+                            "agent_id": self.id,
+                            "agent_name": self.name,
+                            "tool_name": tool.name,
+                            "job_id": deferred.job_id,
+                            "timeout": deferred.timeout,
+                        },
+                        correlation_id,
+                    )
+                    error = e
+                    result = f"Timeout: {e}"
+                    
+        except Exception as e:
+            error = e
+            result = f"Error: {e}"
+        
+        return result, error
 
     def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
         """Setup taskboard for task tracking.
@@ -1798,19 +1943,14 @@ class Agent:
                     
                     tool_start = now_utc()
                     
-                    # Find and execute tool
+                    # Find and execute tool (with deferred support)
                     result = f"Tool '{tool_name}' not found"
                     tool_error = None
                     for tool in tools:
                         if tool.name == tool_name:
-                            try:
-                                if asyncio.iscoroutinefunction(tool.func):
-                                    result = await tool.func(**tool_args)
-                                else:
-                                    result = tool.func(**tool_args)
-                            except Exception as e:
-                                tool_error = e
-                                result = f"Error: {e}"
+                            result, tool_error = await self._execute_tool(
+                                tool, tool_args, tool_id, correlation_id
+                            )
                             break
                     
                     tool_duration_ms = (now_utc() - tool_start).total_seconds() * 1000
@@ -2638,12 +2778,13 @@ class Agent:
                     await self._set_status(AgentStatus.ERROR, correlation_id)
                     raise error
             else:
-                # Direct execution without resilience - use ainvoke for async support
-                if hasattr(tool_obj, "ainvoke"):
-                    result = await tool_obj.ainvoke(args)
-                else:
-                    loop = asyncio.get_event_loop()
-                    result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+                # Direct execution without resilience - use _execute_tool for deferred support
+                tool_id = f"act_{uuid.uuid4().hex[:8]}"
+                result, tool_error = await self._execute_tool(
+                    tool_obj, args, tool_id, correlation_id
+                )
+                if tool_error:
+                    raise tool_error
                 duration_ms = (now_utc() - start_time).total_seconds() * 1000
 
             # Track timing
