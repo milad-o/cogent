@@ -53,6 +53,7 @@ from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPTransport
 from agenticflow.capabilities.pdf import PDF
+from agenticflow.capabilities.rag import RAG, RAGConfig, RAGResponse, CitedPassage
 from agenticflow.capabilities.shell import Shell
 from agenticflow.capabilities.spreadsheet import Spreadsheet
 from agenticflow.capabilities.ssis import SSISAnalyzer
@@ -62,6 +63,7 @@ from agenticflow.capabilities.web_search import WebSearch
 __all__ = [
     "BaseCapability",
     "Browser",
+    "CitedPassage",
     "CodebaseAnalyzer",
     "CodeSandbox",
     "FileSystem",
@@ -70,6 +72,9 @@ __all__ = [
     "MCPServerConfig",
     "MCPTransport",
     "PDF",
+    "RAG",
+    "RAGConfig",
+    "RAGResponse",
     "Shell",
     "Spreadsheet",
     "SSISAnalyzer",

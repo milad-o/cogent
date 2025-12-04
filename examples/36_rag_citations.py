@@ -1,11 +1,15 @@
 """
 Example 36: RAG with Citations and References
 
-Demonstrates the new citation and referencing functionality in RAGAgent:
+Demonstrates the citation and referencing functionality in RAGAgent:
 - CitedPassage for structured citation data
 - RAGResponse for structured query responses
-- query_with_citations() for full citation tracking
-- search_with_citations() for direct search with metadata
+- query() returns RAGResponse with full citation tracking
+- search() returns list[CitedPassage] for direct search
+
+The RAG API is clean and unified:
+- query() → RAGResponse (answer + citations)
+- search() → list[CitedPassage] (passages with metadata)
 
 Usage:
     uv run python examples/36_rag_citations.py
@@ -53,13 +57,13 @@ async def main() -> None:
         name="BookAnalyzer",
     )
     
-    # Load document
+    # Load document using the new unified load() API
     print("\n" + "-" * 70)
     print("📄 Loading Document...")
     print("-" * 70)
     
     if text_path.exists():
-        await rag.load_documents([text_path], show_progress=True)
+        await rag.load(text_path)  # New clean API!
         source_name = text_path.name
     else:
         # Fallback: load sample text directly
@@ -117,37 +121,18 @@ async def main() -> None:
     print(f"\n✓ Indexed {rag.document_count} chunks from {source_name}")
     
     # =========================================================================
-    # Example 1: Standard query (shows inline citations in answer)
+    # Example 1: Query with structured response (unified API)
     # =========================================================================
     print("\n" + "=" * 70)
-    print("📝 Example 1: Standard Query with Inline Citations")
+    print("📝 Example 1: Query with Structured Citations (RAGResponse)")
     print("=" * 70)
     
     question1 = "What was Mary Lennox like when she first arrived at Misselthwaite Manor?"
     print(f"\nQuestion: {question1}")
     print("-" * 70)
     
-    answer = await rag.query(question1)
-    print(f"\nAnswer:\n{answer}")
-    
-    # Access citations from the last query
-    print(f"\n📌 Citations from last query: {len(rag.citations)}")
-    for cite in rag.citations:
-        print(f"  {cite.format_reference()} - {cite.source} (score: {cite.score:.3f})")
-    
-    # =========================================================================
-    # Example 2: Query with full citation response
-    # =========================================================================
-    print("\n" + "=" * 70)
-    print("📝 Example 2: Query with Structured Citations (RAGResponse)")
-    print("=" * 70)
-    
-    question2 = "What is the moor and how is it described?"
-    print(f"\nQuestion: {question2}")
-    print("-" * 70)
-    
-    # Use query_with_citations for structured response
-    response: RAGResponse = await rag.query_with_citations(question2)
+    # query() now returns RAGResponse directly (clean API!)
+    response: RAGResponse = await rag.query(question1)
     
     print(f"\n📊 Response Metadata:")
     print(f"  - Query: {response.query}")
@@ -157,9 +142,22 @@ async def main() -> None:
     
     print(f"\n📖 Answer:\n{response.answer}")
     
+    # =========================================================================
+    # Example 2: Full response with bibliography
+    # =========================================================================
+    print("\n" + "=" * 70)
+    print("📝 Example 2: Full Response with Bibliography")
+    print("=" * 70)
+    
+    question2 = "What is the moor and how is it described?"
+    print(f"\nQuestion: {question2}")
+    print("-" * 70)
+    
+    response = await rag.query(question2)
+    
     print(f"\n📚 Full Response with Bibliography:")
     print("-" * 70)
-    print(response.format_full_response())
+    print(response.format_full())  # Includes answer + bibliography
     
     # =========================================================================
     # Example 3: Direct search with citations
@@ -172,8 +170,8 @@ async def main() -> None:
     print(f"\nSearch: {search_query}")
     print("-" * 70)
     
-    # Use search_with_citations for structured results
-    citations: list[CitedPassage] = await rag.search_with_citations(search_query, k=3)
+    # search() returns list[CitedPassage] (clean API!)
+    citations: list[CitedPassage] = await rag.search(search_query, k=3)
     
     print(f"\nFound {len(citations)} relevant passages:\n")
     
@@ -215,7 +213,7 @@ async def main() -> None:
     ]
     
     for q in questions:
-        response = await rag.query_with_citations(q)
+        response = await rag.query(q)  # Clean unified API
         all_citations.extend(response.citations)
     
     # Deduplicate by source + text (keep highest score)
@@ -237,6 +235,35 @@ async def main() -> None:
             text=cite.text,
         )
         print(f"  {new_cite.format_full()}")
+    
+    # =========================================================================
+    # Example 6: Using RAG as a capability (alternative approach)
+    # =========================================================================
+    print("\n" + "=" * 70)
+    print("🔧 Example 6: RAG as Capability (Alternative Approach)")
+    print("=" * 70)
+    print("""
+For composable RAG that can be added to any agent, use the RAG capability:
+
+    from agenticflow import Agent
+    from agenticflow.capabilities import RAG
+    
+    agent = Agent(
+        name="ResearchAssistant",
+        model=model,
+        capabilities=[
+            RAG(embeddings=embeddings, top_k=5),
+            # Add other capabilities too!
+        ],
+    )
+    
+    # Access RAG via capability
+    await agent.rag.load("docs/", glob="**/*.md")
+    response = await agent.rag.query("What is the main topic?")
+    
+    # Or let the agent use RAG tools naturally
+    answer = await agent.run("Find information about X in the documents")
+""")
     
     print("\n" + "=" * 70)
     print("✅ RAG Citations Demo Complete!")
