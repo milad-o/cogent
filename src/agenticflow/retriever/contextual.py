@@ -147,47 +147,7 @@ class ParentDocumentRetriever(BaseRetriever):
         # Add chunks to vector store
         await self._vectorstore.add_documents(chunks_to_add)
     
-    async def retrieve(
-        self,
-        query: str,
-        k: int | None = None,
-        filter: dict | None = None,
-    ) -> list[Document]:
-        """Retrieve parent documents based on chunk matches.
-        
-        Args:
-            query: Search query.
-            k: Number of parents to return.
-            filter: Optional metadata filter.
-            
-        Returns:
-            Parent documents (not chunks).
-        """
-        k = k or self._k
-        
-        # Retrieve more chunks to find diverse parents
-        chunk_results = await self._vectorstore.search(
-            query=query,
-            k=k * 3,  # Get more chunks
-            filter=filter,
-        )
-        
-        # Collect unique parents
-        seen_parents = set()
-        parents = []
-        
-        for result in chunk_results:
-            chunk_doc = result.document
-            parent_id = chunk_doc.metadata.get("parent_id")
-            if parent_id and parent_id not in seen_parents:
-                seen_parents.add(parent_id)
-                if parent_id in self._parents:
-                    parents.append(self._parents[parent_id])
-                    
-                    if len(parents) >= k:
-                        break
-        
-        return parents
+    # Note: We don't override retrieve() - base class method uses retrieve_with_scores
     
     async def retrieve_with_scores(
         self,
@@ -357,52 +317,7 @@ class SentenceWindowRetriever(BaseRetriever):
         
         return " ".join(sentences[start:end])
     
-    async def retrieve(
-        self,
-        query: str,
-        k: int | None = None,
-        filter: dict | None = None,
-    ) -> list[Document]:
-        """Retrieve sentences with surrounding context.
-        
-        Args:
-            query: Search query.
-            k: Number of results.
-            filter: Optional metadata filter.
-            
-        Returns:
-            Documents containing sentence windows.
-        """
-        k = k or self._k
-        
-        # Search for matching sentences
-        results = await self._vectorstore.search(
-            query=query,
-            k=k,
-            filter=filter,
-        )
-        
-        # Build windowed documents
-        documents = []
-        for result in results:
-            sent_doc = result.document
-            doc_id = sent_doc.metadata.get("doc_id")
-            sent_idx = sent_doc.metadata.get("sentence_index", 0)
-            
-            window_text = self._get_window(doc_id, sent_idx)
-            
-            documents.append(
-                Document(
-                    text=window_text,
-                    metadata={
-                        **sent_doc.metadata,
-                        "window_size": self._window_size,
-                        "matched_sentence": sent_doc.text,
-                    },
-                )
-            )
-        
-        return documents
+    # Note: We don't override retrieve() - base class method uses retrieve_with_scores
     
     async def retrieve_with_scores(
         self,

@@ -69,10 +69,24 @@ class TimeRange:
     
     def contains(self, dt: datetime) -> bool:
         """Check if datetime is within range."""
-        if self.start and dt < self.start:
-            return False
-        if self.end and dt > self.end:
-            return False
+        # Ensure timezone-aware for comparison
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        
+        if self.start:
+            start = self.start
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=timezone.utc)
+            if dt < start:
+                return False
+        
+        if self.end:
+            end = self.end
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
+            if dt > end:
+                return False
+        
         return True
 
 
@@ -225,6 +239,18 @@ class TimeBasedIndex(BaseRetriever):
         
         return None
     
+    def _get_age_days(self, timestamp: datetime) -> int:
+        """Calculate age in days, handling timezone-naive datetimes."""
+        ref = self._get_reference_date()
+        
+        # Ensure both are timezone-aware
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        if ref.tzinfo is None:
+            ref = ref.replace(tzinfo=timezone.utc)
+        
+        return (ref - timestamp).days
+    
     def _calculate_decay(self, doc_timestamp: datetime) -> float:
         """Calculate decay multiplier based on document age."""
         ref = self._get_reference_date()
@@ -368,7 +394,7 @@ class TimeBasedIndex(BaseRetriever):
                     "original_score": original_score,
                     "decay_factor": decay,
                     "timestamp": timestamp.isoformat() if timestamp else None,
-                    "age_days": (self._get_reference_date() - timestamp).days if timestamp else None,
+                    "age_days": self._get_age_days(timestamp) if timestamp else None,
                 },
             ))
         

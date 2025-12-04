@@ -151,47 +151,7 @@ class SelfQueryRetriever(BaseRetriever):
         except json.JSONDecodeError:
             return ParsedQuery(semantic_query=query, filter=None)
     
-    async def retrieve(
-        self,
-        query: str,
-        k: int | None = None,
-        filter: dict | None = None,
-    ) -> list[Document]:
-        """Retrieve documents using LLM-parsed query.
-        
-        Args:
-            query: Natural language query.
-            k: Number of results.
-            filter: Additional filter to merge with parsed filter.
-            
-        Returns:
-            Matching documents.
-        """
-        k = k or self._k
-        
-        # Parse query
-        parsed = await self._parse_query(query)
-        
-        # Combine filters
-        combined_filter = None
-        if self._enable_filter:
-            if parsed.filter and filter:
-                combined_filter = {**parsed.filter, **filter}
-            elif parsed.filter:
-                combined_filter = parsed.filter
-            elif filter:
-                combined_filter = filter
-        elif filter:
-            combined_filter = filter
-        
-        # Search with parsed query and filter
-        results = await self._vectorstore.search(
-            query=parsed.semantic_query,
-            k=k,
-            filter=combined_filter,
-        )
-        
-        return [result.document for result in results]
+    # Note: We don't override retrieve() - base class method uses retrieve_with_scores
     
     async def retrieve_with_scores(
         self,

@@ -120,6 +120,7 @@ from agenticflow.retriever.temporal import (
 )
 from agenticflow.retriever.multi_representation import (
     MultiRepresentationIndex,
+    QueryType,
     RepresentationType,
 )
 from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores
@@ -172,6 +173,7 @@ __all__ = [
     "TimeRange",
     # Multi-representation index
     "MultiRepresentationIndex",
+    "QueryType",
     "RepresentationType",
     # Advanced retrievers
     "SelfQueryRetriever",

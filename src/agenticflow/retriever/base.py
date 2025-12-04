@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_checkable
 
 if TYPE_CHECKING:
     from agenticflow.vectorstore import Document
@@ -62,14 +62,18 @@ class Retriever(Protocol):
     Retrievers are responsible for finding relevant documents given a query.
     They can use various strategies: dense (vector), sparse (BM25), or hybrid.
     
-    All retrievers must implement:
-    - retrieve: Get documents matching a query
-    - retrieve_with_scores: Get documents with relevance scores
+    The unified `retrieve()` method supports both document-only and scored results:
+    - `retrieve(query)` → list of Documents
+    - `retrieve(query, include_scores=True)` → list of RetrievalResult
     
     Example:
         >>> retriever = DenseRetriever(vectorstore)
+        >>> 
+        >>> # Get documents only
         >>> docs = await retriever.retrieve("What is Python?", k=5)
-        >>> results = await retriever.retrieve_with_scores("Python", k=5)
+        >>> 
+        >>> # Get documents with scores
+        >>> results = await retriever.retrieve("Python", k=5, include_scores=True)
         >>> for result in results:
         ...     print(f"{result.score:.3f}: {result.document.text[:50]}")
     """
@@ -79,39 +83,63 @@ class Retriever(Protocol):
         """Name of this retriever for identification."""
         ...
     
+    @overload
     async def retrieve(
         self,
         query: str,
         k: int = 4,
         filter: dict[str, Any] | None = None,
-    ) -> list[Document]:
+        *,
+        include_scores: Literal[False] = False,
+        **kwargs: Any,
+    ) -> list[Document]: ...
+    
+    @overload
+    async def retrieve(
+        self,
+        query: str,
+        k: int = 4,
+        filter: dict[str, Any] | None = None,
+        *,
+        include_scores: Literal[True],
+        **kwargs: Any,
+    ) -> list[RetrievalResult]: ...
+    
+    async def retrieve(
+        self,
+        query: str,
+        k: int = 4,
+        filter: dict[str, Any] | None = None,
+        *,
+        include_scores: bool = False,
+        **kwargs: Any,
+    ) -> list[Document] | list[RetrievalResult]:
         """Retrieve documents matching the query.
         
         Args:
             query: The search query.
             k: Number of documents to retrieve.
             filter: Optional metadata filter.
+            include_scores: If True, return RetrievalResult with scores.
+                           If False (default), return just Documents.
+            **kwargs: Additional retriever-specific arguments.
             
         Returns:
-            List of matching documents, ordered by relevance.
+            List of Documents or RetrievalResults, ordered by relevance.
         """
         ...
     
+    # Keep for backward compatibility
     async def retrieve_with_scores(
         self,
         query: str,
         k: int = 4,
         filter: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> list[RetrievalResult]:
         """Retrieve documents with relevance scores.
         
-        Args:
-            query: The search query.
-            k: Number of documents to retrieve.
-            filter: Optional metadata filter.
-            
-        Returns:
-            List of RetrievalResult with document and score.
+        Deprecated: Use `retrieve(query, include_scores=True)` instead.
         """
         ...
 
@@ -156,7 +184,11 @@ class BaseRetriever:
     """Base class for retrievers with common functionality.
     
     Provides default implementations and utility methods.
-    Subclasses should override retrieve_with_scores.
+    Subclasses should override `_retrieve_with_scores` (the internal method).
+    
+    The unified `retrieve()` API:
+    - `retrieve(query)` → list of Documents
+    - `retrieve(query, include_scores=True)` → list of RetrievalResult
     """
     
     _name: str = "base"
@@ -166,17 +198,53 @@ class BaseRetriever:
         """Name of this retriever."""
         return self._name
     
+    @overload
     async def retrieve(
         self,
         query: str,
         k: int = 4,
         filter: dict[str, Any] | None = None,
-    ) -> list[Document]:
-        """Retrieve documents (convenience method).
+        *,
+        include_scores: Literal[False] = False,
+        **kwargs: Any,
+    ) -> list[Document]: ...
+    
+    @overload
+    async def retrieve(
+        self,
+        query: str,
+        k: int = 4,
+        filter: dict[str, Any] | None = None,
+        *,
+        include_scores: Literal[True],
+        **kwargs: Any,
+    ) -> list[RetrievalResult]: ...
+    
+    async def retrieve(
+        self,
+        query: str,
+        k: int = 4,
+        filter: dict[str, Any] | None = None,
+        *,
+        include_scores: bool = False,
+        **kwargs: Any,
+    ) -> list[Document] | list[RetrievalResult]:
+        """Retrieve documents matching the query.
         
-        Calls retrieve_with_scores and extracts just the documents.
+        Args:
+            query: The search query.
+            k: Number of documents to retrieve.
+            filter: Optional metadata filter.
+            include_scores: If True, return RetrievalResult with scores.
+                           If False (default), return just Documents.
+            **kwargs: Additional retriever-specific arguments (e.g., time_range).
+            
+        Returns:
+            List of Documents or RetrievalResults, ordered by relevance.
         """
-        results = await self.retrieve_with_scores(query, k=k, filter=filter)
+        results = await self.retrieve_with_scores(query, k=k, filter=filter, **kwargs)
+        if include_scores:
+            return results
         return [r.document for r in results]
     
     async def retrieve_with_scores(
@@ -184,8 +252,19 @@ class BaseRetriever:
         query: str,
         k: int = 4,
         filter: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> list[RetrievalResult]:
-        """Retrieve documents with scores. Must be implemented by subclasses."""
+        """Retrieve documents with scores.
+        
+        This is the method subclasses should override.
+        For external use, prefer `retrieve(query, include_scores=True)`.
+        
+        Args:
+            query: The search query.
+            k: Number of documents to retrieve.
+            filter: Optional metadata filter.
+            **kwargs: Additional retriever-specific arguments.
+        """
         raise NotImplementedError("Subclasses must implement retrieve_with_scores")
     
     async def abatch_retrieve(
@@ -193,14 +272,16 @@ class BaseRetriever:
         queries: list[str],
         k: int = 4,
         filter: dict[str, Any] | None = None,
-    ) -> list[list[Document]]:
+        *,
+        include_scores: bool = False,
+    ) -> list[list[Document]] | list[list[RetrievalResult]]:
         """Batch retrieve for multiple queries.
         
         Default implementation calls retrieve for each query.
         Subclasses can override for more efficient batch processing.
         """
         import asyncio
-        tasks = [self.retrieve(q, k=k, filter=filter) for q in queries]
+        tasks = [self.retrieve(q, k=k, filter=filter, include_scores=include_scores) for q in queries]
         return await asyncio.gather(*tasks)
     
     def __repr__(self) -> str:
