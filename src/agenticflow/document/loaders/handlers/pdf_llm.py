@@ -157,10 +157,10 @@ class PDFProcessingResult:
 
     @property
     def success_rate(self) -> float:
-        """Calculate the success rate as a percentage."""
+        """Calculate the success rate as a ratio (0.0-1.0)."""
         if self.total_pages == 0:
             return 0.0
-        return (self.successful_pages / self.total_pages) * 100
+        return self.successful_pages / self.total_pages
 
     def to_documents(self) -> list[Document]:
         """Convert successful page results to Documents."""
@@ -365,12 +365,10 @@ class PDFMarkdownLoader(BaseLoader):
 
     Example:
         >>> loader = PDFMarkdownLoader(max_workers=4, batch_size=10)
-        >>> docs = await loader.load(Path("document.pdf"))
-        >>> 
-        >>> # Access processing metrics
-        >>> result = await loader.load_with_tracking(Path("document.pdf"))
+        >>> result = await loader.load(Path("document.pdf"))
         >>> print(f"Success rate: {result.success_rate:.1f}%")
         >>> print(f"Total time: {result.total_time_ms:.0f}ms")
+        >>> docs = result.to_documents()
     """
 
     supported_extensions = [".pdf"]
@@ -425,24 +423,46 @@ class PDFMarkdownLoader(BaseLoader):
             batch_size=batch_size,
         )
 
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
-        """Load a PDF file and convert to Markdown Documents.
+    async def load(
+        self,
+        path: Path,
+        **kwargs: Any,
+    ) -> PDFProcessingResult:
+        """Load a PDF file and convert to Markdown.
 
         Args:
             path: Path to the PDF file.
             **kwargs: Additional options (overrides config).
 
         Returns:
-            List of Documents, one per page in Markdown format.
+            PDFProcessingResult with documents and metrics.
+            Use `.to_documents()` to get list of Document objects.
 
         Raises:
             ImportError: If pymupdf4llm is not installed.
             FileNotFoundError: If PDF file doesn't exist.
+        
+        Example:
+            >>> result = await loader.load(Path("doc.pdf"))
+            >>> print(f"Loaded {result.total_pages} pages")
+            >>> print(f"Success rate: {result.success_rate:.1f}%")
+            >>> docs = result.to_documents()
         """
-        result = await self.load_with_tracking(path, **kwargs)
-        return result.to_documents()
+        return await self._load_with_tracking(path, **kwargs)
 
     async def load_with_tracking(
+        self,
+        path: Path,
+        **kwargs: Any,
+    ) -> PDFProcessingResult:
+        """Load a PDF with full processing tracking.
+        
+        .. deprecated::
+            Use `load()` instead - it now returns PDFProcessingResult directly.
+        """
+        return await self._load_with_tracking(path, **kwargs)
+
+    async def _load_with_tracking(
         self,
         path: Path,
         **kwargs: Any,

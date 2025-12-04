@@ -45,8 +45,8 @@ async def main() -> None:
     print(f"Processing: {pdf_path.name}")
     print(f"Output dir: {output_dir}\n")
 
-    # Load with tracking for detailed metrics and per-page results
-    result = await loader.load_with_tracking(pdf_path)
+    # Load PDF - returns result with documents and metrics
+    result = await loader.load(pdf_path)
 
     # Display processing metrics
     print("=" * 60)
@@ -56,7 +56,7 @@ async def main() -> None:
     print(f"Successful:       {result.successful_pages}")
     print(f"Failed:           {result.failed_pages}")
     print(f"Empty pages:      {result.empty_pages}")
-    print(f"Success rate:     {result.success_rate:.1f}%")
+    print(f"Success rate:     {result.success_rate:.0%}")
     print(f"Total time:       {result.total_time_ms:.0f}ms")
     if result.total_pages > 0 and result.total_time_ms > 0:
         pages_per_sec = result.total_pages / (result.total_time_ms / 1000)
