@@ -4,6 +4,7 @@ A production-grade multi-agent framework for building AI applications with nativ
 
 ## Features
 
+- **Native Executor** — High-performance parallel tool execution with zero framework overhead
 - **Native Model Support** — OpenAI, Azure, Anthropic, Gemini, Groq, Ollama, Custom endpoints
 - **Multi-Agent Topologies** — Supervisor, Pipeline, Mesh, Hierarchical
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
@@ -32,6 +33,98 @@ uv add "agenticflow[all]"       # Everything
 
 # Development
 uv add "agenticflow[dev]"
+```
+
+## Core Architecture
+
+AgenticFlow is built around a high-performance **Native Executor** that eliminates framework overhead while providing enterprise-grade features.
+
+### Native Executor
+
+The executor uses a direct asyncio loop with parallel tool execution—no graph frameworks, no unnecessary abstractions:
+
+```python
+from agenticflow import Agent, tool
+from agenticflow.models import ChatModel
+
+@tool
+def search(query: str) -> str:
+    """Search the web."""
+    return f"Results for: {query}"
+
+@tool
+def calculate(expression: str) -> str:
+    """Evaluate math expression."""
+    return str(eval(expression))
+
+agent = Agent(
+    name="Assistant",
+    model=ChatModel(model="gpt-4o"),
+    tools=[search, calculate],
+)
+
+# Tools execute in parallel when independent
+result = await agent.run("Search for Python and calculate 2^10")
+```
+
+**Key optimizations:**
+- **Parallel tool execution** — Multiple tool calls run concurrently via `asyncio.gather`
+- **Cached model binding** — Tools bound once at construction, zero overhead per call
+- **Native SDK integration** — Direct OpenAI/Anthropic SDK calls, no translation layers
+- **Automatic resilience** — Rate limit retries with exponential backoff built-in
+
+### Tool System
+
+Define tools with the `@tool` decorator—automatic schema extraction from type hints and docstrings:
+
+```python
+from agenticflow import tool
+from agenticflow.context import RunContext
+
+@tool
+def search(query: str, max_results: int = 10) -> str:
+    """Search the web for information.
+    
+    Args:
+        query: Search query string.
+        max_results: Maximum results to return.
+    """
+    return f"Found {max_results} results for: {query}"
+
+# With context injection for user/session data
+@tool
+def get_user_preferences(ctx: RunContext) -> str:
+    """Get preferences for the current user."""
+    return f"Preferences for user {ctx.user_id}"
+
+# Async tools supported
+@tool
+async def fetch_data(url: str) -> str:
+    """Fetch data from URL."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        return response.text
+```
+
+**Tool features:**
+- Type hints → JSON schema conversion
+- Docstring → description extraction
+- Sync and async function support
+- Context injection via `ctx: RunContext` parameter
+- Automatic error handling and retries
+
+### Standalone Execution
+
+For maximum performance, bypass the Agent class entirely:
+
+```python
+from agenticflow.executors import run
+
+result = await run(
+    "Search for Python tutorials and summarize the top 3",
+    tools=[search, summarize],
+    model="gpt-4o-mini",
+)
 ```
 
 ## Quick Start
