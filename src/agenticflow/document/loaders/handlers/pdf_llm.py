@@ -94,6 +94,8 @@ class PDFConfig:
         ignore_graphics: Whether to skip graphics extraction.
         force_text: Force text extraction even for image-based PDFs.
         fontsize_limit: Minimum font size to consider as text.
+        header: Whether to include page headers in output.
+        footer: Whether to include page footers in output.
     """
 
     max_workers: int = 4
@@ -104,6 +106,8 @@ class PDFConfig:
     ignore_graphics: bool = False
     force_text: bool = True
     fontsize_limit: float = 3.0
+    header: bool = False
+    footer: bool = False
 
 
 @dataclass(slots=True, kw_only=True)
@@ -270,6 +274,8 @@ def _process_page_batch(
                 ignore_graphics=config_dict.get("ignore_graphics", False),
                 fontsize_limit=config_dict.get("fontsize_limit", 3.0),
                 dpi=config_dict.get("dpi", 150),
+                header=config_dict.get("header", True),
+                footer=config_dict.get("footer", True),
                 use_ocr=False,
             )
 
@@ -388,6 +394,8 @@ class PDFMarkdownLoader(BaseLoader):
         ignore_graphics: bool = False,
         force_text: bool = True,
         fontsize_limit: float = 3.0,
+        header: bool = False,
+        footer: bool = False,
         show_progress: bool = True,
         verbose: bool = False,
         encoding: str = "utf-8",
@@ -402,6 +410,8 @@ class PDFMarkdownLoader(BaseLoader):
             ignore_graphics: Whether to ignore vector graphics.
             force_text: Extract text even over images/graphics.
             fontsize_limit: Minimum font size to consider.
+            header: Include page headers in output (default: True).
+            footer: Include page footers in output (default: True).
             show_progress: Print human-friendly progress messages.
             verbose: Enable structured logging for observability (default: False).
             encoding: Text encoding (not used for PDFs).
@@ -416,6 +426,8 @@ class PDFMarkdownLoader(BaseLoader):
             ignore_graphics=ignore_graphics,
             force_text=force_text,
             fontsize_limit=fontsize_limit,
+            header=header,
+            footer=footer,
         )
         self._show_progress = show_progress
         self._verbose = verbose
@@ -642,6 +654,8 @@ class PDFMarkdownLoader(BaseLoader):
             ),
             "fontsize_limit": kwargs.get("fontsize_limit", self.config.fontsize_limit),
             "dpi": kwargs.get("dpi", self.config.dpi),
+            "header": kwargs.get("header", self.config.header),
+            "footer": kwargs.get("footer", self.config.footer),
         }
 
         batch_size = kwargs.get("batch_size", self.config.batch_size)
