@@ -1,248 +1,287 @@
-"""Hybrid retriever combining dense and sparse retrieval.
+"""Hybrid retriever combining metadata and content search.
 
-Hybrid retrieval combines the strengths of:
-- Dense (semantic): Good for meaning and paraphrases
-- Sparse (BM25): Good for exact terms and keywords
-
-The combination often outperforms either approach alone.
+True hybrid retrieval: search by metadata attributes first,
+then by content within matching documents. Can wrap any retriever.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.retriever.base import BaseRetriever, FusionStrategy, RetrievalResult
-from agenticflow.retriever.dense import DenseRetriever
-from agenticflow.retriever.sparse import BM25Retriever
-from agenticflow.retriever.utils.fusion import fuse_results
+from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 from agenticflow.vectorstore import Document
 
 if TYPE_CHECKING:
+    from agenticflow.retriever.base import Retriever
     from agenticflow.vectorstore import VectorStore
 
 
+class MetadataMatchMode(Enum):
+    """How to match metadata filters."""
+    
+    ALL = "all"      # All filters must match (AND)
+    ANY = "any"      # Any filter can match (OR)
+    BOOST = "boost"  # Metadata matches boost score, don't filter
+
+
+@dataclass
+class MetadataWeight:
+    """Weight for a metadata field in scoring."""
+    
+    field: str
+    weight: float = 1.0
+    exact_match: bool = True  # False = contains/partial match
+
+
 class HybridRetriever(BaseRetriever):
-    """Hybrid retriever combining dense and sparse search.
+    """Hybrid retriever combining metadata and content search.
     
-    Uses both vector similarity (dense) and BM25 (sparse) to find
-    documents, then fuses results using a configurable strategy.
+    This retriever implements true hybrid search:
+    1. Filter/boost by metadata attributes
+    2. Search content with the wrapped retriever
+    3. Combine scores from both
     
-    This is often the best approach for RAG applications as it
-    combines semantic understanding with keyword matching.
+    Unlike ensemble (which combines multiple retrievers), hybrid
+    combines metadata-based filtering with content-based search.
     
     Example:
-        >>> from agenticflow.vectorstore import VectorStore
-        >>> from agenticflow.retriever import HybridRetriever
+        >>> from agenticflow.retriever import HybridRetriever, DenseRetriever
         >>> 
-        >>> store = VectorStore()
-        >>> await store.add_texts(["Python is great", "JavaScript rocks"])
+        >>> # Wrap any retriever
+        >>> content_retriever = DenseRetriever(vectorstore)
         >>> 
-        >>> retriever = HybridRetriever(vectorstore=store)
-        >>> docs = await retriever.retrieve("Python programming language")
+        >>> hybrid = HybridRetriever(
+        ...     retriever=content_retriever,
+        ...     metadata_fields=["category", "author", "department"],
+        ...     metadata_weight=0.3,  # 30% metadata, 70% content
+        ...     mode=MetadataMatchMode.BOOST,
+        ... )
+        >>> 
+        >>> # Query searches both metadata and content
+        >>> results = await hybrid.retrieve(
+        ...     "machine learning best practices",
+        ...     k=5,
+        ...     filter={"category": "engineering"},  # Hard filter
+        ... )
+    
+    Scoring modes:
+        - BOOST: Metadata matches increase score, no filtering
+        - ALL: Only return docs matching ALL metadata criteria
+        - ANY: Return docs matching ANY metadata criteria
     """
     
     _name: str = "hybrid"
     
     def __init__(
         self,
-        vectorstore: VectorStore | None = None,
+        retriever: Retriever,
         *,
-        dense_retriever: DenseRetriever | None = None,
-        sparse_retriever: BM25Retriever | None = None,
-        dense_weight: float = 0.7,
-        sparse_weight: float = 0.3,
-        fusion: FusionStrategy | str = FusionStrategy.RRF,
+        metadata_fields: list[str] | None = None,
+        metadata_weights: list[MetadataWeight] | None = None,
+        metadata_weight: float = 0.3,
+        content_weight: float = 0.7,
+        mode: MetadataMatchMode | str = MetadataMatchMode.BOOST,
         name: str | None = None,
     ) -> None:
-        """Create a hybrid retriever.
+        """Create a hybrid metadata + content retriever.
         
         Args:
-            vectorstore: VectorStore for dense retrieval (creates DenseRetriever).
-            dense_retriever: Existing dense retriever (alternative to vectorstore).
-            sparse_retriever: Existing sparse retriever (or creates new one).
-            dense_weight: Weight for dense results (default: 0.7).
-            sparse_weight: Weight for sparse results (default: 0.3).
-            fusion: Fusion strategy ("rrf", "linear", "max", "voting").
+            retriever: The content retriever to wrap (DenseRetriever, etc.).
+            metadata_fields: Fields to search in metadata (simple equal-weight).
+            metadata_weights: Per-field weights (alternative to metadata_fields).
+            metadata_weight: Weight for metadata score (default: 0.3).
+            content_weight: Weight for content score (default: 0.7).
+            mode: How metadata matches affect results (BOOST, ALL, ANY).
             name: Optional custom name.
         """
-        if vectorstore is None and dense_retriever is None:
-            raise ValueError("Either vectorstore or dense_retriever must be provided")
+        self._retriever = retriever
+        self._content_weight = content_weight
+        self._metadata_weight = metadata_weight
         
-        self._dense = dense_retriever or DenseRetriever(vectorstore)  # type: ignore
-        self._sparse = sparse_retriever or BM25Retriever()
-        self._dense_weight = dense_weight
-        self._sparse_weight = sparse_weight
+        # Build metadata weights
+        if metadata_weights:
+            self._metadata_weights = metadata_weights
+        elif metadata_fields:
+            self._metadata_weights = [
+                MetadataWeight(field=f, weight=1.0) for f in metadata_fields
+            ]
+        else:
+            self._metadata_weights = []
         
-        if isinstance(fusion, str):
-            fusion = FusionStrategy(fusion)
-        self._fusion = fusion
+        if isinstance(mode, str):
+            mode = MetadataMatchMode(mode)
+        self._mode = mode
         
         if name:
             self._name = name
-        
-        # Track if we need to sync sparse index
-        self._vectorstore = vectorstore
-        self._sparse_synced = sparse_retriever is not None
     
-    async def add_documents(self, documents: list[Document]) -> list[str]:
-        """Add documents to both dense and sparse indexes.
-        
-        Args:
-            documents: Documents to add.
-            
-        Returns:
-            List of document IDs.
-        """
-        # Add to dense (vectorstore)
-        ids = await self._dense.add_documents(documents)
-        
-        # Add to sparse (BM25)
-        self._sparse.add_documents(documents)
-        
-        return ids
-    
-    async def add_texts(
+    def _compute_metadata_score(
         self,
-        texts: list[str],
-        metadatas: list[dict[str, Any]] | None = None,
-    ) -> list[str]:
-        """Add texts to both indexes.
+        document: Document,
+        query: str,
+        query_terms: set[str],
+    ) -> float:
+        """Compute metadata match score for a document.
         
         Args:
-            texts: Texts to add.
-            metadatas: Optional metadata for each text.
+            document: Document to score.
+            query: Original query string.
+            query_terms: Set of lowercase query terms.
             
         Returns:
-            List of document IDs.
+            Metadata match score (0.0 to 1.0).
         """
-        # Create documents
-        metadatas = metadatas or [{}] * len(texts)
-        documents = [
-            Document(text=text, metadata=meta)
-            for text, meta in zip(texts, metadatas)
-        ]
+        if not self._metadata_weights:
+            return 0.0
         
-        return await self.add_documents(documents)
+        total_weight = sum(mw.weight for mw in self._metadata_weights)
+        if total_weight == 0:
+            return 0.0
+        
+        score = 0.0
+        
+        for mw in self._metadata_weights:
+            field_value = document.metadata.get(mw.field)
+            if field_value is None:
+                continue
+            
+            # Convert to string for matching
+            field_str = str(field_value).lower()
+            
+            if mw.exact_match:
+                # Check if any query term exactly matches
+                if field_str in query_terms or any(
+                    term in field_str for term in query_terms
+                ):
+                    score += mw.weight
+            else:
+                # Partial match - count matching terms
+                matching_terms = sum(
+                    1 for term in query_terms if term in field_str
+                )
+                if matching_terms > 0:
+                    score += mw.weight * (matching_terms / len(query_terms))
+        
+        return score / total_weight
     
-    async def _ensure_sparse_synced(self) -> None:
-        """Ensure sparse index has all documents from vectorstore."""
-        if self._sparse_synced:
-            return
+    def _matches_metadata_filter(
+        self,
+        document: Document,
+        query_terms: set[str],
+    ) -> bool:
+        """Check if document matches metadata filter criteria.
         
-        # This is a basic sync - in production you'd want better tracking
-        # For now, we just mark as synced and rely on user calling add_documents
-        self._sparse_synced = True
+        Args:
+            document: Document to check.
+            query_terms: Set of lowercase query terms.
+            
+        Returns:
+            True if document matches according to mode.
+        """
+        if not self._metadata_weights:
+            return True  # No metadata fields = always match
+        
+        matches = []
+        
+        for mw in self._metadata_weights:
+            field_value = document.metadata.get(mw.field)
+            if field_value is None:
+                matches.append(False)
+                continue
+            
+            field_str = str(field_value).lower()
+            
+            if mw.exact_match:
+                match = field_str in query_terms or any(
+                    term in field_str for term in query_terms
+                )
+            else:
+                match = any(term in field_str for term in query_terms)
+            
+            matches.append(match)
+        
+        if self._mode == MetadataMatchMode.ALL:
+            return all(matches) if matches else True
+        elif self._mode == MetadataMatchMode.ANY:
+            return any(matches) if matches else True
+        else:  # BOOST mode - always matches
+            return True
     
     async def retrieve_with_scores(
         self,
         query: str,
         k: int = 4,
         filter: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> list[RetrievalResult]:
-        """Retrieve using hybrid dense + sparse search.
+        """Retrieve using hybrid metadata + content search.
         
         Args:
             query: The search query.
             k: Number of documents to retrieve.
-            filter: Optional metadata filter.
+            filter: Hard metadata filter (passed to underlying retriever).
+            **kwargs: Additional arguments for the wrapped retriever.
             
         Returns:
-            Fused results from both retrievers.
+            Results scored by both metadata and content relevance.
         """
-        await self._ensure_sparse_synced()
+        # Get more results to allow for filtering
+        fetch_k = k * 3 if self._mode != MetadataMatchMode.BOOST else k * 2
         
-        # Retrieve more from each to have enough after fusion
-        fetch_k = k * 2
-        
-        # Get results from both retrievers
-        dense_results = await self._dense.retrieve_with_scores(
-            query, k=fetch_k, filter=filter
-        )
-        sparse_results = await self._sparse.retrieve_with_scores(
-            query, k=fetch_k, filter=filter
+        # Get content-based results from wrapped retriever
+        content_results = await self._retriever.retrieve(
+            query, k=fetch_k, filter=filter, include_scores=True, **kwargs
         )
         
-        # Fuse results
-        weights = [self._dense_weight, self._sparse_weight]
-        fused = fuse_results(
-            [dense_results, sparse_results],
-            strategy=self._fusion,
-            weights=weights,
-            k=k,
-        )
+        # Prepare query terms for metadata matching
+        query_terms = set(query.lower().split())
         
-        # Update retriever name
-        for result in fused:
-            result.retriever_name = self.name
-            result.metadata["dense_weight"] = self._dense_weight
-            result.metadata["sparse_weight"] = self._sparse_weight
+        # Score and filter results
+        hybrid_results: list[RetrievalResult] = []
         
-        return fused
+        for result in content_results:
+            doc = result.document
+            content_score = result.score
+            
+            # Check metadata filter (for ALL/ANY modes)
+            if not self._matches_metadata_filter(doc, query_terms):
+                continue
+            
+            # Compute metadata score
+            metadata_score = self._compute_metadata_score(doc, query, query_terms)
+            
+            # Combine scores
+            combined_score = (
+                self._content_weight * content_score +
+                self._metadata_weight * metadata_score
+            )
+            
+            hybrid_results.append(RetrievalResult(
+                document=doc,
+                score=combined_score,
+                retriever_name=self.name,
+                metadata={
+                    "content_score": content_score,
+                    "metadata_score": metadata_score,
+                    "content_weight": self._content_weight,
+                    "metadata_weight": self._metadata_weight,
+                    "mode": self._mode.value,
+                    **result.metadata,
+                },
+            ))
+        
+        # Sort by combined score and limit
+        hybrid_results.sort(key=lambda r: r.score, reverse=True)
+        return hybrid_results[:k]
     
     @property
-    def dense_retriever(self) -> DenseRetriever:
-        """Access the underlying dense retriever."""
-        return self._dense
+    def retriever(self) -> Retriever:
+        """Access the wrapped content retriever."""
+        return self._retriever
     
     @property
-    def sparse_retriever(self) -> BM25Retriever:
-        """Access the underlying sparse retriever."""
-        return self._sparse
-
-
-def create_hybrid_retriever(
-    texts: list[str] | None = None,
-    documents: list[Document] | None = None,
-    metadatas: list[dict[str, Any]] | None = None,
-    dense_weight: float = 0.7,
-    sparse_weight: float = 0.3,
-    fusion: str = "rrf",
-    **vectorstore_kwargs: Any,
-) -> HybridRetriever:
-    """Create a hybrid retriever with optional initial documents.
-    
-    Convenience function that creates both vectorstore and retriever.
-    
-    Args:
-        texts: Initial texts to add.
-        documents: Initial documents to add (alternative to texts).
-        metadatas: Metadata for texts.
-        dense_weight: Weight for dense retrieval.
-        sparse_weight: Weight for sparse retrieval.
-        fusion: Fusion strategy.
-        **vectorstore_kwargs: Arguments for VectorStore.
-        
-    Returns:
-        Configured HybridRetriever.
-        
-    Example:
-        >>> retriever = create_hybrid_retriever(
-        ...     texts=["doc1", "doc2", "doc3"],
-        ...     dense_weight=0.6,
-        ...     sparse_weight=0.4,
-        ... )
-        >>> docs = await retriever.retrieve("query")
-    """
-    from agenticflow.vectorstore import VectorStore
-    
-    store = VectorStore(**vectorstore_kwargs)
-    retriever = HybridRetriever(
-        vectorstore=store,
-        dense_weight=dense_weight,
-        sparse_weight=sparse_weight,
-        fusion=FusionStrategy(fusion),
-    )
-    
-    # Add initial documents if provided
-    if documents:
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(
-            retriever.add_documents(documents)
-        )
-    elif texts:
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(
-            retriever.add_texts(texts, metadatas=metadatas)
-        )
-    
-    return retriever
+    def metadata_fields(self) -> list[str]:
+        """List of metadata fields being searched."""
+        return [mw.field for mw in self._metadata_weights]

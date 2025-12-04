@@ -25,6 +25,7 @@ from agenticflow.retriever import (
     DenseRetriever,
     BM25Retriever,
     HybridRetriever,
+    MetadataMatchMode,
     EnsembleRetriever,
     FusionStrategy,
     # Contextual retrievers
@@ -334,32 +335,35 @@ async def demo_bm25_retriever() -> None:
 
 
 async def demo_hybrid_retriever() -> None:
-    """Demonstrate hybrid retrieval (dense + sparse)."""
+    """Demonstrate hybrid retrieval (metadata + content)."""
     print("\n" + "=" * 70)
-    print("3. HYBRID RETRIEVER (Dense + BM25)")
+    print("3. HYBRID RETRIEVER (Metadata + Content)")
     print("=" * 70)
 
     embeddings = get_embeddings()
     vectorstore = VectorStore(embeddings=embeddings)
+    await vectorstore.add_documents(DOCUMENTS)
 
+    # Wrap a dense retriever with metadata search
+    dense = DenseRetriever(vectorstore)
     retriever = HybridRetriever(
-        vectorstore=vectorstore,
-        dense_weight=0.7,
-        sparse_weight=0.3,
-        fusion=FusionStrategy.RRF,
+        retriever=dense,
+        metadata_fields=["category", "author"],
+        metadata_weight=0.3,
+        content_weight=0.7,
+        mode=MetadataMatchMode.BOOST,
     )
 
-    await retriever.add_documents(DOCUMENTS)
-
-    # Query that benefits from both semantic AND keyword matching
-    query = "Python 3.13 new features performance"
+    # Query that benefits from both content AND metadata matching
+    query = "Data Science machine learning best practices"
     print(f"\nQuery: '{query}'")
-    print("(Benefits from both semantic understanding AND keyword matching)")
+    print("(Boosts results where metadata fields match query terms)")
 
-    results = await retriever.retrieve(query, k=2, include_scores=True)
+    results = await retriever.retrieve(query, k=3, include_scores=True)
     for r in results:
         print(f"\n  [{r.score:.3f}] {r.document.metadata['source']}")
-        print(f"  {r.document.text[:100]}...")
+        print(f"    Content: {r.metadata.get('content_score', 0):.3f}, Metadata: {r.metadata.get('metadata_score', 0):.3f}")
+        print(f"    Author: {r.document.metadata.get('author', 'N/A')}")
 
 
 async def demo_ensemble_retriever() -> None:

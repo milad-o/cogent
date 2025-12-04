@@ -886,59 +886,80 @@ class TestBM25Retriever:
 
 
 class TestHybridRetriever:
-    """Tests for HybridRetriever."""
+    """Tests for HybridRetriever (metadata + content search)."""
     
     @pytest.mark.asyncio
     async def test_hybrid_basic(self, sample_documents: list[Document]) -> None:
-        """Test basic hybrid retrieval."""
-        pytest.importorskip("rank_bm25")
+        """Test basic hybrid retrieval with metadata fields."""
         from agenticflow.retriever.dense import DenseRetriever
-        from agenticflow.retriever.hybrid import HybridRetriever
-        from agenticflow.retriever.sparse import BM25Retriever
+        from agenticflow.retriever.hybrid import HybridRetriever, MetadataMatchMode
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
         
+        # Add metadata to documents
+        docs_with_meta = [
+            Document(text="Python is a programming language", metadata={"category": "programming", "author": "guido"}),
+            Document(text="JavaScript runs in browsers", metadata={"category": "programming", "author": "brendan"}),
+            Document(text="Machine learning uses algorithms", metadata={"category": "ml", "author": "andrew"}),
+        ]
+        
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
-        await vs.add_documents(sample_documents)
+        await vs.add_documents(docs_with_meta)
         
         dense = DenseRetriever(vs)
-        sparse = BM25Retriever()
-        await sparse.index_documents(sample_documents)
+        hybrid = HybridRetriever(
+            retriever=dense,
+            metadata_fields=["category", "author"],
+            mode=MetadataMatchMode.BOOST,
+        )
         
-        hybrid = HybridRetriever(dense, sparse, dense_weight=0.6)
-        
-        results = await hybrid.retrieve("Python programming", k=3)
+        results = await hybrid.retrieve("Python programming", k=3, include_scores=True)
         
         assert len(results) <= 3
+        # Results should have enriched metadata (in result.metadata, not document.metadata)
+        if results:
+            assert "content_score" in results[0].metadata
+            assert "metadata_score" in results[0].metadata
     
     @pytest.mark.asyncio
     async def test_hybrid_weights(self, sample_documents: list[Document]) -> None:
         """Test hybrid with different weight configurations."""
-        pytest.importorskip("rank_bm25")
         from agenticflow.retriever.dense import DenseRetriever
         from agenticflow.retriever.hybrid import HybridRetriever
-        from agenticflow.retriever.sparse import BM25Retriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
         
+        docs_with_meta = [
+            Document(text="Python is great", metadata={"category": "python"}),
+            Document(text="Java is verbose", metadata={"category": "java"}),
+        ]
+        
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
-        await vs.add_documents(sample_documents)
+        await vs.add_documents(docs_with_meta)
         
         dense = DenseRetriever(vs)
-        sparse = BM25Retriever()
-        await sparse.index_documents(sample_documents)
         
-        # Heavy on dense
-        hybrid_dense = HybridRetriever(dense, sparse, dense_weight=0.9, sparse_weight=0.1)
-        results_dense = await hybrid_dense.retrieve("Python", k=3)
+        # Heavy on content
+        hybrid_content = HybridRetriever(
+            retriever=dense,
+            metadata_fields=["category"],
+            content_weight=0.9,
+            metadata_weight=0.1,
+        )
+        results_content = await hybrid_content.retrieve("Python", k=3)
         
-        # Heavy on sparse
-        hybrid_sparse = HybridRetriever(dense, sparse, dense_weight=0.1, sparse_weight=0.9)
-        results_sparse = await hybrid_sparse.retrieve("Python", k=3)
+        # Heavy on metadata
+        hybrid_meta = HybridRetriever(
+            retriever=dense,
+            metadata_fields=["category"],
+            content_weight=0.1,
+            metadata_weight=0.9,
+        )
+        results_meta = await hybrid_meta.retrieve("python", k=3)
         
         # Both should return results
-        assert len(results_dense) > 0
-        assert len(results_sparse) > 0
+        assert len(results_content) > 0
+        assert len(results_meta) > 0
 
 
 # ============================================================================

@@ -5,8 +5,8 @@ This module provides a comprehensive retrieval system with multiple strategies.
 **Core Retrievers:**
 - DenseRetriever: Vector similarity search (wraps VectorStore)
 - BM25Retriever: Sparse lexical retrieval (BM25 algorithm)
-- HybridRetriever: Combines dense + sparse for best of both
 - EnsembleRetriever: Combine N retrievers with fusion strategies
+- HybridRetriever: Combine metadata search + content search
 
 **Contextual Retrievers:**
 - ParentDocumentRetriever: Index chunks, retrieve full parent documents
@@ -65,7 +65,7 @@ from agenticflow.retriever.contextual import (
 )
 from agenticflow.retriever.dense import DenseRetriever
 from agenticflow.retriever.ensemble import EnsembleRetriever
-from agenticflow.retriever.hybrid import HybridRetriever
+from agenticflow.retriever.hybrid import HybridRetriever, MetadataMatchMode, MetadataWeight
 
 # Re-export document types for backward compatibility
 from agenticflow.document import (
@@ -153,6 +153,8 @@ __all__ = [
     "DenseRetriever",
     "BM25Retriever",
     "HybridRetriever",
+    "MetadataMatchMode",
+    "MetadataWeight",
     "EnsembleRetriever",
     # Contextual retrievers
     "ParentDocumentRetriever",

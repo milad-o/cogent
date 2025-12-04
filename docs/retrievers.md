@@ -112,30 +112,40 @@ results = await retriever.retrieve("Python tutorial", k=2)
 
 ### HybridRetriever
 
-Combines dense (semantic) and sparse (BM25) retrieval for best of both worlds.
+Combines metadata search with content search. Wraps any retriever and boosts/filters by metadata fields.
 
 ```python
-from agenticflow.retriever import HybridRetriever
+from agenticflow.retriever import HybridRetriever, DenseRetriever, MetadataMatchMode
 
-# Hybrid with automatic BM25 sync
-retriever = HybridRetriever(
-    vectorstore=vectorstore,
-    dense_weight=0.7,   # 70% semantic
-    sparse_weight=0.3,  # 30% keyword
-    fusion="rrf",       # Reciprocal Rank Fusion
+# Wrap any content retriever
+content_retriever = DenseRetriever(vectorstore)
+
+hybrid = HybridRetriever(
+    retriever=content_retriever,
+    metadata_fields=["category", "author", "department"],
+    metadata_weight=0.3,   # 30% from metadata match
+    content_weight=0.7,    # 70% from content match
+    mode=MetadataMatchMode.BOOST,  # or ALL, ANY
 )
 
-# Add documents (syncs to both indexes)
-await retriever.add_documents(documents)
+# Query searches both metadata and content
+results = await hybrid.retrieve("machine learning best practices", k=5)
 
-# Search combines both approaches
-results = await retriever.retrieve("machine learning Python", k=5)
+# Each result has enriched metadata
+for r in results:
+    print(f"Content score: {r.metadata['content_score']}")
+    print(f"Metadata score: {r.metadata['metadata_score']}")
 ```
 
+**Matching modes:**
+- `BOOST`: Metadata matches increase score (no filtering)
+- `ALL`: Only return docs matching ALL metadata terms
+- `ANY`: Return docs matching ANY metadata term
+
 **When to use:**
-- Best default choice for production RAG
-- Mixed queries (concepts + keywords)
-- When you need high recall without sacrificing precision
+- Documents have rich metadata (author, category, date)
+- Users search by both content and attributes
+- Want to boost relevant metadata matches
 
 ---
 

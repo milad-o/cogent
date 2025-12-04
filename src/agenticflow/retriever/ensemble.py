@@ -1,8 +1,7 @@
 """Ensemble retriever combining multiple retrievers.
 
 Ensemble retrieval allows combining results from any number of retrievers
-using various fusion strategies. This is more flexible than HybridRetriever
-and can combine retrievers of any type.
+using various fusion strategies.
 """
 
 from __future__ import annotations
@@ -208,34 +207,3 @@ class WeightedRetriever(BaseRetriever):
             )
             for r in results
         ]
-
-
-def create_ensemble(
-    *retrievers: Retriever,
-    weights: list[float] | None = None,
-    fusion: str = "rrf",
-) -> EnsembleRetriever:
-    """Create an ensemble from multiple retrievers.
-    
-    Convenience function with simpler API.
-    
-    Args:
-        *retrievers: Retrievers to combine.
-        weights: Optional weights.
-        fusion: Fusion strategy.
-        
-    Returns:
-        Configured EnsembleRetriever.
-        
-    Example:
-        >>> ensemble = create_ensemble(
-        ...     dense_retriever,
-        ...     sparse_retriever,
-        ...     weights=[0.7, 0.3],
-        ... )
-    """
-    return EnsembleRetriever(
-        list(retrievers),
-        weights=weights,
-        fusion=FusionStrategy(fusion),
-    )
