@@ -48,7 +48,7 @@ async def main() -> None:
     )
     
     load_start = time.perf_counter()
-    result = await loader.load(pdf_path)
+    result = await loader.load_with_tracking(pdf_path)
     load_time = time.perf_counter() - load_start
     
     print(f"\n✅ PDF loaded in {load_time:.2f}s")

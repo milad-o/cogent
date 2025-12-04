@@ -519,10 +519,8 @@ class TestPDFMarkdownLoaderIntegration:
     async def test_load_real_pdf(self, sample_pdf: Path) -> None:
         """Test loading an actual PDF file."""
         loader = PDFMarkdownLoader(max_workers=2, batch_size=1)
-        result = await loader.load(sample_pdf)
+        docs = await loader.load(sample_pdf)
 
-        assert result.total_pages >= 1
-        docs = result.to_documents()
         assert len(docs) >= 1
         assert all(isinstance(d, Document) for d in docs)
 

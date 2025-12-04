@@ -162,6 +162,11 @@ class PDFProcessingResult:
             return 0.0
         return self.successful_pages / self.total_pages
 
+    @property
+    def documents(self) -> list[Document]:
+        """Get successful page results as Documents."""
+        return self.to_documents()
+
     def to_documents(self) -> list[Document]:
         """Convert successful page results to Documents."""
         documents: list[Document] = []
@@ -432,8 +437,40 @@ class PDFMarkdownLoader(BaseLoader):
         self,
         path: str | Path,
         **kwargs: Any,
+    ) -> list[Document]:
+        """Load a PDF file and convert to Markdown documents.
+
+        Args:
+            path: Path to the PDF file (str or Path).
+            **kwargs: Additional options (overrides config).
+
+        Returns:
+            List of Document objects (one per page with content).
+
+        Raises:
+            ImportError: If pymupdf4llm is not installed.
+            FileNotFoundError: If PDF file doesn't exist.
+        
+        Example:
+            >>> docs = await loader.load("doc.pdf")
+            >>> print(f"Loaded {len(docs)} pages")
+            
+        Note:
+            For detailed processing metrics (success rate, timing, failed pages),
+            use `load_with_tracking()` instead.
+        """
+        result = await self._load_with_tracking(path, **kwargs)
+        return result.documents
+
+    async def load_with_tracking(
+        self,
+        path: str | Path,
+        **kwargs: Any,
     ) -> PDFProcessingResult:
-        """Load a PDF file and convert to Markdown.
+        """Load a PDF with full processing tracking and metrics.
+        
+        Use this method when you need detailed information about the
+        PDF processing, such as success rate, timing, or failed pages.
 
         Args:
             path: Path to the PDF file (str or Path).
@@ -441,30 +478,12 @@ class PDFMarkdownLoader(BaseLoader):
 
         Returns:
             PDFProcessingResult with documents and metrics.
-            Use `.to_documents()` to get list of Document objects.
-
-        Raises:
-            ImportError: If pymupdf4llm is not installed.
-            FileNotFoundError: If PDF file doesn't exist.
-        
+            
         Example:
-            >>> result = await loader.load("doc.pdf")
-            >>> result = await loader.load(Path("doc.pdf"))
-            >>> print(f"Loaded {result.total_pages} pages")
+            >>> result = await loader.load_with_tracking("doc.pdf")
             >>> print(f"Success rate: {result.success_rate:.0%}")
-            >>> docs = result.to_documents()
-        """
-        return await self._load_with_tracking(path, **kwargs)
-
-    async def load_with_tracking(
-        self,
-        path: str | Path,
-        **kwargs: Any,
-    ) -> PDFProcessingResult:
-        """Load a PDF with full processing tracking.
-        
-        .. deprecated::
-            Use `load()` instead - it now returns PDFProcessingResult directly.
+            >>> print(f"Time: {result.total_time_ms:.0f}ms")
+            >>> docs = result.documents
         """
         return await self._load_with_tracking(path, **kwargs)
 

@@ -72,19 +72,18 @@ loader = PDFMarkdownLoader(
     batch_size=10,      # Pages per batch
 )
 
-# Load returns PDFProcessingResult with metrics
-result = await loader.load("large_document.pdf")
+# Standard API - returns list[Document] (consistent with other loaders)
+docs = await loader.load("large_document.pdf")
+print(f"Loaded {len(docs)} pages")
 
-print(f"Processed {result.total_pages} pages")
+# With tracking - returns PDFProcessingResult with metrics
+result = await loader.load_with_tracking("large_document.pdf")
 print(f"Success rate: {result.success_rate:.0%}")
 print(f"Time: {result.total_time_ms:.0f}ms")
-
-# Access documents
-for doc in result.documents:
-    print(doc.text[:200])
+docs = result.documents
 ```
 
-**Processing Result:**
+**PDFProcessingResult (from load_with_tracking):**
 ```python
 @dataclass
 class PDFProcessingResult:
