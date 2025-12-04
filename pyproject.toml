@@ -1,19 +1,22 @@
 [project]
 name = "agenticflow"
-version = "0.1.0"
-description = "A production-grade event-driven multi-agent system framework"
+version = "1.0.0"
+description = "A production-grade multi-agent framework for building AI applications"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.13"
 authors = [{ name = "Milad Olad" }]
 keywords = ["agents", "multi-agent", "event-driven", "llm", "ai", "orchestration"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
+    "Framework :: AsyncIO",
 ]
 
 dependencies = [

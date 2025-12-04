@@ -120,8 +120,11 @@ class TestDeferredResult:
 
     def test_is_timed_out(self) -> None:
         """Test timeout detection."""
-        # Short timeout
-        deferred = DeferredResult(timeout=0.0)
+        import time
+        
+        # Short timeout - wait a tiny bit to ensure it's expired
+        deferred = DeferredResult(timeout=0.001)
+        time.sleep(0.01)  # Wait 10ms to ensure timeout
         assert deferred.is_timed_out
         
         # Long timeout
