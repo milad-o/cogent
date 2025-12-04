@@ -316,18 +316,22 @@ from agenticflow.models import (
 # Provider-specific model imports for convenience
 from agenticflow.models.azure import AzureChat, AzureEmbedding
 
-# Visualization (THIS IS WHERE WE ADD VALUE)
-from agenticflow.visualization import (
-    MermaidConfig,
-    MermaidRenderer,
-    MermaidTheme,
-    MermaidDirection,
-    AgentDiagram,
-    TopologyDiagram,
+# Graph API (unified visualization)
+from agenticflow import graph
+from agenticflow.graph import (
+    GraphView,
+    GraphConfig,
+    GraphTheme,
+    GraphDirection,
 )
 
-# Graph API (multi-level visualization)
-from agenticflow import graph
+# Backwards-compatible aliases for visualization module
+MermaidConfig = GraphConfig
+MermaidTheme = GraphTheme
+MermaidDirection = GraphDirection
+MermaidRenderer = GraphView  # Closest equivalent
+AgentDiagram = GraphView  # Use GraphView.from_agent() instead
+TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
 
 # Capabilities (composable tools for agents)
 from agenticflow.capabilities import (
@@ -539,15 +543,19 @@ __all__ = [
     "create_executor_callback",
     "configure_output",
     "render_dag_ascii",
-    # Visualization
+    # Graph API (visualization)
+    "graph",
+    "GraphView",
+    "GraphConfig",
+    "GraphTheme",
+    "GraphDirection",
+    # Backwards-compatible visualization aliases
     "MermaidConfig",
     "MermaidRenderer",
     "MermaidTheme",
     "MermaidDirection",
     "AgentDiagram",
     "TopologyDiagram",
-    # Graph API (new multi-level visualization)
-    "graph",
     # Capabilities
     "BaseCapability",
     "KnowledgeGraph",

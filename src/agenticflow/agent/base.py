@@ -3559,38 +3559,36 @@ class Agent:
         """
         Generate a Mermaid diagram showing this agent and its tools.
         
+        .. deprecated::
+            Use `agent.graph().mermaid()` instead for the new API.
+        
         Args:
             theme: Mermaid theme (default, forest, dark, neutral, base)
             direction: Graph direction (TB, TD, BT, LR, RL)
             title: Optional diagram title
             show_tools: Whether to show agent tools
-            show_roles: Whether to show agent role
+            show_roles: Whether to show agent role (unused in new API)
             show_config: Whether to show model configuration
             
         Returns:
             Mermaid diagram code as string
         """
-        from agenticflow.visualization.mermaid import (
-            AgentDiagram,
-            MermaidConfig,
-            MermaidDirection,
-            MermaidTheme,
-        )
+        from agenticflow.graph import GraphView, GraphTheme, GraphDirection
         
-        # Parse theme and direction enums
-        theme_enum = MermaidTheme(theme)
-        direction_enum = MermaidDirection(direction)
-        
-        config = MermaidConfig(
-            title=title or "",
-            theme=theme_enum,
-            direction=direction_enum,
+        view = GraphView.from_agent(
+            self,
             show_tools=show_tools,
-            show_roles=show_roles,
             show_config=show_config,
         )
-        diagram = AgentDiagram(self, config=config)
-        return diagram.to_mermaid()
+        
+        if title:
+            view = view.with_title(title)
+        if theme != "default":
+            view = view.with_theme(GraphTheme(theme))
+        if direction not in ("TB", "TD"):
+            view = view.with_direction(GraphDirection(direction))
+        
+        return view.mermaid()
 
     def draw_mermaid_png(
         self,
@@ -3607,37 +3605,36 @@ class Agent:
         
         Requires httpx to be installed for mermaid.ink API.
         
+        .. deprecated::
+            Use `agent.graph().png()` instead for the new API.
+        
         Args:
             theme: Mermaid theme (default, forest, dark, neutral, base)
             direction: Graph direction (TB, TD, BT, LR, RL)
             title: Optional diagram title
             show_tools: Whether to show agent tools
-            show_roles: Whether to show agent role
+            show_roles: Whether to show agent role (unused in new API)
             show_config: Whether to show model configuration
             
         Returns:
             PNG image as bytes
         """
-        from agenticflow.visualization.mermaid import (
-            AgentDiagram,
-            MermaidConfig,
-            MermaidDirection,
-            MermaidTheme,
-        )
+        from agenticflow.graph import GraphView, GraphTheme, GraphDirection
         
-        theme_enum = MermaidTheme(theme)
-        direction_enum = MermaidDirection(direction)
-        
-        config = MermaidConfig(
-            title=title or "",
-            theme=theme_enum,
-            direction=direction_enum,
+        view = GraphView.from_agent(
+            self,
             show_tools=show_tools,
-            show_roles=show_roles,
             show_config=show_config,
         )
-        diagram = AgentDiagram(self, config=config)
-        return diagram.draw_png()
+        
+        if title:
+            view = view.with_title(title)
+        if theme != "default":
+            view = view.with_theme(GraphTheme(theme))
+        if direction not in ("TB", "TD"):
+            view = view.with_direction(GraphDirection(direction))
+        
+        return view.png()
 
     # =========================================================================
     # Factory Methods - Create role-specific agents
