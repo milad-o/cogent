@@ -343,17 +343,17 @@ view.save("diagram.png")
 ## Installation
 
 ```bash
-# Basic
-uv add agenticflow
+# Install from GitHub
+uv add git+https://github.com/milad-o/agenticflow.git
+
+# Or with pip
+pip install git+https://github.com/milad-o/agenticflow.git
 
 # With optional dependencies
-uv add "agenticflow[web]"       # Web search, browser
-uv add "agenticflow[anthropic]" # Anthropic Claude
-uv add "agenticflow[azure]"     # Azure OpenAI
-uv add "agenticflow[all]"       # Everything
-
-# Development
-uv add "agenticflow[dev]"
+uv add "agenticflow[web] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "agenticflow[anthropic] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "agenticflow[azure] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 ```
 
 ## Core Architecture
