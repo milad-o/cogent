@@ -425,13 +425,13 @@ class PDFMarkdownLoader(BaseLoader):
 
     async def load(
         self,
-        path: Path,
+        path: str | Path,
         **kwargs: Any,
     ) -> PDFProcessingResult:
         """Load a PDF file and convert to Markdown.
 
         Args:
-            path: Path to the PDF file.
+            path: Path to the PDF file (str or Path).
             **kwargs: Additional options (overrides config).
 
         Returns:
@@ -443,16 +443,17 @@ class PDFMarkdownLoader(BaseLoader):
             FileNotFoundError: If PDF file doesn't exist.
         
         Example:
+            >>> result = await loader.load("doc.pdf")
             >>> result = await loader.load(Path("doc.pdf"))
             >>> print(f"Loaded {result.total_pages} pages")
-            >>> print(f"Success rate: {result.success_rate:.1f}%")
+            >>> print(f"Success rate: {result.success_rate:.0%}")
             >>> docs = result.to_documents()
         """
         return await self._load_with_tracking(path, **kwargs)
 
     async def load_with_tracking(
         self,
-        path: Path,
+        path: str | Path,
         **kwargs: Any,
     ) -> PDFProcessingResult:
         """Load a PDF with full processing tracking.
@@ -464,7 +465,7 @@ class PDFMarkdownLoader(BaseLoader):
 
     async def _load_with_tracking(
         self,
-        path: Path,
+        path: str | Path,
         **kwargs: Any,
     ) -> PDFProcessingResult:
         """Load a PDF with full processing tracking.
@@ -473,12 +474,16 @@ class PDFMarkdownLoader(BaseLoader):
         for each page processed.
 
         Args:
-            path: Path to the PDF file.
+            path: Path to the PDF file (str or Path).
             **kwargs: Override configuration options.
 
         Returns:
             PDFProcessingResult with detailed tracking information.
         """
+        # Convert str to Path if needed
+        if isinstance(path, str):
+            path = Path(path)
+        
         if not path.exists():
             raise FileNotFoundError(f"PDF file not found: {path}")
 
