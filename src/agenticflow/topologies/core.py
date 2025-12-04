@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ..agent import Agent
     from ..memory import TeamMemory
-    from ..graph import TopologyGraph
+    from ..graph import GraphView, TopologyGraph
 
 
 class TopologyType(str, Enum):
@@ -149,7 +149,7 @@ class BaseTopology(ABC):
         yield {"type": "complete", "data": result}
 
     # ─────────────────────────────────────────────────────────────────────
-    # Visualization (High-level Graph API)
+    # Visualization (Graph API)
     # ─────────────────────────────────────────────────────────────────────
 
     def get_agents_dict(self) -> dict[str, "Agent"]:
@@ -165,55 +165,40 @@ class BaseTopology(ABC):
         """Get topology configuration. Override in subclasses."""
         return TopologyConfig(name=f"{self.topology_type.value.title()} Topology")
 
-    def to_graph(self, *, show_tools: bool = True) -> "TopologyGraph":
-        """Create a graph visualization of this topology.
+    def graph(
+        self,
+        *,
+        show_tools: bool = True,
+    ) -> "GraphView":
+        """Get a graph visualization of this topology.
 
-        High-level API for the graph module. Returns a TopologyGraph
-        that can be rendered to Mermaid, Graphviz, or ASCII.
+        Returns a GraphView that provides a unified interface for
+        rendering to Mermaid, Graphviz, or ASCII formats.
 
         Args:
             show_tools: Whether to show agent tools in the diagram.
 
         Returns:
-            TopologyGraph instance for rendering.
+            GraphView instance for rendering.
 
         Example:
-            >>> graph = topology.to_graph()
-            >>> print(graph.render())  # Mermaid code
-            >>> graph.to_png("topology.png")
+            >>> # Get Mermaid code
+            >>> print(topology.graph().mermaid())
+
+            >>> # Get ASCII for terminal
+            >>> print(topology.graph().ascii())
+
+            >>> # Get Graphviz DOT
+            >>> print(topology.graph().dot())
+
+            >>> # Save as PNG
+            >>> topology.graph().save("topology.png")
         """
-        from agenticflow.graph import TopologyGraph
+        from agenticflow.graph import GraphView
 
-        return TopologyGraph.from_topology(self, show_tools=show_tools)
-
-    def visualize(self, backend: str = "mermaid") -> str:
-        """Get a visualization of this topology.
-
-        Convenience method that returns rendered diagram code.
-
-        Args:
-            backend: Backend to use ("mermaid", "graphviz", "ascii").
-
-        Returns:
-            Rendered diagram string.
-        """
-        from agenticflow.graph import (
-            ASCIIBackend,
-            GraphvizBackend,
-            MermaidBackend,
-        )
-
-        graph = self.to_graph()
-
-        backends = {
-            "mermaid": MermaidBackend,
-            "graphviz": GraphvizBackend,
-            "ascii": ASCIIBackend,
-        }
-
-        backend_cls = backends.get(backend, MermaidBackend)
-        return graph.render(backend=backend_cls())
+        return GraphView.from_topology(self, show_tools=show_tools)
 
     def _repr_html_(self) -> str:
         """IPython/Jupyter HTML representation."""
-        return self.to_graph().to_html()
+        return self.graph().html()
+

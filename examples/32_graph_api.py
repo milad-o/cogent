@@ -1,45 +1,25 @@
 """
-Example: Graph API - Multi-level visualization.
+Example: Graph API - Unified Visualization.
 
-Demonstrates the three API levels:
-1. Low-level: Raw Graph, Node, Edge primitives
-2. Mid-level: AgentGraph, TopologyGraph builders
-3. High-level: agent.to_graph(), topology.visualize()
+Demonstrates the clean, unified Graph API:
+- Single `graph()` method on agents and topologies
+- Returns `GraphView` with all rendering options
+- Three backends: Mermaid (default), Graphviz, ASCII
 
-Also shows multiple backends:
-- Mermaid (default): Web-based rendering
-- Graphviz: High-quality DOT format
-- ASCII: Terminal-friendly text diagrams
+Key API:
+    view = agent.graph()         # or topology.graph()
+    
+    view.mermaid() -> str        # Mermaid diagram code
+    view.ascii() -> str          # Terminal-friendly text
+    view.dot() -> str            # Graphviz DOT format
+    view.url() -> str            # mermaid.ink URL
+    view.png() -> bytes          # PNG image data
+    view.html() -> str           # HTML with embedded diagram
+    view.save("file.png")        # Auto-detect format
 """
-
-import asyncio
 
 from agenticflow import Agent, tool
 from agenticflow.topologies import Supervisor, Pipeline, AgentConfig
-
-# Graph API imports
-from agenticflow.graph import (
-    # Low-level primitives
-    Graph,
-    Node,
-    Edge,
-    EdgeType,
-    NodeShape,
-    Subgraph,
-    ClassDef,
-    NodeStyle,
-    # Configuration
-    GraphConfig,
-    GraphTheme,
-    GraphDirection,
-    # Backends
-    MermaidBackend,
-    GraphvizBackend,
-    ASCIIBackend,
-    # Mid-level builders
-    AgentGraph,
-    TopologyGraph,
-)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -66,137 +46,67 @@ def review(content: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Level 1: Low-Level API - Raw Graph Primitives
+# Agent Graph Visualization
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def demo_low_level_api():
-    """Demonstrate low-level graph primitives."""
+def demo_agent_graph():
+    """Demonstrate agent visualization."""
     print("\n" + "=" * 60)
-    print("Level 1: Low-Level API - Raw Graph Primitives")
+    print("Agent Graph Visualization")
     print("=" * 60)
 
-    # Create a graph from scratch
-    g = Graph()
-
-    # Add nodes with various shapes and styles
-    g.add_node(
-        Node(
-            id="start",
-            label="Start",
-            shape=NodeShape.CIRCLE,
-            css_class="start",
-        )
+    # Create an agent
+    agent = Agent(
+        name="Assistant",
+        tools=[search, write],
+        instructions="A helpful assistant.",
     )
 
-    g.add_node(
-        Node(
-            id="research",
-            label="Research Agent",
-            shape=NodeShape.ROUNDED,
-            css_class="work",
-        )
-    )
+    # Get graph view
+    view = agent.graph()
 
-    g.add_node(
-        Node(
-            id="write",
-            label="Writer Agent",
-            shape=NodeShape.ROUNDED,
-            css_class="work",
-        )
-    )
+    # Mermaid (default)
+    print("\n--- Mermaid ---")
+    print(view.mermaid())
 
-    g.add_node(
-        Node(
-            id="end",
-            label="End",
-            shape=NodeShape.CIRCLE,
-            css_class="end",
-        )
-    )
+    # Get shareable URL
+    print("\n--- Mermaid.ink URL ---")
+    print(view.url())
 
-    # Add edges
-    g.add_edge(Edge(source="start", target="research"))
-    g.add_edge(Edge(source="research", target="write", label="handoff"))
-    g.add_edge(Edge(source="write", target="end"))
+    # ASCII for terminal
+    print("\n--- ASCII (terminal-friendly) ---")
+    print(view.ascii())
 
-    # Add class definitions for styling
-    g.add_class_def(
-        ClassDef(
-            name="start",
-            style=NodeStyle(fill="#4ade80", stroke="#22c55e", color="#fff"),
-        )
-    )
-    g.add_class_def(
-        ClassDef(
-            name="end",
-            style=NodeStyle(fill="#f87171", stroke="#ef4444", color="#fff"),
-        )
-    )
-    g.add_class_def(
-        ClassDef(
-            name="work",
-            style=NodeStyle(fill="#7eb36a", stroke="#4a7a3d", color="#fff"),
-        )
-    )
+    # Graphviz DOT format
+    print("\n--- Graphviz (DOT format) ---")
+    print(view.dot())
 
-    # Render with Mermaid backend
-    backend = MermaidBackend()
-    config = GraphConfig(title="Simple Workflow", direction=GraphDirection.LEFT_RIGHT)
-    mermaid_code = backend.render(g, config)
+    # Hide tools for simpler diagram
+    print("\n--- Without tools ---")
+    simple_view = agent.graph(show_tools=False)
+    print(simple_view.mermaid())
 
-    print("\nMermaid output:")
-    print(mermaid_code)
-
-    # Also render with ASCII backend
-    ascii_backend = ASCIIBackend()
-    ascii_output = ascii_backend.render(g, config)
-
-    print("\nASCII output:")
-    print(ascii_output)
-
-    return g
-
-
-def demo_fluent_api():
-    """Demonstrate fluent API for building graphs."""
-    print("\n" + "=" * 60)
-    print("Level 1: Fluent API - Chained Method Calls")
-    print("=" * 60)
-
-    # Fluent API - chain methods
-    g = (
-        Graph()
-        .node("a", "Step A", css_class="work")
-        .node("b", "Step B", css_class="work")
-        .node("c", "Step C", css_class="work")
-        .edge("a", "b", "process")
-        .edge("b", "c", "validate")
-    )
-
-    # Add bidirectional edge
-    g.edge("a", "c", "feedback", edge_type=EdgeType.BIDIRECTIONAL)
-
-    backend = MermaidBackend()
-    print("\nFluent API output:")
-    print(backend.render(g))
-
-    return g
+    return view
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Level 2: Mid-Level API - Graph Builders
+# Topology Graph Visualization
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def demo_mid_level_api():
-    """Demonstrate mid-level AgentGraph and TopologyGraph builders."""
+def demo_topology_graph():
+    """Demonstrate topology visualization."""
     print("\n" + "=" * 60)
-    print("Level 2: Mid-Level API - Graph Builders")
+    print("Topology Graph Visualization")
     print("=" * 60)
 
-    # Create agents (model is optional for visualization)
+    # Create agents
+    manager = Agent(
+        name="Manager",
+        instructions="You coordinate the team.",
+    )
+
     researcher = Agent(
         name="Researcher",
         tools=[search],
@@ -209,37 +119,27 @@ def demo_mid_level_api():
         instructions="You write clear, engaging content.",
     )
 
-    # AgentGraph - visualize a single agent
-    print("\n--- AgentGraph (single agent) ---")
-    agent_graph = AgentGraph.from_agent(researcher, show_tools=True)
-    print(agent_graph.render())
-
-    # TopologyGraph - visualize a supervisor topology
-    print("\n--- TopologyGraph (supervisor topology) ---")
-    supervisor = Agent(
-        name="Manager",
-        instructions="You coordinate the team.",
-    )
-
-    topology = Supervisor(
-        coordinator=AgentConfig(agent=supervisor, role="coordinator"),
-        workers=[
-            AgentConfig(agent=researcher, role="research"),
-            AgentConfig(agent=writer, role="writing"),
-        ],
-    )
-
-    topo_graph = TopologyGraph.from_topology(topology, show_tools=True)
-    print(topo_graph.render())
-
-    # TopologyGraph - visualize a pipeline
-    print("\n--- TopologyGraph (pipeline topology) ---")
     editor = Agent(
         name="Editor",
         tools=[review],
         instructions="You edit and polish content.",
     )
 
+    # Supervisor topology
+    print("\n--- Supervisor Topology ---")
+    supervisor = Supervisor(
+        coordinator=AgentConfig(agent=manager, role="coordinator"),
+        workers=[
+            AgentConfig(agent=researcher, role="research"),
+            AgentConfig(agent=writer, role="writing"),
+        ],
+    )
+
+    view = supervisor.graph()
+    print(view.mermaid())
+
+    # Pipeline topology
+    print("\n--- Pipeline Topology ---")
     pipeline = Pipeline(
         stages=[
             AgentConfig(agent=researcher, role="gather info"),
@@ -248,99 +148,77 @@ def demo_mid_level_api():
         ]
     )
 
-    pipeline_graph = TopologyGraph.from_topology(pipeline)
-    print(pipeline_graph.render())
+    pipeline_view = pipeline.graph()
+    print(pipeline_view.mermaid())
 
-    return agent_graph, topo_graph
+    # ASCII for terminal viewing
+    print("\n--- Pipeline (ASCII) ---")
+    print(pipeline.graph().ascii())
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Level 3: High-Level API - Methods on Objects
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def demo_high_level_api():
-    """Demonstrate high-level API with to_graph() and visualize() methods."""
-    print("\n" + "=" * 60)
-    print("Level 3: High-Level API - Object Methods")
-    print("=" * 60)
-
-    # Create an agent (no model needed for visualization)
-    agent = Agent(
-        name="Assistant",
-        tools=[search, write],
-        instructions="A helpful assistant.",
-    )
-
-    # High-level API on Agent
-    print("\n--- agent.to_graph() ---")
-    graph = agent.to_graph()  # Returns AgentGraph
-    print(graph.render())
-
-    print("\n--- agent.visualize('ascii') ---")
-    print(agent.visualize("ascii"))
-
-    # Create a topology
-    researcher = Agent(name="Researcher", tools=[search])
-    writer = Agent(name="Writer", tools=[write])
-
-    topology = Supervisor(
-        coordinator=AgentConfig(agent=agent, role="manager"),
-        workers=[
-            AgentConfig(agent=researcher, role="research"),
-            AgentConfig(agent=writer, role="writing"),
-        ],
-    )
-
-    # High-level API on Topology
-    print("\n--- topology.to_graph() ---")
-    topo_graph = topology.to_graph()
-    print(topo_graph.render())
-
-    print("\n--- topology.visualize('ascii') ---")
-    print(topology.visualize("ascii"))
-
-    return graph, topo_graph
+    return view
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Multiple Backends Demo
+# Backend Comparison
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def demo_backends():
-    """Demonstrate different rendering backends."""
+    """Compare different backends."""
     print("\n" + "=" * 60)
-    print("Multiple Backends")
+    print("Backend Comparison")
     print("=" * 60)
 
-    # Create a simple graph
-    g = (
-        Graph()
-        .node("a", "Agent A")
-        .node("b", "Agent B")
-        .node("c", "Agent C")
-        .edge("a", "b")
-        .edge("b", "c")
-        .edge("a", "c", "direct")
+    # Simple agent for comparison
+    agent = Agent(
+        name="Agent",
+        tools=[search, write],
+        instructions="Test agent.",
     )
 
-    config = GraphConfig(title="Multi-Backend Demo")
+    view = agent.graph()
 
-    # Mermaid Backend (default)
-    print("\n--- Mermaid Backend ---")
-    mermaid = MermaidBackend()
-    print(mermaid.render(g, config))
+    print("\n--- Mermaid ---")
+    print(view.mermaid())
 
-    # Graphviz Backend
-    print("\n--- Graphviz Backend (DOT format) ---")
-    graphviz = GraphvizBackend()
-    print(graphviz.render(g, config))
+    print("\n--- Graphviz ---")
+    print(view.dot())
 
-    # ASCII Backend
-    print("\n--- ASCII Backend ---")
-    ascii_backend = ASCIIBackend()
-    print(ascii_backend.render(g, config))
+    print("\n--- ASCII ---")
+    print(view.ascii())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Saving Diagrams
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def demo_saving():
+    """Demonstrate saving diagrams to files."""
+    print("\n" + "=" * 60)
+    print("Saving Diagrams")
+    print("=" * 60)
+
+    agent = Agent(
+        name="Assistant",
+        tools=[search],
+        instructions="A helpful assistant.",
+    )
+
+    view = agent.graph()
+
+    # Save options (commented to avoid creating files)
+    print("\nAvailable save methods:")
+    print("  view.save('agent.png')     # PNG via mermaid.ink")
+    print("  view.save('agent.svg')     # SVG (Graphviz)")
+    print("  view.save('agent.mmd')     # Mermaid code")
+    print("  view.save('agent.html')    # HTML with diagram")
+    print("  view.save('agent.dot')     # DOT format")
+    
+    # Get HTML for embedding
+    print("\n--- HTML output (for embedding) ---")
+    html = view.html()
+    print(html[:500] + "...")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -353,18 +231,17 @@ def main():
     print("AgenticFlow Graph API Demo")
     print("=" * 60)
 
-    # Level 1: Low-level
-    demo_low_level_api()
-    demo_fluent_api()
+    # Agent visualization
+    demo_agent_graph()
 
-    # Level 2: Mid-level
-    demo_mid_level_api()
+    # Topology visualization
+    demo_topology_graph()
 
-    # Level 3: High-level
-    demo_high_level_api()
-
-    # Backends
+    # Backend comparison
     demo_backends()
+
+    # Saving
+    demo_saving()
 
     print("\n" + "=" * 60)
     print("Demo complete!")

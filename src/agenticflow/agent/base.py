@@ -60,7 +60,7 @@ if TYPE_CHECKING:
     from agenticflow.observability.progress import ProgressTracker
     from agenticflow.agent.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
     from agenticflow.agent.streaming import StreamChunk, StreamEvent
-    from agenticflow.graph import AgentGraph
+    from agenticflow.graph import AgentGraph, GraphView
 
 
 class Agent:
@@ -3930,71 +3930,54 @@ Structure your findings:
         )
 
     # ─────────────────────────────────────────────────────────────────────
-    # Visualization (High-level Graph API)
+    # Visualization (Graph API)
     # ─────────────────────────────────────────────────────────────────────
 
-    def to_graph(
+    def graph(
         self,
         *,
         show_tools: bool = True,
         show_config: bool = False,
-    ) -> "AgentGraph":
-        """Create a graph visualization of this agent.
+    ) -> "GraphView":
+        """Get a graph visualization of this agent.
 
-        High-level API for the graph module. Returns an AgentGraph
-        that can be rendered to Mermaid, Graphviz, or ASCII.
+        Returns a GraphView that provides a unified interface for
+        rendering to Mermaid, Graphviz, or ASCII formats.
 
         Args:
             show_tools: Whether to show tools in the diagram.
             show_config: Whether to show configuration node.
 
         Returns:
-            AgentGraph instance for rendering.
+            GraphView instance for rendering.
 
         Example:
-            >>> graph = agent.to_graph()
-            >>> print(graph.render())  # Mermaid code
-            >>> graph.to_png("agent.png")
-        """
-        from agenticflow.graph import AgentGraph
+            >>> # Get Mermaid code
+            >>> print(agent.graph().mermaid())
 
-        return AgentGraph.from_agent(
+            >>> # Get ASCII for terminal
+            >>> print(agent.graph().ascii())
+
+            >>> # Get Graphviz DOT
+            >>> print(agent.graph().dot())
+
+            >>> # Save as PNG
+            >>> agent.graph().save("agent.png")
+
+            >>> # Get shareable URL
+            >>> print(agent.graph().url())
+        """
+        from agenticflow.graph import GraphView
+
+        return GraphView.from_agent(
             self,
             show_tools=show_tools,
             show_config=show_config,
         )
 
-    def visualize(self, backend: str = "mermaid") -> str:
-        """Get a visualization of this agent.
-
-        Convenience method that returns rendered diagram code.
-
-        Args:
-            backend: Backend to use ("mermaid", "graphviz", "ascii").
-
-        Returns:
-            Rendered diagram string.
-        """
-        from agenticflow.graph import (
-            ASCIIBackend,
-            GraphvizBackend,
-            MermaidBackend,
-        )
-
-        graph = self.to_graph()
-
-        backends = {
-            "mermaid": MermaidBackend,
-            "graphviz": GraphvizBackend,
-            "ascii": ASCIIBackend,
-        }
-
-        backend_cls = backends.get(backend, MermaidBackend)
-        return graph.render(backend=backend_cls())
-
     def _repr_html_(self) -> str:
         """IPython/Jupyter HTML representation."""
-        return self.to_graph().to_html()
+        return self.graph().html()
 
     def __repr__(self) -> str:
         return f"Agent(id={self.id}, name={self.name}, role={self.role.value})"
