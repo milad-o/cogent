@@ -384,6 +384,7 @@ class PDFMarkdownLoader(BaseLoader):
         force_text: bool = True,
         fontsize_limit: float = 3.0,
         show_progress: bool = True,
+        verbose: bool = False,
         encoding: str = "utf-8",
     ) -> None:
         """Initialize the PDF Markdown loader.
@@ -397,6 +398,7 @@ class PDFMarkdownLoader(BaseLoader):
             force_text: Extract text even over images/graphics.
             fontsize_limit: Minimum font size to consider.
             show_progress: Print human-friendly progress messages.
+            verbose: Enable structured logging for observability (default: False).
             encoding: Text encoding (not used for PDFs).
         """
         super().__init__(encoding)
@@ -411,17 +413,20 @@ class PDFMarkdownLoader(BaseLoader):
             fontsize_limit=fontsize_limit,
         )
         self._show_progress = show_progress
+        self._verbose = verbose
 
-        # Use framework's ObservabilityLogger for consistent logging
-        self._log = ObservabilityLogger(
-            name="agenticflow.document.loaders.pdf",
-            level=LogLevel.DEBUG if show_progress else LogLevel.WARNING,
-        )
-        self._log.set_context(
-            loader="PDFMarkdownLoader",
-            max_workers=max_workers,
-            batch_size=batch_size,
-        )
+        # Only create logger if verbose mode is enabled
+        self._log: ObservabilityLogger | None = None
+        if verbose:
+            self._log = ObservabilityLogger(
+                name="agenticflow.document.loaders.pdf",
+                level=LogLevel.DEBUG,
+            )
+            self._log.set_context(
+                loader="PDFMarkdownLoader",
+                max_workers=max_workers,
+                batch_size=batch_size,
+            )
 
     async def load(
         self,
@@ -490,7 +495,8 @@ class PDFMarkdownLoader(BaseLoader):
         start_time = time.perf_counter()
         show_progress = kwargs.pop("show_progress", self._show_progress)
 
-        self._log.info("PDF processing started", file=str(path))
+        if self._log:
+            self._log.info("PDF processing started", file=str(path))
 
         if show_progress:
             print(f"      📖 Loading {path.name}...")
@@ -504,12 +510,13 @@ class PDFMarkdownLoader(BaseLoader):
                 str(path),
             )
 
-            self._log.info(
-                "PDF metadata loaded",
-                file=str(path),
-                page_count=page_count,
-                title=doc_metadata.get("title", ""),
-            )
+            if self._log:
+                self._log.info(
+                    "PDF metadata loaded",
+                    file=str(path),
+                    page_count=page_count,
+                    title=doc_metadata.get("title", ""),
+                )
 
             if show_progress:
                 title = doc_metadata.get("title", "")
@@ -558,17 +565,18 @@ class PDFMarkdownLoader(BaseLoader):
                 metadata=doc_metadata,
             )
 
-            self._log.info(
-                "PDF processing completed",
-                file=str(path),
-                status=status.value,
-                total_pages=page_count,
-                successful_pages=successful,
-                failed_pages=failed,
-                empty_pages=empty,
-                total_time_ms=total_time_ms,
-                success_rate=result.success_rate,
-            )
+            if self._log:
+                self._log.info(
+                    "PDF processing completed",
+                    file=str(path),
+                    status=status.value,
+                    total_pages=page_count,
+                    successful_pages=successful,
+                    failed_pages=failed,
+                    empty_pages=empty,
+                    total_time_ms=total_time_ms,
+                    success_rate=result.success_rate,
+                )
 
             if show_progress:
                 pages_per_sec = page_count / (total_time_ms / 1000) if total_time_ms > 0 else 0
@@ -577,7 +585,8 @@ class PDFMarkdownLoader(BaseLoader):
             return result
 
         except Exception as e:
-            self._log.error("PDF processing failed", file=str(path), error=str(e))
+            if self._log:
+                self._log.error("PDF processing failed", file=str(path), error=str(e))
             if show_progress:
                 print(f"      ✗ Error: {e}")
             return PDFProcessingResult(
@@ -625,12 +634,11 @@ class PDFMarkdownLoader(BaseLoader):
             all_pages[i : i + batch_size] for i in range(0, len(all_pages), batch_size)
         ]
 
-        self._log.debug(
-            "Processing batches",
-            batch_count=len(batches),
-            batch_size=batch_size,
-            max_workers=max_workers,
-        )
+        if self._log:
+            self._log.debug(
+                "Processing batches",
+                batch_count=len(batches),
+            )
 
         loop = asyncio.get_running_loop()
         all_results: list[PageResult] = []
@@ -654,11 +662,12 @@ class PDFMarkdownLoader(BaseLoader):
             for batch_idx, result in enumerate(batch_results):
                 if isinstance(result, Exception):
                     # Handle batch-level failure
-                    self._log.error(
-                        "Batch processing failed",
-                        batch_index=batch_idx,
-                        error=str(result),
-                    )
+                    if self._log:
+                        self._log.error(
+                            "Batch processing failed",
+                            batch_index=batch_idx,
+                            error=str(result),
+                        )
                     # Mark all pages in batch as failed
                     for page_num in batches[batch_idx]:
                         all_results.append(
