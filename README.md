@@ -1,19 +1,22 @@
 # AgenticFlow
 
-A production-grade multi-agent framework for building AI applications with native model support, advanced execution strategies, and full observability.
+A production-grade multi-agent framework for building AI applications with native model support, advanced coordination patterns, and full observability.
 
 ## Features
 
-- **Native Model Support** — OpenAI, Azure, Anthropic, Gemini, Groq, Ollama
+- **Native Model Support** — OpenAI, Azure, Anthropic, Gemini, Groq, Ollama, Custom endpoints
 - **Multi-Agent Topologies** — Supervisor, Pipeline, Mesh, Hierarchical
-- **Execution Strategies** — DAG, ReAct, Plan-Execute, Tree Search
-- **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, MCP, and more
-- **RAG Pipeline** — Document loading, chunking, embeddings, vector stores, retrievers
-- **Memory & Persistence** — Conversation history, checkpoints, long-term memory
+- **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
+- **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
+- **Memory & Persistence** — Conversation history, long-term memory with semantic search
+- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents and topologies
 - **Observability** — Tracing, metrics, progress tracking, structured logging
+- **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
 - **Resilience** — Retry policies, circuit breakers, fallbacks
 - **Human-in-the-Loop** — Tool approval, guidance, interruption handling
 - **Streaming** — Real-time token streaming with callbacks
+- **Structured Output** — Type-safe responses with Pydantic schemas
+- **Reasoning** — Extended thinking mode with chain-of-thought
 
 ## Installation
 
@@ -21,10 +24,11 @@ A production-grade multi-agent framework for building AI applications with nativ
 # Basic
 uv add agenticflow
 
-# With capabilities
-uv add "agenticflow[web]"      # Web search, browser
-uv add "agenticflow[pdf]"      # PDF processing
-uv add "agenticflow[all]"      # Everything
+# With optional dependencies
+uv add "agenticflow[web]"       # Web search, browser
+uv add "agenticflow[anthropic]" # Anthropic Claude
+uv add "agenticflow[azure]"     # Azure OpenAI
+uv add "agenticflow[all]"       # Everything
 
 # Development
 uv add "agenticflow[dev]"
@@ -37,7 +41,7 @@ uv add "agenticflow[dev]"
 ```python
 import asyncio
 from agenticflow import Agent, tool
-from agenticflow.models import OpenAIChat
+from agenticflow.models import ChatModel
 
 @tool
 def get_weather(city: str) -> str:
@@ -47,7 +51,7 @@ def get_weather(city: str) -> str:
 async def main():
     agent = Agent(
         name="Assistant",
-        model=OpenAIChat(model="gpt-4o-mini"),
+        model=ChatModel(model="gpt-4o-mini"),
         tools=[get_weather],
     )
     
@@ -57,30 +61,13 @@ async def main():
 asyncio.run(main())
 ```
 
-### Standalone Execution (No Agent)
-
-```python
-from agenticflow import run, tool
-
-@tool
-def calculate(expression: str) -> str:
-    """Evaluate a math expression."""
-    return str(eval(expression))
-
-result = await run(
-    "What is 25 * 4 + 10?",
-    tools=[calculate],
-    model="gpt-4o-mini",
-)
-```
-
 ### Multi-Agent Pipeline
 
 ```python
 from agenticflow import Agent, Flow
-from agenticflow.models import OpenAIChat
+from agenticflow.models import ChatModel
 
-model = OpenAIChat(model="gpt-4o")
+model = ChatModel(model="gpt-4o")
 
 researcher = Agent(name="Researcher", model=model, instructions="Research topics thoroughly.")
 writer = Agent(name="Writer", model=model, instructions="Write clear, engaging content.")
@@ -90,6 +77,7 @@ flow = Flow(
     name="content-pipeline",
     agents=[researcher, writer, editor],
     topology="pipeline",
+    verbose=True,  # Progress output
 )
 
 result = await flow.run("Create a blog post about quantum computing")
@@ -100,30 +88,37 @@ result = await flow.run("Create a blog post about quantum computing")
 Native wrappers for all major providers:
 
 ```python
-from agenticflow.models import (
-    OpenAIChat,      # GPT-4o, GPT-4o-mini
-    AnthropicChat,   # Claude 4
-    GeminiChat,      # Gemini 2.0
-    GroqChat,        # Llama, Mixtral (fast inference)
-    OllamaChat,      # Local models
-)
-from agenticflow.models.azure import AzureChat  # Azure OpenAI
+from agenticflow.models import ChatModel, create_chat
 
-# OpenAI
-model = OpenAIChat(model="gpt-4o")
+# OpenAI (default)
+model = ChatModel(model="gpt-4o")
 
 # Anthropic
+from agenticflow.models.anthropic import AnthropicChat
 model = AnthropicChat(model="claude-sonnet-4-20250514")
 
 # Azure with Managed Identity
+from agenticflow.models.azure import AzureChat
 model = AzureChat(
     deployment="gpt-4o",
     azure_endpoint="https://my-resource.openai.azure.com",
-    use_managed_identity=True,
+    use_azure_ad=True,
 )
 
-# Local with Ollama
+# Groq (fast inference)
+from agenticflow.models.groq import GroqChat
+model = GroqChat(model="llama-3.3-70b-versatile")
+
+# Gemini
+from agenticflow.models.gemini import GeminiChat
+model = GeminiChat(model="gemini-2.0-flash-exp")
+
+# Ollama (local)
+from agenticflow.models.ollama import OllamaChat
 model = OllamaChat(model="qwen2.5:7b")
+
+# Factory function for any provider
+model = create_chat("anthropic", model="claude-sonnet-4-20250514")
 ```
 
 ## Capabilities
@@ -133,15 +128,15 @@ Composable capabilities that add tools to agents:
 ```python
 from agenticflow import Agent
 from agenticflow.capabilities import (
-    Filesystem,      # Read/write files, list directories
-    WebSearch,       # Search web, fetch pages
+    FileSystem,      # Read/write files, list directories
+    WebSearch,       # Search web, fetch pages (DuckDuckGo)
     CodeSandbox,     # Execute Python safely
     Browser,         # Browse web pages with Playwright
-    PDFCapability,   # Extract text from PDFs
-    Shell,           # Run shell commands
+    PDF,             # Read/create/merge PDFs
+    Shell,           # Run shell commands (sandboxed)
     Spreadsheet,     # Read/write Excel files
-    MCPCapability,   # Connect to MCP servers
-    Summarizer,      # Summarize documents
+    MCP,             # Connect to MCP servers
+    Summarizer,      # Summarize documents (map-reduce, refine)
     KnowledgeGraph,  # Build and query knowledge graphs
 )
 
@@ -149,29 +144,31 @@ agent = Agent(
     name="Developer",
     model=model,
     capabilities=[
-        Filesystem(allowed_paths=["./project"]),
+        FileSystem(allowed_paths=["./project"]),
         CodeSandbox(timeout=30),
-        Shell(allowed_commands=["git", "npm"]),
+        Shell(allowed_commands=["git", "npm", "ls"]),
+        WebSearch(),
+        Summarizer(),
     ],
 )
 ```
 
 ## RAG (Retrieval-Augmented Generation)
 
-Full RAG pipeline with document processing and vector search:
+Full RAG pipeline with per-file-type processing:
 
 ```python
-from agenticflow.prebuilt import RAGAgent
-from agenticflow.models import OpenAIChat
+from agenticflow.prebuilt import create_rag_agent
+from agenticflow.models import ChatModel
 from agenticflow.vectorstore import OpenAIEmbeddings
 
-rag = RAGAgent(
-    model=OpenAIChat(model="gpt-4o-mini"),
+rag = create_rag_agent(
+    model=ChatModel(model="gpt-4o-mini"),
     embeddings=OpenAIEmbeddings(),
 )
 
-# Load documents (supports .pdf, .md, .txt, .html, .py, .json, .csv, ...)
-await rag.load_documents(["docs/", "report.pdf"])
+# Load documents - each file type uses optimal splitter
+await rag.load_documents(["docs/", "report.pdf", "code.py"])
 
 # Query with automatic retrieval
 answer = await rag.query("What are the key findings?")
@@ -186,8 +183,7 @@ from agenticflow.document import (
     MarkdownSplitter,
     CodeSplitter,
     SemanticSplitter,        # LLM-based chunking
-    PDFLoader,
-    PDFMarkdownLoader,       # PDF to markdown with pymupdf4llm
+    PDFMarkdownLoader,       # PDF to markdown
 )
 
 # Load and split
@@ -223,16 +219,14 @@ results = await store.search("quantum entanglement", k=5)
 
 ### Supervisor
 
-One agent delegates to specialists:
+One agent coordinates and delegates to specialists:
 
 ```python
-from agenticflow import Flow
-
 flow = Flow(
     name="team",
     agents=[supervisor, researcher, coder, writer],
     topology="supervisor",
-    supervisor_name="supervisor",
+    supervisor="supervisor",
 )
 ```
 
@@ -250,13 +244,14 @@ flow = Flow(
 
 ### Mesh
 
-All agents can communicate freely:
+All agents collaborate in rounds:
 
 ```python
 flow = Flow(
     name="brainstorm",
-    agents=[agent1, agent2, agent3],
+    agents=[analyst1, analyst2, analyst3],
     topology="mesh",
+    max_rounds=3,
 )
 ```
 
@@ -265,33 +260,63 @@ flow = Flow(
 Team leads coordinate sub-teams:
 
 ```python
-from agenticflow.topologies import Hierarchical
+from agenticflow.topologies import Hierarchical, AgentConfig
 
 topology = Hierarchical(
-    name="org",
-    teams={
-        "research": [lead1, analyst1, analyst2],
-        "engineering": [lead2, dev1, dev2],
+    structure={
+        "cto": ["frontend_lead", "backend_lead"],
+        "frontend_lead": ["dev1", "dev2"],
+        "backend_lead": ["dev3", "dev4"],
     },
+    agents={...},
 )
+```
+
+## Graph Visualization
+
+Visualize agents and topologies as diagrams:
+
+```python
+# Get a graph from any entity
+view = agent.graph()
+view = topology.graph()
+
+# Render in any format
+print(view.mermaid())    # Mermaid code
+print(view.ascii())      # Terminal-friendly
+print(view.dot())        # Graphviz DOT
+print(view.url())        # mermaid.ink URL
+
+# Save to file (format auto-detected)
+view.save("agent.png")
+view.save("topology.svg")
+view.save("flow.html")
 ```
 
 ## Memory & Persistence
 
 ```python
 from agenticflow import Agent
-from agenticflow.memory import MemoryStore, InMemorySaver
+from agenticflow.memory import InMemorySaver
 
 agent = Agent(
     name="Assistant",
     model=model,
     memory=InMemorySaver(),  # Conversation history
-    store=MemoryStore(),     # Long-term memory
 )
 
-# Continue conversation
-result = await agent.run("Remember this: my name is Alice", thread_id="user-123")
+# Continue conversation across calls
+result = await agent.run("My name is Alice", thread_id="user-123")
 result = await agent.run("What's my name?", thread_id="user-123")  # "Alice"
+
+# Long-term memory with semantic search
+from agenticflow.memory import Memory
+
+agent = Agent(
+    name="Assistant",
+    model=model,
+    store=Memory(embeddings=embeddings),  # Adds remember/recall tools
+)
 ```
 
 ## Streaming
@@ -310,15 +335,18 @@ async for chunk in agent.run_stream("Write a poem"):
 ## Human-in-the-Loop
 
 ```python
+from agenticflow import Agent
+from agenticflow.agent import InterruptedException
+
 agent = Agent(
     name="Assistant",
     model=model,
-    tools=[dangerous_tool],
-    interrupt_on={"tools": ["dangerous_tool"]},  # Require approval
+    tools=[sensitive_tool],
+    interrupt_on={"tools": ["sensitive_tool"]},  # Require approval
 )
 
 try:
-    result = await agent.run("Do something risky")
+    result = await agent.run("Do something sensitive")
 except InterruptedException as e:
     # Handle approval flow
     decision = await get_human_decision(e.pending_action)
@@ -328,16 +356,24 @@ except InterruptedException as e:
 ## Observability
 
 ```python
-from agenticflow import Agent, Observer
+from agenticflow import Agent, Flow
 
-# Verbose output with tool calls
+# Verbosity levels for agents
 agent = Agent(
     name="Assistant",
     model=model,
     verbose="debug",  # minimal | verbose | debug | trace
 )
 
-# Or use Observer for flows
+# Or for flows
+flow = Flow(
+    agents=[...],
+    verbose=True,  # Progress output with timing
+)
+
+# Advanced: Custom observer
+from agenticflow.observability import Observer
+
 flow = Flow(
     agents=[...],
     observer=Observer.verbose(),
@@ -356,32 +392,42 @@ from agenticflow.interceptors import (
     ContentFilter,    # Block harmful content
     ToolGate,         # Conditional tool access
     PromptAdapter,    # Modify prompts dynamically
+    Auditor,          # Audit logging
 )
 
 agent = Agent(
     name="Safe",
     model=model,
     intercept=[
-        BudgetGuard(max_tokens=10000),
-        PIIShield(),
+        BudgetGuard(max_model_calls=100, max_tool_calls=500),
+        PIIShield(patterns=["email", "ssn"]),
         RateLimiter(requests_per_minute=60),
     ],
 )
 ```
 
-## Execution Strategies
+## Structured Output
+
+Type-safe responses with automatic validation:
 
 ```python
+from pydantic import BaseModel
 from agenticflow import Agent
 
-# DAG (default) - Parallel tool execution when possible
-agent = Agent(model=model, strategy="dag")
+class Analysis(BaseModel):
+    sentiment: str
+    confidence: float
+    topics: list[str]
 
-# ReAct - Reason → Act → Observe loop
-agent = Agent(model=model, strategy="react")
+agent = Agent(
+    name="Analyzer",
+    model=model,
+    response_schema=Analysis,
+)
 
-# Plan-Execute - Create plan, then execute steps
-agent = Agent(model=model, strategy="plan")
+result = await agent.run("Analyze: I love this product!")
+print(result.sentiment)   # "positive"
+print(result.confidence)  # 0.95
 ```
 
 ## Resilience
@@ -405,21 +451,18 @@ Use environment variables or `.env`:
 
 ```bash
 # LLM Provider
-LLM_PROVIDER=openai           # openai | anthropic | gemini | groq | azure | ollama
 OPENAI_API_KEY=sk-...
 
-# Embedding Provider  
-EMBEDDING_PROVIDER=openai
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-
-# Azure (if using)
+# Azure
 AZURE_OPENAI_ENDPOINT=https://...
 AZURE_OPENAI_DEPLOYMENT=gpt-4o
-AZURE_AUTH_TYPE=managed_identity  # api_key | managed_identity | default
+AZURE_AUTH_TYPE=managed_identity
+
+# Anthropic
+ANTHROPIC_API_KEY=...
 
 # Ollama (local)
 OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:7b
 ```
 
 ## Examples
@@ -438,8 +481,12 @@ See `examples/` for complete examples:
 | `16_code_sandbox.py` | Safe code execution |
 | `18_human_in_the_loop.py` | Approval workflows |
 | `19_streaming.py` | Real-time streaming |
+| `24_structured_output.py` | Type-safe responses |
 | `25_browser.py` | Web browsing |
+| `27_reasoning.py` | Extended thinking |
 | `28_interceptors.py` | Middleware patterns |
+| `32_graph_api.py` | Visualization API |
+| `34_summarizer.py` | Document summarization |
 
 ## Development
 
