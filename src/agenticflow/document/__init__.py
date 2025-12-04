@@ -89,6 +89,13 @@ from agenticflow.document.splitters import (
     split_text,
 )
 
+# Enricher
+from agenticflow.document.enricher import (
+    EnricherConfig,
+    MetadataEnricher,
+    enrich_documents,
+)
+
 __all__ = [
     # Types
     "Document",
@@ -122,4 +129,8 @@ __all__ = [
     "SemanticSplitter",
     "TokenSplitter",
     "split_text",
+    # Enricher
+    "EnricherConfig",
+    "MetadataEnricher",
+    "enrich_documents",
 ]
