@@ -3,7 +3,7 @@ Prebuilt agents for common use cases.
 
 This module provides ready-to-use agents that inherit from Agent:
 - Chatbot: Conversational agent with memory (default enabled)
-- RAGAgent: Document Q&A with per-file-type processing pipelines
+- RAGAgent: Document Q&A with unified run() API
 
 Both inherit from Agent, so you get full access to all capabilities:
 - tools, streaming, reasoning, structured output
@@ -14,20 +14,28 @@ Example:
     ```python
     from agenticflow.prebuilt import create_rag_agent, create_chatbot
     
-    # RAG agent with per-file-type processing
+    # RAG agent with unified run() API
     rag = create_rag_agent(
         model=ChatModel(model="gpt-4o-mini"),
         embeddings=OpenAIEmbeddings(),
     )
-    await rag.load_documents(["report.pdf", "code.py", "notes.md"])
-    # Each file type uses its optimal splitter!
-    answer = await rag.query("What is the main topic?")
+    await rag.load("report.pdf", "code.py", "notes.md")
+    
+    # Agent uses tools intelligently
+    answer = await rag.run("What is the main topic?")
+    
+    # Get structured citations
+    response = await rag.run("Key findings?", citations=True)
+    print(response.format_full())
+    
+    # Direct vectorstore search
+    results = await rag.vectorstore.search("query", k=10)
     
     # Chatbot with memory + custom tools
     bot = create_chatbot(
         model=ChatModel(model="gpt-4o-mini"),
         personality="helpful assistant",
-        tools=[my_tool],  # Full tools support!
+        tools=[my_tool],
     )
     response = await bot.chat("Hello!", thread_id="user-123")
     ```

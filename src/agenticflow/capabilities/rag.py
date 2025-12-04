@@ -1,8 +1,9 @@
 """
 RAG (Retrieval-Augmented Generation) capability.
 
-Provides document ingestion, vector search, and citation-aware retrieval
-as a composable capability that can be added to any agent.
+Provides document ingestion and vector search as a composable capability.
+The capability provides tools for the agent and exposes the vectorstore
+for direct access.
 
 Example:
     ```python
@@ -13,55 +14,41 @@ Example:
     agent = Agent(
         name="ResearchAssistant",
         model=model,
-        capabilities=[
-            RAG(embeddings=OpenAIEmbeddings(), top_k=5)
-        ],
+        capabilities=[RAG(embeddings=OpenAIEmbeddings())],
     )
     
     # Load documents
     await agent.rag.load("report.pdf", "notes.md")
     
-    # Query with citations
-    response = await agent.rag.query("What are the key findings?")
-    print(response.answer)
-    print(response.citations)
+    # Let agent use tools intelligently
+    answer = await agent.run("What are the key findings?")
     
-    # Direct semantic search
-    passages = await agent.rag.search("machine learning")
-    for p in passages:
-        print(f"{p.format_reference()}: {p.text[:100]}...")
+    # Or access vectorstore directly for search
+    results = await agent.rag.vectorstore.search("machine learning", k=5)
     ```
-
-Features:
-- Per-file-type processing pipelines (markdown, code, PDF, etc.)
-- Configurable chunking and overlap
-- Multiple retriever backends (dense, hybrid, reranking)
-- Structured citations with source, page, and score
-- Unified query/search API
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.capabilities.base import BaseCapability
-from agenticflow.document import BaseSplitter, Document, DocumentLoader, TextChunk
+from agenticflow.document import BaseSplitter, Document, DocumentLoader
 from agenticflow.tools.base import tool
 from agenticflow.vectorstore import VectorStore
 
 if TYPE_CHECKING:
     from agenticflow.document.loaders import BaseLoader
-    from agenticflow.models.base import BaseChatModel
     from agenticflow.retriever.base import Retriever
     from agenticflow.retriever.rerankers.base import Reranker
     from agenticflow.vectorstore.base import EmbeddingProvider
 
 
 # ============================================================
-# Citation & Response Types
+# Citation Types
 # ============================================================
 
 
@@ -69,27 +56,13 @@ if TYPE_CHECKING:
 class CitedPassage:
     """A cited passage from a retrieved document.
     
-    Contains the source reference, relevance score, and text excerpt
-    used to support an answer.
-    
     Attributes:
-        citation_id: Citation reference number (e.g., 1, 2, 3).
-        source: Source document name or path.
-        page: Page number (1-based) if available.
-        chunk_index: Index of the chunk within the document.
-        score: Relevance/similarity score (0.0-1.0 typically).
-        text: The actual text content of the passage.
-        
-    Example:
-        >>> passage = CitedPassage(
-        ...     citation_id=1,
-        ...     source="report.pdf",
-        ...     page=5,
-        ...     chunk_index=12,
-        ...     score=0.89,
-        ...     text="The key finding was...",
-        ... )
-        >>> print(passage.format_reference())  # "[1, p.5]"
+        citation_id: Citation reference number (1, 2, 3...).
+        source: Source document name.
+        page: Page number if available.
+        chunk_index: Chunk index within document.
+        score: Relevance score (0.0-1.0).
+        text: The passage text.
     """
     
     citation_id: int
@@ -100,48 +73,30 @@ class CitedPassage:
     text: str = ""
     
     def format_reference(self) -> str:
-        """Format as inline citation reference.
-        
-        Returns:
-            Formatted reference like "[1]" or "[1, p.5]".
-        """
+        """Format as [1] or [1, p.5]."""
         if self.page is not None:
             return f"[{self.citation_id}, p.{self.page}]"
         return f"[{self.citation_id}]"
     
     def format_full(self) -> str:
-        """Format as full citation entry.
-        
-        Returns:
-            Formatted citation like "[1] Source: report.pdf, Page 5 (Score: 0.89)".
-        """
-        parts = [f"[{self.citation_id}] Source: {self.source}"]
+        """Format as full citation entry."""
+        parts = [f"[{self.citation_id}] {self.source}"]
         if self.page is not None:
-            parts.append(f"Page {self.page}")
+            parts.append(f"p.{self.page}")
         if self.score > 0:
-            parts.append(f"(Score: {self.score:.2f})")
+            parts.append(f"(score: {self.score:.2f})")
         return ", ".join(parts)
 
 
 @dataclass(slots=True, kw_only=True)
 class RAGResponse:
-    """Structured response from a RAG query with citations.
-    
-    Contains the answer, supporting citations, and metadata about
-    the retrieval process.
+    """Structured response from RAG with citations.
     
     Attributes:
-        answer: The generated answer text.
-        citations: List of cited passages used to support the answer.
-        sources_used: Unique source documents referenced.
-        query: The original query.
-        
-    Example:
-        >>> response = await rag.query("What are the findings?")
-        >>> print(response.answer)
-        >>> for cite in response.citations:
-        ...     print(cite.format_full())
-        >>> print(response.format_full_response())
+        answer: The generated answer.
+        citations: Supporting citations.
+        sources_used: Unique sources referenced.
+        query: Original query.
     """
     
     answer: str
@@ -151,38 +106,26 @@ class RAGResponse:
     
     @property
     def has_citations(self) -> bool:
-        """Whether the response has any citations."""
         return len(self.citations) > 0
     
     @property
     def citation_count(self) -> int:
-        """Number of citations."""
         return len(self.citations)
     
     def format_bibliography(self) -> str:
-        """Format all citations as a bibliography.
-        
-        Returns:
-            Formatted bibliography section.
-        """
+        """Format citations as bibliography."""
         if not self.citations:
             return ""
-        
         lines = ["", "---", "**References:**"]
         for cite in self.citations:
             lines.append(cite.format_full())
         return "\n".join(lines)
     
     def format_full(self) -> str:
-        """Format answer with appended citations.
-        
-        Returns:
-            Complete response with answer and bibliography.
-        """
+        """Answer with bibliography appended."""
         return self.answer + self.format_bibliography()
     
     def __str__(self) -> str:
-        """String representation returns just the answer."""
         return self.answer
 
 
@@ -193,19 +136,7 @@ class RAGResponse:
 
 @dataclass
 class DocumentPipeline:
-    """Processing pipeline for a specific file type.
-    
-    Defines how to load, split, and optionally post-process documents
-    of a particular type.
-    
-    Example:
-        >>> from agenticflow.document import MarkdownSplitter
-        >>> pipeline = DocumentPipeline(
-        ...     splitter=MarkdownSplitter(chunk_size=500),
-        ...     metadata={"preserve_headers": True},
-        ... )
-    """
-    
+    """Processing pipeline for a file type."""
     loader: BaseLoader | None = None
     splitter: BaseSplitter | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -214,42 +145,23 @@ class DocumentPipeline:
 
 @dataclass
 class PipelineRegistry:
-    """Registry of document processing pipelines per file extension.
-    
-    Maps file extensions to their processing pipelines, enabling
-    type-specific handling for different document formats.
-    """
-    
+    """Registry of pipelines per file extension."""
     pipelines: dict[str, DocumentPipeline] = field(default_factory=dict)
     default: DocumentPipeline | None = None
     
     def get(self, extension: str) -> DocumentPipeline | None:
-        """Get pipeline for a file extension."""
         ext = extension.lower() if extension.startswith(".") else f".{extension.lower()}"
         return self.pipelines.get(ext, self.default)
     
     def register(self, extension: str, pipeline: DocumentPipeline) -> None:
-        """Register a pipeline for a file extension."""
         ext = extension.lower() if extension.startswith(".") else f".{extension.lower()}"
         self.pipelines[ext] = pipeline
     
     @classmethod
-    def create_defaults(
-        cls,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
-    ) -> PipelineRegistry:
-        """Create a registry with sensible defaults for common file types."""
+    def create_defaults(cls, chunk_size: int = 1000, chunk_overlap: int = 200) -> PipelineRegistry:
+        """Create registry with sensible defaults."""
         from agenticflow.document import (
-            CodeSplitter,
-            HTMLSplitter,
-            MarkdownSplitter,
-            RecursiveCharacterSplitter,
-        )
-        
-        default_splitter = RecursiveCharacterSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+            CodeSplitter, HTMLSplitter, MarkdownSplitter, RecursiveCharacterSplitter,
         )
         
         return cls(
@@ -267,7 +179,9 @@ class PipelineRegistry:
                 ".cpp": DocumentPipeline(splitter=CodeSplitter(language="cpp", chunk_size=chunk_size)),
                 ".c": DocumentPipeline(splitter=CodeSplitter(language="c", chunk_size=chunk_size)),
             },
-            default=DocumentPipeline(splitter=default_splitter),
+            default=DocumentPipeline(splitter=RecursiveCharacterSplitter(
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap,
+            )),
         )
 
 
@@ -278,16 +192,7 @@ class PipelineRegistry:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RAGConfig:
-    """Configuration for RAG capability.
-    
-    Attributes:
-        chunk_size: Target size for text chunks.
-        chunk_overlap: Overlap between chunks.
-        top_k: Number of passages to retrieve.
-        backend: Vector store backend name.
-        show_progress: Print progress messages during loading.
-    """
-    
+    """Configuration for RAG capability."""
     chunk_size: int = 1000
     chunk_overlap: int = 200
     top_k: int = 4
@@ -304,49 +209,27 @@ class RAG(BaseCapability):
     """
     RAG (Retrieval-Augmented Generation) capability.
     
-    Adds document loading, vector search, and citation-aware retrieval
-    to any agent. Documents are chunked, embedded, and indexed for
-    semantic search. Queries use the agent's LLM with retrieved context.
+    Provides:
+    - Document loading with per-file-type pipelines
+    - Vector store for semantic search
+    - Tools for agent to search documents
     
-    Args:
-        embeddings: Embedding provider for vector search. Required.
-        config: RAG configuration options.
-        pipelines: Per-file-type processing pipelines.
-        vectorstore: Pre-configured vector store (optional).
-        retriever: Pre-configured retriever (optional).
-        reranker: Pre-configured reranker for two-stage retrieval.
-        
-    Tools provided:
-        - search_documents: Search for relevant passages
-        - get_document_info: Get info about loaded documents
-        
-    Methods:
-        - load(): Load documents from files/URLs/text
-        - query(): Ask a question, get RAGResponse with citations
-        - search(): Direct semantic search, get list[CitedPassage]
-        
+    Access components directly:
+    - `rag.vectorstore` - VectorStore for search
+    - `rag.retriever` - Retriever with optional reranking
+    - `rag.load()` - Load documents
+    
     Example:
         ```python
-        from agenticflow import Agent
-        from agenticflow.capabilities import RAG
-        from agenticflow.vectorstore import OpenAIEmbeddings
+        agent = Agent(model=model, capabilities=[RAG(embeddings=embeddings)])
         
-        agent = Agent(
-            name="Assistant",
-            model=model,
-            capabilities=[RAG(embeddings=OpenAIEmbeddings())],
-        )
+        await agent.rag.load("docs/")
         
-        # Load documents
-        await agent.rag.load("docs/", "report.pdf")
+        # Agent uses tools
+        answer = await agent.run("What is X?")
         
-        # Query with structured citations
-        response = await agent.rag.query("What is the main topic?")
-        print(response.answer)
-        print(response.format_bibliography())
-        
-        # Or use the agent directly (has search_documents tool)
-        answer = await agent.run("What is the main topic?")
+        # Direct vectorstore access
+        results = await agent.rag.vectorstore.search("query", k=5)
         ```
     """
     
@@ -354,9 +237,8 @@ class RAG(BaseCapability):
 1. Use search_documents to find relevant information first
 2. Base answers ONLY on retrieved passages - do not make up information
 3. Cite sources using [1], [2], etc. matching the search results
-4. Include page numbers when available: "According to [1, p.5]..."
-5. If multiple sources support a point, cite all: "...confirmed in [1][2]"
-6. If information isn't in documents, explicitly say so"""
+4. Include page numbers when available: [1, p.5]
+5. If information isn't in documents, say so explicitly"""
     
     def __init__(
         self,
@@ -378,7 +260,6 @@ class RAG(BaseCapability):
         self._retriever = retriever
         self._reranker = reranker
         
-        # Internal state
         self._loader = DocumentLoader()
         self._documents: list[Document] = []
         self._doc_info: dict[str, Any] = {}
@@ -391,58 +272,49 @@ class RAG(BaseCapability):
     
     @property
     def description(self) -> str:
-        return "Document retrieval and question answering with citations"
+        return "Document retrieval and search"
     
     @property
     def tools(self) -> list:
-        """RAG tools for the agent."""
         return self._create_tools()
     
     @property
+    def vectorstore(self) -> VectorStore:
+        """Access the vector store directly for search operations."""
+        return self._get_vectorstore()
+    
+    @property
+    def retriever(self):
+        """Access the retriever (with optional reranking)."""
+        return self._get_retriever()
+    
+    @property
     def document_count(self) -> int:
-        """Number of document chunks loaded."""
         return len(self._documents)
     
     @property
     def sources(self) -> list[str]:
-        """List of loaded document sources."""
         return self._doc_info.get("sources", [])
     
     @property
     def citations(self) -> list[CitedPassage]:
-        """Citations from the last query/search."""
+        """Citations from last search (via tools)."""
         return list(self._last_citations)
     
     @property
     def is_ready(self) -> bool:
-        """Whether documents have been loaded."""
         return self._initialized
+    
+    @property
+    def top_k(self) -> int:
+        return self._config.top_k
     
     # ================================================================
     # Document Loading
     # ================================================================
     
-    async def load(
-        self,
-        *sources: str | Path,
-        glob: str | None = None,
-    ) -> None:
-        """Load documents from files, directories, or URLs.
-        
-        Supports all file types via the extensible loader system:
-        - Text: .txt, .md, .rst
-        - Documents: .pdf, .docx
-        - Data: .csv, .json, .jsonl, .xlsx
-        - Web: .html, .htm
-        - Code: .py, .js, .ts, .java, and many more
-        
-        Args:
-            *sources: File paths, directory paths, or URLs.
-            glob: Glob pattern when loading from directories.
-            
-        Example:
-            >>> await rag.load("report.pdf", "notes/", glob="**/*.md")
-        """
+    async def load(self, *sources: str | Path, glob: str | None = None) -> None:
+        """Load documents from files, directories, or URLs."""
         show = self._config.show_progress
         files_by_ext: dict[str, list[Path]] = {}
         source_names: list[str] = []
@@ -451,7 +323,6 @@ class RAG(BaseCapability):
             path = Path(source)
             
             if str(source).startswith(("http://", "https://")):
-                # URL - load directly
                 await self._load_url(str(source))
                 source_names.append(str(source))
             elif path.is_dir():
@@ -466,14 +337,12 @@ class RAG(BaseCapability):
                 ext = path.suffix.lower()
                 files_by_ext.setdefault(ext, []).append(path)
                 source_names.append(path.name)
-            else:
-                if show:
-                    print(f"  ⚠ Not found: {path}")
+            elif show:
+                print(f"  ⚠ Not found: {path}")
         
         if not files_by_ext and not source_names:
             raise ValueError("No files found to load")
         
-        # Process files by type
         all_chunks: list[Document] = []
         pipelines_used: set[str] = set()
         
@@ -492,7 +361,6 @@ class RAG(BaseCapability):
                         loaded = await pipeline.loader.load(file_path)
                     else:
                         loaded = await self._loader.load(file_path)
-                    
                     for doc in loaded:
                         doc.metadata.update(pipeline.metadata)
                     docs.extend(loaded)
@@ -505,24 +373,14 @@ class RAG(BaseCapability):
                 if pipeline.post_process:
                     chunks = pipeline.post_process(chunks)
                 all_chunks.extend(chunk.to_document() for chunk in chunks)
-                
                 if show:
                     print(f"    ✓ {len(chunks)} chunks from {len(docs)} docs")
         
         if all_chunks:
             await self._index_chunks(all_chunks, source_names, list(pipelines_used))
     
-    async def load_text(
-        self,
-        text: str,
-        source: str = "text",
-    ) -> None:
-        """Load text content directly.
-        
-        Args:
-            text: Text content to load.
-            source: Source name for citations.
-        """
+    async def load_text(self, text: str, source: str = "text") -> None:
+        """Load text content directly."""
         if self._config.show_progress:
             print(f"  📝 Loading text: {source}")
         
@@ -575,7 +433,6 @@ class RAG(BaseCapability):
         if show:
             print("  ✓ Vector store ready")
         
-        # Update metadata
         existing_sources = self._doc_info.get("sources", [])
         existing_pipelines = self._doc_info.get("pipelines_used", [])
         
@@ -587,108 +444,14 @@ class RAG(BaseCapability):
         self._initialized = True
     
     # ================================================================
-    # Query & Search
+    # Search (converts results to CitedPassage)
     # ================================================================
     
-    async def query(
-        self,
-        question: str,
-        *,
-        k: int | None = None,
-    ) -> RAGResponse:
-        """Ask a question about loaded documents.
+    async def search(self, query: str, *, k: int | None = None) -> list[CitedPassage]:
+        """Search documents and return CitedPassage objects.
         
-        Uses the agent's LLM with retrieved context to generate
-        an answer with citations.
-        
-        Args:
-            question: Your question.
-            k: Number of passages to retrieve (default: config.top_k).
-            
-        Returns:
-            RAGResponse with answer, citations, and metadata.
-            
-        Example:
-            >>> response = await rag.query("What are the key findings?")
-            >>> print(response.answer)
-            >>> print(response.format_bibliography())
-        """
-        if not self._initialized:
-            raise RuntimeError("No documents loaded. Call load() first.")
-        
-        if self._agent is None:
-            raise RuntimeError("Capability not attached to an agent.")
-        
-        # Clear previous citations
-        self._last_citations = []
-        k = k or self._config.top_k
-        
-        # Retrieve relevant passages
-        passages = await self.search(question, k=k)
-        
-        if not passages:
-            return RAGResponse(
-                answer="No relevant information found in the documents.",
-                citations=[],
-                sources_used=[],
-                query=question,
-            )
-        
-        # Build context from passages
-        context_parts = []
-        for p in passages:
-            header = f"[{p.citation_id}] Source: {p.source}"
-            if p.page:
-                header += f", Page {p.page}"
-            context_parts.append(f"{header}\n{p.text}")
-        
-        context = "\n\n---\n\n".join(context_parts)
-        
-        # Generate answer using agent's LLM
-        prompt = f"""Based on the following retrieved passages, answer the question.
-Cite sources using [1], [2], etc. If page numbers are available, use [n, p.X].
-
-PASSAGES:
-{context}
-
-QUESTION: {question}
-
-ANSWER:"""
-        
-        answer = await self._agent.run(prompt)
-        
-        # Build response
-        sources_used = list(dict.fromkeys(p.source for p in passages))
-        
-        return RAGResponse(
-            answer=answer,
-            citations=passages,
-            sources_used=sources_used,
-            query=question,
-        )
-    
-    async def search(
-        self,
-        query: str,
-        *,
-        k: int | None = None,
-    ) -> list[CitedPassage]:
-        """Direct semantic search over documents.
-        
-        Returns the most relevant passages without LLM generation.
-        Useful for exploring document content.
-        
-        Args:
-            query: Search query.
-            k: Number of results (default: config.top_k).
-            
-        Returns:
-            List of CitedPassage objects with source info and scores.
-            
-        Example:
-            >>> passages = await rag.search("machine learning")
-            >>> for p in passages:
-            ...     print(f"{p.format_reference()}: {p.text[:100]}...")
+        This is a convenience wrapper around vectorstore.search()
+        that converts results to CitedPassage format.
         """
         if not self._initialized:
             raise RuntimeError("No documents loaded. Call load() first.")
@@ -703,24 +466,19 @@ ANSWER:"""
             if "/" in source or "\\" in source:
                 source = Path(source).name
             
-            citation = CitedPassage(
+            citations.append(CitedPassage(
                 citation_id=i,
                 source=source,
                 page=metadata.get("page"),
                 chunk_index=metadata.get("chunk_index") or metadata.get("_chunk_index"),
                 score=score,
                 text=doc.text.strip(),
-            )
-            citations.append(citation)
+            ))
         
         self._last_citations = citations
         return citations
     
-    async def _retrieve(
-        self,
-        query: str,
-        k: int,
-    ) -> list[tuple[Document, float]]:
+    async def _retrieve(self, query: str, k: int) -> list[tuple[Document, float]]:
         """Internal retrieval with optional reranking."""
         retriever = self._get_retriever()
         
@@ -735,7 +493,7 @@ ANSWER:"""
         return [(r.document, r.score) for r in results]
     
     # ================================================================
-    # Tool Creation
+    # Tools
     # ================================================================
     
     def _create_tools(self) -> list:
@@ -744,22 +502,19 @@ ANSWER:"""
         
         @tool
         async def search_documents(query: str, num_results: int = 4) -> str:
-            """Search documents for relevant passages with citations.
-            
-            Returns passages with citation numbers, source info,
-            page numbers (when available), and relevance scores.
+            """Search documents for relevant passages.
             
             Args:
-                query: Search query to find relevant passages.
-                num_results: Number of passages to return (default: 4).
+                query: Search query.
+                num_results: Number of passages (default: 4).
                 
             Returns:
-                Formatted passages with citation metadata.
+                Formatted passages with citations [1], [2], etc.
             """
             if not cap._initialized:
                 return "Error: No documents loaded."
             
-            k = min(num_results, cap._config.top_k, 10)
+            k = min(num_results, 10)
             passages = await cap.search(query, k=k)
             
             if not passages:
@@ -771,18 +526,13 @@ ANSWER:"""
                 if p.page is not None:
                     header_parts.append(f"Page: {p.page}")
                 header_parts.append(f"Score: {p.score:.3f}")
-                header = " | ".join(header_parts)
-                formatted.append(f"{header}\n{p.text}")
+                formatted.append(f"{' | '.join(header_parts)}\n{p.text}")
             
             return "\n\n---\n\n".join(formatted)
         
         @tool
         def get_document_info() -> str:
-            """Get information about loaded documents.
-            
-            Returns:
-                Document metadata (sources, chunks, pipelines).
-            """
+            """Get information about loaded documents."""
             if not cap._doc_info:
                 return "No documents loaded."
             
@@ -796,38 +546,24 @@ ANSWER:"""
         return [search_documents, get_document_info]
     
     # ================================================================
-    # Pipeline Helpers
+    # Helpers
     # ================================================================
     
-    def register_pipeline(
-        self,
-        extension: str,
-        pipeline: DocumentPipeline,
-    ) -> None:
-        """Register a processing pipeline for a file extension.
-        
-        Args:
-            extension: File extension (e.g., ".pdf", ".custom").
-            pipeline: DocumentPipeline with loader and splitter.
-        """
+    def register_pipeline(self, extension: str, pipeline: DocumentPipeline) -> None:
+        """Register a processing pipeline for a file extension."""
         self._pipelines.register(extension, pipeline)
     
     def _get_pipeline(self, path: Path) -> DocumentPipeline:
-        """Get pipeline for a file."""
         pipeline = self._pipelines.get(path.suffix)
-        if pipeline:
-            return pipeline
-        return DocumentPipeline()
+        return pipeline if pipeline else DocumentPipeline()
     
     def _get_splitter(self, path: Path) -> BaseSplitter:
-        """Get splitter for a file."""
         pipeline = self._get_pipeline(path)
         if pipeline.splitter:
             return pipeline.splitter
         return self._get_default_splitter()
     
     def _get_default_splitter(self) -> BaseSplitter:
-        """Get default splitter."""
         if self._pipelines.default and self._pipelines.default.splitter:
             return self._pipelines.default.splitter
         from agenticflow.document import RecursiveCharacterSplitter
@@ -837,7 +573,6 @@ ANSWER:"""
         )
     
     def _get_vectorstore(self) -> VectorStore:
-        """Get or create vector store."""
         if self._vector_store is not None:
             return self._vector_store
         
@@ -846,7 +581,6 @@ ANSWER:"""
         return self._vector_store
     
     def _get_retriever(self):
-        """Get retriever."""
         if self._retriever is not None:
             return self._retriever
         
@@ -855,7 +589,6 @@ ANSWER:"""
         return self._retriever
     
     def _create_backend(self):
-        """Create vector store backend."""
         from agenticflow.vectorstore.backends import InMemoryBackend
         
         backend_name = self._config.backend
@@ -875,10 +608,6 @@ ANSWER:"""
         else:
             raise ValueError(f"Unknown backend: {backend_name}")
 
-
-# ============================================================
-# Exports
-# ============================================================
 
 __all__ = [
     "RAG",
