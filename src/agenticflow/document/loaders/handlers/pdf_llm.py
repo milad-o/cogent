@@ -106,8 +106,8 @@ class PDFConfig:
     ignore_graphics: bool = False
     force_text: bool = True
     fontsize_limit: float = 3.0
-    header: bool = False
-    footer: bool = False
+    header: bool = True
+    footer: bool = True
 
 
 @dataclass(slots=True, kw_only=True)
@@ -394,8 +394,8 @@ class PDFMarkdownLoader(BaseLoader):
         ignore_graphics: bool = False,
         force_text: bool = True,
         fontsize_limit: float = 3.0,
-        header: bool = False,
-        footer: bool = False,
+        header: bool = True,
+        footer: bool = True,
         show_progress: bool = True,
         verbose: bool = False,
         encoding: str = "utf-8",

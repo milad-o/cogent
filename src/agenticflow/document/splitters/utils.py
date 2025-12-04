@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 def split_text(
@@ -13,7 +13,7 @@ def split_text(
     chunk_overlap: int = 200,
     splitter_type: str = "recursive",
     **kwargs: Any,
-) -> list[TextChunk]:
+) -> list[Document]:
     """Split text using specified strategy.
     
     Args:
@@ -24,7 +24,7 @@ def split_text(
         **kwargs: Additional splitter arguments.
         
     Returns:
-        List of TextChunk objects.
+        List of Document chunks.
         
     Example:
         >>> chunks = split_text(text, chunk_size=500, splitter_type="recursive")

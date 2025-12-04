@@ -7,7 +7,7 @@ from typing import Any
 
 from agenticflow.document.splitters.base import BaseSplitter
 from agenticflow.document.splitters.character import RecursiveCharacterSplitter
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 class MarkdownSplitter(BaseSplitter):
@@ -39,14 +39,14 @@ class MarkdownSplitter(BaseSplitter):
         self.headers_to_split_on = headers_to_split_on or ["#", "##", "###"]
         self.return_each_section = return_each_section
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Split markdown by headers and content."""
         sections = self._split_by_headers(text)
         
         if self.return_each_section:
             chunks = []
             for section in sections:
-                chunks.append(TextChunk(
+                chunks.append(Document(
                     text=section["content"],
                     metadata={
                         "headers": section["headers"],
@@ -56,7 +56,7 @@ class MarkdownSplitter(BaseSplitter):
             return chunks
         
         # Merge sections into appropriately sized chunks
-        chunks: list[TextChunk] = []
+        chunks: list[Document] = []
         current_content: list[str] = []
         current_length = 0
         current_headers: dict[str, str] = {}
@@ -69,7 +69,7 @@ class MarkdownSplitter(BaseSplitter):
             if section_length > self.chunk_size:
                 # Save current chunk first
                 if current_content:
-                    chunks.append(TextChunk(
+                    chunks.append(Document(
                         text="\n\n".join(current_content),
                         metadata={
                             "headers": dict(current_headers),
@@ -95,7 +95,7 @@ class MarkdownSplitter(BaseSplitter):
             
             # Check if we need to start new chunk
             if current_length + section_length > self.chunk_size and current_content:
-                chunks.append(TextChunk(
+                chunks.append(Document(
                     text="\n\n".join(current_content),
                     metadata={
                         "headers": dict(current_headers),
@@ -111,7 +111,7 @@ class MarkdownSplitter(BaseSplitter):
         
         # Add final chunk
         if current_content:
-            chunks.append(TextChunk(
+            chunks.append(Document(
                 text="\n\n".join(current_content),
                 metadata={
                     "headers": dict(current_headers),

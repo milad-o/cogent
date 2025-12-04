@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from agenticflow.document.splitters.base import BaseSplitter
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 class CodeSplitter(BaseSplitter):
@@ -99,7 +99,7 @@ class CodeSplitter(BaseSplitter):
             [r'\n\n', r'\n']  # Default fallback
         )
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Split code by language-specific patterns."""
         # Try each pattern in order
         for pattern in self.patterns:

@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from agenticflow.document.splitters.base import BaseSplitter
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 class SentenceSplitter(BaseSplitter):
@@ -42,7 +42,7 @@ class SentenceSplitter(BaseSplitter):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.min_sentence_length = min_sentence_length
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Split text into sentences then merge into chunks."""
         sentences = self._split_sentences(text)
         return self._merge_splits(sentences, " ")

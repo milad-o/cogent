@@ -8,7 +8,7 @@ from typing import Any
 from agenticflow.document.splitters.base import BaseSplitter
 from agenticflow.document.splitters.character import RecursiveCharacterSplitter
 from agenticflow.document.splitters.sentence import SentenceSplitter
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 class SemanticSplitter(BaseSplitter):
@@ -52,7 +52,7 @@ class SemanticSplitter(BaseSplitter):
             self._embedding_model = EmbeddingModel()
         return self._embedding_model
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Synchronous split - falls back to sentence splitting.
         
         For true semantic splitting, use asplit_text() instead.
@@ -63,15 +63,15 @@ class SemanticSplitter(BaseSplitter):
         )
         return sentence_splitter.split_text(text)
     
-    async def asplit_text(self, text: str) -> list[TextChunk]:
+    async def asplit_text(self, text: str) -> list[Document]:
         """Asynchronously split text by semantic similarity."""
         # First split into sentences
         sentence_splitter = SentenceSplitter(min_sentence_length=5)
         sentence_chunks = sentence_splitter.split_text(text)
-        sentences = [c.content for c in sentence_chunks]
+        sentences = [c.text for c in sentence_chunks]
         
         if len(sentences) <= 1:
-            return [TextChunk(text=text, metadata={"chunk_index": 0})]
+            return [Document(text=text, metadata={"chunk_index": 0})]
         
         # Get embeddings for all sentences
         embeddings = await self.embedding_model.aembed(sentences)
@@ -80,7 +80,7 @@ class SemanticSplitter(BaseSplitter):
         breakpoints = self._find_breakpoints(embeddings)
         
         # Group sentences by breakpoints
-        chunks: list[TextChunk] = []
+        chunks: list[Document] = []
         current_sentences: list[str] = []
         
         for i, sentence in enumerate(sentences):
@@ -99,7 +99,7 @@ class SemanticSplitter(BaseSplitter):
                     sub_chunks = sub_splitter.split_text(content)
                     chunks.extend(sub_chunks)
                 else:
-                    chunks.append(TextChunk(
+                    chunks.append(Document(
                         text=content,
                         metadata={"chunk_index": len(chunks)},
                     ))

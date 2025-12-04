@@ -328,7 +328,7 @@ class TestRecursiveCharacterSplitter:
         chunks = splitter.split_text(text)
         
         assert len(chunks) >= 2
-        assert all(isinstance(c, TextChunk) for c in chunks)
+        assert all(isinstance(c, Document) for c in chunks)
     
     def test_split_respects_chunk_size(self) -> None:
         """Test that chunks respect size limit."""

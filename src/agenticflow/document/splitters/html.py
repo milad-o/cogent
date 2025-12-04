@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from agenticflow.document.splitters.base import BaseSplitter
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 class HTMLSplitter(BaseSplitter):
@@ -39,7 +39,7 @@ class HTMLSplitter(BaseSplitter):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.tags_to_split_on = tags_to_split_on or self.DEFAULT_SPLIT_TAGS
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Split HTML by tags."""
         # Try to use BeautifulSoup
         try:
@@ -48,7 +48,7 @@ class HTMLSplitter(BaseSplitter):
         except ImportError:
             return self._split_with_regex(text)
     
-    def _split_with_bs4(self, text: str) -> list[TextChunk]:
+    def _split_with_bs4(self, text: str) -> list[Document]:
         """Split using BeautifulSoup."""
         from bs4 import BeautifulSoup
         
@@ -73,7 +73,7 @@ class HTMLSplitter(BaseSplitter):
         
         return self._merge_splits(sections, "\n\n")
     
-    def _split_with_regex(self, text: str) -> list[TextChunk]:
+    def _split_with_regex(self, text: str) -> list[Document]:
         """Fallback regex-based splitting."""
         # Build pattern for tags
         tag_pattern = "|".join(self.tags_to_split_on)

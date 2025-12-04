@@ -6,7 +6,7 @@ from typing import Any
 
 from agenticflow.document.splitters.base import BaseSplitter
 from agenticflow.document.splitters.character import RecursiveCharacterSplitter
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 class TokenSplitter(BaseSplitter):
@@ -63,7 +63,7 @@ class TokenSplitter(BaseSplitter):
         """Count tokens in text."""
         return len(self.tokenizer.encode(text))
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Split text by token count."""
         # Use recursive character splitting with token length function
         splitter = RecursiveCharacterSplitter(
@@ -75,7 +75,7 @@ class TokenSplitter(BaseSplitter):
         
         # Add token count metadata
         for chunk in chunks:
-            chunk.metadata["token_count"] = self._token_length(chunk.content)
+            chunk.metadata["token_count"] = self._token_length(chunk.text)
         
         return chunks
 

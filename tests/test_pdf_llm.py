@@ -501,14 +501,19 @@ class TestPDFMarkdownLoaderIntegration:
         pdf_path = tmp_path / "sample.pdf"
         doc = pymupdf.open()  # New empty document
 
-        # Add a page with text
+        # Add a page with text using textbox for reliable extraction
         page = doc.new_page()
-        text_point = pymupdf.Point(50, 50)
-        page.insert_text(text_point, "Sample PDF Content for Testing")
+        shape = page.new_shape()
+        rect = pymupdf.Rect(50, 50, 500, 200)
+        shape.insert_textbox(rect, "Sample PDF Content for Testing", fontsize=12, fontname="helv")
+        shape.commit()
 
         # Add another page
         page2 = doc.new_page()
-        page2.insert_text(text_point, "Second page content")
+        shape2 = page2.new_shape()
+        rect2 = pymupdf.Rect(50, 50, 500, 200)
+        shape2.insert_textbox(rect2, "Second page content", fontsize=12, fontname="helv")
+        shape2.commit()
 
         doc.save(str(pdf_path))
         doc.close()

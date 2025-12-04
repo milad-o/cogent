@@ -1,30 +1,60 @@
 """
 RAG (Retrieval-Augmented Generation) capability.
 
-Provides document ingestion and vector search as a composable capability.
-The capability provides tools for the agent and exposes the vectorstore
-for direct access.
+API Layers:
+- **Low-level**: VectorStore.search() - raw document retrieval
+- **Mid-level**: rag.search() - citation-aware retrieval
+- **High-level**: agent.run() with RAG capability - agentic RAG
 
-Example:
+Example (agentic RAG):
     ```python
     from agenticflow import Agent
     from agenticflow.capabilities import RAG
-    from agenticflow.vectorstore import OpenAIEmbeddings
     
     agent = Agent(
-        name="ResearchAssistant",
         model=model,
-        capabilities=[RAG(embeddings=OpenAIEmbeddings())],
+        capabilities=[RAG(embeddings=embeddings)],
     )
     
-    # Load documents
-    await agent.rag.load("report.pdf", "notes.md")
-    
-    # Let agent use tools intelligently
+    await agent.rag.load("docs/", "report.pdf")
     answer = await agent.run("What are the key findings?")
+    ```
+
+Example (citation-aware search):
+    ```python
+    rag = RAG(embeddings=embeddings)
+    await rag.load("docs/")
     
-    # Or access vectorstore directly for search
-    results = await agent.rag.vectorstore.search("machine learning", k=5)
+    passages = await rag.search("key findings", k=5)
+    for p in passages:
+        print(f"{p.format_reference()}: {p.text[:100]}...")
+    ```
+
+Example (full control):
+    ```python
+    from agenticflow.capabilities import RAG, DocumentPipeline, PipelineRegistry
+    from agenticflow.document import PDFLoader, SemanticSplitter
+    from agenticflow.vectorstore import VectorStore, FAISSBackend
+    from agenticflow.retriever import HybridRetriever
+    
+    # Custom pipelines
+    pipelines = PipelineRegistry()
+    pipelines.register(".pdf", DocumentPipeline(
+        loader=PDFLoader(use_vision=True),
+        splitter=SemanticSplitter(embeddings=embeddings),
+    ))
+    
+    # Custom vectorstore
+    vectorstore = VectorStore(
+        embeddings=embeddings,
+        backend=FAISSBackend(dimension=1536),
+    )
+    
+    rag = RAG(
+        embeddings=embeddings,
+        pipelines=pipelines,
+        vectorstore=vectorstore,
+    )
     ```
 """
 
@@ -32,6 +62,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -42,6 +73,7 @@ from agenticflow.vectorstore import VectorStore
 
 if TYPE_CHECKING:
     from agenticflow.document.loaders import BaseLoader
+    from agenticflow.memory import Memory
     from agenticflow.retriever.base import Retriever
     from agenticflow.retriever.rerankers.base import Reranker
     from agenticflow.vectorstore.base import EmbeddingProvider
@@ -50,6 +82,15 @@ if TYPE_CHECKING:
 # ============================================================
 # Citation Types
 # ============================================================
+
+
+class CitationStyle(Enum):
+    """Citation formatting styles."""
+    
+    NUMERIC = "numeric"      # [1], [2], [3]
+    AUTHOR_YEAR = "author_year"  # (Smith, 2023)
+    FOOTNOTE = "footnote"    # ¹, ², ³
+    INLINE = "inline"        # [source.pdf], [doc.md]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -72,18 +113,76 @@ class CitedPassage:
     score: float = 0.0
     text: str = ""
     
-    def format_reference(self) -> str:
-        """Format as [1] or [1, p.5]."""
-        if self.page is not None:
-            return f"[{self.citation_id}, p.{self.page}]"
-        return f"[{self.citation_id}]"
+    def format_reference(
+        self, 
+        style: CitationStyle = CitationStyle.NUMERIC,
+        include_page: bool = True,
+    ) -> str:
+        """Format citation reference.
+        
+        Args:
+            style: Citation style (NUMERIC, AUTHOR_YEAR, FOOTNOTE, INLINE).
+            include_page: Include page number if available.
+            
+        Returns:
+            Formatted citation string.
+            
+        Examples:
+            >>> p.format_reference(CitationStyle.NUMERIC)
+            '[1]' or '[1, p.5]'
+            >>> p.format_reference(CitationStyle.FOOTNOTE)
+            '¹' or '¹ (p.5)'
+            >>> p.format_reference(CitationStyle.INLINE)
+            '[report.pdf]' or '[report.pdf, p.5]'
+        """
+        page_suffix = ""
+        if include_page and self.page is not None:
+            page_suffix = f", p.{self.page}"
+        
+        match style:
+            case CitationStyle.NUMERIC:
+                if page_suffix:
+                    return f"[{self.citation_id}{page_suffix}]"
+                return f"[{self.citation_id}]"
+            case CitationStyle.FOOTNOTE:
+                superscripts = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+                sup = "".join(superscripts[int(d)] for d in str(self.citation_id))
+                if page_suffix:
+                    return f"{sup} (p.{self.page})"
+                return sup
+            case CitationStyle.INLINE:
+                if page_suffix:
+                    return f"[{self.source}{page_suffix}]"
+                return f"[{self.source}]"
+            case CitationStyle.AUTHOR_YEAR:
+                # Extract author-like name from source
+                name = Path(self.source).stem.replace("_", " ").title()
+                if page_suffix:
+                    return f"({name}{page_suffix})"
+                return f"({name})"
+            case _:
+                return f"[{self.citation_id}]"
     
-    def format_full(self) -> str:
-        """Format as full citation entry."""
+    def format_full(
+        self,
+        include_score: bool = True,
+        include_chunk: bool = False,
+    ) -> str:
+        """Format as full citation entry for bibliography.
+        
+        Args:
+            include_score: Include relevance score.
+            include_chunk: Include chunk index.
+            
+        Returns:
+            Full citation string.
+        """
         parts = [f"[{self.citation_id}] {self.source}"]
         if self.page is not None:
             parts.append(f"p.{self.page}")
-        if self.score > 0:
+        if include_chunk and self.chunk_index is not None:
+            parts.append(f"chunk {self.chunk_index}")
+        if include_score and self.score > 0:
             parts.append(f"(score: {self.score:.2f})")
         return ", ".join(parts)
 
@@ -136,30 +235,95 @@ class RAGResponse:
 
 @dataclass
 class DocumentPipeline:
-    """Processing pipeline for a file type."""
+    """Processing pipeline for a document type.
+    
+    Allows full control over how documents are loaded and split.
+    
+    Attributes:
+        loader: Custom loader instance (e.g., PDFLoader with options).
+        splitter: Custom splitter instance (e.g., SemanticSplitter).
+        metadata: Extra metadata to add to all documents.
+        post_process: Optional callback to transform chunks after splitting.
+        vectorstore: Optional separate vectorstore for this doc type.
+        
+    Example:
+        ```python
+        from agenticflow.document import PDFLoader, SemanticSplitter
+        
+        # PDF-specific pipeline with custom settings
+        pdf_pipeline = DocumentPipeline(
+            loader=PDFLoader(extract_images=True, use_ocr=True),
+            splitter=SemanticSplitter(embeddings=embeddings, threshold=0.8),
+            metadata={"source_type": "pdf", "department": "research"},
+            post_process=lambda chunks: [c for c in chunks if len(c.text) > 50],
+        )
+        ```
+    """
     loader: BaseLoader | None = None
     splitter: BaseSplitter | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     post_process: Callable[[list[Document]], list[Document]] | None = None
+    vectorstore: VectorStore | None = None  # Optional per-type vectorstore
 
 
 @dataclass
 class PipelineRegistry:
-    """Registry of pipelines per file extension."""
+    """Registry of pipelines per file extension.
+    
+    Provides per-file-type control over loading and splitting.
+    
+    Example:
+        ```python
+        from agenticflow.capabilities import PipelineRegistry, DocumentPipeline
+        from agenticflow.document import (
+            PDFLoader, CodeSplitter, SemanticSplitter, MarkdownSplitter,
+        )
+        
+        pipelines = PipelineRegistry()
+        
+        # Custom PDF handling
+        pipelines.register(".pdf", DocumentPipeline(
+            loader=PDFLoader(use_vision=True),
+            splitter=SemanticSplitter(embeddings=embeddings),
+        ))
+        
+        # Custom code handling  
+        for ext, lang in [(".py", "python"), (".js", "javascript")]:
+            pipelines.register(ext, DocumentPipeline(
+                splitter=CodeSplitter(language=lang, chunk_size=1500),
+            ))
+        
+        # Set default for unregistered types
+        pipelines.set_default(DocumentPipeline(
+            splitter=RecursiveCharacterSplitter(chunk_size=1000),
+        ))
+        ```
+    """
     pipelines: dict[str, DocumentPipeline] = field(default_factory=dict)
     default: DocumentPipeline | None = None
     
     def get(self, extension: str) -> DocumentPipeline | None:
+        """Get pipeline for extension."""
         ext = extension.lower() if extension.startswith(".") else f".{extension.lower()}"
         return self.pipelines.get(ext, self.default)
     
     def register(self, extension: str, pipeline: DocumentPipeline) -> None:
+        """Register pipeline for extension."""
         ext = extension.lower() if extension.startswith(".") else f".{extension.lower()}"
         self.pipelines[ext] = pipeline
     
+    def set_default(self, pipeline: DocumentPipeline) -> None:
+        """Set default pipeline for unregistered extensions."""
+        self.default = pipeline
+    
+    def register_many(self, extensions: list[str], pipeline: DocumentPipeline) -> None:
+        """Register same pipeline for multiple extensions."""
+        for ext in extensions:
+            self.register(ext, pipeline)
+    
     @classmethod
     def create_defaults(cls, chunk_size: int = 1000, chunk_overlap: int = 200) -> PipelineRegistry:
-        """Create registry with sensible defaults."""
+        """Create registry with sensible defaults for common file types."""
         from agenticflow.document import (
             CodeSplitter, HTMLSplitter, MarkdownSplitter, RecursiveCharacterSplitter,
         )
@@ -183,6 +347,11 @@ class PipelineRegistry:
                 chunk_size=chunk_size, chunk_overlap=chunk_overlap,
             )),
         )
+    
+    @classmethod
+    def empty(cls) -> PipelineRegistry:
+        """Create empty registry (use with custom pipelines only)."""
+        return cls()
 
 
 # ============================================================
@@ -192,12 +361,43 @@ class PipelineRegistry:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RAGConfig:
-    """Configuration for RAG capability."""
+    """Configuration for RAG capability.
+    
+    Attributes:
+        chunk_size: Default chunk size for splitting.
+        chunk_overlap: Default overlap between chunks.
+        top_k: Default number of results to retrieve.
+        backend: Default vectorstore backend name.
+        show_progress: Print progress during loading.
+        store_to_memory: Also store documents in long-term Memory.
+        memory_namespace: Namespace for memory storage.
+        
+    Example:
+        ```python
+        config = RAGConfig(
+            chunk_size=500,
+            chunk_overlap=50,
+            top_k=6,
+            backend="faiss",
+            citation_style=CitationStyle.NUMERIC,
+            store_to_memory=True,
+            memory_namespace="documents",
+        )
+        
+        rag = RAG(embeddings=embeddings, config=config)
+        ```
+    """
     chunk_size: int = 1000
     chunk_overlap: int = 200
     top_k: int = 4
     backend: str = "inmemory"
     show_progress: bool = True
+    store_to_memory: bool = False
+    memory_namespace: str = "rag:documents"
+    # Citation formatting
+    citation_style: CitationStyle = CitationStyle.NUMERIC
+    include_page_in_citation: bool = True
+    include_score_in_bibliography: bool = True
 
 
 # ============================================================
@@ -209,27 +409,50 @@ class RAG(BaseCapability):
     """
     RAG (Retrieval-Augmented Generation) capability.
     
-    Provides:
+    Mid-level API that provides composable document retrieval for any agent.
+    For batteries-included experience, use RAGAgent from prebuilt.
+    For full control, use components directly.
+    
+    **What it provides:**
     - Document loading with per-file-type pipelines
     - Vector store for semantic search
     - Tools for agent to search documents
+    - Optional Memory integration for persistence
     
-    Access components directly:
+    **Access components directly:**
     - `rag.vectorstore` - VectorStore for search
     - `rag.retriever` - Retriever with optional reranking
-    - `rag.load()` - Load documents
+    - `rag.embeddings` - Embedding provider
+    - `rag.pipelines` - Pipeline registry
     
-    Example:
+    **Three ways to customize:**
+    
+    1. **Simple (config):**
         ```python
-        agent = Agent(model=model, capabilities=[RAG(embeddings=embeddings)])
-        
-        await agent.rag.load("docs/")
-        
-        # Agent uses tools
-        answer = await agent.run("What is X?")
-        
-        # Direct vectorstore access
-        results = await agent.rag.vectorstore.search("query", k=5)
+        rag = RAG(
+            embeddings=embeddings,
+            config=RAGConfig(chunk_size=500, backend="faiss"),
+        )
+        ```
+    
+    2. **Pipeline-level (per file type):**
+        ```python
+        pipelines = PipelineRegistry()
+        pipelines.register(".pdf", DocumentPipeline(
+            loader=PDFLoader(use_vision=True),
+            splitter=SemanticSplitter(embeddings),
+        ))
+        rag = RAG(embeddings=embeddings, pipelines=pipelines)
+        ```
+    
+    3. **Component-level (full control):**
+        ```python
+        rag = RAG(
+            embeddings=embeddings,
+            vectorstore=VectorStore(backend=FAISSBackend()),
+            retriever=HybridRetriever(dense=..., sparse=...),
+            reranker=CrossEncoderReranker(),
+        )
         ```
     """
     
@@ -249,7 +472,28 @@ class RAG(BaseCapability):
         vectorstore: VectorStore | None = None,
         retriever: Retriever | None = None,
         reranker: Reranker | None = None,
+        memory: Memory | None = None,
+        extra_tools: list | None = None,
     ) -> None:
+        """
+        Create RAG capability.
+        
+        Args:
+            embeddings: Embedding provider for vectorization.
+            
+            **Configuration:**
+            config: RAGConfig for chunk_size, backend, etc.
+            pipelines: Per-file-type processing pipelines.
+            
+            **Custom components (override defaults):**
+            vectorstore: Pre-configured VectorStore.
+            retriever: Pre-configured retriever (e.g., HybridRetriever).
+            reranker: Reranker for two-stage retrieval.
+            
+            **Integration:**
+            memory: Memory instance for long-term storage.
+            extra_tools: Additional tools to include with RAG tools.
+        """
         self._embeddings = embeddings
         self._config = config or RAGConfig()
         self._pipelines = pipelines or PipelineRegistry.create_defaults(
@@ -259,12 +503,18 @@ class RAG(BaseCapability):
         self._vector_store = vectorstore
         self._retriever = retriever
         self._reranker = reranker
+        self._memory = memory
+        self._extra_tools = extra_tools or []
         
         self._loader = DocumentLoader()
         self._documents: list[Document] = []
         self._doc_info: dict[str, Any] = {}
         self._initialized = False
         self._last_citations: list[CitedPassage] = []
+    
+    # ================================================================
+    # Properties
+    # ================================================================
     
     @property
     def name(self) -> str:
@@ -276,7 +526,7 @@ class RAG(BaseCapability):
     
     @property
     def tools(self) -> list:
-        return self._create_tools()
+        return self._create_tools() + self._extra_tools
     
     @property
     def vectorstore(self) -> VectorStore:
@@ -289,11 +539,23 @@ class RAG(BaseCapability):
         return self._get_retriever()
     
     @property
+    def embeddings(self) -> EmbeddingProvider:
+        """Access the embedding provider."""
+        return self._embeddings
+    
+    @property
+    def pipelines(self) -> PipelineRegistry:
+        """Access the pipeline registry for customization."""
+        return self._pipelines
+    
+    @property
     def document_count(self) -> int:
+        """Number of indexed document chunks."""
         return len(self._documents)
     
     @property
     def sources(self) -> list[str]:
+        """List of loaded source names."""
         return self._doc_info.get("sources", [])
     
     @property
@@ -303,10 +565,12 @@ class RAG(BaseCapability):
     
     @property
     def is_ready(self) -> bool:
+        """Whether documents have been loaded."""
         return self._initialized
     
     @property
     def top_k(self) -> int:
+        """Default number of results to retrieve."""
         return self._config.top_k
     
     # ================================================================
@@ -372,7 +636,7 @@ class RAG(BaseCapability):
                 chunks = splitter.split_documents(docs)
                 if pipeline.post_process:
                     chunks = pipeline.post_process(chunks)
-                all_chunks.extend(chunk.to_document() for chunk in chunks)
+                all_chunks.extend(chunks)
                 if show:
                     print(f"    ✓ {len(chunks)} chunks from {len(docs)} docs")
         
@@ -388,7 +652,7 @@ class RAG(BaseCapability):
         splitter = self._get_default_splitter()
         chunks = splitter.split_documents([doc])
         await self._index_chunks(
-            [c.to_document() for c in chunks],
+            chunks,
             [source],
             ["text→" + type(splitter).__name__],
         )
@@ -448,10 +712,31 @@ class RAG(BaseCapability):
     # ================================================================
     
     async def search(self, query: str, *, k: int | None = None) -> list[CitedPassage]:
-        """Search documents and return CitedPassage objects.
+        """Search documents and return CitedPassage objects with citations.
         
-        This is a convenience wrapper around vectorstore.search()
-        that converts results to CitedPassage format.
+        This is the primary citation-aware API. Use the returned passages
+        to build prompts for agent.run() or display references to users.
+        
+        Args:
+            query: Search query.
+            k: Number of results (default: config.top_k).
+            
+        Returns:
+            List of CitedPassage objects with source, score, text, and citation_id.
+            
+        Example:
+            ```python
+            # Get citations
+            passages = await rag.search("machine learning", k=5)
+            
+            # Display with citations
+            for p in passages:
+                print(f"{p.format_reference()}: {p.text[:100]}...")
+            
+            # Use for agent prompts
+            context = "\\n".join(f"[{p.citation_id}] {p.text}" for p in passages)
+            answer = await agent.run(f"Based on:\\n{context}\\n\\nAnswer: {question}")
+            ```
         """
         if not self._initialized:
             raise RuntimeError("No documents loaded. Call load() first.")
@@ -491,6 +776,93 @@ class RAG(BaseCapability):
         
         results = await retriever.retrieve_with_scores(query, k=k)
         return [(r.document, r.score) for r in results]
+    
+    # ================================================================
+    # Citation Formatting Helpers
+    # ================================================================
+    
+    def format_context(
+        self,
+        passages: list[CitedPassage] | None = None,
+        style: CitationStyle | None = None,
+        include_source: bool = True,
+    ) -> str:
+        """Format passages as context for LLM prompts.
+        
+        Args:
+            passages: Passages to format (default: last search results).
+            style: Citation style (default: from config).
+            include_source: Include source name in header.
+            
+        Returns:
+            Formatted context string.
+            
+        Example:
+            ```python
+            passages = await rag.search("key findings")
+            context = rag.format_context(passages)
+            answer = await agent.run(f"Based on:\\n{context}\\n\\nAnswer: ...")
+            ```
+        """
+        passages = passages or self._last_citations
+        style = style or self._config.citation_style
+        
+        if not passages:
+            return ""
+        
+        formatted = []
+        for p in passages:
+            ref = p.format_reference(style, self._config.include_page_in_citation)
+            if include_source:
+                header = f"{ref} ({p.source})"
+            else:
+                header = ref
+            formatted.append(f"{header}\n{p.text}")
+        
+        return "\n\n".join(formatted)
+    
+    def format_bibliography(
+        self,
+        passages: list[CitedPassage] | None = None,
+        title: str = "References",
+    ) -> str:
+        """Format passages as bibliography/references section.
+        
+        Args:
+            passages: Passages to format (default: last search results).
+            title: Section title.
+            
+        Returns:
+            Formatted bibliography string.
+            
+        Example:
+            ```python
+            passages = await rag.search("findings")
+            answer = await agent.run("...")
+            print(answer)
+            print(rag.format_bibliography(passages))
+            ```
+        """
+        passages = passages or self._last_citations
+        
+        if not passages:
+            return ""
+        
+        # Deduplicate by source
+        seen_sources: dict[str, CitedPassage] = {}
+        for p in passages:
+            if p.source not in seen_sources:
+                seen_sources[p.source] = p
+        
+        lines = [f"\n---\n**{title}:**"]
+        for p in seen_sources.values():
+            lines.append(
+                p.format_full(
+                    include_score=self._config.include_score_in_bibliography,
+                )
+            )
+        
+        return "\n".join(lines)
     
     # ================================================================
     # Tools

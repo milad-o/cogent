@@ -329,18 +329,17 @@ from agenticflow.visualization import (
 # Graph API (multi-level visualization)
 from agenticflow import graph
 
-# Prebuilt agents (ready-to-use components)
-from agenticflow.prebuilt import (
-    Chatbot,
-    RAGAgent,
-    create_chatbot,
-    create_rag_agent,
-)
-
 # Capabilities (composable tools for agents)
 from agenticflow.capabilities import (
     BaseCapability,
     KnowledgeGraph,
+    # RAG capability
+    RAG,
+    RAGConfig,
+    CitationStyle,
+    CitedPassage,
+    DocumentPipeline,
+    PipelineRegistry,
 )
 
 # Native message types (from core.messages)
@@ -549,14 +548,16 @@ __all__ = [
     "TopologyDiagram",
     # Graph API (new multi-level visualization)
     "graph",
-    # Prebuilt agents
-    "Chatbot",
-    "RAGAgent",
-    "create_chatbot",
-    "create_rag_agent",
     # Capabilities
     "BaseCapability",
     "KnowledgeGraph",
+    # RAG capability
+    "RAG",
+    "RAGConfig",
+    "CitationStyle",
+    "CitedPassage",
+    "DocumentPipeline",
+    "PipelineRegistry",
     # LLM & Embedding Models (native)
     "ChatModel",
     "EmbeddingModel",

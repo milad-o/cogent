@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from agenticflow.document.splitters.base import BaseSplitter
-from agenticflow.document.types import TextChunk
+from agenticflow.document.types import Document
 
 
 class RecursiveCharacterSplitter(BaseSplitter):
@@ -47,7 +47,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.separators = separators or self.DEFAULT_SEPARATORS.copy()
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Split text using recursive separator strategy."""
         return self._split_text(text, self.separators)
     
@@ -55,11 +55,11 @@ class RecursiveCharacterSplitter(BaseSplitter):
         self,
         text: str,
         separators: list[str],
-    ) -> list[TextChunk]:
+    ) -> list[Document]:
         """Recursively split text."""
         # Base case: no separators left
         if not separators:
-            return [TextChunk(text=text, metadata={"chunk_index": 0})]
+            return [Document(text=text, metadata={"chunk_index": 0})]
         
         separator = separators[0]
         remaining_separators = separators[1:]
@@ -83,7 +83,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
             splits = list(text)
         
         # Process splits
-        chunks: list[TextChunk] = []
+        chunks: list[Document] = []
         current_parts: list[str] = []
         current_length = 0
         
@@ -106,7 +106,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
                     chunks.extend(sub_chunks)
                 else:
                     # Can't split further, just add as is
-                    chunks.append(TextChunk(
+                    chunks.append(Document(
                         text=split,
                         metadata={"chunk_index": len(chunks)},
                     ))
@@ -176,7 +176,7 @@ class CharacterSplitter(BaseSplitter):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.separator = separator
     
-    def split_text(self, text: str) -> list[TextChunk]:
+    def split_text(self, text: str) -> list[Document]:
         """Split text by separator."""
         if self.separator:
             splits = text.split(self.separator)
