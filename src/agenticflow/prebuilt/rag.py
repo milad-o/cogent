@@ -8,6 +8,7 @@ A composable RAG system that inherits from Agent and adds:
 - EmbeddingProvider: Vector embeddings
 - Retriever: Configurable retrieval strategies
 - Reranker: Optional two-stage retrieval
+- Structured citations with source references
 
 This module composes the agenticflow document, vectorstore, and retriever modules.
 """
@@ -33,6 +34,133 @@ if TYPE_CHECKING:
     from agenticflow.models.base import BaseChatModel
     from agenticflow.retriever.base import Retriever
     from agenticflow.retriever.rerankers.base import Reranker
+
+
+# ============================================================
+# Citation & Response Types
+# ============================================================
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CitedPassage:
+    """A cited passage from a retrieved document.
+    
+    Contains the source reference, relevance score, and text excerpt
+    used to support an answer.
+    
+    Attributes:
+        citation_id: Citation reference number (e.g., 1, 2, 3).
+        source: Source document name or path.
+        page: Page number (1-based) if available.
+        chunk_index: Index of the chunk within the document.
+        score: Relevance/similarity score (0.0-1.0 typically).
+        text: The actual text content of the passage.
+        
+    Example:
+        >>> passage = CitedPassage(
+        ...     citation_id=1,
+        ...     source="report.pdf",
+        ...     page=5,
+        ...     chunk_index=12,
+        ...     score=0.89,
+        ...     text="The key finding was...",
+        ... )
+    """
+    
+    citation_id: int
+    source: str
+    page: int | None = None
+    chunk_index: int | None = None
+    score: float = 0.0
+    text: str = ""
+    
+    def format_reference(self) -> str:
+        """Format as inline citation reference.
+        
+        Returns:
+            Formatted reference like "[1]" or "[1, p.5]".
+        """
+        if self.page is not None:
+            return f"[{self.citation_id}, p.{self.page}]"
+        return f"[{self.citation_id}]"
+    
+    def format_full(self) -> str:
+        """Format as full citation entry.
+        
+        Returns:
+            Formatted citation like "[1] Source: report.pdf, Page 5 (Score: 0.89)".
+        """
+        parts = [f"[{self.citation_id}] Source: {self.source}"]
+        if self.page is not None:
+            parts.append(f"Page {self.page}")
+        if self.score > 0:
+            parts.append(f"(Score: {self.score:.2f})")
+        return ", ".join(parts)
+
+
+@dataclass(slots=True, kw_only=True)
+class RAGResponse:
+    """Structured response from a RAG query with citations.
+    
+    Contains the answer, supporting citations, and metadata about
+    the retrieval process.
+    
+    Attributes:
+        answer: The generated answer text.
+        citations: List of cited passages used to support the answer.
+        sources_used: Unique source documents referenced.
+        query: The original query.
+        retrieval_count: Number of passages retrieved.
+        
+    Example:
+        >>> response = await rag.query_with_citations("What are the findings?")
+        >>> print(response.answer)
+        >>> for cite in response.citations:
+        ...     print(cite.format_full())
+    """
+    
+    answer: str
+    citations: list[CitedPassage] = field(default_factory=list)
+    sources_used: list[str] = field(default_factory=list)
+    query: str = ""
+    retrieval_count: int = 0
+    
+    @property
+    def has_citations(self) -> bool:
+        """Whether the response has any citations."""
+        return len(self.citations) > 0
+    
+    @property
+    def citation_count(self) -> int:
+        """Number of citations."""
+        return len(self.citations)
+    
+    def format_citations(self) -> str:
+        """Format all citations as a bibliography.
+        
+        Returns:
+            Formatted bibliography section.
+        """
+        if not self.citations:
+            return ""
+        
+        lines = ["", "---", "**References:**"]
+        for cite in self.citations:
+            lines.append(cite.format_full())
+        return "\n".join(lines)
+    
+    def format_full_response(self) -> str:
+        """Format answer with appended citations.
+        
+        Returns:
+            Complete response with answer and bibliography.
+        """
+        return self.answer + self.format_citations()
+    
+    def __str__(self) -> str:
+        """String representation shows answer with citation count."""
+        cite_info = f" [{self.citation_count} citations]" if self.has_citations else ""
+        return f"{self.answer}{cite_info}"
 
 
 # ============================================================
@@ -254,11 +382,19 @@ class RAGAgent(Agent):
     DEFAULT_INSTRUCTIONS = """You are a helpful assistant that answers questions based on the provided documents.
 
 When answering questions:
-1. ALWAYS use search_documents to find relevant information
-2. Base your answers ONLY on the retrieved passages
-3. Cite sources using [1], [2], etc.
-4. If the information isn't in the documents, say so
-5. Be concise but thorough
+1. ALWAYS use search_documents to find relevant information first
+2. Base your answers ONLY on the retrieved passages - do not make up information
+3. ALWAYS cite sources using the citation format [1], [2], etc. from the search results
+4. Include page numbers when available: "According to [1, p.5]..."
+5. If multiple sources support a point, cite all of them: "...confirmed in [1][2]"
+6. If the information isn't in the documents, explicitly say so
+7. Be precise and thorough, synthesizing information from multiple passages when relevant
+
+Citation Format:
+- Use [n] to reference passage n from search results
+- When page numbers are available, use [n, p.X] format
+- Group citations at the end of sentences or claims they support
+- Ensure every factual claim has a corresponding citation
 
 {tools}"""
     
@@ -362,6 +498,7 @@ When answering questions:
         self._documents: list[Document] = []
         self._doc_info: dict[str, Any] = {}
         self._rag_initialized = False
+        self._last_citations: list[CitedPassage] = []  # Track citations from last search
         
         # Store user's additional tools
         self._user_tools = list(tools) if tools else []
@@ -509,14 +646,22 @@ When answering questions:
         
         @tool
         async def search_documents(query: str, num_results: int = 4) -> str:
-            """Search documents for relevant passages.
+            """Search documents for relevant passages with citation metadata.
+            
+            Returns passages formatted with citation numbers, source info,
+            page numbers (when available), and relevance scores.
             
             Args:
                 query: The search query to find relevant passages.
                 num_results: Number of passages to return (default: 4).
                 
             Returns:
-                Formatted string with relevant passages.
+                Formatted string with cited passages including:
+                - Citation number [1], [2], etc.
+                - Source document name
+                - Page number (if available)
+                - Relevance score
+                - Passage text
             """
             if rag_self._vector_store is None:
                 return "Error: No documents loaded."
@@ -529,11 +674,43 @@ When answering questions:
             if not results:
                 return "No relevant passages found."
             
+            # Store citations for potential structured access
+            rag_self._last_citations = []
+            
             formatted = []
             for i, (doc, score) in enumerate(results, 1):
                 content = doc.text.strip()
-                source = doc.metadata.get("source", "unknown")
-                formatted.append(f"[{i}] (Source: {source}, Score: {score:.3f})\n{content}")
+                metadata = doc.metadata
+                
+                # Extract citation info from metadata
+                source = metadata.get("source", "unknown")
+                # Handle both filename and full path
+                if "/" in source or "\\" in source:
+                    source = Path(source).name
+                
+                page = metadata.get("page")
+                chunk_index = metadata.get("chunk_index") or metadata.get("_chunk_index")
+                
+                # Create CitedPassage for structured access
+                citation = CitedPassage(
+                    citation_id=i,
+                    source=source,
+                    page=page,
+                    chunk_index=chunk_index,
+                    score=score,
+                    text=content[:500] + "..." if len(content) > 500 else content,
+                )
+                rag_self._last_citations.append(citation)
+                
+                # Format citation header with all available metadata
+                header_parts = [f"[{i}]"]
+                header_parts.append(f"Source: {source}")
+                if page is not None:
+                    header_parts.append(f"Page: {page}")
+                header_parts.append(f"Score: {score:.3f}")
+                header = " | ".join(header_parts)
+                
+                formatted.append(f"{header}\n{content}")
             
             return "\n\n---\n\n".join(formatted)
         
@@ -869,10 +1046,13 @@ When answering questions:
             max_iterations: Maximum LLM iterations (default: 10).
             
         Returns:
-            The answer with citations.
+            The answer with inline citations.
         """
         if not self._rag_initialized:
             raise RuntimeError("No documents loaded. Call load_documents() first.")
+        
+        # Clear previous citations
+        self._last_citations = []
         
         if verbose:
             from agenticflow.observability import OutputConfig, ProgressTracker
@@ -891,6 +1071,104 @@ When answering questions:
             strategy=strategy,
             max_iterations=max_iterations,
         )
+    
+    async def query_with_citations(
+        self,
+        question: str,
+        *,
+        context: dict[str, Any] | RunContext | None = None,
+        strategy: str = "dag",
+        verbose: bool = False,
+        max_iterations: int = 10,
+    ) -> RAGResponse:
+        """
+        Ask a question and get a structured response with citations.
+        
+        Like query(), but returns a RAGResponse object containing:
+        - The answer text with inline citations
+        - List of CitedPassage objects with full source info
+        - Metadata about sources and retrieval
+        
+        Args:
+            question: Your question.
+            context: Optional context dict or RunContext for tools/interceptors.
+            strategy: Execution strategy ("dag", "react", "plan").
+            verbose: Show detailed progress with tool calls.
+            max_iterations: Maximum LLM iterations (default: 10).
+            
+        Returns:
+            RAGResponse with answer, citations, and metadata.
+            
+        Example:
+            >>> response = await rag.query_with_citations("What are the key findings?")
+            >>> print(response.answer)
+            >>> for cite in response.citations:
+            ...     print(f"{cite.format_reference()}: {cite.source}")
+            >>> print(response.format_full_response())  # Answer + bibliography
+        """
+        # Clear previous citations
+        self._last_citations = []
+        
+        # Run the query
+        answer = await self.query(
+            question,
+            context=context,
+            strategy=strategy,
+            verbose=verbose,
+            max_iterations=max_iterations,
+        )
+        
+        # Get unique sources from citations
+        sources_used = list(dict.fromkeys(c.source for c in self._last_citations))
+        
+        return RAGResponse(
+            answer=answer,
+            citations=list(self._last_citations),  # Copy to prevent mutation
+            sources_used=sources_used,
+            query=question,
+            retrieval_count=len(self._last_citations),
+        )
+    
+    async def search_with_citations(
+        self,
+        query: str,
+        k: int | None = None,
+    ) -> list[CitedPassage]:
+        """
+        Direct semantic search returning structured citations.
+        
+        Like search(), but returns CitedPassage objects instead of SearchResult.
+        
+        Args:
+            query: Search query.
+            k: Number of results (default: top_k).
+            
+        Returns:
+            List of CitedPassage objects with source info and scores.
+        """
+        if self._vector_store is None:
+            raise RuntimeError("No documents loaded.")
+        
+        k = k or self._top_k
+        results = await self._retrieve(query, k=k)
+        
+        citations = []
+        for i, (doc, score) in enumerate(results, 1):
+            metadata = doc.metadata
+            source = metadata.get("source", "unknown")
+            if "/" in source or "\\" in source:
+                source = Path(source).name
+                
+            citations.append(CitedPassage(
+                citation_id=i,
+                source=source,
+                page=metadata.get("page"),
+                chunk_index=metadata.get("chunk_index") or metadata.get("_chunk_index"),
+                score=score,
+                text=doc.text.strip(),
+            ))
+        
+        return citations
     
     async def search(
         self,
@@ -927,6 +1205,19 @@ When answering questions:
     def sources(self) -> list[str]:
         """List of loaded document sources."""
         return self._doc_info.get("sources", [])
+    
+    @property
+    def citations(self) -> list[CitedPassage]:
+        """Citations from the last query/search operation.
+        
+        Returns a copy to prevent accidental mutation.
+        """
+        return list(self._last_citations)
+    
+    @property
+    def last_citations(self) -> list[CitedPassage]:
+        """Alias for citations property."""
+        return self.citations
 
 
 def create_rag_agent(

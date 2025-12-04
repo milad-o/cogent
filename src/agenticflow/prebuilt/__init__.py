@@ -39,9 +39,11 @@ that a prebuilt isn't needed.
 
 from agenticflow.prebuilt.chatbot import Chatbot, create_chatbot
 from agenticflow.prebuilt.rag import (
+    CitedPassage,
     DocumentPipeline,
     PipelineRegistry,
     RAGAgent,
+    RAGResponse,
     create_rag_agent,
 )
 
@@ -54,4 +56,7 @@ __all__ = [
     "create_rag_agent",
     "DocumentPipeline",
     "PipelineRegistry",
+    # Citation types
+    "CitedPassage",
+    "RAGResponse",
 ]
