@@ -24,7 +24,6 @@ Example:
 from __future__ import annotations
 
 import asyncio
-import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -690,61 +689,35 @@ class WebSearch(BaseCapability):
             )
     
     def _extract_html_content(self, html: str) -> tuple[str, str]:
-        """Extract title and text content from HTML."""
-        # Try BeautifulSoup first
+        """Extract title and text content from HTML using BeautifulSoup."""
         try:
             from bs4 import BeautifulSoup
-            
-            soup = BeautifulSoup(html, "html.parser")
-            
-            # Get title
-            title = ""
-            title_tag = soup.find("title")
-            if title_tag:
-                title = title_tag.get_text(strip=True)
-            
-            # Remove script and style elements
-            for script in soup(["script", "style", "nav", "footer", "header", "aside"]):
-                script.decompose()
-            
-            # Get text content
-            text = soup.get_text(separator="\n", strip=True)
-            
-            # Clean up whitespace
-            lines = [line.strip() for line in text.splitlines() if line.strip()]
-            content = "\n".join(lines)
-            
-            return title, content
-            
         except ImportError:
-            # Fallback to regex-based extraction
-            return self._extract_html_regex(html)
-    
-    def _extract_html_regex(self, html: str) -> tuple[str, str]:
-        """Fallback HTML extraction using regex."""
-        # Extract title
-        title_match = re.search(r"<title[^>]*>([^<]+)</title>", html, re.IGNORECASE)
-        title = title_match.group(1).strip() if title_match else ""
-        
-        # Remove script and style blocks
-        html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
-        html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
-        
-        # Remove all HTML tags
-        text = re.sub(r"<[^>]+>", " ", html)
-        
+            raise ImportError(
+                "beautifulsoup4 required for HTML parsing. "
+                "Install with: uv add 'agenticflow[web]'"
+            )
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Get title
+        title = ""
+        title_tag = soup.find("title")
+        if title_tag:
+            title = title_tag.get_text(strip=True)
+
+        # Remove non-content elements
+        for element in soup(["script", "style", "nav", "footer", "header", "aside", "noscript"]):
+            element.decompose()
+
+        # Get text content
+        text = soup.get_text(separator="\n", strip=True)
+
         # Clean up whitespace
-        text = re.sub(r"\s+", " ", text).strip()
-        
-        # Decode common HTML entities
-        text = text.replace("&nbsp;", " ")
-        text = text.replace("&amp;", "&")
-        text = text.replace("&lt;", "<")
-        text = text.replace("&gt;", ">")
-        text = text.replace("&quot;", '"')
-        text = text.replace("&#39;", "'")
-        
-        return title, text
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        content = "\n".join(lines)
+
+        return title, content
     
     def clear_cache(self) -> int:
         """Clear the page cache. Returns number of items cleared."""

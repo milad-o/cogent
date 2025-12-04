@@ -1,379 +1,454 @@
 # AgenticFlow
 
-A production-grade event-driven multi-agent system framework for building sophisticated AI applications.
+A production-grade multi-agent framework for building AI applications with native model support, advanced execution strategies, and full observability.
 
-**Native-first design**:
-- **Native model wrappers** for OpenAI, Azure, Anthropic, Groq, Gemini, Ollama
-- **Multi-agent topologies** (supervisor, mesh, pipeline, hierarchical)
-- **Intelligent resilience** (retry, circuit breakers, fallbacks)
-- **Advanced execution strategies** (DAG, ReAct, Plan-Execute)
-- **Full observability** (tracing, metrics, progress tracking)
-- **Event-driven architecture** with pub/sub patterns
+## Features
 
-## Overview
-
-AgenticFlow provides a robust foundation for building multi-agent systems with:
-
-- **Event-Driven Architecture**: Central event bus for decoupled communication
-- **Hierarchical Tasks**: Parent/child task relationships with dependency management
-- **Agent Orchestration**: Coordinate multiple specialized agents
-- **Full Observability**: Complete audit trail with timestamps and correlation IDs
-- **WebSocket Support**: Real-time event streaming for live dashboards
-- **Extensible Tools**: Easy-to-register tool system for agent capabilities
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         ORCHESTRATOR                                │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  Plans → Delegates → Monitors → Aggregates                    │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│         │                    │                    │                 │
-│         ▼                    ▼                    ▼                 │
-│    ┌─────────┐          ┌─────────┐          ┌─────────┐           │
-│    │ Agent A │          │ Agent B │          │ Agent C │           │
-│    │ (Writer)│          │(Analyst)│          │(Critic) │           │
-│    └────┬────┘          └────┬────┘          └────┬────┘           │
-│         │                    │                    │                 │
-│         └────────────────────┼────────────────────┘                 │
-│                              ▼                                      │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                      EVENT BUS                                │   │
-│  │  Events: TaskCreated, AgentInvoked, ToolCalled, ...          │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
+- **Native Model Support** — OpenAI, Azure, Anthropic, Gemini, Groq, Ollama
+- **Multi-Agent Topologies** — Supervisor, Pipeline, Mesh, Hierarchical
+- **Execution Strategies** — DAG, ReAct, Plan-Execute, Tree Search
+- **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, MCP, and more
+- **RAG Pipeline** — Document loading, chunking, embeddings, vector stores, retrievers
+- **Memory & Persistence** — Conversation history, checkpoints, long-term memory
+- **Observability** — Tracing, metrics, progress tracking, structured logging
+- **Resilience** — Retry policies, circuit breakers, fallbacks
+- **Human-in-the-Loop** — Tool approval, guidance, interruption handling
+- **Streaming** — Real-time token streaming with callbacks
 
 ## Installation
 
 ```bash
-# Basic installation
+# Basic
 uv add agenticflow
 
-# With WebSocket support
-uv add agenticflow[websocket]
-
-# With FastAPI server
-uv add agenticflow[api]
-
-# Full installation
-uv add agenticflow[all]
+# With capabilities
+uv add "agenticflow[web]"      # Web search, browser
+uv add "agenticflow[pdf]"      # PDF processing
+uv add "agenticflow[all]"      # Everything
 
 # Development
-uv add agenticflow[dev]
+uv add "agenticflow[dev]"
 ```
 
 ## Quick Start
 
+### Simple Agent
+
 ```python
 import asyncio
-from agenticflow import Agent, Flow, Observer
-from agenticflow.models import ChatModel
-from agenticflow.tools import tool
+from agenticflow import Agent, tool
+from agenticflow.models import OpenAIChat
 
-# Define tools using the native @tool decorator
 @tool
-def write_poem(subject: str) -> str:
-    """Write a poem about a subject."""
-    return f"A poem about {subject}..."
+def get_weather(city: str) -> str:
+    """Get current weather for a city."""
+    return f"Weather in {city}: 72°F, sunny"
 
 async def main():
-    # Create a model
-    model = ChatModel(model="gpt-4o")
-    
-    # Create an agent
-    writer = Agent(
-        name="Writer",
-        model=model,
-        tools=[write_poem],
-        instructions="You are a creative writer.",
+    agent = Agent(
+        name="Assistant",
+        model=OpenAIChat(model="gpt-4o-mini"),
+        tools=[get_weather],
     )
     
-    # Create a flow with observability
-    flow = Flow(
-        name="writing-team",
-        agents=[writer],
-        topology="pipeline",
-        observer=Observer.verbose(),
-    )
-    
-    # Run the flow
-    result = await flow.run("Write a poem about the ocean")
+    result = await agent.run("What's the weather in Tokyo?")
     print(result)
 
 asyncio.run(main())
 ```
 
-## Native Models
-
-AgenticFlow provides native model wrappers for all major providers:
+### Standalone Execution (No Agent)
 
 ```python
-from agenticflow.models import ChatModel, create_chat, create_embedding
-from agenticflow.models.azure import AzureChat, AzureEmbedding
-from agenticflow.models.anthropic import AnthropicChat
-from agenticflow.models.groq import GroqChat
-from agenticflow.models.gemini import GeminiChat
-from agenticflow.models.ollama import OllamaChat
+from agenticflow import run, tool
 
-# OpenAI (default)
-model = ChatModel(model="gpt-4o")
+@tool
+def calculate(expression: str) -> str:
+    """Evaluate a math expression."""
+    return str(eval(expression))
 
-# Azure OpenAI with Managed Identity
+result = await run(
+    "What is 25 * 4 + 10?",
+    tools=[calculate],
+    model="gpt-4o-mini",
+)
+```
+
+### Multi-Agent Pipeline
+
+```python
+from agenticflow import Agent, Flow
+from agenticflow.models import OpenAIChat
+
+model = OpenAIChat(model="gpt-4o")
+
+researcher = Agent(name="Researcher", model=model, instructions="Research topics thoroughly.")
+writer = Agent(name="Writer", model=model, instructions="Write clear, engaging content.")
+editor = Agent(name="Editor", model=model, instructions="Review and polish the content.")
+
+flow = Flow(
+    name="content-pipeline",
+    agents=[researcher, writer, editor],
+    topology="pipeline",
+)
+
+result = await flow.run("Create a blog post about quantum computing")
+```
+
+## Models
+
+Native wrappers for all major providers:
+
+```python
+from agenticflow.models import (
+    OpenAIChat,      # GPT-4o, GPT-4o-mini
+    AnthropicChat,   # Claude 4
+    GeminiChat,      # Gemini 2.0
+    GroqChat,        # Llama, Mixtral (fast inference)
+    OllamaChat,      # Local models
+)
+from agenticflow.models.azure import AzureChat  # Azure OpenAI
+
+# OpenAI
+model = OpenAIChat(model="gpt-4o")
+
+# Anthropic
+model = AnthropicChat(model="claude-sonnet-4-20250514")
+
+# Azure with Managed Identity
 model = AzureChat(
     deployment="gpt-4o",
     azure_endpoint="https://my-resource.openai.azure.com",
     use_managed_identity=True,
 )
 
-# Anthropic
-model = AnthropicChat(model="claude-sonnet-4-20250514")
-
-# Groq (fast inference)
-model = GroqChat(model="llama-3.1-70b-versatile")
-
-# Gemini
-model = GeminiChat(model="gemini-1.5-pro")
-
-# Ollama (local)
-model = OllamaChat(model="llama3.1")
-
-# Factory function
-model = create_chat("anthropic", model="claude-sonnet-4-20250514")
+# Local with Ollama
+model = OllamaChat(model="qwen2.5:7b")
 ```
 
-## Core Concepts
+## Capabilities
 
-### Agent
-
-An autonomous entity that can think, act, and communicate with intelligent resilience:
+Composable capabilities that add tools to agents:
 
 ```python
 from agenticflow import Agent
-from agenticflow.models import ChatModel
-from agenticflow.tools import tool
-
-@tool
-def analyze_data(dataset: str) -> str:
-    """Analyze a dataset."""
-    return f"Analysis of {dataset}..."
-
-model = ChatModel(model="gpt-4o")
+from agenticflow.capabilities import (
+    Filesystem,      # Read/write files, list directories
+    WebSearch,       # Search web, fetch pages
+    CodeSandbox,     # Execute Python safely
+    Browser,         # Browse web pages with Playwright
+    PDFCapability,   # Extract text from PDFs
+    Shell,           # Run shell commands
+    Spreadsheet,     # Read/write Excel files
+    MCPCapability,   # Connect to MCP servers
+    Summarizer,      # Summarize documents
+    KnowledgeGraph,  # Build and query knowledge graphs
+)
 
 agent = Agent(
-    name="Analyst",
+    name="Developer",
     model=model,
-    tools=[analyze_data],
-    instructions="You are a data analyst. Provide clear insights.",
+    capabilities=[
+        Filesystem(allowed_paths=["./project"]),
+        CodeSandbox(timeout=30),
+        Shell(allowed_commands=["git", "npm"]),
+    ],
 )
-
-# Simple chat
-response = await agent.chat("What's in the sales data?")
-
-# Run with tools
-result = await agent.run("Analyze the Q4 sales dataset")
 ```
 
-### Multi-Agent Topologies
+## RAG (Retrieval-Augmented Generation)
 
-Coordinate multiple agents using different patterns:
+Full RAG pipeline with document processing and vector search:
 
 ```python
-from agenticflow import Agent, Flow, Observer
-from agenticflow.models import ChatModel
+from agenticflow.prebuilt import RAGAgent
+from agenticflow.models import OpenAIChat
+from agenticflow.vectorstore import OpenAIEmbeddings
 
-model = ChatModel(model="gpt-4o")
-
-# Create specialized agents
-researcher = Agent(name="Researcher", model=model, instructions="Research topics thoroughly.")
-writer = Agent(name="Writer", model=model, instructions="Write clear, engaging content.")
-editor = Agent(name="Editor", model=model, instructions="Review and improve content.")
-
-# Pipeline: Sequential workflow
-flow = Flow(
-    name="content-team",
-    agents=[researcher, writer, editor],
-    topology="pipeline",
-    observer=Observer.verbose(),
+rag = RAGAgent(
+    model=OpenAIChat(model="gpt-4o-mini"),
+    embeddings=OpenAIEmbeddings(),
 )
 
-result = await flow.run("Create a blog post about AI trends")
+# Load documents (supports .pdf, .md, .txt, .html, .py, .json, .csv, ...)
+await rag.load_documents(["docs/", "report.pdf"])
 
-# Supervisor: One agent delegates to others
+# Query with automatic retrieval
+answer = await rag.query("What are the key findings?")
+```
+
+### Document Processing
+
+```python
+from agenticflow.document import (
+    DocumentLoader,           # Load any file type
+    RecursiveCharacterSplitter,
+    MarkdownSplitter,
+    CodeSplitter,
+    SemanticSplitter,        # LLM-based chunking
+    PDFLoader,
+    PDFMarkdownLoader,       # PDF to markdown with pymupdf4llm
+)
+
+# Load and split
+loader = DocumentLoader()
+docs = await loader.load("technical_paper.pdf")
+
+splitter = SemanticSplitter(model=model)
+chunks = splitter.split_documents(docs)
+```
+
+### Vector Stores
+
+```python
+from agenticflow.vectorstore import VectorStore, OpenAIEmbeddings
+from agenticflow.vectorstore.backends import (
+    InMemoryBackend,
+    FAISSBackend,
+    ChromaBackend,
+    QdrantBackend,
+    PgVectorBackend,
+)
+
+store = VectorStore(
+    embeddings=OpenAIEmbeddings(),
+    backend=FAISSBackend(dimension=1536),
+)
+
+await store.add_documents(chunks)
+results = await store.search("quantum entanglement", k=5)
+```
+
+## Multi-Agent Topologies
+
+### Supervisor
+
+One agent delegates to specialists:
+
+```python
+from agenticflow import Flow
+
 flow = Flow(
     name="team",
-    agents=[supervisor, researcher, writer],
+    agents=[supervisor, researcher, coder, writer],
     topology="supervisor",
     supervisor_name="supervisor",
 )
+```
 
-# Mesh: All agents can communicate
+### Pipeline
+
+Sequential processing through agents:
+
+```python
 flow = Flow(
-    name="collaborative",
+    name="content",
+    agents=[researcher, writer, editor],
+    topology="pipeline",
+)
+```
+
+### Mesh
+
+All agents can communicate freely:
+
+```python
+flow = Flow(
+    name="brainstorm",
     agents=[agent1, agent2, agent3],
     topology="mesh",
 )
 ```
 
-### Task
+### Hierarchical
 
-A unit of work with lifecycle tracking:
+Team leads coordinate sub-teams:
 
 ```python
-from agenticflow import Task, TaskStatus, Priority
+from agenticflow.topologies import Hierarchical
 
-task = Task(
-    name="Analyze sales data",
-    description="Review Q4 sales and identify trends",
-    tool="analyze_data",
-    args={"dataset": "sales_q4"},
-    priority=Priority.HIGH,
+topology = Hierarchical(
+    name="org",
+    teams={
+        "research": [lead1, analyst1, analyst2],
+        "engineering": [lead2, dev1, dev2],
+    },
 )
 ```
 
-### Event
-
-An immutable record of system activity:
+## Memory & Persistence
 
 ```python
-from agenticflow import Event, EventType
+from agenticflow import Agent
+from agenticflow.memory import MemoryStore, InMemorySaver
 
-# Events are automatically emitted by the system
-# Subscribe to events for custom handling
-event_bus.subscribe(EventType.TASK_COMPLETED, my_handler)
+agent = Agent(
+    name="Assistant",
+    model=model,
+    memory=InMemorySaver(),  # Conversation history
+    store=MemoryStore(),     # Long-term memory
+)
+
+# Continue conversation
+result = await agent.run("Remember this: my name is Alice", thread_id="user-123")
+result = await agent.run("What's my name?", thread_id="user-123")  # "Alice"
 ```
 
-### EventBus
-
-Central pub/sub system:
+## Streaming
 
 ```python
-from agenticflow import EventBus
+agent = Agent(
+    name="Writer",
+    model=model,
+    stream=True,
+)
 
-event_bus = EventBus()
-
-# Subscribe to specific events
-event_bus.subscribe(EventType.AGENT_ERROR, handle_error)
-
-# Subscribe to all events (logging, metrics)
-event_bus.subscribe_all(log_all_events)
+async for chunk in agent.run_stream("Write a poem"):
+    print(chunk.content, end="", flush=True)
 ```
 
-## Task Lifecycle
-
-```
-PENDING ──► SCHEDULED ──► RUNNING ──► COMPLETED
-                │             │            │
-                │             ▼            │
-                │         SPAWNING ────────┤
-                │         (subtasks)       │
-                ▼             │            ▼
-             BLOCKED ◄────────┘         FAILED
-             (waiting)                  (error)
-```
-
-## Agent Lifecycle
-
-```
-IDLE ──► THINKING ──► ACTING ──► IDLE
-           │            │
-           ▼            ▼
-        WAITING      ERROR
-```
-
-## WebSocket Server
-
-Stream events in real-time:
+## Human-in-the-Loop
 
 ```python
-from agenticflow.events import start_websocket_server
+agent = Agent(
+    name="Assistant",
+    model=model,
+    tools=[dangerous_tool],
+    interrupt_on={"tools": ["dangerous_tool"]},  # Require approval
+)
 
-# Start WebSocket server
-server = await start_websocket_server(event_bus, port=8765)
+try:
+    result = await agent.run("Do something risky")
+except InterruptedException as e:
+    # Handle approval flow
+    decision = await get_human_decision(e.pending_action)
+    result = await agent.resume(e.state, decision)
 ```
 
-Connect from JavaScript:
+## Observability
 
-```javascript
-const ws = new WebSocket('ws://localhost:8765');
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('Event:', data);
-};
+```python
+from agenticflow import Agent, Observer
+
+# Verbose output with tool calls
+agent = Agent(
+    name="Assistant",
+    model=model,
+    verbose="debug",  # minimal | verbose | debug | trace
+)
+
+# Or use Observer for flows
+flow = Flow(
+    agents=[...],
+    observer=Observer.verbose(),
+)
 ```
 
-## Project Structure
+## Interceptors
 
+Control execution flow with middleware:
+
+```python
+from agenticflow.interceptors import (
+    BudgetGuard,      # Token/cost limits
+    RateLimiter,      # Request throttling
+    PIIShield,        # Redact sensitive data
+    ContentFilter,    # Block harmful content
+    ToolGate,         # Conditional tool access
+    PromptAdapter,    # Modify prompts dynamically
+)
+
+agent = Agent(
+    name="Safe",
+    model=model,
+    intercept=[
+        BudgetGuard(max_tokens=10000),
+        PIIShield(),
+        RateLimiter(requests_per_minute=60),
+    ],
+)
 ```
-agenticflow/
-├── src/agenticflow/
-│   ├── __init__.py          # Main exports
-│   ├── core/                 # Core types and utilities
-│   │   ├── enums.py         # Status enums, event types
-│   │   ├── types.py         # Type definitions
-│   │   └── utils.py         # Helper functions
-│   ├── models/               # Data models
-│   │   ├── event.py         # Event class
-│   │   ├── message.py       # Message class
-│   │   └── task.py          # Task class
-│   ├── agents/               # Agent system
-│   │   ├── base.py          # Agent class
-│   │   ├── config.py        # AgentConfig
-│   │   └── state.py         # AgentState
-│   ├── events/               # Event system
-│   │   ├── bus.py           # EventBus
-│   │   └── handlers.py      # Built-in handlers
-│   ├── tasks/                # Task management
-│   │   └── manager.py       # TaskManager
-│   ├── tools/                # Tool system
-│   │   ├── registry.py      # ToolRegistry
-│   │   └── builtin.py       # Built-in tools
-│   ├── orchestrator/         # Orchestration
-│   │   └── orchestrator.py  # Orchestrator class
-│   ├── server/               # External interfaces
-│   │   ├── websocket.py     # WebSocket server
-│   │   └── api.py           # FastAPI server
-│   └── cli.py               # CLI entry point
-├── tests/                    # Test suite
-├── examples/                 # Example applications
-├── pyproject.toml
-└── README.md
+
+## Execution Strategies
+
+```python
+from agenticflow import Agent
+
+# DAG (default) - Parallel tool execution when possible
+agent = Agent(model=model, strategy="dag")
+
+# ReAct - Reason → Act → Observe loop
+agent = Agent(model=model, strategy="react")
+
+# Plan-Execute - Create plan, then execute steps
+agent = Agent(model=model, strategy="plan")
+```
+
+## Resilience
+
+```python
+from agenticflow.agent import ResilienceConfig, RetryPolicy
+
+agent = Agent(
+    model=model,
+    resilience=ResilienceConfig(
+        retry=RetryPolicy(max_attempts=3, backoff_multiplier=2.0),
+        timeout=30.0,
+        circuit_breaker=True,
+    ),
+)
+```
+
+## Configuration
+
+Use environment variables or `.env`:
+
+```bash
+# LLM Provider
+LLM_PROVIDER=openai           # openai | anthropic | gemini | groq | azure | ollama
+OPENAI_API_KEY=sk-...
+
+# Embedding Provider  
+EMBEDDING_PROVIDER=openai
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# Azure (if using)
+AZURE_OPENAI_ENDPOINT=https://...
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_AUTH_TYPE=managed_identity  # api_key | managed_identity | default
+
+# Ollama (local)
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b
 ```
 
 ## Examples
 
-See the `examples/` directory for complete examples:
+See `examples/` for complete examples:
 
-- `basic_agent.py` - Simple single-agent setup
-- `multi_agent.py` - Multiple agents working together
-- `websocket_demo.py` - Real-time event streaming
-- `custom_tools.py` - Creating custom tools
-
-## CLI
-
-```bash
-# Run the demo
-agenticflow demo
-
-# Start WebSocket server
-agenticflow serve --websocket --port 8765
-
-# Start API server
-agenticflow serve --api --port 8000
-```
+| Example | Description |
+|---------|-------------|
+| `01_basic_usage.py` | Simple agent with tools |
+| `02_topologies.py` | Multi-agent patterns |
+| `03_flow.py` | Flow orchestration |
+| `06_memory.py` | Conversation persistence |
+| `10_agentic_rag.py` | RAG with agents |
+| `14_filesystem.py` | File operations |
+| `15_web_search.py` | Web search capability |
+| `16_code_sandbox.py` | Safe code execution |
+| `18_human_in_the_loop.py` | Approval workflows |
+| `19_streaming.py` | Real-time streaming |
+| `25_browser.py` | Web browsing |
+| `28_interceptors.py` | Middleware patterns |
 
 ## Development
 
 ```bash
-# Install dev dependencies
+# Install with dev dependencies
 uv sync --extra dev
 
 # Run tests
 uv run pytest
-
-# Run with coverage
-uv run pytest --cov=agenticflow
 
 # Type checking
 uv run mypy src/agenticflow
@@ -384,4 +459,4 @@ uv run ruff check src/agenticflow
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License

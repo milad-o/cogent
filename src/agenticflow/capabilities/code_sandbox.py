@@ -471,12 +471,16 @@ class CodeSandbox(BaseCapability):
         error_msg = None
         
         try:
-            # Set timeout using signal (Unix only)
+            # Set timeout using signal (Unix only, main thread only)
             def timeout_handler(signum, frame):
                 raise TimeoutError(f"Execution timed out after {self._timeout} seconds")
             
-            # Only use signal on Unix systems
-            use_signal = hasattr(signal, "SIGALRM")
+            # Only use signal on Unix systems AND in main thread
+            import threading
+            use_signal = (
+                hasattr(signal, "SIGALRM") and 
+                threading.current_thread() is threading.main_thread()
+            )
             if use_signal:
                 old_handler = signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(self._timeout)
