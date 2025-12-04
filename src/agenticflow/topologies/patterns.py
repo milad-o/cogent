@@ -479,6 +479,10 @@ Create a comprehensive final output that represents the team's consensus."""
             agents.append(self.synthesizer)
         return agents
 
+    def get_agents_dict(self) -> dict[str, "Agent"]:
+        """Get agents as dict for visualization (overrides base property conflict)."""
+        return {cfg.name: cfg.agent for cfg in self.get_agents() if cfg.name}
+
 
 @dataclass
 class Hierarchical(BaseTopology):

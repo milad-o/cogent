@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     from agenticflow.observability.progress import ProgressTracker
     from agenticflow.agent.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
     from agenticflow.agent.streaming import StreamChunk, StreamEvent
+    from agenticflow.graph import AgentGraph
 
 
 class Agent:
@@ -3927,6 +3928,73 @@ Structure your findings:
             instructions=base_prompt,
             **kwargs,
         )
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Visualization (High-level Graph API)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def to_graph(
+        self,
+        *,
+        show_tools: bool = True,
+        show_config: bool = False,
+    ) -> "AgentGraph":
+        """Create a graph visualization of this agent.
+
+        High-level API for the graph module. Returns an AgentGraph
+        that can be rendered to Mermaid, Graphviz, or ASCII.
+
+        Args:
+            show_tools: Whether to show tools in the diagram.
+            show_config: Whether to show configuration node.
+
+        Returns:
+            AgentGraph instance for rendering.
+
+        Example:
+            >>> graph = agent.to_graph()
+            >>> print(graph.render())  # Mermaid code
+            >>> graph.to_png("agent.png")
+        """
+        from agenticflow.graph import AgentGraph
+
+        return AgentGraph.from_agent(
+            self,
+            show_tools=show_tools,
+            show_config=show_config,
+        )
+
+    def visualize(self, backend: str = "mermaid") -> str:
+        """Get a visualization of this agent.
+
+        Convenience method that returns rendered diagram code.
+
+        Args:
+            backend: Backend to use ("mermaid", "graphviz", "ascii").
+
+        Returns:
+            Rendered diagram string.
+        """
+        from agenticflow.graph import (
+            ASCIIBackend,
+            GraphvizBackend,
+            MermaidBackend,
+        )
+
+        graph = self.to_graph()
+
+        backends = {
+            "mermaid": MermaidBackend,
+            "graphviz": GraphvizBackend,
+            "ascii": ASCIIBackend,
+        }
+
+        backend_cls = backends.get(backend, MermaidBackend)
+        return graph.render(backend=backend_cls())
+
+    def _repr_html_(self) -> str:
+        """IPython/Jupyter HTML representation."""
+        return self.to_graph().to_html()
 
     def __repr__(self) -> str:
         return f"Agent(id={self.id}, name={self.name}, role={self.role.value})"

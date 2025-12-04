@@ -64,13 +64,14 @@ Convenience Functions:
     >>> topology = mesh(agents=[analyst1, analyst2], max_rounds=2)
 """
 
-from .core import AgentConfig, BaseTopology, TopologyResult, TopologyType
+from .core import AgentConfig, BaseTopology, TopologyConfig, TopologyResult, TopologyType
 from .patterns import Hierarchical, Mesh, Pipeline, Supervisor, mesh, pipeline, supervisor
 
 __all__ = [
     # Core classes
     "AgentConfig",
     "BaseTopology",
+    "TopologyConfig",
     "TopologyResult",
     "TopologyType",
     # Pattern classes

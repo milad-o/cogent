@@ -326,6 +326,9 @@ from agenticflow.visualization import (
     TopologyDiagram,
 )
 
+# Graph API (multi-level visualization)
+from agenticflow import graph
+
 # Prebuilt agents (ready-to-use components)
 from agenticflow.prebuilt import (
     Chatbot,
@@ -544,6 +547,8 @@ __all__ = [
     "MermaidDirection",
     "AgentDiagram",
     "TopologyDiagram",
+    # Graph API (new multi-level visualization)
+    "graph",
     # Prebuilt agents
     "Chatbot",
     "RAGAgent",

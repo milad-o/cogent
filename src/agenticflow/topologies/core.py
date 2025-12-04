@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ..agent import Agent
     from ..memory import TeamMemory
+    from ..graph import TopologyGraph
 
 
 class TopologyType(str, Enum):
@@ -39,6 +40,20 @@ class AgentConfig:
     def __post_init__(self) -> None:
         if self.name is None:
             self.name = getattr(self.agent, "name", "agent")
+
+
+@dataclass
+class TopologyConfig:
+    """Configuration for a topology."""
+
+    name: str = "Topology"
+    """Display name for the topology."""
+
+    description: str = ""
+    """Description of what the topology does."""
+
+    metadata: dict[str, Any] = field(default_factory=dict)
+    """Additional configuration metadata."""
 
 
 @dataclass
@@ -132,3 +147,73 @@ class BaseTopology(ABC):
         result = await self.run(task, team_memory=team_memory)
         yield {"type": "output", "data": result.output}
         yield {"type": "complete", "data": result}
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Visualization (High-level Graph API)
+    # ─────────────────────────────────────────────────────────────────────
+
+    def get_agents_dict(self) -> dict[str, "Agent"]:
+        """Get agents as a dict by name for visualization.
+        
+        Used by graph builders to access agents by name.
+        Concrete topologies may override if they have specific structure.
+        """
+        return {cfg.name: cfg.agent for cfg in self.get_agents() if cfg.name}
+
+    @property
+    def config(self) -> TopologyConfig:
+        """Get topology configuration. Override in subclasses."""
+        return TopologyConfig(name=f"{self.topology_type.value.title()} Topology")
+
+    def to_graph(self, *, show_tools: bool = True) -> "TopologyGraph":
+        """Create a graph visualization of this topology.
+
+        High-level API for the graph module. Returns a TopologyGraph
+        that can be rendered to Mermaid, Graphviz, or ASCII.
+
+        Args:
+            show_tools: Whether to show agent tools in the diagram.
+
+        Returns:
+            TopologyGraph instance for rendering.
+
+        Example:
+            >>> graph = topology.to_graph()
+            >>> print(graph.render())  # Mermaid code
+            >>> graph.to_png("topology.png")
+        """
+        from agenticflow.graph import TopologyGraph
+
+        return TopologyGraph.from_topology(self, show_tools=show_tools)
+
+    def visualize(self, backend: str = "mermaid") -> str:
+        """Get a visualization of this topology.
+
+        Convenience method that returns rendered diagram code.
+
+        Args:
+            backend: Backend to use ("mermaid", "graphviz", "ascii").
+
+        Returns:
+            Rendered diagram string.
+        """
+        from agenticflow.graph import (
+            ASCIIBackend,
+            GraphvizBackend,
+            MermaidBackend,
+        )
+
+        graph = self.to_graph()
+
+        backends = {
+            "mermaid": MermaidBackend,
+            "graphviz": GraphvizBackend,
+            "ascii": ASCIIBackend,
+        }
+
+        backend_cls = backends.get(backend, MermaidBackend)
+        return graph.render(backend=backend_cls())
+
+    def _repr_html_(self) -> str:
+        """IPython/Jupyter HTML representation."""
+        return self.to_graph().to_html()
