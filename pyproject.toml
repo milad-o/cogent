@@ -30,6 +30,10 @@ dependencies = [
     "reportlab>=4.4.5",
     "pypdf>=6.4.0",
     "playwright>=1.56.0",
+    "structlog>=25.5.0",
+    "pymupdf4llm>=0.2.6",
+    "pymupdf>=1.26.6",
+    "pymupdf-layout>=1.26.6",
 ]
 
 [project.optional-dependencies]

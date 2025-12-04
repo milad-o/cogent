@@ -10,6 +10,43 @@ applyTo: **/*.py
 - Never suggest `pip`, `poetry`, `pipenv`, or other package managers.
 - Use `ruff` for linting and formatting (replaces Black, isort, flake8).
 
+### Free-Threaded Python (3.13+ Experimental)
+- Python 3.13 introduces **free-threading (PEP 703)** as an experimental build option (no-GIL).
+- **Current stance**: We do **not** leverage free-threading yet—it requires the experimental `python3.13t` build.
+- **Design for the future**: Write thread-safe code now to prepare for GIL-free Python:
+  - Avoid relying on the GIL for thread safety.
+  - Use explicit synchronization primitives (`threading.Lock`, `asyncio.Lock`).
+  - Prefer **immutable data structures** (`frozen=True` dataclasses, `tuple`, `frozenset`).
+  - Avoid shared mutable state between threads/tasks.
+- **When free-threading stabilizes** (expected Python 3.14+):
+  - Use `concurrent.futures.ThreadPoolExecutor` for true CPU parallelism.
+  - Profile with thread-aware tools to identify contention.
+  - Consider `threading.Lock` for critical sections with shared mutable state.
+- **Thread-safe patterns to adopt now**:
+  ```python
+  import threading
+  from functools import lru_cache
+
+  # Thread-safe singleton pattern
+  _lock = threading.Lock()
+  _instance: MyService | None = None
+
+  def get_service() -> MyService:
+      global _instance
+      if _instance is None:
+          with _lock:
+              if _instance is None:  # Double-check locking
+                  _instance = MyService()
+      return _instance
+
+  # Prefer thread-local storage for request context (alternative to contextvars)
+  _thread_local = threading.local()
+  ```
+- **Avoid anti-patterns**:
+  - ❌ Relying on GIL for atomicity of operations.
+  - ❌ Sharing mutable collections between threads without locks.
+  - ❌ Global mutable state without synchronization.
+
 ## Python 3.13+ Modern Syntax & Features
 
 ### Type Hints (Modern Style)
@@ -31,9 +68,47 @@ applyTo: **/*.py
 - Use **`@dataclass`** with `slots=True`, `frozen=True`, `kw_only=True` where appropriate.
 - Prefer `dataclasses` or `attrs` over plain classes for data containers.
 - Use `__slots__` in performance-critical classes to reduce memory footprint.
-- Use **f-strings** with `=` for debugging: `f"{variable=}"`.
+- Use **f-strings** with `=` for debugging: `f"{variable=}"` (works with expressions too).
 - Use `pathlib.Path` exclusively for file operations (never `os.path`).
 - Use `contextlib.asynccontextmanager` and `@contextmanager` for resource management.
+- Use **`functools.cached_property`** for expensive computed properties.
+- Use **`tomllib`** (stdlib) for TOML parsing; avoid external `toml`/`tomli` packages.
+- Use **`zoneinfo.ZoneInfo`** for timezones; **never use `pytz`**.
+
+### Dataclass Best Practices (3.12+)
+- **Default for domain models**: `@dataclass(frozen=True, slots=True, kw_only=True)`
+- Use `match_args=False` when positional pattern matching is not needed.
+- Use `frozen=True` for immutable value objects.
+- Use `kw_only=True` to enforce keyword arguments and prevent positional bugs.
+- Example:
+  ```python
+  from dataclasses import dataclass
+
+  @dataclass(frozen=True, slots=True, kw_only=True)
+  class OrderItem:
+      product_id: str
+      quantity: int
+      unit_price: Decimal
+
+      @property
+      def total(self) -> Decimal:
+          return self.quantity * self.unit_price
+  ```
+
+### Pattern Matching Rules
+- Use **guards** (`if` clauses) for complex conditions.
+- Prefer `case _ as var:` over duplicate match arms.
+- **Avoid pattern matching for simple conditionals**; use `if`/`elif` instead.
+- Example:
+  ```python
+  match event:
+      case {"type": "user_created", "data": data} if data.get("verified"):
+          await handle_verified_user(data)
+      case {"type": "user_created", "data": data}:
+          await handle_unverified_user(data)
+      case {"type": event_type} as evt:
+          log.warning("unhandled_event", event_type=event_type)
+  ```
 
 ### Deprecated Patterns to Avoid
 - ❌ `typing.Optional[T]` → ✅ `T | None`
@@ -44,6 +119,11 @@ applyTo: **/*.py
 - ❌ `os.path.join()` → ✅ `Path() / "subdir"`
 - ❌ `%` or `.format()` → ✅ f-strings
 - ❌ Bare `except:` → ✅ `except Exception:`
+- ❌ `pytz` → ✅ `zoneinfo.ZoneInfo` (stdlib)
+- ❌ `toml`/`tomli` for reading → ✅ `tomllib` (stdlib, Python 3.11+)
+- ❌ `pickle` for untrusted data → ✅ `orjson`/`msgpack` for serialization
+- ❌ `typing.Any` (avoid) → ✅ Use proper generics or `object`
+- ❌ `*args, **kwargs` (avoid) → ✅ Explicit keyword-only parameters
 
 ---
 
@@ -152,6 +232,33 @@ applyTo: **/*.py
 - Include **actionable context** in error messages.
 - Log errors with structured data (use `structlog` or similar).
 - Use `contextlib.suppress()` for intentionally ignored exceptions.
+- Use **`Exception.add_note()`** (Python 3.11+) to attach context before re-raising:
+  ```python
+  try:
+      await process_order(order_id)
+  except Exception as exc:
+      exc.add_note(f"Order ID: {order_id}")
+      exc.add_note(f"User ID: {user_id}")
+      raise
+  ```
+
+### Exception Groups (Structured Error Handling)
+- Use **`ExceptionGroup`** for concurrent error handling with `except*`.
+- Use **`BaseExceptionGroup.split()`** for error classification and filtering.
+- Example:
+  ```python
+  async def fetch_all(urls: list[str]) -> list[Response]:
+      async with asyncio.TaskGroup() as tg:
+          tasks = [tg.create_task(fetch(url)) for url in urls]
+      return [t.result() for t in tasks]  # Raises ExceptionGroup on failures
+
+  try:
+      results = await fetch_all(urls)
+  except* ConnectionError as eg:
+      log.warning("connection_errors", count=len(eg.exceptions))
+  except* TimeoutError as eg:
+      log.error("timeout_errors", count=len(eg.exceptions))
+  ```
 
 ### Validation
 - Validate at boundaries (API endpoints, external inputs).
@@ -174,6 +281,49 @@ applyTo: **/*.py
 - Implement **graceful shutdown** with signal handlers.
 - Use **connection pooling** for database and HTTP clients.
 - Handle cancellation properly with `try`/`finally` or `asyncio.shield()`.
+
+### Task Cancellation (Critical)
+- **Always propagate cancellation explicitly**; never swallow `CancelledError`.
+- Perform cleanup before re-raising cancellation.
+- Example:
+  ```python
+  async def worker() -> None:
+      try:
+          await do_work()
+      except asyncio.CancelledError:
+          await cleanup_resources()  # Cleanup first
+          raise  # Always re-raise
+  ```
+
+### Async Resource Cleanup
+- Use **`contextlib.aclosing()`** for async generator cleanup.
+- Prefer async file I/O libraries (`aiofiles`) for I/O-bound workloads.
+- Example:
+  ```python
+  from contextlib import aclosing
+
+  async with aclosing(async_generator()) as agen:
+      async for item in agen:
+          await process(item)
+  ```
+
+### Context Variables for Request Scoping
+- Use **`contextvars`** for propagating correlation IDs, user context, and trace data.
+- Essential for async microservices and structured logging.
+- Example:
+  ```python
+  from contextvars import ContextVar
+
+  request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
+  user_id_ctx: ContextVar[str | None] = ContextVar("user_id", default=None)
+
+  async def middleware(request: Request, call_next: Callable) -> Response:
+      request_id_ctx.set(request.headers.get("X-Request-ID", str(uuid4())))
+      return await call_next(request)
+
+  # Automatically available in all async tasks spawned from this context
+  logger.info("processing", request_id=request_id_ctx.get())
+  ```
 
 ---
 
@@ -222,7 +372,8 @@ applyTo: **/*.py
 3. Local application imports
 
 ### Import Style
-- Use **absolute imports** exclusively.
+- Use **absolute imports** for cross-package imports.
+- Use **relative imports** only for intra-package imports: `from .service import UserService`.
 - Import specific names: `from module import ClassName` (not `import module`).
 - Never use wildcard imports (`from x import *`).
 - Use `TYPE_CHECKING` block for import-only type hints to avoid circular imports:
@@ -320,14 +471,31 @@ applyTo: **/*.py
 - Include **correlation IDs** (trace_id, request_id) in all log entries.
 - Use **log levels** appropriately: DEBUG for development, INFO for normal operations, WARNING for recoverable issues, ERROR for failures.
 - Never log sensitive data (passwords, tokens, PII).
+- **Integrate `structlog` with `contextvars`** for automatic context injection.
 - Example:
   ```python
   import structlog
+  from contextvars import ContextVar
+
+  request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
+
+  def add_context(logger, method_name, event_dict):
+      if request_id := request_id_ctx.get():
+          event_dict["request_id"] = request_id
+      return event_dict
+
+  structlog.configure(
+      processors=[
+          add_context,
+          structlog.processors.JSONRenderer(),
+      ]
+  )
 
   logger = structlog.get_logger()
 
   async def process_request(request_id: str, user_id: str) -> None:
-      log = logger.bind(request_id=request_id, user_id=user_id)
+      request_id_ctx.set(request_id)
+      log = logger.bind(user_id=user_id)
       log.info("processing_request_started")
       try:
           result = await do_work()
@@ -391,10 +559,32 @@ applyTo: **/*.py
 ### Optimization Guidelines
 - **Profile before optimizing** using `cProfile`, `py-spy`, or OpenTelemetry traces.
 - Use `__slots__` for memory-critical classes.
-- Use **generators** for large data streams to minimize memory usage.
+- Use **generators** and **async generators** for large data streams to minimize memory usage.
 - Cache expensive computations with `@functools.lru_cache` or `@functools.cache`.
+- Use **`functools.cached_property`** for expensive computed properties.
 - Use **async/await** for I/O-bound operations.
 - Leverage **database query optimization**: proper indexing, query planning, connection pooling.
+- **Prefer comprehensions** over `map()`/`filter()` for performance and readability (PEP 709).
+- Use **`orjson`** instead of stdlib `json` for high-performance JSON serialization.
+
+### Memory Management (Long-Running Services)
+- Use **`tracemalloc`** or OpenTelemetry memory metrics for debugging leaks.
+- Avoid accumulating closures in async loops.
+- Prefer **async generators with explicit cleanup** (`aclosing()`).
+- Use `__slots__` for frequently instantiated objects.
+- Monitor memory usage in production dashboards.
+
+### Standard Library Preferences
+- Use **`tomllib`** (stdlib) for TOML parsing.
+- Use **`zoneinfo.ZoneInfo`** for timezone handling:
+  ```python
+  from datetime import datetime
+  from zoneinfo import ZoneInfo
+
+  now_utc = datetime.now(ZoneInfo("UTC"))
+  now_pacific = now_utc.astimezone(ZoneInfo("America/Los_Angeles"))
+  ```
+- Avoid `pickle` for anything crossing trust boundaries.
 
 ---
 

@@ -1,7 +1,7 @@
 """Document processing module for AgenticFlow.
 
-This module provides comprehensive document loading and text splitting capabilities
-for building RAG (Retrieval Augmented Generation) systems.
+This module provides comprehensive document loading, text splitting, and
+summarization capabilities for building RAG (Retrieval Augmented Generation) systems.
 
 **Document Loading:**
 The loaders submodule supports loading documents from various file formats:
@@ -21,11 +21,18 @@ The splitters submodule provides multiple strategies for chunking text:
 - SemanticSplitter: Embedding-based semantic chunking
 - TokenSplitter: Token count-based splitting
 
+**Document Summarization:**
+The summarizer module handles documents that exceed LLM context limits:
+- MapReduceSummarizer: Parallel chunk summarization, then combine
+- RefineSummarizer: Sequential refinement with each chunk
+- HierarchicalSummarizer: Tree-based recursive summarization
+
 Example:
     >>> from agenticflow.document import (
     ...     Document,
     ...     DocumentLoader,
     ...     RecursiveCharacterSplitter,
+    ...     MapReduceSummarizer,
     ... )
     >>> 
     >>> # Load documents
@@ -35,6 +42,10 @@ Example:
     >>> # Split into chunks
     >>> splitter = RecursiveCharacterSplitter(chunk_size=1000, chunk_overlap=200)
     >>> chunks = splitter.split_documents(docs)
+    >>>
+    >>> # Summarize a large document
+    >>> summarizer = MapReduceSummarizer(model=my_model)
+    >>> result = await summarizer.summarize(docs[0].text)
 """
 
 # Types

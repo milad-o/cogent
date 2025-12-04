@@ -1,0 +1,15 @@
+|**Special Classes of Employment and**<br>**Special Types of Payments**|**Treatment Under Employment Taxes**|**Treatment Under Employment Taxes**|**Treatment Under Employment Taxes**|
+|---|---|---|---|
+||**Federal Income Tax**<br>**Withholding**|**Social Security and**<br>**Medicare (including**<br>**Additional Medicare Tax**<br>**when wages are paid in**<br>**excess of $200,000)**|**FUTA**|
+|**Students, scholars, trainees, teachers,**<br>**etc. (continued):**<br>b.<br>Auxiliary nonprofit organization<br>operated for and controlled by<br>school, college, or university.<br>c.<br>Public school, college, or<br>university.<br>2.<br>Full-time student performing service for<br>academic credit, combining instruction<br>with work experience as an integral part<br>of the program.<br>3.<br>Student nurse performing part-time<br>services for nominal earnings at hospital<br>as incidental part of training.<br>4.<br>Student employed by organized camps.<br>5.<br>Student, scholar, trainee, teacher, etc.,<br>as nonimmigrant alien under section<br>101(a)(15)(F), (J), (M), or (Q) of<br>Immigration and Nationality Act (that is,<br>aliens holding F-1, J-1, M-1, or Q-1<br>visas).|Withhold.<br>Withhold.<br>Withhold.<br>Withhold.<br>Withhold.<br>Withhold unless excepted by<br>regulations.|Exempt unless services are<br>covered by a section 218<br>(Social Security Act)<br>agreement.<br>Exempt.<br>Exempt unless services are<br>covered by a section 218<br>(Social Security Act)<br>agreement.<br>Exempt.<br>Taxable.<br>Exempt unless program was<br>established for or on behalf<br>of an employer or group of<br>employers.<br>Exempt.<br>Exempt.<br>Taxable.<br>Exempt.<br>Exempt if service is performed for purpose specified in<br>section 101(a)(15)(F), (J), (M), or (Q) of Immigration and<br>Nationality Act. However, these taxes may apply if the<br>employee becomes a resident alien. See the special<br>residency tests for exempt individuals in chapter 1 of Pub.<br>519.||
+|**Supplemental unemployment**<br>**compensation plan benefits.**|Withhold.|Exempt under certain conditions. See Pub. 15-A.||
+|**Territory government employees**(other<br>than federal):<br>1.<br>USVI.<br>2.<br>American Samoa and political<br>subdivisions.<br>3.<br>Guam.<br>4.<br>The CNMI and political subdivisions.|(See section 3121(b)(7)) or go to<br>_SSA.gov_.<br>Exempt.<br>Taxable if covered by<br>section 218 agreement with<br>SSA.<br>Exempt.<br>Taxable, unless employee<br>covered by a retirement<br>system.<br>Exempt.<br>Exempt, except for certain<br>temporary and intermittent<br>employees.<br>Exempt.<br>Taxable (beginning in the<br>fourth calendar quarter of<br>2012).||Exempt.<br>Exempt.<br>Exempt.<br>Exempt.|
+|**Tips:**<br>1.<br>If $20 or more in a month.<br>2.<br>If less than $20 in a month. See<br>section<br>6 for more information.|Withhold.<br>Exempt.|Taxable.<br>Exempt.|Taxable for all tips reported<br>in writing to employer.<br>Exempt.|
+|**Workers' compensation.**|Exempt.|Exempt.|Exempt.|
+
+
+
+**Publication 15 (2025)** 
+
+**51** 
+

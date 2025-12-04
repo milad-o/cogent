@@ -19,6 +19,11 @@ This module provides document loading capabilities for various file formats.
     >>> 
     >>> # Using convenience function
     >>> docs = await load_documents("./data")
+    >>>
+    >>> # High-performance PDF loading with Markdown output (for LLM/RAG)
+    >>> from agenticflow.document.loaders import PDFMarkdownLoader
+    >>> loader = PDFMarkdownLoader(max_workers=4, batch_size=10)
+    >>> docs = await loader.load("large_document.pdf")
 """
 
 from agenticflow.document.loaders.base import BaseLoader
@@ -28,7 +33,15 @@ from agenticflow.document.loaders.handlers import (
     HTMLLoader,
     JSONLoader,
     MarkdownLoader,
+    OutputFormat,
+    PageResult,
+    PageStatus,
+    PDFConfig,
     PDFLoader,
+    PDFMarkdownLoader,
+    PDFProcessingResult,
+    PDFProcessingStatus,
+    ProcessingMetrics,
     TextLoader,
     WordLoader,
     XLSXLoader,
@@ -49,11 +62,20 @@ __all__ = [
     "MarkdownLoader",
     "HTMLLoader",
     "PDFLoader",
+    "PDFMarkdownLoader",
     "WordLoader",
     "CSVLoader",
     "JSONLoader",
     "XLSXLoader",
     "CodeLoader",
+    # PDF LLM types
+    "PDFConfig",
+    "PDFProcessingResult",
+    "PageResult",
+    "ProcessingMetrics",
+    "PDFProcessingStatus",
+    "PageStatus",
+    "OutputFormat",
     # Registry
     "LOADERS",
     "get_loader",

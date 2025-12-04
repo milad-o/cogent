@@ -13,13 +13,14 @@ Capabilities are reusable building blocks that add tools to agents:
 - PDF: PDF reading, creation, merging, and text extraction
 - Browser: Headless browser automation with Playwright
 - Shell: Sandboxed terminal command execution
+- Summarizer: Document summarization (map-reduce, refine, hierarchical)
 
 Example:
     ```python
     from agenticflow import Agent
     from agenticflow.capabilities import (
         KnowledgeGraph, FileSystem, WebSearch, CodeSandbox, MCP,
-        Spreadsheet, PDF, Browser, Shell,
+        Spreadsheet, PDF, Browser, Shell, Summarizer,
     )
     
     agent = Agent(
@@ -34,6 +35,7 @@ Example:
             PDF(),                                # Adds read/create PDF tools
             Browser(headless=True),               # Adds browser automation tools
             Shell(allowed_commands=["ls", "cat"]), # Adds shell command tools
+            Summarizer(),                         # Adds summarize_text, summarize_file tools
             MCP.stdio(command="npx", args=["-y", "@modelcontextprotocol/server-filesystem", "."]),
         ],
     )
@@ -54,6 +56,7 @@ from agenticflow.capabilities.pdf import PDF
 from agenticflow.capabilities.shell import Shell
 from agenticflow.capabilities.spreadsheet import Spreadsheet
 from agenticflow.capabilities.ssis import SSISAnalyzer
+from agenticflow.capabilities.summarizer import Summarizer, SummarizerConfig
 from agenticflow.capabilities.web_search import WebSearch
 
 __all__ = [
@@ -70,5 +73,7 @@ __all__ = [
     "Shell",
     "Spreadsheet",
     "SSISAnalyzer",
+    "Summarizer",
+    "SummarizerConfig",
     "WebSearch",
 ]
