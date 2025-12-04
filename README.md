@@ -1,6 +1,44 @@
 # AgenticFlow
 
-A production-grade multi-agent framework for building AI applications with native model support, advanced coordination patterns, and full observability.
+<p align="center">
+  <strong>Build AI agents that actually work.</strong>
+</p>
+
+<p align="center">
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#core-architecture">Architecture</a> •
+  <a href="#multi-agent-topologies">Topologies</a> •
+  <a href="#capabilities">Capabilities</a> •
+  <a href="#examples">Examples</a>
+</p>
+
+---
+
+AgenticFlow is a **production-grade multi-agent framework** designed for performance, simplicity, and real-world deployment. Unlike frameworks that wrap LangChain or add unnecessary abstractions, AgenticFlow uses **native SDK integrations** and a **zero-overhead executor** to deliver the fastest possible agent execution.
+
+**Why AgenticFlow?**
+
+- 🚀 **Fast** — Parallel tool execution, cached model binding, direct SDK calls
+- 🔧 **Simple** — Define tools with `@tool`, create agents in 3 lines, no boilerplate
+- 🏭 **Production-ready** — Built-in resilience, observability, and security interceptors
+- 🤝 **Multi-agent** — Supervisor, Pipeline, Mesh, and Hierarchical coordination patterns
+- 📦 **Batteries included** — File system, web search, code sandbox, browser, PDF, and more
+
+```python
+from agenticflow import Agent, tool
+from agenticflow.models import ChatModel
+
+@tool
+def search(query: str) -> str:
+    """Search the web."""
+    return web_search(query)
+
+agent = Agent(name="Assistant", model=ChatModel(), tools=[search])
+result = await agent.run("Find the latest news on AI agents")
+```
+
+---
 
 ## Features
 
@@ -18,6 +56,289 @@ A production-grade multi-agent framework for building AI applications with nativ
 - **Streaming** — Real-time token streaming with callbacks
 - **Structured Output** — Type-safe responses with Pydantic schemas
 - **Reasoning** — Extended thinking mode with chain-of-thought
+
+---
+
+## Modules
+
+AgenticFlow is organized into focused modules, each with multiple backends and implementations.
+
+### `agenticflow.models` — LLM Providers
+
+Native SDK wrappers for all major LLM providers with zero abstraction overhead.
+
+| Provider | Chat | Embeddings | Notes |
+|----------|------|------------|-------|
+| **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | Default provider, GPT-4o, o1, o3 |
+| **Azure** | `AzureChat` | `AzureEmbedding` | Managed Identity, Azure AD support |
+| **Anthropic** | `AnthropicChat` | — | Claude 4, extended thinking |
+| **Gemini** | `GeminiChat` | `GeminiEmbedding` | Google AI, Vertex AI |
+| **Groq** | `GroqChat` | — | Fast inference, Llama 3.3, Mixtral |
+| **Ollama** | `OllamaChat` | `OllamaEmbedding` | Local models, any GGUF |
+| **Custom** | `CustomChat` | `CustomEmbedding` | vLLM, Together AI, any OpenAI-compatible |
+
+```python
+from agenticflow.models import create_chat, create_embedding
+
+# Factory functions for any provider
+model = create_chat("anthropic", model="claude-sonnet-4-20250514")
+embedder = create_embedding("openai", model="text-embedding-3-large")
+```
+
+### `agenticflow.capabilities` — Agent Capabilities
+
+Composable tools that plug into any agent. Each capability adds related tools.
+
+| Capability | Description | Tools Added |
+|------------|-------------|-------------|
+| **FileSystem** | Sandboxed file operations | `read_file`, `write_file`, `list_dir`, `search_files` |
+| **WebSearch** | Web search (DuckDuckGo) | `web_search`, `news_search`, `fetch_page` |
+| **CodeSandbox** | Safe Python execution | `execute_python`, `run_function` |
+| **Browser** | Playwright automation | `navigate`, `click`, `fill`, `screenshot` |
+| **PDF** | PDF processing | `read_pdf`, `create_pdf`, `merge_pdfs` |
+| **Shell** | Sandboxed shell commands | `run_command` |
+| **Spreadsheet** | Excel/CSV operations | `read_spreadsheet`, `write_spreadsheet` |
+| **MCP** | Model Context Protocol | Dynamic tools from MCP servers |
+| **KnowledgeGraph** | Entity/relationship memory | `remember`, `recall`, `query` |
+| **Summarizer** | Document summarization | `summarize_text`, `summarize_file` |
+| **CodebaseAnalyzer** | Python AST analysis | `analyze_code`, `find_usages` |
+| **SSISAnalyzer** | SSIS package analysis | `analyze_package`, `trace_lineage` |
+
+```python
+from agenticflow.capabilities import FileSystem, CodeSandbox, WebSearch
+
+agent = Agent(
+    capabilities=[
+        FileSystem(allowed_paths=["./project"]),
+        CodeSandbox(timeout=30),
+        WebSearch(),
+    ]
+)
+```
+
+### `agenticflow.document` — Document Processing
+
+Load, split, and process documents for RAG pipelines.
+
+**Loaders** — Support for all common file formats:
+
+| Loader | Formats |
+|--------|---------|
+| `TextLoader` | `.txt`, `.rst` |
+| `MarkdownLoader` | `.md` |
+| `PDFLoader` | `.pdf` (with OCR fallback) |
+| `WordLoader` | `.docx` |
+| `HTMLLoader` | `.html`, `.htm` |
+| `CSVLoader` | `.csv` |
+| `JSONLoader` | `.json`, `.jsonl` |
+| `XLSXLoader` | `.xlsx` |
+| `CodeLoader` | `.py`, `.js`, `.ts`, `.java`, `.go`, `.rs`, `.cpp`, etc. |
+
+**Splitters** — Multiple chunking strategies:
+
+| Splitter | Strategy |
+|----------|----------|
+| `RecursiveCharacterSplitter` | Hierarchical separators (default) |
+| `SentenceSplitter` | Sentence boundary detection |
+| `MarkdownSplitter` | Markdown structure-aware |
+| `HTMLSplitter` | HTML tag-based |
+| `CodeSplitter` | Language-aware code splitting |
+| `SemanticSplitter` | Embedding-based semantic chunking |
+| `TokenSplitter` | Token count-based |
+
+```python
+from agenticflow.document import DocumentLoader, SemanticSplitter
+
+loader = DocumentLoader()
+docs = await loader.load_directory("./documents")
+
+splitter = SemanticSplitter(model=model)
+chunks = splitter.split_documents(docs)
+```
+
+### `agenticflow.vectorstore` — Vector Storage
+
+Semantic search with pluggable backends and embedding providers.
+
+**Backends:**
+
+| Backend | Use Case | Persistence |
+|---------|----------|-------------|
+| `InMemoryBackend` | Development, small datasets | No |
+| `FAISSBackend` | Large-scale local search | Optional |
+| `ChromaBackend` | Persistent vector database | Yes |
+| `QdrantBackend` | Production vector database | Yes |
+| `PgVectorBackend` | PostgreSQL integration | Yes |
+
+**Embedding Providers:**
+
+| Provider | Model Examples |
+|----------|----------------|
+| `OpenAIEmbeddings` | `text-embedding-3-small`, `text-embedding-3-large` |
+| `OllamaEmbeddings` | `nomic-embed-text`, `mxbai-embed-large` |
+| `MockEmbeddings` | Testing only |
+
+```python
+from agenticflow.vectorstore import VectorStore, OpenAIEmbeddings
+from agenticflow.vectorstore.backends import FAISSBackend
+
+store = VectorStore(
+    embeddings=OpenAIEmbeddings(model="text-embedding-3-large"),
+    backend=FAISSBackend(dimension=3072),
+)
+```
+
+### `agenticflow.memory` — Memory & Persistence
+
+Long-term memory with semantic search, conversation history, and scoped views.
+
+**Stores:**
+
+| Store | Backend | Features |
+|-------|---------|----------|
+| `InMemoryStore` | Dict | Fast, no persistence |
+| `SQLAlchemyStore` | SQLite, PostgreSQL, MySQL | Async, full SQL |
+| `RedisStore` | Redis | Distributed, native TTL |
+
+```python
+from agenticflow.memory import Memory, SQLAlchemyStore
+
+memory = Memory(store=SQLAlchemyStore("sqlite+aiosqlite:///./data.db"))
+
+# Scoped views
+user_mem = memory.scoped("user:alice")
+team_mem = memory.scoped("team:research")
+```
+
+### `agenticflow.executors` — Execution Strategies
+
+Pluggable execution strategies that define HOW agents process tasks.
+
+| Executor | Strategy | Use Case |
+|----------|----------|----------|
+| `NativeExecutor` | Parallel tool execution | Default, high performance |
+| `SequentialExecutor` | Sequential tool execution | Ordered dependencies |
+| `TreeSearchExecutor` | LATS Monte Carlo tree search | Best accuracy, complex reasoning |
+
+**Standalone execution** — bypass Agent class entirely:
+
+```python
+from agenticflow.executors import run
+
+result = await run(
+    "Search for Python tutorials and summarize",
+    tools=[search, summarize],
+    model="gpt-4o-mini",
+)
+```
+
+**Tree Search (LATS)** — explores multiple reasoning paths with backtracking:
+
+```python
+from agenticflow.executors import TreeSearchExecutor
+
+executor = TreeSearchExecutor(
+    agent,
+    max_iterations=10,
+    exploration_weight=1.414,  # UCB1 exploration constant
+)
+result = await executor.execute("Complex multi-step task")
+```
+
+### `agenticflow.topologies` — Multi-Agent Patterns
+
+Coordination patterns for multi-agent workflows.
+
+| Pattern | Description | Use Case |
+|---------|-------------|----------|
+| `Supervisor` | Coordinator delegates to workers | Task routing, orchestration |
+| `Pipeline` | Sequential A → B → C | Content creation, ETL |
+| `Mesh` | All agents collaborate in rounds | Brainstorming, consensus |
+| `Hierarchical` | Tree structure with team leads | Large organizations |
+
+```python
+from agenticflow.topologies import Pipeline, AgentConfig
+
+pipeline = Pipeline(stages=[
+    AgentConfig(agent=researcher, role="research"),
+    AgentConfig(agent=writer, role="draft"),
+    AgentConfig(agent=editor, role="polish"),
+])
+```
+
+### `agenticflow.interceptors` — Middleware
+
+Composable middleware for cross-cutting concerns.
+
+| Category | Interceptors |
+|----------|-------------|
+| **Budget** | `BudgetGuard` (token/cost limits) |
+| **Security** | `PIIShield`, `ContentFilter` |
+| **Rate Limiting** | `RateLimiter`, `ThrottleInterceptor` |
+| **Context** | `ContextCompressor`, `TokenLimiter` |
+| **Gates** | `ToolGate`, `PermissionGate`, `ConversationGate` |
+| **Resilience** | `Failover`, `CircuitBreaker`, `ToolGuard` |
+| **Audit** | `Auditor` (event logging) |
+| **Prompt** | `PromptAdapter`, `ContextPrompt`, `LambdaPrompt` |
+
+```python
+from agenticflow.interceptors import BudgetGuard, PIIShield, RateLimiter
+
+agent = Agent(
+    intercept=[
+        BudgetGuard(max_model_calls=100),
+        PIIShield(patterns=["email", "ssn"]),
+        RateLimiter(requests_per_minute=60),
+    ]
+)
+```
+
+### `agenticflow.observability` — Monitoring & Tracing
+
+Comprehensive monitoring for understanding system behavior.
+
+| Component | Purpose |
+|-----------|---------|
+| `ExecutionTracer` | Deep execution tracing with spans |
+| `MetricsCollector` | Counter, Gauge, Histogram, Timer |
+| `ProgressTracker` | Real-time progress output |
+| `Observer` | Unified observability for flows |
+| `Dashboard` | Visual inspection interface |
+| `Inspectors` | Agent, Task, Event inspection |
+
+**Renderers:** `TextRenderer`, `RichRenderer`, `JSONRenderer`, `MinimalRenderer`
+
+```python
+from agenticflow.observability import ExecutionTracer, ProgressTracker
+
+tracer = ExecutionTracer()
+async with tracer.trace("my-operation") as span:
+    span.set_attribute("user_id", user_id)
+    result = await do_work()
+```
+
+### `agenticflow.graph` — Visualization
+
+Unified visualization API for agents, topologies, and flows.
+
+**Backends:**
+
+| Method | Output |
+|--------|--------|
+| `.mermaid()` | Mermaid diagram code |
+| `.ascii()` | Terminal-friendly text |
+| `.dot()` | Graphviz DOT format |
+| `.url()` | mermaid.ink shareable URL |
+| `.html()` | Embeddable HTML |
+| `.save()` | PNG, SVG, PDF, HTML |
+
+```python
+view = agent.graph()
+print(view.mermaid())
+view.save("diagram.png")
+```
+
+---
 
 ## Installation
 
@@ -176,242 +497,6 @@ flow = Flow(
 result = await flow.run("Create a blog post about quantum computing")
 ```
 
-## Models
-
-Native wrappers for all major providers:
-
-```python
-from agenticflow.models import ChatModel, create_chat
-
-# OpenAI (default)
-model = ChatModel(model="gpt-4o")
-
-# Anthropic
-from agenticflow.models.anthropic import AnthropicChat
-model = AnthropicChat(model="claude-sonnet-4-20250514")
-
-# Azure with Managed Identity
-from agenticflow.models.azure import AzureChat
-model = AzureChat(
-    deployment="gpt-4o",
-    azure_endpoint="https://my-resource.openai.azure.com",
-    use_azure_ad=True,
-)
-
-# Groq (fast inference)
-from agenticflow.models.groq import GroqChat
-model = GroqChat(model="llama-3.3-70b-versatile")
-
-# Gemini
-from agenticflow.models.gemini import GeminiChat
-model = GeminiChat(model="gemini-2.0-flash-exp")
-
-# Ollama (local)
-from agenticflow.models.ollama import OllamaChat
-model = OllamaChat(model="qwen2.5:7b")
-
-# Factory function for any provider
-model = create_chat("anthropic", model="claude-sonnet-4-20250514")
-```
-
-## Capabilities
-
-Composable capabilities that add tools to agents:
-
-```python
-from agenticflow import Agent
-from agenticflow.capabilities import (
-    FileSystem,      # Read/write files, list directories
-    WebSearch,       # Search web, fetch pages (DuckDuckGo)
-    CodeSandbox,     # Execute Python safely
-    Browser,         # Browse web pages with Playwright
-    PDF,             # Read/create/merge PDFs
-    Shell,           # Run shell commands (sandboxed)
-    Spreadsheet,     # Read/write Excel files
-    MCP,             # Connect to MCP servers
-    Summarizer,      # Summarize documents (map-reduce, refine)
-    KnowledgeGraph,  # Build and query knowledge graphs
-)
-
-agent = Agent(
-    name="Developer",
-    model=model,
-    capabilities=[
-        FileSystem(allowed_paths=["./project"]),
-        CodeSandbox(timeout=30),
-        Shell(allowed_commands=["git", "npm", "ls"]),
-        WebSearch(),
-        Summarizer(),
-    ],
-)
-```
-
-## RAG (Retrieval-Augmented Generation)
-
-Full RAG pipeline with per-file-type processing:
-
-```python
-from agenticflow.prebuilt import create_rag_agent
-from agenticflow.models import ChatModel
-from agenticflow.vectorstore import OpenAIEmbeddings
-
-rag = create_rag_agent(
-    model=ChatModel(model="gpt-4o-mini"),
-    embeddings=OpenAIEmbeddings(),
-)
-
-# Load documents - each file type uses optimal splitter
-await rag.load_documents(["docs/", "report.pdf", "code.py"])
-
-# Query with automatic retrieval
-answer = await rag.query("What are the key findings?")
-```
-
-### Document Processing
-
-```python
-from agenticflow.document import (
-    DocumentLoader,           # Load any file type
-    RecursiveCharacterSplitter,
-    MarkdownSplitter,
-    CodeSplitter,
-    SemanticSplitter,        # LLM-based chunking
-    PDFMarkdownLoader,       # PDF to markdown
-)
-
-# Load and split
-loader = DocumentLoader()
-docs = await loader.load("technical_paper.pdf")
-
-splitter = SemanticSplitter(model=model)
-chunks = splitter.split_documents(docs)
-```
-
-### Vector Stores
-
-```python
-from agenticflow.vectorstore import VectorStore, OpenAIEmbeddings
-from agenticflow.vectorstore.backends import (
-    InMemoryBackend,
-    FAISSBackend,
-    ChromaBackend,
-    QdrantBackend,
-    PgVectorBackend,
-)
-
-store = VectorStore(
-    embeddings=OpenAIEmbeddings(),
-    backend=FAISSBackend(dimension=1536),
-)
-
-await store.add_documents(chunks)
-results = await store.search("quantum entanglement", k=5)
-```
-
-## Multi-Agent Topologies
-
-### Supervisor
-
-One agent coordinates and delegates to specialists:
-
-```python
-flow = Flow(
-    name="team",
-    agents=[supervisor, researcher, coder, writer],
-    topology="supervisor",
-    supervisor="supervisor",
-)
-```
-
-### Pipeline
-
-Sequential processing through agents:
-
-```python
-flow = Flow(
-    name="content",
-    agents=[researcher, writer, editor],
-    topology="pipeline",
-)
-```
-
-### Mesh
-
-All agents collaborate in rounds:
-
-```python
-flow = Flow(
-    name="brainstorm",
-    agents=[analyst1, analyst2, analyst3],
-    topology="mesh",
-    max_rounds=3,
-)
-```
-
-### Hierarchical
-
-Team leads coordinate sub-teams:
-
-```python
-from agenticflow.topologies import Hierarchical, AgentConfig
-
-topology = Hierarchical(
-    structure={
-        "cto": ["frontend_lead", "backend_lead"],
-        "frontend_lead": ["dev1", "dev2"],
-        "backend_lead": ["dev3", "dev4"],
-    },
-    agents={...},
-)
-```
-
-## Graph Visualization
-
-Visualize agents and topologies as diagrams:
-
-```python
-# Get a graph from any entity
-view = agent.graph()
-view = topology.graph()
-
-# Render in any format
-print(view.mermaid())    # Mermaid code
-print(view.ascii())      # Terminal-friendly
-print(view.dot())        # Graphviz DOT
-print(view.url())        # mermaid.ink URL
-
-# Save to file (format auto-detected)
-view.save("agent.png")
-view.save("topology.svg")
-view.save("flow.html")
-```
-
-## Memory & Persistence
-
-```python
-from agenticflow import Agent
-from agenticflow.memory import InMemorySaver
-
-agent = Agent(
-    name="Assistant",
-    model=model,
-    memory=InMemorySaver(),  # Conversation history
-)
-
-# Continue conversation across calls
-result = await agent.run("My name is Alice", thread_id="user-123")
-result = await agent.run("What's my name?", thread_id="user-123")  # "Alice"
-
-# Long-term memory with semantic search
-from agenticflow.memory import Memory
-
-agent = Agent(
-    name="Assistant",
-    model=model,
-    store=Memory(embeddings=embeddings),  # Adds remember/recall tools
-)
-```
-
 ## Streaming
 
 ```python
@@ -567,19 +652,40 @@ See `examples/` for complete examples:
 | `01_basic_usage.py` | Simple agent with tools |
 | `02_topologies.py` | Multi-agent patterns |
 | `03_flow.py` | Flow orchestration |
+| `04_events.py` | Event system |
+| `05_observability.py` | Tracing and metrics |
 | `06_memory.py` | Conversation persistence |
+| `07_roles.py` | Agent roles |
+| `08_mesh_writers.py` | Mesh collaboration |
+| `09_hierarchical_roles.py` | Hierarchical teams |
 | `10_agentic_rag.py` | RAG with agents |
+| `11_supervisor_chat.py` | Supervisor pattern |
+| `12_knowledge_graph.py` | Knowledge graphs |
+| `13_codebase_analyzer.py` | Code analysis |
 | `14_filesystem.py` | File operations |
 | `15_web_search.py` | Web search capability |
 | `16_code_sandbox.py` | Safe code execution |
+| `17_ssis_analyzer.py` | SSIS analysis |
 | `18_human_in_the_loop.py` | Approval workflows |
 | `19_streaming.py` | Real-time streaming |
+| `20_mcp.py` | MCP server integration |
+| `21_deferred_tools.py` | Deferred tool execution |
+| `22_rag_pipelines.py` | RAG pipelines |
+| `23_pdf.py` | PDF processing |
 | `24_structured_output.py` | Type-safe responses |
 | `25_browser.py` | Web browsing |
-| `27_reasoning.py` | Extended thinking |
-| `28_interceptors.py` | Middleware patterns |
-| `32_graph_api.py` | Visualization API |
-| `34_summarizer.py` | Document summarization |
+| `26_spreadsheet.py` | Excel/CSV operations |
+| `27_deep_observability.py` | Deep tracing |
+| `28_reasoning.py` | Extended thinking |
+| `29_interceptors.py` | Middleware patterns |
+| `30_shell.py` | Shell commands |
+| `31_context_layer.py` | Context management |
+| `32_spawning_agents.py` | Dynamic agent creation |
+| `33_graph_api.py` | Visualization API |
+| `34_pdf_llm.py` | PDF with LLM |
+| `35_pdf_rag.py` | PDF RAG pipeline |
+| `36_summarizer.py` | Document summarization |
+| `37_pdf_summarizer.py` | PDF summarization |
 
 ## Development
 
