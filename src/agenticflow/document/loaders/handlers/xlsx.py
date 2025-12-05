@@ -38,11 +38,11 @@ class XLSXLoader(BaseLoader):
         super().__init__(encoding)
         self.sheet_names = sheet_names
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load an Excel file.
         
         Args:
-            path: Path to the Excel file.
+            path: Path to the Excel file (str or Path).
             **kwargs: Additional options.
             
         Returns:
@@ -51,6 +51,7 @@ class XLSXLoader(BaseLoader):
         Raises:
             ImportError: If openpyxl is not installed.
         """
+        path = Path(path)
         if path.suffix.lower() == ".xls":
             raise ValueError(
                 "Old .xls format requires xlrd. "

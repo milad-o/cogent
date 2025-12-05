@@ -20,7 +20,8 @@ class BaseLoader(ABC):
         
     Example:
         >>> class CustomLoader(BaseLoader):
-        ...     async def load(self, path: Path, **kwargs) -> list[Document]:
+        ...     async def load(self, path: str | Path, **kwargs) -> list[Document]:
+        ...         path = Path(path)
         ...         content = path.read_text()
         ...         return [Document(content=content, metadata={"source": str(path)})]
     """
@@ -37,11 +38,11 @@ class BaseLoader(ABC):
         self.encoding = encoding
     
     @abstractmethod
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load documents from a file.
         
         Args:
-            path: Path to the file to load.
+            path: Path to the file to load (str or Path).
             **kwargs: Additional loader-specific options.
             
         Returns:
@@ -54,14 +55,14 @@ class BaseLoader(ABC):
         """
         ...
     
-    def load_sync(self, path: Path, **kwargs: Any) -> list[Document]:
+    def load_sync(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Synchronous version of load.
         
         Default implementation uses asyncio.run().
         Subclasses can override for true sync implementation.
         
         Args:
-            path: Path to the file to load.
+            path: Path to the file to load (str or Path).
             **kwargs: Additional loader-specific options.
             
         Returns:
@@ -70,7 +71,7 @@ class BaseLoader(ABC):
         import asyncio
         return asyncio.run(self.load(path, **kwargs))
     
-    def can_load(self, path: Path) -> bool:
+    def can_load(self, path: str | Path) -> bool:
         """Check if this loader can handle the given file.
         
         Args:
@@ -79,6 +80,7 @@ class BaseLoader(ABC):
         Returns:
             True if this loader supports the file type.
         """
+        path = Path(path)
         ext = path.suffix.lower()
         return ext in self.supported_extensions
     

@@ -36,11 +36,11 @@ class WordLoader(BaseLoader):
         super().__init__(encoding)
         self.include_tables = include_tables
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load a Word document.
         
         Args:
-            path: Path to the Word document.
+            path: Path to the Word document (str or Path).
             **kwargs: Additional options.
             
         Returns:
@@ -50,6 +50,7 @@ class WordLoader(BaseLoader):
             ImportError: If python-docx is not installed.
             ValueError: If file is .doc format (not supported).
         """
+        path = Path(path)
         if path.suffix.lower() == ".doc":
             raise ValueError(
                 "Old .doc format is not supported. "

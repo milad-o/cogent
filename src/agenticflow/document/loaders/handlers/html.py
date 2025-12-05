@@ -41,16 +41,17 @@ class HTMLLoader(BaseLoader):
             "script", "style", "nav", "footer", "header"
         ]
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load an HTML file.
         
         Args:
-            path: Path to the HTML file.
+            path: Path to the HTML file (str or Path).
             **kwargs: Optional 'encoding' to override default.
             
         Returns:
             List containing a single Document.
         """
+        path = Path(path)
         encoding = kwargs.get("encoding", self.encoding)
         raw = path.read_text(encoding=encoding)
         

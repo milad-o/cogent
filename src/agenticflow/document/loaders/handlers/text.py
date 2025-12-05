@@ -25,16 +25,17 @@ class TextLoader(BaseLoader):
     # Fallback encodings to try if UTF-8 fails
     FALLBACK_ENCODINGS = ["latin-1", "cp1252", "iso-8859-1"]
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load a plain text file.
         
         Args:
-            path: Path to the text file.
+            path: Path to the text file (str or Path).
             **kwargs: Optional 'encoding' to override default.
             
         Returns:
             List containing a single Document.
         """
+        path = Path(path)
         encoding = kwargs.get("encoding", self.encoding)
         content = self._read_with_fallback(path, encoding)
         

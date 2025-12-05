@@ -74,16 +74,17 @@ class CodeLoader(BaseLoader):
     # Fallback encodings for code files
     FALLBACK_ENCODINGS = ["latin-1", "cp1252"]
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load a source code file.
         
         Args:
-            path: Path to the code file.
+            path: Path to the code file (str or Path).
             **kwargs: Optional 'encoding' override.
             
         Returns:
             List containing a single Document.
         """
+        path = Path(path)
         encoding = kwargs.get("encoding", self.encoding)
         content = self._read_with_fallback(path, encoding)
         

@@ -45,16 +45,17 @@ class JSONLoader(BaseLoader):
         self.content_key = content_key
         self.metadata_keys = metadata_keys or []
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load a JSON or JSONL file.
         
         Args:
-            path: Path to the JSON file.
+            path: Path to the JSON file (str or Path).
             **kwargs: Optional 'encoding' override.
             
         Returns:
             List of Documents.
         """
+        path = Path(path)
         encoding = kwargs.get("encoding", self.encoding)
         ext = path.suffix.lower()
         

@@ -42,16 +42,17 @@ class CSVLoader(BaseLoader):
         self.delimiter = delimiter
         self.row_as_document = row_as_document
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load a CSV file.
         
         Args:
-            path: Path to the CSV file.
+            path: Path to the CSV file (str or Path).
             **kwargs: Optional 'encoding', 'delimiter' overrides.
             
         Returns:
             List of Documents (one per file, or one per row if row_as_document).
         """
+        path = Path(path)
         encoding = kwargs.get("encoding", self.encoding)
         content = path.read_text(encoding=encoding)
         

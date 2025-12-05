@@ -37,11 +37,11 @@ class PDFLoader(BaseLoader):
         super().__init__(encoding)
         self.extract_images = extract_images
     
-    async def load(self, path: Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load a PDF file.
         
         Args:
-            path: Path to the PDF file.
+            path: Path to the PDF file (str or Path).
             **kwargs: Additional options.
             
         Returns:
@@ -50,6 +50,7 @@ class PDFLoader(BaseLoader):
         Raises:
             ImportError: If pypdf or pdfplumber is not installed.
         """
+        path = Path(path)
         # Try pypdf first (lighter weight)
         try:
             return self._load_with_pypdf(path)
