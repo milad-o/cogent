@@ -10,6 +10,52 @@ AgenticFlow provides RAG (Retrieval-Augmented Generation) at three abstraction l
 | **Mid** | `rag.search()` | Citation-aware retrieval |
 | **Low** | `vectorstore.search()` | Raw document retrieval |
 
+## Two Usage Patterns
+
+### Pattern 1: Managed Mode (RAG loads documents)
+
+Let RAG handle document loading and indexing:
+
+```python
+from agenticflow import Agent
+from agenticflow.capabilities import RAG
+
+# RAG creates its own vectorstore
+rag = RAG(embeddings=embeddings)
+
+# Load documents - required in managed mode
+await rag.load("docs/", "report.pdf")
+
+# Now ready to search
+results = await rag.search("key findings")
+```
+
+### Pattern 2: Pre-configured Mode (Bring your own retriever)
+
+Provide a pre-loaded retriever - no `load()` needed:
+
+```python
+from agenticflow.capabilities import RAG
+from agenticflow.vectorstore import VectorStore
+from agenticflow.retriever import DenseRetriever, BM25Retriever, HybridRetriever
+
+# 1. Prepare your components
+store = VectorStore(embeddings=embeddings)
+await store.add_documents(documents)
+
+dense = DenseRetriever(store)
+sparse = BM25Retriever(documents)
+retriever = HybridRetriever(dense=dense, sparse=sparse)
+
+# 2. Pass to RAG - ready immediately!
+rag = RAG(embeddings=embeddings, retriever=retriever)
+
+# No load() needed - search works right away
+results = await rag.search("key findings")
+```
+
+---
+
 ## Layer 1: High-Level (Agentic RAG)
 
 Agent + RAG capability for autonomous document Q&A:

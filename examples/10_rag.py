@@ -1,8 +1,11 @@
 """
 Example 10: RAG (Retrieval-Augmented Generation)
 
-Three API levels for document Q&A:
+Two usage patterns:
+- **Managed mode**: RAG loads documents, creates vectorstore
+- **Pre-configured mode**: You provide a ready retriever (no load needed)
 
+Three API levels:
 1. **High-level**: agent.run() with RAG capability (agentic RAG)
 2. **Mid-level**: rag.search() with citations
 3. **Low-level**: vectorstore.search() raw results
@@ -24,6 +27,8 @@ from agenticflow.capabilities import (
     DocumentPipeline,
     PipelineRegistry,
 )
+from agenticflow.vectorstore import VectorStore, Document
+from agenticflow.retriever import DenseRetriever, BM25Retriever, HybridRetriever
 
 
 # Sample text for demo (The Secret Garden excerpt)
@@ -70,13 +75,13 @@ async def main() -> None:
     embeddings = get_embeddings()
 
     # =========================================================================
-    # Level 1: High-Level API (Agentic RAG)
+    # Pattern 1: Managed Mode (RAG loads documents)
     # =========================================================================
     print("=" * 60)
-    print("Level 1: Agentic RAG (agent.run with tools)")
+    print("Pattern 1: Managed Mode (RAG loads documents)")
     print("=" * 60)
 
-    # Create RAG capability
+    # Create RAG - it will manage its own vectorstore
     rag = RAG(embeddings=embeddings)
 
     # Add to agent - agent gets search_documents tool automatically
@@ -86,7 +91,7 @@ async def main() -> None:
         capabilities=[rag],
     )
 
-    # Load documents
+    # Load documents - required in managed mode
     await rag.load_text(SAMPLE_TEXT, source="the_secret_garden.txt")
     print(f"Loaded {rag.document_count} chunks")
 
@@ -95,10 +100,42 @@ async def main() -> None:
     print(f"\n{answer}")
 
     # =========================================================================
-    # Level 2: Mid-Level API (Citation-Aware Search)
+    # Pattern 2: Pre-configured Mode (Bring your own retriever)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Level 2: Citation-Aware Search (rag.search)")
+    print("Pattern 2: Pre-configured Mode (no load needed)")
+    print("=" * 60)
+
+    # 1. Prepare documents
+    docs = [
+        Document(text="Python is great for data science.", metadata={"source": "python.txt"}),
+        Document(text="JavaScript runs in browsers.", metadata={"source": "js.txt"}),
+        Document(text="Rust provides memory safety.", metadata={"source": "rust.txt"}),
+    ]
+
+    # 2. Create and populate vectorstore
+    store = VectorStore(embeddings=embeddings)
+    await store.add_documents(docs)
+
+    # 3. Create retriever
+    dense = DenseRetriever(store)
+    sparse = BM25Retriever(docs)
+    retriever = HybridRetriever(dense=dense, sparse=sparse)
+
+    # 4. Pass to RAG - ready immediately, no load() needed!
+    rag2 = RAG(embeddings=embeddings, retriever=retriever)
+    print(f"RAG ready: {rag2.is_ready}")  # True
+
+    # Search works right away
+    passages = await rag2.search("memory safety", k=2)
+    for p in passages:
+        print(f"  {p.format_reference()} {p.source}: {p.text[:50]}...")
+
+    # =========================================================================
+    # Mid-Level API: Citation-Aware Search
+    # =========================================================================
+    print("\n" + "=" * 60)
+    print("Mid-Level API: Citation-Aware Search (rag.search)")
     print("=" * 60)
 
     # Get CitedPassage objects with source, score, citation_id
@@ -130,10 +167,10 @@ async def main() -> None:
     print(f"\nAnswer with citations:\n{answer}")
 
     # =========================================================================
-    # Level 3: Low-Level API (Raw Vectorstore Search)
+    # Low-Level API: Raw Vectorstore Search
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Level 3: Raw Vectorstore Search")
+    print("Low-Level API: Raw Vectorstore Search")
     print("=" * 60)
 
     # Direct vectorstore access - returns SearchResult objects

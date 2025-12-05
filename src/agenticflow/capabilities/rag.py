@@ -409,50 +409,65 @@ class RAG(BaseCapability):
     """
     RAG (Retrieval-Augmented Generation) capability.
     
-    Mid-level API that provides composable document retrieval for any agent.
-    For batteries-included experience, use RAGAgent from prebuilt.
-    For full control, use components directly.
+    **Two usage patterns:**
     
-    **What it provides:**
-    - Document loading with per-file-type pipelines
-    - Vector store for semantic search
-    - Tools for agent to search documents
-    - Optional Memory integration for persistence
+    1. **Managed mode** - Let RAG handle document loading:
+        ```python
+        rag = RAG(embeddings=embeddings)
+        await rag.load("docs/", "report.pdf")
+        results = await rag.search("query")
+        ```
+    
+    2. **Pre-configured mode** - Provide ready retriever:
+        ```python
+        # Prepare your retriever
+        store = VectorStore(embeddings=embeddings)
+        await store.add_documents(documents)
+        retriever = HybridRetriever(
+            dense=DenseRetriever(store),
+            sparse=BM25Retriever(documents),
+        )
+        
+        # Pass to RAG - no load() needed!
+        rag = RAG(embeddings=embeddings, retriever=retriever)
+        results = await rag.search("query")  # Works immediately
+        ```
     
     **Access components directly:**
     - `rag.vectorstore` - VectorStore for search
     - `rag.retriever` - Retriever with optional reranking
     - `rag.embeddings` - Embedding provider
-    - `rag.pipelines` - Pipeline registry
     
-    **Three ways to customize:**
+    **Customization options:**
     
-    1. **Simple (config):**
+    1. **Config-level** (simple settings):
         ```python
         rag = RAG(
             embeddings=embeddings,
-            config=RAGConfig(chunk_size=500, backend="faiss"),
+            config=RAGConfig(chunk_size=500, top_k=6),
         )
+        await rag.load("docs/")
         ```
     
-    2. **Pipeline-level (per file type):**
+    2. **Pipeline-level** (per file type):
         ```python
         pipelines = PipelineRegistry()
         pipelines.register(".pdf", DocumentPipeline(
-            loader=PDFLoader(use_vision=True),
+            loader=PDFMarkdownLoader(),
             splitter=SemanticSplitter(embeddings),
         ))
         rag = RAG(embeddings=embeddings, pipelines=pipelines)
+        await rag.load("docs/")
         ```
     
-    3. **Component-level (full control):**
+    3. **Component-level** (full control, no load needed):
         ```python
         rag = RAG(
             embeddings=embeddings,
-            vectorstore=VectorStore(backend=FAISSBackend()),
-            retriever=HybridRetriever(dense=..., sparse=...),
+            retriever=my_hybrid_retriever,  # Pre-loaded
             reranker=CrossEncoderReranker(),
         )
+        # Ready to search immediately!
         ```
     """
     
@@ -478,21 +493,38 @@ class RAG(BaseCapability):
         """
         Create RAG capability.
         
+        **Two usage patterns:**
+        
+        1. **Managed mode** - RAG manages loading:
+            ```python
+            rag = RAG(embeddings=embeddings)
+            await rag.load("docs/", "report.pdf")  # Required
+            ```
+        
+        2. **Pre-configured mode** - You provide ready components:
+            ```python
+            # Prepare retriever with documents
+            store = VectorStore(embeddings=embeddings)
+            await store.add_documents(documents)
+            retriever = DenseRetriever(store)
+            
+            # Pass to RAG - no load() needed!
+            rag = RAG(embeddings=embeddings, retriever=retriever)
+            ```
+        
         Args:
             embeddings: Embedding provider for vectorization.
-            
-            **Configuration:**
             config: RAGConfig for chunk_size, backend, etc.
-            pipelines: Per-file-type processing pipelines.
-            
-            **Custom components (override defaults):**
-            vectorstore: Pre-configured VectorStore.
-            retriever: Pre-configured retriever (e.g., HybridRetriever).
+            pipelines: Per-file-type processing pipelines (managed mode).
+            vectorstore: Pre-populated VectorStore (pre-configured mode).
+            retriever: Pre-configured retriever (pre-configured mode).
             reranker: Reranker for two-stage retrieval.
-            
-            **Integration:**
             memory: Memory instance for long-term storage.
             extra_tools: Additional tools to include with RAG tools.
+            
+        Note:
+            If `retriever` or `vectorstore` is provided, RAG is immediately
+            ready for search - no `load()` call needed.
         """
         self._embeddings = embeddings
         self._config = config or RAGConfig()
@@ -509,8 +541,11 @@ class RAG(BaseCapability):
         self._loader = DocumentLoader()
         self._documents: list[Document] = []
         self._doc_info: dict[str, Any] = {}
-        self._initialized = False
         self._last_citations: list[CitedPassage] = []
+        
+        # If retriever is provided, RAG is ready immediately (no load needed)
+        # If vectorstore is provided, also ready (user pre-populated it)
+        self._initialized = retriever is not None or vectorstore is not None
     
     # ================================================================
     # Properties
