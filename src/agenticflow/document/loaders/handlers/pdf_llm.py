@@ -597,12 +597,26 @@ class PDFMarkdownLoader(BaseLoader):
     async def load(
         self,
         path: str | Path,
+        *,
+        save_to: str | Path | None = None,
+        save_mode: str = "single",
+        include_page_breaks: bool = True,
+        include_page_numbers: bool = False,
+        page_break_style: str = "---",
         **kwargs: Any,
     ) -> list[Document]:
         """Load a PDF file and convert to Markdown documents.
 
         Args:
             path: Path to the PDF file (str or Path).
+            save_to: Optional path to save output. If provided, saves the result.
+            save_mode: Save mode when save_to is set:
+                - "single": One combined Markdown file (default).
+                - "pages": Separate file per page (save_to should be a directory).
+                - "json": Export as JSON with metadata.
+            include_page_breaks: Add separators between pages (single mode).
+            include_page_numbers: Add page number comments.
+            page_break_style: Separator style ("---", "***", "===").
             **kwargs: Additional options (overrides config).
 
         Returns:
@@ -613,14 +627,29 @@ class PDFMarkdownLoader(BaseLoader):
             FileNotFoundError: If PDF file doesn't exist.
         
         Example:
+            >>> # Just load
             >>> docs = await loader.load("doc.pdf")
-            >>> print(f"Loaded {len(docs)} pages")
-            
-        Note:
-            For detailed processing metrics (success rate, timing, failed pages),
-            use `load_with_tracking()` instead.
+            >>> 
+            >>> # Load and save to file
+            >>> docs = await loader.load("doc.pdf", save_to="output.md")
+            >>> 
+            >>> # Load and save each page separately
+            >>> docs = await loader.load("doc.pdf", save_to="pages/", save_mode="pages")
+            >>> 
+            >>> # Load and save as JSON
+            >>> docs = await loader.load("doc.pdf", save_to="output.json", save_mode="json")
         """
         result = await self._load_with_tracking(path, **kwargs)
+        
+        if save_to is not None:
+            result.save(
+                save_to,
+                mode=save_mode,
+                include_page_breaks=include_page_breaks,
+                include_page_numbers=include_page_numbers,
+                page_break_style=page_break_style,
+            )
+        
         return result.documents
 
     async def load_with_tracking(
