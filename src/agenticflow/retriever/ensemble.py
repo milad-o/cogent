@@ -27,17 +27,22 @@ class EnsembleRetriever(BaseRetriever):
     
     Example:
         >>> from agenticflow.retriever import EnsembleRetriever, DenseRetriever, BM25Retriever
+        >>> from agenticflow.vectorstore import VectorStore
         >>> 
-        >>> retriever = EnsembleRetriever(
-        ...     retrievers=[
-        ...         DenseRetriever(store1),
-        ...         DenseRetriever(store2),
-        ...         BM25Retriever(documents),
-        ...     ],
-        ...     weights=[0.4, 0.4, 0.2],
+        >>> # 1. Create and populate retrievers
+        >>> store = VectorStore()
+        >>> await store.add_documents(documents)
+        >>> dense = DenseRetriever(store)
+        >>> 
+        >>> bm25 = BM25Retriever(documents)  # Pass docs directly
+        >>> 
+        >>> # 2. Combine into ensemble
+        >>> ensemble = EnsembleRetriever(
+        ...     retrievers=[dense, bm25],
+        ...     weights=[0.6, 0.4],
         ...     fusion="rrf",
         ... )
-        >>> docs = await retriever.retrieve("query")
+        >>> docs = await ensemble.retrieve("query")
     """
     
     _name: str = "ensemble"
