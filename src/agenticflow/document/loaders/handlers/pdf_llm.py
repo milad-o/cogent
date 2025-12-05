@@ -193,6 +193,155 @@ class PDFProcessingResult:
                 documents.append(doc)
         return documents
 
+    def to_markdown(
+        self,
+        *,
+        include_page_breaks: bool = True,
+        include_page_numbers: bool = False,
+        page_break_style: str = "---",
+    ) -> str:
+        """Convert all pages to a single Markdown string.
+        
+        Args:
+            include_page_breaks: Add separators between pages (default: True).
+            include_page_numbers: Add page number headers (default: False).
+            page_break_style: Separator style ("---", "***", "===", or custom).
+            
+        Returns:
+            Complete Markdown content as a single string.
+            
+        Example:
+            >>> result = await loader.load_with_tracking("doc.pdf")
+            >>> markdown = result.to_markdown(include_page_numbers=True)
+        """
+        parts: list[str] = []
+        
+        for page_result in self.page_results:
+            if page_result.status != PageStatus.SUCCESS:
+                continue
+            if not page_result.content.strip():
+                continue
+            
+            if include_page_numbers:
+                parts.append(f"<!-- Page {page_result.page_number} -->")
+            
+            parts.append(page_result.content.strip())
+        
+        separator = f"\n\n{page_break_style}\n\n" if include_page_breaks else "\n\n"
+        return separator.join(parts)
+
+    def save(
+        self,
+        output_path: str | Path,
+        *,
+        mode: str = "single",
+        include_page_breaks: bool = True,
+        include_page_numbers: bool = False,
+        page_break_style: str = "---",
+        encoding: str = "utf-8",
+    ) -> Path | list[Path]:
+        """Save extracted content to file(s).
+        
+        Args:
+            output_path: Output file path (for single mode) or directory (for pages mode).
+            mode: Save mode:
+                - "single": One combined Markdown file (default).
+                - "pages": Separate file per page.
+                - "json": Export as JSON with metadata.
+            include_page_breaks: Add separators between pages (single mode only).
+            include_page_numbers: Add page number comments (single mode only).
+            page_break_style: Separator style ("---", "***", "===", or custom).
+            encoding: Text encoding for output files.
+            
+        Returns:
+            Path to saved file (single/json mode) or list of paths (pages mode).
+            
+        Example:
+            >>> result = await loader.load_with_tracking("doc.pdf")
+            >>> 
+            >>> # Save as single Markdown file
+            >>> result.save("output.md")
+            >>> 
+            >>> # Save each page separately
+            >>> result.save("output_dir/", mode="pages")
+            >>> 
+            >>> # Save with page numbers in comments
+            >>> result.save("output.md", include_page_numbers=True)
+            >>> 
+            >>> # Export as JSON
+            >>> result.save("output.json", mode="json")
+        """
+        import json
+        
+        output_path = Path(output_path)
+        
+        if mode == "single":
+            # Combine all pages into one file
+            content = self.to_markdown(
+                include_page_breaks=include_page_breaks,
+                include_page_numbers=include_page_numbers,
+                page_break_style=page_break_style,
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(content, encoding=encoding)
+            return output_path
+        
+        elif mode == "pages":
+            # Save each page as separate file
+            output_path.mkdir(parents=True, exist_ok=True)
+            stem = self.file_path.stem
+            saved_paths: list[Path] = []
+            
+            for page_result in self.page_results:
+                if page_result.status != PageStatus.SUCCESS:
+                    continue
+                if not page_result.content.strip():
+                    continue
+                
+                page_path = output_path / f"{stem}_page_{page_result.page_number:04d}.md"
+                page_path.write_text(page_result.content, encoding=encoding)
+                saved_paths.append(page_path)
+            
+            return saved_paths
+        
+        elif mode == "json":
+            # Export as JSON with full metadata
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            export_data = {
+                "source": str(self.file_path),
+                "filename": self.file_path.name,
+                "total_pages": self.total_pages,
+                "successful_pages": self.successful_pages,
+                "failed_pages": self.failed_pages,
+                "empty_pages": self.empty_pages,
+                "success_rate": self.success_rate,
+                "processing_time_ms": self.total_time_ms,
+                "metadata": self.metadata,
+                "pages": [
+                    {
+                        "page_number": pr.page_number,
+                        "status": pr.status.value,
+                        "content": pr.content,
+                        "tables_count": pr.tables_count,
+                        "images_count": pr.images_count,
+                        "processing_time_ms": pr.processing_time_ms,
+                        "error": pr.error,
+                    }
+                    for pr in self.page_results
+                ],
+            }
+            
+            output_path.write_text(
+                json.dumps(export_data, indent=2, ensure_ascii=False),
+                encoding=encoding,
+            )
+            return output_path
+        
+        else:
+            msg = f"Invalid mode: {mode}. Use 'single', 'pages', or 'json'."
+            raise ValueError(msg)
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ProcessingMetrics:
