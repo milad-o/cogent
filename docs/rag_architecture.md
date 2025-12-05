@@ -23,8 +23,9 @@ from agenticflow.capabilities import RAG
 # RAG creates its own vectorstore
 rag = RAG(embeddings=embeddings)
 
-# Load documents - required in managed mode
+# Load documents - files, directories, URLs, or Document objects
 await rag.load("docs/", "report.pdf")
+await rag.load(Document(text="...", metadata={"source": "api"}))  # Raw text
 
 # Now ready to search
 results = await rag.search("key findings")
@@ -63,6 +64,7 @@ Agent + RAG capability for autonomous document Q&A:
 ```python
 from agenticflow import Agent
 from agenticflow.capabilities import RAG
+from agenticflow.vectorstore import Document
 
 rag = RAG(embeddings=embeddings)
 
@@ -72,7 +74,10 @@ agent = Agent(
     capabilities=[rag],
 )
 
+# Load from files, directories, URLs, or Document objects
 await rag.load("docs/", "report.pdf", "data.csv")
+await rag.load(Document(text="API response", metadata={"source": "api"}))  # Raw text
+
 answer = await agent.run("What are the key findings?")
 ```
 

@@ -10,6 +10,12 @@ Three API levels:
 2. **Mid-level**: rag.search() with citations
 3. **Low-level**: vectorstore.search() raw results
 
+loading API:
+    await rag.load("file.pdf")  # Files
+    await rag.load("docs/")     # Directories
+    await rag.load("https://...")  # URLs
+    await rag.load(Document(text="...", metadata={"source": "api"}))  # Raw text
+
 Usage:
     uv run python examples/10_rag.py
 """
