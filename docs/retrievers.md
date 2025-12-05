@@ -2,6 +2,31 @@
 
 AgenticFlow provides a comprehensive retrieval system with multiple strategies for different use cases. This guide covers all available retrievers and when to use each.
 
+## Using with RAG Capability
+
+Retrievers are used with the `RAG` capability to give agents document search:
+
+```python
+from agenticflow import Agent
+from agenticflow.capabilities import RAG
+from agenticflow.retriever import DenseRetriever, BM25Retriever
+from agenticflow.vectorstore import VectorStore
+
+# Single retriever
+rag = RAG(DenseRetriever(store))
+
+# Multiple retrievers with fusion
+rag = RAG(
+    retrievers=[DenseRetriever(store), BM25Retriever(chunks)],
+    weights=[0.6, 0.4],
+    fusion="rrf",
+)
+
+agent = Agent(model=model, capabilities=[rag])
+```
+
+---
+
 ## Unified API
 
 All retrievers share a unified `retrieve()` API with optional scoring:
@@ -90,13 +115,19 @@ Lexical retrieval using the BM25 algorithm. Fast, interpretable, and excellent f
 from agenticflow.retriever import BM25Retriever
 from agenticflow.vectorstore import Document
 
-# Create BM25 index
-retriever = BM25Retriever(k1=1.5, b=0.75)
-retriever.add_documents([
+# Create documents
+documents = [
     Document(text="Python programming tutorial", metadata={"type": "tutorial"}),
     Document(text="JavaScript web development", metadata={"type": "tutorial"}),
     Document(text="Machine learning with Python", metadata={"type": "guide"}),
-])
+]
+
+# Create BM25 retriever with documents
+retriever = BM25Retriever(documents, k1=1.5, b=0.75)
+
+# Or add documents later
+retriever = BM25Retriever()
+retriever.add_documents(documents)
 
 # Keyword-based search
 results = await retriever.retrieve("Python tutorial", k=2)
@@ -158,7 +189,6 @@ from agenticflow.retriever import (
     EnsembleRetriever,
     DenseRetriever,
     BM25Retriever,
-    FusionStrategy,
 )
 
 # Combine multiple retrievers
@@ -169,17 +199,19 @@ ensemble = EnsembleRetriever(
         BM25Retriever(documents),              # Lexical
     ],
     weights=[0.4, 0.4, 0.2],
-    fusion=FusionStrategy.RRF,  # or LINEAR, MAX, VOTING
+    fusion="rrf",  # or "linear", "max", "voting"
 )
 
 results = await ensemble.retrieve("query", k=10)
 ```
 
 **Fusion strategies:**
-- `RRF` (Reciprocal Rank Fusion): Best for diverse retrievers
-- `LINEAR`: Weighted score combination
-- `MAX`: Take highest score per document
-- `VOTING`: Count how many retrievers found each doc
+- `rrf` (Reciprocal Rank Fusion): Best for diverse retrievers (default)
+- `linear`: Weighted score combination
+- `max`: Take highest score per document
+- `voting`: Count how many retrievers found each doc
+
+> **Tip:** The RAG capability accepts `retrievers=` directly and creates an EnsembleRetriever internally.
 
 ---
 
