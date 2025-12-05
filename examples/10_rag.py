@@ -1,40 +1,31 @@
 """
 Example 10: RAG (Retrieval-Augmented Generation)
 
-Two usage patterns:
-- **Managed mode**: RAG loads documents, creates vectorstore
-- **Pre-configured mode**: You provide a ready retriever (no load needed)
+RAG is a thin capability that provides search tools to agents.
+Document loading/indexing happens OUTSIDE the capability.
 
-Three API levels:
+Two API styles:
+- Single retriever: `RAG(retriever)`
+- Multiple retrievers: `RAG(retrievers=[...], fusion="rrf")`
+
+Three access levels:
 1. **High-level**: agent.run() with RAG capability (agentic RAG)
 2. **Mid-level**: rag.search() with citations
-3. **Low-level**: vectorstore.search() raw results
-
-loading API:
-    await rag.load("file.pdf")  # Files
-    await rag.load("docs/")     # Directories
-    await rag.load("https://...")  # URLs
-    await rag.load(Document(text="...", metadata={"source": "api"}))  # Raw text
+3. **Low-level**: retriever.retrieve() raw results
 
 Usage:
     uv run python examples/10_rag.py
 """
 
 import asyncio
-from pathlib import Path
 
 from config import get_embeddings, get_model
 
 from agenticflow import Agent
-from agenticflow.capabilities import (
-    RAG,
-    RAGConfig,
-    CitationStyle,
-    DocumentPipeline,
-    PipelineRegistry,
-)
+from agenticflow.capabilities import RAG, RAGConfig, CitationStyle
+from agenticflow.document import RecursiveCharacterSplitter
+from agenticflow.retriever import DenseRetriever, BM25Retriever
 from agenticflow.vectorstore import VectorStore, Document
-from agenticflow.retriever import DenseRetriever, BM25Retriever, EnsembleRetriever
 
 
 # Sample text for demo (The Secret Garden excerpt)
@@ -81,177 +72,119 @@ async def main() -> None:
     embeddings = get_embeddings()
 
     # =========================================================================
-    # Pattern 1: Managed Mode (RAG loads documents)
+    # Step 1: Prepare documents (OUTSIDE RAG)
     # =========================================================================
     print("=" * 60)
-    print("Pattern 1: Managed Mode (RAG loads documents)")
+    print("Step 1: Prepare documents (outside RAG)")
     print("=" * 60)
 
-    # Create RAG - it will manage its own vectorstore
-    rag = RAG(embeddings=embeddings)
+    # Create document and split into chunks
+    doc = Document(text=SAMPLE_TEXT, metadata={"source": "the_secret_garden.txt"})
+    splitter = RecursiveCharacterSplitter(chunk_size=500, chunk_overlap=50)
+    chunks = splitter.split_documents([doc])
+    print(f"Created {len(chunks)} chunks")
 
-    # Add to agent - agent gets search_documents tool automatically
+    # Create vectorstore and index
+    store = VectorStore(embeddings=embeddings)
+    await store.add_documents(chunks)
+    print(f"Indexed {len(chunks)} chunks in vectorstore")
+
+    # =========================================================================
+    # Pattern 1: Single Retriever
+    # =========================================================================
+    print("\n" + "=" * 60)
+    print("Pattern 1: Single Retriever")
+    print("=" * 60)
+
+    # Create retriever and RAG
+    dense = DenseRetriever(store)
+    rag = RAG(dense)
+
+    # Add to agent
     agent = Agent(
         name="BookAssistant",
         model=model,
         capabilities=[rag],
     )
 
-    # Load documents - required in managed mode
-    # Can load files, directories, URLs, or Document objects
-    await rag.load(Document(text=SAMPLE_TEXT, metadata={"source": "the_secret_garden.txt"}))
-    print(f"Loaded {rag.document_count} chunks")
-
-    # Agent uses tools autonomously to search and answer
+    # Agent uses search_documents tool automatically
     answer = await agent.run("What was Mary Lennox like when she arrived?")
     print(f"\n{answer}")
 
     # =========================================================================
-    # Pattern 2: Pre-configured Mode (Bring your own retriever)
+    # Pattern 2: Multiple Retrievers with Fusion
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Pattern 2: Pre-configured Mode (no load needed)")
+    print("Pattern 2: Multiple Retrievers (RRF fusion)")
     print("=" * 60)
 
-    # 1. Prepare documents
-    docs = [
-        Document(text="Python is great for data science.", metadata={"source": "python.txt"}),
-        Document(text="JavaScript runs in browsers.", metadata={"source": "js.txt"}),
-        Document(text="Rust provides memory safety.", metadata={"source": "rust.txt"}),
-    ]
-
-    # 2. Create and populate vectorstore
-    store = VectorStore(embeddings=embeddings)
-    await store.add_documents(docs)
-
-    # 3. Combine with EnsembleRetriever (fuses multiple retrievers)
+    # Create multiple retrievers
     dense = DenseRetriever(store)
-    sparse = BM25Retriever(docs)
-    retriever = EnsembleRetriever(
+    sparse = BM25Retriever(chunks)
+
+    # RAG creates ensemble internally
+    rag2 = RAG(
         retrievers=[dense, sparse],
         weights=[0.6, 0.4],
-        fusion="rrf",
+        fusion="rrf",  # Reciprocal Rank Fusion
     )
 
-    # 4. Pass to RAG - ready immediately, no load() needed!
-    rag2 = RAG(embeddings=embeddings, retriever=retriever)
-    print(f"RAG ready: {rag2.is_ready}")  # True
-
-    # Search works right away
-    passages = await rag2.search("memory safety", k=2)
-    for p in passages:
-        print(f"  {p.format_reference()} {p.source}: {p.text[:50]}...")
-
-    # =========================================================================
-    # Mid-Level API: Citation-Aware Search
-    # =========================================================================
-    print("\n" + "=" * 60)
-    print("Mid-Level API: Citation-Aware Search (rag.search)")
-    print("=" * 60)
-
-    # Get CitedPassage objects with source, score, citation_id
-    passages = await rag.search("Describe the moor and Martha.", k=3)
-
+    # Search directly
+    passages = await rag2.search("Describe the moor", k=3)
     print("Retrieved passages:")
     for p in passages:
         print(f"  {p.format_reference()} {p.source} (score: {p.score:.2f})")
         print(f"    {p.text[:80]}...")
 
-    # Demonstrate different citation styles
-    print("\nCitation style examples:")
+    # =========================================================================
+    # Mid-Level API: Citation-Aware Search
+    # =========================================================================
+    print("\n" + "=" * 60)
+    print("Mid-Level API: rag.search() with citations")
+    print("=" * 60)
+
+    passages = await rag.search("Describe Martha and the moor", k=3)
+
+    # Different citation styles
+    print("\nCitation styles:")
     for style in CitationStyle:
         formatted = passages[0].format_reference(style)
         print(f"  {style.name:12} → {formatted}")
 
-    # Use helper methods for formatted output
-    print("\nFormatted context (NUMERIC style):")
-    print(rag.format_context(passages[:2], style=CitationStyle.NUMERIC))
-
+    # Bibliography
     print("\nBibliography:")
     print(rag.format_bibliography(passages))
 
-    # Build your own prompt with citations
-    context = "\n\n".join(f"[{p.citation_id}] {p.text}" for p in passages)
-    answer = await agent.run(
-        f"Based on these passages, describe the moor and Martha:\n\n{context}"
-    )
-    print(f"\nAnswer with citations:\n{answer}")
-
     # =========================================================================
-    # Low-Level API: Raw Vectorstore Search
+    # Low-Level API: Direct Retriever Access
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Low-Level API: Raw Vectorstore Search")
+    print("Low-Level API: Direct retriever access")
     print("=" * 60)
 
-    # Direct vectorstore access - returns SearchResult objects
-    results = await rag.vectorstore.search("robin bird key", k=2)
-
+    # Access underlying retriever
+    results = await rag.retriever.retrieve("robin bird", k=2, include_scores=True)
     for i, result in enumerate(results, 1):
-        doc = result.document
-        source = doc.metadata.get("source", "unknown")
-        print(f"[{i}] {source} (score: {result.score:.2f})")
-        print(f"    {doc.text[:100].strip()}...")
+        print(f"[{i}] score={result.score:.3f}")
+        print(f"    {result.document.text[:80]}...")
 
     # =========================================================================
-    # Bonus: Custom Pipelines (per file type)
+    # Fusion Strategies
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Bonus: Custom Pipelines")
+    print("Fusion Strategies Comparison")
     print("=" * 60)
 
-    from agenticflow.document import MarkdownSplitter, CodeSplitter
+    query = "yellow hair sour expression"
 
-    # Create custom pipelines for different file types
-    pipelines = PipelineRegistry()
-    pipelines.register(
-        ".md",
-        DocumentPipeline(
-            splitter=MarkdownSplitter(chunk_size=500),
-            metadata={"type": "documentation"},
-        ),
-    )
-    pipelines.register(
-        ".py",
-        DocumentPipeline(
-            splitter=CodeSplitter(language="python", chunk_size=1000),
-            metadata={"type": "code"},
-        ),
-    )
-
-    # Create RAG with custom pipelines
-    rag2 = RAG(
-        embeddings=embeddings,
-        pipelines=pipelines,
-        config=RAGConfig(chunk_size=500, top_k=3),
-    )
-
-    # Agent with custom pipelines
-    agent2 = Agent(
-        name="SmartHomeHelper",
-        model=model,
-        capabilities=[rag2],
-    )
-
-    # Load mixed content
-    data_dir = Path(__file__).parent / "data"
-    if (data_dir / "smarthome_docs.md").exists():
-        await rag2.load(
-            data_dir / "smarthome_docs.md",
-            data_dir / "smarthome_devices.py",
+    for fusion in ["rrf", "linear", "max", "voting"]:
+        rag_test = RAG(
+            retrievers=[dense, sparse],
+            fusion=fusion,
         )
-        print(f"Loaded {rag2.document_count} chunks with custom pipelines")
-
-        # Use citation-aware search
-        passages = await rag2.search("How do I control smart lights?", k=3)
-        for p in passages:
-            print(f"  {p.format_reference()} {p.source}")
-
-        # Then use agent for full answer
-        answer = await agent2.run("How do I control smart lights?")
-        print(f"\nAgent answer:\n{answer}")
-    else:
-        print("(Skipped - data files not found)")
+        results = await rag_test.search(query, k=1)
+        if results:
+            print(f"  {fusion:8} → score={results[0].score:.3f}")
 
     print("\n✓ Done")
 

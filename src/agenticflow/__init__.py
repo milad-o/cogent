@@ -342,8 +342,6 @@ from agenticflow.capabilities import (
     RAGConfig,
     CitationStyle,
     CitedPassage,
-    DocumentPipeline,
-    PipelineRegistry,
 )
 
 # Native message types (from core.messages)
@@ -564,8 +562,6 @@ __all__ = [
     "RAGConfig",
     "CitationStyle",
     "CitedPassage",
-    "DocumentPipeline",
-    "PipelineRegistry",
     # LLM & Embedding Models (native)
     "ChatModel",
     "EmbeddingModel",

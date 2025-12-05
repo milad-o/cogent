@@ -1,327 +1,220 @@
-# RAG Architecture: Three-Layer API Design
+# RAG Architecture
 
 ## Overview
 
-AgenticFlow provides RAG (Retrieval-Augmented Generation) at three abstraction levels:
+RAG (Retrieval-Augmented Generation) is a **thin capability** that provides document search tools to agents. Document loading and indexing happens **outside** the capability.
 
-| Level | API | Use Case |
-|-------|-----|----------|
-| **High** | `agent.run()` with RAG capability | Agentic RAG with tool use |
-| **Mid** | `rag.search()` | Citation-aware retrieval |
-| **Low** | `vectorstore.search()` | Raw document retrieval |
+| Component | Responsibility |
+|-----------|---------------|
+| `DocumentLoader` | Load files (PDF, DOCX, etc.) |
+| `Splitter` | Chunk documents |
+| `VectorStore` | Index and store embeddings |
+| `Retriever` | Search documents |
+| **`RAG`** | Provide search tools to agent |
 
-## Two Usage Patterns
-
-### Pattern 1: Managed Mode (RAG loads documents)
-
-Let RAG handle document loading and indexing:
+## Quick Start
 
 ```python
 from agenticflow import Agent
 from agenticflow.capabilities import RAG
-
-# RAG creates its own vectorstore
-rag = RAG(embeddings=embeddings)
-
-# Load documents - files, directories, URLs, or Document objects
-await rag.load("docs/", "report.pdf")
-await rag.load(Document(text="...", metadata={"source": "api"}))  # Raw text
-
-# Now ready to search
-results = await rag.search("key findings")
-```
-
-### Pattern 2: Pre-configured Mode (Bring your own retriever)
-
-Provide a pre-loaded retriever - no `load()` needed:
-
-```python
-from agenticflow.capabilities import RAG
+from agenticflow.document import DocumentLoader, RecursiveCharacterSplitter
+from agenticflow.retriever import DenseRetriever
 from agenticflow.vectorstore import VectorStore
-from agenticflow.retriever import DenseRetriever, BM25Retriever, EnsembleRetriever
 
-# 1. Prepare your components
+# 1. Load and chunk documents
+loader = DocumentLoader()
+docs = await loader.load_directory("docs/")
+chunks = RecursiveCharacterSplitter(chunk_size=1000).split_documents(docs)
+
+# 2. Create vectorstore and index
 store = VectorStore(embeddings=embeddings)
-await store.add_documents(documents)
+await store.add_documents(chunks)
 
-dense = DenseRetriever(store)
-sparse = BM25Retriever(documents)
+# 3. Create RAG with retriever
+rag = RAG(DenseRetriever(store))
 
-# 2. Combine with EnsembleRetriever (fuses multiple retrievers)
-retriever = EnsembleRetriever(
-    retrievers=[dense, sparse],
-    weights=[0.6, 0.4],
-    fusion="rrf",
-)
-
-# 3. Pass to RAG - ready immediately!
-rag = RAG(embeddings=embeddings, retriever=retriever)
-
-# No load() needed - search works right away
-results = await rag.search("key findings")
-```
-
----
-
-## Layer 1: High-Level (Agentic RAG)
-
-Agent + RAG capability for autonomous document Q&A:
-
-```python
-from agenticflow import Agent
-from agenticflow.capabilities import RAG
-from agenticflow.vectorstore import Document
-
-rag = RAG(embeddings=embeddings)
-
-agent = Agent(
-    name="DocAssistant",
-    model=model,
-    capabilities=[rag],
-)
-
-# Load from files, directories, URLs, or Document objects
-await rag.load("docs/", "report.pdf", "data.csv")
-await rag.load(Document(text="API response", metadata={"source": "api"}))  # Raw text
-
+# 4. Add to agent
+agent = Agent(model=model, capabilities=[rag])
 answer = await agent.run("What are the key findings?")
 ```
 
-### What it provides:
-- Agent uses `search_documents` tool automatically
-- Auto-detects file types → picks optimal loader/splitter
-- Default vectorstore (inmemory, configurable)
-- LLM generates answer based on retrieved context
+---
+
+## Two API Styles
+
+### Single Retriever
+
+```python
+from agenticflow.retriever import DenseRetriever
+
+rag = RAG(DenseRetriever(store))
+```
+
+### Multiple Retrievers with Fusion
+
+```python
+from agenticflow.retriever import DenseRetriever, BM25Retriever
+
+# RAG creates EnsembleRetriever internally
+rag = RAG(
+    retrievers=[DenseRetriever(store), BM25Retriever(chunks)],
+    weights=[0.6, 0.4],
+    fusion="rrf",  # or "linear", "max", "voting"
+)
+```
+
+**Fusion Strategies:**
+
+| Strategy | Description |
+|----------|-------------|
+| `rrf` | Reciprocal Rank Fusion (default, robust) |
+| `linear` | Weighted score combination |
+| `max` | Maximum score per document |
+| `voting` | Count appearances across retrievers |
 
 ---
 
-## Layer 2: Mid-Level (Citation-Aware Search)
+## Three Access Levels
 
-Direct `rag.search()` returns `CitedPassage` objects with source/score:
+### High-Level: Agentic RAG
+
+Agent uses `search_documents` tool automatically:
 
 ```python
-from agenticflow.capabilities import RAG
+agent = Agent(model=model, capabilities=[rag])
+answer = await agent.run("What are the key findings?")
+```
 
-rag = RAG(embeddings=embeddings)
-await rag.load("docs/")
+### Mid-Level: Citation-Aware Search
 
-# Get passages with citation metadata
+Direct `rag.search()` returns `CitedPassage` objects:
+
+```python
 passages = await rag.search("key findings", k=5)
 
 for p in passages:
     print(f"{p.format_reference()} {p.source} (score: {p.score:.2f})")
     print(f"  {p.text[:100]}...")
 
-# Build custom prompt with citations
-context = "\n".join(f"[{p.citation_id}] {p.text}" for p in passages)
-answer = await agent.run(f"Based on:\n{context}\n\nAnswer: {question}")
+# Format bibliography
+print(rag.format_bibliography(passages))
 ```
 
-### What it provides:
-- `CitedPassage` with `citation_id`, `source`, `page`, `score`, `text`
-- `format_reference()` → `[1]` or `[1, p.5]`
-- `format_full()` → `[1] source.pdf, p.5 (score: 0.92)`
-- No LLM - just retrieval with citation metadata
+### Low-Level: Direct Retriever
 
----
-
-## Layer 3: Low-Level (Raw Vectorstore)
-
-Direct vectorstore access for full control:
+Access the underlying retriever:
 
 ```python
-from agenticflow.vectorstore import VectorStore
-
-vectorstore = VectorStore(embeddings=embeddings)
-await vectorstore.add_documents(chunks)
-
-# Raw search - returns SearchResult objects
-results = await vectorstore.search("query", k=10)
+results = await rag.retriever.retrieve("query", k=5, include_scores=True)
 
 for result in results:
-    doc = result.document
-    print(f"{doc.metadata['source']} (score: {result.score:.2f})")
-    print(f"  {doc.text}")
+    print(f"{result.score:.3f}: {result.document.text[:100]}")
 ```
 
 ---
 
-## Custom Pipelines
+## With Reranking
 
-For fine-grained control over document processing:
+Add a reranker for two-stage retrieval:
 
 ```python
-from agenticflow.capabilities import RAG, DocumentPipeline, PipelineRegistry
-from agenticflow.document import PDFLoader, SemanticSplitter, MarkdownSplitter
+from agenticflow.retriever.rerankers import CrossEncoderReranker
 
-# Custom pipelines per file type
-pipelines = PipelineRegistry()
-
-pipelines.register(".pdf", DocumentPipeline(
-    loader=PDFLoader(extract_images=True),
-    splitter=SemanticSplitter(embeddings=embeddings, threshold=0.8),
-    metadata={"source_type": "pdf"},
-))
-
-pipelines.register(".md", DocumentPipeline(
-    splitter=MarkdownSplitter(chunk_size=500),
-    metadata={"source_type": "documentation"},
-))
-
-# RAG with custom pipelines
 rag = RAG(
-    embeddings=embeddings,
-    pipelines=pipelines,
+    DenseRetriever(store),
+    reranker=CrossEncoderReranker(),
 )
-
-await rag.load("report.pdf", "docs/*.md")
 ```
 
 ---
 
-## Advanced Patterns
-
-### Custom Vectorstore Backend
+## Configuration
 
 ```python
-from agenticflow.vectorstore import VectorStore, FAISSBackend, ChromaBackend
+from agenticflow.capabilities import RAG, RAGConfig, CitationStyle
 
-# FAISS for high-performance
-vectorstore = VectorStore(
-    embeddings=embeddings,
-    backend=FAISSBackend(dimension=1536),
+rag = RAG(
+    retriever,
+    config=RAGConfig(
+        top_k=6,
+        citation_style=CitationStyle.NUMERIC,
+        include_page_in_citation=True,
+        include_score_in_bibliography=True,
+    ),
 )
-
-# Chroma for persistence
-vectorstore = VectorStore(
-    embeddings=embeddings,
-    backend=ChromaBackend(path="./chroma_db"),
-)
-
-rag = RAG(embeddings=embeddings, vectorstore=vectorstore)
 ```
 
-### Combining RAG with Other Capabilities
+---
+
+## Document Loading (Outside RAG)
+
+RAG doesn't load documents - use `DocumentLoader` and splitters:
 
 ```python
-from agenticflow.capabilities import RAG, WebSearch, CodeSandbox
-
-agent = Agent(
-    model=model,
-    tools=[
-        my_database_tool,
-        my_api_tool,
-    ],
-    capabilities=[
-        RAG(embeddings=embeddings),      # Document search
-        WebSearch(),                       # Live web search
-        CodeSandbox(),                     # Execute code
-    ],
-)
-
-# Agent has access to:
-# - search_documents (from RAG)
-# - web_search, fetch_page (from WebSearch)
-# - execute_code (from CodeSandbox)
-# - my_database_tool, my_api_tool (custom)
-```
-
-### Per-Document Type Configuration
-
-```python
-from agenticflow.capabilities import RAG, PipelineRegistry, DocumentPipeline
 from agenticflow.document import (
-    PDFLoader, MarkdownSplitter, CodeSplitter, SemanticSplitter,
+    DocumentLoader,
+    RecursiveCharacterSplitter,
+    SemanticSplitter,
+    CodeSplitter,
 )
 
-pipelines = PipelineRegistry()
+# Load any file type
+loader = DocumentLoader()
+docs = await loader.load("report.pdf")
+docs = await loader.load_directory("docs/", glob="**/*.md")
 
-# PDFs: Use vision-based loader, semantic splitting
-pipelines.register(".pdf", DocumentPipeline(
-    loader=PDFLoader(use_vision=True, model=vision_model),
-    splitter=SemanticSplitter(embeddings=embeddings),
-    metadata={"type": "document"},
-))
+# Choose a splitter
+splitter = RecursiveCharacterSplitter(chunk_size=1000, chunk_overlap=200)
+# or
+splitter = SemanticSplitter(embeddings=embeddings, threshold=0.8)
+# or
+splitter = CodeSplitter(language="python", chunk_size=1000)
 
-# Code: Language-aware splitting
-for ext in [".py", ".js", ".ts", ".go", ".rs"]:
-    lang = ext[1:]  # Remove dot
-    pipelines.register(ext, DocumentPipeline(
-        splitter=CodeSplitter(language=lang, chunk_size=1500),
-        metadata={"type": "code", "language": lang},
-    ))
-
-# Markdown: Structure-aware
-pipelines.register(".md", DocumentPipeline(
-    splitter=MarkdownSplitter(chunk_size=1000),
-    metadata={"type": "documentation"},
-))
-
-# Custom post-processing
-def add_embeddings(chunks):
-    for chunk in chunks:
-        chunk.metadata["indexed_at"] = datetime.now().isoformat()
-    return chunks
-
-pipelines.register(".txt", DocumentPipeline(
-    post_process=add_embeddings,
-))
-
-rag = RAG(embeddings=embeddings, pipelines=pipelines)
+chunks = splitter.split_documents(docs)
 ```
 
 ---
 
-## Component Reference
+## Complete Example
 
-### Loaders
-| Loader | Formats | Notes |
-|--------|---------|-------|
-| `TextLoader` | .txt | Simple text |
-| `MarkdownLoader` | .md, .mdx | Preserves structure |
-| `PDFLoader` | .pdf | Text + optional OCR |
-| `PDFMarkdownLoader` | .pdf | LLM-based, better formatting |
-| `WordLoader` | .docx | Microsoft Word |
-| `HTMLLoader` | .html, .htm | Web pages |
-| `CSVLoader` | .csv | Tabular data |
-| `JSONLoader` | .json, .jsonl | Structured data |
-| `XLSXLoader` | .xlsx | Excel spreadsheets |
-| `CodeLoader` | .py, .js, etc. | Source code |
+```python
+import asyncio
+from agenticflow import Agent
+from agenticflow.capabilities import RAG
+from agenticflow.document import DocumentLoader, RecursiveCharacterSplitter
+from agenticflow.retriever import DenseRetriever, BM25Retriever
+from agenticflow.vectorstore import VectorStore
 
-### Splitters
-| Splitter | Strategy | Best For |
-|----------|----------|----------|
-| `RecursiveCharacterSplitter` | Hierarchical separators | General text |
-| `SentenceSplitter` | Sentence boundaries | Prose |
-| `MarkdownSplitter` | Headers, lists | Documentation |
-| `HTMLSplitter` | HTML tags | Web content |
-| `CodeSplitter` | AST-aware | Source code |
-| `SemanticSplitter` | Embedding similarity | Mixed content |
-| `TokenSplitter` | Token count | LLM context |
+async def main():
+    # Load documents
+    loader = DocumentLoader()
+    docs = await loader.load_directory("knowledge_base/")
+    
+    # Chunk
+    splitter = RecursiveCharacterSplitter(chunk_size=1000)
+    chunks = splitter.split_documents(docs)
+    
+    # Index
+    store = VectorStore(embeddings=embeddings)
+    await store.add_documents(chunks)
+    
+    # Create RAG with dense + sparse retrieval
+    rag = RAG(
+        retrievers=[DenseRetriever(store), BM25Retriever(chunks)],
+        weights=[0.7, 0.3],
+        fusion="rrf",
+    )
+    
+    # Create agent
+    agent = Agent(
+        name="ResearchAssistant",
+        model=model,
+        capabilities=[rag],
+    )
+    
+    # Ask questions
+    answer = await agent.run("Summarize the main findings")
+    print(answer)
 
-### Backends
-| Backend | Persistence | Scale | Notes |
-|---------|-------------|-------|-------|
-| `InMemoryBackend` | No | Small | Default, fast |
-| `FAISSBackend` | Optional | Large | Facebook's FAISS |
-| `ChromaBackend` | Yes | Medium | Simple persistent |
-| `QdrantBackend` | Yes | Large | Production-ready |
-| `PgVectorBackend` | Yes | Large | PostgreSQL extension |
-
-### Retrievers
-| Retriever | Type | Notes |
-|-----------|------|-------|
-| `DenseRetriever` | Vector | Wraps VectorStore |
-| `BM25Retriever` | Sparse | Lexical matching |
-| `HybridRetriever` | Combined | Dense + Sparse |
-| `EnsembleRetriever` | Multi | N retrievers with fusion |
-| `ParentDocumentRetriever` | Contextual | Return full documents |
-| `SentenceWindowRetriever` | Contextual | Return surrounding context |
-
-### Rerankers
-| Reranker | Type | Notes |
-|----------|------|-------|
-| `CrossEncoderReranker` | Neural | Local models |
-| `FlashRankReranker` | Neural | Lightweight |
-| `CohereReranker` | API | Cohere Rerank |
-| `LLMReranker` | LLM | Any chat model |
+asyncio.run(main())
+```

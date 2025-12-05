@@ -58,8 +58,6 @@ from agenticflow.capabilities.rag import (
     RAGConfig,
     CitationStyle,
     CitedPassage,
-    DocumentPipeline,
-    PipelineRegistry,
 )
 from agenticflow.capabilities.shell import Shell
 from agenticflow.capabilities.spreadsheet import Spreadsheet
@@ -74,14 +72,12 @@ __all__ = [
     "CitedPassage",
     "CodebaseAnalyzer",
     "CodeSandbox",
-    "DocumentPipeline",
     "FileSystem",
     "KnowledgeGraph",
     "MCP",
     "MCPServerConfig",
     "MCPTransport",
     "PDF",
-    "PipelineRegistry",
     "RAG",
     "RAGConfig",
     "Shell",
