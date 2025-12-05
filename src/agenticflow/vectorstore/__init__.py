@@ -42,6 +42,9 @@ from agenticflow.vectorstore.embeddings import (
 from agenticflow.vectorstore.store import VectorStore, create_vectorstore
 
 # Import backends submodule for lazy access
+from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+
+# Import backends submodule for lazy access
 from agenticflow.vectorstore import backends
 
 __all__ = [
@@ -55,6 +58,8 @@ __all__ = [
     "VectorStoreBackend",
     "EmbeddingProvider",
     "VectorStoreConfig",
+    # Similarity metrics
+    "SimilarityMetric",
     # Embeddings
     "OpenAIEmbeddings",
     "OllamaEmbeddings",

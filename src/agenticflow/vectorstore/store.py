@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+from agenticflow.vectorstore.backends.inmemory import InMemoryBackend, SimilarityMetric
 from agenticflow.vectorstore.base import (
     EmbeddingProvider,
     SearchResult,
@@ -39,11 +39,15 @@ class VectorStore:
     Attributes:
         embeddings: Embedding provider (default: OpenAIEmbeddings).
         backend: Storage backend (default: InMemoryBackend).
+        metric: Similarity metric for default InMemory backend.
         
     Example:
-        >>> store = VectorStore()  # Uses OpenAI + InMemory
+        >>> store = VectorStore()  # Uses OpenAI + InMemory + Cosine
         >>> await store.add_texts(["Hello", "World"])
         >>> results = await store.search("greeting")
+        
+        >>> # With Euclidean distance
+        >>> store = VectorStore(metric="euclidean")
         
         >>> # With custom embeddings
         >>> from agenticflow.vectorstore import OllamaEmbeddings
@@ -52,6 +56,7 @@ class VectorStore:
     
     embeddings: EmbeddingProvider | None = None
     backend: VectorStoreBackend | None = None
+    metric: SimilarityMetric | str = SimilarityMetric.COSINE
     _initialized: bool = field(default=False, init=False)
     
     def __post_init__(self) -> None:
@@ -60,7 +65,8 @@ class VectorStore:
             self.embeddings = OpenAIEmbedding()
         
         if self.backend is None:
-            self.backend = InMemoryBackend()
+            # Use metric parameter for default InMemory backend
+            self.backend = InMemoryBackend(metric=self.metric)
         
         self._initialized = True
     

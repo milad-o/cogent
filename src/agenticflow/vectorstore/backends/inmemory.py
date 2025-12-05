@@ -1,17 +1,44 @@
 """In-memory vector store backend using NumPy.
 
 A simple, zero-dependency backend suitable for small to medium datasets (<10k documents).
-Uses cosine similarity for vector search.
+Supports multiple similarity metrics: cosine, euclidean, dot product.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 from agenticflow.vectorstore.base import SearchResult
 from agenticflow.vectorstore.document import Document
+
+
+class SimilarityMetric(Enum):
+    """Similarity metrics for vector search.
+    
+    COSINE: Cosine similarity (default) - measures angle between vectors.
+            Best for: normalized embeddings, semantic similarity.
+            Range: -1 to 1 (normalized to 0-1 in results).
+            
+    EUCLIDEAN: Euclidean distance converted to similarity.
+               Best for: absolute distances matter, clustering.
+               Range: 0 to 1 (closer = higher score).
+               
+    DOT_PRODUCT: Raw dot product (inner product).
+                 Best for: pre-normalized embeddings, maximum inner product.
+                 Range: unbounded (higher = more similar).
+                 
+    MANHATTAN: Manhattan (L1) distance converted to similarity.
+               Best for: high-dimensional sparse vectors.
+               Range: 0 to 1 (closer = higher score).
+    """
+    
+    COSINE = "cosine"
+    EUCLIDEAN = "euclidean"
+    DOT_PRODUCT = "dot_product"
+    MANHATTAN = "manhattan"
 
 
 @dataclass
@@ -33,24 +60,47 @@ class StoredDocument:
 class InMemoryBackend:
     """In-memory vector store backend using NumPy-style operations.
     
-    Uses pure Python with optional NumPy acceleration for cosine similarity.
+    Uses pure Python with optional NumPy acceleration for similarity search.
     Good for datasets up to ~10k documents.
     
     Attributes:
-        normalize: Whether to normalize embeddings for cosine similarity.
+        metric: Similarity metric to use (default: COSINE).
+        normalize: Whether to normalize embeddings (auto-set based on metric).
     
     Example:
+        >>> # Default: cosine similarity
         >>> backend = InMemoryBackend()
+        >>> 
+        >>> # Euclidean distance
+        >>> backend = InMemoryBackend(metric=SimilarityMetric.EUCLIDEAN)
+        >>> 
+        >>> # Dot product (for pre-normalized embeddings)
+        >>> backend = InMemoryBackend(metric=SimilarityMetric.DOT_PRODUCT)
+        >>> 
         >>> await backend.add(["id1"], [[0.1, 0.2, 0.3]], [doc1])
         >>> results = await backend.search([0.1, 0.2, 0.3], k=5)
     """
     
-    normalize: bool = True
+    metric: SimilarityMetric | str = SimilarityMetric.COSINE
+    normalize: bool | None = None  # Auto-set based on metric if None
     _storage: dict[str, StoredDocument] = field(default_factory=dict)
     _numpy_available: bool = field(default=False, init=False)
     
     def __post_init__(self) -> None:
-        """Check if NumPy is available for acceleration."""
+        """Initialize metric and check for NumPy."""
+        # Convert string to enum
+        if isinstance(self.metric, str):
+            self.metric = SimilarityMetric(self.metric)
+        
+        # Auto-set normalization based on metric
+        if self.normalize is None:
+            # Cosine and dot product benefit from normalized vectors
+            self.normalize = self.metric in (
+                SimilarityMetric.COSINE,
+                SimilarityMetric.DOT_PRODUCT,
+            )
+        
+        # Check NumPy availability
         try:
             import numpy as np  # noqa: F401
             self._numpy_available = True
@@ -94,7 +144,7 @@ class InMemoryBackend:
         k: int = 4,
         filter: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
-        """Search for similar documents using cosine similarity.
+        """Search for similar documents using configured similarity metric.
         
         Args:
             embedding: Query embedding vector.
@@ -119,6 +169,42 @@ class InMemoryBackend:
         
         return results
     
+    def _compute_similarity(
+        self,
+        query: list[float],
+        doc_embedding: list[float],
+    ) -> float:
+        """Compute similarity score based on configured metric.
+        
+        Args:
+            query: Query embedding.
+            doc_embedding: Document embedding.
+            
+        Returns:
+            Similarity score (higher = more similar).
+        """
+        if self.metric == SimilarityMetric.COSINE:
+            # Cosine similarity (dot product of normalized vectors)
+            return self._dot_product(query, doc_embedding)
+        
+        elif self.metric == SimilarityMetric.DOT_PRODUCT:
+            # Raw dot product
+            return self._dot_product(query, doc_embedding)
+        
+        elif self.metric == SimilarityMetric.EUCLIDEAN:
+            # Convert distance to similarity: 1 / (1 + distance)
+            distance = self._euclidean_distance(query, doc_embedding)
+            return 1.0 / (1.0 + distance)
+        
+        elif self.metric == SimilarityMetric.MANHATTAN:
+            # Convert distance to similarity: 1 / (1 + distance)
+            distance = self._manhattan_distance(query, doc_embedding)
+            return 1.0 / (1.0 + distance)
+        
+        else:
+            # Fallback to cosine
+            return self._dot_product(query, doc_embedding)
+    
     def _search_pure_python(
         self,
         embedding: list[float],
@@ -133,8 +219,8 @@ class InMemoryBackend:
             if filter and not self._matches_filter(stored.document, filter):
                 continue
             
-            # Cosine similarity (dot product of normalized vectors)
-            score = self._dot_product(embedding, stored.embedding)
+            # Compute similarity using configured metric
+            score = self._compute_similarity(embedding, stored.embedding)
             scores.append((score, stored))
         
         # Sort by score descending
@@ -174,8 +260,24 @@ class InMemoryBackend:
         query = np.array(embedding)
         matrix = np.array([doc.embedding for doc in filtered_docs])
         
-        # Compute cosine similarities (dot product of normalized vectors)
-        scores = np.dot(matrix, query)
+        # Compute similarity based on metric
+        if self.metric in (SimilarityMetric.COSINE, SimilarityMetric.DOT_PRODUCT):
+            # Dot product (cosine for normalized vectors)
+            scores = np.dot(matrix, query)
+        
+        elif self.metric == SimilarityMetric.EUCLIDEAN:
+            # Euclidean distance converted to similarity
+            distances = np.linalg.norm(matrix - query, axis=1)
+            scores = 1.0 / (1.0 + distances)
+        
+        elif self.metric == SimilarityMetric.MANHATTAN:
+            # Manhattan distance converted to similarity
+            distances = np.sum(np.abs(matrix - query), axis=1)
+            scores = 1.0 / (1.0 + distances)
+        
+        else:
+            # Fallback to dot product
+            scores = np.dot(matrix, query)
         
         # Get top k indices
         top_k = min(k, len(scores))
@@ -248,6 +350,16 @@ class InMemoryBackend:
     def _dot_product(a: list[float], b: list[float]) -> float:
         """Compute dot product of two vectors."""
         return sum(x * y for x, y in zip(a, b))
+    
+    @staticmethod
+    def _euclidean_distance(a: list[float], b: list[float]) -> float:
+        """Compute Euclidean (L2) distance between two vectors."""
+        return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
+    
+    @staticmethod
+    def _manhattan_distance(a: list[float], b: list[float]) -> float:
+        """Compute Manhattan (L1) distance between two vectors."""
+        return sum(abs(x - y) for x, y in zip(a, b))
     
     @staticmethod
     def _matches_filter(doc: Document, filter: dict[str, Any]) -> bool:

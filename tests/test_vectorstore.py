@@ -343,6 +343,128 @@ class TestInMemoryBackend:
 
 
 # ============================================================
+# Similarity Metric Tests
+# ============================================================
+
+
+class TestSimilarityMetrics:
+    """Tests for different similarity metrics."""
+
+    @pytest.mark.asyncio
+    async def test_cosine_similarity(self) -> None:
+        """Test cosine similarity metric (default)."""
+        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        
+        backend = InMemoryBackend(metric=SimilarityMetric.COSINE)
+        
+        docs = [
+            Document(text="Aligned"),
+            Document(text="Opposite"),
+        ]
+        # Normalized vectors
+        embeddings = [
+            [1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],  # Opposite direction
+        ]
+        ids = ["aligned", "opposite"]
+        
+        await backend.add(ids, embeddings, docs)
+        
+        # Query in same direction as "aligned"
+        results = await backend.search([1.0, 0.0, 0.0], k=2)
+        
+        assert results[0].id == "aligned"
+        assert results[0].score > 0.99  # Nearly 1.0
+        assert results[1].id == "opposite"
+        assert results[1].score < 0.0  # Negative for opposite
+
+    @pytest.mark.asyncio
+    async def test_euclidean_metric(self) -> None:
+        """Test euclidean distance metric."""
+        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        
+        backend = InMemoryBackend(metric=SimilarityMetric.EUCLIDEAN)
+        
+        docs = [
+            Document(text="Close"),
+            Document(text="Far"),
+        ]
+        embeddings = [
+            [1.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],  # Far away
+        ]
+        ids = ["close", "far"]
+        
+        await backend.add(ids, embeddings, docs)
+        
+        # Query close to first doc
+        results = await backend.search([0.9, 0.0, 0.0], k=2)
+        
+        assert results[0].id == "close"
+        assert results[0].score > results[1].score  # Closer = higher score
+
+    @pytest.mark.asyncio
+    async def test_manhattan_metric(self) -> None:
+        """Test manhattan distance metric."""
+        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        
+        backend = InMemoryBackend(metric=SimilarityMetric.MANHATTAN)
+        
+        docs = [
+            Document(text="Close"),
+            Document(text="Far"),
+        ]
+        embeddings = [
+            [1.0, 1.0, 1.0],
+            [5.0, 5.0, 5.0],
+        ]
+        ids = ["close", "far"]
+        
+        await backend.add(ids, embeddings, docs)
+        
+        # Query close to first doc
+        results = await backend.search([1.0, 1.0, 1.0], k=2)
+        
+        assert results[0].id == "close"
+        assert results[0].score == 1.0  # Exact match = 1/(1+0) = 1.0
+
+    @pytest.mark.asyncio
+    async def test_dot_product_metric(self) -> None:
+        """Test dot product metric."""
+        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        
+        # Disable normalization to see raw dot product differences
+        backend = InMemoryBackend(metric=SimilarityMetric.DOT_PRODUCT, normalize=False)
+        
+        docs = [
+            Document(text="High magnitude"),
+            Document(text="Low magnitude"),
+        ]
+        embeddings = [
+            [2.0, 2.0, 2.0],
+            [0.5, 0.5, 0.5],
+        ]
+        ids = ["high", "low"]
+        
+        await backend.add(ids, embeddings, docs)
+        
+        # With raw dot product, higher magnitude matters
+        results = await backend.search([1.0, 1.0, 1.0], k=2)
+        
+        # High magnitude should have higher dot product (2*1 + 2*1 + 2*1 = 6 vs 0.5*3 = 1.5)
+        assert results[0].id == "high"
+        assert results[0].score > results[1].score
+
+    @pytest.mark.asyncio
+    async def test_metric_from_string(self) -> None:
+        """Test creating backend with string metric."""
+        backend = InMemoryBackend(metric="euclidean")
+        
+        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        assert backend.metric == SimilarityMetric.EUCLIDEAN
+
+
+# ============================================================
 # Mock Embeddings Tests
 # ============================================================
 
