@@ -580,6 +580,7 @@ class PDFMarkdownLoader(BaseLoader):
         )
         self._show_progress = show_progress
         self._verbose = verbose
+        self._last_result: PDFProcessingResult | None = None
 
         # Only create logger if verbose mode is enabled
         self._log: ObservabilityLogger | None = None
@@ -617,23 +618,23 @@ class PDFMarkdownLoader(BaseLoader):
             FileNotFoundError: If PDF file doesn't exist.
         
         Example:
-            >>> # Simple usage - get documents
-            >>> docs = await loader.load("doc.pdf")
-            >>> loader.save(docs, "output.md")
+            >>> # Simple usage - load and save
+            >>> await loader.load("doc.pdf")
+            >>> loader.save("output.md")
             >>> 
             >>> # With tracking - get detailed metrics
             >>> result = await loader.load("doc.pdf", tracking=True)
             >>> print(f"Success: {result.success_rate:.0%}")
-            >>> result.save("output.md")
+            >>> loader.save("output.md")
         """
         result = await self._load_with_tracking(path, **kwargs)
+        self._last_result = result
         if tracking:
             return result
         return result.documents
 
     def save(
         self,
-        documents: list[Document],
         output_path: str | Path,
         *,
         mode: str = "single",
@@ -642,10 +643,9 @@ class PDFMarkdownLoader(BaseLoader):
         page_break_style: str = "---",
         encoding: str = "utf-8",
     ) -> Path | list[Path]:
-        """Save documents to file(s).
+        """Save the last loaded documents to file(s).
 
         Args:
-            documents: List of Document objects to save.
             output_path: Output file path (single/json) or directory (pages).
             mode: Save mode:
                 - "single": One combined Markdown file (default).
@@ -659,18 +659,26 @@ class PDFMarkdownLoader(BaseLoader):
         Returns:
             Path to saved file (single/json) or list of paths (pages).
 
+        Raises:
+            RuntimeError: If no documents have been loaded yet.
+
         Example:
-            >>> docs = await loader.load("doc.pdf")
-            >>> loader.save(docs, "output.md")
+            >>> await loader.load("doc.pdf")
+            >>> loader.save("output.md")
             >>> 
             >>> # Save each page separately
-            >>> loader.save(docs, "pages/", mode="pages")
+            >>> loader.save("pages/", mode="pages")
             >>> 
             >>> # Save as JSON
-            >>> loader.save(docs, "output.json", mode="json")
+            >>> loader.save("output.json", mode="json")
         """
         import json
 
+        if self._last_result is None:
+            msg = "No documents loaded. Call load() first."
+            raise RuntimeError(msg)
+
+        documents = self._last_result.documents
         output_path = Path(output_path)
 
         if mode == "single":

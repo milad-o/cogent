@@ -556,6 +556,27 @@ class TestPDFMarkdownLoaderIntegration:
         page_numbers = [r.page_number for r in result.page_results]
         assert page_numbers == sorted(page_numbers)
 
+    @pytest.mark.asyncio
+    async def test_save_after_load(self, sample_pdf: Path, tmp_path: Path) -> None:
+        """Test save() uses last loaded documents."""
+        loader = PDFMarkdownLoader(max_workers=2, batch_size=1)
+        await loader.load(sample_pdf)
+
+        # Save without passing docs
+        output = tmp_path / "output.md"
+        result_path = loader.save(output)
+
+        assert result_path == output
+        assert output.exists()
+        assert output.read_text().strip()
+
+    def test_save_without_load_raises(self, tmp_path: Path) -> None:
+        """Test save() raises if load() not called first."""
+        loader = PDFMarkdownLoader()
+
+        with pytest.raises(RuntimeError, match="No documents loaded"):
+            loader.save(tmp_path / "output.md")
+
 
 # ==============================================================================
 # Test Module Exports
