@@ -597,26 +597,12 @@ class PDFMarkdownLoader(BaseLoader):
     async def load(
         self,
         path: str | Path,
-        *,
-        save_to: str | Path | None = None,
-        save_mode: str = "single",
-        include_page_breaks: bool = True,
-        include_page_numbers: bool = False,
-        page_break_style: str = "---",
         **kwargs: Any,
     ) -> list[Document]:
         """Load a PDF file and convert to Markdown documents.
 
         Args:
             path: Path to the PDF file (str or Path).
-            save_to: Optional path to save output. If provided, saves the result.
-            save_mode: Save mode when save_to is set:
-                - "single": One combined Markdown file (default).
-                - "pages": Separate file per page (save_to should be a directory).
-                - "json": Export as JSON with metadata.
-            include_page_breaks: Add separators between pages (single mode).
-            include_page_numbers: Add page number comments.
-            page_break_style: Separator style ("---", "***", "===").
             **kwargs: Additional options (overrides config).
 
         Returns:
@@ -627,30 +613,117 @@ class PDFMarkdownLoader(BaseLoader):
             FileNotFoundError: If PDF file doesn't exist.
         
         Example:
-            >>> # Just load
             >>> docs = await loader.load("doc.pdf")
+            >>> print(f"Loaded {len(docs)} pages")
             >>> 
-            >>> # Load and save to file
-            >>> docs = await loader.load("doc.pdf", save_to="output.md")
-            >>> 
-            >>> # Load and save each page separately
-            >>> docs = await loader.load("doc.pdf", save_to="pages/", save_mode="pages")
-            >>> 
-            >>> # Load and save as JSON
-            >>> docs = await loader.load("doc.pdf", save_to="output.json", save_mode="json")
+            >>> # Save after loading
+            >>> loader.save(docs, "output.md")
         """
         result = await self._load_with_tracking(path, **kwargs)
-        
-        if save_to is not None:
-            result.save(
-                save_to,
-                mode=save_mode,
-                include_page_breaks=include_page_breaks,
-                include_page_numbers=include_page_numbers,
-                page_break_style=page_break_style,
-            )
-        
         return result.documents
+
+    def save(
+        self,
+        documents: list[Document],
+        output_path: str | Path,
+        *,
+        mode: str = "single",
+        include_page_breaks: bool = True,
+        include_page_numbers: bool = False,
+        page_break_style: str = "---",
+        encoding: str = "utf-8",
+    ) -> Path | list[Path]:
+        """Save documents to file(s).
+
+        Args:
+            documents: List of Document objects to save.
+            output_path: Output file path (single/json) or directory (pages).
+            mode: Save mode:
+                - "single": One combined Markdown file (default).
+                - "pages": Separate file per document.
+                - "json": Export as JSON with metadata.
+            include_page_breaks: Add separators between documents (single mode).
+            include_page_numbers: Add page/document number comments.
+            page_break_style: Separator style ("---", "***", "===").
+            encoding: Text encoding for output files.
+
+        Returns:
+            Path to saved file (single/json) or list of paths (pages).
+
+        Example:
+            >>> docs = await loader.load("doc.pdf")
+            >>> loader.save(docs, "output.md")
+            >>> 
+            >>> # Save each page separately
+            >>> loader.save(docs, "pages/", mode="pages")
+            >>> 
+            >>> # Save as JSON
+            >>> loader.save(docs, "output.json", mode="json")
+        """
+        import json
+
+        output_path = Path(output_path)
+
+        if mode == "single":
+            parts: list[str] = []
+            for i, doc in enumerate(documents):
+                if not doc.text.strip():
+                    continue
+                if include_page_numbers:
+                    page_num = doc.metadata.get("page", i + 1)
+                    parts.append(f"<!-- Page {page_num} -->")
+                parts.append(doc.text.strip())
+
+            separator = f"\n\n{page_break_style}\n\n" if include_page_breaks else "\n\n"
+            content = separator.join(parts)
+
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(content, encoding=encoding)
+            return output_path
+
+        elif mode == "pages":
+            output_path.mkdir(parents=True, exist_ok=True)
+            saved_paths: list[Path] = []
+
+            # Try to get stem from first doc's source
+            stem = "document"
+            if documents and "filename" in documents[0].metadata:
+                stem = Path(documents[0].metadata["filename"]).stem
+
+            for i, doc in enumerate(documents):
+                if not doc.text.strip():
+                    continue
+                page_num = doc.metadata.get("page", i + 1)
+                page_path = output_path / f"{stem}_page_{page_num:04d}.md"
+                page_path.write_text(doc.text, encoding=encoding)
+                saved_paths.append(page_path)
+
+            return saved_paths
+
+        elif mode == "json":
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            export_data = {
+                "total_documents": len(documents),
+                "documents": [
+                    {
+                        "index": i,
+                        "text": doc.text,
+                        "metadata": doc.metadata,
+                    }
+                    for i, doc in enumerate(documents)
+                ],
+            }
+
+            output_path.write_text(
+                json.dumps(export_data, indent=2, ensure_ascii=False),
+                encoding=encoding,
+            )
+            return output_path
+
+        else:
+            msg = f"Invalid mode: {mode}. Use 'single', 'pages', or 'json'."
+            raise ValueError(msg)
 
     async def load_with_tracking(
         self,
