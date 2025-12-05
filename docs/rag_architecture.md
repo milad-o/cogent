@@ -38,7 +38,7 @@ Provide a pre-loaded retriever - no `load()` needed:
 ```python
 from agenticflow.capabilities import RAG
 from agenticflow.vectorstore import VectorStore
-from agenticflow.retriever import DenseRetriever, BM25Retriever, HybridRetriever
+from agenticflow.retriever import DenseRetriever, BM25Retriever, EnsembleRetriever
 
 # 1. Prepare your components
 store = VectorStore(embeddings=embeddings)
@@ -46,9 +46,15 @@ await store.add_documents(documents)
 
 dense = DenseRetriever(store)
 sparse = BM25Retriever(documents)
-retriever = HybridRetriever(dense=dense, sparse=sparse)
 
-# 2. Pass to RAG - ready immediately!
+# 2. Combine with EnsembleRetriever (fuses multiple retrievers)
+retriever = EnsembleRetriever(
+    retrievers=[dense, sparse],
+    weights=[0.6, 0.4],
+    fusion="rrf",
+)
+
+# 3. Pass to RAG - ready immediately!
 rag = RAG(embeddings=embeddings, retriever=retriever)
 
 # No load() needed - search works right away

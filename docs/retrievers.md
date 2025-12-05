@@ -38,8 +38,8 @@ results = await retriever.retrieve(
 |----------|-----------|----------|
 | **Core** | `DenseRetriever` | Semantic similarity search |
 | | `BM25Retriever` | Keyword/lexical matching |
-| | `HybridRetriever` | Best of both (dense + sparse) |
-| | `EnsembleRetriever` | Combining multiple retrievers |
+| | `EnsembleRetriever` | Combining multiple retrievers (dense + sparse) |
+| | `HybridRetriever` | Metadata filtering + content search |
 | **Contextual** | `ParentDocumentRetriever` | Precise chunks → full context |
 | | `SentenceWindowRetriever` | Sentence-level → paragraph context |
 | **LLM-Powered** | `SummaryIndex` | Document summaries |
@@ -605,9 +605,9 @@ unique = deduplicate_results(results, by="content")  # or "id"
 
 ## Performance Tips
 
-1. **Start with HybridRetriever** - Best default for most cases
+1. **Start with EnsembleRetriever(dense + sparse)** - Best default for most cases
 2. **Use rerankers** - Cheap way to improve quality
 3. **Retrieve more, rerank less** - Get top 20-50, rerank to top 5
 4. **Cache embeddings** - Reuse for similar queries
 5. **Batch operations** - Add documents in batches
-6. **Filter first** - Use metadata filters before semantic search
+6. **Add HybridRetriever for metadata** - When you have structured metadata to filter/boost

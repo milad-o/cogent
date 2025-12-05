@@ -34,7 +34,7 @@ from agenticflow.capabilities import (
     PipelineRegistry,
 )
 from agenticflow.vectorstore import VectorStore, Document
-from agenticflow.retriever import DenseRetriever, BM25Retriever, HybridRetriever
+from agenticflow.retriever import DenseRetriever, BM25Retriever, EnsembleRetriever
 
 
 # Sample text for demo (The Secret Garden excerpt)
@@ -124,10 +124,14 @@ async def main() -> None:
     store = VectorStore(embeddings=embeddings)
     await store.add_documents(docs)
 
-    # 3. Create retriever
+    # 3. Combine with EnsembleRetriever (fuses multiple retrievers)
     dense = DenseRetriever(store)
     sparse = BM25Retriever(docs)
-    retriever = HybridRetriever(dense=dense, sparse=sparse)
+    retriever = EnsembleRetriever(
+        retrievers=[dense, sparse],
+        weights=[0.6, 0.4],
+        fusion="rrf",
+    )
 
     # 4. Pass to RAG - ready immediately, no load() needed!
     rag2 = RAG(embeddings=embeddings, retriever=retriever)
