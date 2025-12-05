@@ -612,15 +612,37 @@ class RAG(BaseCapability):
     # Document Loading
     # ================================================================
     
-    async def load(self, *sources: str | Path, glob: str | None = None) -> None:
-        """Load documents from files, directories, or URLs."""
+    async def load(
+        self,
+        *sources: str | Path | Document,
+        glob: str | None = None,
+    ) -> None:
+        """Load documents from files, directories, URLs, or Document objects.
+
+        Args:
+            *sources: Paths to files/directories, URLs, or Document objects.
+            glob: Glob pattern for directory scanning (default: "**/*").
+
+        Examples:
+            await rag.load("docs/")  # Directory
+            await rag.load("file.pdf", "other.txt")  # Files
+            await rag.load("https://example.com")  # URL
+            await rag.load(Document(text="...", metadata={"source": "api"}))  # Raw text
+        """
         show = self._config.show_progress
         files_by_ext: dict[str, list[Path]] = {}
         source_names: list[str] = []
         
         for source in sources:
+            # Handle Document objects directly
+            if isinstance(source, Document):
+                doc_source = source.metadata.get("source", "document")
+                await self._load_text(source.text, source=doc_source)
+                source_names.append(doc_source)
+                continue
+
             path = Path(source)
-            
+
             if str(source).startswith(("http://", "https://")):
                 await self._load_url(str(source))
                 source_names.append(str(source))
@@ -678,11 +700,11 @@ class RAG(BaseCapability):
         if all_chunks:
             await self._index_chunks(all_chunks, source_names, list(pipelines_used))
     
-    async def load_text(self, text: str, source: str = "text") -> None:
-        """Load text content directly."""
+    async def _load_text(self, text: str, source: str = "text") -> None:
+        """Load text content directly (internal)."""
         if self._config.show_progress:
             print(f"  📝 Loading text: {source}")
-        
+
         doc = Document(text=text, metadata={"source": source})
         splitter = self._get_default_splitter()
         chunks = splitter.split_documents([doc])
@@ -711,7 +733,7 @@ class RAG(BaseCapability):
         except ImportError:
             text, _ = loader._extract_with_regex(html_content)
         
-        await self.load_text(text, source=url)
+        await self._load_text(text, source=url)
     
     async def _index_chunks(
         self,

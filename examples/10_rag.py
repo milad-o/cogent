@@ -92,7 +92,8 @@ async def main() -> None:
     )
 
     # Load documents - required in managed mode
-    await rag.load_text(SAMPLE_TEXT, source="the_secret_garden.txt")
+    # Can load files, directories, URLs, or Document objects
+    await rag.load(Document(text=SAMPLE_TEXT, metadata={"source": "the_secret_garden.txt"}))
     print(f"Loaded {rag.document_count} chunks")
 
     # Agent uses tools autonomously to search and answer
