@@ -419,12 +419,12 @@ class TestPDFMarkdownLoader:
             await loader.load(Path("/nonexistent/file.pdf"))
 
     @pytest.mark.asyncio
-    async def test_load_with_tracking_file_not_found(self) -> None:
-        """Test load_with_tracking raises FileNotFoundError."""
+    async def test_load_tracking_file_not_found(self) -> None:
+        """Test load with tracking raises FileNotFoundError."""
         loader = PDFMarkdownLoader()
 
         with pytest.raises(FileNotFoundError):
-            await loader.load_with_tracking(Path("/nonexistent/file.pdf"))
+            await loader.load(Path("/nonexistent/file.pdf"), tracking=True)
 
     def test_get_metrics(self) -> None:
         """Test metrics calculation from processing result."""
@@ -530,10 +530,10 @@ class TestPDFMarkdownLoaderIntegration:
         assert all(isinstance(d, Document) for d in docs)
 
     @pytest.mark.asyncio
-    async def test_load_with_tracking_real_pdf(self, sample_pdf: Path) -> None:
-        """Test load_with_tracking on actual PDF."""
+    async def test_load_tracking_real_pdf(self, sample_pdf: Path) -> None:
+        """Test load with tracking on actual PDF."""
         loader = PDFMarkdownLoader(max_workers=2, batch_size=1)
-        result = await loader.load_with_tracking(sample_pdf)
+        result = await loader.load(sample_pdf, tracking=True)
 
         assert result.status in (
             PDFProcessingStatus.COMPLETED,
@@ -547,7 +547,7 @@ class TestPDFMarkdownLoaderIntegration:
     async def test_parallel_processing(self, sample_pdf: Path) -> None:
         """Test that parallel processing works correctly."""
         loader = PDFMarkdownLoader(max_workers=4, batch_size=1)
-        result = await loader.load_with_tracking(sample_pdf)
+        result = await loader.load(sample_pdf, tracking=True)
 
         # All pages should be processed
         assert len(result.page_results) == result.total_pages

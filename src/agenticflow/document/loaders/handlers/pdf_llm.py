@@ -211,7 +211,7 @@ class PDFProcessingResult:
             Complete Markdown content as a single string.
             
         Example:
-            >>> result = await loader.load_with_tracking("doc.pdf")
+            >>> result = await loader.load("doc.pdf", tracking=True)
             >>> markdown = result.to_markdown(include_page_numbers=True)
         """
         parts: list[str] = []
@@ -257,7 +257,7 @@ class PDFProcessingResult:
             Path to saved file (single/json mode) or list of paths (pages mode).
             
         Example:
-            >>> result = await loader.load_with_tracking("doc.pdf")
+            >>> result = await loader.load("doc.pdf", tracking=True)
             >>> 
             >>> # Save as single Markdown file
             >>> result.save("output.md")
@@ -597,29 +597,38 @@ class PDFMarkdownLoader(BaseLoader):
     async def load(
         self,
         path: str | Path,
+        *,
+        tracking: bool = False,
         **kwargs: Any,
-    ) -> list[Document]:
+    ) -> list[Document] | PDFProcessingResult:
         """Load a PDF file and convert to Markdown documents.
 
         Args:
             path: Path to the PDF file (str or Path).
+            tracking: If True, return PDFProcessingResult with metrics.
+                If False (default), return list of Documents.
             **kwargs: Additional options (overrides config).
 
         Returns:
-            List of Document objects (one per page with content).
+            list[Document] by default, or PDFProcessingResult if tracking=True.
 
         Raises:
             ImportError: If pymupdf4llm is not installed.
             FileNotFoundError: If PDF file doesn't exist.
         
         Example:
+            >>> # Simple usage - get documents
             >>> docs = await loader.load("doc.pdf")
-            >>> print(f"Loaded {len(docs)} pages")
-            >>> 
-            >>> # Save after loading
             >>> loader.save(docs, "output.md")
+            >>> 
+            >>> # With tracking - get detailed metrics
+            >>> result = await loader.load("doc.pdf", tracking=True)
+            >>> print(f"Success: {result.success_rate:.0%}")
+            >>> result.save("output.md")
         """
         result = await self._load_with_tracking(path, **kwargs)
+        if tracking:
+            return result
         return result.documents
 
     def save(
@@ -724,31 +733,6 @@ class PDFMarkdownLoader(BaseLoader):
         else:
             msg = f"Invalid mode: {mode}. Use 'single', 'pages', or 'json'."
             raise ValueError(msg)
-
-    async def load_with_tracking(
-        self,
-        path: str | Path,
-        **kwargs: Any,
-    ) -> PDFProcessingResult:
-        """Load a PDF with full processing tracking and metrics.
-        
-        Use this method when you need detailed information about the
-        PDF processing, such as success rate, timing, or failed pages.
-
-        Args:
-            path: Path to the PDF file (str or Path).
-            **kwargs: Additional options (overrides config).
-
-        Returns:
-            PDFProcessingResult with documents and metrics.
-            
-        Example:
-            >>> result = await loader.load_with_tracking("doc.pdf")
-            >>> print(f"Success rate: {result.success_rate:.0%}")
-            >>> print(f"Time: {result.total_time_ms:.0f}ms")
-            >>> docs = result.documents
-        """
-        return await self._load_with_tracking(path, **kwargs)
 
     async def _load_with_tracking(
         self,
@@ -989,7 +973,7 @@ class PDFMarkdownLoader(BaseLoader):
         """Calculate processing metrics from a result.
 
         Args:
-            result: PDFProcessingResult from load_with_tracking.
+            result: PDFProcessingResult from load(tracking=True).
 
         Returns:
             ProcessingMetrics with performance data.

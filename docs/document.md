@@ -77,13 +77,13 @@ docs = await loader.load("large_document.pdf")
 print(f"Loaded {len(docs)} pages")
 
 # With tracking - returns PDFProcessingResult with metrics
-result = await loader.load_with_tracking("large_document.pdf")
+result = await loader.load("large_document.pdf", tracking=True)
 print(f"Success rate: {result.success_rate:.0%}")
 print(f"Time: {result.total_time_ms:.0f}ms")
 docs = result.documents
 ```
 
-**PDFProcessingResult (from load_with_tracking):**
+**PDFProcessingResult (from `load(tracking=True)`):**
 ```python
 @dataclass
 class PDFProcessingResult:

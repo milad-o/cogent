@@ -46,7 +46,7 @@ async def main() -> None:
     print(f"Output dir: {output_dir}\n")
 
     # Load PDF with tracking - returns result with documents and metrics
-    result = await loader.load_with_tracking(pdf_path)
+    result = await loader.load(pdf_path, tracking=True)
 
     # Display processing metrics
     print("=" * 60)
