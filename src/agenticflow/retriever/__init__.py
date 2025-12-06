@@ -123,7 +123,7 @@ from agenticflow.retriever.multi_representation import (
     QueryType,
     RepresentationType,
 )
-from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores
+from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores, add_citations, format_context, format_citations_reference, filter_by_score, top_k
 
 __all__ = [
     # Document types (re-exported from agenticflow.document)
@@ -192,4 +192,9 @@ __all__ = [
     "fuse_results",
     "normalize_scores",
     "deduplicate_results",
+    "add_citations",
+    "format_context",
+    "format_citations_reference",
+    "filter_by_score",
+    "top_k",
 ]

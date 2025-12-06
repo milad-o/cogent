@@ -1,17 +1,13 @@
 """
 Example 10: RAG (Retrieval-Augmented Generation)
 
-RAG is a thin capability that provides search tools to agents.
-Document loading/indexing happens OUTSIDE the capability.
+Two approaches for RAG:
 
-Two API styles:
-- Single retriever: `RAG(retriever)`
-- Multiple retrievers: `RAG(retrievers=[...], fusion="rrf")`
+1. **RAG Capability** - For agents (provides search_documents tool)
+2. **Direct Retriever + Utilities** - For programmatic use
 
-Three access levels:
-1. **High-level**: agent.run() with RAG capability (agentic RAG)
-2. **Mid-level**: rag.search() with citations
-3. **Low-level**: retriever.retrieve() raw results
+The RAG capability is a thin wrapper that gives agents a search tool.
+For programmatic use, use retrievers directly with utility functions.
 
 Usage:
     uv run python examples/10_rag.py
@@ -22,9 +18,18 @@ import asyncio
 from config import get_embeddings, get_model
 
 from agenticflow import Agent
-from agenticflow.capabilities import RAG, RAGConfig, CitationStyle
+from agenticflow.capabilities import RAG
 from agenticflow.document import RecursiveCharacterSplitter
-from agenticflow.retriever import DenseRetriever, BM25Retriever
+from agenticflow.retriever import (
+    DenseRetriever,
+    BM25Retriever,
+    EnsembleRetriever,
+    # Result utilities
+    add_citations,
+    format_context,
+    format_citations_reference,
+    filter_by_score,
+)
 from agenticflow.vectorstore import VectorStore, Document
 
 
@@ -90,17 +95,17 @@ async def main() -> None:
     print(f"Indexed {len(chunks)} chunks in vectorstore")
 
     # =========================================================================
-    # Pattern 1: Single Retriever
+    # Pattern 1: RAG Capability (for Agents)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Pattern 1: Single Retriever")
+    print("Pattern 1: RAG Capability (for Agents)")
     print("=" * 60)
 
-    # Create retriever and RAG
+    # Create retriever and RAG capability
     dense = DenseRetriever(store)
     rag = RAG(dense)
 
-    # Add to agent
+    # Add to agent - agent gets search_documents tool
     agent = Agent(
         name="BookAssistant",
         model=model,
@@ -112,79 +117,98 @@ async def main() -> None:
     print(f"\n{answer}")
 
     # =========================================================================
-    # Pattern 2: Multiple Retrievers with Fusion
+    # Pattern 2: Direct Retriever + Utilities (Programmatic)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Pattern 2: Multiple Retrievers (RRF fusion)")
+    print("Pattern 2: Direct Retriever + Utilities")
     print("=" * 60)
 
-    # Create multiple retrievers
-    dense = DenseRetriever(store)
-    sparse = BM25Retriever(chunks)
+    # Use retriever directly
+    results = await dense.retrieve("Describe the moor", k=5, include_scores=True)
+    
+    # Filter low-quality results
+    results = filter_by_score(results, min_score=0.3)
+    
+    # Add citation markers
+    results = add_citations(results)
+    
+    print("Retrieved passages with citations:")
+    for r in results:
+        citation = r.metadata.get("citation", "")
+        source = r.document.metadata.get("source", "unknown")
+        print(f"  {citation} {source} (score: {r.score:.2f})")
+        print(f"    {r.document.text[:80]}...")
 
-    # RAG creates ensemble internally
-    rag2 = RAG(
+    # =========================================================================
+    # Pattern 3: Ensemble Retriever (Multiple Sources)
+    # =========================================================================
+    print("\n" + "=" * 60)
+    print("Pattern 3: Ensemble Retriever")
+    print("=" * 60)
+
+    # Create ensemble from multiple retrievers
+    sparse = BM25Retriever(chunks)
+    ensemble = EnsembleRetriever(
         retrievers=[dense, sparse],
         weights=[0.6, 0.4],
-        fusion="rrf",  # Reciprocal Rank Fusion
+        fusion="rrf",
     )
 
-    # Search directly
-    passages = await rag2.search("Describe the moor", k=3)
-    print("Retrieved passages:")
-    for p in passages:
-        print(f"  {p.format_reference()} {p.source} (score: {p.score:.2f})")
-        print(f"    {p.text[:80]}...")
+    results = await ensemble.retrieve("Martha Yorkshire girl", k=3, include_scores=True)
+    results = add_citations(results)
+    
+    print("Ensemble results (RRF fusion):")
+    for r in results:
+        source = r.document.metadata.get("source", "unknown")
+        print(f"  {r.metadata['citation']} {source} (score: {r.score:.3f})")
+        print(f"    {r.document.text[:70]}...")
 
     # =========================================================================
-    # Mid-Level API: Citation-Aware Search
-    # =========================================================================
-    print("\n" + "=" * 60)
-    print("Mid-Level API: rag.search() with citations")
-    print("=" * 60)
-
-    passages = await rag.search("Describe Martha and the moor", k=3)
-
-    # Different citation styles
-    print("\nCitation styles:")
-    for style in CitationStyle:
-        formatted = passages[0].format_reference(style)
-        print(f"  {style.name:12} → {formatted}")
-
-    # Bibliography
-    print("\nBibliography:")
-    print(rag.format_bibliography(passages))
-
-    # =========================================================================
-    # Low-Level API: Direct Retriever Access
+    # Formatting Context for LLM
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Low-Level API: Direct retriever access")
+    print("Formatting Context for LLM")
     print("=" * 60)
 
-    # Access underlying retriever
-    results = await rag.retriever.retrieve("robin bird", k=2, include_scores=True)
-    for i, result in enumerate(results, 1):
-        print(f"[{i}] score={result.score:.3f}")
-        print(f"    {result.document.text[:80]}...")
+    results = await dense.retrieve("Mary Lennox appearance", k=3, include_scores=True)
+    results = add_citations(results)
+    
+    # Format as context string
+    context = format_context(results)
+    print("Context for LLM prompt:")
+    print("-" * 40)
+    print(context[:500] + "..." if len(context) > 500 else context)
+    
+    # Format citations reference
+    print("\n" + "-" * 40)
+    reference = format_citations_reference(results)
+    print(reference)
 
     # =========================================================================
-    # Fusion Strategies
+    # Building a RAG Prompt
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Fusion Strategies Comparison")
+    print("Building a RAG Prompt")
     print("=" * 60)
 
-    query = "yellow hair sour expression"
+    query = "What did Martha say about the moor air?"
+    results = await dense.retrieve(query, k=3, include_scores=True)
+    results = add_citations(results)
+    context = format_context(results)
 
-    for fusion in ["rrf", "linear", "max", "voting"]:
-        rag_test = RAG(
-            retrievers=[dense, sparse],
-            fusion=fusion,
-        )
-        results = await rag_test.search(query, k=1)
-        if results:
-            print(f"  {fusion:8} → score={results[0].score:.3f}")
+    # Build prompt
+    prompt = f"""Based on the following context, answer the question.
+Use citation markers like «1» to reference sources.
+
+Context:
+{context}
+
+Question: {query}
+
+Answer:"""
+
+    print("Generated prompt (first 600 chars):")
+    print(prompt[:600] + "...")
 
     print("\n✓ Done")
 

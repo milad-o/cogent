@@ -6,6 +6,13 @@ from agenticflow.retriever.utils.fusion import (
     fuse_results,
     normalize_scores,
 )
+from agenticflow.retriever.utils.results import (
+    add_citations,
+    filter_by_score,
+    format_citations_reference,
+    format_context,
+    top_k,
+)
 from agenticflow.retriever.utils.tokenizers import (
     BaseTokenizer,
     CompositeTokenizer,
@@ -25,6 +32,12 @@ __all__ = [
     "deduplicate_results",
     "fuse_results",
     "normalize_scores",
+    # Result processing
+    "add_citations",
+    "filter_by_score",
+    "format_citations_reference",
+    "format_context",
+    "top_k",
     # Tokenizers
     "Tokenizer",
     "BaseTokenizer",

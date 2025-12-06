@@ -184,7 +184,7 @@ class BaseRetriever:
     """Base class for retrievers with common functionality.
     
     Provides default implementations and utility methods.
-    Subclasses should override `_retrieve_with_scores` (the internal method).
+    Subclasses should override `retrieve_with_scores` for the core logic.
     
     The unified `retrieve()` API:
     - `retrieve(query)` → list of Documents
@@ -237,7 +237,7 @@ class BaseRetriever:
             filter: Optional metadata filter.
             include_scores: If True, return RetrievalResult with scores.
                            If False (default), return just Documents.
-            **kwargs: Additional retriever-specific arguments (e.g., time_range).
+            **kwargs: Additional retriever-specific arguments.
             
         Returns:
             List of Documents or RetrievalResults, ordered by relevance.

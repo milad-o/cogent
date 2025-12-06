@@ -591,6 +591,69 @@ from agenticflow.retriever import deduplicate_results
 unique = deduplicate_results(results, by="content")  # or "id"
 ```
 
+### Citations and Formatting
+
+For RAG applications, use these utilities to prepare results for LLM prompts:
+
+```python
+from agenticflow.retriever import (
+    add_citations,
+    format_context,
+    format_citations_reference,
+    filter_by_score,
+    top_k,
+)
+
+# Retrieve results
+results = await retriever.retrieve(query, k=10, include_scores=True)
+
+# Filter low-quality results
+results = filter_by_score(results, min_score=0.5)
+results = top_k(results, k=5)
+
+# Add citation markers «1», «2», etc.
+results = add_citations(results)
+# results[0].metadata["citation"] == "«1»"
+
+# Format as context string for LLM prompt
+context = format_context(results)
+# Output:
+# «1» [Source: doc.pdf]
+# This is the first chunk of text...
+#
+# ---
+#
+# «2» [Source: other.pdf]
+# This is the second chunk...
+
+# Generate citations reference section
+reference = format_citations_reference(results)
+# Output:
+# Sources:
+# «1» doc.pdf: This is a preview of the first document...
+# «2» other.pdf: This is a preview of the second...
+```
+
+**Example RAG prompt construction:**
+
+```python
+query = "What are the key findings?"
+results = await retriever.retrieve(query, k=5, include_scores=True)
+results = filter_by_score(results, min_score=0.5)
+results = add_citations(results)
+context = format_context(results)
+
+prompt = f"""Based on the following context, answer the question.
+Use citation markers like «1» to reference sources.
+
+Context:
+{context}
+
+Question: {query}
+
+Answer:"""
+```
+
 ---
 
 ## Choosing a Retriever
