@@ -1,13 +1,11 @@
 """
 Example 10: RAG (Retrieval-Augmented Generation)
 
-Two approaches for RAG:
+Three approaches for RAG:
 
-1. **RAG Capability** - For agents (provides search_documents tool)
-2. **Direct Retriever + Utilities** - For programmatic use
-
-The RAG capability is a thin wrapper that gives agents a search tool.
-For programmatic use, use retrievers directly with utility functions.
+1. **RAG Capability** - Agent decides when to search (agentic RAG)
+2. **RAG Interceptor** - Auto-inject context before agent thinks (naive RAG)
+3. **Direct Retriever + Utilities** - Full programmatic control
 
 Usage:
     uv run python examples/10_rag.py
@@ -19,6 +17,7 @@ from config import get_embeddings, get_model
 
 from agenticflow import Agent
 from agenticflow.capabilities import RAG
+from agenticflow.interceptors import RAGInterceptor
 from agenticflow.document import RecursiveCharacterSplitter
 from agenticflow.retriever import (
     DenseRetriever,
@@ -117,10 +116,36 @@ async def main() -> None:
     print(f"\n{answer}")
 
     # =========================================================================
-    # Pattern 2: Direct Retriever + Utilities (Programmatic)
+    # Pattern 2: RAG Interceptor (Naive RAG)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Pattern 2: Direct Retriever + Utilities")
+    print("Pattern 2: RAG Interceptor (Naive RAG)")
+    print("=" * 60)
+
+    # RAGInterceptor retrieves context BEFORE agent thinks
+    # No tools needed - context is injected into the prompt
+    rag_interceptor = RAGInterceptor(
+        retriever=dense,
+        k=3,
+        min_score=0.3,
+        include_sources=True,  # Appends sources reference
+    )
+
+    agent2 = Agent(
+        name="BookExpert",
+        model=model,
+        intercept=[rag_interceptor],  # <-- Inject context automatically
+    )
+
+    # Agent receives context without needing to call any tools
+    answer = await agent2.run("What did the moor look like?")
+    print(f"\n{answer}")
+
+    # =========================================================================
+    # Pattern 3: Direct Retriever + Utilities (Programmatic)
+    # =========================================================================
+    print("\n" + "=" * 60)
+    print("Pattern 3: Direct Retriever + Utilities")
     print("=" * 60)
 
     # Use retriever directly
@@ -140,10 +165,10 @@ async def main() -> None:
         print(f"    {r.document.text[:80]}...")
 
     # =========================================================================
-    # Pattern 3: Ensemble Retriever (Multiple Sources)
+    # Pattern 4: Ensemble Retriever (Multiple Sources)
     # =========================================================================
     print("\n" + "=" * 60)
-    print("Pattern 3: Ensemble Retriever")
+    print("Pattern 4: Ensemble Retriever")
     print("=" * 60)
 
     # Create ensemble from multiple retrievers

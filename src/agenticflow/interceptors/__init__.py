@@ -40,6 +40,7 @@ from agenticflow.interceptors.prompt import (
     ConversationPrompt,
     LambdaPrompt,
 )
+from agenticflow.interceptors.rag import RAGInterceptor, RAGPostProcessor
 
 __all__ = [
     # Core
@@ -82,4 +83,7 @@ __all__ = [
     "ContextPrompt",
     "ConversationPrompt",
     "LambdaPrompt",
+    # RAG
+    "RAGInterceptor",
+    "RAGPostProcessor",
 ]

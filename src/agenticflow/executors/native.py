@@ -641,6 +641,20 @@ class NativeExecutor(BaseExecutor):
                     result = await run_interceptors(interceptors, make_ctx(Phase.PRE_THINK))
                     if not result.proceed:
                         return result.final_response or "Execution stopped by interceptor"
+                    # Apply message modification if set
+                    if result.modified_messages is not None:
+                        # Convert dict messages to LangChain messages
+                        new_messages: list[BaseMessage] = []
+                        for msg in result.modified_messages:
+                            role = msg.get("role", "user")
+                            content = msg.get("content", "")
+                            if role == "system":
+                                new_messages.append(SystemMessage(content=content))
+                            elif role == "assistant":
+                                new_messages.append(AIMessage(content=content))
+                            else:  # user or unknown
+                                new_messages.append(HumanMessage(content=content))
+                        messages = new_messages
                     # Apply tool filtering if modified
                     if result.modified_tools is not None:
                         current_tools = result.modified_tools
