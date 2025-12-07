@@ -1,11 +1,33 @@
 """
 Example 10: RAG (Retrieval-Augmented Generation)
 
-Three approaches for RAG:
+All RAG patterns in agenticflow:
 
-1. **RAG Capability** - Agent decides when to search (agentic RAG)
-2. **RAG Interceptor** - Auto-inject context before agent thinks (naive RAG)
-3. **Direct Retriever + Utilities** - Full programmatic control
+┌─────────────────────────────────────────────────────────────────────────┐
+│ AGENTIC RAG (Agent decides when to search)                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Pattern 1: RAG Capability           → search_documents tool             │
+│            - Agent autonomously decides when to search                  │
+│            - Citations: [1], [2] (numeric style)                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ NAIVE RAG (Context injected before agent thinks)                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Pattern 2: RAG Interceptor          → Pre-think context injection       │
+│            - With citations: «1», «2» (guillemet style)                 │
+│ Pattern 3: RAG Interceptor (no citations)                               │
+│            - Plain context, no citation markers                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PROGRAMMATIC RAG (Full control)                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Pattern 4: Direct Retriever + Utilities                                 │
+│            - Manual retrieval, formatting, citation                     │
+│ Pattern 5: Ensemble Retriever (hybrid search)                           │
+│            - Dense + Sparse with RRF/linear fusion                      │
+└─────────────────────────────────────────────────────────────────────────┘
 
 Usage:
     uv run python examples/10_rag.py
@@ -76,11 +98,11 @@ async def main() -> None:
     embeddings = get_embeddings()
 
     # =========================================================================
-    # Step 1: Prepare documents (OUTSIDE RAG)
+    # Setup: Prepare documents and retriever
     # =========================================================================
-    print("=" * 60)
-    print("Step 1: Prepare documents (outside RAG)")
-    print("=" * 60)
+    print("=" * 70)
+    print("Setup: Prepare documents and retriever")
+    print("=" * 70)
 
     # Create document and split into chunks
     doc = Document(text=SAMPLE_TEXT, metadata={"source": "the_secret_garden.txt"})
@@ -93,149 +115,199 @@ async def main() -> None:
     await store.add_documents(chunks)
     print(f"Indexed {len(chunks)} chunks in vectorstore")
 
-    # =========================================================================
-    # Pattern 1: RAG Capability (for Agents)
-    # =========================================================================
-    print("\n" + "=" * 60)
-    print("Pattern 1: RAG Capability (for Agents)")
-    print("=" * 60)
-
-    # Create retriever and RAG capability
+    # Create retrievers
     dense = DenseRetriever(store)
-    rag = RAG(dense)
+    sparse = BM25Retriever(chunks)
 
-    # Add to agent - agent gets search_documents tool
+    # =========================================================================
+    # AGENTIC RAG
+    # =========================================================================
+    print("\n")
+    print("═" * 70)
+    print("  AGENTIC RAG - Agent decides when to search")
+    print("═" * 70)
+
+    # -------------------------------------------------------------------------
+    # Pattern 1: RAG Capability (Agentic RAG with tool)
+    # -------------------------------------------------------------------------
+    print("\n" + "-" * 70)
+    print("Pattern 1: RAG Capability")
+    print("  → Agent gets search_documents tool")
+    print("  → Citations: [1], [2], [3] (numeric)")
+    print("-" * 70)
+
+    rag = RAG(dense)
     agent = Agent(
         name="BookAssistant",
         model=model,
         capabilities=[rag],
     )
 
-    # Agent uses search_documents tool automatically
     answer = await agent.run("What was Mary Lennox like when she arrived?")
     print(f"\n{answer}")
 
     # =========================================================================
-    # Pattern 2: RAG Interceptor (Naive RAG)
+    # NAIVE RAG
     # =========================================================================
-    print("\n" + "=" * 60)
-    print("Pattern 2: RAG Interceptor (Naive RAG)")
-    print("=" * 60)
+    print("\n")
+    print("═" * 70)
+    print("  NAIVE RAG - Context injected before agent thinks")
+    print("═" * 70)
 
-    # RAGInterceptor retrieves context BEFORE agent thinks
-    # No tools needed - context is injected into the prompt
+    # -------------------------------------------------------------------------
+    # Pattern 2: RAG Interceptor WITH citations
+    # -------------------------------------------------------------------------
+    print("\n" + "-" * 70)
+    print("Pattern 2: RAG Interceptor (with citations)")
+    print("  → Context injected before first LLM call")
+    print("  → Citations: «1», «2» (guillemet)")
+    print("-" * 70)
+
     rag_interceptor = RAGInterceptor(
         retriever=dense,
         k=3,
         min_score=0.3,
-        include_sources=True,  # Appends sources reference
+        include_sources=True,  # Show sources reference
+        # Uses default template with citation instructions
     )
 
     agent2 = Agent(
         name="BookExpert",
         model=model,
-        intercept=[rag_interceptor],  # <-- Inject context automatically
+        intercept=[rag_interceptor],
     )
 
-    # Agent receives context without needing to call any tools
     answer = await agent2.run("What did the moor look like?")
     print(f"\n{answer}")
 
-    # =========================================================================
-    # Pattern 3: Direct Retriever + Utilities (Programmatic)
-    # =========================================================================
-    print("\n" + "=" * 60)
-    print("Pattern 3: Direct Retriever + Utilities")
-    print("=" * 60)
+    # -------------------------------------------------------------------------
+    # Pattern 3: RAG Interceptor WITHOUT citations
+    # -------------------------------------------------------------------------
+    print("\n" + "-" * 70)
+    print("Pattern 3: RAG Interceptor (no citations)")
+    print("  → Plain context, no citation markers")
+    print("  → Simpler output for some use cases")
+    print("-" * 70)
 
-    # Use retriever directly
+    # Custom template without citation instructions
+    no_citation_template = """Answer the question based on the following context.
+
+Context:
+{context}
+
+Question: {question}"""
+
+    rag_no_cite = RAGInterceptor(
+        retriever=dense,
+        k=3,
+        min_score=0.3,
+        include_sources=False,  # No sources reference
+        context_template=no_citation_template,
+    )
+
+    agent3 = Agent(
+        name="SimpleAssistant",
+        model=model,
+        intercept=[rag_no_cite],
+    )
+
+    answer = await agent3.run("Who was Martha?")
+    print(f"\n{answer}")
+
+    # =========================================================================
+    # PROGRAMMATIC RAG
+    # =========================================================================
+    print("\n")
+    print("═" * 70)
+    print("  PROGRAMMATIC RAG - Full control over retrieval")
+    print("═" * 70)
+
+    # -------------------------------------------------------------------------
+    # Pattern 4: Direct Retriever + Utilities
+    # -------------------------------------------------------------------------
+    print("\n" + "-" * 70)
+    print("Pattern 4: Direct Retriever + Utilities")
+    print("  → Manual retrieval and formatting")
+    print("  → Full control over pipeline")
+    print("-" * 70)
+
+    # Retrieve
     results = await dense.retrieve("Describe the moor", k=5, include_scores=True)
     
-    # Filter low-quality results
+    # Filter
     results = filter_by_score(results, min_score=0.3)
     
-    # Add citation markers
+    # Add citations
     results = add_citations(results)
     
-    print("Retrieved passages with citations:")
+    print("\nRetrieved passages with citations:")
     for r in results:
         citation = r.metadata.get("citation", "")
         source = r.document.metadata.get("source", "unknown")
         print(f"  {citation} {source} (score: {r.score:.2f})")
-        print(f"    {r.document.text[:80]}...")
+        print(f"      {r.document.text[:70]}...")
 
-    # =========================================================================
-    # Pattern 4: Ensemble Retriever (Multiple Sources)
-    # =========================================================================
-    print("\n" + "=" * 60)
-    print("Pattern 4: Ensemble Retriever")
-    print("=" * 60)
+    # Format for LLM
+    context = format_context(results)
+    sources = format_citations_reference(results)
+    
+    print("\n--- Context for LLM ---")
+    print(context[:400] + "..." if len(context) > 400 else context)
+    print("\n--- Sources Reference ---")
+    print(sources)
 
-    # Create ensemble from multiple retrievers
-    sparse = BM25Retriever(chunks)
+    # -------------------------------------------------------------------------
+    # Pattern 5: Ensemble Retriever (Hybrid Search)
+    # -------------------------------------------------------------------------
+    print("\n" + "-" * 70)
+    print("Pattern 5: Ensemble Retriever (Hybrid Search)")
+    print("  → Dense + Sparse with RRF fusion")
+    print("  → Better recall than single retriever")
+    print("-" * 70)
+
     ensemble = EnsembleRetriever(
         retrievers=[dense, sparse],
         weights=[0.6, 0.4],
-        fusion="rrf",
+        fusion="rrf",  # Reciprocal Rank Fusion
     )
 
     results = await ensemble.retrieve("Martha Yorkshire girl", k=3, include_scores=True)
     results = add_citations(results)
     
-    print("Ensemble results (RRF fusion):")
+    print("\nEnsemble results (RRF fusion):")
     for r in results:
         source = r.document.metadata.get("source", "unknown")
         print(f"  {r.metadata['citation']} {source} (score: {r.score:.3f})")
-        print(f"    {r.document.text[:70]}...")
+        print(f"      {r.document.text[:60]}...")
 
     # =========================================================================
-    # Formatting Context for LLM
+    # Summary
     # =========================================================================
-    print("\n" + "=" * 60)
-    print("Formatting Context for LLM")
-    print("=" * 60)
-
-    results = await dense.retrieve("Mary Lennox appearance", k=3, include_scores=True)
-    results = add_citations(results)
-    
-    # Format as context string
-    context = format_context(results)
-    print("Context for LLM prompt:")
-    print("-" * 40)
-    print(context[:500] + "..." if len(context) > 500 else context)
-    
-    # Format citations reference
-    print("\n" + "-" * 40)
-    reference = format_citations_reference(results)
-    print(reference)
-
-    # =========================================================================
-    # Building a RAG Prompt
-    # =========================================================================
-    print("\n" + "=" * 60)
-    print("Building a RAG Prompt")
-    print("=" * 60)
-
-    query = "What did Martha say about the moor air?"
-    results = await dense.retrieve(query, k=3, include_scores=True)
-    results = add_citations(results)
-    context = format_context(results)
-
-    # Build prompt
-    prompt = f"""Based on the following context, answer the question.
-Use citation markers like «1» to reference sources.
-
-Context:
-{context}
-
-Question: {query}
-
-Answer:"""
-
-    print("Generated prompt (first 600 chars):")
-    print(prompt[:600] + "...")
-
-    print("\n✓ Done")
+    print("\n")
+    print("═" * 70)
+    print("  SUMMARY")
+    print("═" * 70)
+    print("""
+┌──────────────────┬─────────────────────────────────────────────────────┐
+│ Pattern          │ Use Case                                            │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ RAG Capability   │ Agent autonomously decides when to search           │
+│                  │ Best for: Complex queries, multi-turn conversations │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ RAG Interceptor  │ Always retrieve, inject context, single LLM call    │
+│ (with citations) │ Best for: Q&A, cost-sensitive, traceable answers    │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ RAG Interceptor  │ Simple context injection, no citation overhead      │
+│ (no citations)   │ Best for: Summarization, simple Q&A                 │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ Direct Retriever │ Full programmatic control                           │
+│                  │ Best for: Custom pipelines, batch processing        │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ Ensemble         │ Hybrid search (dense + sparse)                      │
+│                  │ Best for: Better recall, domain-specific terms      │
+└──────────────────┴─────────────────────────────────────────────────────┘
+""")
+    print("✓ Done")
 
 
 if __name__ == "__main__":
