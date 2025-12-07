@@ -117,6 +117,9 @@ class Channel(str, Enum):
     - MESSAGES: Inter-agent communication
     - TASKS: Task lifecycle events
     - STREAMING: Token-by-token LLM output streaming
+    - MEMORY: Memory read/write/search operations
+    - RETRIEVAL: RAG retrieval pipeline events
+    - DOCUMENTS: Document loading and splitting
     - SYSTEM: System-level events
     - RESILIENCE: Retries, circuit breakers, fallbacks
     - ALL: Everything
@@ -127,6 +130,9 @@ class Channel(str, Enum):
     MESSAGES = "messages"
     TASKS = "tasks"
     STREAMING = "streaming"
+    MEMORY = "memory"
+    RETRIEVAL = "retrieval"
+    DOCUMENTS = "documents"
     SYSTEM = "system"
     RESILIENCE = "resilience"
     ALL = "all"
@@ -197,6 +203,31 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.STREAM_TOOL_CALL,
         EventType.STREAM_END,
         EventType.STREAM_ERROR,
+    },
+    Channel.MEMORY: {
+        EventType.MEMORY_READ,
+        EventType.MEMORY_WRITE,
+        EventType.MEMORY_SEARCH,
+        EventType.MEMORY_DELETE,
+        EventType.MEMORY_CLEAR,
+        EventType.THREAD_CREATED,
+        EventType.THREAD_MESSAGE_ADDED,
+    },
+    Channel.RETRIEVAL: {
+        EventType.RETRIEVAL_START,
+        EventType.RETRIEVAL_COMPLETE,
+        EventType.RETRIEVAL_ERROR,
+        EventType.RERANK_START,
+        EventType.RERANK_COMPLETE,
+        EventType.FUSION_APPLIED,
+        EventType.VECTORSTORE_ADD,
+        EventType.VECTORSTORE_SEARCH,
+        EventType.VECTORSTORE_DELETE,
+    },
+    Channel.DOCUMENTS: {
+        EventType.DOCUMENT_LOADED,
+        EventType.DOCUMENT_SPLIT,
+        EventType.DOCUMENT_ENRICHED,
     },
 }
 

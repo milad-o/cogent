@@ -8,11 +8,13 @@ Defines the core abstractions for the retriever module:
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_checkable
 
 if TYPE_CHECKING:
+    from agenticflow.events.bus import EventBus
     from agenticflow.vectorstore import Document
 
 
@@ -189,14 +191,37 @@ class BaseRetriever:
     The unified `retrieve()` API:
     - `retrieve(query)` → list of Documents
     - `retrieve(query, include_scores=True)` → list of RetrievalResult
+    
+    Observability:
+        Set `event_bus` to emit RETRIEVAL_START and RETRIEVAL_COMPLETE events.
     """
     
     _name: str = "base"
+    _event_bus: EventBus | None = None
     
     @property
     def name(self) -> str:
         """Name of this retriever."""
         return self._name
+    
+    @property
+    def event_bus(self) -> EventBus | None:
+        """Get the EventBus (if any)."""
+        return self._event_bus
+    
+    @event_bus.setter
+    def event_bus(self, value: EventBus | None) -> None:
+        """Set the EventBus for observability."""
+        self._event_bus = value
+    
+    async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emit an event if event_bus is configured."""
+        if self._event_bus:
+            from agenticflow.core.enums import EventType
+            await self._event_bus.publish(EventType(event_type), {
+                "retriever": self.name,
+                **data,
+            })
     
     @overload
     async def retrieve(
@@ -242,10 +267,39 @@ class BaseRetriever:
         Returns:
             List of Documents or RetrievalResults, ordered by relevance.
         """
-        results = await self.retrieve_with_scores(query, k=k, filter=filter, **kwargs)
-        if include_scores:
-            return results
-        return [r.document for r in results]
+        start = time.perf_counter()
+        
+        await self._emit("retrieval.start", {
+            "query": query[:100],
+            "k": k,
+            "filter": filter,
+        })
+        
+        try:
+            results = await self.retrieve_with_scores(query, k=k, filter=filter, **kwargs)
+            
+            duration_ms = (time.perf_counter() - start) * 1000
+            top_scores = [r.score for r in results[:3]] if results else []
+            
+            await self._emit("retrieval.complete", {
+                "query": query[:100],
+                "k": k,
+                "results_count": len(results),
+                "top_scores": top_scores,
+                "duration_ms": duration_ms,
+            })
+            
+            if include_scores:
+                return results
+            return [r.document for r in results]
+            
+        except Exception as e:
+            await self._emit("retrieval.error", {
+                "query": query[:100],
+                "error": str(e),
+                "duration_ms": (time.perf_counter() - start) * 1000,
+            })
+            raise
     
     async def retrieve_with_scores(
         self,

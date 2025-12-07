@@ -132,6 +132,33 @@ class EventType(Enum):
     CLIENT_DISCONNECTED = "client.disconnected"
     CLIENT_MESSAGE = "client.message"
 
+    # Memory events (conversation history, semantic memory)
+    MEMORY_READ = "memory.read"  # Memory retrieved
+    MEMORY_WRITE = "memory.write"  # Memory stored
+    MEMORY_SEARCH = "memory.search"  # Semantic search in memory
+    MEMORY_DELETE = "memory.delete"  # Memory entry deleted
+    MEMORY_CLEAR = "memory.clear"  # Memory cleared
+    THREAD_CREATED = "memory.thread.created"  # New conversation thread
+    THREAD_MESSAGE_ADDED = "memory.thread.message"  # Message added to thread
+
+    # Retrieval events (RAG retrieval pipeline)
+    RETRIEVAL_START = "retrieval.start"  # Retrieval query started
+    RETRIEVAL_COMPLETE = "retrieval.complete"  # Retrieval finished with results
+    RETRIEVAL_ERROR = "retrieval.error"  # Retrieval failed
+    RERANK_START = "retrieval.rerank.start"  # Reranking started
+    RERANK_COMPLETE = "retrieval.rerank.complete"  # Reranking finished
+    FUSION_APPLIED = "retrieval.fusion"  # Ensemble fusion applied
+
+    # VectorStore events
+    VECTORSTORE_ADD = "vectorstore.add"  # Documents added to store
+    VECTORSTORE_SEARCH = "vectorstore.search"  # Similarity search performed
+    VECTORSTORE_DELETE = "vectorstore.delete"  # Documents deleted
+
+    # Document events (loading, splitting)
+    DOCUMENT_LOADED = "document.loaded"  # Document loaded from source
+    DOCUMENT_SPLIT = "document.split"  # Document split into chunks
+    DOCUMENT_ENRICHED = "document.enriched"  # Metadata added to document
+
     CUSTOM = "custom"
 
     @property

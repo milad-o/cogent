@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -42,6 +43,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from agenticflow.core.messages import BaseMessage as Message
+    from agenticflow.events.bus import EventBus
     from agenticflow.vectorstore import VectorStore
 
 
@@ -129,17 +131,20 @@ class Memory:
         store: Store | None = None,
         vectorstore: VectorStore | None = None,
         namespace: str = "",
+        event_bus: EventBus | None = None,
     ) -> None:
         """Initialize Memory.
         
         Args:
             store: Persistence store. Defaults to InMemoryStore.
             vectorstore: VectorStore for semantic search. Optional.
-            namespace: Key prefix for isolation. 
+            namespace: Key prefix for isolation.
+            event_bus: EventBus for observability. Optional.
         """
         self._store = store or InMemoryStore()
         self._vectorstore = vectorstore
         self._namespace = namespace
+        self._event_bus = event_bus
         self._lock = asyncio.Lock()
     
     @property
@@ -156,6 +161,20 @@ class Memory:
     def namespace(self) -> str:
         """Get the namespace prefix."""
         return self._namespace
+    
+    @property
+    def event_bus(self) -> EventBus | None:
+        """Get the EventBus (if any)."""
+        return self._event_bus
+    
+    async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emit an event if event_bus is configured."""
+        if self._event_bus:
+            from agenticflow.core.enums import EventType
+            await self._event_bus.publish(EventType(event_type), {
+                "namespace": self._namespace,
+                **data,
+            })
     
     def _key(self, key: str) -> str:
         """Prefix key with namespace."""
@@ -181,7 +200,13 @@ class Memory:
             value: Value to store (must be JSON-serializable).
             ttl: Time-to-live in seconds. None = forever.
         """
+        start = time.perf_counter()
         await self._store.set(self._key(key), value, ttl=ttl)
+        await self._emit("memory.write", {
+            "key": key,
+            "ttl": ttl,
+            "duration_ms": (time.perf_counter() - start) * 1000,
+        })
     
     async def recall(self, key: str, default: Any = None) -> Any:
         """Retrieve a value from memory.
@@ -193,8 +218,15 @@ class Memory:
         Returns:
             Stored value or default.
         """
+        start = time.perf_counter()
         result = await self._store.get(self._key(key))
-        return result if result is not None else default
+        found = result is not None
+        await self._emit("memory.read", {
+            "key": key,
+            "found": found,
+            "duration_ms": (time.perf_counter() - start) * 1000,
+        })
+        return result if found else default
     
     async def forget(self, key: str) -> bool:
         """Remove a value from memory.
@@ -205,12 +237,18 @@ class Memory:
         Returns:
             True if key was deleted.
         """
-        return await self._store.delete(self._key(key))
+        deleted = await self._store.delete(self._key(key))
+        await self._emit("memory.delete", {
+            "key": key,
+            "deleted": deleted,
+        })
+        return deleted
     
     async def clear(self) -> None:
         """Clear all memory in this namespace."""
         prefix = self._namespace + ":" if self._namespace else ""
         await self._store.clear(prefix)
+        await self._emit("memory.clear", {})
     
     async def keys(self) -> list[str]:
         """List all keys in this namespace."""
@@ -354,15 +392,26 @@ class Memory:
         if not self._vectorstore:
             raise RuntimeError("No vectorstore configured. Pass vectorstore= to Memory().")
         
+        start = time.perf_counter()
+        
         # Filter by namespace
         ns_filter = {"namespace": self._namespace} if self._namespace else {}
         combined_filter = {**ns_filter, **(filter_metadata or {})}
         
-        return await self._vectorstore.search(
+        results = await self._vectorstore.search(
             query, 
             k=k, 
             filter=combined_filter if combined_filter else None,
         )
+        
+        await self._emit("memory.search", {
+            "query": query[:100],  # Truncate for logging
+            "k": k,
+            "results_count": len(results),
+            "duration_ms": (time.perf_counter() - start) * 1000,
+        })
+        
+        return results
     
     # -------------------------------------------------------------------------
     # Message History (Conversation)
