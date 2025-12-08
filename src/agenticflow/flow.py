@@ -417,7 +417,25 @@ class Flow:
                 print(f"[{name}]: {output[:100]}...")
             ```
         """
-        return await self._topology.run(task)
+        from agenticflow.core.enums import EventType
+        
+        # Emit user input event
+        await self._event_bus.publish(EventType.USER_INPUT.value, {
+            "content": task,
+            "flow_name": self.name,
+        })
+        
+        # Run the topology
+        result = await self._topology.run(task)
+        
+        # Emit output generated event
+        await self._event_bus.publish(EventType.OUTPUT_GENERATED.value, {
+            "content": result.output,
+            "flow_name": self.name,
+            "agent_count": len(result.agent_outputs),
+        })
+        
+        return result
 
     async def stream(self, task: str):
         """

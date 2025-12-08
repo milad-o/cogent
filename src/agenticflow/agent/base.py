@@ -3305,11 +3305,20 @@ class Agent:
             ExecutionStrategy,
             create_executor,
         )
+        from agenticflow.core.enums import EventType
         
         # Auto-initialize capabilities BEFORE creating executor
         # (executor caches tools in __init__, so they must be ready)
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
+        
+        # Emit user input event
+        if self.event_bus:
+            await self.event_bus.publish(EventType.USER_INPUT.value, {
+                "agent_name": self.name or "agent",
+                "input": task[:500] if len(task) > 500 else task,
+                "input_length": len(task),
+            })
         
         strategy_map = {
             "native": ExecutionStrategy.NATIVE,
@@ -3323,7 +3332,18 @@ class Agent:
         executor.tracker = tracker  # Pass tracker to executor
         executor.max_iterations = max_iterations
         
-        return await executor.execute(task, context)
+        result = await executor.execute(task, context)
+        
+        # Emit output generated event
+        if self.event_bus:
+            result_str = str(result)
+            await self.event_bus.publish(EventType.OUTPUT_GENERATED.value, {
+                "agent_name": self.name or "agent",
+                "output": result_str[:500] if len(result_str) > 500 else result_str,
+                "output_length": len(result_str),
+            })
+        
+        return result
 
     async def run_turbo(
         self,

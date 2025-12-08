@@ -53,6 +53,14 @@ class EventType(Enum):
     SYSTEM_STOPPED = "system.stopped"
     SYSTEM_ERROR = "system.error"
 
+    # User interaction events
+    USER_INPUT = "user.input"  # User provided input/prompt
+    USER_FEEDBACK = "user.feedback"  # User provided feedback (HITL)
+    
+    # Output events
+    OUTPUT_GENERATED = "output.generated"  # Final output ready for user
+    OUTPUT_STREAMED = "output.streamed"  # Output token streamed to user
+
     # Task lifecycle events
     TASK_CREATED = "task.created"
     TASK_SCHEDULED = "task.scheduled"

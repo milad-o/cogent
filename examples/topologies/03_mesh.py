@@ -54,14 +54,14 @@ async def main() -> None:
     # Synthesis: 1 call
     # Total: ~7 LLM calls
     
-    # Simple observability: verbose="trace" for maximum detail
-    # Options: True (progress), "verbose" (outputs), "debug" (tools), "trace" (all)
+    # Simple observability: verbose=True for progress, "debug" for detailed
+    # Options: True (progress), "verbose" (outputs), "debug" (tools/LLM), "trace" (all)
     flow = Flow(
         name="writer-collaboration",
         agents=[technical, creative, seo],
         topology="mesh",
         max_rounds=2,  # Two rounds so agents can see each other's contributions
-        verbose="trace",  # Maximum observability
+        verbose=True,  # Progress-level observability
     )
 
     task = "Write a 100-word blog post about '5 Tips for Better Sleep'."

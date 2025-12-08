@@ -158,6 +158,11 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.AGENT_SPAWN_COMPLETED,
         EventType.AGENT_SPAWN_FAILED,
         EventType.AGENT_DESPAWNED,
+        # User/Output events (part of agent interaction)
+        EventType.USER_INPUT,
+        EventType.USER_FEEDBACK,
+        EventType.OUTPUT_GENERATED,
+        EventType.OUTPUT_STREAMED,
     },
     Channel.TOOLS: {
         EventType.TOOL_REGISTERED,
@@ -864,10 +869,64 @@ class Observer:
         data = event.data
         
         # ═══════════════════════════════════════════════════════════
+        # USER & OUTPUT EVENTS - Clear visibility into user interactions
+        # ═══════════════════════════════════════════════════════════
+        
+        if event_type == EventType.USER_INPUT:
+            content = data.get("content", data.get("input", ""))
+            source = data.get("source", "user")
+            # Truncate long inputs
+            max_len = min(self.config.truncate or 100, 100)
+            if len(content) > max_len:
+                content = content[:max_len].replace("\n", " ").strip() + "..."
+            else:
+                content = content.replace("\n", " ").strip()
+            return f"{prefix}{s.info('👤')} {s.bold('User:')} {content}"
+        
+        elif event_type == EventType.USER_FEEDBACK:
+            feedback = data.get("feedback", data.get("content", ""))
+            decision = data.get("decision", "")
+            if decision:
+                return f"{prefix}{s.info('👤')} {s.bold('User feedback:')} {decision}"
+            max_len = min(self.config.truncate or 80, 80)
+            if len(feedback) > max_len:
+                feedback = feedback[:max_len].replace("\n", " ").strip() + "..."
+            return f"{prefix}{s.info('👤')} {s.bold('User feedback:')} {feedback}"
+        
+        elif event_type == EventType.OUTPUT_GENERATED:
+            content = data.get("content", data.get("output", ""))
+            agent_name = data.get("agent_name", "")
+            # Duration if available
+            duration_str = ""
+            if self.config.show_duration and "duration_ms" in data:
+                ms = data['duration_ms']
+                if ms > 1000:
+                    duration_str = s.success(f" ({ms/1000:.1f}s)")
+                else:
+                    duration_str = s.dim(f" ({ms:.0f}ms)")
+            # Truncate output preview
+            max_len = min(self.config.truncate or 120, 120)
+            if len(content) > max_len:
+                content = content[:max_len].replace("\n", " ").strip() + "..."
+            else:
+                content = content.replace("\n", " ").strip()
+            agent_ctx = f" [{agent_name}]" if agent_name else ""
+            return f"{prefix}{s.success('📤')} {s.bold('Output')}{agent_ctx}{duration_str}: {content}"
+        
+        elif event_type == EventType.OUTPUT_STREAMED:
+            # Similar to TOKEN_STREAMED but for final user-facing output
+            token = data.get("token", data.get("content", ""))
+            if self.config.level >= ObservabilityLevel.DEBUG:
+                self.config.stream.write(token)
+                self.config.stream.flush()
+                return ""  # No newline for streaming
+            return ""  # Don't show at lower levels
+        
+        # ═══════════════════════════════════════════════════════════
         # AGENT EVENTS - Purple/Magenta theme with emojis
         # ═══════════════════════════════════════════════════════════
         
-        if event_type == EventType.AGENT_INVOKED:
+        elif event_type == EventType.AGENT_INVOKED:
             agent_name = data.get('agent_name', '?')
             return f"{prefix}{s.agent(f'▶ [{agent_name}]')} {s.dim('starting...')}"
         
@@ -935,27 +994,16 @@ class Observer:
                 else:
                     duration_str = s.dim(f" ({ms:.0f}ms)")
             
-            # Truncate if needed
-            truncate_len = self.config.truncate or 500
-            if len(result) > truncate_len:
-                result = result[:truncate_len] + "..."
-            
             # Header with checkmark
             header = f"{prefix}{s.success('✓')} {s.agent(f'[{agent_name}]')}{duration_str}"
             
             if result:
-                result_lines = result.split('\n')
-                if len(result_lines) > 1:
-                    # Multi-line response - simple indentation, no vertical lines
-                    lines.append(header)
-                    for line in result_lines[:12]:
-                        lines.append(f"      {line}")
-                    if len(result_lines) > 12:
-                        lines.append(s.dim(f"      ... ({len(result_lines) - 12} more lines)"))
-                    return "\n".join(lines)
-                else:
-                    # Single line - show inline
-                    return f"{header}\n      {result}"
+                # Truncate more aggressively for cleaner output
+                truncate_len = min(self.config.truncate or 150, 150)
+                result_clean = result.replace("\n", " ").strip()
+                if len(result_clean) > truncate_len:
+                    result_clean = result_clean[:truncate_len] + "..."
+                return f"{header}\n      {result_clean}"
             else:
                 return header
         
@@ -1051,16 +1099,20 @@ class Observer:
             return f"{prefix}{s.warning(f'🔄 Retrying ({attempt}/{max_retries})')}{delay_str}"
         
         # ═══════════════════════════════════════════════════════════
-        # MESSAGE EVENTS - Communication between agents
+        # MESSAGE EVENTS - Communication between agents (concise)
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.MESSAGE_SENT:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
             content = data.get("content", "")
-            # Respect truncate config (0 = no limit)
-            if self.config.truncate and len(content) > self.config.truncate:
-                content = content[:self.config.truncate] + "..."
+            # Always truncate message content aggressively for readability
+            max_len = min(self.config.truncate or 80, 80)
+            if len(content) > max_len:
+                # Show just the start for context
+                content = content[:max_len].replace("\n", " ").strip() + "..."
+            else:
+                content = content.replace("\n", " ").strip()
             content_str = f' "{content}"' if content else ""
             return f"{prefix}{s.dim('📤')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
         
@@ -1068,9 +1120,12 @@ class Observer:
             receiver = data.get("agent_name", data.get("agent", "?"))
             sender = data.get("from", "?")
             content = data.get("content", "")
-            # Respect truncate config (0 = no limit)
-            if self.config.truncate and len(content) > self.config.truncate:
-                content = content[:self.config.truncate] + "..."
+            # Always truncate message content aggressively for readability
+            max_len = min(self.config.truncate or 80, 80)
+            if len(content) > max_len:
+                content = content[:max_len].replace("\n", " ").strip() + "..."
+            else:
+                content = content.replace("\n", " ").strip()
             content_str = f' "{content}"' if content else ""
             return f"{prefix}{s.dim('📥')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
         
@@ -1167,7 +1222,7 @@ class Observer:
             return f"{prefix}{s.error('✗')} {s.agent(f'[{agent_name}]')} {s.error(f'Stream error: {error}')}"
         
         # ═══════════════════════════════════════════════════════════
-        # LLM OBSERVABILITY EVENTS - Deep insight into LLM interactions
+        # LLM OBSERVABILITY EVENTS - Concise LLM interaction logging
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.LLM_REQUEST:
@@ -1175,47 +1230,33 @@ class Observer:
             message_count = data.get("message_count", 0)
             tools_available = data.get("tools_available", [])
             prompt = data.get("prompt", "")
-            messages = data.get("messages", [])
             system_prompt = data.get("system_prompt", "")
             
-            tools_str = f", tools=[{', '.join(tools_available[:5])}{'...' if len(tools_available) > 5 else ''}]" if tools_available else ""
+            # Build concise header
+            tools_count = f", {len(tools_available)} tools" if tools_available else ""
+            header = f"{prefix}{s.info('📤')} {s.agent(f'[{agent_name}]')} LLM request {s.dim(f'({message_count} msgs{tools_count})')}"
             
-            header = f"{prefix}{s.info('📤')} {s.agent(f'[{agent_name}]')} {s.bold('LLM Request')} {s.dim(f'({message_count} messages{tools_str})')}"
-            lines.append(header)
-            
-            # Show system prompt preview
-            if system_prompt:
-                sys_preview = system_prompt[:150] + "..." if len(system_prompt) > 150 else system_prompt
-                lines.append(f"      {s.dim('System:')} {s.dim(sys_preview)}")
-            
-            # Show user prompt
-            if prompt:
-                prompt_preview = prompt[:200] + "..." if len(prompt) > 200 else prompt
-                lines.append(f"      {s.dim('Prompt:')} {prompt_preview}")
-            
-            # Show message history at DEBUG level
-            if self.config.level >= ObservabilityLevel.DEBUG and messages:
-                lines.append(f"      {s.dim('─── Messages ───')}")
-                for i, msg in enumerate(messages[-5:]):  # Last 5 messages
-                    role = msg.get("role", "?")
-                    content = msg.get("content", "")
-                    if isinstance(content, str):
-                        content_preview = content[:100] + "..." if len(content) > 100 else content
-                    else:
-                        content_preview = str(content)[:100]
-                    role_color = s.success if role == "assistant" else (s.info if role == "user" else s.dim)
-                    lines.append(f"      {role_color(role)}: {s.dim(content_preview)}")
-                if len(messages) > 5:
-                    lines.append(f"      {s.dim(f'... and {len(messages) - 5} earlier messages')}")
-            
-            return "\n".join(lines)
+            # Only show prompt preview at DETAILED+ level, single line
+            if self.config.level >= ObservabilityLevel.DETAILED and (prompt or system_prompt):
+                lines.append(header)
+                if system_prompt:
+                    sys_preview = system_prompt[:60].replace("\n", " ").strip()
+                    if len(system_prompt) > 60:
+                        sys_preview += "..."
+                    lines.append(f"      {s.dim(f'System: {sys_preview}')}")
+                if prompt:
+                    prompt_preview = prompt[:80].replace("\n", " ").strip()
+                    if len(prompt) > 80:
+                        prompt_preview += "..."
+                    lines.append(f"      {s.dim(f'Prompt: {prompt_preview}')}")
+                return "\n".join(lines)
+            return header
         
         elif event_type == EventType.LLM_RESPONSE:
             agent_name = data.get("agent_name", "?")
             content = data.get("content", "")
             tool_calls = data.get("tool_calls", [])
             finish_reason = data.get("finish_reason", "")
-            usage = data.get("usage", {})
             duration_ms = data.get("duration_ms", 0)
             
             # Duration formatting
@@ -1226,39 +1267,21 @@ class Observer:
                 else:
                     duration_str = s.dim(f" ({duration_ms:.0f}ms)")
             
-            # Usage info
-            usage_str = ""
-            if usage:
-                prompt_tokens = usage.get("prompt_tokens", 0)
-                completion_tokens = usage.get("completion_tokens", 0)
-                total = usage.get("total_tokens", prompt_tokens + completion_tokens)
-                if total:
-                    usage_str = s.dim(f" [{total} tokens]")
+            tool_str = f", {len(tool_calls)} tools" if tool_calls else ""
+            reason_str = f" {s.dim(f'({finish_reason})')}" if finish_reason else ""
+            header = f"{prefix}{s.success('📥')} {s.agent(f'[{agent_name}]')} LLM response{duration_str}{reason_str}{s.dim(tool_str)}"
             
-            tool_str = f", {len(tool_calls)} tool calls" if tool_calls else ""
-            header = f"{prefix}{s.success('📥')} {s.agent(f'[{agent_name}]')} {s.bold('LLM Response')}{duration_str}{usage_str}{s.dim(f' ({finish_reason}{tool_str})')}"
-            lines.append(header)
+            # Show brief content preview at DETAILED+ level
+            if self.config.level >= ObservabilityLevel.DETAILED and content:
+                lines.append(header)
+                # Single-line preview only
+                content_preview = content[:100].replace("\n", " ").strip()
+                if len(content) > 100:
+                    content_preview += "..."
+                lines.append(f"      {s.dim(content_preview)}")
+                return "\n".join(lines)
             
-            # Show content preview
-            if content:
-                content_preview = content[:300] + "..." if len(content) > 300 else content
-                for line in content_preview.split('\n')[:5]:
-                    lines.append(f"      {line}")
-                if len(content.split('\n')) > 5:
-                    lines.append(f"      {s.dim('... (more content)')}")
-            
-            # Show tool calls
-            if tool_calls:
-                lines.append(f"      {s.dim('─── Tool Calls ───')}")
-                for tc in tool_calls[:3]:
-                    tc_name = tc.get("name", tc.get("function", {}).get("name", "?"))
-                    tc_args = tc.get("arguments", tc.get("function", {}).get("arguments", ""))
-                    args_preview = str(tc_args)[:80] + "..." if len(str(tc_args)) > 80 else str(tc_args)
-                    lines.append(f"      {s.tool(f'🔧 {tc_name}')} {s.dim(args_preview)}")
-                if len(tool_calls) > 3:
-                    lines.append(f"      {s.dim(f'... and {len(tool_calls) - 3} more tools')}")
-            
-            return "\n".join(lines)
+            return header
         
         elif event_type == EventType.LLM_TOOL_DECISION:
             agent_name = data.get("agent_name", "?")
