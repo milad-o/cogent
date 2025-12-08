@@ -1,5 +1,5 @@
 """
-Example 23: Deferred/Event-Driven Tools
+Example 21: Deferred/Event-Driven Tools
 
 Demonstrates how to create tools that don't complete immediately,
 allowing agents to wait for external events (webhooks, callbacks,
@@ -18,7 +18,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from agenticflow import Agent
-from agenticflow.events.bus import EventBus
+from agenticflow.observability.bus import EventBus
 from agenticflow.tools import tool, DeferredResult
 
 

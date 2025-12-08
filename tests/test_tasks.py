@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock
 
 from agenticflow.core.enums import EventType, Priority, TaskStatus
-from agenticflow.events.bus import EventBus
+from agenticflow.observability.bus import EventBus
 from agenticflow.tasks.manager import TaskManager
 
 
@@ -221,7 +221,7 @@ class TestTaskManager:
 
     def test_get_task_tree(self, task_manager: TaskManager) -> None:
         # Synchronously add tasks for tree test
-        from agenticflow.schemas.task import Task
+        from agenticflow.tasks.task import Task
 
         parent = Task(name="Parent")
         child1 = Task(name="Child 1", parent_id=parent.id)

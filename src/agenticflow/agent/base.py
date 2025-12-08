@@ -50,12 +50,12 @@ from agenticflow.agent.output import (
 )
 from agenticflow.core.enums import AgentRole, AgentStatus, EventType
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.schemas.event import Event
-from agenticflow.schemas.message import Message
-from agenticflow.schemas.task import Task
+from agenticflow.observability.event import Event
+from agenticflow.core.message import Message
+from agenticflow.tasks.task import Task
 
 if TYPE_CHECKING:
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
     from agenticflow.tools.registry import ToolRegistry
     from agenticflow.observability.progress import ProgressTracker
     from agenticflow.agent.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
@@ -668,7 +668,7 @@ class Agent:
             
             # Ensure event bus exists
             if self.event_bus is None:
-                from agenticflow.events.bus import EventBus
+                from agenticflow.observability.bus import EventBus
                 self.event_bus = EventBus()
             
             self._deferred_manager = DeferredManager(self.event_bus)

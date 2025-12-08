@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example 21: Streaming LLM Responses
+Example 19: Streaming LLM Responses
 ===================================
 
 This example demonstrates AgenticFlow's streaming capabilities,
@@ -22,7 +22,7 @@ Prerequisites:
     - Set your API key: export OPENAI_API_KEY=your-key
 
 Run:
-    uv run python examples/21_streaming.py
+    uv run python examples/19_streaming.py
 """
 
 import asyncio

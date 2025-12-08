@@ -14,7 +14,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_checkable
 
 if TYPE_CHECKING:
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
     from agenticflow.vectorstore import Document
 
 

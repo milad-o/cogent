@@ -293,7 +293,7 @@ class Mesh(BaseTopology):
     ) -> TopologyResult:
         """Execute mesh collaboration pattern."""
         from agenticflow.core.enums import EventType
-        from agenticflow.events.bus import EventBus
+        from agenticflow.observability.bus import EventBus
         
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []

@@ -5,7 +5,7 @@ Demonstrates summarizing a PDF document using PDFMarkdownLoader + Summarizer
 with full progress tracking and timing metrics.
 
 Usage:
-    uv run python examples/35_pdf_summarizer.py
+    uv run python examples/36_pdf_summarizer.py
 
 Requires:
     uv add pymupdf4llm pymupdf

@@ -109,9 +109,9 @@ from agenticflow.core.enums import (
 from agenticflow.core.utils import generate_id, now_utc
 
 # Models
-from agenticflow.schemas.event import Event
-from agenticflow.schemas.message import Message, MessageType
-from agenticflow.schemas.task import Task
+from agenticflow.observability.event import Event
+from agenticflow.core.message import Message, MessageType
+from agenticflow.tasks.task import Task
 
 # Agents (THIS IS WHERE WE ADD VALUE)
 from agenticflow.agent.base import Agent
@@ -216,8 +216,8 @@ from agenticflow.executors import (
 )
 
 # Events (THIS IS WHERE WE ADD VALUE)
-from agenticflow.events.bus import EventBus, get_event_bus, set_event_bus
-from agenticflow.events.handlers import (
+from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
+from agenticflow.observability.handlers import (
     ConsoleEventHandler,
     FileEventHandler,
     FilteringEventHandler,

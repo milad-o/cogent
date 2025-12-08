@@ -1,9 +1,30 @@
 """Observability module for AgenticFlow.
 
-Provides comprehensive monitoring, tracing, metrics, and progress output
+Provides comprehensive monitoring, tracing, metrics, events, and progress output
 for understanding system behavior at runtime.
+
+Includes:
+- EventBus: Central pub/sub for events
+- Event: Immutable event records
+- Observer: Unified observability for agents, flows, teams
+- Tracer: Distributed tracing
+- Metrics: Counters, gauges, histograms
+- Dashboard: Real-time monitoring UI
 """
 
+from agenticflow.observability.event import Event
+from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
+from agenticflow.observability.handlers import (
+    ConsoleEventHandler,
+    FileEventHandler,
+    FilteringEventHandler,
+    MetricsEventHandler,
+)
+from agenticflow.observability.websocket import (
+    WebSocketServer,
+    start_websocket_server,
+    websocket_handler,
+)
 from agenticflow.observability.tracer import (
     Tracer,
     Span,
@@ -79,12 +100,26 @@ from agenticflow.observability.progress import (
 )
 
 __all__ = [
+    # Event System
+    "Event",
+    "EventBus",
+    "get_event_bus",
+    "set_event_bus",
+    # Event Handlers
+    "ConsoleEventHandler",
+    "FileEventHandler",
+    "FilteringEventHandler",
+    "MetricsEventHandler",
+    # WebSocket
+    "WebSocketServer",
+    "start_websocket_server",
+    "websocket_handler",
     # Tracing
     "Tracer",
     "Span",
     "SpanContext",
     "SpanKind",
-    # Deep Execution Tracing (NEW!)
+    # Deep Execution Tracing
     "ExecutionTracer",
     "TracingObserver",
     "TraceLevel",

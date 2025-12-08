@@ -1,5 +1,5 @@
 """
-Example 31: Spawning Agents - Dynamic Agent Creation
+Example 22: Spawning Agents - Dynamic Agent Creation
 
 Demonstrates the spawning capability where a supervisor agent can
 dynamically spawn ephemeral specialist agents to handle specific tasks.

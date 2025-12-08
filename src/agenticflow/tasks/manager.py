@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.enums import EventType, Priority, TaskStatus
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.schemas.event import Event
-from agenticflow.schemas.task import Task
+from agenticflow.observability.event import Event
+from agenticflow.tasks.task import Task
 
 if TYPE_CHECKING:
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
 
 
 class TaskManager:

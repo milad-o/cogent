@@ -69,7 +69,7 @@ from typing import Any, Callable, TextIO, TYPE_CHECKING
 
 from agenticflow.core.enums import EventType
 from agenticflow.core.utils import generate_id, now_utc, to_local
-from agenticflow.schemas.event import Event
+from agenticflow.observability.event import Event
 from agenticflow.observability.progress import (
     OutputConfig,
     ProgressTracker,
@@ -81,7 +81,7 @@ from agenticflow.observability.progress import (
 )
 
 if TYPE_CHECKING:
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
 
 
 class ObservabilityLevel(IntEnum):

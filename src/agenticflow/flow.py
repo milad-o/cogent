@@ -37,8 +37,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-from agenticflow.events.bus import EventBus
-from agenticflow.events.handlers import ConsoleEventHandler
+from agenticflow.observability.bus import EventBus
+from agenticflow.observability.handlers import ConsoleEventHandler
 from agenticflow.tools.base import BaseTool
 from agenticflow.tools.registry import ToolRegistry
 from agenticflow.topologies import (

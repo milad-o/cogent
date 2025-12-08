@@ -12,10 +12,10 @@ from typing import TYPE_CHECKING
 
 from agenticflow.core.enums import EventType
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.schemas.event import Event
+from agenticflow.observability.event import Event
 
 if TYPE_CHECKING:
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
 
 # Check for websockets availability
 try:

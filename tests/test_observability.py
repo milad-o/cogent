@@ -356,8 +356,8 @@ class TestObserver:
     async def test_attach_to_event_bus(self):
         """Test attaching observer to event bus."""
         from agenticflow.observability import Observer, ObservabilityLevel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         bus = EventBus()
@@ -377,8 +377,8 @@ class TestObserver:
     async def test_callbacks(self):
         """Test observer callbacks."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         agent_calls = []
@@ -407,8 +407,8 @@ class TestObserver:
     async def test_events_query(self):
         """Test querying observed events."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
@@ -436,8 +436,8 @@ class TestObserver:
     async def test_timeline(self):
         """Test timeline generation."""
         from agenticflow.observability import Observer, ObservabilityLevel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
@@ -455,8 +455,8 @@ class TestObserver:
     async def test_summary(self):
         """Test summary generation."""
         from agenticflow.observability import Observer, ObservabilityLevel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
@@ -517,8 +517,8 @@ class TestObserverStreaming:
     async def test_streaming_events_dispatched(self):
         """Test streaming events are dispatched to callback."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         stream_calls = []
@@ -561,8 +561,8 @@ class TestObserverStreaming:
     async def test_streaming_events_in_metrics(self):
         """Test streaming events are counted in metrics."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
@@ -582,8 +582,8 @@ class TestObserverStreaming:
     async def test_streaming_events_formatted(self):
         """Test streaming events are properly formatted."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         from io import StringIO
         
@@ -615,8 +615,8 @@ class TestObserverStreaming:
     async def test_stream_error_triggers_on_error(self):
         """Test STREAM_ERROR triggers on_error callback."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.events.bus import EventBus
-        from agenticflow.schemas.event import Event
+        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.event import Event
         from agenticflow.core.enums import EventType
         
         errors = []

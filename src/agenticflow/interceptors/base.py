@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
     from agenticflow.context import RunContext
-    from agenticflow.schemas.message import Message
+    from agenticflow.core.message import Message
 
 
 class Phase(Enum):

@@ -1,5 +1,5 @@
 """
-Example 25: Interceptors
+Example 29: Interceptors
 
 Demonstrates AgenticFlow's interceptor system for cross-cutting concerns
 like cost control, security, and observability.
@@ -9,7 +9,7 @@ Key features:
 - BudgetGuard for limiting model/tool calls
 - Custom interceptors for logging, validation, etc.
 
-Run: uv run python examples/25_interceptors.py
+Run: uv run python examples/29_interceptors.py
 """
 
 import asyncio

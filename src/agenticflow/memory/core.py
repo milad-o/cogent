@@ -43,7 +43,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from agenticflow.core.messages import BaseMessage as Message
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
     from agenticflow.vectorstore import VectorStore
 
 

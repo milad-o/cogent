@@ -10,7 +10,7 @@ Key features:
 - Works with text files, code, markdown, etc.
 
 Usage:
-    uv run python examples/34_summarizer.py
+    uv run python examples/35_summarizer.py
 
 Requires:
     Configure API keys in .env (see config.py)

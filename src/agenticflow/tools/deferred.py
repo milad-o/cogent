@@ -79,7 +79,7 @@ from agenticflow.core.enums import EventType
 from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
 
 
 class DeferredStatus(Enum):

@@ -11,7 +11,7 @@ Key features:
 - Markdown output saved for inspection
 
 Usage:
-    uv run python examples/32_pdf_llm.py
+    uv run python examples/33_pdf_llm.py
 
 Requires: uv add pymupdf4llm pymupdf structlog
 """

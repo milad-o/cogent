@@ -1,5 +1,5 @@
 """
-Example 20: Human-in-the-Loop (HITL) for Tool Approval
+Example 18: Human-in-the-Loop (HITL) for Tool Approval
 
 This example demonstrates how to implement human oversight for agent tool calls:
 - Configure interrupt_on rules for specific tools

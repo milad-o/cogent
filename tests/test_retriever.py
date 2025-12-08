@@ -1308,6 +1308,7 @@ class TestModuleExports:
         assert hasattr(retriever, "ParentDocumentRetriever")
         assert hasattr(retriever, "SentenceWindowRetriever")
         assert hasattr(retriever, "SelfQueryRetriever")
+        assert hasattr(retriever, "HyDERetriever")
         
         # Rerankers
         assert hasattr(retriever, "Reranker")
@@ -1329,3 +1330,160 @@ class TestModuleExports:
         assert hasattr(rerankers, "CohereReranker")
         assert hasattr(rerankers, "LLMReranker")
         assert hasattr(rerankers, "ListwiseLLMReranker")
+
+
+# ============================================================================
+# Test HyDERetriever
+# ============================================================================
+
+
+class TestHyDERetriever:
+    """Tests for HyDERetriever."""
+    
+    @pytest.fixture
+    def mock_model(self):
+        """Create a mock chat model for hypothesis generation."""
+        from agenticflow.models.mock import MockChatModel
+        return MockChatModel(responses=[
+            "Python is a versatile programming language used for web development, "
+            "data science, machine learning, and automation. It features clean syntax "
+            "and a vast ecosystem of libraries.",
+        ])
+    
+    @pytest.fixture
+    async def base_retriever(self, sample_documents: list[Document]):
+        """Create a base dense retriever."""
+        from agenticflow.retriever import DenseRetriever
+        from agenticflow.vectorstore import VectorStore
+        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        
+        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        await vs.add_documents(sample_documents)
+        return DenseRetriever(vs)
+    
+    @pytest.mark.asyncio
+    async def test_hyde_basic_retrieval(self, mock_model, base_retriever) -> None:
+        """Test basic HyDE retrieval."""
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        hyde = HyDERetriever(base_retriever, mock_model)
+        
+        results = await hyde.retrieve("What is Python?", k=3)
+        
+        assert isinstance(results, list)
+        assert len(results) <= 3
+        # Should return Document objects
+        assert all(hasattr(doc, "text") for doc in results)
+    
+    @pytest.mark.asyncio
+    async def test_hyde_with_scores(self, mock_model, base_retriever) -> None:
+        """Test HyDE retrieval with scores."""
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        hyde = HyDERetriever(base_retriever, mock_model)
+        
+        results = await hyde.retrieve("What is Python?", k=3, include_scores=True)
+        
+        assert isinstance(results, list)
+        assert all(isinstance(r, RetrievalResult) for r in results)
+        # Retriever name should be updated
+        for r in results:
+            assert r.retriever_name == "hyde"
+    
+    @pytest.mark.asyncio
+    async def test_hyde_generate_hypothetical(self, mock_model, base_retriever) -> None:
+        """Test hypothetical document generation."""
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        hyde = HyDERetriever(base_retriever, mock_model)
+        
+        hypothetical = await hyde.generate_hypothetical("What is Python?")
+        
+        assert isinstance(hypothetical, str)
+        assert len(hypothetical) > 0
+        # Should contain the mock response content
+        assert "Python" in hypothetical
+    
+    @pytest.mark.asyncio
+    async def test_hyde_custom_prompt(self, mock_model, base_retriever) -> None:
+        """Test HyDE with custom prompt template."""
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        custom_prompt = "Write a technical explanation for: {query}"
+        
+        hyde = HyDERetriever(
+            base_retriever,
+            mock_model,
+            prompt_template=custom_prompt,
+        )
+        
+        results = await hyde.retrieve("programming", k=2)
+        
+        assert isinstance(results, list)
+    
+    @pytest.mark.asyncio
+    async def test_hyde_multiple_hypotheticals(self, base_retriever) -> None:
+        """Test HyDE with multiple hypothetical documents."""
+        from agenticflow.models.mock import MockChatModel
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        # Model that returns different responses
+        model = MockChatModel(responses=[
+            "Python is great for beginners and experts alike.",
+            "Python powers data science and machine learning.",
+            "Python is used in web development with Django and Flask.",
+        ])
+        
+        hyde = HyDERetriever(
+            base_retriever,
+            model,
+            n_hypotheticals=3,
+        )
+        
+        results = await hyde.retrieve("Why use Python?", k=3, include_scores=True)
+        
+        assert isinstance(results, list)
+        assert len(results) <= 3
+    
+    @pytest.mark.asyncio
+    async def test_hyde_include_original_query(self, mock_model, base_retriever) -> None:
+        """Test HyDE with original query included in search."""
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        hyde = HyDERetriever(
+            base_retriever,
+            mock_model,
+            include_original_query=True,
+        )
+        
+        results = await hyde.retrieve("Python programming", k=3, include_scores=True)
+        
+        assert isinstance(results, list)
+    
+    @pytest.mark.asyncio
+    async def test_hyde_custom_name(self, mock_model, base_retriever) -> None:
+        """Test HyDE with custom name."""
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        hyde = HyDERetriever(
+            base_retriever,
+            mock_model,
+            name="my-hyde-retriever",
+        )
+        
+        assert hyde.name == "my-hyde-retriever"
+        
+        results = await hyde.retrieve("test", k=1, include_scores=True)
+        for r in results:
+            assert r.retriever_name == "my-hyde-retriever"
+    
+    def test_hyde_repr(self, mock_model, base_retriever) -> None:
+        """Test HyDE string representation."""
+        from agenticflow.retriever.hyde import HyDERetriever
+        
+        hyde = HyDERetriever(base_retriever, mock_model, n_hypotheticals=2)
+        
+        repr_str = repr(hyde)
+        assert "HyDERetriever" in repr_str
+        assert "dense" in repr_str  # base retriever name
+        assert "n_hypotheticals=2" in repr_str

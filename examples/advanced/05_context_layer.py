@@ -1,5 +1,5 @@
 """
-Example 26: Context Layer
+Example 31: Context Layer
 
 Demonstrates AgenticFlow's Context Layer for runtime injection and
 dynamic behavior control.
@@ -11,7 +11,7 @@ Key features:
 - ToolGuard/CircuitBreaker: Tool retry and failure protection
 - PromptAdapter: Dynamic system prompt modification
 
-Run: uv run python examples/26_context_layer.py
+Run: uv run python examples/31_context_layer.py
 """
 
 import asyncio

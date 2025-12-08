@@ -4,7 +4,7 @@ Example: PDF Capability
 Agent extracts and summarizes content from PDF documents.
 
 Usage:
-    uv run python examples/24_pdf.py
+    uv run python examples/23_pdf.py
 
 Requires: uv add pypdf reportlab
 """

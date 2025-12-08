@@ -1,5 +1,5 @@
 """
-Example 23: Agent Reasoning - Extended Thinking
+Example 28: Agent Reasoning - Extended Thinking
 
 This example demonstrates the reasoning capability, which enables agents
 to think through complex problems before acting - similar to how Claude

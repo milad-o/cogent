@@ -66,6 +66,7 @@ from agenticflow.retriever.contextual import (
 from agenticflow.retriever.dense import DenseRetriever
 from agenticflow.retriever.ensemble import EnsembleRetriever
 from agenticflow.retriever.hybrid import HybridRetriever, MetadataMatchMode, MetadataWeight
+from agenticflow.retriever.hyde import HyDERetriever
 
 # Re-export document types for backward compatibility
 from agenticflow.document import (
@@ -156,6 +157,7 @@ __all__ = [
     "MetadataMatchMode",
     "MetadataWeight",
     "EnsembleRetriever",
+    "HyDERetriever",
     # Contextual retrievers
     "ParentDocumentRetriever",
     "SentenceWindowRetriever",

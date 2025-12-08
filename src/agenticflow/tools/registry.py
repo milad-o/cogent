@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from agenticflow.events.bus import EventBus
+    from agenticflow.observability.bus import EventBus
 
 
 class ToolRegistry:

@@ -4,7 +4,7 @@ Example: Shell Capability
 Agent executes shell commands to analyze code and system info.
 
 Usage:
-    uv run python examples/26_shell.py
+    uv run python examples/30_shell.py
 """
 
 import asyncio

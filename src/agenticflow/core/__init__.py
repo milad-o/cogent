@@ -14,6 +14,7 @@ from agenticflow.core.enums import (
     Priority,
     TaskStatus,
 )
+from agenticflow.core.message import Message, MessageType
 from agenticflow.core.utils import (
     format_timestamp,
     generate_id,
@@ -29,6 +30,9 @@ __all__ = [
     "EventType",
     "Priority",
     "AgentRole",
+    # Message
+    "Message",
+    "MessageType",
     # Utilities
     "generate_id",
     "now_utc",
