@@ -711,36 +711,55 @@ class TestFuseResults:
         assert "B" in texts
     
     def test_linear_fusion(self) -> None:
-        """Test linear weighted fusion."""
+        """Test linear weighted fusion with score normalization."""
         # Use same document ID for merging
         results_list = [
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.8, "r1")],
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.6, "r2")],
         ]
         
+        # Test WITHOUT normalization first
         fused = fuse_results(
             results_list,
             strategy=FusionStrategy.LINEAR,
             weights=[0.7, 0.3],
+            normalize_output=False,  # Disable normalization to test raw scores
         )
         
         # Should have combined score
         assert len(fused) == 1
         expected_score = 0.7 * 0.8 + 0.3 * 0.6
         assert abs(fused[0].score - expected_score) < 0.01
+        
+        # Test WITH normalization (default)
+        fused_norm = fuse_results(
+            results_list,
+            strategy=FusionStrategy.LINEAR,
+            weights=[0.7, 0.3],
+        )
+        # Single result normalizes to 1.0
+        assert fused_norm[0].score == 1.0
     
     def test_max_fusion(self) -> None:
-        """Test max score fusion."""
+        """Test max score fusion with score normalization."""
         # Use same document ID for merging
         results_list = [
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.6, "r1")],
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.9, "r2")],
         ]
         
-        fused = fuse_results(results_list, strategy=FusionStrategy.MAX)
+        # Test WITHOUT normalization
+        fused = fuse_results(results_list, strategy=FusionStrategy.MAX, normalize_output=False)
         
         assert len(fused) == 1
         assert fused[0].score == 0.9
+        # Raw score preserved in metadata
+        assert fused[0].metadata.get("raw_score") is None  # No raw_score when not normalizing
+        
+        # Test WITH normalization (default) - single result = 1.0
+        fused_norm = fuse_results(results_list, strategy=FusionStrategy.MAX)
+        assert fused_norm[0].score == 1.0
+        assert fused_norm[0].metadata.get("raw_score") == 0.9
     
     def test_voting_fusion(self) -> None:
         """Test voting fusion."""

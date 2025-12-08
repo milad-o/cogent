@@ -488,50 +488,6 @@ agent = Agent(
 
 ---
 
-## RAG Integration
-
-### RAGInterceptor
-
-Automatic context retrieval:
-
-```python
-from agenticflow.interceptors import RAGInterceptor
-from agenticflow.retriever import DenseRetriever
-
-agent = Agent(
-    name="assistant",
-    model=model,
-    intercept=[
-        RAGInterceptor(
-            retriever=DenseRetriever(vectorstore),
-            k=5,
-            template="Use this context:\n{context}\n\nQuestion: {query}",
-        ),
-    ],
-)
-```
-
-### RAGPostProcessor
-
-Post-process RAG responses:
-
-```python
-from agenticflow.interceptors import RAGPostProcessor
-
-agent = Agent(
-    name="assistant",
-    model=model,
-    intercept=[
-        RAGPostProcessor(
-            add_sources=True,      # Append source citations
-            verify_grounding=True, # Check claims against sources
-        ),
-    ],
-)
-```
-
----
-
 ## Custom Interceptors
 
 ### Basic Structure
@@ -658,4 +614,3 @@ agent = Agent(
 | **Resilience** | `Failover`, `CircuitBreaker`, `ToolGuard` |
 | **Audit** | `Auditor` |
 | **Prompts** | `ContextPrompt`, `ConversationPrompt`, `LambdaPrompt` |
-| **RAG** | `RAGInterceptor`, `RAGPostProcessor` |

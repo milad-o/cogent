@@ -9,23 +9,16 @@ All RAG patterns in agenticflow:
 │ Pattern 1: RAG Capability           → search_documents tool             │
 │            - Agent autonomously decides when to search                  │
 │            - Citations: [1], [2] (numeric style)                        │
-└─────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────┐
-│ NAIVE RAG (Context injected before agent thinks)                        │
-├─────────────────────────────────────────────────────────────────────────┤
-│ Pattern 2: RAG Interceptor          → Pre-think context injection       │
-│            - With citations: «1», «2» (guillemet style)                 │
-│ Pattern 3: RAG Interceptor (no citations)                               │
-│            - Plain context, no citation markers                         │
+│ Pattern 2: RAG with custom config   → Minimal LLM output                │
+│            - Control what LLM sees vs what's stored                     │
 └─────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ PROGRAMMATIC RAG (Full control)                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Pattern 4: Direct Retriever + Utilities                                 │
+│ Pattern 3: Direct Retriever + Utilities                                 │
 │            - Manual retrieval, formatting, citation                     │
-│ Pattern 5: Ensemble Retriever (hybrid search)                           │
+│ Pattern 4: Ensemble Retriever (hybrid search)                           │
 │            - Dense + Sparse with RRF/linear fusion                      │
 └─────────────────────────────────────────────────────────────────────────┘
 
@@ -44,7 +37,7 @@ from config import get_embeddings, get_model
 
 from agenticflow import Agent
 from agenticflow.capabilities import RAG
-from agenticflow.interceptors import RAGInterceptor
+from agenticflow.capabilities.rag import RAGConfig
 from agenticflow.document import RecursiveCharacterSplitter
 from agenticflow.retriever import (
     DenseRetriever,
@@ -151,73 +144,39 @@ async def main() -> None:
     answer = await agent.run("What was Mary Lennox like when she arrived?")
     print(f"\n{answer}")
 
-    # =========================================================================
-    # NAIVE RAG
-    # =========================================================================
-    print("\n")
-    print("═" * 70)
-    print("  NAIVE RAG - Context injected before agent thinks")
-    print("═" * 70)
-
     # -------------------------------------------------------------------------
-    # Pattern 2: RAG Interceptor WITH citations
+    # Pattern 2: RAG Capability with Custom Config
     # -------------------------------------------------------------------------
     print("\n" + "-" * 70)
-    print("Pattern 2: RAG Interceptor (with citations)")
-    print("  → Context injected before first LLM call")
-    print("  → Citations: «1», «2» (guillemet)")
+    print("Pattern 2: RAG Capability with Custom Config")
+    print("  → Minimize what LLM sees (no scores, truncate text)")
+    print("  → Full metadata stored for bibliography")
     print("-" * 70)
 
-    rag_interceptor = RAGInterceptor(
-        retriever=dense,
-        k=3,
-        min_score=0.3,
-        include_sources=True,  # Show sources reference
-        # Uses default template with citation instructions
+    # Config to minimize token usage while keeping full metadata for bibliography
+    config = RAGConfig(
+        top_k=3,
+        include_source_in_tool_output=True,
+        include_page_in_tool_output=True,
+        include_score_in_tool_output=False,  # Don't show scores to LLM
+        max_passage_chars=300,  # Truncate long passages
+        store_full_metadata=True,  # Keep full metadata for bibliography
     )
-
+    
+    rag2 = RAG(dense, config=config)
     agent2 = Agent(
         name="BookExpert",
         model=model,
-        intercept=[rag_interceptor],
+        capabilities=[rag2],
     )
 
     answer = await agent2.run("What did the moor look like?")
     print(f"\n{answer}")
-
-    # -------------------------------------------------------------------------
-    # Pattern 3: RAG Interceptor WITHOUT citations
-    # -------------------------------------------------------------------------
-    print("\n" + "-" * 70)
-    print("Pattern 3: RAG Interceptor (no citations)")
-    print("  → Plain context, no citation markers")
-    print("  → Simpler output for some use cases")
-    print("-" * 70)
-
-    # Custom template without citation instructions
-    no_citation_template = """Answer the question based on the following context.
-
-Context:
-{context}
-
-Question: {question}"""
-
-    rag_no_cite = RAGInterceptor(
-        retriever=dense,
-        k=3,
-        min_score=0.3,
-        include_sources=False,  # No sources reference
-        context_template=no_citation_template,
-    )
-
-    agent3 = Agent(
-        name="SimpleAssistant",
-        model=model,
-        intercept=[rag_no_cite],
-    )
-
-    answer = await agent3.run("Who was Martha?")
-    print(f"\n{answer}")
+    
+    # Access stored citations for bibliography (not sent to LLM)
+    print("\n--- Bibliography (generated after response) ---")
+    bibliography = rag2.format_bibliography(title="Sources")
+    print(bibliography if bibliography else "No citations")
 
     # =========================================================================
     # PROGRAMMATIC RAG
@@ -228,10 +187,10 @@ Question: {question}"""
     print("═" * 70)
 
     # -------------------------------------------------------------------------
-    # Pattern 4: Direct Retriever + Utilities
+    # Pattern 3: Direct Retriever + Utilities
     # -------------------------------------------------------------------------
     print("\n" + "-" * 70)
-    print("Pattern 4: Direct Retriever + Utilities")
+    print("Pattern 3: Direct Retriever + Utilities")
     print("  → Manual retrieval and formatting")
     print("  → Full control over pipeline")
     print("-" * 70)
@@ -262,10 +221,10 @@ Question: {question}"""
     print(sources)
 
     # -------------------------------------------------------------------------
-    # Pattern 5: Ensemble Retriever (Hybrid Search)
+    # Pattern 4: Ensemble Retriever (Hybrid Search)
     # -------------------------------------------------------------------------
     print("\n" + "-" * 70)
-    print("Pattern 5: Ensemble Retriever (Hybrid Search)")
+    print("Pattern 4: Ensemble Retriever (Hybrid Search)")
     print("  → Dense + Sparse with RRF fusion")
     print("  → Better recall than single retriever")
     print("-" * 70)
@@ -299,11 +258,8 @@ Question: {question}"""
 │ RAG Capability   │ Agent autonomously decides when to search           │
 │                  │ Best for: Complex queries, multi-turn conversations │
 ├──────────────────┼─────────────────────────────────────────────────────┤
-│ RAG Interceptor  │ Always retrieve, inject context, single LLM call    │
-│ (with citations) │ Best for: Q&A, cost-sensitive, traceable answers    │
-├──────────────────┼─────────────────────────────────────────────────────┤
-│ RAG Interceptor  │ Simple context injection, no citation overhead      │
-│ (no citations)   │ Best for: Summarization, simple Q&A                 │
+│ RAG with Config  │ Minimize LLM tokens, store full metadata            │
+│                  │ Best for: Cost-sensitive, post-processing citations │
 ├──────────────────┼─────────────────────────────────────────────────────┤
 │ Direct Retriever │ Full programmatic control                           │
 │                  │ Best for: Custom pipelines, batch processing        │

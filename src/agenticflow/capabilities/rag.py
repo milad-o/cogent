@@ -46,9 +46,9 @@ Example (multiple retrievers with fusion):
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Mapping
 
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.tools.base import tool
@@ -76,6 +76,8 @@ class CitationStyle(Enum):
 class CitedPassage:
     """A cited passage from a retrieved document.
 
+    Stores both minimal info for LLM output and full metadata for bibliography.
+
     Attributes:
         citation_id: Citation reference number (1, 2, 3...).
         source: Source document name.
@@ -83,6 +85,7 @@ class CitedPassage:
         chunk_index: Chunk index within document.
         score: Relevance score (0.0-1.0).
         text: The passage text.
+        metadata: Full document metadata (for bibliography, not sent to LLM).
     """
 
     citation_id: int
@@ -91,6 +94,7 @@ class CitedPassage:
     chunk_index: int | None = None
     score: float = 0.0
     text: str = ""
+    metadata: Mapping[str, Any] | None = None  # Full metadata for bibliography
 
     def format_reference(
         self,
@@ -120,18 +124,32 @@ class CitedPassage:
             return f"({self.source})"
         return f"[{self.citation_id}]"
 
-    def format_full(self, include_score: bool = True) -> str:
+    def format_full(
+        self,
+        include_score: bool = True,
+        include_metadata_keys: list[str] | None = None,
+    ) -> str:
         """Format as full bibliography entry.
+
+        Uses stored metadata for rich bibliography if available.
 
         Args:
             include_score: Whether to include relevance score.
+            include_metadata_keys: Additional metadata keys to include (e.g., ["author", "date"]).
 
         Returns:
-            Full citation with source, page, and optionally score.
+            Full citation with source, page, and optionally score and metadata.
         """
         parts = [f"[{self.citation_id}]", self.source]
         if self.page is not None:
             parts.append(f"p.{self.page}")
+        
+        # Include additional metadata if available and requested
+        if include_metadata_keys and self.metadata:
+            for key in include_metadata_keys:
+                if key in self.metadata:
+                    parts.append(f"{key}: {self.metadata[key]}")
+        
         if include_score:
             parts.append(f"(score: {self.score:.2f})")
         return " ".join(parts)
@@ -141,17 +159,33 @@ class CitedPassage:
 class RAGConfig:
     """Configuration for RAG capability.
 
+    Controls what information is sent to the LLM vs stored for later use.
+    This is important for efficiency: retrieved docs often have large metadata
+    that the LLM doesn't need to see but is useful for bibliography generation.
+
     Attributes:
         top_k: Default number of results to retrieve.
         citation_style: How to format citations.
         include_page_in_citation: Include page numbers in citations.
         include_score_in_bibliography: Include scores in bibliography.
+        include_source_in_tool_output: Show source name to LLM (default: True).
+        include_page_in_tool_output: Show page number to LLM (default: True).
+        include_score_in_tool_output: Show relevance score to LLM (default: False).
+        max_passage_chars: Max chars per passage to show LLM (None = full text).
+        store_full_metadata: Store full doc metadata for bibliography (default: True).
     """
 
     top_k: int = 4
     citation_style: CitationStyle = CitationStyle.NUMERIC
     include_page_in_citation: bool = True
     include_score_in_bibliography: bool = True
+    # What the LLM sees in tool output
+    include_source_in_tool_output: bool = True
+    include_page_in_tool_output: bool = True
+    include_score_in_tool_output: bool = False  # LLM doesn't need scores
+    max_passage_chars: int | None = None  # Truncate long passages
+    # What we store for later
+    store_full_metadata: bool = True  # Keep full metadata for bibliography
 
 
 # ============================================================
@@ -338,6 +372,8 @@ class RAG(BaseCapability):
         passages = []
         for i, result in enumerate(results, 1):
             doc = result.document
+            # Store full metadata for bibliography generation (not sent to LLM)
+            full_metadata = dict(doc.metadata) if self._config.store_full_metadata else None
             passage = CitedPassage(
                 citation_id=i,
                 source=doc.metadata.get("source", "unknown"),
@@ -345,6 +381,7 @@ class RAG(BaseCapability):
                 chunk_index=doc.metadata.get("chunk_index"),
                 score=result.score,
                 text=doc.text,
+                metadata=full_metadata,
             )
             passages.append(passage)
 
@@ -393,6 +430,7 @@ class RAG(BaseCapability):
     def _create_tools(self) -> list:
         """Create RAG tools for the agent."""
         cap = self
+        cfg = self._config
 
         @tool
         async def search_documents(query: str, num_results: int = 4) -> str:
@@ -411,13 +449,24 @@ class RAG(BaseCapability):
             if not passages:
                 return "No relevant passages found."
 
+            # Format output based on config (minimize what LLM sees)
             formatted = []
             for p in passages:
-                header_parts = [f"[{p.citation_id}]", f"Source: {p.source}"]
-                if p.page is not None:
+                # Build header with only configured fields
+                header_parts = [f"[{p.citation_id}]"]
+                if cfg.include_source_in_tool_output:
+                    header_parts.append(f"Source: {p.source}")
+                if cfg.include_page_in_tool_output and p.page is not None:
                     header_parts.append(f"Page: {p.page}")
-                header_parts.append(f"Score: {p.score:.3f}")
-                formatted.append(f"{' | '.join(header_parts)}\n{p.text}")
+                if cfg.include_score_in_tool_output:
+                    header_parts.append(f"Score: {p.score:.3f}")
+                
+                # Optionally truncate long passages
+                text = p.text
+                if cfg.max_passage_chars and len(text) > cfg.max_passage_chars:
+                    text = text[:cfg.max_passage_chars] + "..."
+                
+                formatted.append(f"{' | '.join(header_parts)}\n{text}")
 
             return "\n\n---\n\n".join(formatted)
 

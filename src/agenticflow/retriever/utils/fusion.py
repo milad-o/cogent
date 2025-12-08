@@ -23,6 +23,7 @@ def fuse_results(
     strategy: FusionStrategy = FusionStrategy.RRF,
     weights: list[float] | None = None,
     k: int | None = None,
+    normalize_output: bool = True,
 ) -> list[RetrievalResult]:
     """Fuse results from multiple retrievers.
     
@@ -31,9 +32,10 @@ def fuse_results(
         strategy: Fusion strategy to use.
         weights: Optional weights for each retriever (for LINEAR strategy).
         k: Number of results to return (None = all).
+        normalize_output: Normalize final scores to 0-1 range (default: True).
         
     Returns:
-        Fused and sorted results.
+        Fused and sorted results with normalized scores.
         
     Example:
         >>> results1 = await retriever1.retrieve_with_scores(query)
@@ -52,15 +54,21 @@ def fuse_results(
     weights = [w / total_weight for w in weights]
     
     if strategy == FusionStrategy.RRF:
-        return _rrf_fusion(result_lists, weights, k)
+        results = _rrf_fusion(result_lists, weights, k)
     elif strategy == FusionStrategy.LINEAR:
-        return _linear_fusion(result_lists, weights, k)
+        results = _linear_fusion(result_lists, weights, k)
     elif strategy == FusionStrategy.MAX:
-        return _max_fusion(result_lists, k)
+        results = _max_fusion(result_lists, k)
     elif strategy == FusionStrategy.VOTING:
-        return _voting_fusion(result_lists, weights, k)
+        results = _voting_fusion(result_lists, weights, k)
     else:
         raise ValueError(f"Unknown fusion strategy: {strategy}")
+    
+    # Normalize output scores to 0-1 range for consistency
+    if normalize_output and results:
+        results = normalize_scores(results)
+    
+    return results
 
 
 def _get_doc_key(result: RetrievalResult) -> str:

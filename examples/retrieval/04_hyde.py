@@ -262,28 +262,24 @@ Passage from medical textbook:"""
         print(f"  [{i}] {text}...")
 
     # =========================================================================
-    # Using HyDE with RAG Interceptor
+    # Using HyDE with RAG Capability
     # =========================================================================
     print("\n")
     print("═" * 70)
-    print("  HyDE with Agent (RAG Interceptor)")
+    print("  HyDE with Agent (RAG Capability)")
     print("═" * 70)
     
     from agenticflow import Agent
-    from agenticflow.interceptors import RAGInterceptor
+    from agenticflow.capabilities import RAG
 
-    # Use HyDE as the retriever in RAG Interceptor
-    rag_interceptor = RAGInterceptor(
-        retriever=hyde_retriever,
-        k=3,
-        min_score=0.3,
-    )
+    # Use HyDE as the retriever in RAG Capability
+    rag = RAG(retriever=hyde_retriever)
 
     agent = Agent(
         name="HealthAdvisor",
         model=model,
         system_prompt="You are a helpful health advisor. Answer questions based on the provided context.",
-        intercept=[rag_interceptor],
+        capabilities=[rag],
     )
 
     answer = await agent.run("I've been feeling really stressed lately. What can I do?")
