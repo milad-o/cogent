@@ -1,18 +1,19 @@
 # Events Module
 
-The `agenticflow.events` module provides the event-driven communication backbone for the framework.
+> **Note:** The events module has been consolidated into `agenticflow.observability`.
+> Import from `agenticflow.observability` instead of `agenticflow.events`.
+> See [Observability Module](observability.md) for the complete documentation.
 
-## Overview
+## Migration Guide
 
-The events module implements a pub/sub pattern for:
-- Task lifecycle tracking
-- Agent activity monitoring
-- Tool execution logging
-- Real-time WebSocket streaming
-- Metrics and observability
+The events functionality is now part of the unified observability module:
 
 ```python
+# Old (deprecated)
 from agenticflow.events import EventBus, ConsoleEventHandler
+
+# New (recommended)
+from agenticflow.observability import EventBus, Event, ConsoleEventHandler
 
 bus = EventBus()
 
