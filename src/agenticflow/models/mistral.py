@@ -1,0 +1,338 @@
+"""
+Mistral AI chat models for AgenticFlow.
+
+Supports all Mistral models via the official API.
+
+Usage:
+    from agenticflow.models.mistral import MistralChat
+    
+    llm = MistralChat(model="mistral-large-latest")
+    response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
+    
+    # With tools
+    llm = MistralChat(model="mistral-large-latest")
+    bound = llm.bind_tools([search_tool])
+    response = await bound.ainvoke(messages)
+
+Available models:
+    - mistral-large-latest: State-of-the-art, best for complex tasks
+    - mistral-small-latest: Budget-friendly, good for most tasks
+    - codestral-latest: Optimized for coding tasks
+    - ministral-8b-latest: Efficient smaller model
+    - open-mistral-nemo: Open source 12B model
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from typing import Any, AsyncIterator
+
+from agenticflow.models.base import AIMessage, BaseChatModel
+
+
+def _convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
+    """Convert messages to dict format.
+    
+    Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
+    """
+    result = []
+    for msg in messages:
+        # Already a dict
+        if isinstance(msg, dict):
+            result.append(msg)
+            continue
+        
+        # Message object with to_dict method
+        if hasattr(msg, "to_dict"):
+            result.append(msg.to_dict())
+            continue
+        
+        # Message object with to_openai method (backward compat)
+        if hasattr(msg, "to_openai"):
+            result.append(msg.to_openai())
+            continue
+        
+        # Message object with role and content attributes
+        if hasattr(msg, "role") and hasattr(msg, "content"):
+            msg_dict: dict[str, Any] = {
+                "role": msg.role,
+                "content": msg.content or "",
+            }
+            # Handle tool calls on assistant messages
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                msg_dict["tool_calls"] = [
+                    {
+                        "id": tc.get("id", f"call_{i}") if isinstance(tc, dict) else getattr(tc, "id", f"call_{i}"),
+                        "type": "function",
+                        "function": {
+                            "name": tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", ""),
+                            "arguments": __import__("json").dumps(
+                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                            ),
+                        },
+                    }
+                    for i, tc in enumerate(msg.tool_calls)
+                ]
+            # Handle tool result messages
+            if hasattr(msg, "tool_call_id") and msg.tool_call_id:
+                msg_dict["tool_call_id"] = msg.tool_call_id
+            if hasattr(msg, "name") and msg.name:
+                msg_dict["name"] = msg.name
+            result.append(msg_dict)
+            continue
+        
+        # Fallback: try to convert to string
+        result.append({"role": "user", "content": str(msg)})
+    
+    return result
+
+
+def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
+    """Convert tools to Mistral API format."""
+    formatted = []
+    for tool in tools:
+        if hasattr(tool, "to_dict"):
+            formatted.append(tool.to_dict())
+        elif hasattr(tool, "to_openai"):
+            formatted.append(tool.to_openai())
+        elif hasattr(tool, "name") and hasattr(tool, "description"):
+            schema = getattr(tool, "args_schema", {}) or {}
+            formatted.append({
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description or "",
+                    "parameters": schema,
+                },
+            })
+        elif isinstance(tool, dict):
+            formatted.append(tool)
+    return formatted
+
+
+def _parse_response(response: Any) -> AIMessage:
+    """Parse Mistral response into AIMessage."""
+    choice = response.choices[0]
+    message = choice.message
+    
+    tool_calls = []
+    if message.tool_calls:
+        for tc in message.tool_calls:
+            args = tc.function.arguments
+            if isinstance(args, str):
+                args = __import__("json").loads(args)
+            tool_calls.append({
+                "id": tc.id,
+                "name": tc.function.name,
+                "args": args,
+            })
+    
+    return AIMessage(
+        content=message.content or "",
+        tool_calls=tool_calls,
+    )
+
+
+@dataclass
+class MistralChat(BaseChatModel):
+    """Mistral AI chat model.
+    
+    Uses the Mistral API (OpenAI-compatible) for high-performance inference.
+    
+    Example:
+        from agenticflow.models.mistral import MistralChat
+        
+        # State-of-the-art model
+        llm = MistralChat(model="mistral-large-latest")
+        
+        # Budget-friendly
+        llm = MistralChat(model="mistral-small-latest")
+        
+        # For coding
+        llm = MistralChat(model="codestral-latest")
+        
+        response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
+        
+    Available models:
+        - mistral-large-latest: Best for complex reasoning
+        - mistral-small-latest: Cost-effective, good quality
+        - codestral-latest: Optimized for code
+        - ministral-8b-latest: Efficient 8B model
+        - open-mistral-nemo: Open 12B model
+    """
+    
+    model: str = "mistral-small-latest"
+    base_url: str = "https://api.mistral.ai/v1"
+    
+    def _init_client(self) -> None:
+        """Initialize Mistral client (OpenAI-compatible)."""
+        try:
+            from openai import AsyncOpenAI, OpenAI
+        except ImportError:
+            raise ImportError("openai package required. Install with: uv add openai")
+        
+        api_key = self.api_key or os.environ.get("MISTRAL_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Mistral API key required. Set MISTRAL_API_KEY environment variable "
+                "or pass api_key parameter."
+            )
+        
+        self._client = OpenAI(
+            base_url=self.base_url,
+            api_key=api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+        self._async_client = AsyncOpenAI(
+            base_url=self.base_url,
+            api_key=api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+    
+    async def ainvoke(
+        self,
+        messages: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> AIMessage:
+        """Async invoke the model.
+        
+        Args:
+            messages: List of message dicts with role and content.
+            **kwargs: Additional arguments (temperature, max_tokens, etc.)
+            
+        Returns:
+            AIMessage with response content and any tool calls.
+        """
+        self._ensure_initialized()
+        
+        # Convert messages to dict format
+        converted_messages = _convert_messages(messages)
+        
+        params: dict[str, Any] = {
+            "model": self.model,
+            "messages": converted_messages,
+        }
+        
+        if self.temperature is not None:
+            params["temperature"] = self.temperature
+        if self.max_tokens is not None:
+            params["max_tokens"] = self.max_tokens
+        
+        # Add tools if bound
+        if self._tools:
+            params["tools"] = _format_tools(self._tools)
+            if self._tool_choice:
+                params["tool_choice"] = self._tool_choice
+        
+        # Apply overrides
+        params.update(kwargs)
+        
+        response = await self._async_client.chat.completions.create(**params)
+        return _parse_response(response)
+    
+    def invoke(
+        self,
+        messages: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> AIMessage:
+        """Sync invoke the model.
+        
+        Args:
+            messages: List of message dicts with role and content.
+            **kwargs: Additional arguments.
+            
+        Returns:
+            AIMessage with response content and any tool calls.
+        """
+        self._ensure_initialized()
+        
+        # Convert messages to dict format
+        converted_messages = _convert_messages(messages)
+        
+        params: dict[str, Any] = {
+            "model": self.model,
+            "messages": converted_messages,
+        }
+        
+        if self.temperature is not None:
+            params["temperature"] = self.temperature
+        if self.max_tokens is not None:
+            params["max_tokens"] = self.max_tokens
+        
+        if self._tools:
+            params["tools"] = _format_tools(self._tools)
+            if self._tool_choice:
+                params["tool_choice"] = self._tool_choice
+        
+        params.update(kwargs)
+        
+        response = self._client.chat.completions.create(**params)
+        return _parse_response(response)
+    
+    async def astream(
+        self,
+        messages: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> AsyncIterator[AIMessage]:
+        """Stream responses from the model.
+        
+        Args:
+            messages: List of message dicts.
+            **kwargs: Additional arguments.
+            
+        Yields:
+            AIMessage chunks as they arrive.
+        """
+        self._ensure_initialized()
+        
+        # Convert messages to dict format
+        converted_messages = _convert_messages(messages)
+        
+        params: dict[str, Any] = {
+            "model": self.model,
+            "messages": converted_messages,
+            "stream": True,
+        }
+        
+        if self.temperature is not None:
+            params["temperature"] = self.temperature
+        if self.max_tokens is not None:
+            params["max_tokens"] = self.max_tokens
+        
+        params.update(kwargs)
+        
+        stream = await self._async_client.chat.completions.create(**params)
+        
+        async for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield AIMessage(content=chunk.choices[0].delta.content)
+    
+    def bind_tools(
+        self,
+        tools: list[Any],
+        tool_choice: str | dict[str, Any] | None = None,
+    ) -> "MistralChat":
+        """Bind tools to the model.
+        
+        Args:
+            tools: List of tools (BaseTool instances or dicts).
+            tool_choice: How to choose tools ("auto", "none", "any", or specific).
+            
+        Returns:
+            New model instance with tools bound.
+        """
+        new_model = MistralChat(
+            model=self.model,
+            base_url=self.base_url,
+            api_key=self.api_key,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+        new_model._tools = tools
+        new_model._tool_choice = tool_choice
+        return new_model

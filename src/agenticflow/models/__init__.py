@@ -145,10 +145,14 @@ def create_chat(
         from agenticflow.models.custom import CustomChat
         return CustomChat(model=model or "gpt-3.5-turbo", **kwargs)
     
+    elif provider == "mistral":
+        from agenticflow.models.mistral import MistralChat
+        return MistralChat(model=model or "mistral-small-latest", **kwargs)
+    
     else:
         raise ValueError(
             f"Unknown provider: {provider}. "
-            f"Supported: openai, azure, anthropic, groq, gemini, ollama, custom"
+            f"Supported: openai, azure, anthropic, groq, gemini, ollama, mistral, custom"
         )
 
 

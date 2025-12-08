@@ -31,7 +31,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT = Path(__file__).parent.parent
 
 # Valid provider choices
-LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama"]
+LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama", "mistral"]
 EmbeddingProvider = Literal["openai", "azure", "ollama"]
 
 
@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
+    mistral_api_key: str | None = Field(default=None, alias="MISTRAL_API_KEY")
     
     # ==========================================================================
     # Azure OpenAI Configuration
@@ -121,6 +122,7 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
     anthropic_model: str = Field(default="claude-sonnet-4-20250514", alias="ANTHROPIC_MODEL")
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
+    mistral_model: str = Field(default="mistral-small-latest", alias="MISTRAL_MODEL")
     
     # ==========================================================================
     # Embedding Model Names
@@ -193,6 +195,12 @@ def get_model(provider: LLMProvider | None = None):
     elif provider == "ollama":
         from agenticflow.models.ollama import OllamaChat
         return OllamaChat(model=s.ollama_model, host=s.ollama_host)
+    
+    elif provider == "mistral":
+        if not s.mistral_api_key:
+            raise ValueError("LLM_PROVIDER=mistral requires MISTRAL_API_KEY")
+        from agenticflow.models.mistral import MistralChat
+        return MistralChat(model=s.mistral_model, api_key=s.mistral_api_key)
     
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
@@ -351,6 +359,9 @@ def print_config():
     elif s.llm_provider == "ollama":
         print(f"  Model: {s.ollama_model}")
         print(f"  Host: {s.ollama_host}")
+    elif s.llm_provider == "mistral":
+        print(f"  Model: {s.mistral_model}")
+        print(f"  API Key: {'✓ set' if s.mistral_api_key else '✗ missing!'}")
     
     print()
     print("Embedding Config:")
