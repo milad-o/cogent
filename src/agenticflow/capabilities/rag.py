@@ -126,8 +126,9 @@ class CitedPassage:
 
     def format_full(
         self,
-        include_score: bool = True,
+        include_score: bool = False,
         include_metadata_keys: list[str] | None = None,
+        markdown: bool = True,
     ) -> str:
         """Format as full bibliography entry.
 
@@ -135,63 +136,94 @@ class CitedPassage:
 
         Args:
             include_score: Whether to include relevance score.
-            include_metadata_keys: Additional metadata keys to include (e.g., ["author", "date"]).
+            include_metadata_keys: Additional metadata keys to include (e.g., ["author", "date", "url"]).
+            markdown: Use markdown formatting (bold source, italic metadata).
 
         Returns:
             Full citation with source, page, and optionally score and metadata.
+
+        Example output (markdown=True):
+            [1] **report.pdf** p.5 - *Author: Smith, Date: 2024*
+            [2] **docs/guide.md** - *Section: Introduction*
         """
-        parts = [f"[{self.citation_id}]", self.source]
+        # Build source part
+        source_str = f"**{self.source}**" if markdown else self.source
+        parts = [f"[{self.citation_id}]", source_str]
+        
+        # Add page if available
         if self.page is not None:
             parts.append(f"p.{self.page}")
         
-        # Include additional metadata if available and requested
+        # Build metadata part
+        meta_parts = []
         if include_metadata_keys and self.metadata:
             for key in include_metadata_keys:
                 if key in self.metadata:
-                    parts.append(f"{key}: {self.metadata[key]}")
+                    value = self.metadata[key]
+                    # Handle URLs specially
+                    if key.lower() == "url" and markdown:
+                        meta_parts.append(f"[link]({value})")
+                    else:
+                        meta_parts.append(f"{key}: {value}")
         
-        if include_score:
-            parts.append(f"(score: {self.score:.2f})")
-        return " ".join(parts)
+        # Add score if requested
+        if include_score and self.score > 0:
+            meta_parts.append(f"relevance: {self.score:.0%}")
+        
+        # Combine
+        result = " ".join(parts)
+        if meta_parts:
+            meta_str = ", ".join(meta_parts)
+            if markdown:
+                result += f" — *{meta_str}*"
+            else:
+                result += f" ({meta_str})"
+        
+        return result
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RAGConfig:
     """Configuration for RAG capability.
 
-    Controls what information is sent to the LLM vs stored for later use.
-    This is important for efficiency: retrieved docs often have large metadata
-    that the LLM doesn't need to see but is useful for bibliography generation.
+    Most users only need to set `top_k`. Other options have sensible defaults.
+
+    Example:
+        ```python
+        # Simple - just use defaults
+        rag = RAG(retriever)
+
+        # With bibliography
+        rag = RAG(retriever, config=RAGConfig(bibliography=True))
+
+        # Customize top_k
+        rag = RAG(retriever, config=RAGConfig(top_k=5))
+        ```
 
     Attributes:
-        top_k: Default number of results to retrieve.
-        citation_style: How to format citations.
-        include_page_in_citation: Include page numbers in citations.
-        include_score_in_bibliography: Include scores in bibliography.
-        include_source_in_tool_output: Show source name to LLM (default: True).
-        include_page_in_tool_output: Show page number to LLM (default: True).
-        include_score_in_tool_output: Show relevance score to LLM (default: False).
-        max_passage_chars: Max chars per passage to show LLM (None = full text).
-        store_full_metadata: Store full doc metadata for bibliography (default: True).
+        top_k: Number of passages to retrieve (default: 4).
+        bibliography: Enable bibliography in format_response_with_bibliography().
+        bibliography_fields: Metadata fields to show in bibliography (e.g., ["author", "date"]).
+        citation_style: Citation format - numeric [1], footnote ¹, inline [source.md].
+        max_chars: Truncate passages to this length (None = full text).
     """
 
+    # Primary options
     top_k: int = 4
+    bibliography: bool = False
+    bibliography_fields: tuple[str, ...] = ()
     citation_style: CitationStyle = CitationStyle.NUMERIC
-    include_page_in_citation: bool = True
-    include_score_in_bibliography: bool = True
-    # What the LLM sees in tool output
-    include_source_in_tool_output: bool = True
-    include_page_in_tool_output: bool = True
-    include_score_in_tool_output: bool = False  # LLM doesn't need scores
-    max_passage_chars: int | None = None  # Truncate long passages
-    # What we store for later
-    store_full_metadata: bool = True  # Keep full metadata for bibliography
+    max_chars: int | None = None
+
+    # Advanced options (rarely needed)
+    include_source: bool = True  # Show source in tool output
+    include_page: bool = True  # Show page in tool output
+    include_score: bool = False  # Show score in tool output (wastes tokens)
 
 
 # ============================================================
 # RAG Capability
 # ============================================================
-
 
 class RAG(BaseCapability):
     """RAG (Retrieval-Augmented Generation) capability.
@@ -373,7 +405,7 @@ class RAG(BaseCapability):
         for i, result in enumerate(results, 1):
             doc = result.document
             # Store full metadata for bibliography generation (not sent to LLM)
-            full_metadata = dict(doc.metadata) if self._config.store_full_metadata else None
+            full_metadata = dict(doc.metadata) if self._config.bibliography else None
             passage = CitedPassage(
                 citation_id=i,
                 source=doc.metadata.get("source", "unknown"),
@@ -391,18 +423,22 @@ class RAG(BaseCapability):
     def format_bibliography(
         self,
         passages: list[CitedPassage] | None = None,
-        title: str = "References",
+        title: str | None = None,
+        include_metadata_keys: list[str] | None = None,
     ) -> str:
         """Format passages as bibliography.
 
         Args:
             passages: Passages to format (default: last search results).
-            title: Bibliography section title.
+            title: Bibliography section title (default: from config).
+            include_metadata_keys: Additional metadata keys to include.
 
         Returns:
             Formatted bibliography string.
         """
         passages = passages or self._last_citations
+        title = title or "References"
+        include_metadata_keys = include_metadata_keys or list(self._config.bibliography_fields)
 
         if not passages:
             return ""
@@ -417,11 +453,44 @@ class RAG(BaseCapability):
         for p in seen_sources.values():
             lines.append(
                 p.format_full(
-                    include_score=self._config.include_score_in_bibliography,
+                    include_score=self._config.include_score,
+                    include_metadata_keys=include_metadata_keys or None,
                 )
             )
 
         return "\n".join(lines)
+
+    def format_response_with_bibliography(
+        self,
+        response: str,
+        passages: list[CitedPassage] | None = None,
+    ) -> str:
+        """Format agent response with appended bibliography.
+
+        Call this after agent.run() to add bibliography to the response.
+
+        Args:
+            response: The agent's response text.
+            passages: Passages to cite (default: last search results).
+
+        Returns:
+            Response with bibliography appended.
+
+        Example:
+            ```python
+            rag = RAG(retriever, config=RAGConfig(auto_bibliography=True))
+            agent = Agent(model=model, capabilities=[rag])
+            response = await agent.run("What are the key findings?")
+            
+            # Add bibliography
+            formatted = rag.format_response_with_bibliography(response)
+            print(formatted)
+            ```
+        """
+        bibliography = self.format_bibliography(passages)
+        if not bibliography:
+            return response
+        return f"{response}\n{bibliography}"
 
     # ================================================================
     # Tools
@@ -454,17 +523,17 @@ class RAG(BaseCapability):
             for p in passages:
                 # Build header with only configured fields
                 header_parts = [f"[{p.citation_id}]"]
-                if cfg.include_source_in_tool_output:
+                if cfg.include_source:
                     header_parts.append(f"Source: {p.source}")
-                if cfg.include_page_in_tool_output and p.page is not None:
+                if cfg.include_page and p.page is not None:
                     header_parts.append(f"Page: {p.page}")
-                if cfg.include_score_in_tool_output:
+                if cfg.include_score:
                     header_parts.append(f"Score: {p.score:.3f}")
                 
                 # Optionally truncate long passages
                 text = p.text
-                if cfg.max_passage_chars and len(text) > cfg.max_passage_chars:
-                    text = text[:cfg.max_passage_chars] + "..."
+                if cfg.max_chars and len(text) > cfg.max_chars:
+                    text = text[:cfg.max_chars] + "..."
                 
                 formatted.append(f"{' | '.join(header_parts)}\n{text}")
 
