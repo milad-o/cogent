@@ -109,23 +109,44 @@ class CitedPassage:
 
         Returns:
             Formatted citation string.
+
+        Examples:
+            NUMERIC:     [1] or [1, p.5]
+            FOOTNOTE:    ¹ or ¹⁵
+            INLINE:      [report.pdf]
+            AUTHOR_YEAR: (Smith, 2024) or (report.pdf) if no author
         """
         if style == CitationStyle.NUMERIC:
             if include_page and self.page is not None:
                 return f"[{self.citation_id}, p.{self.page}]"
             return f"[{self.citation_id}]"
+        
         elif style == CitationStyle.FOOTNOTE:
             superscripts = "⁰¹²³⁴⁵⁶⁷⁸⁹"
             num_str = "".join(superscripts[int(d)] for d in str(self.citation_id))
             return num_str
+        
         elif style == CitationStyle.INLINE:
             return f"[{self.source}]"
+        
         elif style == CitationStyle.AUTHOR_YEAR:
-            return f"({self.source})"
+            # Try to get author and date from metadata
+            author = self.metadata.get("author", "") if self.metadata else ""
+            date = self.metadata.get("date", self.metadata.get("year", "")) if self.metadata else ""
+            if author and date:
+                # Extract year if date is like "2024-01-15"
+                year = str(date)[:4] if len(str(date)) >= 4 else date
+                return f"({author}, {year})"
+            elif author:
+                return f"({author})"
+            else:
+                return f"({self.source})"
+        
         return f"[{self.citation_id}]"
 
     def format_full(
         self,
+        style: CitationStyle = CitationStyle.NUMERIC,
         include_score: bool = False,
         include_metadata_keys: list[str] | None = None,
         markdown: bool = True,
@@ -135,6 +156,7 @@ class CitedPassage:
         Uses stored metadata for rich bibliography if available.
 
         Args:
+            style: Citation style for the reference marker.
             include_score: Whether to include relevance score.
             include_metadata_keys: Additional metadata keys to include (e.g., ["author", "date", "url"]).
             markdown: Use markdown formatting (bold source, italic metadata).
@@ -142,13 +164,18 @@ class CitedPassage:
         Returns:
             Full citation with source, page, and optionally score and metadata.
 
-        Example output (markdown=True):
-            [1] **report.pdf** p.5 - *Author: Smith, Date: 2024*
-            [2] **docs/guide.md** - *Section: Introduction*
+        Example output by style:
+            NUMERIC:     [1] **report.pdf** p.5 — *Author: Smith*
+            FOOTNOTE:    ¹ **report.pdf** p.5 — *Author: Smith*  
+            INLINE:      [report.pdf] p.5 — *Author: Smith*
+            AUTHOR_YEAR: (Smith, 2024) **report.pdf** p.5
         """
+        # Format citation marker based on style
+        marker = self.format_reference(style, include_page=False)
+        
         # Build source part
         source_str = f"**{self.source}**" if markdown else self.source
-        parts = [f"[{self.citation_id}]", source_str]
+        parts = [marker, source_str]
         
         # Add page if available
         if self.page is not None:
@@ -453,6 +480,7 @@ class RAG(BaseCapability):
         for p in seen_sources.values():
             lines.append(
                 p.format_full(
+                    style=self._config.citation_style,
                     include_score=self._config.include_score,
                     include_metadata_keys=include_metadata_keys or None,
                 )

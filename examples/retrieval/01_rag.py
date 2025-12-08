@@ -17,7 +17,7 @@ from config import get_model, get_embeddings
 
 from agenticflow import Agent
 from agenticflow.capabilities import RAG
-from agenticflow.capabilities.rag import RAGConfig
+from agenticflow.capabilities.rag import CitationStyle, RAGConfig
 from agenticflow.observability import Observer
 from agenticflow.retriever import DenseRetriever
 from agenticflow.vectorstore import VectorStore
@@ -69,8 +69,9 @@ async def main() -> None:
     # Configure RAG - simple! Most users only need top_k
     rag_config = RAGConfig(
         top_k=3,
-        bibliography=True,  # Enable bibliography generation
-        bibliography_fields=("author", "date"),  # Include in references
+        bibliography=True,
+        bibliography_fields=("author", "date"),
+        # citation_style options: NUMERIC [1], FOOTNOTE ¹, INLINE [source], AUTHOR_YEAR (Author, 2024)
     )
 
     # Create retriever from vectorstore
