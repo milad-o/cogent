@@ -55,8 +55,8 @@ from __future__ import annotations
 
 from typing import Any
 
-# Base classes
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding
+# Base classes and utilities
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages
 
 # Default models (OpenAI)
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
@@ -234,6 +234,9 @@ __all__ = [
     "AIMessage",
     "BaseChatModel",
     "BaseEmbedding",
+    # Utilities
+    "convert_messages",
+    "is_native_model",
     # OpenAI models (also aliased as ChatModel/EmbeddingModel)
     "OpenAIChat",
     "OpenAIEmbedding",
@@ -245,6 +248,4 @@ __all__ = [
     # Factory functions
     "create_chat",
     "create_embedding",
-    # Utilities
-    "is_native_model",
 ]

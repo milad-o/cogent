@@ -22,7 +22,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages
 
 
 def _parse_response(response: Any) -> AIMessage:
@@ -179,23 +179,8 @@ class OpenAIChat(BaseChatModel):
         Returns:
             Dict of API request parameters.
         """
-        from agenticflow.core.messages import BaseMessage
-        
         # Convert message objects to dicts if needed
-        formatted_messages = []
-        for msg in messages:
-            if isinstance(msg, dict):
-                formatted_messages.append(msg)
-            elif isinstance(msg, BaseMessage):
-                formatted_messages.append(msg.to_dict())
-            else:
-                # Try to use to_dict() method if available
-                if hasattr(msg, "to_dict"):
-                    formatted_messages.append(msg.to_dict())
-                elif hasattr(msg, "to_openai"):  # backward compat
-                    formatted_messages.append(msg.to_openai())
-                else:
-                    raise TypeError(f"Unsupported message type: {type(msg)}")
+        formatted_messages = convert_messages(messages)
         
         kwargs: dict[str, Any] = {
             "model": self.model,

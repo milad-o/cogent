@@ -28,64 +28,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel
-
-
-def _convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
-    """Convert messages to dict format.
-    
-    Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
-    """
-    result = []
-    for msg in messages:
-        # Already a dict
-        if isinstance(msg, dict):
-            result.append(msg)
-            continue
-        
-        # Message object with to_dict method
-        if hasattr(msg, "to_dict"):
-            result.append(msg.to_dict())
-            continue
-        
-        # Message object with to_openai method (backward compat)
-        if hasattr(msg, "to_openai"):
-            result.append(msg.to_openai())
-            continue
-        
-        # Message object with role and content attributes
-        if hasattr(msg, "role") and hasattr(msg, "content"):
-            msg_dict: dict[str, Any] = {
-                "role": msg.role,
-                "content": msg.content or "",
-            }
-            # Handle tool calls on assistant messages
-            if hasattr(msg, "tool_calls") and msg.tool_calls:
-                msg_dict["tool_calls"] = [
-                    {
-                        "id": tc.get("id", f"call_{i}") if isinstance(tc, dict) else getattr(tc, "id", f"call_{i}"),
-                        "type": "function",
-                        "function": {
-                            "name": tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", ""),
-                            "arguments": __import__("json").dumps(
-                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
-                            ),
-                        },
-                    }
-                    for i, tc in enumerate(msg.tool_calls)
-                ]
-            # Handle tool result messages
-            if hasattr(msg, "tool_call_id") and msg.tool_call_id:
-                msg_dict["tool_call_id"] = msg.tool_call_id
-            if hasattr(msg, "name") and msg.name:
-                msg_dict["name"] = msg.name
-            result.append(msg_dict)
-            continue
-        
-        # Fallback: try to convert to string
-        result.append({"role": "user", "content": str(msg)})
-    
-    return result
+from agenticflow.models.base import AIMessage, BaseChatModel, convert_messages
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -209,7 +152,7 @@ class MistralChat(BaseChatModel):
         self._ensure_initialized()
         
         # Convert messages to dict format
-        converted_messages = _convert_messages(messages)
+        converted_messages = convert_messages(messages)
         
         params: dict[str, Any] = {
             "model": self.model,
@@ -250,7 +193,7 @@ class MistralChat(BaseChatModel):
         self._ensure_initialized()
         
         # Convert messages to dict format
-        converted_messages = _convert_messages(messages)
+        converted_messages = convert_messages(messages)
         
         params: dict[str, Any] = {
             "model": self.model,
@@ -289,7 +232,7 @@ class MistralChat(BaseChatModel):
         self._ensure_initialized()
         
         # Convert messages to dict format
-        converted_messages = _convert_messages(messages)
+        converted_messages = convert_messages(messages)
         
         params: dict[str, Any] = {
             "model": self.model,

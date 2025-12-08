@@ -6,6 +6,7 @@ All chat and embedding models inherit from these base classes.
 
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -13,6 +14,70 @@ from typing import Any, AsyncIterator
 
 # Import AIMessage from core messages - single source of truth
 from agenticflow.core.messages import AIMessage
+
+
+def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
+    """Convert messages to dict format for API calls.
+    
+    Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
+    This is a shared utility used by all model providers.
+    
+    Args:
+        messages: List of messages in any supported format.
+        
+    Returns:
+        List of message dicts with role and content keys.
+    """
+    result: list[dict[str, Any]] = []
+    for msg in messages:
+        # Already a dict
+        if isinstance(msg, dict):
+            result.append(msg)
+            continue
+        
+        # Message object with to_dict method
+        if hasattr(msg, "to_dict"):
+            result.append(msg.to_dict())
+            continue
+        
+        # Message object with to_openai method (backward compat)
+        if hasattr(msg, "to_openai"):
+            result.append(msg.to_openai())
+            continue
+        
+        # Message object with role and content attributes
+        if hasattr(msg, "role") and hasattr(msg, "content"):
+            msg_dict: dict[str, Any] = {
+                "role": msg.role,
+                "content": msg.content or "",
+            }
+            # Handle tool calls on assistant messages
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                msg_dict["tool_calls"] = [
+                    {
+                        "id": tc.get("id", f"call_{i}") if isinstance(tc, dict) else getattr(tc, "id", f"call_{i}"),
+                        "type": "function",
+                        "function": {
+                            "name": tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", ""),
+                            "arguments": json.dumps(
+                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                            ),
+                        },
+                    }
+                    for i, tc in enumerate(msg.tool_calls)
+                ]
+            # Handle tool result messages
+            if hasattr(msg, "tool_call_id") and msg.tool_call_id:
+                msg_dict["tool_call_id"] = msg.tool_call_id
+            if hasattr(msg, "name") and msg.name:
+                msg_dict["name"] = msg.name
+            result.append(msg_dict)
+            continue
+        
+        # Fallback: try to convert to string
+        result.append({"role": "user", "content": str(msg)})
+    
+    return result
 
 
 class ModelProvider(str, Enum):
