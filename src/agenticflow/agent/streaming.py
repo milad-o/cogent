@@ -617,7 +617,7 @@ class ObserverStreamCallback:
         
         # Emit token event to observer
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.core.enums import EventType
+            from agenticflow.observability.event import EventType
             self.observer._emit(
                 EventType.TOKEN_STREAMED,
                 agent_name=self.agent_name,
@@ -629,7 +629,7 @@ class ObserverStreamCallback:
     def on_stream_start(self, metadata: dict[str, Any]) -> None:
         """Handle stream start."""
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.core.enums import EventType
+            from agenticflow.observability.event import EventType
             self.observer._emit(
                 EventType.STREAM_START,
                 agent_name=self.agent_name,
@@ -643,7 +643,7 @@ class ObserverStreamCallback:
             print()
         
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.core.enums import EventType
+            from agenticflow.observability.event import EventType
             self.observer._emit(
                 EventType.STREAM_END,
                 agent_name=self.agent_name,
@@ -657,7 +657,7 @@ class ObserverStreamCallback:
             print(f"\n[Calling {name}...]", flush=True)
         
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.core.enums import EventType
+            from agenticflow.observability.event import EventType
             self.observer._emit(
                 EventType.STREAM_TOOL_CALL,
                 agent_name=self.agent_name,
@@ -671,7 +671,7 @@ class ObserverStreamCallback:
             print(f"\n[Stream error: {error}]", flush=True)
         
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.core.enums import EventType
+            from agenticflow.observability.event import EventType
             self.observer._emit(
                 EventType.STREAM_ERROR,
                 agent_name=self.agent_name,

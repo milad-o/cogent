@@ -67,7 +67,7 @@ from datetime import datetime
 from enum import Enum, IntEnum
 from typing import Any, Callable, TextIO, TYPE_CHECKING
 
-from agenticflow.core.enums import EventType
+from agenticflow.observability.event import EventType
 from agenticflow.core.utils import generate_id, now_utc, to_local
 from agenticflow.observability.event import Event
 from agenticflow.observability.progress import (

@@ -260,7 +260,7 @@ class NativeExecutor(BaseExecutor):
                 """Log retry attempt via event bus."""
                 event_bus = getattr(self.agent, "event_bus", None)
                 if event_bus:
-                    from agenticflow.core.enums import EventType
+                    from agenticflow.observability.event import EventType
                     await event_bus.publish(EventType.AGENT_THINKING.value, {
                         "agent": self.agent.name or "agent",
                         "agent_name": self.agent.name or "agent",
@@ -325,7 +325,7 @@ class NativeExecutor(BaseExecutor):
             Otherwise: The final answer string.
         """
         import time
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         # Normalize context: convert dict to RunContext with metadata
         run_context: RunContext
@@ -486,7 +486,7 @@ class NativeExecutor(BaseExecutor):
             StructuredResult if output schema configured, else raw string.
         """
         import time
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         output_config: ResponseSchema | None = getattr(self.agent, '_output_config', None)
         if output_config is None:
@@ -576,7 +576,7 @@ class NativeExecutor(BaseExecutor):
             Raw response content string.
         """
         import time
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         total_tool_calls = 0
         model_calls = 0
@@ -956,7 +956,7 @@ class NativeExecutor(BaseExecutor):
         Returns:
             Dict with reasoning results (thinking_steps, plan, etc).
         """
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         from agenticflow.agent.reasoning import (
             ReasoningConfig,
             build_reasoning_prompt,

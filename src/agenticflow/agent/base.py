@@ -48,9 +48,9 @@ from agenticflow.agent.output import (
     get_best_method,
     schema_to_json,
 )
-from agenticflow.core.enums import AgentRole, AgentStatus, EventType
+from agenticflow.core.enums import AgentRole, AgentStatus
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.observability.event import Event
+from agenticflow.observability.event import Event, EventType
 from agenticflow.core.message import Message
 from agenticflow.tasks.task import Task
 
@@ -3305,7 +3305,6 @@ class Agent:
             ExecutionStrategy,
             create_executor,
         )
-        from agenticflow.core.enums import EventType
         
         # Auto-initialize capabilities BEFORE creating executor
         # (executor caches tools in __init__, so they must be ready)

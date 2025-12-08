@@ -75,7 +75,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable
 from uuid import uuid4
 
-from agenticflow.core.enums import EventType
+from agenticflow.observability.event import EventType
 from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:

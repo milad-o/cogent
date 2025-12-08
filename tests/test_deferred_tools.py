@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agenticflow.core.enums import EventType
+from agenticflow.observability.event import EventType
 from agenticflow.tools.deferred import (
     DeferredManager,
     DeferredResult,

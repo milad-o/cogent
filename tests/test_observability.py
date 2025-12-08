@@ -358,7 +358,7 @@ class TestObserver:
         from agenticflow.observability import Observer, ObservabilityLevel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         bus = EventBus()
         obs = Observer(level=ObservabilityLevel.DEBUG)
@@ -379,7 +379,7 @@ class TestObserver:
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         agent_calls = []
         tool_calls = []
@@ -409,7 +409,7 @@ class TestObserver:
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
@@ -438,7 +438,7 @@ class TestObserver:
         from agenticflow.observability import Observer, ObservabilityLevel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
@@ -457,7 +457,7 @@ class TestObserver:
         from agenticflow.observability import Observer, ObservabilityLevel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
@@ -519,7 +519,7 @@ class TestObserverStreaming:
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         stream_calls = []
         
@@ -563,7 +563,7 @@ class TestObserverStreaming:
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = EventBus()
@@ -584,7 +584,7 @@ class TestObserverStreaming:
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         from io import StringIO
         
         output = StringIO()
@@ -617,7 +617,7 @@ class TestObserverStreaming:
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
         from agenticflow.observability.bus import EventBus
         from agenticflow.observability.event import Event
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         errors = []
         

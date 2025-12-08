@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 from agenticflow.core.enums import (
     TaskStatus,
     AgentStatus,
-    EventType,
     Priority,
     AgentRole,
 )
+from agenticflow.observability.event import EventType
 from agenticflow.core.utils import generate_id, now_utc, truncate_string
 
 

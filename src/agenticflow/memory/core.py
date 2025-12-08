@@ -170,7 +170,7 @@ class Memory:
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event if event_bus is configured."""
         if self._event_bus:
-            from agenticflow.core.enums import EventType
+            from agenticflow.observability.event import EventType
             await self._event_bus.publish(EventType(event_type), {
                 "namespace": self._namespace,
                 **data,

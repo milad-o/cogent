@@ -1,5 +1,5 @@
 """
-Enums for AgenticFlow - defines all status types, event types, and roles.
+Enums for AgenticFlow - defines status types and roles.
 """
 
 from enum import Enum

@@ -5,7 +5,7 @@ Tests for EventBus.
 import pytest
 from unittest.mock import Mock, AsyncMock
 
-from agenticflow.core.enums import EventType
+from agenticflow.observability.event import EventType
 from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
 from agenticflow.observability.event import Event
 

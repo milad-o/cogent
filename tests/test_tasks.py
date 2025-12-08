@@ -5,7 +5,8 @@ Tests for TaskManager.
 import pytest
 from unittest.mock import AsyncMock
 
-from agenticflow.core.enums import EventType, Priority, TaskStatus
+from agenticflow.core.enums import Priority, TaskStatus
+from agenticflow.observability.event import EventType
 from agenticflow.observability.bus import EventBus
 from agenticflow.tasks.manager import TaskManager
 

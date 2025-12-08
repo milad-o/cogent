@@ -101,7 +101,6 @@ __version__ = "0.1.0"
 from agenticflow.core.enums import (
     AgentRole,
     AgentStatus,
-    EventType,
     Priority,
     TaskStatus,
     get_role_capabilities,
@@ -109,7 +108,7 @@ from agenticflow.core.enums import (
 from agenticflow.core.utils import generate_id, now_utc
 
 # Models
-from agenticflow.observability.event import Event
+from agenticflow.observability.event import Event, EventType
 from agenticflow.core.message import Message, MessageType
 from agenticflow.tasks.task import Task
 

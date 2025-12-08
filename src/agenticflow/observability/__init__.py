@@ -6,13 +6,14 @@ for understanding system behavior at runtime.
 Includes:
 - EventBus: Central pub/sub for events
 - Event: Immutable event records
+- EventType: All event types in the system
 - Observer: Unified observability for agents, flows, teams
 - Tracer: Distributed tracing
 - Metrics: Counters, gauges, histograms
 - Dashboard: Real-time monitoring UI
 """
 
-from agenticflow.observability.event import Event
+from agenticflow.observability.event import Event, EventType
 from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
 from agenticflow.observability.handlers import (
     ConsoleEventHandler,
@@ -102,6 +103,7 @@ from agenticflow.observability.progress import (
 __all__ = [
     # Event System
     "Event",
+    "EventType",
     "EventBus",
     "get_event_bus",
     "set_event_bus",

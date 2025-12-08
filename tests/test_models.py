@@ -6,8 +6,8 @@ import json
 import pytest
 from datetime import datetime, timezone
 
-from agenticflow.core.enums import EventType, Priority, TaskStatus
-from agenticflow.observability.event import Event
+from agenticflow.core.enums import Priority, TaskStatus
+from agenticflow.observability.event import Event, EventType
 from agenticflow.core.message import Message, MessageType
 from agenticflow.tasks.task import Task
 

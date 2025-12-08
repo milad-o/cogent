@@ -7,9 +7,9 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.core.enums import EventType, Priority, TaskStatus
+from agenticflow.core.enums import Priority, TaskStatus
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.observability.event import Event
+from agenticflow.observability.event import Event, EventType
 from agenticflow.tasks.task import Task
 
 if TYPE_CHECKING:

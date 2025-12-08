@@ -417,7 +417,7 @@ class Flow:
                 print(f"[{name}]: {output[:100]}...")
             ```
         """
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         # Emit user input event
         await self._event_bus.publish(EventType.USER_INPUT.value, {

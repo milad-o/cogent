@@ -292,7 +292,7 @@ class Mesh(BaseTopology):
         team_memory: TeamMemory | None = None,
     ) -> TopologyResult:
         """Execute mesh collaboration pattern."""
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         from agenticflow.observability.bus import EventBus
         
         agent_outputs: dict[str, str] = {}

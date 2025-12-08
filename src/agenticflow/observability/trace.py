@@ -1017,7 +1017,7 @@ class TracingObserver:
     
     def handle_event(self, event) -> None:
         """Handle an event from the event bus."""
-        from agenticflow.core.enums import EventType
+        from agenticflow.observability.event import EventType
         
         event_type = event.type
         data = event.data
