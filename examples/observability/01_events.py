@@ -332,7 +332,7 @@ async def example_message_events():
         name="collaboration",
         agents=[agent1, agent2, agent3],
         topology="mesh",
-        mesh_rounds=1,
+        max_rounds=1,
         observer=observer,
     )
     

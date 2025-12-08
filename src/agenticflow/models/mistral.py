@@ -257,16 +257,19 @@ class MistralChat(BaseChatModel):
         self,
         tools: list[Any],
         tool_choice: str | dict[str, Any] | None = None,
+        **kwargs: Any,  # Accept extra kwargs like parallel_tool_calls
     ) -> "MistralChat":
         """Bind tools to the model.
         
         Args:
             tools: List of tools (BaseTool instances or dicts).
             tool_choice: How to choose tools ("auto", "none", "any", or specific).
+            **kwargs: Additional arguments (ignored for compatibility).
             
         Returns:
             New model instance with tools bound.
         """
+        # Note: Mistral doesn't support parallel_tool_calls, so we ignore it
         new_model = MistralChat(
             model=self.model,
             base_url=self.base_url,
