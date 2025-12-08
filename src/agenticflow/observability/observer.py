@@ -738,6 +738,10 @@ class Observer:
             EventType.MCP_TOOL_CALLED,
             EventType.MCP_TOOL_RESULT,
             EventType.MCP_TOOL_ERROR,
+            # VectorStore operations at detailed level
+            EventType.VECTORSTORE_ADD,
+            EventType.VECTORSTORE_SEARCH,
+            EventType.VECTORSTORE_DELETE,
         }:
             return ObservabilityLevel.DETAILED
         
@@ -869,6 +873,15 @@ class Observer:
         if self.config.format == OutputFormat.JSON:
             return self._format_event_json(event)
         
+        def _normalize_content(content: Any) -> str:
+            """Normalize content that might be a list (structured response) to string."""
+            if isinstance(content, list):
+                return " ".join(
+                    item.get("text", "") if isinstance(item, dict) else str(item)
+                    for item in content
+                )
+            return str(content) if content else ""
+        
         s = self._styler
         c = Colors  # Direct access for custom colors
         lines: list[str] = []
@@ -896,7 +909,7 @@ class Observer:
         # ═══════════════════════════════════════════════════════════
         
         if event_type == EventType.USER_INPUT:
-            content = data.get("content", data.get("input", ""))
+            content = _normalize_content(data.get("content", data.get("input", "")))
             source = data.get("source", "user")
             # Truncate long inputs
             max_len = min(self.config.truncate or 100, 100)
@@ -917,7 +930,7 @@ class Observer:
             return f"{prefix}{s.info('👤')} {s.bold('User feedback:')} {feedback}"
         
         elif event_type == EventType.OUTPUT_GENERATED:
-            content = data.get("content", data.get("output", ""))
+            content = _normalize_content(data.get("content", data.get("output", "")))
             agent_name = data.get("agent_name", "")
             # Duration if available
             duration_str = ""
@@ -1003,6 +1016,7 @@ class Observer:
         elif event_type == EventType.AGENT_RESPONDED:
             agent_name = data.get('agent_name', '?')
             result = data.get("response_preview") or data.get("response") or data.get("result_preview", "")
+            result = _normalize_content(result)
             
             # Reset thinking count for this agent
             if agent_name in self._agent_thinking_count:
@@ -1277,7 +1291,7 @@ class Observer:
         
         elif event_type == EventType.LLM_RESPONSE:
             agent_name = data.get("agent_name", "?")
-            content = data.get("content", "")
+            content = _normalize_content(data.get("content", ""))
             tool_calls = data.get("tool_calls", [])
             finish_reason = data.get("finish_reason", "")
             duration_ms = data.get("duration_ms", 0)
@@ -1384,6 +1398,30 @@ class Observer:
             depth = data.get("depth", 1)
             indent = "   " * depth
             return f"{prefix}{indent}{s.dim(f'🗑️ {role} cleaned up')}"
+        
+        # ═══════════════════════════════════════════════════════════
+        # VECTORSTORE EVENTS - Document indexing and search
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.VECTORSTORE_ADD:
+            count = data.get("count", 0)
+            embedded = data.get("embedded", count)
+            return f"{prefix}{s.success('📚')} {s.bold('VectorStore')} Added {s.agent(str(count))} documents ({embedded} embedded)"
+        
+        elif event_type == EventType.VECTORSTORE_SEARCH:
+            query = data.get("query", "?")[:50]
+            k = data.get("k", "?")
+            results = data.get("results", 0)
+            top_score = data.get("top_score")
+            score_str = f" (top: {top_score:.2f})" if top_score else ""
+            return f"{prefix}{s.info('🔍')} {s.bold('VectorStore')} Search k={k} → {s.agent(str(results))} results{score_str}: {s.dim(query)}"
+        
+        elif event_type == EventType.VECTORSTORE_DELETE:
+            count = data.get("count", 0)
+            clear = data.get("clear", False)
+            if clear:
+                return f"{prefix}{s.warning('🗑️')} {s.bold('VectorStore')} Cleared all {s.agent(str(count))} documents"
+            return f"{prefix}{s.warning('🗑️')} {s.bold('VectorStore')} Deleted {s.agent(str(count))} documents"
         
         # ═══════════════════════════════════════════════════════════
         # MCP EVENTS - Model Context Protocol server interactions

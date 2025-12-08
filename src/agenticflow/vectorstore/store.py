@@ -12,6 +12,7 @@ Example:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -26,7 +27,25 @@ from agenticflow.vectorstore.embeddings import MockEmbeddings
 from agenticflow.models.openai import OpenAIEmbedding
 
 
+logger = logging.getLogger(__name__)
 BackendType = Literal["inmemory", "faiss", "chroma"]
+
+
+async def _emit_event(event_type: str, data: dict[str, Any]) -> None:
+    """Emit an event to the global event bus if available."""
+    try:
+        from agenticflow.observability.bus import get_event_bus
+        from agenticflow.observability.event import Event, EventType
+        
+        bus = get_event_bus()
+        event = Event(
+            type=EventType(event_type),
+            data=data,
+            source="vectorstore",
+        )
+        await bus.publish(event)
+    except (ImportError, ValueError, Exception) as e:
+        logger.debug("Failed to emit event %s: %s", event_type, e)
 
 
 @dataclass
@@ -104,6 +123,12 @@ class VectorStore:
         # Store in backend
         await self.backend.add(doc_ids, embeddings, documents)  # type: ignore
         
+        # Emit event
+        await _emit_event("vectorstore.add", {
+            "count": len(doc_ids),
+            "ids": doc_ids[:5],  # First 5 IDs for brevity
+        })
+        
         return doc_ids
     
     async def add_documents(
@@ -143,6 +168,13 @@ class VectorStore:
         doc_ids = [doc.id for doc in documents]
         await self.backend.add(doc_ids, embeddings, documents)  # type: ignore
         
+        # Emit event
+        await _emit_event("vectorstore.add", {
+            "count": len(doc_ids),
+            "ids": doc_ids[:5],  # First 5 IDs for brevity
+            "embedded": len(docs_needing_embeddings),
+        })
+        
         return doc_ids
     
     async def search(
@@ -170,7 +202,17 @@ class VectorStore:
         query_embedding = await self.embeddings.aembed_query(query)  # type: ignore
         
         # Search backend
-        return await self.backend.search(query_embedding, k, filter)  # type: ignore
+        results = await self.backend.search(query_embedding, k, filter)  # type: ignore
+        
+        # Emit event
+        await _emit_event("vectorstore.search", {
+            "query": query[:100],  # Truncate long queries
+            "k": k,
+            "results": len(results),
+            "top_score": results[0].score if results else None,
+        })
+        
+        return results
     
     async def similarity_search(
         self,
@@ -200,11 +242,28 @@ class VectorStore:
         Returns:
             True if any documents were deleted.
         """
-        return await self.backend.delete(ids)  # type: ignore
+        result = await self.backend.delete(ids)  # type: ignore
+        
+        # Emit event
+        await _emit_event("vectorstore.delete", {
+            "count": len(ids),
+            "ids": ids[:5],  # First 5 IDs for brevity
+            "success": result,
+        })
+        
+        return result
     
     async def clear(self) -> None:
         """Remove all documents from the store."""
+        count = self.count()
         await self.backend.clear()  # type: ignore
+        
+        # Emit event
+        await _emit_event("vectorstore.delete", {
+            "count": count,
+            "clear": True,
+            "success": True,
+        })
     
     async def get(self, ids: list[str]) -> list[Document]:
         """Get documents by ID.

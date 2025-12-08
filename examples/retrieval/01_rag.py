@@ -1,274 +1,114 @@
-"""
-Example 10: RAG (Retrieval-Augmented Generation)
+"""RAG (Retrieval-Augmented Generation) Example with Observability.
 
-All RAG patterns in agenticflow:
-
-┌─────────────────────────────────────────────────────────────────────────┐
-│ AGENTIC RAG (Agent decides when to search)                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│ Pattern 1: RAG Capability           → search_documents tool             │
-│            - Agent autonomously decides when to search                  │
-│            - Citations: [1], [2] (numeric style)                        │
-│ Pattern 2: RAG with custom config   → Minimal LLM output                │
-│            - Control what LLM sees vs what's stored                     │
-└─────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────┐
-│ PROGRAMMATIC RAG (Full control)                                         │
-├─────────────────────────────────────────────────────────────────────────┤
-│ Pattern 3: Direct Retriever + Utilities                                 │
-│            - Manual retrieval, formatting, citation                     │
-│ Pattern 4: Ensemble Retriever (hybrid search)                           │
-│            - Dense + Sparse with RRF/linear fusion                      │
-└─────────────────────────────────────────────────────────────────────────┘
-
-Usage:
-    uv run python examples/10_rag.py
+Demonstrates:
+- VectorStore with observability events
+- RAG capability with citation configuration
+- Observer for detailed logging instead of print statements
 """
 
 import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
+# Add examples dir to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from config import get_embeddings, get_model
+from config import get_model, get_embeddings
 
 from agenticflow import Agent
 from agenticflow.capabilities import RAG
 from agenticflow.capabilities.rag import RAGConfig
-from agenticflow.document import RecursiveCharacterSplitter
-from agenticflow.retriever import (
-    DenseRetriever,
-    BM25Retriever,
-    EnsembleRetriever,
-    # Result utilities
-    add_citations,
-    format_context,
-    format_citations_reference,
-    filter_by_score,
-)
-from agenticflow.vectorstore import VectorStore, Document
+from agenticflow.observability import Observer
+from agenticflow.retriever import DenseRetriever
+from agenticflow.vectorstore import VectorStore
 
-
-# Sample text for demo (The Secret Garden excerpt)
-SAMPLE_TEXT = """
-The Secret Garden by Frances Hodgson Burnett
-
-Chapter 1: There Is No One Left
-
-When Mary Lennox was sent to Misselthwaite Manor to live with her uncle, 
-everybody said she was the most disagreeable-looking child ever seen. 
-It was true, too. She had a little thin face and a little thin body, 
-thin light hair and a sour expression. Her hair was yellow, and her 
-face was yellow because she had been born in India and had always been ill.
-
-Chapter 3: Across the Moor
-
-The moor was a vast stretch of wild land, covered with brown heather 
-and gorse bushes. It stretched for miles in every direction. The sky 
-seemed so high above, and the air was so fresh and pure.
-
-"It's the moor," said Martha. "It's called the moor. Does tha' like it?"
-
-Mary looked at it and thought she did not like it at all.
-
-Chapter 4: Martha
-
-Martha was a good-natured Yorkshire girl who had been hired to wait on Mary.
-She was different from any servant Mary had ever known. She talked and 
-laughed and seemed not to know that a servant should be silent.
-
-"Th' fresh air an' th' skippin' rope will make thee strong," Martha said.
-"Mother says there's naught like th' moor air."
-
-Chapter 8: The Robin and the Key
-
-One day, Mary was walking along the path by the wall when she heard a 
-chirping sound. A robin was sitting on a branch, looking at her with 
-his bright eyes. He seemed to be trying to tell her something.
-"""
+# Sample documents about a fictional company
+DOCUMENTS = [
+    {
+        "content": "TechFlow Inc. was founded in 2018 by Sarah Chen and Marcus Williams. "
+        "The company started as a small AI consultancy in San Francisco.",
+        "metadata": {"source": "company_history.md", "page": 1},
+    },
+    {
+        "content": "TechFlow's flagship product is FlowAI, an enterprise automation platform "
+        "that uses machine learning to optimize business workflows. It was launched in 2020.",
+        "metadata": {"source": "products.md", "page": 1},
+    },
+    {
+        "content": "As of 2024, TechFlow employs over 500 people across offices in San Francisco, "
+        "New York, London, and Singapore. The company reported $150M in revenue last year.",
+        "metadata": {"source": "company_overview.md", "page": 2},
+    },
+    {
+        "content": "TechFlow's main competitors include AutomateNow, WorkflowPro, and AIStream. "
+        "The company differentiates through its advanced NLP capabilities.",
+        "metadata": {"source": "market_analysis.md", "page": 5},
+    },
+    {
+        "content": "The engineering team at TechFlow uses a microservices architecture built on "
+        "Kubernetes. They practice continuous deployment with over 100 releases per week.",
+        "metadata": {"source": "engineering.md", "page": 3},
+    },
+]
 
 
 async def main() -> None:
+    # Get model and embeddings from config
     model = get_model()
     embeddings = get_embeddings()
 
-    # =========================================================================
-    # Setup: Prepare documents and retriever
-    # =========================================================================
-    print("=" * 70)
-    print("Setup: Prepare documents and retriever")
-    print("=" * 70)
-
-    # Create document and split into chunks
-    doc = Document(text=SAMPLE_TEXT, metadata={"source": "the_secret_garden.txt"})
-    splitter = RecursiveCharacterSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents([doc])
-    print(f"Created {len(chunks)} chunks")
-
-    # Create vectorstore and index
+    # Initialize vectorstore - events will be emitted automatically
     store = VectorStore(embeddings=embeddings)
-    await store.add_documents(chunks)
-    print(f"Indexed {len(chunks)} chunks in vectorstore")
 
-    # Create retrievers
-    dense = DenseRetriever(store)
-    sparse = BM25Retriever(chunks)
+    # Add documents - vectorstore will emit VECTORSTORE_ADD event
+    await store.add_texts(
+        texts=[doc["content"] for doc in DOCUMENTS],
+        metadatas=[doc["metadata"] for doc in DOCUMENTS],
+    )
 
-    # =========================================================================
-    # AGENTIC RAG
-    # =========================================================================
-    print("\n")
-    print("═" * 70)
-    print("  AGENTIC RAG - Agent decides when to search")
-    print("═" * 70)
+    # Configure RAG with citation settings
+    rag_config = RAGConfig(
+        top_k=3,
+        include_source_in_tool_output=True,
+        include_page_in_tool_output=True,
+        include_score_in_tool_output=False,  # Don't waste LLM tokens on scores
+        store_full_metadata=True,  # Keep full metadata for bibliography
+    )
 
-    # -------------------------------------------------------------------------
-    # Pattern 1: RAG Capability (Agentic RAG with tool)
-    # -------------------------------------------------------------------------
-    print("\n" + "-" * 70)
-    print("Pattern 1: RAG Capability")
-    print("  → Agent gets search_documents tool")
-    print("  → Citations: [1], [2], [3] (numeric)")
-    print("-" * 70)
+    # Create retriever from vectorstore
+    retriever = DenseRetriever(store)
 
-    rag = RAG(dense)
+    # Create RAG capability
+    rag = RAG(retriever, config=rag_config)
+
+    # Create agent with observability
     agent = Agent(
-        name="BookAssistant",
+        name="Research Assistant",
+        instructions=(
+            "You are a research assistant that answers questions about TechFlow Inc. "
+            "Use the RAG tool to find relevant information before answering. "
+            "Always cite your sources."
+        ),
         model=model,
         capabilities=[rag],
     )
 
-    answer = await agent.run("What was Mary Lennox like when she arrived?")
-    print(f"\n{answer}")
+    # Attach detailed observer - this will show vectorstore events, tool calls, etc.
+    observer = Observer.detailed()
+    agent.add_observer(observer)
 
-    # -------------------------------------------------------------------------
-    # Pattern 2: RAG Capability with Custom Config
-    # -------------------------------------------------------------------------
-    print("\n" + "-" * 70)
-    print("Pattern 2: RAG Capability with Custom Config")
-    print("  → Minimize what LLM sees (no scores, truncate text)")
-    print("  → Full metadata stored for bibliography")
-    print("-" * 70)
+    # Test queries - observer will show all activity
+    queries = [
+        "Who founded TechFlow and when?",
+        "What is FlowAI and when was it launched?",
+        "How many employees does TechFlow have?",
+    ]
 
-    # Config to minimize token usage while keeping full metadata for bibliography
-    config = RAGConfig(
-        top_k=3,
-        include_source_in_tool_output=True,
-        include_page_in_tool_output=True,
-        include_score_in_tool_output=False,  # Don't show scores to LLM
-        max_passage_chars=300,  # Truncate long passages
-        store_full_metadata=True,  # Keep full metadata for bibliography
-    )
-    
-    rag2 = RAG(dense, config=config)
-    agent2 = Agent(
-        name="BookExpert",
-        model=model,
-        capabilities=[rag2],
-    )
-
-    answer = await agent2.run("What did the moor look like?")
-    print(f"\n{answer}")
-    
-    # Access stored citations for bibliography (not sent to LLM)
-    print("\n--- Bibliography (generated after response) ---")
-    bibliography = rag2.format_bibliography(title="Sources")
-    print(bibliography if bibliography else "No citations")
-
-    # =========================================================================
-    # PROGRAMMATIC RAG
-    # =========================================================================
-    print("\n")
-    print("═" * 70)
-    print("  PROGRAMMATIC RAG - Full control over retrieval")
-    print("═" * 70)
-
-    # -------------------------------------------------------------------------
-    # Pattern 3: Direct Retriever + Utilities
-    # -------------------------------------------------------------------------
-    print("\n" + "-" * 70)
-    print("Pattern 3: Direct Retriever + Utilities")
-    print("  → Manual retrieval and formatting")
-    print("  → Full control over pipeline")
-    print("-" * 70)
-
-    # Retrieve
-    results = await dense.retrieve("Describe the moor", k=5, include_scores=True)
-    
-    # Filter
-    results = filter_by_score(results, min_score=0.3)
-    
-    # Add citations
-    results = add_citations(results)
-    
-    print("\nRetrieved passages with citations:")
-    for r in results:
-        citation = r.metadata.get("citation", "")
-        source = r.document.metadata.get("source", "unknown")
-        print(f"  {citation} {source} (score: {r.score:.2f})")
-        print(f"      {r.document.text[:70]}...")
-
-    # Format for LLM
-    context = format_context(results)
-    sources = format_citations_reference(results)
-    
-    print("\n--- Context for LLM ---")
-    print(context[:400] + "..." if len(context) > 400 else context)
-    print("\n--- Sources Reference ---")
-    print(sources)
-
-    # -------------------------------------------------------------------------
-    # Pattern 4: Ensemble Retriever (Hybrid Search)
-    # -------------------------------------------------------------------------
-    print("\n" + "-" * 70)
-    print("Pattern 4: Ensemble Retriever (Hybrid Search)")
-    print("  → Dense + Sparse with RRF fusion")
-    print("  → Better recall than single retriever")
-    print("-" * 70)
-
-    ensemble = EnsembleRetriever(
-        retrievers=[dense, sparse],
-        weights=[0.6, 0.4],
-        fusion="rrf",  # Reciprocal Rank Fusion
-    )
-
-    results = await ensemble.retrieve("Martha Yorkshire girl", k=3, include_scores=True)
-    results = add_citations(results)
-    
-    print("\nEnsemble results (RRF fusion):")
-    for r in results:
-        source = r.document.metadata.get("source", "unknown")
-        print(f"  {r.metadata['citation']} {source} (score: {r.score:.3f})")
-        print(f"      {r.document.text[:60]}...")
-
-    # =========================================================================
-    # Summary
-    # =========================================================================
-    print("\n")
-    print("═" * 70)
-    print("  SUMMARY")
-    print("═" * 70)
-    print("""
-┌──────────────────┬─────────────────────────────────────────────────────┐
-│ Pattern          │ Use Case                                            │
-├──────────────────┼─────────────────────────────────────────────────────┤
-│ RAG Capability   │ Agent autonomously decides when to search           │
-│                  │ Best for: Complex queries, multi-turn conversations │
-├──────────────────┼─────────────────────────────────────────────────────┤
-│ RAG with Config  │ Minimize LLM tokens, store full metadata            │
-│                  │ Best for: Cost-sensitive, post-processing citations │
-├──────────────────┼─────────────────────────────────────────────────────┤
-│ Direct Retriever │ Full programmatic control                           │
-│                  │ Best for: Custom pipelines, batch processing        │
-├──────────────────┼─────────────────────────────────────────────────────┤
-│ Ensemble         │ Hybrid search (dense + sparse)                      │
-│                  │ Best for: Better recall, domain-specific terms      │
-└──────────────────┴─────────────────────────────────────────────────────┘
-""")
-    print("✓ Done")
+    for query in queries:
+        print(f"\n{'='*60}")
+        print(f"Query: {query}")
+        print("=" * 60)
+        response = await agent.run(query)
+        print(f"\nFinal Answer: {response}")
 
 
 if __name__ == "__main__":
