@@ -10,6 +10,11 @@ Requires: uv add pypdf reportlab
 """
 
 import asyncio
+import sys
+from pathlib import Path
+
+# Add examples directory to path for config import
+sys.path.insert(0, str(Path(__file__).parent.parent))
 import tempfile
 from pathlib import Path
 

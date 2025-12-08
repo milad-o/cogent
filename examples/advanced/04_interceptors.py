@@ -13,6 +13,11 @@ Run: uv run python examples/29_interceptors.py
 """
 
 import asyncio
+import sys
+from pathlib import Path
+
+# Add examples directory to path for config import
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from dataclasses import dataclass
 
 from config import get_model

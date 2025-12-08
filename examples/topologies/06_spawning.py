@@ -13,6 +13,11 @@ Key Features:
 """
 
 import asyncio
+import sys
+from pathlib import Path
+
+# Add examples directory to path for config import
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from agenticflow import Agent
 from agenticflow.agent.spawning import SpawningConfig, AgentSpec
 from agenticflow.tools import tool

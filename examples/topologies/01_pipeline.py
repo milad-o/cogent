@@ -5,10 +5,15 @@ Sequential workflow: Analyst → Writer → Editor
 With observability showing agent thoughts.
 
 Usage:
-    uv run python examples/02_topologies.py
+    uv run python examples/topologies/01_pipeline.py
 """
 
 import asyncio
+import sys
+from pathlib import Path
+
+# Add examples directory to path for config import
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model, settings
 

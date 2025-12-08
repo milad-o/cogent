@@ -26,6 +26,11 @@ Run:
 """
 
 import asyncio
+import sys
+from pathlib import Path
+
+# Add examples directory to path for config import
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model as config_get_model, settings
 
