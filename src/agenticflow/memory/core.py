@@ -132,6 +132,8 @@ class Memory:
         vectorstore: VectorStore | None = None,
         namespace: str = "",
         event_bus: EventBus | None = None,
+        *,
+        agentic: bool = False,
     ) -> None:
         """Initialize Memory.
         
@@ -140,12 +142,16 @@ class Memory:
             vectorstore: VectorStore for semantic search. Optional.
             namespace: Key prefix for isolation.
             event_bus: EventBus for observability. Optional.
+            agentic: If True, expose memory tools to agents automatically.
+                When an Agent receives an agentic Memory, tools are auto-added.
         """
         self._store = store or InMemoryStore()
         self._vectorstore = vectorstore
         self._namespace = namespace
         self._event_bus = event_bus
+        self._agentic = agentic
         self._lock = asyncio.Lock()
+        self._tools_cache: list[Any] | None = None
     
     @property
     def store(self) -> Store:
@@ -167,6 +173,43 @@ class Memory:
         """Get the EventBus (if any)."""
         return self._event_bus
     
+    @property
+    def agentic(self) -> bool:
+        """Whether this memory exposes tools to agents."""
+        return self._agentic
+    
+    @property
+    def tools(self) -> list[Any]:
+        """Get memory tools (for agentic mode).
+        
+        Returns:
+            List of memory tools (remember, recall, forget, search_memories).
+            Returns empty list if not in agentic mode.
+            
+        Example:
+            ```python
+            # Agentic memory - tools auto-added to agent
+            memory = Memory(agentic=True)
+            agent = Agent(memory=memory)  # Tools added automatically
+            
+            # Non-agentic - no tools, just storage
+            memory = Memory()
+            agent = Agent(memory=memory)  # No tools, memory for code use only
+            
+            # Manual tool access (for custom setups)
+            memory = Memory(agentic=True)
+            tools = memory.tools  # [remember, recall, forget, search_memories]
+            ```
+        """
+        if not self._agentic:
+            return []
+        
+        if self._tools_cache is None:
+            from agenticflow.memory.tools import create_memory_tools
+            self._tools_cache = create_memory_tools(self)
+        
+        return self._tools_cache
+
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event if event_bus is configured."""
         if self._event_bus:

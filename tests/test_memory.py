@@ -277,3 +277,51 @@ class TestMemorySearch:
         await memory.remember("topic", "some content")
         with pytest.raises(RuntimeError, match="No vectorstore configured"):
             await memory.search("content")
+
+
+class TestAgenticMemory:
+    """Tests for agentic memory functionality."""
+
+    def test_agentic_false_by_default(self) -> None:
+        memory = Memory()
+        assert memory.agentic is False
+
+    def test_agentic_true_when_set(self) -> None:
+        memory = Memory(agentic=True)
+        assert memory.agentic is True
+
+    def test_tools_empty_when_not_agentic(self) -> None:
+        memory = Memory()  # agentic=False
+        assert memory.tools == []
+
+    def test_tools_available_when_agentic(self) -> None:
+        memory = Memory(agentic=True)
+        tools = memory.tools
+        
+        assert len(tools) == 4
+        tool_names = {t.name for t in tools}
+        assert tool_names == {"remember", "recall", "forget", "search_memories"}
+
+    def test_tools_cached(self) -> None:
+        memory = Memory(agentic=True)
+        tools1 = memory.tools
+        tools2 = memory.tools
+        
+        # Should return same list instance (cached)
+        assert tools1 is tools2
+
+    @pytest.mark.asyncio
+    async def test_agentic_tools_work(self) -> None:
+        memory = Memory(agentic=True)
+        tools = memory.tools
+        
+        # Find remember and recall tools
+        remember = next(t for t in tools if t.name == "remember")
+        recall = next(t for t in tools if t.name == "recall")
+        
+        # Use them
+        result = await remember.func(key="name", value="Alice")
+        assert "Remembered" in result
+        
+        result = await recall.func(key="name")
+        assert "Alice" in result

@@ -124,6 +124,18 @@ class EventType(Enum):
     RERANK_COMPLETE = "retrieval.rerank.complete"  # Reranking finished
     FUSION_APPLIED = "retrieval.fusion"  # Ensemble fusion applied
 
+    # MCP (Model Context Protocol) events
+    MCP_SERVER_CONNECTING = "mcp.server.connecting"  # Connecting to MCP server
+    MCP_SERVER_CONNECTED = "mcp.server.connected"  # Server connection established
+    MCP_SERVER_DISCONNECTED = "mcp.server.disconnected"  # Server disconnected
+    MCP_SERVER_ERROR = "mcp.server.error"  # Server connection/communication error
+    MCP_TOOLS_DISCOVERED = "mcp.tools.discovered"  # Tools discovered from server
+    MCP_RESOURCES_DISCOVERED = "mcp.resources.discovered"  # Resources discovered
+    MCP_PROMPTS_DISCOVERED = "mcp.prompts.discovered"  # Prompts discovered
+    MCP_TOOL_CALLED = "mcp.tool.called"  # MCP tool invocation started
+    MCP_TOOL_RESULT = "mcp.tool.result"  # MCP tool returned result
+    MCP_TOOL_ERROR = "mcp.tool.error"  # MCP tool execution failed
+
     # VectorStore events
     VECTORSTORE_ADD = "vectorstore.add"  # Documents added to store
     VECTORSTORE_SEARCH = "vectorstore.search"  # Similarity search performed

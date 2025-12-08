@@ -120,6 +120,7 @@ class Channel(str, Enum):
     - MEMORY: Memory read/write/search operations
     - RETRIEVAL: RAG retrieval pipeline events
     - DOCUMENTS: Document loading and splitting
+    - MCP: Model Context Protocol server events
     - SYSTEM: System-level events
     - RESILIENCE: Retries, circuit breakers, fallbacks
     - ALL: Everything
@@ -133,6 +134,7 @@ class Channel(str, Enum):
     MEMORY = "memory"
     RETRIEVAL = "retrieval"
     DOCUMENTS = "documents"
+    MCP = "mcp"
     SYSTEM = "system"
     RESILIENCE = "resilience"
     ALL = "all"
@@ -233,6 +235,16 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.DOCUMENT_LOADED,
         EventType.DOCUMENT_SPLIT,
         EventType.DOCUMENT_ENRICHED,
+    },
+    Channel.MCP: {
+        EventType.MCP_SERVER_CONNECTING,
+        EventType.MCP_SERVER_CONNECTED,
+        EventType.MCP_SERVER_DISCONNECTED,
+        EventType.MCP_SERVER_ERROR,
+        EventType.MCP_TOOLS_DISCOVERED,
+        EventType.MCP_TOOL_CALLED,
+        EventType.MCP_TOOL_RESULT,
+        EventType.MCP_TOOL_ERROR,
     },
 }
 
@@ -707,6 +719,9 @@ class Observer:
             EventType.AGENT_SPAWNED,
             EventType.AGENT_SPAWN_COMPLETED,
             EventType.AGENT_SPAWN_FAILED,
+            # MCP server connection at progress level (important milestones)
+            EventType.MCP_SERVER_CONNECTED,
+            EventType.MCP_TOOLS_DISCOVERED,
         }:
             return ObservabilityLevel.PROGRESS
         
@@ -719,6 +734,10 @@ class Observer:
             EventType.TASK_RETRYING,
             EventType.LLM_TOOL_DECISION,  # Show tool decisions at detailed level
             EventType.AGENT_DESPAWNED,  # Cleanup at detailed level
+            # MCP tool calls at detailed level (same as regular tools)
+            EventType.MCP_TOOL_CALLED,
+            EventType.MCP_TOOL_RESULT,
+            EventType.MCP_TOOL_ERROR,
         }:
             return ObservabilityLevel.DETAILED
         
@@ -734,6 +753,10 @@ class Observer:
             EventType.AGENT_STATUS_CHANGED,
             EventType.MESSAGE_SENT,
             EventType.MESSAGE_RECEIVED,
+            # MCP connecting/disconnecting at debug level
+            EventType.MCP_SERVER_CONNECTING,
+            EventType.MCP_SERVER_DISCONNECTED,
+            EventType.MCP_SERVER_ERROR,
         }:
             return ObservabilityLevel.DEBUG
         
@@ -1361,6 +1384,60 @@ class Observer:
             depth = data.get("depth", 1)
             indent = "   " * depth
             return f"{prefix}{indent}{s.dim(f'🗑️ {role} cleaned up')}"
+        
+        # ═══════════════════════════════════════════════════════════
+        # MCP EVENTS - Model Context Protocol server interactions
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.MCP_SERVER_CONNECTING:
+            server = data.get("server_name", "?")
+            transport = data.get("transport", "?")
+            return f"{prefix}{s.info('🔌')} {s.bold('MCP')} Connecting to {s.agent(server)} ({transport})..."
+        
+        elif event_type == EventType.MCP_SERVER_CONNECTED:
+            server = data.get("server_name", "?")
+            transport = data.get("transport", "?")
+            return f"{prefix}{s.success('✓')} {s.bold('MCP')} Connected to {s.agent(server)} ({transport})"
+        
+        elif event_type == EventType.MCP_SERVER_DISCONNECTED:
+            count = data.get("server_count", 0)
+            tools = data.get("tool_count", 0)
+            return f"{prefix}{s.dim('🔌')} {s.bold('MCP')} Disconnected ({count} servers, {tools} tools)"
+        
+        elif event_type == EventType.MCP_SERVER_ERROR:
+            server = data.get("server_name", "?")
+            error = data.get("error", "Unknown error")[:80]
+            return f"{prefix}{s.error('✗')} {s.bold('MCP')} {s.agent(server)} {s.error(f'Error: {error}')}"
+        
+        elif event_type == EventType.MCP_TOOLS_DISCOVERED:
+            server = data.get("server_name", "?")
+            tool_names = data.get("tools", [])
+            count = len(tool_names)
+            if count > 0:
+                tools_preview = ", ".join(tool_names[:5])
+                if count > 5:
+                    tools_preview += f" (+{count - 5} more)"
+                return f"{prefix}{s.info('🔧')} {s.bold('MCP')} {s.agent(server)} discovered {s.tool(f'{count} tools')}: {tools_preview}"
+            return f"{prefix}{s.dim('🔧')} {s.bold('MCP')} {s.agent(server)} no tools discovered"
+        
+        elif event_type == EventType.MCP_TOOL_CALLED:
+            server = data.get("server_name", "?")
+            tool = data.get("tool_name", "?")
+            args = data.get("arguments", {})
+            args_preview = str(args)[:60] if args else ""
+            return f"{prefix}{s.info('▶')} {s.bold('MCP')} {s.tool(tool)} ({server}) {s.dim(args_preview)}"
+        
+        elif event_type == EventType.MCP_TOOL_RESULT:
+            server = data.get("server_name", "?")
+            tool = data.get("tool_name", "?")
+            result = str(data.get("result_preview", ""))[:80]
+            return f"{prefix}{s.success('✓')} {s.bold('MCP')} {s.tool(tool)} {s.dim(result)}"
+        
+        elif event_type == EventType.MCP_TOOL_ERROR:
+            server = data.get("server_name", "?")
+            tool = data.get("tool_name", "?")
+            error = data.get("error", "Unknown error")[:80]
+            return f"{prefix}{s.error('✗')} {s.bold('MCP')} {s.tool(tool)} {s.error(f'Error: {error}')}"
         
         # ═══════════════════════════════════════════════════════════
         # DEFAULT - System/custom events (dimmed)

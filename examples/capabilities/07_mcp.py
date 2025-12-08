@@ -1,19 +1,32 @@
 #!/usr/bin/env python3
 """
-Example 20: MCP (Model Context Protocol) Integration.
+Example: MCP (Model Context Protocol) Integration.
 
-Demonstrates an AI agent using MCP server tools to search the web
-and answer questions intelligently.
+Demonstrates AI agents using MCP server tools with different transports:
+- STDIO: Local subprocess (default, managed by AgenticFlow)
+- HTTP/SSE: Remote web server
+- WebSocket: Bidirectional real-time
 
 The agent discovers available tools automatically from the MCP server
 and uses them based on their descriptions - no hardcoded tool names
 in agent instructions!
 
-Included MCP Server: examples/mcp_server/search_server.py
+Included MCP Server: examples/data/mcp_server/search_server.py
 Provides: web search, news search, image search, instant answers
 
 Requirements:
-    uv add mcp ddgs websockets
+    uv add mcp ddgs starlette uvicorn
+
+Transports:
+    # STDIO (this example uses this - subprocess managed automatically)
+    MCP.stdio(command="uv", args=["run", "python", "server.py", "stdio"])
+    
+    # HTTP/SSE (connect to running server)
+    # First: uv run python examples/data/mcp_server/search_server.py http --port 8765
+    MCP.sse(url="http://127.0.0.1:8765/sse")
+    
+    # HTTP Streamable (newer protocol)
+    MCP.http(url="http://127.0.0.1:8765/mcp")
 """
 
 import asyncio
@@ -36,7 +49,7 @@ async def demo_research_agent() -> None:
     print("  Demo 1: Research Agent")
     print("=" * 60)
 
-    server_path = Path(__file__).parent / "mcp_server" / "search_server.py"
+    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
 
     # Create MCP capability - tools are discovered automatically
     mcp = MCP.stdio(
@@ -75,7 +88,7 @@ async def demo_news_analyst() -> None:
     print("  Demo 2: News Analyst Agent")
     print("=" * 60)
 
-    server_path = Path(__file__).parent / "mcp_server" / "search_server.py"
+    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
 
     mcp = MCP.stdio(
         command="uv",
@@ -112,7 +125,7 @@ async def demo_fact_checker() -> None:
     print("  Demo 3: Fact-Checking Agent")
     print("=" * 60)
 
-    server_path = Path(__file__).parent / "mcp_server" / "search_server.py"
+    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
 
     mcp = MCP.stdio(
         command="uv",
@@ -144,6 +157,71 @@ Do NOT keep searching for more sources.""",
         await mcp.shutdown()
 
 
+async def demo_http_transport() -> None:
+    """Demo using HTTP/SSE transport (requires running server separately)."""
+    print("\n" + "=" * 60)
+    print("  Demo 4: HTTP/SSE Transport")
+    print("=" * 60)
+    
+    # Connect to MCP server via HTTP/SSE
+    mcp = MCP.sse(
+        url="http://127.0.0.1:8765/sse",
+        name="search-http",
+    )
+    
+    agent = Agent(
+        name="HTTPAgent",
+        model=get_model(),
+        instructions="You are a research assistant. Use your tools to search. Be concise.",
+        capabilities=[mcp],
+        observer=Observer.debug(),
+    )
+    
+    try:
+        query = "What is the Model Context Protocol?"
+        print(f"\n  Query: {query}")
+        print("-" * 60)
+        
+        response = await agent.run(query, max_iterations=3)
+        print(f"\n  Response:\n{response}")
+    finally:
+        await mcp.shutdown()
+
+
+async def demo_stdio_subprocess() -> None:
+    """Demo showing stdio with subprocess management."""
+    print("\n" + "=" * 60)
+    print("  Demo 5: Stdio Transport (Subprocess)")
+    print("=" * 60)
+    
+    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    
+    # Stdio transport - AgenticFlow manages the subprocess
+    mcp = MCP.stdio(
+        command="uv",
+        args=["run", "python", str(server_path), "stdio"],
+        name="search-subprocess",
+    )
+    
+    agent = Agent(
+        name="SubprocessAgent",
+        model=get_model(),
+        instructions="Use your search tool to answer briefly. Make ONE search only.",
+        capabilities=[mcp],
+    )
+    
+    try:
+        query = "What is the Model Context Protocol?"
+        print(f"\n  Query: {query}")
+        print("-" * 60)
+        
+        response = await agent.run(query, max_iterations=3)
+        print(f"\n  Response:\n{response}")
+        
+    finally:
+        await mcp.shutdown()
+
+
 async def main() -> None:
     """Run MCP demos."""
     print("\n" + "=" * 60)
@@ -156,11 +234,22 @@ async def main() -> None:
     • Tools are discovered automatically from the server
     • Agent uses tools based on their descriptions
     • No hardcoded tool names in agent instructions!
+    
+    Transports demonstrated:
+    • STDIO - Local subprocess (Demos 1-3, 5)
+    • HTTP/SSE - Remote server (Demo 4 - requires manual server start)
     """)
 
+    # Stdio demos (subprocess managed by AgenticFlow)
     await demo_research_agent()
     await demo_news_analyst()
     await demo_fact_checker()
+    
+    # HTTP demo (shows how to connect to remote server)
+    await demo_http_transport()
+    
+    # Explicit subprocess demo
+    await demo_stdio_subprocess()
 
     print("\n" + "=" * 60)
     print("  Summary")
@@ -170,11 +259,21 @@ async def main() -> None:
     
     ✅ Auto tool discovery - Tools found on connection
     ✅ Description-based usage - Agent reads tool descriptions
-    ✅ Multiple transports - Stdio, HTTP/SSE, WebSocket
+    ✅ Multiple transports:
+       • STDIO - Local subprocess (most common)
+       • HTTP/SSE - Remote web server
+       • WebSocket - Bidirectional real-time
     ✅ Seamless integration - Works like any other capability
     
-    Run the search server standalone:
-        uv run python examples/mcp_server/search_server.py http --port 8765
+    To test HTTP/SSE transport manually:
+    
+    Terminal 1 (start server):
+        uv run python examples/data/mcp_server/search_server.py http --port 8765
+    
+    Terminal 2 (Python):
+        from agenticflow.capabilities import MCP
+        mcp = MCP.sse(url="http://127.0.0.1:8765/sse")
+        # ... use with agent
     """)
 
 

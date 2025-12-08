@@ -534,7 +534,7 @@ class Agent:
         """
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.event_bus is None:
-            from agenticflow.events import EventBus
+            from agenticflow.observability import EventBus
             self.event_bus = EventBus()
         
         self._observer = observer
@@ -1011,14 +1011,16 @@ class Agent:
         if isinstance(memory, Memory):
             self._memory_manager = memory
             self._memory = AgentMemory(backend=InMemorySaver(), store=store)
-            self._add_memory_tools()  # Auto-add memory tools!
+            # Only add tools if memory is agentic
+            if memory.agentic:
+                self._add_memory_tools()
             return
         
         if memory is True:
-            # Default: use new Memory
-            self._memory_manager = Memory()
+            # Default: use new Memory with agentic=True (backward compatible)
+            self._memory_manager = Memory(agentic=True)
             self._memory = AgentMemory(backend=InMemorySaver(), store=store)
-            self._add_memory_tools()  # Auto-add memory tools!
+            self._add_memory_tools()
             return
         
         # Legacy support for AgentMemory and external savers
@@ -1034,13 +1036,12 @@ class Agent:
             self._memory = AgentMemory(store=store)
 
     def _add_memory_tools(self) -> None:
-        """Add memory tools to agent when Memory is configured."""
+        """Add memory tools to agent when agentic Memory is configured."""
         if not self._memory_manager:
             return
         
-        from agenticflow.memory.tools import create_memory_tools
-        
-        memory_tools = create_memory_tools(self._memory_manager)
+        # Use memory.tools property (only non-empty if agentic=True)
+        memory_tools = self._memory_manager.tools
         for tool in memory_tools:
             # Avoid duplicates
             if not any(t.name == tool.name for t in self._direct_tools):

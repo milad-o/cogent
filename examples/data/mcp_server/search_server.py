@@ -296,7 +296,7 @@ async def run_http(host: str, port: int):
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
     from starlette.routing import Route, Mount
-    from starlette.responses import JSONResponse
+    from starlette.responses import JSONResponse, Response
     import uvicorn
     
     print(f"Starting MCP Search Server (SSE) on http://{host}:{port}")
@@ -307,12 +307,15 @@ async def run_http(host: str, port: int):
     sse = SseServerTransport("/messages/")
     
     async def handle_sse(request):
+        """Handle SSE connection."""
         async with sse.connect_sse(
-            request.scope, request.receive, request._send
+            request.scope, request.receive, request._send  # type: ignore[reportPrivateUsage]
         ) as streams:
             await server.run(
                 streams[0], streams[1], server.create_initialization_options()
             )
+        # Return empty response to avoid NoneType error when client disconnects
+        return Response()
     
     async def health(request):
         return JSONResponse({"status": "ok", "server": "search-server"})
@@ -320,7 +323,7 @@ async def run_http(host: str, port: int):
     app = Starlette(
         routes=[
             Route("/health", health),
-            Route("/sse", handle_sse),
+            Route("/sse", handle_sse, methods=["GET"]),
             Mount("/messages/", app=sse.handle_post_message),
         ],
     )

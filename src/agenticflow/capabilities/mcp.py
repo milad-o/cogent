@@ -179,6 +179,22 @@ class MCP(BaseCapability):
         self._native_tools: list[BaseTool] = []
         self._initialized = False
 
+    async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emit an event through the agent's event bus if available."""
+        if self._agent and hasattr(self._agent, "event_bus") and self._agent.event_bus:
+            from agenticflow.observability.event import Event, EventType
+            try:
+                agent_id = self._agent.id if hasattr(self._agent, "id") else None
+                event = Event(
+                    type=EventType(event_type),
+                    data={"capability": "mcp", "agent_id": agent_id, **data},
+                    source=f"capability:mcp:{agent_id or 'unknown'}",
+                )
+                await self._agent.event_bus.publish(event)
+            except ValueError:
+                # Unknown event type, log and continue
+                logger.debug("Unknown event type: %s", event_type)
+
     @classmethod
     def stdio(
         cls,
@@ -433,6 +449,15 @@ class MCP(BaseCapability):
 
     async def _disconnect_all(self) -> None:
         """Disconnect from all MCP servers."""
+        server_count = len(self._sessions)
+        tool_count = len(self._discovered_tools)
+
+        # Emit disconnection event
+        await self._emit("mcp.server.disconnected", {
+            "server_count": server_count,
+            "tool_count": tool_count,
+        })
+
         # Close all context managers
         # Note: MCP uses anyio internally, which requires contexts to be
         # entered/exited in the same task. When cleanup happens from a
@@ -460,6 +485,14 @@ class MCP(BaseCapability):
         """Connect to a single MCP server."""
         server_name = config.name or config.command or config.url or "unknown"
 
+        # Emit connecting event
+        await self._emit("mcp.server.connecting", {
+            "server_name": server_name,
+            "transport": config.transport.value,
+            "url": config.url,
+            "command": config.command,
+        })
+
         try:
             if config.transport == MCPTransport.STDIO:
                 await self._connect_stdio(config, server_name)
@@ -473,6 +506,12 @@ class MCP(BaseCapability):
                 msg = f"Unsupported transport: {config.transport}"
                 raise ValueError(msg)
 
+            # Emit connected event
+            await self._emit("mcp.server.connected", {
+                "server_name": server_name,
+                "transport": config.transport.value,
+                "tool_count": len([t for t in self._discovered_tools.values() if t.server_name == server_name]),
+            })
             logger.info("Connected to MCP server: %s", server_name)
 
         except ImportError as e:
@@ -482,6 +521,12 @@ class MCP(BaseCapability):
             )
             raise
         except Exception as e:
+            # Emit error event
+            await self._emit("mcp.server.error", {
+                "server_name": server_name,
+                "transport": config.transport.value,
+                "error": str(e),
+            })
             logger.error("Failed to connect to MCP server %s: %s", server_name, e)
             raise
 
@@ -589,6 +634,7 @@ class MCP(BaseCapability):
         from mcp import types
 
         tools_response = await session.list_tools()
+        discovered_tool_names = []
 
         for tool in tools_response.tools:
             tool_name = self._make_tool_name(tool.name, server_name)
@@ -604,8 +650,16 @@ class MCP(BaseCapability):
             # Create native tool
             native_tool = self._create_native_tool(tool, server_name, tool_name)
             self._native_tools.append(native_tool)
+            discovered_tool_names.append(tool_name)
 
             logger.debug("Discovered tool: %s from %s", tool_name, server_name)
+
+        # Emit tools discovered event
+        await self._emit("mcp.tools.discovered", {
+            "server_name": server_name,
+            "tool_count": len(discovered_tool_names),
+            "tools": discovered_tool_names,
+        })
 
     def _make_tool_name(self, original_name: str, server_name: str) -> str:
         """Create a unique tool name."""
@@ -630,12 +684,22 @@ class MCP(BaseCapability):
         tool_name: str,
     ) -> BaseTool:
         """Create a native tool wrapper for an MCP tool."""
+        # Capture self for event emission in closure
+        capability = self
 
         async def call_mcp_tool(**kwargs: Any) -> str:
             """Call the MCP tool."""
-            session = self._sessions.get(server_name)
+            session = capability._sessions.get(server_name)
             if not session:
                 return f"Error: Not connected to MCP server {server_name}"
+
+            # Emit tool called event
+            await capability._emit("mcp.tool.called", {
+                "tool_name": tool_name,
+                "mcp_tool_name": mcp_tool.name,
+                "server_name": server_name,
+                "arguments": kwargs,
+            })
 
             try:
                 result = await session.call_tool(mcp_tool.name, arguments=kwargs)
@@ -654,9 +718,26 @@ class MCP(BaseCapability):
                 if result.structuredContent:
                     output_parts.append(f"\nStructured: {json.dumps(result.structuredContent)}")
 
-                return "\n".join(output_parts) if output_parts else "Tool executed successfully"
+                result_text = "\n".join(output_parts) if output_parts else "Tool executed successfully"
+
+                # Emit tool result event
+                await capability._emit("mcp.tool.result", {
+                    "tool_name": tool_name,
+                    "mcp_tool_name": mcp_tool.name,
+                    "server_name": server_name,
+                    "result_length": len(result_text),
+                })
+
+                return result_text
 
             except Exception as e:
+                # Emit tool error event
+                await capability._emit("mcp.tool.error", {
+                    "tool_name": tool_name,
+                    "mcp_tool_name": mcp_tool.name,
+                    "server_name": server_name,
+                    "error": str(e),
+                })
                 logger.error("Error calling MCP tool %s: %s", mcp_tool.name, e)
                 return f"Error calling tool: {e}"
 
