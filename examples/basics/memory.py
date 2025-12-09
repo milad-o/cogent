@@ -49,7 +49,7 @@ async def demo_conversation_memory():
     print(f"\n[Thread: {thread_id}]")
     
     # Turn 1: User introduces themselves
-    response1 = await agent.chat(
+    response1 = await agent.run(
         "Hi! My name is Alice and I'm a Python developer.",
         thread_id=thread_id,
     )
@@ -57,7 +57,7 @@ async def demo_conversation_memory():
     print(f"  Assistant: {response1}")
     
     # Turn 2: Ask something that requires memory
-    response2 = await agent.chat(
+    response2 = await agent.run(
         "What's my name and what do I do?",
         thread_id=thread_id,  # Same thread - remembers!
     )
@@ -74,7 +74,7 @@ async def demo_conversation_memory():
     
     # Different thread - should know from context injection!
     print(f"\n[Thread: different-thread] (fresh thread, but knows from memory)")
-    response3 = await agent.chat(
+    response3 = await agent.run(
         "What's my name and occupation?",
         thread_id="different-thread",
     )
@@ -113,7 +113,7 @@ async def demo_persistent_memory():
             memory=memory,
         )
         
-        response = await agent.chat(
+        response = await agent.run(
             "My favorite programming language is Rust.",
             thread_id="session-demo",
         )
@@ -136,7 +136,7 @@ async def demo_persistent_memory():
             memory=memory2,
         )
         
-        response2 = await agent2.chat(
+        response2 = await agent2.run(
             "What's my favorite programming language?",
             thread_id="session-demo",  # Same thread!
         )
@@ -167,14 +167,14 @@ async def demo_memory_tools():
     
     # Conversation
     print("\n  User: My favorite color is blue and I was born in 1990.")
-    response1 = await agent.chat(
+    response1 = await agent.run(
         "My favorite color is blue and I was born in 1990.",
         thread_id="facts-demo",
     )
     print(f"  Agent: {response1}")
     
     print("\n  User: What do you remember about me?")
-    response2 = await agent.chat(
+    response2 = await agent.run(
         "What do you remember about me?",
         thread_id="facts-demo",
     )
@@ -218,7 +218,7 @@ async def demo_shared_memory():
     
     # Researcher stores findings
     print("\n  [Researcher working...]")
-    findings = await researcher.chat(
+    findings = await researcher.run(
         "Research: What are 3 benefits of Python for AI?",
         thread_id="research-session",
     )
@@ -232,7 +232,7 @@ async def demo_shared_memory():
     print("\n  [Writer working...]")
     stored = await research.recall("python_ai_benefits")
     
-    summary = await writer.chat(
+    summary = await writer.run(
         f"Summarize these findings in one paragraph: {stored}",
         thread_id="writing-session",
     )

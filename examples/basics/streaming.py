@@ -157,11 +157,11 @@ async def demo_basic_streaming():
         system_prompt="You are a helpful assistant. Keep responses concise.",
     )
     
-    print("\n# Using stream=True on chat():")
+    print("\n# Using stream=True on run():")
     print("-" * 40)
     
     # Simply add stream=True to enable streaming!
-    async for chunk in agent.chat("Explain streaming in 2 sentences.", stream=True):
+    async for chunk in agent.run("Explain streaming in 2 sentences.", stream=True):
         print(chunk.content, end="", flush=True)
     
     print("\n" + "-" * 40)
@@ -192,7 +192,7 @@ async def demo_default_streaming():
     print("-" * 40)
     
     # No need to specify stream=True - it's the default!
-    async for chunk in agent.chat("Hello! Are you a streaming agent?"):
+    async for chunk in agent.run("Hello! Are you a streaming agent?"):
         print(chunk.content, end="", flush=True)
     
     print("\n" + "-" * 40)
@@ -202,7 +202,7 @@ async def demo_default_streaming():
         agent._model = create_mock_model("Yes, but I can return complete responses too!")
     
     print("\n# Override with stream=False:")
-    result = await agent.chat("Give me a one-liner.", stream=False)
+    result = await agent.run("Give me a one-liner.", stream=False)
     print(result)
     
     print("\n✅ Agent-level streaming works!")

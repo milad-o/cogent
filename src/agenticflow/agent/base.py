@@ -1734,322 +1734,18 @@ class Agent:
             )
             ```
         """
+        import warnings
+        warnings.warn(
+            "chat() is deprecated. Use run(task, thread_id=...) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        
         # Determine if streaming based on parameter or agent default
         use_streaming = stream if stream is not None else self.config.stream
         
-        if use_streaming:
-            # Return the streaming iterator directly (not wrapped in coroutine)
-            return self.chat_stream(
-                message,
-                thread_id=thread_id,
-                user_id=user_id,
-                correlation_id=correlation_id,
-                metadata=metadata,
-            )
-        
-        # Return coroutine for non-streaming
-        return self._chat_impl(
-            message,
-            thread_id=thread_id,
-            user_id=user_id,
-            correlation_id=correlation_id,
-            metadata=metadata,
-        )
-    
-    async def _chat_impl(
-        self,
-        message: str,
-        thread_id: str | None = None,
-        *,
-        user_id: str | None = None,
-        correlation_id: str | None = None,
-        metadata: dict | None = None,
-    ) -> str:
-        """Internal implementation of non-streaming chat."""
-        if not self.model:
-            raise RuntimeError(f"Agent {self.name} has no model configured")
-        
-        # Auto-initialize capabilities on first call
-        if self._capabilities and not self._capabilities_initialized:
-            await self.initialize_capabilities()
-        
-        # Default thread ID based on agent
-        if thread_id is None:
-            thread_id = f"agent-{self.id}-default"
-        
-        await self._set_status(AgentStatus.THINKING, correlation_id)
-        
-        await self._emit_event(
-            EventType.AGENT_THINKING,
-            {
-                "agent_id": self.id,
-                "agent_name": self.name,
-                "thread_id": thread_id,
-                "user_id": user_id,
-                "prompt_preview": message[:200],
-            },
-            correlation_id,
-        )
-        
-        start_time = now_utc()
-        
-        try:
-            # Build messages with effective system prompt (includes tools)
-            messages: list[Any] = []
-            effective_prompt = self.get_effective_system_prompt()
-            
-            # Inject memory context if using new memory system
-            memory_context = ""
-            if self._memory_manager:
-                memory_context = await self._memory_manager.get_context_for_prompt(
-                    thread_id=thread_id,
-                    user_id=user_id,
-                )
-                if memory_context:
-                    from agenticflow.memory.tools import format_memory_context
-                    effective_prompt = (effective_prompt or "") + "\n\n" + format_memory_context(memory_context)
-            
-            if effective_prompt:
-                messages.append(SystemMessage(content=effective_prompt))
-            
-            # Load conversation history from memory
-            if self._memory_manager:
-                history = await self._memory_manager.get_thread_messages(thread_id)
-            else:
-                history = await self._memory.get_messages(thread_id)
-            
-            # Add conversation history
-            messages.extend(history)
-            
-            # Add new user message
-            user_message = HumanMessage(content=message)
-            messages.append(user_message)
-            
-            # Convert to dict format for native models
-            dict_messages = [msg.to_dict() for msg in messages]
-            
-            # Use bound model (with tools) and handle tool calls
-            bound_model = self.bound_model
-            tools = self.all_tools
-            
-            # Emit LLM request event before agentic loop
-            await self._emit_event(
-                EventType.LLM_REQUEST,
-                {
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "model": self.model.model_name if hasattr(self.model, 'model_name') else str(self.model),
-                    "messages": dict_messages,
-                    "message_count": len(dict_messages),
-                    "system_prompt": (effective_prompt or "")[:500],
-                    "tools_available": [t.name for t in tools] if tools else [],
-                    "prompt": message,
-                },
-                correlation_id,
-            )
-            
-            # Agentic loop - keep calling until no more tool calls
-            max_iterations = 10
-            final_content = ""
-            iteration = 0
-            
-            for iteration in range(max_iterations):
-                loop_start = now_utc()
-                response = await bound_model.ainvoke(dict_messages)
-                loop_duration_ms = (now_utc() - loop_start).total_seconds() * 1000
-                
-                # Check for tool calls
-                tool_calls = getattr(response, 'tool_calls', None) or []
-                
-                # Emit LLM response event
-                await self._emit_event(
-                    EventType.LLM_RESPONSE,
-                    {
-                        "agent_id": self.id,
-                        "agent_name": self.name,
-                        "iteration": iteration + 1,
-                        "content": (response.content or "")[:500],
-                        "content_length": len(response.content or ""),
-                        "tool_calls": [
-                            {"name": getattr(tc, 'name', tc.get('name', '?') if isinstance(tc, dict) else '?'),
-                             "args": str(getattr(tc, 'args', tc.get('args', {}) if isinstance(tc, dict) else {}))[:100]}
-                            for tc in tool_calls[:5]
-                        ],
-                        "has_tool_calls": bool(tool_calls),
-                        "finish_reason": "tool_calls" if tool_calls else "stop",
-                        "duration_ms": loop_duration_ms,
-                    },
-                    correlation_id,
-                )
-                
-                if not tool_calls:
-                    # No tool calls - we're done
-                    final_content = response.content or ""
-                    break
-                
-                # Emit tool decision event (shows which tools were selected and why)
-                await self._emit_event(
-                    EventType.LLM_TOOL_DECISION,
-                    {
-                        "agent_id": self.id,
-                        "agent_name": self.name,
-                        "iteration": iteration + 1,
-                        "tools_selected": [
-                            getattr(tc, 'name', tc.get('name', '?') if isinstance(tc, dict) else '?')
-                            for tc in tool_calls
-                        ],
-                        "reasoning": (response.content or "")[:200] if response.content else "",
-                    },
-                    correlation_id,
-                )
-                
-                # Add assistant message with tool calls to history
-                ai_msg = response.to_dict() if hasattr(response, 'to_dict') else {
-                    "role": "assistant",
-                    "content": response.content or "",
-                }
-                dict_messages.append(ai_msg)
-                
-                # Execute each tool call
-                for tc in tool_calls:
-                    # Handle different tool call formats
-                    if isinstance(tc, dict):
-                        tool_name = tc.get("name", "")
-                        tool_args = tc.get("args", {})
-                        tool_id = tc.get("id", "call_0")
-                    else:
-                        tool_name = getattr(tc, 'name', '')
-                        tool_args = getattr(tc, 'args', {})
-                        tool_id = getattr(tc, 'id', 'call_0')
-                    
-                    # Parse args if string
-                    if isinstance(tool_args, str):
-                        import json
-                        try:
-                            tool_args = json.loads(tool_args)
-                        except json.JSONDecodeError:
-                            tool_args = {}
-                    
-                    # Emit tool called event
-                    await self._emit_event(
-                        EventType.TOOL_CALLED,
-                        {
-                            "agent_id": self.id,
-                            "agent_name": self.name,
-                            "tool_name": tool_name,
-                            "tool_id": tool_id,
-                            "args": tool_args,
-                        },
-                        correlation_id,
-                    )
-                    
-                    tool_start = now_utc()
-                    
-                    # Find and execute tool (with deferred support)
-                    result = f"Tool '{tool_name}' not found"
-                    tool_error = None
-                    for tool in tools:
-                        if tool.name == tool_name:
-                            result, tool_error = await self._execute_tool(
-                                tool, tool_args, tool_id, correlation_id
-                            )
-                            break
-                    
-                    tool_duration_ms = (now_utc() - tool_start).total_seconds() * 1000
-                    
-                    # Emit tool result or error event
-                    if tool_error:
-                        await self._emit_event(
-                            EventType.TOOL_ERROR,
-                            {
-                                "agent_id": self.id,
-                                "agent_name": self.name,
-                                "tool_name": tool_name,
-                                "tool_id": tool_id,
-                                "error": str(tool_error),
-                                "duration_ms": tool_duration_ms,
-                            },
-                            correlation_id,
-                        )
-                    else:
-                        await self._emit_event(
-                            EventType.TOOL_RESULT,
-                            {
-                                "agent_id": self.id,
-                                "agent_name": self.name,
-                                "tool_name": tool_name,
-                                "tool_id": tool_id,
-                                "result_preview": str(result)[:200] if result else "",
-                                "duration_ms": tool_duration_ms,
-                            },
-                            correlation_id,
-                        )
-                    
-                    # Add tool result to messages
-                    dict_messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_id,
-                        "content": str(result),
-                    })
-            
-            result = final_content
-            
-            # Track timing
-            duration_ms = (now_utc() - start_time).total_seconds() * 1000
-            self.state.add_thinking_time(duration_ms)
-            
-            # Save messages to memory
-            ai_message = AIMessage(content=result)
-            
-            if self._memory_manager:
-                await self._memory_manager.add_thread_message(thread_id, user_message, metadata)
-                await self._memory_manager.add_thread_message(thread_id, ai_message, metadata)
-            else:
-                await self._memory.add_messages(
-                    thread_id=thread_id,
-                    messages=[user_message, ai_message],
-                    metadata={
-                        **(metadata or {}),
-                        "agent_name": self.name,
-                        "agent_id": self.id,
-                    },
-                )
-            
-            # Also update local state
-            self.state.add_message(user_message)
-            self.state.add_message(ai_message)
-            
-            await self._set_status(AgentStatus.IDLE, correlation_id)
-            
-            await self._emit_event(
-                EventType.AGENT_RESPONDED,
-                {
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "thread_id": thread_id,
-                    "response_preview": result[:200] if result else "",
-                    "duration_ms": duration_ms,
-                },
-                correlation_id,
-            )
-            
-            return result
-            
-        except Exception as e:
-            self.state.record_error(str(e))
-            await self._set_status(AgentStatus.ERROR, correlation_id)
-            await self._emit_event(
-                EventType.AGENT_ERROR,
-                {
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "thread_id": thread_id,
-                    "error": str(e),
-                    "phase": "chat",
-                },
-                correlation_id,
-            )
-            raise
+        # Delegate to the unified run() method
+        return self.run(message, stream=use_streaming, thread_id=thread_id)
 
     async def get_thread_history(
         self,
@@ -2232,174 +1928,20 @@ class Agent:
         metadata: dict | None = None,
     ) -> "AsyncIterator[StreamChunk]":
         """
+        DEPRECATED: Use run(task, stream=True, thread_id=...) instead.
+        
         Stream a chat response token by token with conversation history.
-        
-        This is the streaming version of chat(). Maintains conversation
-        history per thread while yielding tokens as they arrive.
-        
-        Args:
-            message: The user's message.
-            thread_id: Unique identifier for the conversation thread.
-            user_id: Optional user identifier for long-term memory.
-            correlation_id: Optional correlation ID for event tracking.
-            metadata: Optional metadata to store with the conversation.
-            
-        Yields:
-            StreamChunk objects containing token content.
-            
-        Example:
-            ```python
-            async for chunk in agent.chat_stream("Tell me a story", thread_id="user-123"):
-                print(chunk.content, end="", flush=True)
-            print()
-            ```
+        This method is kept for backward compatibility.
         """
-        from agenticflow.agent.streaming import StreamChunk, chunk_from_message
-        
-        if not self.model:
-            raise RuntimeError(f"Agent {self.name} has no model configured")
-
-        # Auto-initialize capabilities on first call
-        if self._capabilities and not self._capabilities_initialized:
-            await self.initialize_capabilities()
-
-        if thread_id is None:
-            thread_id = f"agent-{self.id}-default"
-
-        await self._set_status(AgentStatus.THINKING, correlation_id)
-
-        await self._emit_event(
-            EventType.AGENT_THINKING,
-            {
-                "agent_id": self.id,
-                "agent_name": self.name,
-                "thread_id": thread_id,
-                "user_id": user_id,
-                "prompt_preview": message[:200],
-                "streaming": True,
-            },
-            correlation_id,
+        import warnings
+        warnings.warn(
+            "chat_stream() is deprecated. Use run(task, stream=True, thread_id=...) instead.",
+            DeprecationWarning,
+            stacklevel=2,
         )
-
-        start_time = now_utc()
-
-        try:
-            # Build messages
-            messages: list[Any] = []
-            effective_prompt = self.get_effective_system_prompt()
-            
-            # Inject memory context if using new memory system
-            if self._memory_manager and user_id:
-                memory_context = await self._memory_manager.get_context_for_prompt(
-                    thread_id=thread_id,
-                    user_id=user_id,
-                )
-                if memory_context:
-                    from agenticflow.memory.tools import format_memory_context
-                    effective_prompt = (effective_prompt or "") + "\n\n" + format_memory_context(memory_context)
-            
-            if effective_prompt:
-                messages.append(SystemMessage(content=effective_prompt))
-            
-            # Load conversation history
-            if self._memory_manager:
-                history = await self._memory_manager.get_thread_messages(thread_id)
-            else:
-                history = await self._memory.get_messages(thread_id)
-            
-            messages.extend(history)
-            
-            user_message = HumanMessage(content=message)
-            messages.append(user_message)
-
-            # Convert to dict format for native models
-            dict_messages = [msg.to_dict() for msg in messages]
-
-            accumulated_content = ""
-            index = 0
-
-            async for chunk in self.model.astream(dict_messages):
-                stream_chunk = chunk_from_message(chunk, index)
-                accumulated_content += stream_chunk.content
-                index += 1
-                
-                if stream_chunk.content:
-                    await self._emit_event(
-                        EventType.TOKEN_STREAMED,
-                        {
-                            "agent_id": self.id,
-                            "agent_name": self.name,
-                            "thread_id": thread_id,
-                            "token": stream_chunk.content,
-                            "index": index,
-                        },
-                        correlation_id,
-                    )
-                
-                yield stream_chunk
-
-            # Track timing
-            duration_ms = (now_utc() - start_time).total_seconds() * 1000
-            self.state.add_thinking_time(duration_ms)
-
-            # Save to memory
-            ai_message = AIMessage(content=accumulated_content)
-            if self._memory_manager:
-                await self._memory_manager.add_thread_messages(
-                    thread_id=thread_id,
-                    messages=[user_message, ai_message],
-                    metadata={
-                        **(metadata or {}),
-                        "agent_name": self.name,
-                        "agent_id": self.id,
-                    },
-                )
-            else:
-                await self._memory.add_messages(
-                    thread_id=thread_id,
-                    messages=[user_message, ai_message],
-                    metadata={
-                        **(metadata or {}),
-                        "agent_name": self.name,
-                        "agent_id": self.id,
-                    },
-                )
-
-            # Update local state
-            self.state.add_message(user_message)
-            self.state.add_message(ai_message)
-
-            await self._set_status(AgentStatus.IDLE, correlation_id)
-
-            await self._emit_event(
-                EventType.AGENT_RESPONDED,
-                {
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "thread_id": thread_id,
-                    "response_preview": accumulated_content[:200] if accumulated_content else "",
-                    "duration_ms": duration_ms,
-                    "streaming": True,
-                    "token_count": index,
-                },
-                correlation_id,
-            )
-
-        except Exception as e:
-            self.state.record_error(str(e))
-            await self._set_status(AgentStatus.ERROR, correlation_id)
-            await self._emit_event(
-                EventType.AGENT_ERROR,
-                {
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "thread_id": thread_id,
-                    "error": str(e),
-                    "phase": "chat_stream",
-                },
-                correlation_id,
-            )
-            raise
+        # Delegate to run with streaming
+        async for chunk in await self.run(message, stream=True, thread_id=thread_id):
+            yield chunk
 
     async def stream_events(
         self,
@@ -3260,79 +2802,231 @@ class Agent:
             self.state.finish_task(task.id, success=False)
             raise
 
-    async def run(
+    def run(
         self,
         task: str,
+        *,
         context: dict[str, Any] | None = None,
-        strategy: str = "dag",
-        on_step: Callable[[str, Any], None] | None = None,
-        tracker: ProgressTracker | None = None,
+        thread_id: str | None = None,
+        stream: bool = False,
         max_iterations: int = 10,
-    ) -> Any:
+    ) -> "Any | AsyncIterator[StreamChunk]":
         """
-        Execute a complex task using an advanced execution strategy.
+        Execute a task with full agent capabilities.
         
-        This is the main entry point for complex multi-step tasks.
-        It uses sophisticated execution patterns to maximize speed
-        and efficiency.
+        This is the PRIMARY method for interacting with agents. It handles:
+        - Tool execution (agentic loop)
+        - Conversation memory (when thread_id provided)
+        - Streaming output (when stream=True)
+        - Structured output (when configured)
+        - Reasoning/chain-of-thought (when configured)
+        
+        Note: For non-streaming calls, this returns a coroutine that must be 
+        awaited. For streaming calls (stream=True), it returns an async 
+        iterator directly.
         
         Args:
-            task: The task description.
-            context: Optional context dict.
-            strategy: Execution strategy:
-                - "react": Classic think-act-observe loop (slowest)
-                - "plan": Plan all steps, then execute sequentially
-                - "dag": Build dependency graph, execute in parallel (fastest)
-                - "adaptive": Auto-select based on task complexity
-            on_step: Optional callback(step_type, data) for progress.
-            tracker: Optional ProgressTracker for real-time output.
+            task: The task or message to process.
+            context: Optional context dict passed to tools.
+            thread_id: Conversation thread ID. When provided:
+                - Loads conversation history from memory
+                - Saves the exchange after completion
+                - Enables multi-turn conversations
+            stream: If True, returns an async iterator of StreamChunk.
             max_iterations: Maximum LLM call iterations (default: 10).
             
         Returns:
-            The final result.
+            If stream=False: The final response string (or structured output).
+            If stream=True: AsyncIterator[StreamChunk] for token streaming.
             
-        Example:
-            ```python
-            # Fast parallel execution with progress tracking
-            tracker = ProgressTracker(OutputConfig.verbose())
-            result = await agent.run(
-                "Search for Python tutorials and Rust tutorials, then compare them",
-                strategy="dag",
-                tracker=tracker,
-            )
-            ```
+        Examples:
+            # Simple one-shot task
+            result = await agent.run("What is 2+2?")
+            
+            # With tools
+            result = await agent.run("Search for Python tutorials")
+            
+            # Multi-turn conversation
+            await agent.run("Hi, I'm Alice", thread_id="conv-1")
+            result = await agent.run("What's my name?", thread_id="conv-1")
+            # Returns something mentioning Alice!
+            
+            # Streaming
+            async for chunk in agent.run("Write a poem", stream=True):
+                print(chunk.content, end="", flush=True)
+            
+            # Streaming with conversation
+            async for chunk in agent.run("Tell me more", stream=True, thread_id="conv-1"):
+                print(chunk.content, end="")
         """
-        from agenticflow.executors import (
-            ExecutionStrategy,
-            create_executor,
-        )
+        # Handle streaming mode - return async iterator directly
+        if stream:
+            return self._run_stream(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
         
-        # Auto-initialize capabilities BEFORE creating executor
-        # (executor caches tools in __init__, so they must be ready)
+        # Non-streaming execution - return coroutine (must be awaited by caller)
+        return self._run_impl(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
+    
+    async def _run_impl(
+        self,
+        task: str,
+        *,
+        context: dict[str, Any] | None = None,
+        thread_id: str | None = None,
+        max_iterations: int = 10,
+    ) -> Any:
+        """Internal implementation of non-streaming run()."""
+        from agenticflow.executors import NativeExecutor
+        
+        if not self.model:
+            raise RuntimeError(f"Agent {self.name} has no model configured")
+        
+        # Auto-initialize capabilities
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
         
-        # Note: Not emitting USER_INPUT here - that's for user-facing input
-        # at the flow/application level. The executor emits AGENT_INVOKED instead.
+        # Load conversation history into agent state if thread_id provided
+        if thread_id:
+            if self._memory_manager:
+                history = await self._memory_manager.get_thread_messages(thread_id)
+            else:
+                history = await self._memory.get_messages(thread_id)
+            # Add history to agent state so executor can use it
+            for msg in history:
+                self.state.add_message(msg)
         
-        strategy_map = {
-            "native": ExecutionStrategy.NATIVE,
-            "sequential": ExecutionStrategy.SEQUENTIAL,
-            "tree_search": ExecutionStrategy.TREE_SEARCH,
-        }
-        
-        exec_strategy = strategy_map.get(strategy, ExecutionStrategy.NATIVE)
-        executor = create_executor(self, exec_strategy)
-        executor.on_step = on_step
-        executor.tracker = tracker  # Pass tracker to executor
+        # Create executor and run
+        executor = NativeExecutor(self)
         executor.max_iterations = max_iterations
         
+        # Execute task
         result = await executor.execute(task, context)
         
-        # Note: Not emitting OUTPUT_GENERATED here - the executor already
-        # emits it with proper timing info (duration_ms)
+        # Save to conversation history if thread_id provided
+        if thread_id:
+            await self._save_to_thread(thread_id, task, result)
         
         return result
+    
+    async def _run_stream(
+        self,
+        task: str,
+        *,
+        context: dict[str, Any] | None = None,
+        thread_id: str | None = None,
+        max_iterations: int = 10,
+    ) -> "AsyncIterator[StreamChunk]":
+        """Internal streaming implementation of run()."""
+        from agenticflow.agent.streaming import StreamChunk
+        
+        if not self.model:
+            raise RuntimeError(f"Agent {self.name} has no model configured")
+        
+        # Auto-initialize capabilities
+        if self._capabilities and not self._capabilities_initialized:
+            await self.initialize_capabilities()
+        
+        # Build messages with optional conversation history
+        messages = await self._build_run_messages(task, thread_id)
+        dict_messages = [msg.to_dict() for msg in messages]
+        
+        # Get bound model (with tools)
+        bound_model = self.bound_model
+        accumulated_content = ""
+        
+        # Streaming agentic loop
+        for iteration in range(max_iterations):
+            async for chunk in bound_model.astream(dict_messages):
+                # Yield text content
+                if hasattr(chunk, 'content') and chunk.content:
+                    accumulated_content += chunk.content
+                    yield StreamChunk(content=chunk.content, index=iteration)
+                
+                # Check for tool calls at end of stream
+                tool_calls = getattr(chunk, 'tool_calls', None)
+                if tool_calls:
+                    # Execute tools and continue loop
+                    dict_messages.append({
+                        "role": "assistant",
+                        "content": accumulated_content,
+                        "tool_calls": [
+                            {"id": tc.get("id", f"call_{i}"), "name": tc.get("name"), "args": tc.get("args", {})}
+                            for i, tc in enumerate(tool_calls)
+                        ] if tool_calls else [],
+                    })
+                    
+                    for tc in tool_calls:
+                        tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+                        tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                        tool_id = tc.get("id", "call_0") if isinstance(tc, dict) else getattr(tc, "id", "call_0")
+                        
+                        result = await self._execute_tool(tool_name, tool_args)
+                        dict_messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_id,
+                            "content": str(result),
+                        })
+                    
+                    accumulated_content = ""
+                    break  # Continue outer loop for next iteration
+            else:
+                # No tool calls - we're done
+                break
+        
+        # Save to conversation history if thread_id provided
+        if thread_id and accumulated_content:
+            await self._save_to_thread(thread_id, task, accumulated_content)
+    
+    async def _build_run_messages(
+        self,
+        task: str,
+        thread_id: str | None = None,
+    ) -> list[Any]:
+        """Build messages for run(), optionally including conversation history."""
+        messages: list[Any] = []
+        
+        # System prompt
+        effective_prompt = self.get_effective_system_prompt()
+        if effective_prompt:
+            messages.append(SystemMessage(content=effective_prompt))
+        
+        # Load conversation history if thread_id provided
+        if thread_id:
+            if self._memory_manager:
+                history = await self._memory_manager.get_thread_messages(thread_id)
+            else:
+                history = await self._memory.get_messages(thread_id)
+            messages.extend(history)
+        
+        # Add user message
+        messages.append(HumanMessage(content=task))
+        
+        return messages
+    
+    async def _save_to_thread(
+        self,
+        thread_id: str,
+        user_message: str,
+        assistant_response: str,
+    ) -> None:
+        """Save exchange to conversation history."""
+        if self._memory_manager:
+            await self._memory_manager.add_message(
+                thread_id=thread_id,
+                role="user",
+                content=user_message,
+            )
+            await self._memory_manager.add_message(
+                thread_id=thread_id,
+                role="assistant",
+                content=str(assistant_response),
+            )
+        else:
+            await self._memory.add_message(thread_id, HumanMessage(content=user_message))
+            await self._memory.add_message(thread_id, AIMessage(content=str(assistant_response)))
+
+    # =========================================================================
+    # DEPRECATED METHODS (kept for backward compatibility)
+    # =========================================================================
 
     async def run_turbo(
         self,
@@ -3340,52 +3034,17 @@ class Agent:
         context: dict[str, Any] | None = None,
     ) -> Any:
         """
-        Execute a task with maximum speed using native tool binding.
+        DEPRECATED: Use run() instead - it's already optimized.
         
-        This is the FASTEST execution method. It uses:
-        - Native LLM tool binding (no text parsing)
-        - Parallel tool execution
-        - Minimal overhead (no events, no status updates)
-        - Cached bound model
-        
-        Trade-offs:
-        - No self-correction on failures
-        - No observability (events skipped)
-        - No scratchpad/working memory
-        
-        Best for:
-        - Simple tasks (1-3 tool calls)
-        - Latency-critical applications
-        - High-throughput scenarios
-        
-        Args:
-            task: The task description.
-            context: Optional context dict.
-            
-        Returns:
-            The final result.
-            
-        Example:
-            ```python
-            # Fastest possible execution
-            result = await agent.run_turbo("Get weather in NYC")
-            ```
+        This method is kept for backward compatibility.
         """
-        from agenticflow.executors import NativeExecutor
-        
-        # Auto-initialize capabilities on first run
-        if self._capabilities and not self._capabilities_initialized:
-            await self.initialize_capabilities()
-        
-        # Enable turbo mode temporarily
-        old_turbo = self._turbo_mode
-        self._turbo_mode = True
-        
-        try:
-            executor = NativeExecutor(self)
-            return await executor.execute(task, context)
-        finally:
-            self._turbo_mode = old_turbo
+        import warnings
+        warnings.warn(
+            "run_turbo() is deprecated. Use run() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.run(task, context=context)
 
     async def send_message(
         self,
