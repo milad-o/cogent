@@ -240,9 +240,9 @@ async def smart_routing() -> None:
     )
 
     router = route(
-        (lambda t: any(w in t.lower() for w in ["analyze", "data", "chart"]), analyst),
-        (lambda t: any(w in t.lower() for w in ["calculate", "math", "code"]), coder),
-        (lambda t: any(w in t.lower() for w in ["notify", "send", "alert"]), communicator),
+        ("analyze|data|chart", analyst),
+        ("calculate|math|code", coder),
+        ("notify|send|alert", communicator),
         observer=observer,
     )
 

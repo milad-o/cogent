@@ -100,7 +100,7 @@ def fanout(
 
 
 def route(
-    *routes: Agent | tuple[Callable[[str], bool], Agent],
+    *routes: Agent | tuple[Callable[[str], bool] | str | list[str], Agent],
     trigger: str = "task.created",
     observer: Observer | None = None,
 ) -> Router:
@@ -108,8 +108,15 @@ def route(
     Create a router: dispatch to agent based on task content.
 
     Args:
-        *routes: Either agents or (condition, agent) tuples.
-                 Plain agents act as fallback.
+        *routes: Routing rules in order of priority. Each can be:
+                 - `agent` - Fallback (always matches)
+                 - `(keywords, agent)` - Match if any keyword in task
+                 - `(callable, agent)` - Custom condition function
+                 
+                 Keywords can be:
+                 - String with `|` separator: `"code|math|calculate"`
+                 - List of strings: `["code", "math", "calculate"]`
+                 
         trigger: Event that triggers routing
         observer: Optional observer for monitoring
 
@@ -118,11 +125,26 @@ def route(
 
     Example:
         ```python
+        # Simple keyword routing (recommended)
         result = await route(
-            (lambda t: "code" in t, coder),
-            (lambda t: "write" in t, writer),
+            ("analyze|data|chart", analyst),
+            ("code|math|calculate", coder),
+            ("notify|send|alert", communicator),
             general,  # fallback
-        ).run("Write Python code")
+        ).run("Analyze the sales data")
+        
+        # With list syntax
+        result = await route(
+            (["code", "python", "function"], coder),
+            (["write", "draft", "compose"], writer),
+        ).run("Write a Python function")
+        
+        # Custom condition (advanced)
+        result = await route(
+            (lambda t: len(t) > 100, deep_analyzer),
+            (lambda t: "urgent" in t.lower(), fast_responder),
+            general,
+        ).run(task)
         ```
     """
     return Router(list(routes), trigger=trigger, observer=observer)
@@ -265,9 +287,10 @@ class Router:
     Router pattern: dispatch to agent based on conditions.
 
     Routes are evaluated in order; first match wins.
+    Supports keyword strings, lists, or custom callables.
     """
 
-    routes: list[Agent | tuple[Callable[[str], bool], Agent]]
+    routes: list[Agent | tuple[Callable[[str], bool] | str | list[str], Agent]]
     trigger: str = "task.created"
     config: EventFlowConfig | None = None
     observer: Observer | None = None
@@ -286,9 +309,11 @@ class Router:
         """Build the underlying EventFlow."""
         flow = EventFlow(config=self.config, observer=self.observer)
 
-        for route in self.routes:
-            if isinstance(route, tuple):
-                condition_fn, agent = route
+        for route_entry in self.routes:
+            if isinstance(route_entry, tuple):
+                condition, agent = route_entry
+                condition_fn = self._normalize_condition(condition)
+                
                 # Convert task-based condition to event-based
                 def make_event_condition(fn: Callable[[str], bool]) -> TriggerCondition:
                     def cond(event: Event) -> bool:
@@ -298,9 +323,29 @@ class Router:
                 flow.register(agent, [react_to(self.trigger).when(make_event_condition(condition_fn))])
             else:
                 # Plain agent = fallback (always matches)
-                flow.register(route, [react_to(self.trigger)])
+                flow.register(route_entry, [react_to(self.trigger)])
 
         return flow
+    
+    def _normalize_condition(
+        self, 
+        condition: Callable[[str], bool] | str | list[str],
+    ) -> Callable[[str], bool]:
+        """Convert keywords or callable to a condition function."""
+        if callable(condition):
+            return condition
+        
+        # Convert string or list to keyword matcher
+        if isinstance(condition, str):
+            keywords = [k.strip().lower() for k in condition.split("|")]
+        else:
+            keywords = [k.lower() for k in condition]
+        
+        def keyword_matcher(task: str) -> bool:
+            task_lower = task.lower()
+            return any(kw in task_lower for kw in keywords)
+        
+        return keyword_matcher
 
 
 @dataclass
