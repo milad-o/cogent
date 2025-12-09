@@ -24,7 +24,7 @@ from agenticflow.reactive import (
     EventFlowResult,
     Trigger,
     AgentTriggerConfig,
-    on,
+    react_to,
     when,
 )
 from agenticflow.observability.event import Event, EventType
@@ -113,33 +113,33 @@ class TestOnBuilder:
 
     def test_basic_on(self) -> None:
         """on() creates trigger builder."""
-        builder = on("task.created")
+        builder = react_to("task.created")
         trigger = builder.build()
 
         assert isinstance(trigger, Trigger)
 
     def test_on_with_when(self) -> None:
         """on().when() adds condition."""
-        trigger = on("task.created").when(lambda e: True).build()
+        trigger = react_to("task.created").when(lambda e: True).build()
 
         assert trigger.condition is not None
 
     def test_on_with_emits(self) -> None:
         """on().emits() sets emission."""
-        trigger = on("task.created").emits("task.done").build()
+        trigger = react_to("task.created").emits("task.done").build()
 
         assert trigger.emits == "task.done"
 
     def test_on_with_priority(self) -> None:
         """on().with_priority() sets priority."""
-        trigger = on("task.created").with_priority(10).build()
+        trigger = react_to("task.created").with_priority(10).build()
 
         assert trigger.priority == 10
 
     def test_chained_builder(self) -> None:
         """Builder methods can be chained."""
         trigger = (
-            on("task.created")
+            react_to("task.created")
             .when(lambda e: True)
             .emits("done")
             .with_priority(5)
@@ -165,7 +165,7 @@ class TestEventFlow:
         agent = mock_agent("test")
         flow = EventFlow()
 
-        flow.register(agent, [on("task.created")])
+        flow.register(agent, [react_to("task.created")])
 
         assert "test" in flow.agents
 
@@ -174,7 +174,7 @@ class TestEventFlow:
         """Can unregister agent."""
         agent = mock_agent("test")
         flow = EventFlow()
-        flow.register(agent, [on("task.created")])
+        flow.register(agent, [react_to("task.created")])
 
         flow.unregister("test")
 
@@ -185,7 +185,7 @@ class TestEventFlow:
         """Run triggers matching agent."""
         agent = mock_agent("test")
         flow = EventFlow()
-        flow.register(agent, [on("task.created")])
+        flow.register(agent, [react_to("task.created")])
 
         result = await flow.run("Do something", initial_event="task.created")
 
@@ -196,8 +196,8 @@ class TestEventFlow:
     async def test_chain_triggers(self, researcher, writer) -> None:
         """Agents chain via completion events."""
         flow = EventFlow()
-        flow.register(researcher, [on("task.created")])
-        flow.register(writer, [on("researcher.completed")])
+        flow.register(researcher, [react_to("task.created")])
+        flow.register(writer, [react_to("researcher.completed")])
 
         result = await flow.run("Research and write", initial_event="task.created")
 
@@ -212,8 +212,8 @@ class TestEventFlow:
         agent2 = mock_agent("agent2")
 
         flow = EventFlow()
-        flow.register(agent1, [on("task.created")])
-        flow.register(agent2, [on("task.created")])
+        flow.register(agent1, [react_to("task.created")])
+        flow.register(agent2, [react_to("task.created")])
 
         result = await flow.run("Parallel task", initial_event="task.created")
 
@@ -228,7 +228,7 @@ class TestEventFlow:
         flow = EventFlow()
         flow.register(
             agent,
-            [on("task.created").when(lambda e: "special" in e.data.get("task", ""))],
+            [react_to("task.created").when(lambda e: "special" in e.data.get("task", ""))],
         )
 
         # Should not trigger
@@ -246,7 +246,7 @@ class TestEventFlow:
         # Make agent trigger itself
         config = EventFlowConfig(max_rounds=3)
         flow = EventFlow(config=config)
-        flow.register(agent, [on("task.created"), on("looper.completed")])
+        flow.register(agent, [react_to("task.created"), react_to("looper.completed")])
 
         result = await flow.run("Loop task", initial_event="task.created")
 
@@ -258,7 +258,7 @@ class TestEventFlow:
         """Result contains agent output."""
         agent = mock_agent("test")
         flow = EventFlow()
-        flow.register(agent, [on("task.created")])
+        flow.register(agent, [react_to("task.created")])
 
         result = await flow.run("Task", initial_event="task.created")
 

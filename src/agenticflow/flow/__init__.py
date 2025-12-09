@@ -27,15 +27,15 @@ Example - Imperative Flow (topology-based):
 
 Example - Reactive Flow (event-driven):
     ```python
-    from agenticflow import Agent, ReactiveFlow, on
+    from agenticflow import Agent, ReactiveFlow, react_to
 
     researcher = Agent(name="researcher", model=model)
     writer = Agent(name="writer", model=model)
 
     # Event-driven: agents react to events
     flow = ReactiveFlow(observer=Observer.trace())
-    flow.register(researcher, [on("task.created")])
-    flow.register(writer, [on("researcher.completed")])
+    flow.register(researcher, [react_to("task.created")])
+    flow.register(writer, [react_to("researcher.completed")])
 
     result = await flow.run("Write about quantum computing")
     ```

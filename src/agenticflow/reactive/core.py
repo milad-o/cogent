@@ -157,7 +157,7 @@ class TriggerBuilder:
     Example:
         ```python
         trigger = (
-            on("task.created")
+            react_to("task.created")
             .when(lambda e: e.data.get("type") == "research")
             .emits("research.started")
             .with_priority(10)
@@ -205,15 +205,16 @@ class TriggerBuilder:
 
     # Allow direct use without .build()
     def __iter__(self):
-        """Allow unpacking: triggers=[on("event")]."""
+        """Allow unpacking: triggers=[react_to("event")]."""
         yield self.build()
 
 
-def on(pattern: EventPattern) -> TriggerBuilder:
+def react_to(pattern: EventPattern) -> TriggerBuilder:
     """
     Create a trigger builder for the given event pattern.
 
     This is the primary API for defining triggers fluently.
+    Agents "react to" events - hence the name.
 
     Args:
         pattern: Event type, string pattern, or regex to match
@@ -224,16 +225,20 @@ def on(pattern: EventPattern) -> TriggerBuilder:
     Example:
         ```python
         # Basic trigger
-        on(EventType.TASK_CREATED)
+        react_to(EventType.TASK_CREATED)
 
         # With condition
-        on("task.*").when(lambda e: e.data.get("priority") == "high")
+        react_to("task.*").when(lambda e: e.data.get("priority") == "high")
 
         # Full chain
-        on("research.requested").emits("research.completed").with_priority(5)
+        react_to("research.requested").emits("research.completed").with_priority(5)
         ```
     """
     return TriggerBuilder(pattern)
+
+
+# Backward compatibility alias
+on = react_to
 
 
 def when(condition: TriggerCondition) -> TriggerCondition:
@@ -250,7 +255,7 @@ def when(condition: TriggerCondition) -> TriggerCondition:
         ```python
         is_high_priority = when(lambda e: e.data.get("priority") == "high")
 
-        trigger = on("task.created").when(is_high_priority)
+        trigger = react_to("task.created").when(is_high_priority)
         ```
     """
     return condition

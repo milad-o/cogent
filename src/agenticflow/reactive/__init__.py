@@ -17,7 +17,7 @@ Benefits over imperative orchestration:
 Example:
     ```python
     from agenticflow import Agent
-    from agenticflow.reactive import EventFlow, on, AgentTriggerConfig
+    from agenticflow.reactive import EventFlow, react_to, AgentTriggerConfig
 
     # Define agents
     researcher = Agent(
@@ -38,9 +38,9 @@ Example:
     # Register with triggers
     flow.register(
         researcher,
-        [on("task.created").when(lambda e: "research" in e.data.get("type", ""))]
+        [react_to("task.created").when(lambda e: "research" in e.data.get("type", ""))]
     )
-    flow.register(writer, [on("researcher.completed")])
+    flow.register(writer, [react_to("researcher.completed")])
 
     # Start with an event - agents react automatically
     result = await flow.run(
@@ -66,7 +66,8 @@ from agenticflow.reactive.core import (
     Trigger,
     TriggerBuilder,
     TriggerCondition,
-    on,
+    react_to,
+    on,  # Backward compat alias
     when,
 )
 # Re-export from flow package (canonical location)

@@ -28,7 +28,7 @@ from agenticflow.reactive import (
     Observer,
     chain,
     fanout,
-    on,
+    react_to,
     route,
 )
 
@@ -293,9 +293,9 @@ async def event_driven_pipeline() -> None:
     flow = EventFlow(observer=observer)
     
     # Register agents with their triggers
-    flow.register(collector, [on("task.created")])
-    flow.register(analyzer, [on("collector.completed")])
-    flow.register(reporter, [on("analyzer.completed")])
+    flow.register(collector, [react_to("task.created")])
+    flow.register(analyzer, [react_to("collector.completed")])
+    flow.register(reporter, [react_to("analyzer.completed")])
 
     result = await flow.run(
         "Analyze our customer data and market trends, then report findings",
@@ -337,11 +337,11 @@ async def conditional_workflow() -> None:
     # Route based on query complexity
     flow.register(
         quick_responder,
-        [on("task.created").when(lambda e: len(e.data.get("task", "")) < 50)],
+        [react_to("task.created").when(lambda e: len(e.data.get("task", "")) < 50)],
     )
     flow.register(
         deep_researcher,
-        [on("task.created").when(lambda e: len(e.data.get("task", "")) >= 50)],
+        [react_to("task.created").when(lambda e: len(e.data.get("task", "")) >= 50)],
     )
 
     # Short query → quick responder

@@ -241,7 +241,8 @@ from agenticflow.reactive import (
     EventFlowResult,
     Trigger,
     AgentTriggerConfig,
-    on,
+    react_to,
+    on,  # Backward compat alias
     when,
     # New names
     ReactiveFlow,

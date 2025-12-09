@@ -26,7 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
-from agenticflow.reactive.core import AgentTriggerConfig, TriggerCondition, on
+from agenticflow.reactive.core import AgentTriggerConfig, TriggerCondition, react_to
 from agenticflow.flow.reactive import ReactiveFlow, ReactiveFlowConfig, ReactiveFlowResult
 from agenticflow.observability.event import Event
 from agenticflow.observability.observer import Observer
@@ -166,7 +166,7 @@ class Chain:
             else:
                 trigger_event = f"{self.agents[i - 1].name}.completed"
 
-            flow.register(agent, [on(trigger_event)])
+            flow.register(agent, [react_to(trigger_event)])
 
         return flow
 
@@ -201,12 +201,12 @@ class FanOut:
 
         # All workers trigger on same event
         for worker in self.workers:
-            flow.register(worker, [on(self.trigger)])
+            flow.register(worker, [react_to(self.trigger)])
 
         # Aggregator triggers on any worker completion
         if self.then:
             worker_events = [f"{w.name}.completed" for w in self.workers]
-            flow.register(self.then, [on(e) for e in worker_events])
+            flow.register(self.then, [react_to(e) for e in worker_events])
 
         return flow
 
@@ -250,7 +250,7 @@ class FanIn:
 
         triggers = []
         for event_name in self.wait_for:
-            trigger = on(event_name).when(make_condition(event_name))
+            trigger = react_to(event_name).when(make_condition(event_name))
             if self.emit:
                 trigger = trigger.emits(self.emit)
             triggers.append(trigger)
@@ -295,10 +295,10 @@ class Router:
                         task_text = event.data.get("task", "")
                         return fn(task_text)
                     return cond
-                flow.register(agent, [on(self.trigger).when(make_event_condition(condition_fn))])
+                flow.register(agent, [react_to(self.trigger).when(make_event_condition(condition_fn))])
             else:
                 # Plain agent = fallback (always matches)
-                flow.register(route, [on(self.trigger)])
+                flow.register(route, [react_to(self.trigger)])
 
         return flow
 
@@ -335,7 +335,7 @@ class Saga:
             else:
                 trigger_event = f"{self.steps[i - 1][0].name}.completed"
 
-            flow.register(forward, [on(trigger_event)])
+            flow.register(forward, [react_to(trigger_event)])
 
             if compensate:
                 error_events = [
@@ -343,7 +343,7 @@ class Saga:
                     for j in range(i + 1, len(self.steps))
                 ]
                 if error_events:
-                    flow.register(compensate, [on(e) for e in error_events])
+                    flow.register(compensate, [react_to(e) for e in error_events])
 
         return flow
 

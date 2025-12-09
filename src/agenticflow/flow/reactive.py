@@ -100,7 +100,7 @@ class ReactiveFlow(BaseFlow):
             system_prompt="Research topics thoroughly.",
         )
         researcher_triggers = AgentTriggerConfig(
-            triggers=[on("task.created").when(needs_research).build()]
+            triggers=[react_to("task.created").when(needs_research).build()]
         )
 
         writer = Agent(
@@ -109,7 +109,7 @@ class ReactiveFlow(BaseFlow):
             system_prompt="Write engaging content.",
         )
         writer_triggers = AgentTriggerConfig(
-            triggers=[on("researcher.completed").build()]
+            triggers=[react_to("researcher.completed").build()]
         )
 
         # Create flow
