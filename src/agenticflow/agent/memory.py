@@ -18,12 +18,12 @@ Example:
     # Simple: just pass True for in-memory
     agent = Agent(name="Assistant", model=model, memory=True)
     
-    # Chat within a thread (maintains history)
-    response1 = await agent.chat("Hi, I'm Alice", thread_id="conv-1")
-    response2 = await agent.chat("What's my name?", thread_id="conv-1")  # Remembers!
+    # Run within a thread (maintains history)
+    response1 = await agent.run("Hi, I'm Alice", thread_id="conv-1")
+    response2 = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
     
     # Different thread = fresh context
-    response3 = await agent.chat("What's my name?", thread_id="conv-2")  # Doesn't know
+    response3 = await agent.run("What's my name?", thread_id="conv-2")  # Doesn't know
     ```
 """
 

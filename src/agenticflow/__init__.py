@@ -75,7 +75,7 @@ With Agent Class:
     response = await agent.think("What should I do?")
     
     # Execute complex tasks
-    result = await agent.run_turbo("Search and analyze data")
+    result = await agent.run("Search and analyze data")
     ```
 
 Multi-Agent Topology:

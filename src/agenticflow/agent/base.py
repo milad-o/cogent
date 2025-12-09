@@ -254,9 +254,9 @@ class Agent:
             from agenticflow.agent.memory import InMemorySaver
             agent = Agent(name="Assistant", model=model, memory=InMemorySaver())
             
-            # Chat with thread-based memory
-            response = await agent.chat("Hi, I'm Alice", thread_id="conv-1")
-            response = await agent.chat("What's my name?", thread_id="conv-1")  # Remembers!
+            # Run with thread-based memory
+            response = await agent.run("Hi, I'm Alice", thread_id="conv-1")
+            response = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
             ```
             
         Example with verbose (standalone usage):
@@ -1677,62 +1677,12 @@ class Agent:
             If stream=False: Coroutine that returns the agent's response string.
             If stream=True: AsyncIterator[StreamChunk] for token-by-token streaming.
             
-        Example - Non-streaming:
-            ```python
-            agent = Agent(name="Assistant", model=model)
-            response = await agent.chat("Hello!")
-            print(response)
-            ```
+        .. deprecated::
+            Use run(task, thread_id=...) instead:
             
-        Example - Streaming (explicit):
-            ```python
-            agent = Agent(name="Assistant", model=model)
-            async for chunk in agent.chat("Tell me a story", stream=True):
-                print(chunk.content, end="", flush=True)
-            ```
-            
-        Example - Streaming (default):
-            ```python
-            # Set stream=True as default for the agent
-            agent = Agent(name="Assistant", model=model, stream=True)
-            
-            async for chunk in agent.chat("Tell me a story"):
-                print(chunk.content, end="", flush=True)
-            ```
-            
-        Example - Multi-turn with memory:
-            ```python
-            agent = Agent(name="Assistant", model=model, memory=True)
-            
-            await agent.chat("I'm Alice", thread_id="user-123")
-            response = await agent.chat("What's my name?", thread_id="user-123")
-            # Response will mention Alice!
-            ```
-            
-        Example - With user memory (long-term):
-            ```python
-            from agenticflow.memory import MemoryManager
-            
-            agent = Agent(
-                name="Assistant",
-                model=model,
-                memory=MemoryManager(short_term=True, long_term=True),
-            )
-            
-            # Save preference in one conversation
-            await agent.chat(
-                "Remember I prefer dark mode",
-                thread_id="conv-1",
-                user_id="user-123",
-            )
-            
-            # Different conversation, same user - still remembers!
-            response = await agent.chat(
-                "What are my preferences?",
-                thread_id="conv-2",
-                user_id="user-123",
-            )
-            ```
+            - `await agent.chat("Hi")` → `await agent.run("Hi")`
+            - `await agent.chat("Hi", thread_id="t1")` → `await agent.run("Hi", thread_id="t1")`
+            - `agent.chat("Hi", stream=True)` → `agent.run("Hi", stream=True)`
         """
         import warnings
         warnings.warn(

@@ -112,9 +112,9 @@ agent = Agent(
     memory=InMemorySaver(),
 )
 
-# Chat with thread-based memory
-response = await agent.chat("Hi, I'm Alice", thread_id="conv-1")
-response = await agent.chat("What's my name?", thread_id="conv-1")  # Remembers!
+# Run with thread-based memory
+response = await agent.run("Hi, I'm Alice", thread_id="conv-1")
+response = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
 ```
 
 ### Memory Backends
@@ -246,7 +246,7 @@ agent = Agent(
     stream=True,
 )
 
-async for chunk in agent.chat("Write a story"):
+async for chunk in agent.run("Write a story", stream=True):
     print(chunk.content, end="", flush=True)
 ```
 

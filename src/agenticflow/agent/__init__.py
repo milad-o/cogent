@@ -29,8 +29,8 @@ Example:
         memory=InMemorySaver(),  # Enables conversation memory
     )
     
-    # Chat with thread-based memory
-    response = await agent.chat("Hi!", thread_id="conv-1")
+    # Run with thread-based memory
+    response = await agent.run("Hi!", thread_id="conv-1")
 """
 
 from agenticflow.agent.base import Agent

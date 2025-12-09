@@ -259,7 +259,7 @@ async def demo_chat_streaming():
     print("\n[User]: Hi, my name is Alice!")
     print("[Assistant]: ", end="", flush=True)
     
-    async for chunk in agent.chat_stream("Hi, my name is Alice!", thread_id=thread_id):
+    async for chunk in agent.run("Hi, my name is Alice!", stream=True, thread_id=thread_id):
         print(chunk.content, end="", flush=True)
     print()
     
@@ -274,7 +274,7 @@ async def demo_chat_streaming():
     print("\n[User]: What's my name?")
     print("[Assistant]: ", end="", flush=True)
     
-    async for chunk in agent.chat_stream("What's my name?", thread_id=thread_id):
+    async for chunk in agent.run("What's my name?", stream=True, thread_id=thread_id):
         print(chunk.content, end="", flush=True)
     print()
     
