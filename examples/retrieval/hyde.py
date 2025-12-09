@@ -262,30 +262,6 @@ Passage from medical textbook:"""
         print(f"  [{i}] {text}...")
 
     # =========================================================================
-    # Using HyDE with RAG Capability
-    # =========================================================================
-    print("\n")
-    print("═" * 70)
-    print("  HyDE with Agent (RAG Capability)")
-    print("═" * 70)
-    
-    from agenticflow import Agent
-    from agenticflow.capabilities import RAG
-
-    # Use HyDE as the retriever in RAG Capability
-    rag = RAG(retriever=hyde_retriever)
-
-    agent = Agent(
-        name="HealthAdvisor",
-        model=model,
-        system_prompt="You are a helpful health advisor. Answer questions based on the provided context.",
-        capabilities=[rag],
-    )
-
-    answer = await agent.run("I've been feeling really stressed lately. What can I do?")
-    print(f"\nAgent response:\n{answer}")
-
-    # =========================================================================
     # Summary
     # =========================================================================
     print("\n")

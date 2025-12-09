@@ -13,14 +13,13 @@ Capabilities are reusable building blocks that add tools to agents:
 - Browser: Headless browser automation with Playwright
 - Shell: Sandboxed terminal command execution
 - Summarizer: Document summarization (map-reduce, refine, hierarchical)
-- RAG: Retrieval-augmented generation with citations
 
 Example:
     ```python
     from agenticflow import Agent
     from agenticflow.capabilities import (
         KnowledgeGraph, FileSystem, WebSearch, CodeSandbox, MCP,
-        Spreadsheet, Browser, Shell, Summarizer, RAG,
+        Spreadsheet, Browser, Shell, Summarizer,
     )
     
     agent = Agent(
@@ -51,12 +50,6 @@ from agenticflow.capabilities.code_sandbox import CodeSandbox
 from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPTransport
-from agenticflow.capabilities.rag import (
-    RAG,
-    RAGConfig,
-    CitationStyle,
-    CitedPassage,
-)
 from agenticflow.capabilities.shell import Shell
 from agenticflow.capabilities.spreadsheet import Spreadsheet
 from agenticflow.capabilities.ssis import SSISAnalyzer
@@ -66,8 +59,6 @@ from agenticflow.capabilities.web_search import WebSearch
 __all__ = [
     "BaseCapability",
     "Browser",
-    "CitationStyle",
-    "CitedPassage",
     "CodebaseAnalyzer",
     "CodeSandbox",
     "FileSystem",
@@ -75,8 +66,6 @@ __all__ = [
     "MCP",
     "MCPServerConfig",
     "MCPTransport",
-    "RAG",
-    "RAGConfig",
     "Shell",
     "Spreadsheet",
     "SSISAnalyzer",

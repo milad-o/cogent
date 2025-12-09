@@ -354,11 +354,9 @@ SimilarityMetric.EUCLIDEAN    # L2 distance
 
 ---
 
-## Integration with RAG
+## Integration with Retrievers
 
 ```python
-from agenticflow import Agent
-from agenticflow.capabilities import RAG
 from agenticflow.retriever import DenseRetriever
 from agenticflow.vectorstore import VectorStore
 
@@ -369,14 +367,10 @@ await store.add_texts(docs)
 # Create retriever
 retriever = DenseRetriever(store)
 
-# Add RAG capability to agent
-agent = Agent(
-    name="assistant",
-    model=model,
-    capabilities=[RAG(retriever)],
-)
-
-result = await agent.run("What is X?")
+# Search directly
+results = await retriever.retrieve("What is X?", k=5)
+for r in results:
+    print(r.document.text)
 ```
 
 ---

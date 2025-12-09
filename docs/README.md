@@ -132,28 +132,6 @@ agent = Agent(
 result = await agent.run("Find info about AI trends")
 ```
 
-### RAG Agent
-
-```python
-from agenticflow import Agent
-from agenticflow.capabilities import RAG
-from agenticflow.retriever import DenseRetriever
-from agenticflow.vectorstore import VectorStore
-
-# Setup vectorstore
-store = VectorStore()
-await store.add_texts(documents)
-
-# Create RAG agent
-agent = Agent(
-    name="assistant",
-    model=model,
-    capabilities=[RAG(DenseRetriever(store))],
-)
-
-result = await agent.run("What does the documentation say about X?")
-```
-
 ### Multi-Agent Pipeline
 
 ```python

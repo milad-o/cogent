@@ -90,13 +90,13 @@ Visualize agent structure:
 
 ```python
 from agenticflow import Agent
-from agenticflow.capabilities import RAG, WebSearch
+from agenticflow.capabilities import WebSearch, FileSystem
 
 agent = Agent(
     name="researcher",
     model=model,
     tools=[search, analyze, summarize],
-    capabilities=[RAG(retriever), WebSearch()],
+    capabilities=[WebSearch(), FileSystem()],
 )
 
 view = agent.graph()
@@ -115,8 +115,8 @@ graph TD
     end
     
     subgraph Capabilities
-        RAG[📚 RAG]
         WebSearch[🌐 WebSearch]
+        FileSystem[📁 FileSystem]
     end
     
     researcher --> Tools
