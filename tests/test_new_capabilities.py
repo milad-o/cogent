@@ -145,63 +145,6 @@ class TestSpreadsheetCapability:
 
 
 # =============================================================================
-# PDF Capability Tests
-# =============================================================================
-
-
-class TestPDFCapability:
-    """Tests for PDF capability."""
-
-    def test_import(self) -> None:
-        """Test that PDF can be imported."""
-        from agenticflow.capabilities import PDF
-        
-        pdf = PDF()
-        assert pdf is not None
-
-    def test_get_tools(self) -> None:
-        """Test that PDF provides expected tools."""
-        from agenticflow.capabilities import PDF
-        
-        pdf = PDF()
-        tools = pdf.get_tools()
-        
-        tool_names = {t.name for t in tools}
-        assert "read_pdf" in tool_names
-        assert "get_pdf_info" in tool_names
-        assert "create_pdf" in tool_names
-        assert "merge_pdfs" in tool_names
-        assert "search_pdf" in tool_names
-
-    def test_path_validation(self) -> None:
-        """Test path validation."""
-        from agenticflow.capabilities import PDF
-        
-        with tempfile.TemporaryDirectory() as tmpdir:
-            pdf = PDF(allowed_paths=[tmpdir])
-            
-            # Valid path
-            valid_path = pdf._validate_path(Path(tmpdir) / "test.pdf")
-            assert valid_path is not None
-            
-            # Invalid path
-            with pytest.raises(PermissionError):
-                pdf._validate_path("/etc/passwd")
-
-    def test_dependency_check(self) -> None:
-        """Test dependency checking."""
-        from agenticflow.capabilities import PDF
-        
-        pdf = PDF()
-        # Should not raise if pypdf is installed
-        # Should raise ImportError if not
-        try:
-            pdf._require_pypdf()
-        except ImportError:
-            pytest.skip("pypdf not installed")
-
-
-# =============================================================================
 # Browser Capability Tests
 # =============================================================================
 
@@ -436,13 +379,11 @@ class TestCapabilitiesIntegration:
         """Test that all new capabilities can be imported from main module."""
         from agenticflow.capabilities import (
             Spreadsheet,
-            PDF,
             Browser,
             Shell,
         )
         
         assert Spreadsheet is not None
-        assert PDF is not None
         assert Browser is not None
         assert Shell is not None
 
@@ -450,12 +391,11 @@ class TestCapabilitiesIntegration:
         """Test that all capabilities implement get_tools."""
         from agenticflow.capabilities import (
             Spreadsheet,
-            PDF,
             Browser,
             Shell,
         )
         
-        for CapClass in [Spreadsheet, PDF, Browser, Shell]:
+        for CapClass in [Spreadsheet, Browser, Shell]:
             cap = CapClass()
             tools = cap.get_tools()
             assert isinstance(tools, list)

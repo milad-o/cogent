@@ -223,6 +223,32 @@ from agenticflow.observability.handlers import (
     MetricsEventHandler,
 )
 
+# Reactive Flow (event-driven multi-agent orchestration)
+from agenticflow.reactive import (
+    # High-level API (recommended)
+    chain,
+    fanout,
+    route,
+    # Mid-level API
+    Chain,
+    FanIn,
+    FanOut,
+    Router,
+    Saga,
+    # Low-level API
+    EventFlow,
+    EventFlowConfig,
+    EventFlowResult,
+    Trigger,
+    AgentTriggerConfig,
+    on,
+    when,
+    # New names
+    ReactiveFlow,
+    ReactiveFlowConfig,
+    ReactiveFlowResult,
+)
+
 # Tasks
 from agenticflow.tasks.manager import TaskManager
 
@@ -239,6 +265,11 @@ from agenticflow.tools.deferred import (
 
 # Flow - THE MAIN ENTRY POINT
 from agenticflow.flow import (
+    # Base classes
+    BaseFlow,
+    FlowProtocol,
+    FlowResult,
+    # Imperative Flow
     Flow,
     FlowConfig,
     create_flow,
@@ -471,6 +502,29 @@ __all__ = [
     "FileEventHandler",
     "FilteringEventHandler",
     "MetricsEventHandler",
+    # Event-Driven Flow (reactive orchestration)
+    # High-level API
+    "chain",
+    "fanout",
+    "route",
+    # Mid-level API
+    "Chain",
+    "FanIn",
+    "FanOut",
+    "Router",
+    "Saga",
+    # Low-level API (new names)
+    "ReactiveFlow",
+    "ReactiveFlowConfig",
+    "ReactiveFlowResult",
+    # Low-level API (legacy aliases)
+    "EventFlow",
+    "EventFlowConfig",
+    "EventFlowResult",
+    "Trigger",
+    "AgentTriggerConfig",
+    "on",
+    "when",
     # Tasks
     "TaskManager",
     # Tools
@@ -485,6 +539,9 @@ __all__ = [
     "DeferredRetry",
     "is_deferred",
     # Flow (MAIN ENTRY POINT)
+    "BaseFlow",
+    "FlowProtocol",
+    "FlowResult",
     "Flow",
     "FlowConfig",
     "create_flow",

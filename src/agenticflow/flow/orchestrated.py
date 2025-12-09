@@ -1,5 +1,5 @@
 """
-Flow - the main entry point for AgenticFlow.
+Flow - Imperative/topology-based multi-agent orchestration.
 
 A Flow orchestrates multiple agents using simple coordination patterns:
 - Supervisor: One agent coordinates and delegates to workers
@@ -37,6 +37,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
+from agenticflow.flow.base import BaseFlow
 from agenticflow.observability.bus import EventBus
 from agenticflow.observability.handlers import ConsoleEventHandler
 from agenticflow.tools.base import BaseTool
@@ -107,7 +108,7 @@ class FlowConfig:
     """Additional metadata."""
 
 
-class Flow:
+class Flow(BaseFlow):
     """
     Orchestrate multiple agents using coordination patterns.
 
@@ -234,17 +235,20 @@ class Flow:
             flow = Flow(..., observer=observer)
             ```
         """
-        self.name = name
-        self._agents = list(agents)
-        self._config = config or FlowConfig()
-        
-        # Handle observability
+        # Handle observability before calling super()
         if observer is not None:
-            self._observer = observer
+            resolved_observer = observer
         elif verbose:
-            self._observer = _create_observer_from_verbose(verbose)
+            resolved_observer = _create_observer_from_verbose(verbose)
         else:
-            self._observer = None
+            resolved_observer = None
+
+        # Initialize base class
+        super().__init__(observer=resolved_observer)
+
+        self.name = name
+        self._agents_list = list(agents)
+        self._config = config or FlowConfig()
 
         # Override config with explicit params
         if max_rounds != 3:
@@ -261,7 +265,6 @@ class Flow:
         self._topology_type = TopologyType(topology.lower())
 
         # Internal infrastructure
-        self._event_bus = EventBus()
         self._tool_registry = ToolRegistry()
 
         # Setup
@@ -275,7 +278,7 @@ class Flow:
     def _setup_tools(self) -> None:
         """Register tools from all agents."""
         seen: set[str] = set()
-        for agent in self._agents:
+        for agent in self._agents_list:
             for tool in agent.config.tools:
                 if isinstance(tool, BaseTool) and tool.name not in seen:
                     self._tool_registry.register(tool)
@@ -283,15 +286,14 @@ class Flow:
 
     def _setup_agents(self) -> None:
         """Wire agents to infrastructure."""
-        for agent in self._agents:
-            agent.event_bus = self._event_bus
+        for agent in self._agents_list:
+            agent.event_bus = self._bus
             agent.tool_registry = self._tool_registry
 
     def _setup_event_handlers(self) -> None:
         """Setup event handlers."""
-        # Observer handles all observability now
-        if self._observer is not None:
-            self._observer.attach(self._event_bus)
+        # Observer is already attached via BaseFlow.__init__
+        pass
 
     def _build_topology(self) -> BaseTopology:
         """Build the coordination topology."""
@@ -302,7 +304,7 @@ class Flow:
                 name=a.name,
                 role=getattr(a.config, "role", None),
             )
-            for a in self._agents
+            for a in self._agents_list
         ]
 
         if self._topology_type == TopologyType.SUPERVISOR:
@@ -384,9 +386,14 @@ class Flow:
     # ==================== Public API ====================
 
     @property
-    def agents(self) -> dict[str, Agent]:
+    def agents(self) -> list[str]:
+        """Get names of registered agents (BaseFlow interface)."""
+        return [a.name for a in self._agents_list]
+
+    @property
+    def agents_dict(self) -> dict[str, Agent]:
         """Get agents by name."""
-        return {a.name: a for a in self._agents}
+        return {a.name: a for a in self._agents_list}
 
     @property
     def topology(self) -> BaseTopology:
@@ -395,8 +402,8 @@ class Flow:
 
     @property
     def event_bus(self) -> EventBus:
-        """Access the event bus."""
-        return self._event_bus
+        """Access the event bus (alias for bus)."""
+        return self._bus
 
     async def run(self, task: str) -> TopologyResult:
         """
@@ -420,7 +427,7 @@ class Flow:
         from agenticflow.observability.event import EventType
         
         # Emit user input event
-        await self._event_bus.publish(EventType.USER_INPUT.value, {
+        self._observe(EventType.USER_INPUT, {
             "content": task,
             "flow_name": self.name,
         })
@@ -429,7 +436,7 @@ class Flow:
         result = await self._topology.run(task)
         
         # Emit output generated event
-        await self._event_bus.publish(EventType.OUTPUT_GENERATED.value, {
+        self._observe(EventType.OUTPUT_GENERATED, {
             "content": result.output,
             "flow_name": self.name,
             "agent_count": len(result.agent_outputs),
@@ -458,13 +465,13 @@ class Flow:
 
     def get_agent(self, name: str) -> Agent | None:
         """Get an agent by name."""
-        return self.agents.get(name)
+        return self.agents_dict.get(name)
 
     def __repr__(self) -> str:
         return (
             f"Flow(name={self.name!r}, "
             f"topology={self._topology_type.value!r}, "
-            f"agents={[a.name for a in self._agents]})"
+            f"agents={self.agents})"
         )
 
 

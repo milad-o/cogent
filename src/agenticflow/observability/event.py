@@ -146,6 +146,19 @@ class EventType(Enum):
     DOCUMENT_SPLIT = "document.split"  # Document split into chunks
     DOCUMENT_ENRICHED = "document.enriched"  # Metadata added to document
 
+    # Reactive flow events (event-driven orchestration)
+    REACTIVE_FLOW_STARTED = "reactive.flow.started"  # Reactive flow started
+    REACTIVE_FLOW_COMPLETED = "reactive.flow.completed"  # Reactive flow finished
+    REACTIVE_FLOW_FAILED = "reactive.flow.failed"  # Reactive flow failed
+    REACTIVE_EVENT_EMITTED = "reactive.event.emitted"  # Event emitted in flow
+    REACTIVE_EVENT_PROCESSED = "reactive.event.processed"  # Event processed
+    REACTIVE_AGENT_TRIGGERED = "reactive.agent.triggered"  # Agent triggered by event
+    REACTIVE_AGENT_COMPLETED = "reactive.agent.completed"  # Triggered agent completed
+    REACTIVE_AGENT_FAILED = "reactive.agent.failed"  # Triggered agent failed
+    REACTIVE_NO_MATCH = "reactive.no_match"  # No agents matched event
+    REACTIVE_ROUND_STARTED = "reactive.round.started"  # New processing round
+    REACTIVE_ROUND_COMPLETED = "reactive.round.completed"  # Round completed
+
     CUSTOM = "custom"
 
     @property

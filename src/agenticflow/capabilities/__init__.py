@@ -10,17 +10,17 @@ Capabilities are reusable building blocks that add tools to agents:
 - SSISAnalyzer: SSIS package analysis and data lineage tracing
 - MCP: Connect to local/remote MCP servers and use their tools
 - Spreadsheet: Excel/CSV reading, writing, and analysis
-- PDF: PDF reading, creation, merging, and text extraction
 - Browser: Headless browser automation with Playwright
 - Shell: Sandboxed terminal command execution
 - Summarizer: Document summarization (map-reduce, refine, hierarchical)
+- RAG: Retrieval-augmented generation with citations
 
 Example:
     ```python
     from agenticflow import Agent
     from agenticflow.capabilities import (
         KnowledgeGraph, FileSystem, WebSearch, CodeSandbox, MCP,
-        Spreadsheet, PDF, Browser, Shell, Summarizer,
+        Spreadsheet, Browser, Shell, Summarizer, RAG,
     )
     
     agent = Agent(
@@ -32,7 +32,6 @@ Example:
             WebSearch(),                          # Adds web_search, news_search, fetch tools
             CodeSandbox(),                        # Adds execute_python, run_function tools
             Spreadsheet(),                        # Adds read/write spreadsheet tools
-            PDF(),                                # Adds read/create PDF tools
             Browser(headless=True),               # Adds browser automation tools
             Shell(allowed_commands=["ls", "cat"]), # Adds shell command tools
             Summarizer(),                         # Adds summarize_text, summarize_file tools
@@ -52,7 +51,6 @@ from agenticflow.capabilities.code_sandbox import CodeSandbox
 from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPTransport
-from agenticflow.capabilities.pdf import PDF
 from agenticflow.capabilities.rag import (
     RAG,
     RAGConfig,
@@ -77,7 +75,6 @@ __all__ = [
     "MCP",
     "MCPServerConfig",
     "MCPTransport",
-    "PDF",
     "RAG",
     "RAGConfig",
     "Shell",

@@ -59,4 +59,5 @@ Thumbs.db
 # Misc
 .archive/
 .github/
+.analysis/
 .plans/

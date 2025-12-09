@@ -121,6 +121,7 @@ class Channel(str, Enum):
     - RETRIEVAL: RAG retrieval pipeline events
     - DOCUMENTS: Document loading and splitting
     - MCP: Model Context Protocol server events
+    - REACTIVE: Reactive flow orchestration events
     - SYSTEM: System-level events
     - RESILIENCE: Retries, circuit breakers, fallbacks
     - ALL: Everything
@@ -135,6 +136,7 @@ class Channel(str, Enum):
     RETRIEVAL = "retrieval"
     DOCUMENTS = "documents"
     MCP = "mcp"
+    REACTIVE = "reactive"
     SYSTEM = "system"
     RESILIENCE = "resilience"
     ALL = "all"
@@ -245,6 +247,19 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.MCP_TOOL_CALLED,
         EventType.MCP_TOOL_RESULT,
         EventType.MCP_TOOL_ERROR,
+    },
+    Channel.REACTIVE: {
+        EventType.REACTIVE_FLOW_STARTED,
+        EventType.REACTIVE_FLOW_COMPLETED,
+        EventType.REACTIVE_FLOW_FAILED,
+        EventType.REACTIVE_EVENT_EMITTED,
+        EventType.REACTIVE_EVENT_PROCESSED,
+        EventType.REACTIVE_AGENT_TRIGGERED,
+        EventType.REACTIVE_AGENT_COMPLETED,
+        EventType.REACTIVE_AGENT_FAILED,
+        EventType.REACTIVE_NO_MATCH,
+        EventType.REACTIVE_ROUND_STARTED,
+        EventType.REACTIVE_ROUND_COMPLETED,
     },
 }
 
@@ -715,6 +730,9 @@ class Observer:
             EventType.AGENT_THINKING,  # Show thinking at progress level
             EventType.AGENT_REASONING,  # Show reasoning at progress level
             EventType.TASK_STARTED,
+            # User interaction events at progress level
+            EventType.USER_INPUT,
+            EventType.OUTPUT_GENERATED,
             # Spawning events at progress - important milestones
             EventType.AGENT_SPAWNED,
             EventType.AGENT_SPAWN_COMPLETED,
@@ -1109,6 +1127,13 @@ class Observer:
         # TASK EVENTS - Green theme with clear status
         # ═══════════════════════════════════════════════════════════
         
+        elif event_type == EventType.TASK_CREATED:
+            task = data.get("task", data.get("task_name", ""))[:80]
+            event_name = data.get("event_name", "")
+            if event_name and event_name != "task.created":
+                return f"{prefix}{s.info('📋')} {s.bold('Task:')} {task} {s.dim(f'({event_name})')}"
+            return f"{prefix}{s.info('📋')} {s.bold('Task:')} {task}"
+        
         elif event_type == EventType.TASK_STARTED:
             task_name = data.get("task_name", data.get("task", "task"))
             return f"{prefix}{s.success('🚀')} {s.bold('Task started:')} {task_name}"
@@ -1478,7 +1503,107 @@ class Observer:
             return f"{prefix}{s.error('✗')} {s.bold('MCP')} {s.tool(tool)} {s.error(f'Error: {error}')}"
         
         # ═══════════════════════════════════════════════════════════
-        # DEFAULT - System/custom events (dimmed)
+        # REACTIVE FLOW EVENTS - Event-driven orchestration
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.REACTIVE_FLOW_STARTED:
+            task = data.get("task", "")[:80]
+            agents = data.get("agents", [])
+            agent_count = len(agents)
+            agents_preview = ", ".join(agents[:4])
+            if agent_count > 4:
+                agents_preview += f" (+{agent_count - 4})"
+            header = f"{prefix}{s.success('🔄')} {s.bold('Reactive Flow Started')}"
+            lines.append(header)
+            if task:
+                lines.append(f"      {s.dim('Task:')} {task}")
+            if agents:
+                lines.append(f"      {s.dim('Agents:')} {s.agent(agents_preview)}")
+            return "\n".join(lines)
+        
+        elif event_type == EventType.REACTIVE_FLOW_COMPLETED:
+            events_processed = data.get("events_processed", 0)
+            reactions = data.get("reactions", 0)
+            rounds = data.get("rounds", 0)
+            execution_time_ms = data.get("execution_time_ms", 0)
+            output_length = data.get("output_length", 0)
+            
+            duration_str = ""
+            if execution_time_ms > 1000:
+                duration_str = s.success(f" in {execution_time_ms/1000:.1f}s")
+            else:
+                duration_str = s.dim(f" in {execution_time_ms:.0f}ms")
+            
+            return f"{prefix}{s.success('✅ Reactive Flow Completed')}{duration_str} {s.dim(f'({reactions} agents, {rounds} rounds, {events_processed} events)')}"
+        
+        elif event_type == EventType.REACTIVE_FLOW_FAILED:
+            error = data.get("error", "Unknown error")[:100]
+            rounds = data.get("rounds", 0)
+            return f"{prefix}{s.error(f'❌ Reactive Flow FAILED:')} {s.error(error)} {s.dim(f'(after {rounds} rounds)')}"
+        
+        elif event_type == EventType.REACTIVE_EVENT_EMITTED:
+            event_name = data.get("event_name", "?")
+            return f"{prefix}{s.info('📤')} {s.dim('Event emitted:')} {s.info(event_name)}"
+        
+        elif event_type == EventType.REACTIVE_EVENT_PROCESSED:
+            event_name = data.get("event_name", "?")
+            round_num = data.get("round", 0)
+            return f"{prefix}{s.dim('📥')} {s.dim(f'Processing:')} {event_name} {s.dim(f'(round {round_num})')}"
+        
+        elif event_type == EventType.REACTIVE_AGENT_TRIGGERED:
+            agent = data.get("agent", "?")
+            trigger_event = data.get("trigger_event", "?")
+            return f"{prefix}{s.info('⚡')} {s.agent(f'[{agent}]')} {s.dim('triggered by')} {s.info(trigger_event)}"
+        
+        elif event_type == EventType.REACTIVE_AGENT_COMPLETED:
+            agent = data.get("agent", "?")
+            output_length = data.get("output_length", 0)
+            trigger_event = data.get("trigger_event", "")
+            output_str = f" ({output_length} chars)" if output_length else ""
+            return f"{prefix}{s.success('✓')} {s.agent(f'[{agent}]')} {s.success('completed')}{s.dim(output_str)}"
+        
+        elif event_type == EventType.REACTIVE_AGENT_FAILED:
+            agent = data.get("agent", "?")
+            error = data.get("error", "Unknown error")[:80]
+            return f"{prefix}{s.error('✗')} {s.agent(f'[{agent}]')} {s.error(f'FAILED: {error}')}"
+        
+        elif event_type == EventType.REACTIVE_NO_MATCH:
+            event_name = data.get("event_name", "?")
+            return f"{prefix}{s.dim('⊘')} {s.dim(f'No agents matched:')} {s.dim(event_name)}"
+        
+        elif event_type == EventType.REACTIVE_ROUND_STARTED:
+            round_num = data.get("round", 0)
+            pending = data.get("pending_events", 0)
+            return f"{prefix}{s.dim('─')} {s.dim(f'Round {round_num}')} {s.dim(f'({pending} pending)')}"
+        
+        elif event_type == EventType.REACTIVE_ROUND_COMPLETED:
+            round_num = data.get("round", 0)
+            reactions = data.get("reactions", 0)
+            total = data.get("total_reactions", 0)
+            if reactions > 0:
+                return f"{prefix}{s.dim('─')} {s.dim(f'Round {round_num} done:')} {s.success(f'{reactions} reactions')} {s.dim(f'(total: {total})')}"
+            return None  # Suppress empty rounds
+        
+        # ═══════════════════════════════════════════════════════════
+        # CUSTOM EVENTS - User-defined events (often reactive)
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.CUSTOM:
+            event_name = data.get("event_name", "")
+            # Reactive-style custom events (agent completions, etc.)
+            if event_name:
+                agent = data.get("agent", "")
+                output = data.get("output", "")
+                output_preview = output[:60] + "..." if len(output) > 60 else output
+                if agent:
+                    return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)} {s.dim('from')} {s.agent(f'[{agent}]')}"
+                return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}"
+            # Generic custom events
+            data_preview = str(data)[:100] if data else ""
+            return f"{prefix}{s.dim('📨')} {s.dim('Custom:')} {s.dim(data_preview)}"
+        
+        # ═══════════════════════════════════════════════════════════
+        # DEFAULT - System/other events (dimmed)
         # ═══════════════════════════════════════════════════════════
         
         else:

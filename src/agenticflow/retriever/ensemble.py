@@ -171,6 +171,46 @@ class EnsembleRetriever(BaseRetriever):
             raise ValueError("Number of weights must match number of retrievers")
         self._weights = weights
 
+    async def add_documents(self, documents: list[Document]) -> None:
+        """Add documents to all child retrievers that support it.
+        
+        This is a convenience method for adding the same documents to all
+        retrievers at once. For different documents per retriever, add
+        directly to each retriever before creating the ensemble.
+        
+        Args:
+            documents: Documents to add to all child retrievers.
+            
+        Example:
+            ```python
+            # Same docs for all retrievers (common case):
+            ensemble = EnsembleRetriever([dense, bm25])
+            await ensemble.add_documents(docs)
+            
+            # Different docs per retriever:
+            await dense_retriever.add_documents(technical_docs)
+            bm25_retriever.add_documents(legal_docs)
+            ensemble = EnsembleRetriever([dense_retriever, bm25_retriever])
+            
+            # Mix: shared base + retriever-specific additions
+            await ensemble.add_documents(shared_docs)
+            await dense_retriever.add_documents(extra_embeddings_only)
+            ```
+        """
+        import asyncio
+        
+        tasks = []
+        for retriever in self._retrievers:
+            if hasattr(retriever, "add_documents"):
+                add_fn = getattr(retriever, "add_documents")
+                if asyncio.iscoroutinefunction(add_fn):
+                    tasks.append(add_fn(documents))
+                else:
+                    add_fn(documents)
+        
+        if tasks:
+            await asyncio.gather(*tasks)
+
 
 class WeightedRetriever(BaseRetriever):
     """A single retriever with a configurable weight.

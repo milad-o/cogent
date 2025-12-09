@@ -353,6 +353,13 @@ class NativeExecutor(BaseExecutor):
         
         # Emit agent invoked event
         if event_bus:
+            await event_bus.publish(EventType.USER_INPUT.value, {
+                "agent": agent_name,
+                "agent_name": agent_name,
+                "input": task,
+                "content": task,
+                "task": task[:200] + "..." if len(task) > 200 else task,
+            })
             await event_bus.publish(EventType.AGENT_INVOKED.value, {
                 "agent": agent_name,
                 "agent_name": agent_name,
@@ -760,6 +767,7 @@ class NativeExecutor(BaseExecutor):
             # Check for tool calls (use already extracted tool_calls)
             if not tool_calls:
                 duration_ms = (time.perf_counter() - execution_start) * 1000
+                final_output = response.content or ""
                 
                 # POST_RUN interceptors
                 if interceptors:
@@ -769,18 +777,24 @@ class NativeExecutor(BaseExecutor):
                         pass  # Already completing, ignore stop
                 
                 if event_bus:
-                    content = response.content or ""
                     await event_bus.publish(EventType.AGENT_RESPONDED.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
-                        "response": content,
-                        "response_preview": content[:500] if len(content) > 500 else content,
-                        "thought": content,
-                        "content": content,
+                        "response": final_output,
+                        "response_preview": final_output[:500] if len(final_output) > 500 else final_output,
+                        "thought": final_output,
+                        "content": final_output,
                         "duration_ms": duration_ms,
                         "iteration": iteration + 1,
                     })
-                return response.content or ""
+                    await event_bus.publish(EventType.OUTPUT_GENERATED.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "output": final_output,
+                        "content": final_output,
+                        "duration_ms": duration_ms,
+                    })
+                return final_output
             
             # Emit tool call events
             if event_bus:
@@ -797,7 +811,16 @@ class NativeExecutor(BaseExecutor):
             # Check tool call limit
             num_calls = len(response.tool_calls)
             if total_tool_calls + num_calls > self._max_tool_calls:
-                return response.content or "Tool call limit reached"
+                limit_output = response.content or "Tool call limit reached"
+                if event_bus:
+                    await event_bus.publish(EventType.OUTPUT_GENERATED.value, {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "output": limit_output,
+                        "content": limit_output,
+                        "limited": True,
+                    })
+                return limit_output
             
             # Execute tools with PRE_ACT/POST_ACT interceptors
             tool_results = await self._execute_tools_with_interceptors(

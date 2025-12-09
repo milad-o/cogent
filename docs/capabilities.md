@@ -240,33 +240,6 @@ agent = Agent(name="Analyst", model=model, capabilities=[ss])
 
 ---
 
-### PDF
-
-PDF reading, creation, and manipulation.
-
-```python
-from agenticflow.capabilities import PDF
-
-pdf = PDF(
-    max_pages=100,
-    extract_images=False,
-)
-
-agent = Agent(name="DocProcessor", model=model, capabilities=[pdf])
-```
-
-**Tools provided:**
-| Tool | Description |
-|------|-------------|
-| `read_pdf` | Extract text from PDF |
-| `create_pdf` | Create PDF from text |
-| `merge_pdfs` | Merge multiple PDFs |
-| `pdf_info` | Get PDF metadata |
-
-**Requires:** `uv add pymupdf`
-
----
-
 ### Browser
 
 Headless browser automation with Playwright.
@@ -354,6 +327,55 @@ agent = Agent(name="Summarizer", model=model, capabilities=[summarizer])
 - `map_reduce`: Parallel chunk summarization + combine
 - `refine`: Iterative refinement through chunks
 - `hierarchical`: Multi-level summarization tree
+
+---
+
+### RAG (Retrieval-Augmented Generation)
+
+Document retrieval with citations and bibliography.
+
+```python
+from agenticflow.capabilities import RAG
+from agenticflow.capabilities.rag import RAGConfig
+from agenticflow.retriever import DenseRetriever
+from agenticflow.vectorstore import VectorStore
+
+# Simple usage
+store = VectorStore(embeddings=embeddings)
+await store.add_documents(chunks)
+rag = RAG(DenseRetriever(store))
+
+# With bibliography
+rag = RAG(
+    DenseRetriever(store),
+    config=RAGConfig(
+        top_k=5,
+        bibliography=True,
+        bibliography_fields=("author", "date"),
+    ),
+)
+
+agent = Agent(name="Researcher", model=model, capabilities=[rag])
+response = await agent.run("What are the key findings?")
+
+# Add bibliography to response
+formatted = rag.format_response_with_bibliography(response)
+```
+
+**Tools provided:**
+| Tool | Description |
+|------|-------------|
+| `search_documents` | Search for relevant passages with citations |
+
+**Configuration:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `top_k` | `4` | Passages to retrieve |
+| `bibliography` | `False` | Enable bibliography |
+| `bibliography_fields` | `()` | Metadata to include |
+| `citation_style` | `NUMERIC` | `NUMERIC`, `FOOTNOTE`, `INLINE`, `AUTHOR_YEAR` |
+
+See [Retrievers Guide](retrievers.md) for advanced retriever options.
 
 ---
 
@@ -456,11 +478,18 @@ from agenticflow.capabilities import (
     MCPServerConfig,
     MCPTransport,
     PDF,
+    RAG,
     Shell,
     Spreadsheet,
     SSISAnalyzer,
     Summarizer,
     SummarizerConfig,
     WebSearch,
+)
+
+from agenticflow.capabilities.rag import (
+    RAGConfig,
+    CitationStyle,
+    CitedPassage,
 )
 ```
