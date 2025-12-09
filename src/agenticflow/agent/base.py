@@ -3312,13 +3312,8 @@ class Agent:
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
         
-        # Emit user input event
-        if self.event_bus:
-            await self.event_bus.publish(EventType.USER_INPUT.value, {
-                "agent_name": self.name or "agent",
-                "input": task[:500] if len(task) > 500 else task,
-                "input_length": len(task),
-            })
+        # Note: Not emitting USER_INPUT here - that's for user-facing input
+        # at the flow/application level. The executor emits AGENT_INVOKED instead.
         
         strategy_map = {
             "native": ExecutionStrategy.NATIVE,
@@ -3334,14 +3329,8 @@ class Agent:
         
         result = await executor.execute(task, context)
         
-        # Emit output generated event
-        if self.event_bus:
-            result_str = str(result)
-            await self.event_bus.publish(EventType.OUTPUT_GENERATED.value, {
-                "agent_name": self.name or "agent",
-                "output": result_str[:500] if len(result_str) > 500 else result_str,
-                "output_length": len(result_str),
-            })
+        # Note: Not emitting OUTPUT_GENERATED here - the executor already
+        # emits it with proper timing info (duration_ms)
         
         return result
 

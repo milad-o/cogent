@@ -174,6 +174,10 @@ class ReactiveFlow(BaseFlow):
         else:
             trigger_config = triggers
 
+        # Connect agent to the flow's event bus for shared observability
+        # This ensures tool events from agents are visible to the observer
+        agent.event_bus = self._bus
+
         self._agents_registry[agent.name] = (agent, trigger_config)
 
     def unregister(self, agent_name: str) -> None:
@@ -340,16 +344,8 @@ class ReactiveFlow(BaseFlow):
                     "execution_time_ms": elapsed_ms,
                 },
             )
-            
-            # Observe: final output generated
-            self._observe(
-                EventType.OUTPUT_GENERATED,
-                {
-                    "content": last_output,
-                    "source": "reactive_flow",
-                    "agents_involved": len(reactions),
-                },
-            )
+            # Note: Not emitting OUTPUT_GENERATED here - REACTIVE_FLOW_COMPLETED
+            # already contains output info, and each agent emits its own output
 
         return EventFlowResult(
             output=last_output,

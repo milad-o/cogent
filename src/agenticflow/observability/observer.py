@@ -497,7 +497,7 @@ class Observer:
         """Create observer showing key milestones (default)."""
         return cls(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.AGENTS, Channel.TASKS],
+            channels=[Channel.AGENTS, Channel.TASKS, Channel.REACTIVE],
         )
     
     @classmethod
@@ -510,7 +510,7 @@ class Observer:
         """Create observer showing agent thoughts with full content."""
         return cls(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.AGENTS, Channel.TASKS],
+            channels=[Channel.AGENTS, Channel.TASKS, Channel.REACTIVE],
             show_duration=True,
             truncate=500,  # Show substantial content
         )
@@ -520,7 +520,7 @@ class Observer:
         """Create observer showing tool calls and timing."""
         return cls(
             level=ObservabilityLevel.DETAILED,
-            channels=[Channel.AGENTS, Channel.TOOLS, Channel.TASKS],
+            channels=[Channel.AGENTS, Channel.TOOLS, Channel.TASKS, Channel.REACTIVE],
             show_timestamps=True,
             show_duration=True,
         )
@@ -659,6 +659,11 @@ class Observer:
         Args:
             event_bus: The event bus to observe.
         """
+        # Prevent duplicate attachment to the same bus
+        if self._attached_bus is event_bus:
+            return
+        
+        # Detach from previous bus if any
         if self._attached_bus is not None:
             self.detach()
         
@@ -794,6 +799,33 @@ class Observer:
         
         if event.type == EventType.TOKEN_STREAMED:
             return ObservabilityLevel.DEBUG  # Individual tokens at debug level
+        
+        # Reactive flow events - tiered visibility
+        # Core milestones at PROGRESS level
+        if event.type in {
+            EventType.REACTIVE_FLOW_STARTED,
+            EventType.REACTIVE_FLOW_COMPLETED,
+            EventType.REACTIVE_FLOW_FAILED,
+            EventType.REACTIVE_AGENT_TRIGGERED,
+            EventType.REACTIVE_AGENT_COMPLETED,
+            EventType.REACTIVE_AGENT_FAILED,
+        }:
+            return ObservabilityLevel.PROGRESS
+        
+        # Detailed reactive events
+        if event.type in {
+            EventType.REACTIVE_EVENT_EMITTED,
+            EventType.REACTIVE_EVENT_PROCESSED,
+            EventType.REACTIVE_NO_MATCH,
+        }:
+            return ObservabilityLevel.DETAILED
+        
+        # Round info at DEBUG (verbose)
+        if event.type in {
+            EventType.REACTIVE_ROUND_STARTED,
+            EventType.REACTIVE_ROUND_COMPLETED,
+        }:
+            return ObservabilityLevel.DEBUG
         
         # Trace-level: everything else
         return ObservabilityLevel.TRACE

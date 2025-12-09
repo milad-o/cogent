@@ -353,16 +353,8 @@ class EventFlow:
                     "execution_time_ms": elapsed_ms,
                 },
             )
-            
-            # Observe: final output generated
-            self._observe(
-                EventType.OUTPUT_GENERATED,
-                {
-                    "content": last_output,
-                    "source": "reactive_flow",
-                    "agents_involved": len(reactions),
-                },
-            )
+            # Note: Not emitting OUTPUT_GENERATED here - REACTIVE_FLOW_COMPLETED
+            # already contains output info, and each agent emits its own output
 
         return EventFlowResult(
             output=last_output,

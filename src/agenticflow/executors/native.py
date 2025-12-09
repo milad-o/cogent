@@ -351,15 +351,8 @@ class NativeExecutor(BaseExecutor):
         # Track execution timing
         execution_start = time.perf_counter()
         
-        # Emit agent invoked event
+        # Emit agent invoked event (not USER_INPUT - that's for user-facing input)
         if event_bus:
-            await event_bus.publish(EventType.USER_INPUT.value, {
-                "agent": agent_name,
-                "agent_name": agent_name,
-                "input": task,
-                "content": task,
-                "task": task[:200] + "..." if len(task) > 200 else task,
-            })
             await event_bus.publish(EventType.AGENT_INVOKED.value, {
                 "agent": agent_name,
                 "agent_name": agent_name,
