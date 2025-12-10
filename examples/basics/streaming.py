@@ -12,8 +12,8 @@ rather than waiting for the complete response.
 Key Features Demonstrated:
 1. Simple streaming with stream=True parameter
 2. Agent-level default streaming
-3. Basic token streaming with think_stream()
-4. Chat streaming with conversation history
+3. Low-level think() with streaming
+4. run() streaming with conversation history
 5. Structured event streaming with stream_events()
 6. Callbacks for handling stream events
 
@@ -209,16 +209,16 @@ async def demo_default_streaming():
 
 
 async def demo_think_stream():
-    """Demo 3: Basic token streaming with think_stream()."""
+    """Demo 3: Low-level streaming with think(stream=True)."""
     print("\n" + "=" * 60)
-    print("Demo 3: Token Streaming with think_stream()")
+    print("Demo 3: Token Streaming with think(stream=True)")
     print("=" * 60)
     
     from agenticflow import Agent
     
     model = get_model(
-        "Using think_stream() gives you more control over "
-        "the streaming process and access to chunk metadata."
+        "Using think(stream=True) gives you low-level LLM access "
+        "without the agentic loop."
     )
     
     agent = Agent(
@@ -227,18 +227,18 @@ async def demo_think_stream():
         system_prompt="You are a helpful assistant. Keep responses concise.",
     )
     
-    print("\nStreaming with think_stream():")
+    print("\nStreaming with think(stream=True):")
     print("-" * 40)
     
-    async for chunk in agent.think_stream("Explain think_stream vs chat_stream."):
+    async for chunk in agent.think("Explain streaming in one sentence.", stream=True):
         print(chunk.content, end="", flush=True)
     
     print("\n" + "-" * 40)
     print("✅ Streaming complete!")
 
 
-async def demo_chat_streaming():
-    """Demo 4: Chat streaming with conversation history."""
+async def demo_conversation_streaming():
+    """Demo 4: Streaming with conversation history using run()."""
     print("\n" + "=" * 60)
     print("Demo 4: Chat Streaming with History")
     print("=" * 60)
@@ -344,7 +344,7 @@ async def demo_callbacks():
         flush=True,
     )
     
-    async for chunk in agent.think_stream("Say something short."):
+    async for chunk in agent.think("Say something short.", stream=True):
         callback.on_token(chunk.content)
     callback.on_stream_end("")
     
@@ -357,7 +357,7 @@ async def demo_callbacks():
     
     collector = CollectorStreamCallback()
     
-    async for chunk in agent.think_stream("Give me a brief response."):
+    async for chunk in agent.think("Give me a brief response.", stream=True):
         collector.on_token(chunk.content)
         print(".", end="", flush=True)  # Progress indicator
     
@@ -385,7 +385,7 @@ async def demo_print_stream_helper():
     
     # print_stream handles both display and collection
     response = await print_stream(
-        agent.think_stream("Explain print_stream in one sentence."),
+        agent.think("Explain print_stream in one sentence.", stream=True),
         prefix="📝 ",
         suffix="\n",
     )
@@ -412,7 +412,7 @@ async def demo_collect_stream():
     
     # collect_stream gathers all output without printing
     content, tool_calls = await collect_stream(
-        agent.think_stream("Give me a secret message.")
+        agent.think("Give me a secret message.", stream=True)
     )
     
     print(f"✅ Collected {len(content)} characters")
@@ -441,7 +441,7 @@ async def demo_custom_processing():
     print("\n1. Uppercase transformation:")
     print("-" * 40)
     
-    async for chunk in agent.think_stream("Say hello in lowercase."):
+    async for chunk in agent.think("Say hello in lowercase.", stream=True):
         # Transform each chunk as it arrives
         print(chunk.content.upper(), end="", flush=True)
     print()
@@ -457,7 +457,7 @@ async def demo_custom_processing():
     buffer = ""
     word_count = 0
     
-    async for chunk in agent.think_stream("Count to ten with words."):
+    async for chunk in agent.think("Count to ten with words.", stream=True):
         buffer += chunk.content
         # Count complete words
         while " " in buffer:
@@ -516,7 +516,7 @@ async def demo_streaming_comparison():
     start = time.time()
     first_token_time = None
     
-    async for chunk in agent.think_stream(prompt):
+    async for chunk in agent.think(prompt, stream=True):
         if first_token_time is None:
             first_token_time = time.time() - start
         print(chunk.content, end="", flush=True)
@@ -547,9 +547,9 @@ async def main():
     
     await demo_basic_streaming()      # Demo 1: Simple stream=True
     await demo_default_streaming()    # Demo 2: Agent-level default
-    await demo_think_stream()         # Demo 3: think_stream()
-    await demo_chat_streaming()       # Demo 4: chat_stream with history
-    await demo_event_streaming()      # Demo 5: Structured events
+    await demo_think_stream()              # Demo 3: think(stream=True)
+    await demo_conversation_streaming()    # Demo 4: run() with thread_id
+    await demo_event_streaming()           # Demo 5: Structured events
     await demo_callbacks()            # Demo 6: Callbacks
     await demo_print_stream_helper()  # Demo 7: print_stream()
     await demo_collect_stream()       # Demo 8: collect_stream()

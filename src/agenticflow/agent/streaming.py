@@ -21,7 +21,7 @@ Example:
     )
     
     # Stream tokens as they arrive
-    async for chunk in agent.think_stream("Write a poem"):
+    async for chunk in agent.think("Write a poem", stream=True):
         print(chunk.content, end="", flush=True)
     
     # Or use event-based streaming
@@ -328,8 +328,8 @@ class PrintStreamCallback:
     Example:
         ```python
         callback = PrintStreamCallback(end="", flush=True)
-        async for chunk in agent.think_stream("Hello", callback=callback):
-            pass  # Callback handles printing
+        async for chunk in agent.think("Hello", stream=True):
+            callback.on_token(chunk.content)
         ```
     """
     
@@ -377,7 +377,8 @@ class CollectorStreamCallback:
     Example:
         ```python
         collector = CollectorStreamCallback()
-        async for chunk in agent.think_stream("Hello", callback=collector):
+        async for chunk in agent.think("Hello", stream=True):
+            collector.on_token(chunk.content)
             print(chunk.content, end="", flush=True)
         
         full_response = collector.get_full_response()
@@ -490,7 +491,7 @@ async def collect_stream(
         
     Example:
         ```python
-        content, tool_calls = await collect_stream(agent.think_stream("Hello"))
+        content, tool_calls = await collect_stream(agent.think("Hello", stream=True))
         print(f"Response: {content}")
         if tool_calls:
             print(f"Tool calls: {[tc.name for tc in tool_calls]}")
@@ -532,7 +533,7 @@ async def print_stream(
         
     Example:
         ```python
-        response = await print_stream(agent.think_stream("Write a haiku"))
+        response = await print_stream(agent.think("Write a haiku", stream=True))
         # Prints tokens as they arrive, returns full response
         ```
     """
@@ -566,8 +567,8 @@ class ObserverStreamCallback:
         observer = Observer.verbose()
         callback = ObserverStreamCallback(observer, agent_name="writer")
         
-        async for chunk in agent.think_stream("Write a story", callback=callback):
-            pass  # Observer handles display and tracking
+        async for chunk in agent.think("Write a story", stream=True):
+            callback.on_token(chunk.content)
         ```
     
     Attributes:
