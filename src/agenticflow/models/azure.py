@@ -1,33 +1,43 @@
 """
-Azure OpenAI models for AgenticFlow.
+Azure OpenAI and Azure AI Foundry models for AgenticFlow.
 
-Supports multiple authentication methods:
+Azure OpenAI:
 - API Key authentication
 - DefaultAzureCredential (for local development and production)
 - ManagedIdentityCredential (for Azure-hosted services)
 
+Azure AI Foundry:
+- Unified inference endpoint for GitHub Models and custom deployments
+- Uses azure-ai-inference SDK
+
 Usage:
-    from agenticflow.models.azure import AzureChat, AzureEmbedding
+    from agenticflow.models.azure import AzureChat, AzureEmbedding, AzureAIFoundryChat
     
-    # API Key auth
+    # Azure OpenAI with API Key
     llm = AzureChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         api_key="your-key",
         deployment="gpt-4o",
     )
     
-    # DefaultAzureCredential (recommended for Azure)
+    # Azure OpenAI with DefaultAzureCredential
     llm = AzureChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         deployment="gpt-4o",
         use_azure_ad=True,
     )
     
-    # ManagedIdentityCredential (for Azure VMs/Functions/etc)
-    llm = AzureChat(
-        azure_endpoint="https://your-resource.openai.azure.com",
-        deployment="gpt-4o",
-        use_managed_identity=True,
+    # GitHub Models (free tier via Azure AI Foundry)
+    llm = AzureAIFoundryChat.from_github(
+        model="meta/Meta-Llama-3.1-8B-Instruct",
+        token=os.getenv("GITHUB_TOKEN"),
+    )
+    
+    # Custom Azure AI Foundry endpoint
+    llm = AzureAIFoundryChat(
+        endpoint="https://your-foundry.azure.com/inference",
+        model="your-model",
+        api_key="your-key",
     )
 """
 
@@ -392,4 +402,267 @@ class AzureEmbedding(BaseEmbedding):
         }
         if self.dimensions:
             kwargs["dimensions"] = self.dimensions
+        return kwargs
+
+
+# ==============================================================================
+# Azure AI Foundry (Microsoft Foundry Inference SDK)
+# ==============================================================================
+
+
+def _parse_foundry_response(response: Any) -> AIMessage:
+    """Parse Azure AI Foundry response into AIMessage."""
+    choice = response.choices[0]
+    message = choice.message
+    
+    tool_calls = []
+    if hasattr(message, 'tool_calls') and message.tool_calls:
+        for tc in message.tool_calls:
+            tool_calls.append({
+                "id": tc.id,
+                "name": tc.function.name,
+                "args": __import__("json").loads(tc.function.arguments),
+            })
+    
+    return AIMessage(
+        content=message.content or "",
+        tool_calls=tool_calls,
+    )
+
+
+def _format_foundry_messages(messages: list[dict[str, Any]] | list[Any]) -> list[Any]:
+    """Format messages for Azure AI Foundry SDK."""
+    try:
+        from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage, ToolMessage
+    except ImportError:
+        raise ImportError(
+            "azure-ai-inference required for Azure AI Foundry. "
+            "Install with: uv add azure-ai-inference"
+        )
+    
+    formatted_messages = convert_messages(messages)
+    foundry_messages = []
+    
+    for msg in formatted_messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        
+        if role == "system":
+            foundry_messages.append(SystemMessage(content))
+        elif role == "user":
+            foundry_messages.append(UserMessage(content))
+        elif role == "assistant":
+            # Handle tool calls if present
+            tool_calls = msg.get("tool_calls")
+            if tool_calls:
+                # For now, just add content - SDK handles tool calls differently
+                foundry_messages.append(AssistantMessage(content or ""))
+            else:
+                foundry_messages.append(AssistantMessage(content))
+        elif role == "tool":
+            # Tool response
+            tool_call_id = msg.get("tool_call_id", "")
+            foundry_messages.append(ToolMessage(content=content, tool_call_id=tool_call_id))
+    
+    return foundry_messages
+
+
+@dataclass
+class AzureAIFoundryChat(BaseChatModel):
+    """Azure AI Foundry chat model.
+    
+    Unified inference client for Azure AI Foundry, supporting:
+    - GitHub Models (free tier with rate limits)
+    - Custom Azure AI Foundry deployments
+    - Bring-your-own-key (BYOK) scenarios
+    
+    Uses the azure-ai-inference SDK (Microsoft Foundry Inference SDK).
+    
+    Example:
+        from agenticflow.models.azure import AzureAIFoundryChat
+        import os
+        
+        # GitHub Models (free tier)
+        llm = AzureAIFoundryChat.from_github(
+            model="meta/Meta-Llama-3.1-8B-Instruct",
+            token=os.getenv("GITHUB_TOKEN"),
+        )
+        
+        # Custom Azure AI Foundry endpoint
+        llm = AzureAIFoundryChat(
+            endpoint="https://your-foundry-endpoint.azure.com/inference",
+            model="your-model",
+            api_key="your-api-key",
+        )
+        
+        # Use with streaming
+        async for chunk in llm.astream([{"role": "user", "content": "Hello!"}]):
+            print(chunk.content, end="")
+        
+        # With tools
+        llm = llm.bind_tools([search_tool])
+        response = await llm.ainvoke(messages)
+    """
+    
+    endpoint: str
+    model: str
+    
+    _client: Any = field(default=None, init=False, repr=False)
+    
+    @classmethod
+    def from_github(
+        cls,
+        model: str,
+        token: str | None = None,
+        temperature: float | None = 1.0,
+        max_tokens: int | None = 1000,
+        timeout: float = 60.0,
+        max_retries: int = 2,
+    ) -> "AzureAIFoundryChat":
+        """Create a GitHub Models client.
+        
+        Args:
+            model: Model name (e.g., "meta/Meta-Llama-3.1-8B-Instruct")
+            token: GitHub token (or set GITHUB_TOKEN env var)
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            timeout: Request timeout in seconds
+            max_retries: Maximum retry attempts
+            
+        Returns:
+            AzureAIFoundryChat configured for GitHub Models.
+            
+        Example:
+            >>> llm = AzureAIFoundryChat.from_github(
+            ...     model="meta/Meta-Llama-3.1-8B-Instruct",
+            ...     token=os.getenv("GITHUB_TOKEN")
+            ... )
+            >>> response = await llm.ainvoke([{"role": "user", "content": "Hi!"}])
+        """
+        token = token or os.environ.get("GITHUB_TOKEN")
+        if not token:
+            raise ValueError(
+                "GitHub token required. Provide token parameter or set GITHUB_TOKEN environment variable"
+            )
+        
+        return cls(
+            endpoint="https://models.github.ai/inference",
+            model=model,
+            api_key=token,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
+    
+    def _init_client(self) -> None:
+        """Initialize Azure AI Foundry client."""
+        try:
+            from azure.ai.inference import ChatCompletionsClient
+            from azure.core.credentials import AzureKeyCredential
+        except ImportError:
+            raise ImportError(
+                "azure-ai-inference required for Azure AI Foundry. "
+                "Install with: uv add azure-ai-inference"
+            )
+        
+        if not self.api_key:
+            raise ValueError("api_key required for Azure AI Foundry")
+        
+        self._client = ChatCompletionsClient(
+            endpoint=self.endpoint,
+            credential=AzureKeyCredential(self.api_key),
+        )
+    
+    def bind_tools(
+        self,
+        tools: list[Any],
+        *,
+        parallel_tool_calls: bool = True,
+    ) -> "AzureAIFoundryChat":
+        """Bind tools to the model."""
+        self._ensure_initialized()
+        
+        new_model = AzureAIFoundryChat(
+            endpoint=self.endpoint,
+            model=self.model,
+            api_key=self.api_key,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+        new_model._tools = tools
+        new_model._parallel_tool_calls = parallel_tool_calls
+        new_model._client = self._client
+        new_model._initialized = True
+        return new_model
+    
+    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+        """Invoke synchronously."""
+        self._ensure_initialized()
+        response = self._client.complete(**self._build_request(messages))
+        return _parse_foundry_response(response)
+    
+    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+        """Invoke asynchronously."""
+        self._ensure_initialized()
+        # Note: azure-ai-inference SDK doesn't have async support yet
+        # Fallback to sync call in thread pool
+        import asyncio
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.invoke, messages)
+    
+    async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
+        """Stream response asynchronously."""
+        self._ensure_initialized()
+        
+        kwargs = self._build_request(messages)
+        
+        # Enable streaming and usage tracking
+        kwargs["stream"] = True
+        if "model_extras" not in kwargs:
+            kwargs["model_extras"] = {}
+        kwargs["model_extras"]["stream_options"] = {"include_usage": True}
+        
+        # Run streaming in thread pool since SDK is sync
+        import asyncio
+        loop = asyncio.get_event_loop()
+        
+        # Get iterator in executor
+        def get_stream():
+            return self._client.complete(**kwargs)
+        
+        stream = await loop.run_in_executor(None, get_stream)
+        
+        # Yield chunks
+        for update in stream:
+            if update.choices and update.choices[0].delta:
+                content = update.choices[0].delta.content
+                if content:
+                    yield AIMessage(content=content)
+    
+    def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
+        """Build API request for Azure AI Foundry.
+        
+        Args:
+            messages: List of messages (dicts or BaseMessage objects).
+            
+        Returns:
+            Dict of API request parameters.
+        """
+        foundry_messages = _format_foundry_messages(messages)
+        
+        kwargs: dict[str, Any] = {
+            "messages": foundry_messages,
+            "model": self.model,
+        }
+        
+        if self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+        if self.max_tokens:
+            kwargs["max_tokens"] = self.max_tokens
+        if self._tools:
+            kwargs["tools"] = _format_tools(self._tools)
+        
         return kwargs

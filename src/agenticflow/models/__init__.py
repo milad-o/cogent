@@ -6,7 +6,7 @@ Supports OpenAI, Azure, Anthropic, Groq, Gemini, Ollama, and custom endpoints.
 
 Provider-Specific Imports:
     from agenticflow.models.openai import ChatModel, OpenAIEmbedding
-    from agenticflow.models.azure import AzureChat, AzureEmbedding
+    from agenticflow.models.azure import AzureChat, AzureEmbedding, AzureAIFoundryChat
     from agenticflow.models.anthropic import AnthropicChat
     from agenticflow.models.groq import GroqChat
     from agenticflow.models.gemini import GeminiChat, GeminiEmbedding
@@ -35,6 +35,14 @@ Example:
         azure_endpoint="https://your-resource.openai.azure.com",
         deployment="gpt-4o",
         use_azure_ad=True,
+    )
+    
+    # GitHub Models (via Azure AI Foundry)
+    from agenticflow.models.azure import AzureAIFoundryChat
+    
+    llm = AzureAIFoundryChat.from_github(
+        model="meta/Meta-Llama-3.1-8B-Instruct",
+        token=os.getenv("GITHUB_TOKEN"),
     )
     
     # Groq (fast inference)
@@ -77,7 +85,7 @@ def create_chat(
     """Create a chat model for any provider.
     
     Args:
-        provider: Provider name (openai, azure, anthropic, groq, gemini, ollama, custom)
+        provider: Provider name (openai, azure, azure-foundry, github, anthropic, groq, gemini, ollama, custom)
         model: Model name (provider-specific). Uses provider default if not specified.
         **kwargs: Additional provider-specific arguments.
     
@@ -88,12 +96,27 @@ def create_chat(
         # OpenAI
         llm = create_chat("openai", model="gpt-4o")
         
-        # Azure with Azure AD
+        # Azure OpenAI with Azure AD
         llm = create_chat(
             "azure",
             deployment="gpt-4o",
             azure_endpoint="https://your-resource.openai.azure.com",
             use_azure_ad=True,
+        )
+        
+        # GitHub Models (via Azure AI Foundry)
+        llm = create_chat(
+            "github",
+            model="meta/Meta-Llama-3.1-8B-Instruct",
+            token=os.getenv("GITHUB_TOKEN"),
+        )
+        
+        # Azure AI Foundry custom endpoint
+        llm = create_chat(
+            "azure-foundry",
+            endpoint="https://your-foundry.azure.com/inference",
+            model="your-model",
+            api_key="your-key",
         )
         
         # Anthropic
@@ -125,6 +148,21 @@ def create_chat(
         from agenticflow.models.azure import AzureChat
         return AzureChat(deployment=model or kwargs.pop("deployment", None), **kwargs)
     
+    elif provider == "azure-foundry":
+        from agenticflow.models.azure import AzureAIFoundryChat
+        if not model:
+            raise ValueError("model required for azure-foundry provider")
+        if "endpoint" not in kwargs:
+            raise ValueError("endpoint required for azure-foundry provider")
+        return AzureAIFoundryChat(model=model, **kwargs)
+    
+    elif provider == "github":
+        from agenticflow.models.azure import AzureAIFoundryChat
+        if not model:
+            raise ValueError("model required for github provider")
+        token = kwargs.pop("token", None)
+        return AzureAIFoundryChat.from_github(model=model, token=token, **kwargs)
+    
     elif provider == "anthropic":
         from agenticflow.models.anthropic import AnthropicChat
         return AnthropicChat(model=model or "claude-sonnet-4-20250514", **kwargs)
@@ -152,7 +190,7 @@ def create_chat(
     else:
         raise ValueError(
             f"Unknown provider: {provider}. "
-            f"Supported: openai, azure, anthropic, groq, gemini, ollama, mistral, custom"
+            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, ollama, mistral, custom"
         )
 
 
