@@ -217,13 +217,16 @@ class PDFProcessingResult:
         parts: list[str] = []
 
         def _page_block(page_number: int, content: str) -> str:
-            """Format a single page block with optional dividers and page number."""
+            """Format a single page block with optional dividers and page number.
+
+            When page numbers and breaks are requested, the page number is embedded
+            inside the content block, not as its own divider-only section.
+            """
             if include_page_numbers and include_page_breaks:
                 return "\n".join(
                     [
                         page_break_style,
                         f"<!-- Page {page_number} -->",
-                        page_break_style,
                         content,
                         page_break_style,
                     ]
@@ -319,7 +322,6 @@ class PDFProcessingResult:
                         [
                             page_break_style,
                             f"<!-- Page {page_result.page_number} -->",
-                            page_break_style,
                             page_content,
                             page_break_style,
                         ]
@@ -716,7 +718,6 @@ class PDFMarkdownLoader(BaseLoader):
                         [
                             page_break_style,
                             f"<!-- Page {page_number} -->",
-                            page_break_style,
                             content,
                             page_break_style,
                         ]
@@ -759,7 +760,6 @@ class PDFMarkdownLoader(BaseLoader):
                         [
                             page_break_style,
                             f"<!-- Page {page_num} -->",
-                            page_break_style,
                             page_content,
                             page_break_style,
                         ]
