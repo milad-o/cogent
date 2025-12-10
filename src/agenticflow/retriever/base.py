@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_checkable
 
+from agenticflow.tools.base import BaseTool
+
 if TYPE_CHECKING:
     from agenticflow.observability.bus import EventBus
     from agenticflow.vectorstore import Document
@@ -340,3 +342,81 @@ class BaseRetriever:
     
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(name={self.name!r})"
+
+    def as_tool(
+        self,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        k_default: int = 4,
+        include_scores: bool = False,
+        include_metadata: bool = True,
+    ) -> BaseTool:
+        """Expose this retriever as a native tool for agents.
+
+        The generated tool wraps ``retrieve`` and returns structured results
+        ready for tool-calling models. Scores and metadata can be toggled.
+
+        Args:
+            name: Optional tool name. Defaults to ``{retriever_name}_retrieve``.
+            description: Optional tool description. Defaults to a generic description.
+            k_default: Default number of results to return when ``k`` is not provided.
+            include_scores: Include retrieval scores in the tool output.
+            include_metadata: Include document metadata in the tool output.
+
+        Returns:
+            BaseTool configured for this retriever.
+        """
+
+        tool_name = name or f"{self.name}_retrieve"
+        tool_description = description or (
+            f"Retrieve relevant documents using the {self.name} retriever."
+        )
+
+        args_schema = {
+            "query": {
+                "type": "string",
+                "description": "Natural language search query.",
+            },
+            "k": {
+                "type": "integer",
+                "description": "Number of results to return.",
+                "default": k_default,
+                "minimum": 1,
+            },
+            "filter": {
+                "type": "object",
+                "description": "Optional metadata filter (field -> value).",
+                "additionalProperties": True,
+            },
+        }
+
+        async def _tool(
+            query: str,
+            k: int = k_default,
+            filter: dict[str, Any] | None = None,
+        ) -> list[dict[str, Any]]:
+            results = await self.retrieve(
+                query,
+                k=k,
+                filter=filter,
+                include_scores=True,
+            )
+
+            payload: list[dict[str, Any]] = []
+            for r in results:
+                entry: dict[str, Any] = {"text": r.document.text}
+                if include_metadata:
+                    entry["metadata"] = r.document.metadata
+                if include_scores:
+                    entry["score"] = r.score
+                payload.append(entry)
+
+            return payload
+
+        return BaseTool(
+            name=tool_name,
+            description=tool_description,
+            func=_tool,
+            args_schema=args_schema,
+        )

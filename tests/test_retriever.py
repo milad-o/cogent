@@ -599,6 +599,28 @@ class TestBaseRetriever:
         retriever = TestRetriever()
         assert retriever.name == "test_retriever"
 
+    @pytest.mark.asyncio
+    async def test_base_retriever_as_tool(self) -> None:
+        class DummyRetriever(BaseRetriever):
+            _name = "dummy"
+
+            async def retrieve_with_scores(self, query: str, k: int = 4, filter: dict | None = None, **kwargs):
+                doc = Document(text=f"doc for {query}", metadata={"id": "1"})
+                return [RetrievalResult(document=doc, score=0.9, retriever_name=self.name)]
+
+        retriever = DummyRetriever()
+        tool = retriever.as_tool(name="search_docs", k_default=3, include_scores=True)
+
+        assert tool.name == "search_docs"
+        assert "query" in tool.args_schema
+        assert tool.args_schema["k"].get("default") == 3
+
+        # Invoke tool asynchronously to ensure it calls retrieve()
+        result = await tool.ainvoke({"query": "python", "k": 1})
+        assert isinstance(result, list)
+        assert result[0]["text"].startswith("doc for python")
+        assert result[0]["score"] == 0.9
+
 
 # ============================================================================
 # Test Fusion Utilities
