@@ -20,6 +20,9 @@ Available models:
     - codestral-latest: Optimized for coding tasks
     - ministral-8b-latest: Efficient smaller model
     - open-mistral-nemo: Open source 12B model
+
+Note: Mistral does not currently offer embedding models via their API.
+      Use OpenAI or another provider for embeddings.
 """
 
 from __future__ import annotations
@@ -107,6 +110,8 @@ class MistralChat(BaseChatModel):
     
     model: str = "mistral-small-latest"
     base_url: str = "https://api.mistral.ai/v1"
+    
+    _tool_choice: str | dict[str, Any] | None = field(default=None, repr=False)
     
     def _init_client(self) -> None:
         """Initialize Mistral client (OpenAI-compatible)."""
@@ -281,4 +286,7 @@ class MistralChat(BaseChatModel):
         )
         new_model._tools = tools
         new_model._tool_choice = tool_choice
+        new_model._client = self._client
+        new_model._async_client = self._async_client
+        new_model._initialized = True
         return new_model

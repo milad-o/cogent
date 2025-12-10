@@ -37,6 +37,7 @@ dependencies = [
     "pymupdf4llm>=0.2.6",
     "pymupdf>=1.26.6",
     "pymupdf-layout>=1.26.6",
+    "azure-ai-inference>=1.0.0b9",
 ]
 
 [project.optional-dependencies]

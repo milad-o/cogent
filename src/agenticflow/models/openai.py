@@ -100,7 +100,7 @@ class OpenAIChat(BaseChatModel):
     """
     
     model: str = "gpt-4o-mini"
-    base_url: str | None = None
+    base_url: str = ""
     
     def _init_client(self) -> None:
         """Initialize OpenAI clients."""

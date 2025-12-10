@@ -504,10 +504,10 @@ class AzureAIFoundryChat(BaseChatModel):
         response = await llm.ainvoke(messages)
     """
     
-    endpoint: str
-    model: str
+    endpoint: str = ""
+    model: str = ""
     
-    _client: Any = field(default=None, init=False, repr=False)
+    _foundry_client: Any = field(default=None, init=False, repr=False)
     
     @classmethod
     def from_github(
@@ -569,7 +569,7 @@ class AzureAIFoundryChat(BaseChatModel):
         if not self.api_key:
             raise ValueError("api_key required for Azure AI Foundry")
         
-        self._client = ChatCompletionsClient(
+        self._foundry_client = ChatCompletionsClient(
             endpoint=self.endpoint,
             credential=AzureKeyCredential(self.api_key),
         )
@@ -594,14 +594,14 @@ class AzureAIFoundryChat(BaseChatModel):
         )
         new_model._tools = tools
         new_model._parallel_tool_calls = parallel_tool_calls
-        new_model._client = self._client
+        new_model._foundry_client = self._foundry_client
         new_model._initialized = True
         return new_model
     
     def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
         """Invoke synchronously."""
         self._ensure_initialized()
-        response = self._client.complete(**self._build_request(messages))
+        response = self._foundry_client.complete(**self._build_request(messages))
         return _parse_foundry_response(response)
     
     async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
@@ -631,7 +631,7 @@ class AzureAIFoundryChat(BaseChatModel):
         
         # Get iterator in executor
         def get_stream():
-            return self._client.complete(**kwargs)
+            return self._foundry_client.complete(**kwargs)
         
         stream = await loop.run_in_executor(None, get_stream)
         

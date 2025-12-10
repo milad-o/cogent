@@ -63,3 +63,4 @@ Thumbs.db
 .analysis/
 .plans/
 examples/*.ipynb
+scripts/
