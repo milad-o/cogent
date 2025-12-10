@@ -19,7 +19,7 @@ Note: The supervisor topology makes multiple LLM calls:
 For fastest results, use Groq (GROQ_API_KEY) or gpt-4o-mini.
 
 Usage:
-    uv run python examples/09_hierarchical_roles.py
+    uv run python examples/topologies/hierarchical.py
 """
 
 import asyncio

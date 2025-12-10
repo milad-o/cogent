@@ -10,7 +10,7 @@ Key features:
 - Provider-native support where available (OpenAI, Anthropic)
 - Clean API: just pass `output=YourSchema` to Agent
 
-Run: uv run python examples/24_structured_output.py
+Run: uv run python examples/basics/structured_output.py
 """
 
 import asyncio

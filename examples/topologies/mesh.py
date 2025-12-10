@@ -8,7 +8,7 @@ This demo shows mesh with max_rounds=1 (minimal collaboration).
 For max collaboration, increase max_rounds (but expect more LLM calls).
 
 Usage:
-    uv run python examples/08_mesh_writers.py
+    uv run python examples/topologies/mesh.py
 """
 
 import asyncio

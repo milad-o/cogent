@@ -4,7 +4,7 @@ Demo: Flow Streaming
 Watch flow execution updates in real-time using flow.stream().
 
 Usage:
-    uv run python examples/03_flow.py
+    uv run python examples/topologies/flow.py
 """
 
 import asyncio

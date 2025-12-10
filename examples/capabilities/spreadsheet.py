@@ -4,7 +4,7 @@ Example: Spreadsheet Capability
 Agent analyzes sales data from CSV using spreadsheet tools.
 
 Usage:
-    uv run python examples/26_spreadsheet.py
+    uv run python examples/capabilities/spreadsheet.py
 """
 
 import asyncio

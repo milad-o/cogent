@@ -10,7 +10,7 @@ Demonstrates all retriever types available in AgenticFlow:
 5. Rerankers (CrossEncoder, LLM-based)
 
 Usage:
-    uv run python examples/37_retrievers.py
+    uv run python examples/retrieval/retrievers.py
 """
 
 import asyncio

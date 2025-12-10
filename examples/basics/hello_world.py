@@ -4,7 +4,7 @@ Demo: Basic Usage
 Single agent with instructions performing a task.
 
 Usage:
-    uv run python examples/01_basic_usage.py
+    uv run python examples/basics/hello_world.py
 """
 
 import asyncio

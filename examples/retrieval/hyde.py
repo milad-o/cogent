@@ -37,7 +37,7 @@ Benefits of HyDE:
 - Especially good for abstract/conceptual questions
 
 Usage:
-    uv run python examples/34_hyde.py
+       uv run python examples/retrieval/hyde.py
 """
 
 import asyncio

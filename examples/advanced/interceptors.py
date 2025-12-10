@@ -9,7 +9,7 @@ Key features:
 - BudgetGuard for limiting model/tool calls
 - Custom interceptors for logging, validation, etc.
 
-Run: uv run python examples/29_interceptors.py
+Run: uv run python examples/advanced/interceptors.py
 """
 
 import asyncio

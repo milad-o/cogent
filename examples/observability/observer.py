@@ -8,7 +8,7 @@ Observer is your single entry point for ALL observability needs:
 - Export to JSON, Mermaid
 
 Usage:
-    uv run python examples/05_observability.py
+    uv run python examples/observability/observer.py
 """
 
 import asyncio

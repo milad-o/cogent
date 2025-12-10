@@ -10,7 +10,7 @@ Features:
 - Memory tools for long-term facts
 
 Usage:
-    uv run python examples/06_memory.py
+    uv run python examples/basics/memory.py
 """
 
 import asyncio

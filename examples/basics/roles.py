@@ -14,7 +14,7 @@ The Role System:
 └─────────────┴────────────┴──────────────┴───────────────┘
 
 Usage:
-    uv run python examples/07_roles.py
+    uv run python examples/basics/roles.py
 """
 
 import asyncio

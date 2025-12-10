@@ -22,7 +22,7 @@ Prerequisites:
     - Set your API key: export OPENAI_API_KEY=your-key
 
 Run:
-    uv run python examples/19_streaming.py
+    uv run python examples/basics/streaming.py
 """
 
 import asyncio
@@ -34,102 +34,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model as config_get_model, settings
 
-# For demo without real API - check if any provider is configured
-MOCK_MODE = not any([
-    settings.openai_api_key,
-    settings.groq_api_key,
-    settings.anthropic_api_key,
-    settings.gemini_api_key,
-])
-
 
 # =============================================================================
-# Mock Model Factory for Demo (simulates streaming)
-# =============================================================================
-
-def create_mock_model(response_text: str):
-    """
-    Create a mock model that works with Agent's type checking.
-    
-    This creates a native BaseChatModel subclass that
-    simulates streaming by yielding token chunks with delays.
-    """
-    from collections.abc import AsyncIterator, Iterator
-    from typing import Any
-    
-    from agenticflow.models.base import BaseChatModel
-    from agenticflow.core.messages import AIMessage
-    
-    class MockChatModel(BaseChatModel):
-        """Mock chat model for testing/demo with streaming support."""
-        
-        def __init__(self, response: str):
-            self._response = response
-        
-        @property
-        def model_name(self) -> str:
-            return "mock-streaming"
-        
-        def invoke(
-            self,
-            messages: list[dict[str, Any]],
-            **kwargs: Any,
-        ) -> AIMessage:
-            return AIMessage(content=self._response)
-        
-        async def ainvoke(
-            self,
-            messages: list[dict[str, Any]],
-            **kwargs: Any,
-        ) -> AIMessage:
-            return AIMessage(content=self._response)
-        
-        def stream(
-            self,
-            messages: list[dict[str, Any]],
-            **kwargs: Any,
-        ) -> Iterator[AIMessage]:
-            """Synchronous streaming implementation."""
-            import time
-            tokens = []
-            i = 0
-            text = self._response
-            while i < len(text):
-                chunk_len = min(4, len(text) - i)
-                tokens.append(text[i:i + chunk_len])
-                i += chunk_len
-            
-            for token in tokens:
-                time.sleep(0.02)
-                yield AIMessage(content=token)
-        
-        async def astream(
-            self,
-            messages: list[dict[str, Any]],
-            **kwargs: Any,
-        ) -> AsyncIterator[AIMessage]:
-            """Async streaming implementation."""
-            tokens = []
-            i = 0
-            text = self._response
-            while i < len(text):
-                chunk_len = min(4, len(text) - i)
-                tokens.append(text[i:i + chunk_len])
-                i += chunk_len
-            
-            for token in tokens:
-                await asyncio.sleep(0.02)
-                yield AIMessage(content=token)
-    
-    return MockChatModel(response=response_text)
-
-
-def get_model(response_for_mock: str = "Hello!"):
-    """Get model - mock for demo, real for production."""
-    if MOCK_MODE:
-        return create_mock_model(response_for_mock)
-    else:
-        return config_get_model()
+# Real model factory (requires env/config to be set)
+def get_model(_: str | None = None):
+    """Get a real model configured via examples/config.py."""
+    return config_get_model()
 
 
 # =============================================================================
@@ -192,14 +102,10 @@ async def demo_default_streaming():
     print("-" * 40)
     
     # No need to specify stream=True - it's the default!
-    async for chunk in agent.run("Hello! Are you a streaming agent?"):
+    async for chunk in agent.run("Hello! Are you a streaming agent?", stream=True):
         print(chunk.content, end="", flush=True)
     
     print("\n" + "-" * 40)
-    
-    # Can still override to get non-streaming response
-    if MOCK_MODE:
-        agent._model = create_mock_model("Yes, but I can return complete responses too!")
     
     print("\n# Override with stream=False:")
     result = await agent.run("Give me a one-liner.", stream=False)
@@ -253,28 +159,19 @@ async def demo_conversation_streaming():
         system_prompt="You are a friendly assistant. Remember user details.",
     )
     
-    thread_id = "demo-thread-001"
-    
     # First message
     print("\n[User]: Hi, my name is Alice!")
     print("[Assistant]: ", end="", flush=True)
     
-    async for chunk in agent.run("Hi, my name is Alice!", stream=True, thread_id=thread_id):
+    async for chunk in agent.run("Hi, my name is Alice!", stream=True):
         print(chunk.content, end="", flush=True)
     print()
-    
-    # For mock mode, create new model for second response
-    # (In real mode, same model handles both)
-    if MOCK_MODE:
-        agent._model = create_mock_model(
-            "Yes, I remember - your name is Alice! What can I do for you?"
-        )
     
     # Second message - should remember context
     print("\n[User]: What's my name?")
     print("[Assistant]: ", end="", flush=True)
     
-    async for chunk in agent.run("What's my name?", stream=True, thread_id=thread_id):
+    async for chunk in agent.run("What's my name?", stream=True):
         print(chunk.content, end="", flush=True)
     print()
     
@@ -351,9 +248,6 @@ async def demo_callbacks():
     # Using CollectorStreamCallback to collect output
     print("\n2. Using CollectorStreamCallback:")
     print("-" * 40)
-    
-    if MOCK_MODE:
-        agent._model = create_mock_model("This response will be collected!")
     
     collector = CollectorStreamCallback()
     
@@ -449,11 +343,6 @@ async def demo_custom_processing():
     print("\n2. Word counting during stream:")
     print("-" * 40)
     
-    if MOCK_MODE:
-        agent._model = create_mock_model(
-            "One two three four five six seven eight nine ten."
-        )
-    
     buffer = ""
     word_count = 0
     
@@ -539,11 +428,7 @@ async def main():
     print("AgenticFlow Streaming Demonstration")
     print("=" * 60)
     
-    if MOCK_MODE:
-        print("\n⚠️  Running in MOCK MODE (no API key detected)")
-        print("   Set OPENAI_API_KEY for real LLM streaming")
-    else:
-        print("\n🔑 Using real OpenAI API")
+    print("\n🔑 Using configured LLM and embeddings from .env")
     
     await demo_basic_streaming()      # Demo 1: Simple stream=True
     await demo_default_streaming()    # Demo 2: Agent-level default

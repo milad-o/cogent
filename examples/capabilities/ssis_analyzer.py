@@ -12,7 +12,7 @@ Key concepts:
 - Works with single packages or entire project directories
 
 Usage:
-    uv run python examples/17_ssis_analyzer.py
+    uv run python examples/capabilities/ssis_analyzer.py
 """
 
 import asyncio

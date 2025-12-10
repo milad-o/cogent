@@ -4,7 +4,7 @@ Example: Browser Capability
 Agent scrapes and analyzes web content using headless browser.
 
 Usage:
-    uv run python examples/25_browser.py
+    uv run python examples/capabilities/browser.py
 
 Requires: uv add playwright && playwright install chromium
 """
