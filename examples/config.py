@@ -27,12 +27,13 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-# Find project root (where .env is located)
-PROJECT_ROOT = Path(__file__).parent.parent
+# Find project root and examples directory
+EXAMPLES_DIR = Path(__file__).parent
+PROJECT_ROOT = EXAMPLES_DIR.parent
 
 # Valid provider choices
-LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama", "mistral"]
-EmbeddingProvider = Literal["openai", "azure", "ollama"]
+LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama", "mistral", "github"]
+EmbeddingProvider = Literal["openai", "azure", "ollama", "github"]
 
 
 class Settings(BaseSettings):
@@ -46,7 +47,7 @@ class Settings(BaseSettings):
     """
     
     model_config = SettingsConfigDict(
-        env_file=PROJECT_ROOT / ".env",
+        env_file=EXAMPLES_DIR / ".env",  # Load from examples/.env
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -76,6 +77,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
     mistral_api_key: str | None = Field(default=None, alias="MISTRAL_API_KEY")
+    github_token: str | None = Field(default=None, alias="GITHUB_TOKEN")
     
     # ==========================================================================
     # Azure OpenAI Configuration
@@ -123,12 +125,14 @@ class Settings(BaseSettings):
     anthropic_model: str = Field(default="claude-sonnet-4-20250514", alias="ANTHROPIC_MODEL")
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
     mistral_model: str = Field(default="mistral-small-latest", alias="MISTRAL_MODEL")
+    github_model: str = Field(default="gpt-4o-mini", alias="GITHUB_MODEL")
     
     # ==========================================================================
     # Embedding Model Names
     # ==========================================================================
     
     openai_embedding_model: str = Field(default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL")
+    github_embedding_model: str = Field(default="text-embedding-3-large", alias="GITHUB_EMBEDDING_MODEL")
     
     # ==========================================================================
     # Example Settings
@@ -201,6 +205,15 @@ def get_model(provider: LLMProvider | None = None):
             raise ValueError("LLM_PROVIDER=mistral requires MISTRAL_API_KEY")
         from agenticflow.models.mistral import MistralChat
         return MistralChat(model=s.mistral_model, api_key=s.mistral_api_key)
+    
+    elif provider == "github":
+        if not s.github_token:
+            raise ValueError("LLM_PROVIDER=github requires GITHUB_TOKEN")
+        from agenticflow.models.azure import AzureAIFoundryChat
+        return AzureAIFoundryChat.from_github(
+            model=s.github_model,
+            token=s.github_token,
+        )
     
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
@@ -278,6 +291,17 @@ def get_embeddings(provider: EmbeddingProvider | None = None):
         return OllamaEmbeddings(
             model=s.ollama_embedding_model,
             base_url=s.ollama_host,
+        )
+    
+    elif provider == "github":
+        if not s.github_token:
+            raise ValueError("EMBEDDING_PROVIDER=github requires GITHUB_TOKEN")
+        # GitHub Models uses OpenAI-compatible embeddings via Foundry
+        from agenticflow.vectorstore import OpenAIEmbeddings
+        return OpenAIEmbeddings(
+            model=s.github_embedding_model,
+            api_key=s.github_token,
+            base_url="https://models.github.ai/inference",
         )
     
     else:
@@ -362,6 +386,9 @@ def print_config():
     elif s.llm_provider == "mistral":
         print(f"  Model: {s.mistral_model}")
         print(f"  API Key: {'✓ set' if s.mistral_api_key else '✗ missing!'}")
+    elif s.llm_provider == "github":
+        print(f"  Model: {s.github_model}")
+        print(f"  Token: {'✓ set' if s.github_token else '✗ missing!'}")
     
     print()
     print("Embedding Config:")
@@ -374,6 +401,9 @@ def print_config():
     elif s.embedding_provider == "ollama":
         print(f"  Model: {s.ollama_embedding_model}")
         print(f"  Host: {s.ollama_host}")
+    elif s.embedding_provider == "github":
+        print(f"  Model: {s.github_embedding_model}")
+        print(f"  Token: {'✓ set' if s.github_token else '✗ missing!'}")
     
     print("=" * 50)
 
