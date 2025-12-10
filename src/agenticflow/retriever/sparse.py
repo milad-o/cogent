@@ -79,16 +79,18 @@ class BM25Index:
     
     def search(
         self,
-        query: str,
+        query: str | None = None,
         k: int = 4,
         filter: dict[str, Any] | None = None,
+        keywords: list[str] | None = None,
     ) -> list[tuple[Document, float]]:
         """Search for documents matching the query.
         
         Args:
-            query: Search query.
+            query: Search query (will be tokenized). Mutually exclusive with keywords.
             k: Number of results to return.
             filter: Optional metadata filter.
+            keywords: Explicit list of keywords to search for. If provided, query is ignored.
             
         Returns:
             List of (document, score) tuples.
@@ -96,7 +98,14 @@ class BM25Index:
         if not self._documents:
             return []
         
-        query_tokens = self._tokenize(query)
+        # Use explicit keywords if provided, otherwise tokenize query
+        if keywords is not None:
+            query_tokens = [kw.lower() for kw in keywords]
+        elif query is not None:
+            query_tokens = self._tokenize(query)
+        else:
+            raise ValueError("Either 'query' or 'keywords' must be provided")
+        
         scores: list[tuple[int, float]] = []
         
         for idx, doc_tokens in enumerate(self._doc_tokens):
@@ -254,23 +263,62 @@ class BM25Retriever(BaseRetriever):
         ]
         self._index.add_documents(documents)
     
-    async def retrieve_with_scores(
+    async def retrieve(
         self,
-        query: str,
+        query: str | None = None,
         k: int = 4,
         filter: dict[str, Any] | None = None,
+        *,
+        include_scores: bool = False,
+        keywords: list[str] | None = None,
+        **kwargs: Any,
+    ) -> list[Document] | list[RetrievalResult]:
+        """Retrieve documents using BM25.
+        
+        Supports both natural language queries (tokenized) and explicit keywords.
+        
+        Args:
+            query: Search query (will be tokenized). Optional if keywords provided.
+            k: Number of documents to retrieve.
+            filter: Optional metadata filter.
+            include_scores: If True, return RetrievalResult with scores.
+            keywords: Explicit list of keywords. If provided, query is ignored.
+            **kwargs: Additional arguments (ignored).
+            
+        Returns:
+            List of Documents or RetrievalResults.
+        """
+        results = await self.retrieve_with_scores(
+            query=query,
+            k=k,
+            filter=filter,
+            keywords=keywords,
+        )
+        
+        if include_scores:
+            return results
+        else:
+            return [r.document for r in results]
+    
+    async def retrieve_with_scores(
+        self,
+        query: str | None = None,
+        k: int = 4,
+        filter: dict[str, Any] | None = None,
+        keywords: list[str] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents using BM25.
         
         Args:
-            query: The search query.
+            query: The search query (will be tokenized). Mutually exclusive with keywords.
             k: Number of documents to retrieve.
             filter: Optional metadata filter.
+            keywords: Explicit list of keywords to search for. If provided, query is ignored.
             
         Returns:
             List of RetrievalResult ordered by BM25 score.
         """
-        search_results = self._index.search(query, k=k, filter=filter)
+        search_results = self._index.search(query=query, k=k, filter=filter, keywords=keywords)
         
         # Normalize scores to 0-1 range if we have results
         max_score = max((s for _, s in search_results), default=1.0)
@@ -304,6 +352,94 @@ class BM25Retriever(BaseRetriever):
     def document_count(self) -> int:
         """Number of indexed documents."""
         return len(self._index)
+    
+    def as_tool(
+        self,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        k_default: int = 4,
+        include_scores: bool = False,
+        include_metadata: bool = True,
+        allow_keywords: bool = True,
+    ):
+        """Expose this retriever as a tool with BM25-specific parameters.
+        
+        Args:
+            name: Optional tool name.
+            description: Optional tool description.
+            k_default: Default number of results.
+            include_scores: Include scores in output.
+            include_metadata: Include metadata in output.
+            allow_keywords: Allow explicit keywords parameter (alternative to query).
+            
+        Returns:
+            BaseTool configured for this retriever.
+        """
+        from agenticflow.tools.base import BaseTool
+        
+        tool_name = name or f"{self.name}_retrieve"
+        tool_description = description or (
+            f"Retrieve documents using {self.name} (BM25 lexical search). "
+            "Searches based on keyword matching and term frequency."
+        )
+        
+        args_schema: dict[str, Any] = {
+            "query": {
+                "type": "string",
+                "description": "Natural language search query (will be tokenized into keywords).",
+            },
+            "k": {
+                "type": "integer",
+                "description": "Number of results to return.",
+                "default": k_default,
+                "minimum": 1,
+            },
+            "filter": {
+                "type": "object",
+                "description": "Optional metadata filter (field -> value).",
+                "additionalProperties": True,
+            },
+        }
+        
+        if allow_keywords:
+            args_schema["keywords"] = {
+                "type": "array",
+                "description": "Explicit list of keywords to search for (alternative to query).",
+                "items": {"type": "string"},
+            }
+        
+        async def _tool(
+            query: str | None = None,
+            k: int = k_default,
+            filter: dict[str, Any] | None = None,
+            keywords: list[str] | None = None,
+        ) -> list[dict[str, Any]]:
+            results = await self.retrieve(
+                query=query,
+                k=k,
+                filter=filter,
+                keywords=keywords if allow_keywords else None,
+                include_scores=True,
+            )
+            
+            payload: list[dict[str, Any]] = []
+            for r in results:
+                entry: dict[str, Any] = {"text": r.document.text}
+                if include_metadata:
+                    entry["metadata"] = r.document.metadata
+                if include_scores:
+                    entry["score"] = r.score
+                payload.append(entry)
+            
+            return payload
+        
+        return BaseTool(
+            name=tool_name,
+            description=tool_description,
+            func=_tool,
+            args_schema=args_schema,
+        )
 
 
 class TFIDFRetriever(BaseRetriever):

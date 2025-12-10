@@ -1017,6 +1017,48 @@ class TestBM25Retriever:
         # Should still find Python docs (case-insensitive)
         texts = [r.text.lower() for r in results]
         assert any("python" in t for t in texts)
+    
+    @pytest.mark.asyncio
+    async def test_bm25_with_keywords(self, sample_documents: list[Document]) -> None:
+        """Test BM25 with explicit keywords instead of query."""
+        from agenticflow.retriever.sparse import BM25Retriever
+        
+        retriever = BM25Retriever()
+        await retriever.index_documents(sample_documents)
+        
+        # Search using explicit keywords
+        results = await retriever.retrieve(keywords=["python", "programming"])
+        
+        assert len(results) > 0
+        texts = [r.text.lower() for r in results]
+        assert any("python" in t for t in texts)
+    
+    @pytest.mark.asyncio
+    async def test_bm25_as_tool_with_keywords(self, sample_documents: list[Document]) -> None:
+        """Test BM25 as_tool() exposes keywords parameter."""
+        from agenticflow.retriever.sparse import BM25Retriever
+        
+        retriever = BM25Retriever()
+        await retriever.index_documents(sample_documents)
+        
+        # Create tool with keywords support
+        tool = retriever.as_tool(
+            name="search_bm25",
+            include_scores=True,
+            allow_keywords=True,
+        )
+        
+        # Verify schema includes keywords parameter
+        assert "keywords" in tool.args_schema
+        assert tool.args_schema["keywords"]["type"] == "array"
+        
+        # Invoke with explicit keywords
+        results = await tool.ainvoke({"keywords": ["python", "language"], "k": 2})
+        
+        assert isinstance(results, list)
+        assert len(results) > 0
+        assert "text" in results[0]
+        assert "score" in results[0]
 
 
 # ============================================================================
