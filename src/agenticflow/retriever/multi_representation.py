@@ -19,10 +19,12 @@ from typing import TYPE_CHECKING, Any
 
 from agenticflow.retriever.base import BaseRetriever, FusionStrategy, RetrievalResult
 from agenticflow.retriever.utils import fuse_results
+from agenticflow.retriever.utils.llm_adapter import adapt_llm
 from agenticflow.vectorstore import Document
 
 if TYPE_CHECKING:
     from agenticflow.models import Model
+    from agenticflow.retriever.utils.llm_adapter import LLMProtocol
     from agenticflow.vectorstore import VectorStore
 
 
@@ -182,6 +184,7 @@ Category (one word):'''
         Args:
             vectorstore: Vector store for embeddings.
             llm: Language model for generating representations.
+                Automatically adapts chat models to .generate() interface.
             representations: Which representations to generate.
                 Options: "original", "summary", "detailed", "keywords", "questions", "entities"
                 Default: ["original", "summary", "detailed"]
@@ -190,7 +193,7 @@ Category (one word):'''
             name: Optional custom name.
         """
         self._vectorstore = vectorstore
-        self._llm = llm
+        self._llm: LLMProtocol = adapt_llm(llm)  # Auto-adapt chat models
         self._representations = representations or ["original", "summary", "detailed"]
         self._auto_route = auto_route
         

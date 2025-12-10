@@ -20,10 +20,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
+from agenticflow.retriever.utils.llm_adapter import adapt_llm
 from agenticflow.vectorstore import Document
 
 if TYPE_CHECKING:
     from agenticflow.models import Model
+    from agenticflow.retriever.utils.llm_adapter import LLMProtocol
     from agenticflow.vectorstore import VectorStore
 
 
@@ -111,13 +113,14 @@ Respond in JSON format:
         
         Args:
             llm: Language model for generating summaries.
+                Automatically adapts chat models to .generate() interface.
             vectorstore: Optional vector store for summary embeddings.
                 If not provided, uses keyword matching on summaries.
             extract_entities: Extract entities for KnowledgeGraph integration.
             extract_keywords: Extract keywords for additional matching.
             name: Optional custom name.
         """
-        self._llm = llm
+        self._llm: LLMProtocol = adapt_llm(llm)  # Auto-adapt chat models
         self._vectorstore = vectorstore
         self._extract_entities = extract_entities
         self._extract_keywords = extract_keywords
@@ -633,11 +636,12 @@ Keywords (JSON array):'''
         
         Args:
             llm: Language model for keyword extraction (optional).
+                Automatically adapts chat models to .generate() interface.
             max_keywords_per_doc: Maximum keywords to extract per document.
             use_llm_extraction: Use LLM for extraction (if False, uses simple extraction).
             name: Optional custom name.
         """
-        self._llm = llm
+        self._llm: LLMProtocol | None = adapt_llm(llm) if llm else None
         self._max_keywords = max_keywords_per_doc
         self._use_llm = use_llm_extraction and llm is not None
         

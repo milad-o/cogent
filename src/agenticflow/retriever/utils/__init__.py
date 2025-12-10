@@ -6,6 +6,11 @@ from agenticflow.retriever.utils.fusion import (
     fuse_results,
     normalize_scores,
 )
+from agenticflow.retriever.utils.llm_adapter import (
+    ChatModelAdapter,
+    LLMProtocol,
+    adapt_llm,
+)
 from agenticflow.retriever.utils.results import (
     add_citations,
     filter_by_score,
@@ -32,6 +37,10 @@ __all__ = [
     "deduplicate_results",
     "fuse_results",
     "normalize_scores",
+    # LLM adaptation
+    "ChatModelAdapter",
+    "LLMProtocol",
+    "adapt_llm",
     # Result processing
     "add_citations",
     "filter_by_score",

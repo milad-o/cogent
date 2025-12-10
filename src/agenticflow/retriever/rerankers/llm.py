@@ -11,9 +11,11 @@ from typing import TYPE_CHECKING
 
 from agenticflow.retriever.base import RetrievalResult
 from agenticflow.retriever.rerankers.base import BaseReranker
+from agenticflow.retriever.utils.llm_adapter import adapt_llm
 
 if TYPE_CHECKING:
     from agenticflow.models import Model
+    from agenticflow.retriever.utils.llm_adapter import LLMProtocol
     from agenticflow.vectorstore import Document
 
 
@@ -64,12 +66,13 @@ class LLMReranker(BaseReranker):
         
         Args:
             model: LLM model to use for scoring.
+                Automatically adapts chat models to .generate() interface.
             prompt: Custom prompt template with {query} and {document}.
             batch_size: Number of documents per prompt (for batched mode).
             max_concurrent: Max concurrent API calls.
             name: Optional custom name.
         """
-        self._model = model
+        self._model: LLMProtocol = adapt_llm(model)  # Auto-adapt chat models
         self._prompt = prompt or DEFAULT_RERANK_PROMPT
         self._batch_size = batch_size
         self._max_concurrent = max_concurrent
@@ -186,10 +189,11 @@ class ListwiseLLMReranker(BaseReranker):
         
         Args:
             model: LLM model to use for ranking.
+                Automatically adapts chat models to .generate() interface.
             max_documents: Maximum documents to rank at once.
             name: Optional custom name.
         """
-        self._model = model
+        self._model: LLMProtocol = adapt_llm(model)  # Auto-adapt chat models
         self._max_documents = max_documents
         
         if name:

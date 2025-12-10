@@ -1506,3 +1506,90 @@ class TestHyDERetriever:
         assert "HyDERetriever" in repr_str
         assert "dense" in repr_str  # base retriever name
         assert "n_hypotheticals=2" in repr_str
+
+
+# ============================================================================
+# LLM Adapter Tests
+# ============================================================================
+
+
+class TestLLMAdapter:
+    """Tests for ChatModelAdapter and adapt_llm utility."""
+    
+    @pytest.mark.asyncio
+    async def test_chat_model_adapter(self) -> None:
+        """Test ChatModelAdapter wraps chat models correctly."""
+        from agenticflow.models import MockChatModel
+        from agenticflow.retriever.utils.llm_adapter import ChatModelAdapter
+        
+        chat_model = MockChatModel()
+        adapter = ChatModelAdapter(chat_model)
+        
+        # Test .generate() interface
+        response = await adapter.generate("Hello, world!")
+        assert isinstance(response, str)
+        assert len(response) > 0
+    
+    @pytest.mark.asyncio
+    async def test_adapt_llm_with_chat_model(self) -> None:
+        """Test adapt_llm auto-wraps chat models."""
+        from agenticflow.models import MockChatModel
+        from agenticflow.retriever.utils.llm_adapter import adapt_llm, LLMProtocol
+        
+        chat_model = MockChatModel()
+        adapted = adapt_llm(chat_model)
+        
+        # Should be wrapped in adapter
+        assert isinstance(adapted, LLMProtocol)
+        
+        # Should have .generate() method
+        response = await adapted.generate("Test prompt")
+        assert isinstance(response, str)
+    
+    @pytest.mark.asyncio
+    async def test_adapt_llm_with_generate_model(self) -> None:
+        """Test adapt_llm leaves models with .generate() as-is."""
+        from agenticflow.retriever.utils.llm_adapter import adapt_llm
+        
+        class MockGenerateModel:
+            async def generate(self, prompt: str) -> str:
+                return f"Generated: {prompt}"
+        
+        model = MockGenerateModel()
+        adapted = adapt_llm(model)
+        
+        # Should return as-is (already has .generate())
+        assert adapted is model
+        
+        response = await adapted.generate("Test")
+        assert response == "Generated: Test"
+    
+    def test_adapt_llm_invalid_model(self) -> None:
+        """Test adapt_llm raises error for invalid models."""
+        from agenticflow.retriever.utils.llm_adapter import adapt_llm
+        
+        class InvalidModel:
+            pass
+        
+        with pytest.raises(TypeError, match="must have either .generate"):
+            adapt_llm(InvalidModel())
+    
+    @pytest.mark.asyncio
+    async def test_summary_index_auto_adapts_chat_model(self) -> None:
+        """Test SummaryIndex automatically adapts chat models."""
+        from agenticflow.models import MockChatModel
+        from agenticflow.retriever import SummaryIndex
+        from agenticflow.vectorstore import VectorStore, Document
+        
+        # Create index with chat model (no manual adapter needed)
+        model = MockChatModel()
+        vs = VectorStore(embeddings=MockEmbedding())
+        index = SummaryIndex(llm=model, vectorstore=vs)
+        
+        # Should work without error (adapter created internally)
+        docs = [Document(text="Test document about machine learning and AI.")]
+        await index.add_documents(docs)
+        
+        # Verify summaries were created
+        assert len(index.summaries) == 1
+

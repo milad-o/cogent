@@ -125,6 +125,7 @@ from agenticflow.retriever.multi_representation import (
     RepresentationType,
 )
 from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores, add_citations, format_context, format_citations_reference, filter_by_score, top_k
+from agenticflow.retriever.utils.llm_adapter import ChatModelAdapter, LLMProtocol, adapt_llm
 
 __all__ = [
     # Document types (re-exported from agenticflow.document)
@@ -199,4 +200,8 @@ __all__ = [
     "format_citations_reference",
     "filter_by_score",
     "top_k",
+    # LLM adaptation (advanced usage)
+    "ChatModelAdapter",
+    "LLMProtocol",
+    "adapt_llm",
 ]

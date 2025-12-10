@@ -10,10 +10,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
+from agenticflow.retriever.utils.llm_adapter import adapt_llm
 from agenticflow.vectorstore import Document
 
 if TYPE_CHECKING:
     from agenticflow.models import Model
+    from agenticflow.retriever.utils.llm_adapter import LLMProtocol
     from agenticflow.vectorstore import VectorStore
 
 
@@ -100,6 +102,7 @@ class SelfQueryRetriever(BaseRetriever):
         Args:
             vectorstore: Vector store for search.
             llm: LLM for query parsing.
+                Automatically adapts chat models to .generate() interface.
             attribute_info: Descriptions of filterable attributes.
             prompt_template: Custom prompt for query parsing.
             k: Default number of results.
@@ -107,7 +110,7 @@ class SelfQueryRetriever(BaseRetriever):
             name: Optional custom name.
         """
         self._vectorstore = vectorstore
-        self._llm = llm
+        self._llm: LLMProtocol = adapt_llm(llm)  # Auto-adapt chat models
         self._attribute_info = attribute_info
         self._prompt_template = prompt_template or DEFAULT_PARSE_PROMPT
         self._k = k

@@ -54,26 +54,6 @@ from agenticflow.retriever import (
     normalize_scores,
 )
 
-if TYPE_CHECKING:
-    from agenticflow.models import BaseChatModel
-
-
-class LLMAdapter:
-    """Adapter to make chat models compatible with retriever LLM interface.
-    
-    The LLM-powered retrievers expect a simple `.generate(prompt)` interface,
-    while the chat models use `.ainvoke(messages)`. This adapter bridges them.
-    """
-    
-    def __init__(self, model: "BaseChatModel") -> None:
-        self._model = model
-    
-    async def generate(self, prompt: str) -> str:
-        """Generate a response from a prompt string."""
-        messages = [{"role": "user", "content": prompt}]
-        response = await self._model.ainvoke(messages)
-        return response.content
-
 
 # =============================================================================
 # Sample Data: Tech Company Knowledge Base
@@ -468,11 +448,10 @@ async def demo_summary_index() -> None:
 
     embeddings = get_embeddings()
     model = get_model()
-    llm = LLMAdapter(model)  # Adapt chat model for retriever interface
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = SummaryIndex(
-        llm=llm,
+        llm=model,  # Auto-adapts chat models internally
         vectorstore=vectorstore,
         extract_entities=True,
         extract_keywords=True,
@@ -503,10 +482,9 @@ async def demo_keyword_table_index() -> None:
     print("=" * 70)
 
     model = get_model()
-    llm = LLMAdapter(model)  # Adapt chat model for retriever interface
 
     index = KeywordTableIndex(
-        llm=llm,
+        llm=model,  # Auto-adapts chat models internally
         max_keywords_per_doc=8,
     )
 
@@ -535,13 +513,12 @@ async def demo_self_query_retriever() -> None:
 
     embeddings = get_embeddings()
     model = get_model()
-    llm = LLMAdapter(model)  # Adapt chat model for retriever interface
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
     retriever = SelfQueryRetriever(
         vectorstore=vectorstore,
-        llm=llm,
+        llm=model,  # Auto-adapts chat models internally
         attribute_info=[
             AttributeInfo("category", "Document type: release, guide, policy, incident, evaluation", "string"),
             AttributeInfo("date", "Publication date in YYYY-MM-DD format", "string"),
@@ -610,12 +587,11 @@ async def demo_multi_representation_index() -> None:
 
     embeddings = get_embeddings()
     model = get_model()
-    llm = LLMAdapter(model)  # Adapt chat model for retriever interface
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = MultiRepresentationIndex(
         vectorstore=vectorstore,
-        llm=llm,
+        llm=model,  # Auto-adapts chat models internally
         representations=["original", "summary", "detailed"],
     )
 
@@ -650,12 +626,11 @@ async def demo_reranker() -> None:
 
     embeddings = get_embeddings()
     model = get_model()
-    llm = LLMAdapter(model)  # Adapt chat model for retriever interface
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
     retriever = DenseRetriever(vectorstore)
-    reranker = LLMReranker(model=llm)
+    reranker = LLMReranker(model=model)  # Auto-adapts chat models internally
 
     query = "How do I handle too many API requests?"
 
