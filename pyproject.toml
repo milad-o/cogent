@@ -20,73 +20,94 @@ classifiers = [
 ]
 
 dependencies = [
-    # Core dependencies (required)
+    # Core dependencies (always required)
     "openai>=1.0.0",
     "httpx>=0.28.1",
     "networkx>=3.6",
     "python-dotenv>=1.0.0",
-    "google-generativeai>=0.8.5",
     "pydantic-settings>=2.12.0",
-    "ddgs>=9.9.1",
-    "mcp>=1.22.0",
-    "websockets>=15.0.1",
-    "reportlab>=4.4.5",
-    "pypdf>=6.4.0",
-    "playwright>=1.56.0",
     "structlog>=25.5.0",
-    "pymupdf4llm>=0.2.6",
-    "pymupdf>=1.26.6",
-    "pymupdf-layout>=1.26.6",
-    "azure-ai-inference>=1.0.0b9",
 ]
 
 [project.optional-dependencies]
-# Azure authentication
-azure = ["azure-identity>=1.25.1"]
-# Anthropic support
+# Azure AI services (OpenAI + AI Foundry/GitHub Models)
+azure = [
+    "azure-identity>=1.25.1",
+    "azure-ai-inference>=1.0.0b9",
+]
+# Anthropic Claude support
 anthropic = ["anthropic>=0.40.0"]
 # Google Gemini support
-google = ["google-generativeai>=0.8.0"]
+google = ["google-generativeai>=0.8.5"]
 # Groq support
 groq = ["groq>=0.15.0"]
-# Web search capability
-web = ["beautifulsoup4>=4.14.2", "ddgs>=9.9.1"]
+# Mistral support (uses OpenAI-compatible API)
+mistral = ["openai>=1.0.0"]  # Already in core, but explicit for clarity
+# Web search and scraping capabilities
+web = [
+    "beautifulsoup4>=4.14.2",
+    "ddgs>=9.9.1",
+]
+# Browser automation
+browser = ["playwright>=1.56.0"]
+# Document processing (PDF, etc.)
+document = [
+    "reportlab>=4.4.5",
+    "pypdf>=6.4.0",
+    "pymupdf>=1.26.6",
+    "pymupdf4llm>=0.2.6",
+    "pymupdf-layout>=1.26.6",
+]
+# WebSocket support
+websocket = ["websockets>=15.0.1"]
+# API server capabilities
+api = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+]
+# Model Context Protocol
+mcp = [
+    "mcp>=1.22.0",
+    "websockets>=15.0.1",
+]
+# Analytics and data processing
+analytics = ["pyarrow>=22.0.0"]
 # Benchmarking frameworks (for development/comparison)
 benchmark = [
     "agno>=2.3.3",
     "crewai>=1.6.0",
     "openai-agents>=0.6.1",
 ]
-websocket = ["websockets>=12.0"]
-api = ["fastapi>=0.115.0", "uvicorn>=0.32.0"]
-mcp = ["mcp>=1.0.0"]
+# All optional features
 all = [
     "azure-identity>=1.25.1",
+    "azure-ai-inference>=1.0.0b9",
     "anthropic>=0.40.0",
-    "google-generativeai>=0.8.0",
+    "google-generativeai>=0.8.5",
     "groq>=0.15.0",
     "beautifulsoup4>=4.14.2",
     "ddgs>=9.9.1",
-    "websockets>=12.0",
+    "playwright>=1.56.0",
+    "reportlab>=4.4.5",
+    "pypdf>=6.4.0",
+    "pymupdf>=1.26.6",
+    "pymupdf4llm>=0.2.6",
+    "pymupdf-layout>=1.26.6",
+    "websockets>=15.0.1",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
-    "mcp>=1.0.0",
+    "mcp>=1.22.0",
+    "pyarrow>=22.0.0",
 ]
+# Development dependencies
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=5.0.0",
     "ruff>=0.7.0",
     "mypy>=1.13.0",
-    # Include benchmark frameworks for development
-    "agno>=2.3.3",
-    "crewai>=1.6.0",
-    "openai-agents>=0.6.1",
     "beautifulsoup4>=4.14.2",
     "ddgs>=9.9.1",
-]
-analytics = [
-    "pyarrow>=22.0.0",
 ]
 
 [project.scripts]
