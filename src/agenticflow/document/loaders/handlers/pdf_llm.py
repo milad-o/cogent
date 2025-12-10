@@ -215,7 +215,25 @@ class PDFProcessingResult:
             >>> markdown = result.to_markdown(include_page_numbers=True)
         """
         parts: list[str] = []
-        
+
+        def _page_block(page_number: int, content: str) -> str:
+            """Format a single page block with optional dividers and page number."""
+            if include_page_numbers and include_page_breaks:
+                return "\n".join(
+                    [
+                        page_break_style,
+                        f"<!-- Page {page_number} -->",
+                        page_break_style,
+                        content,
+                        page_break_style,
+                    ]
+                )
+            if include_page_numbers:
+                return f"<!-- Page {page_number} -->\n\n{content}"
+            if include_page_breaks:
+                return f"{page_break_style}\n\n{content}\n\n{page_break_style}"
+            return content
+
         for page_result in self.page_results:
             if page_result.status != PageStatus.SUCCESS:
                 continue
@@ -223,14 +241,9 @@ class PDFProcessingResult:
                 continue
 
             page_content = page_result.content.strip()
-            if include_page_numbers:
-                # Keep page number inside the page content instead of between separators
-                page_content = f"<!-- Page {page_result.page_number} -->\n\n{page_content}"
+            parts.append(_page_block(page_result.page_number, page_content))
 
-            parts.append(page_content)
-        
-        separator = f"\n\n{page_break_style}\n\n" if include_page_breaks else "\n\n"
-        return separator.join(parts)
+        return "\n\n".join(parts)
 
     def save(
         self,
@@ -300,9 +313,17 @@ class PDFProcessingResult:
                 if not page_result.content.strip():
                     continue
 
-                page_content = page_result.content
+                page_content = page_result.content.strip()
                 if include_page_numbers:
-                    page_content = f"<!-- Page {page_result.page_number} -->\n\n{page_content}"
+                    page_content = "\n".join(
+                        [
+                            page_break_style,
+                            f"<!-- Page {page_result.page_number} -->",
+                            page_break_style,
+                            page_content,
+                            page_break_style,
+                        ]
+                    )
 
                 page_path = output_path / f"{stem}_page_{page_result.page_number:04d}.md"
                 page_path.write_text(page_content, encoding=encoding)
@@ -689,18 +710,31 @@ class PDFMarkdownLoader(BaseLoader):
 
         if mode == "single":
             parts: list[str] = []
+            def _page_block(page_number: int, content: str) -> str:
+                if include_page_numbers and include_page_breaks:
+                    return "\n".join(
+                        [
+                            page_break_style,
+                            f"<!-- Page {page_number} -->",
+                            page_break_style,
+                            content,
+                            page_break_style,
+                        ]
+                    )
+                if include_page_numbers:
+                    return f"<!-- Page {page_number} -->\n\n{content}"
+                if include_page_breaks:
+                    return f"{page_break_style}\n\n{content}\n\n{page_break_style}"
+                return content
+
             for i, doc in enumerate(documents):
                 if not doc.text.strip():
                     continue
                 page_content = doc.text.strip()
-                if include_page_numbers:
-                    page_num = doc.metadata.get("page", i + 1)
-                    # Keep page number inside the page content instead of between separators
-                    page_content = f"<!-- Page {page_num} -->\n\n{page_content}"
-                parts.append(page_content)
+                page_num = doc.metadata.get("page", i + 1)
+                parts.append(_page_block(page_num, page_content))
 
-            separator = f"\n\n{page_break_style}\n\n" if include_page_breaks else "\n\n"
-            content = separator.join(parts)
+            content = "\n\n".join(parts)
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding=encoding)
@@ -719,9 +753,17 @@ class PDFMarkdownLoader(BaseLoader):
                 if not doc.text.strip():
                     continue
                 page_num = doc.metadata.get("page", i + 1)
-                page_content = doc.text
+                page_content = doc.text.strip()
                 if include_page_numbers:
-                    page_content = f"<!-- Page {page_num} -->\n\n{page_content}"
+                    page_content = "\n".join(
+                        [
+                            page_break_style,
+                            f"<!-- Page {page_num} -->",
+                            page_break_style,
+                            page_content,
+                            page_break_style,
+                        ]
+                    )
 
                 page_path = output_path / f"{stem}_page_{page_num:04d}.md"
                 page_path.write_text(page_content, encoding=encoding)
