@@ -322,6 +322,47 @@ class VectorStore:
             VectorStore with MockEmbeddings backend.
         """
         return cls(embeddings=MockEmbeddings(dimensions=dimension))
+    
+    def as_retriever(
+        self,
+        *,
+        name: str | None = None,
+        score_threshold: float | None = None,
+    ):
+        """Convert this VectorStore to a DenseRetriever.
+        
+        Provides a convenient interface for using the vectorstore as a retriever
+        in RAG pipelines or with other retrieval components.
+        
+        Args:
+            name: Optional custom name for the retriever.
+            score_threshold: Minimum score threshold (0-1). Results below
+                this score are filtered out.
+                
+        Returns:
+            DenseRetriever instance wrapping this vectorstore.
+            
+        Example:
+            >>> store = VectorStore()
+            >>> await store.add_texts(["Python is great", "JavaScript rocks"])
+            >>> 
+            >>> # Use as retriever
+            >>> retriever = store.as_retriever()
+            >>> docs = await retriever.retrieve("programming language", k=3)
+            >>> 
+            >>> # Or expose as agent tool
+            >>> tool = store.as_retriever().as_tool(
+            ...     name="search_kb",
+            ...     description="Search knowledge base",
+            ... )
+        """
+        from agenticflow.retriever.dense import DenseRetriever
+        
+        return DenseRetriever(
+            vectorstore=self,
+            name=name,
+            score_threshold=score_threshold,
+        )
 
 
 # ============================================================

@@ -691,6 +691,69 @@ class TestVectorStoreWithMockEmbeddings:
         # Just verify we get results and they're sorted by score
         assert len(results) == 3
         assert results[0].score >= results[1].score >= results[2].score
+    
+    @pytest.mark.asyncio
+    async def test_as_retriever(self) -> None:
+        """Test converting VectorStore to DenseRetriever."""
+        from agenticflow.retriever.dense import DenseRetriever
+        
+        store = VectorStore.with_mock_embeddings()
+        await store.add_texts([
+            "Python is a programming language",
+            "JavaScript is popular for web development",
+            "Machine learning is a subset of AI",
+        ])
+        
+        # Convert to retriever
+        retriever = store.as_retriever()
+        
+        # Verify it's a DenseRetriever
+        assert isinstance(retriever, DenseRetriever)
+        assert retriever.vectorstore is store
+        
+        # Verify it works
+        docs = await retriever.retrieve("programming", k=2)
+        assert len(docs) <= 2
+        assert all(isinstance(d, Document) for d in docs)
+    
+    @pytest.mark.asyncio
+    async def test_as_retriever_with_params(self) -> None:
+        """Test as_retriever with custom parameters."""
+        from agenticflow.retriever.dense import DenseRetriever
+        
+        store = VectorStore.with_mock_embeddings()
+        await store.add_texts(["Test document"])
+        
+        # With custom name and threshold
+        retriever = store.as_retriever(
+            name="custom_retriever",
+            score_threshold=0.5,
+        )
+        
+        assert isinstance(retriever, DenseRetriever)
+        assert retriever.name == "custom_retriever"
+        assert retriever.score_threshold == 0.5
+    
+    @pytest.mark.asyncio
+    async def test_as_retriever_chained_with_as_tool(self) -> None:
+        """Test chaining as_retriever().as_tool()."""
+        store = VectorStore.with_mock_embeddings()
+        await store.add_texts([
+            "Python is great",
+            "JavaScript rocks",
+        ])
+        
+        # Chain as_retriever() and as_tool()
+        tool = store.as_retriever().as_tool(
+            name="search_docs",
+            description="Search documentation",
+        )
+        
+        # Verify tool works
+        results = await tool.ainvoke({"query": "programming", "k": 2})
+        assert isinstance(results, list)
+        assert len(results) <= 2
+        assert all("text" in r for r in results)
 
 
 class TestSearchResult:

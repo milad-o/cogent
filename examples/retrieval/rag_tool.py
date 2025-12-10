@@ -43,13 +43,17 @@ DOCUMENTS = [
 
 
 async def run_rag_with_tool(query: str) -> None:
-    # Build retriever and expose as tool
+    # Build vectorstore
     embeddings = get_embeddings()
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
-    retriever = DenseRetriever(vectorstore)
-    search_tool = retriever.as_tool(
+    # Method 1: Traditional approach
+    # retriever = DenseRetriever(vectorstore)
+    # search_tool = retriever.as_tool(...)
+    
+    # Method 2: Convenient shortcut using as_retriever()
+    search_tool = vectorstore.as_retriever().as_tool(
         name="search_docs",
         description="Search the internal knowledge base for relevant passages.",
         k_default=3,
