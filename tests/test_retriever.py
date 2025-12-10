@@ -620,6 +620,104 @@ class TestBaseRetriever:
         assert isinstance(result, list)
         assert result[0]["text"].startswith("doc for python")
         assert result[0]["score"] == 0.9
+    
+    @pytest.mark.asyncio
+    async def test_multi_representation_as_tool(self) -> None:
+        """Test MultiRepresentationIndex.as_tool() with custom parameters."""
+        from agenticflow.retriever.multi_representation import MultiRepresentationIndex, QueryType
+        from agenticflow.vectorstore import VectorStore
+        from agenticflow.models import MockChatModel
+        
+        model = MockChatModel()
+        vs = VectorStore(embeddings=MockEmbedding())
+        index = MultiRepresentationIndex(llm=model, vectorstore=vs)
+        
+        # Add a test document
+        docs = [VectorStoreDocument(text="Python is a programming language", metadata={})]
+        await index.add_documents(docs)
+        
+        # Create tool with custom parameters
+        tool = index.as_tool(
+            name="search_multi",
+            k_default=2,
+            include_scores=True,
+            allow_query_type=True,
+            allow_search_all=True,
+        )
+        
+        # Verify schema includes multi-representation parameters
+        assert tool.name == "search_multi"
+        assert "query" in tool.args_schema
+        assert "query_type" in tool.args_schema
+        assert "search_all" in tool.args_schema
+        assert tool.args_schema["query_type"]["enum"] == ["broad", "specific", "keyword", "question", "entity", "auto"]
+        
+        # Invoke with query_type parameter
+        result = await tool.ainvoke({
+            "query": "programming",
+            "k": 1,
+            "query_type": "broad",
+            "search_all": False,
+        })
+        
+        assert isinstance(result, list)
+        assert len(result) > 0
+        assert "text" in result[0]
+        assert "score" in result[0]
+    
+    @pytest.mark.asyncio
+    async def test_time_based_index_as_tool(self) -> None:
+        """Test TimeBasedIndex.as_tool() with time-aware parameters."""
+        from agenticflow.retriever.temporal import TimeBasedIndex
+        from agenticflow.vectorstore import VectorStore
+        from datetime import datetime, timezone
+        
+        vs = VectorStore(embeddings=MockEmbedding())
+        index = TimeBasedIndex(vectorstore=vs)
+        
+        # Add documents with timestamps
+        docs = [
+            VectorStoreDocument(
+                text="Recent news",
+                metadata={"timestamp": "2024-12-01T10:00:00Z"},
+            ),
+            VectorStoreDocument(
+                text="Old news",
+                metadata={"timestamp": "2024-01-01T10:00:00Z"},
+            ),
+        ]
+        await index.add_documents(docs)
+        
+        # Create tool with time parameters
+        tool = index.as_tool(
+            name="search_temporal",
+            k_default=2,
+            include_scores=True,
+            allow_time_range=True,
+            allow_decay_control=True,
+        )
+        
+        # Verify schema includes time parameters
+        assert tool.name == "search_temporal"
+        assert "query" in tool.args_schema
+        assert "time_start" in tool.args_schema
+        assert "time_end" in tool.args_schema
+        assert "apply_decay" in tool.args_schema
+        assert tool.args_schema["apply_decay"]["default"] is True
+        
+        # Invoke with time range
+        result = await tool.ainvoke({
+            "query": "news",
+            "k": 2,
+            "time_start": "2024-11-01T00:00:00Z",
+            "time_end": "2024-12-31T23:59:59Z",
+            "apply_decay": True,
+        })
+        
+        assert isinstance(result, list)
+        assert len(result) > 0
+        assert "text" in result[0]
+        assert "score" in result[0]
 
 
 # ============================================================================

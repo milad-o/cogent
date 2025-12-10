@@ -463,3 +463,117 @@ class TimeBasedIndex(BaseRetriever):
         
         timeline.sort(key=lambda x: x[0], reverse=True)
         return timeline
+    
+    def as_tool(
+        self,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        k_default: int = 4,
+        include_scores: bool = False,
+        include_metadata: bool = True,
+        allow_time_range: bool = True,
+        allow_decay_control: bool = True,
+    ):
+        """Expose this retriever as a tool with time-aware parameters.
+        
+        Args:
+            name: Optional tool name.
+            description: Optional tool description.
+            k_default: Default number of results.
+            include_scores: Include scores in output.
+            include_metadata: Include metadata in output.
+            allow_time_range: Allow specifying time_range parameters.
+            allow_decay_control: Allow controlling decay application.
+            
+        Returns:
+            BaseTool configured for this retriever.
+        """
+        from agenticflow.tools.base import BaseTool
+        
+        tool_name = name or f"{self.name}_retrieve"
+        tool_description = description or (
+            f"Retrieve documents using {self.name} with time-based scoring. "
+            "Recent documents are ranked higher based on recency decay."
+        )
+        
+        args_schema: dict[str, Any] = {
+            "query": {
+                "type": "string",
+                "description": "Natural language search query.",
+            },
+            "k": {
+                "type": "integer",
+                "description": "Number of results to return.",
+                "default": k_default,
+                "minimum": 1,
+            },
+            "filter": {
+                "type": "object",
+                "description": "Optional metadata filter (field -> value).",
+                "additionalProperties": True,
+            },
+        }
+        
+        if allow_time_range:
+            args_schema["time_start"] = {
+                "type": "string",
+                "description": "Start of time range (ISO format, e.g., '2024-01-01T00:00:00Z').",
+            }
+            args_schema["time_end"] = {
+                "type": "string",
+                "description": "End of time range (ISO format, e.g., '2024-12-31T23:59:59Z').",
+            }
+        
+        if allow_decay_control:
+            args_schema["apply_decay"] = {
+                "type": "boolean",
+                "description": "Apply time decay to scores (recent documents ranked higher).",
+                "default": True,
+            }
+        
+        async def _tool(
+            query: str,
+            k: int = k_default,
+            filter: dict[str, Any] | None = None,
+            time_start: str | None = None,
+            time_end: str | None = None,
+            apply_decay: bool = True,
+        ) -> list[dict[str, Any]]:
+            # Parse time range if provided
+            time_range = None
+            if allow_time_range and (time_start or time_end):
+                from datetime import datetime
+                
+                start = datetime.fromisoformat(time_start.replace("Z", "+00:00")) if time_start else None
+                end = datetime.fromisoformat(time_end.replace("Z", "+00:00")) if time_end else None
+                
+                if start or end:
+                    time_range = TimeRange(start=start, end=end)
+            
+            results = await self.retrieve(
+                query,
+                k=k,
+                filter=filter,
+                time_range=time_range,
+                apply_decay=apply_decay if allow_decay_control else True,
+                include_scores=True,
+            )
+            
+            payload: list[dict[str, Any]] = []
+            for r in results:
+                entry: dict[str, Any] = {"text": r.document.text}
+                if include_metadata:
+                    entry["metadata"] = r.document.metadata
+                if include_scores:
+                    entry["score"] = r.score
+                payload.append(entry)
+            
+            return payload
+        
+        return BaseTool(
+            name=tool_name,
+            description=tool_description,
+            func=_tool,
+            args_schema=args_schema,
+        )

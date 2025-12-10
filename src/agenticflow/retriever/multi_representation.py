@@ -493,3 +493,106 @@ Category (one word):'''
             }
         
         return stats
+    
+    def as_tool(
+        self,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        k_default: int = 4,
+        include_scores: bool = False,
+        include_metadata: bool = True,
+        allow_query_type: bool = True,
+        allow_search_all: bool = True,
+    ):
+        """Expose this retriever as a tool with multi-representation parameters.
+        
+        Args:
+            name: Optional tool name.
+            description: Optional tool description.
+            k_default: Default number of results.
+            include_scores: Include scores in output.
+            include_metadata: Include metadata in output.
+            allow_query_type: Allow specifying query_type parameter.
+            allow_search_all: Allow search_all parameter.
+            
+        Returns:
+            BaseTool configured for this retriever.
+        """
+        from agenticflow.tools.base import BaseTool
+        
+        tool_name = name or f"{self.name}_retrieve"
+        tool_description = description or (
+            f"Retrieve documents using {self.name} with multiple representations. "
+            "Supports query routing to different representation types."
+        )
+        
+        args_schema: dict[str, Any] = {
+            "query": {
+                "type": "string",
+                "description": "Natural language search query.",
+            },
+            "k": {
+                "type": "integer",
+                "description": "Number of results to return.",
+                "default": k_default,
+                "minimum": 1,
+            },
+            "filter": {
+                "type": "object",
+                "description": "Optional metadata filter (field -> value).",
+                "additionalProperties": True,
+            },
+        }
+        
+        if allow_query_type:
+            args_schema["query_type"] = {
+                "type": "string",
+                "description": "Query type for representation routing",
+                "enum": ["broad", "specific", "keyword", "question", "entity", "auto"],
+                "default": "auto",
+            }
+        
+        if allow_search_all:
+            args_schema["search_all"] = {
+                "type": "boolean",
+                "description": "Search all representations and fuse results.",
+                "default": False,
+            }
+        
+        async def _tool(
+            query: str,
+            k: int = k_default,
+            filter: dict[str, Any] | None = None,
+            query_type: str = "auto",
+            search_all: bool = False,
+        ) -> list[dict[str, Any]]:
+            # Convert query_type string to enum
+            qt = QueryType(query_type) if allow_query_type else None
+            
+            results = await self.retrieve(
+                query,
+                k=k,
+                filter=filter,
+                query_type=qt,
+                search_all=search_all if allow_search_all else False,
+                include_scores=True,
+            )
+            
+            payload: list[dict[str, Any]] = []
+            for r in results:
+                entry: dict[str, Any] = {"text": r.document.text}
+                if include_metadata:
+                    entry["metadata"] = r.document.metadata
+                if include_scores:
+                    entry["score"] = r.score
+                payload.append(entry)
+            
+            return payload
+        
+        return BaseTool(
+            name=tool_name,
+            description=tool_description,
+            func=_tool,
+            args_schema=args_schema,
+        )
