@@ -1,11 +1,12 @@
 """
-Mistral AI chat models for AgenticFlow.
+Mistral AI models for AgenticFlow.
 
 Supports all Mistral models via the official API.
 
 Usage:
-    from agenticflow.models.mistral import MistralChat
+    from agenticflow.models.mistral import MistralChat, MistralEmbedding
     
+    # Chat
     llm = MistralChat(model="mistral-large-latest")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
     
@@ -13,16 +14,20 @@ Usage:
     llm = MistralChat(model="mistral-large-latest")
     bound = llm.bind_tools([search_tool])
     response = await bound.ainvoke(messages)
+    
+    # Embeddings
+    embedder = MistralEmbedding(model="mistral-embed")
+    vectors = await embedder.aembed(["Hello", "World"])
 
-Available models:
+Available chat models:
     - mistral-large-latest: State-of-the-art, best for complex tasks
     - mistral-small-latest: Budget-friendly, good for most tasks
     - codestral-latest: Optimized for coding tasks
     - ministral-8b-latest: Efficient smaller model
     - open-mistral-nemo: Open source 12B model
 
-Note: Mistral does not currently offer embedding models via their API.
-      Use OpenAI or another provider for embeddings.
+Available embedding models:
+    - mistral-embed: 1024-dimensional embeddings
 """
 
 from __future__ import annotations
@@ -31,7 +36,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel, convert_messages
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -290,3 +295,88 @@ class MistralChat(BaseChatModel):
         new_model._async_client = self._async_client
         new_model._initialized = True
         return new_model
+
+
+@dataclass
+class MistralEmbedding(BaseEmbedding):
+    """Mistral AI embedding model.
+    
+    Uses the Mistral API (OpenAI-compatible) for text embeddings.
+    
+    Example:
+        from agenticflow.models.mistral import MistralEmbedding
+        
+        embedder = MistralEmbedding(model="mistral-embed")
+        vectors = await embedder.aembed(["Hello", "World"])
+        print(f"Generated {len(vectors[0])} dimensional embeddings")
+    
+    Available models:
+        - mistral-embed: 1024-dimensional embeddings
+    """
+    
+    model: str = "mistral-embed"
+    base_url: str = "https://api.mistral.ai/v1"
+    
+    def _init_client(self) -> None:
+        """Initialize Mistral client (OpenAI-compatible)."""
+        try:
+            from openai import AsyncOpenAI, OpenAI
+        except ImportError:
+            raise ImportError("openai package required. Install with: uv add openai")
+        
+        api_key = self.api_key or os.environ.get("MISTRAL_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Mistral API key required. Set MISTRAL_API_KEY environment variable "
+                "or pass api_key parameter."
+            )
+        
+        self._client = OpenAI(
+            base_url=self.base_url,
+            api_key=api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+        self._async_client = AsyncOpenAI(
+            base_url=self.base_url,
+            api_key=api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
+    
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """Embed texts synchronously."""
+        self._ensure_initialized()
+        
+        all_embeddings: list[list[float]] = []
+        for i in range(0, len(texts), self.batch_size):
+            batch = texts[i:i + self.batch_size]
+            response = self._client.embeddings.create(**self._build_request(batch))
+            sorted_data = sorted(response.data, key=lambda x: x.index)
+            all_embeddings.extend([d.embedding for d in sorted_data])
+        return all_embeddings
+    
+    async def aembed(self, texts: list[str]) -> list[list[float]]:
+        """Embed texts asynchronously."""
+        self._ensure_initialized()
+        import asyncio
+        
+        async def embed_batch(batch: list[str]) -> list[list[float]]:
+            response = await self._async_client.embeddings.create(**self._build_request(batch))
+            sorted_data = sorted(response.data, key=lambda x: x.index)
+            return [d.embedding for d in sorted_data]
+        
+        batches = [texts[i:i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        results = await asyncio.gather(*[embed_batch(b) for b in batches])
+        
+        all_embeddings: list[list[float]] = []
+        for batch_result in results:
+            all_embeddings.extend(batch_result)
+        return all_embeddings
+    
+    def _build_request(self, texts: list[str]) -> dict[str, Any]:
+        """Build API request."""
+        return {
+            "model": self.model,
+            "input": texts,
+        }
