@@ -11,8 +11,8 @@ Usage:
     embeddings = get_embeddings()  # Uses EMBEDDING_PROVIDER from .env
 
 Required .env configuration:
-    LLM_PROVIDER=openai|gemini|anthropic|groq|azure|ollama
-    EMBEDDING_PROVIDER=openai|azure|ollama
+    LLM_PROVIDER=openai|gemini|anthropic|groq|azure|ollama|mistral|github|cohere|cloudflare
+    EMBEDDING_PROVIDER=openai|azure|ollama|github|cohere|cloudflare
     
     # Plus the appropriate API key for your chosen provider
 """
@@ -32,8 +32,19 @@ EXAMPLES_DIR = Path(__file__).parent
 PROJECT_ROOT = EXAMPLES_DIR.parent
 
 # Valid provider choices
-LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama", "mistral", "github", "cohere"]
-EmbeddingProvider = Literal["openai", "azure", "ollama", "github", "cohere"]
+LLMProvider = Literal[
+    "gemini",
+    "openai",
+    "anthropic",
+    "groq",
+    "azure",
+    "ollama",
+    "mistral",
+    "github",
+    "cohere",
+    "cloudflare",
+]
+EmbeddingProvider = Literal["openai", "azure", "ollama", "github", "cohere", "cloudflare"]
 
 
 class Settings(BaseSettings):
@@ -79,6 +90,8 @@ class Settings(BaseSettings):
     mistral_api_key: str | None = Field(default=None, alias="MISTRAL_API_KEY")
     github_token: str | None = Field(default=None, alias="GITHUB_TOKEN")
     cohere_api_key: str | None = Field(default=None, alias="COHERE_API_KEY")
+    cloudflare_api_token: str | None = Field(default=None, alias="CLOUDFLARE_API_TOKEN")
+    cloudflare_account_id: str | None = Field(default=None, alias="CLOUDFLARE_ACCOUNT_ID")
     
     # ==========================================================================
     # Azure OpenAI Configuration
@@ -114,20 +127,21 @@ class Settings(BaseSettings):
     # ==========================================================================
     
     ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")
-    ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_MODEL")
+    ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_CHAT_MODEL")
     ollama_embedding_model: str = Field(default="nomic-embed-text", alias="OLLAMA_EMBEDDING_MODEL")
     
     # ==========================================================================
     # Model Names (can override defaults per provider)
     # ==========================================================================
     
-    gemini_model: str = Field(default="gemini-2.0-flash-exp", alias="GEMINI_MODEL")
-    openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
-    anthropic_model: str = Field(default="claude-sonnet-4-20250514", alias="ANTHROPIC_MODEL")
-    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
-    mistral_model: str = Field(default="mistral-small-latest", alias="MISTRAL_MODEL")
-    github_model: str = Field(default="gpt-4o-mini", alias="GITHUB_MODEL")
-    cohere_model: str = Field(default="command-r-plus", alias="COHERE_MODEL")
+    gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_CHAT_MODEL")
+    openai_model: str = Field(default="gpt-4o", alias="OPENAI_CHAT_MODEL")
+    anthropic_model: str = Field(default="claude-sonnet-4-20250514", alias="ANTHROPIC_CHAT_MODEL")
+    groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_CHAT_MODEL")
+    mistral_model: str = Field(default="mistral-small-latest", alias="MISTRAL_CHAT_MODEL")
+    github_model: str = Field(default="gpt-4o-mini", alias="GITHUB_CHAT_MODEL")
+    cohere_model: str = Field(default="command-r-plus", alias="COHERE_CHAT_MODEL")
+    cloudflare_model: str = Field(default="@cf/meta/llama-3.1-8b-instruct", alias="CLOUDFLARE_CHAT_MODEL")
     
     # ==========================================================================
     # Embedding Model Names
@@ -136,6 +150,7 @@ class Settings(BaseSettings):
     openai_embedding_model: str = Field(default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL")
     github_embedding_model: str = Field(default="text-embedding-3-large", alias="GITHUB_EMBEDDING_MODEL")
     cohere_embedding_model: str = Field(default="embed-english-v3.0", alias="COHERE_EMBEDDING_MODEL")
+    cloudflare_embedding_model: str = Field(default="@cf/baai/bge-base-en-v1.5", alias="CLOUDFLARE_EMBEDDING_MODEL")
     
     # ==========================================================================
     # Example Settings
@@ -223,6 +238,18 @@ def get_model(provider: LLMProvider | None = None):
             raise ValueError("LLM_PROVIDER=cohere requires COHERE_API_KEY")
         from agenticflow.models.cohere import CohereChat
         return CohereChat(model=s.cohere_model, api_key=s.cohere_api_key)
+
+    elif provider == "cloudflare":
+        if not s.cloudflare_api_token:
+            raise ValueError("LLM_PROVIDER=cloudflare requires CLOUDFLARE_API_TOKEN")
+        if not s.cloudflare_account_id:
+            raise ValueError("LLM_PROVIDER=cloudflare requires CLOUDFLARE_ACCOUNT_ID")
+        from agenticflow.models.cloudflare import CloudflareChat
+        return CloudflareChat(
+            model=s.cloudflare_model,
+            api_key=s.cloudflare_api_token,
+            account_id=s.cloudflare_account_id,
+        )
     
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
@@ -318,6 +345,18 @@ def get_embeddings(provider: EmbeddingProvider | None = None):
             raise ValueError("EMBEDDING_PROVIDER=cohere requires COHERE_API_KEY")
         from agenticflow.models.cohere import CohereEmbedding
         return CohereEmbedding(model=s.cohere_embedding_model, api_key=s.cohere_api_key)
+
+    elif provider == "cloudflare":
+        if not s.cloudflare_api_token:
+            raise ValueError("EMBEDDING_PROVIDER=cloudflare requires CLOUDFLARE_API_TOKEN")
+        if not s.cloudflare_account_id:
+            raise ValueError("EMBEDDING_PROVIDER=cloudflare requires CLOUDFLARE_ACCOUNT_ID")
+        from agenticflow.models.cloudflare import CloudflareEmbedding
+        return CloudflareEmbedding(
+            model=s.cloudflare_embedding_model,
+            api_key=s.cloudflare_api_token,
+            account_id=s.cloudflare_account_id,
+        )
     
     else:
         raise ValueError(f"Unknown EMBEDDING_PROVIDER: {provider}")
@@ -387,6 +426,10 @@ def print_config():
     elif s.llm_provider == "cohere":
         print(f"  Model: {s.cohere_model}")
         print(f"  API Key: {'✓ set' if s.cohere_api_key else '✗ missing!'}")
+    elif s.llm_provider == "cloudflare":
+        print(f"  Model: {s.cloudflare_model}")
+        print(f"  API Token: {'✓ set' if s.cloudflare_api_token else '✗ missing!'}")
+        print(f"  Account ID: {s.cloudflare_account_id or '✗ missing!'}")
     elif s.llm_provider == "groq":
         print(f"  Model: {s.groq_model}")
         print(f"  API Key: {'✓ set' if s.groq_api_key else '✗ missing!'}")
@@ -422,6 +465,13 @@ def print_config():
     elif s.embedding_provider == "github":
         print(f"  Model: {s.github_embedding_model}")
         print(f"  Token: {'✓ set' if s.github_token else '✗ missing!'}")
+    elif s.embedding_provider == "cohere":
+        print(f"  Model: {s.cohere_embedding_model}")
+        print(f"  API Key: {'✓ set' if s.cohere_api_key else '✗ missing!'}")
+    elif s.embedding_provider == "cloudflare":
+        print(f"  Model: {s.cloudflare_embedding_model}")
+        print(f"  API Token: {'✓ set' if s.cloudflare_api_token else '✗ missing!'}")
+        print(f"  Account ID: {s.cloudflare_account_id or '✗ missing!'}")
     
     print("=" * 50)
 

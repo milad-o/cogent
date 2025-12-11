@@ -2,7 +2,7 @@
 Native LLM and Embedding models for AgenticFlow.
 
 High-performance model interfaces using provider SDKs directly.
-Supports OpenAI, Azure, Anthropic, Groq, Gemini, Cohere, Ollama, and custom endpoints.
+Supports OpenAI, Azure, Anthropic, Groq, Gemini, Cohere, Cloudflare, Ollama, and custom endpoints.
 
 Provider-Specific Imports:
     from agenticflow.models.openai import ChatModel, OpenAIEmbedding
@@ -10,6 +10,7 @@ Provider-Specific Imports:
     from agenticflow.models.anthropic import AnthropicChat
     from agenticflow.models.groq import GroqChat
     from agenticflow.models.cohere import CohereChat, CohereEmbedding
+    from agenticflow.models.cloudflare import CloudflareChat, CloudflareEmbedding
     from agenticflow.models.gemini import GeminiChat, GeminiEmbedding
     from agenticflow.models.ollama import OllamaChat, OllamaEmbedding
     from agenticflow.models.custom import CustomChat, CustomEmbedding
@@ -55,6 +56,11 @@ Example:
     from agenticflow.models.cohere import CohereChat, CohereEmbedding
     llm = CohereChat(model="command-r-plus")
     embedder = CohereEmbedding(model="embed-english-v3.0")
+
+    # Cloudflare Workers AI
+    from agenticflow.models.cloudflare import CloudflareChat, CloudflareEmbedding
+    llm = CloudflareChat(model="@cf/meta/llama-3.3-70b-instruct")
+    embedder = CloudflareEmbedding(model="@cf/baai/bge-base-en-v1.5")
     
     # Custom endpoint (vLLM, Together AI, etc.)
     from agenticflow.models.custom import CustomChat
@@ -75,6 +81,7 @@ from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, con
 # Default models (OpenAI)
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
 from agenticflow.models.cohere import CohereChat, CohereEmbedding
+from agenticflow.models.cloudflare import CloudflareChat, CloudflareEmbedding
 
 # Mock models for testing
 from agenticflow.models.mock import MockChatModel, MockEmbedding
@@ -92,7 +99,7 @@ def create_chat(
     """Create a chat model for any provider.
     
     Args:
-        provider: Provider name (openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, ollama, custom)
+        provider: Provider name (openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, custom)
         model: Model name (provider-specific). Uses provider default if not specified.
         **kwargs: Additional provider-specific arguments.
     
@@ -140,6 +147,9 @@ def create_chat(
         
         # Gemini
         llm = create_chat("gemini", model="gemini-2.0-flash-exp")
+
+        # Cloudflare Workers AI
+        llm = create_chat("cloudflare", model="@cf/meta/llama-3.3-70b-instruct")
         
         # Custom
         llm = create_chat(
@@ -193,6 +203,10 @@ def create_chat(
         from agenticflow.models.ollama import OllamaChat
         return OllamaChat(model=model or "llama3.2", **kwargs)
     
+    elif provider == "cloudflare":
+        from agenticflow.models.cloudflare import CloudflareChat
+        return CloudflareChat(model=model or "@cf/meta/llama-3.3-70b-instruct", **kwargs)
+
     elif provider == "custom":
         from agenticflow.models.custom import CustomChat
         return CustomChat(model=model or "gpt-3.5-turbo", **kwargs)
@@ -204,7 +218,7 @@ def create_chat(
     else:
         raise ValueError(
             f"Unknown provider: {provider}. "
-            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, ollama, mistral, custom"
+            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, mistral, custom"
         )
 
 
@@ -216,7 +230,7 @@ def create_embedding(
     """Create an embedding model for any provider.
     
     Args:
-        provider: Provider name (openai, azure, gemini, cohere, ollama, custom)
+        provider: Provider name (openai, azure, gemini, cohere, cloudflare, ollama, custom)
         model: Model name (provider-specific). Uses provider default if not specified.
         **kwargs: Additional provider-specific arguments.
     
@@ -239,6 +253,9 @@ def create_embedding(
         
         # Gemini
         embedder = create_embedding("gemini", model="text-embedding-004")
+
+        # Cloudflare Workers AI
+        embedder = create_embedding("cloudflare", model="@cf/baai/bge-base-en-v1.5")
     """
     provider = provider.lower()
     
@@ -261,6 +278,10 @@ def create_embedding(
     elif provider == "ollama":
         from agenticflow.models.ollama import OllamaEmbedding
         return OllamaEmbedding(model=model or "nomic-embed-text", **kwargs)
+
+    elif provider == "cloudflare":
+        from agenticflow.models.cloudflare import CloudflareEmbedding
+        return CloudflareEmbedding(model=model or "@cf/baai/bge-base-en-v1.5", **kwargs)
     
     elif provider == "custom":
         from agenticflow.models.custom import CustomEmbedding
@@ -269,7 +290,7 @@ def create_embedding(
     else:
         raise ValueError(
             f"Unknown embedding provider: {provider}. "
-            f"Supported: openai, azure, gemini, cohere, ollama, custom"
+            f"Supported: openai, azure, gemini, cohere, cloudflare, ollama, custom"
         )
 
 
@@ -299,6 +320,9 @@ __all__ = [
     # Cohere
     "CohereChat",
     "CohereEmbedding",
+    # Cloudflare
+    "CloudflareChat",
+    "CloudflareEmbedding",
     "ChatModel",  # Alias for OpenAIChat
     "EmbeddingModel",  # Alias for OpenAIEmbedding
     # Mock models for testing

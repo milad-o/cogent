@@ -85,6 +85,7 @@ class ModelProvider(str, Enum):
     
     OPENAI = "openai"
     COHERE = "cohere"
+    CLOUDFLARE = "cloudflare"
     AZURE = "azure"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
@@ -357,6 +358,7 @@ def tool_result(content: str, tool_call_id: str) -> dict[str, str]:
 DEFAULT_CHAT_MODELS: dict[ModelProvider, str] = {
     ModelProvider.OPENAI: "gpt-4o-mini",
     ModelProvider.COHERE: "command-r-plus",
+    ModelProvider.CLOUDFLARE: "@cf/meta/llama-3.3-70b-instruct",
     ModelProvider.AZURE: "gpt-4o-mini",
     ModelProvider.ANTHROPIC: "claude-3-5-sonnet-20241022",
     ModelProvider.GOOGLE: "gemini-2.0-flash-exp",
@@ -368,6 +370,7 @@ DEFAULT_CHAT_MODELS: dict[ModelProvider, str] = {
 DEFAULT_EMBEDDING_MODELS: dict[ModelProvider, str] = {
     ModelProvider.OPENAI: "text-embedding-3-small",
     ModelProvider.COHERE: "embed-english-v3.0",
+    ModelProvider.CLOUDFLARE: "@cf/baai/bge-base-en-v1.5",
     ModelProvider.AZURE: "text-embedding-3-small",
     ModelProvider.ANTHROPIC: "voyage-3",
     ModelProvider.GOOGLE: "text-embedding-004",

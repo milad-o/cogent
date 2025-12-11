@@ -70,26 +70,23 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 
 
 def _parse_response(response: Any) -> AIMessage:
-    """Parse Cohere response into AIMessage."""
-    content = getattr(response, "output_text", None) or getattr(response, "text", "") or ""
+    """Parse Cohere chat response into AIMessage."""
     tool_calls: list[dict[str, Any]] = []
+    content_parts: list[str] = []
 
-    output_message = getattr(response, "output_message", None) or getattr(response, "message", None)
-    if output_message:
-        message_content = getattr(output_message, "content", None) or []
-        if isinstance(message_content, list):
-            parts: list[str] = []
-            for part in message_content:
-                if isinstance(part, dict) and part.get("type") == "text":
-                    parts.append(part.get("text", ""))
-                elif hasattr(part, "text"):
-                    parts.append(getattr(part, "text", ""))
-            if parts:
-                content = "".join(parts) or content
-        # Tool calls
-        calls = getattr(output_message, "tool_calls", None) or getattr(output_message, "toolCalls", None) or []
+    message = getattr(response, "message", None)
+    if message:
+        parts = getattr(message, "content", None) or []
+        for part in parts:
+            if isinstance(part, dict):
+                if part.get("type") == "text":
+                    content_parts.append(part.get("text", ""))
+            elif hasattr(part, "text"):
+                content_parts.append(getattr(part, "text", ""))
+
+        calls = getattr(message, "tool_calls", None) or []
         for idx, tc in enumerate(calls):
-            name = getattr(tc, "name", None) or tc.get("name", "") if isinstance(tc, dict) else ""
+            name = getattr(tc, "name", None) or (tc.get("name") if isinstance(tc, dict) else "")
             args = getattr(tc, "parameters", None)
             if args is None and isinstance(tc, dict):
                 args = tc.get("parameters") or tc.get("args") or tc.get("arguments")
@@ -103,7 +100,9 @@ def _parse_response(response: Any) -> AIMessage:
                 "name": name,
                 "args": args or {},
             })
-    return AIMessage(content=content or "", tool_calls=tool_calls)
+
+    content = "".join(content_parts) if content_parts else ""
+    return AIMessage(content=content, tool_calls=tool_calls)
 
 
 @dataclass
@@ -156,18 +155,18 @@ class CohereChat(BaseChatModel):
         """Invoke synchronously."""
         self._ensure_initialized()
         payload = self._build_request(messages)
-        response = self._client.responses.create(**payload)
+        response = self._client.chat(**payload)
         return _parse_response(response)
 
     async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
         """Invoke asynchronously."""
         self._ensure_initialized()
         payload = self._build_request(messages)
-        response = await self._async_client.responses.create(**payload)
+        response = await self._async_client.chat(**payload)
         return _parse_response(response)
 
     def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
-        """Build request for Cohere Responses API."""
+        """Build request for Cohere Chat API."""
         formatted_messages = convert_messages(messages)
         kwargs: dict[str, Any] = {
             "model": self.model,
@@ -176,7 +175,7 @@ class CohereChat(BaseChatModel):
         if self.temperature is not None:
             kwargs["temperature"] = self.temperature
         if self.max_tokens:
-            kwargs["max_output_tokens"] = self.max_tokens
+            kwargs["max_tokens"] = self.max_tokens
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
         return kwargs
