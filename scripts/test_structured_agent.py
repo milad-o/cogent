@@ -1,22 +1,23 @@
 """
-Structured output smoke test for AgenticFlow providers.
+Structured output + tool-usage smoke test through an AgenticFlow Agent.
 
 - Loads env from examples/.env
-- Invokes each provider's chat model with a realistic prompt
-- Expects JSON matching TripPlan schema; validates with Pydantic
+- Builds an Agent per provider with a budgeting tool
+- Enforces TripPlan schema via Agent output
 - Reports per-provider pass/fail and timings
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from agenticflow import Agent
+from agenticflow.tools import tool
 from pydantic import BaseModel, Field, ValidationError
 
 # Load env from examples/.env only
@@ -43,81 +44,61 @@ class TestResult:
     error: str | None = None
 
 
-def _build_messages(retry_hint: str | None = None) -> list[dict[str, str]]:
-    base = [
-        {
-            "role": "system",
-            "content": (
-                "You are a concise travel planner. Respond with ONLY raw JSON (no markdown) that"
-                " exactly matches this schema and keys: {\"destination\": str, \"days\": int,"
-                " \"budget_usd\": float, \"must_do\": [str], \"notes\": str}."
-                " Do not include explanations or extra keys."
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                "Plan a 3-day budget-conscious trip to Lisbon for two food-loving friends in May."
-                " Give a short list of must-do items and a one-line note."
-            ),
-        },
-    ]
-    if retry_hint:
-        base.append({
-            "role": "system",
-            "content": (
-                "Your previous response was invalid. Output ONLY valid JSON with the required keys"
-                " destination, days, budget_usd, must_do, notes. No prose, no markdown."
-                f" Validation error: {retry_hint}"
-            ),
-        })
-    return base
-
-
-async def run_trip_plan(llm, *, max_attempts: int = 2) -> TripPlan:
-    last_error: str | None = None
-    for attempt in range(1, max_attempts + 1):
-        messages = _build_messages(last_error)
-        response = await llm.ainvoke(messages)
-        text = response.content if hasattr(response, "content") else str(response)
-        try:
-            data = json.loads(text)
-            return TripPlan.model_validate(data)
-        except (json.JSONDecodeError, ValidationError) as exc:
-            last_error = str(exc)
-            if attempt == max_attempts:
-                raise
-            # Retry with stricter hint
-    # Should not reach
-    raise RuntimeError("Failed to produce TripPlan after retries")
+@tool(description="Compute an estimated per-day budget from total budget and days")
+def plan_budget(budget_usd: float, days: int) -> str:
+    if days <= 0:
+        return "Days must be positive."
+    per_day = budget_usd / days
+    band = "luxury" if per_day > 400 else "comfortable" if per_day > 200 else "budget"
+    return f"~${per_day:,.0f}/day ({band})"
 
 
 def provider_configs() -> list[tuple[str, Callable[[], Any]]]:
-    """List providers to test with constructors."""
     from agenticflow.models import create_chat
 
-    configs: list[tuple[str, Callable[[], Any]]] = []
-
-    configs.append(("openai", lambda: create_chat("openai", model=os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini"))))
-    configs.append(("gemini", lambda: create_chat("gemini", model=os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash"))))
-    configs.append(("mistral", lambda: create_chat("mistral", model=os.getenv("MISTRAL_CHAT_MODEL", "mistral-small-latest"))))
-    configs.append(("groq", lambda: create_chat("groq", model=os.getenv("GROQ_CHAT_MODEL", "llama-3.1-8b-instant"))))
-    configs.append(("cohere", lambda: create_chat("cohere", model=os.getenv("COHERE_CHAT_MODEL", "command-r-plus"))))
-    configs.append(("cloudflare", lambda: create_chat("cloudflare", model=os.getenv("CLOUDFLARE_CHAT_MODEL", "@cf/meta/llama-3.1-8b-instruct"))))
-    configs.append(("ollama", lambda: create_chat("ollama", model=os.getenv("OLLAMA_CHAT_MODEL", "qwen2.5:7b"), host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))))
-    configs.append(("github", lambda: create_chat("github", model=os.getenv("GITHUB_CHAT_MODEL", "gpt-4o-mini"), token=os.getenv("GITHUB_TOKEN"))))
-
+    cfgs: list[tuple[str, Callable[[], Any]]] = []
+    cfgs.append(("openai", lambda: create_chat("openai", model=os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini"))))
+    cfgs.append(("gemini", lambda: create_chat("gemini", model=os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash"))))
+    cfgs.append(("mistral", lambda: create_chat("mistral", model=os.getenv("MISTRAL_CHAT_MODEL", "mistral-small-latest"))))
+    cfgs.append(("groq", lambda: create_chat("groq", model=os.getenv("GROQ_CHAT_MODEL", "llama-3.1-8b-instant"))))
+    cfgs.append(("cohere", lambda: create_chat("cohere", model=os.getenv("COHERE_CHAT_MODEL", "command-r-plus"))))
+    cfgs.append(("cloudflare", lambda: create_chat("cloudflare", model=os.getenv("CLOUDFLARE_CHAT_MODEL", "@cf/meta/llama-3.1-8b-instruct"))))
+    cfgs.append(("ollama", lambda: create_chat("ollama", model=os.getenv("OLLAMA_CHAT_MODEL", "qwen2.5:7b"), host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))))
+    cfgs.append(("github", lambda: create_chat("github", model=os.getenv("GITHUB_CHAT_MODEL", "gpt-4o-mini"), token=os.getenv("GITHUB_TOKEN"))))
     if os.getenv("ANTHROPIC_API_KEY"):
-        configs.append(("anthropic", lambda: create_chat("anthropic", model=os.getenv("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-20250514"))))
+        cfgs.append(("anthropic", lambda: create_chat("anthropic", model=os.getenv("ANTHROPIC_CHAT_MODEL", "claude-sonnet-4-20250514"))))
+    return cfgs
 
-    return configs
+
+async def run_trip_plan_agent(agent: Agent, *, max_attempts: int = 2) -> TripPlan:
+    last_error: str | None = None
+    user_task = (
+        "Plan a 3-day budget-conscious trip to Lisbon for two food-loving friends in May."
+        " Return JSON with keys destination, days, budget_usd, must_do, notes."
+    )
+    for _ in range(max_attempts):
+        result = await agent.run(user_task)
+        if getattr(result, "valid", False) and getattr(result, "data", None):
+            return result.data  # Already validated TripPlan
+        last_error = getattr(result, "error", None) or "unknown error"
+    raise RuntimeError(f"Failed to produce TripPlan after retries: {last_error}")
 
 
 async def run_provider(name: str, ctor: Callable[[], Any], timeout_s: int = 45) -> TestResult:
     start = time.perf_counter()
     try:
-        llm = ctor()
-        plan = await asyncio.wait_for(run_trip_plan(llm), timeout=timeout_s)
+        model = ctor()
+        agent = Agent(
+            name=f"TripPlanner-{name}",
+            model=model,
+            tools=[plan_budget],
+            output=TripPlan,
+            instructions=(
+                "You are a concise travel planner. Always return JSON matching the TripPlan"
+                " schema. Use the plan_budget tool to sanity-check budgets before finalizing."
+            ),
+        )
+        plan = await asyncio.wait_for(run_trip_plan_agent(agent), timeout=timeout_s)
         duration = time.perf_counter() - start
         print(f"✓ {name}: {plan.destination} for {plan.days} days | {duration:.2f}s")
         return TestResult(name=name, ok=True, duration=duration)

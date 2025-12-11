@@ -577,6 +577,7 @@ class PDFMarkdownLoader(BaseLoader):
         show_progress: bool = True,
         verbose: bool = False,
         encoding: str = "utf-8",
+        parallel: bool = True,
     ) -> None:
         """Initialize the PDF Markdown loader.
 
@@ -593,6 +594,7 @@ class PDFMarkdownLoader(BaseLoader):
             show_progress: Print human-friendly progress messages.
             verbose: Enable structured logging for observability (default: False).
             encoding: Text encoding (not used for PDFs).
+            parallel: Whether to process pages in parallel (default: True).
         """
         super().__init__(encoding)
 
@@ -610,6 +612,7 @@ class PDFMarkdownLoader(BaseLoader):
         self._show_progress = show_progress
         self._verbose = verbose
         self._last_result: PDFProcessingResult | None = None
+        self._parallel = parallel
 
         # Only create logger if verbose mode is enabled
         self._log: ObservabilityLogger | None = None
@@ -637,7 +640,8 @@ class PDFMarkdownLoader(BaseLoader):
             path: Path to the PDF file (str or Path).
             tracking: If True, return PDFProcessingResult with metrics.
                 If False (default), return list of Documents.
-            **kwargs: Additional options (overrides config).
+            **kwargs: Additional options (overrides config), e.g. parallel=False to force
+                sequential processing.
 
         Returns:
             list[Document] by default, or PDFProcessingResult if tracking=True.
@@ -822,9 +826,10 @@ class PDFMarkdownLoader(BaseLoader):
 
         start_time = time.perf_counter()
         show_progress = kwargs.pop("show_progress", self._show_progress)
+        parallel = kwargs.pop("parallel", self._parallel)
 
         if self._log:
-            self._log.info("PDF processing started", file=str(path))
+            self._log.info("PDF processing started", file=str(path), parallel=parallel)
 
         if show_progress:
             print(f"      📖 Loading {path.name}...")
@@ -860,8 +865,11 @@ class PDFMarkdownLoader(BaseLoader):
                     total_time_ms=(time.perf_counter() - start_time) * 1000,
                 )
 
-            # Process pages in parallel batches
-            page_results = await self._process_pages_parallel(
+            # Process pages (parallel or sequential)
+            process_fn = (
+                self._process_pages_parallel if parallel else self._process_pages_sequential
+            )
+            page_results = await process_fn(
                 path,
                 page_count,
                 **kwargs,
@@ -1028,6 +1036,87 @@ class PDFMarkdownLoader(BaseLoader):
                         )
 
         # Sort by page number
+        all_results.sort(key=lambda r: r.page_number)
+        return all_results
+
+    async def _process_pages_sequential(
+        self,
+        path: Path,
+        page_count: int,
+        **kwargs: Any,
+    ) -> list[PageResult]:
+        """Process all pages sequentially in the current process.
+
+        Args:
+            path: Path to PDF file.
+            page_count: Total number of pages.
+            **kwargs: Override configuration.
+
+        Returns:
+            List of PageResult for each page.
+        """
+        config_dict = {
+            "force_text": kwargs.get("force_text", self.config.force_text),
+            "ignore_images": kwargs.get("ignore_images", self.config.ignore_images),
+            "ignore_graphics": kwargs.get(
+                "ignore_graphics", self.config.ignore_graphics
+            ),
+            "fontsize_limit": kwargs.get("fontsize_limit", self.config.fontsize_limit),
+            "dpi": kwargs.get("dpi", self.config.dpi),
+            "header": kwargs.get("header", self.config.header),
+            "footer": kwargs.get("footer", self.config.footer),
+        }
+
+        batch_size = kwargs.get("batch_size", self.config.batch_size)
+
+        all_pages = list(range(page_count))
+        batches: list[list[int]] = [
+            all_pages[i : i + batch_size] for i in range(0, len(all_pages), batch_size)
+        ]
+
+        if self._log:
+            self._log.debug(
+                "Processing batches (sequential)",
+                batch_count=len(batches),
+            )
+
+        all_results: list[PageResult] = []
+        for batch_idx, batch in enumerate(batches):
+            try:
+                batch_dicts = _process_page_batch(str(path), batch, config_dict)
+            except Exception as exc:  # noqa: BLE001
+                if self._log:
+                    self._log.error(
+                        "Batch processing failed (sequential)",
+                        batch_index=batch_idx,
+                        error=str(exc),
+                    )
+                for page_num in batch:
+                    all_results.append(
+                        PageResult(
+                            page_number=page_num + 1,
+                            status=PageStatus.FAILED,
+                            error=str(exc),
+                        )
+                    )
+                continue
+
+            for page_dict in batch_dicts:
+                status_str = page_dict.get("status", "failed")
+                status = PageStatus[status_str.upper()]
+
+                all_results.append(
+                    PageResult(
+                        page_number=page_dict["page_number"],
+                        status=status,
+                        content=page_dict.get("content", ""),
+                        tables_count=page_dict.get("tables_count", 0),
+                        images_count=page_dict.get("images_count", 0),
+                        processing_time_ms=page_dict.get("processing_time_ms", 0.0),
+                        error=page_dict.get("error"),
+                    )
+                )
+
         all_results.sort(key=lambda r: r.page_number)
         return all_results
 
