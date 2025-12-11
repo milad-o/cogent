@@ -205,14 +205,14 @@ class CohereEmbedding(BaseEmbedding):
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed texts synchronously."""
         self._ensure_initialized()
-        response = self._client.embed(model=self.model, texts=texts)
+        response = self._client.embed(model=self.model, texts=texts, input_type="search_document")
         embeddings = getattr(response, "embeddings", None) or getattr(response, "data", None)
         return [list(vec) for vec in embeddings] if embeddings else []
 
     async def aembed(self, texts: list[str]) -> list[list[float]]:
         """Embed texts asynchronously."""
         self._ensure_initialized()
-        response = await self._async_client.embed(model=self.model, texts=texts)
+        response = await self._async_client.embed(model=self.model, texts=texts, input_type="search_document")
         embeddings = getattr(response, "embeddings", None) or getattr(response, "data", None)
         return [list(vec) for vec in embeddings] if embeddings else []
 
