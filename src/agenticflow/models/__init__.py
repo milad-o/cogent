@@ -2,13 +2,14 @@
 Native LLM and Embedding models for AgenticFlow.
 
 High-performance model interfaces using provider SDKs directly.
-Supports OpenAI, Azure, Anthropic, Groq, Gemini, Ollama, and custom endpoints.
+Supports OpenAI, Azure, Anthropic, Groq, Gemini, Cohere, Ollama, and custom endpoints.
 
 Provider-Specific Imports:
     from agenticflow.models.openai import ChatModel, OpenAIEmbedding
     from agenticflow.models.azure import AzureChat, AzureEmbedding, AzureAIFoundryChat
     from agenticflow.models.anthropic import AnthropicChat
     from agenticflow.models.groq import GroqChat
+    from agenticflow.models.cohere import CohereChat, CohereEmbedding
     from agenticflow.models.gemini import GeminiChat, GeminiEmbedding
     from agenticflow.models.ollama import OllamaChat, OllamaEmbedding
     from agenticflow.models.custom import CustomChat, CustomEmbedding
@@ -49,6 +50,11 @@ Example:
     from agenticflow.models.groq import GroqChat
     
     llm = GroqChat(model="llama-3.3-70b-versatile")
+
+    # Cohere
+    from agenticflow.models.cohere import CohereChat, CohereEmbedding
+    llm = CohereChat(model="command-r-plus")
+    embedder = CohereEmbedding(model="embed-english-v3.0")
     
     # Custom endpoint (vLLM, Together AI, etc.)
     from agenticflow.models.custom import CustomChat
@@ -68,6 +74,7 @@ from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, con
 
 # Default models (OpenAI)
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
+from agenticflow.models.cohere import CohereChat, CohereEmbedding
 
 # Mock models for testing
 from agenticflow.models.mock import MockChatModel, MockEmbedding
@@ -85,7 +92,7 @@ def create_chat(
     """Create a chat model for any provider.
     
     Args:
-        provider: Provider name (openai, azure, azure-foundry, github, anthropic, groq, gemini, ollama, custom)
+        provider: Provider name (openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, ollama, custom)
         model: Model name (provider-specific). Uses provider default if not specified.
         **kwargs: Additional provider-specific arguments.
     
@@ -124,6 +131,9 @@ def create_chat(
         
         # Groq
         llm = create_chat("groq", model="llama-3.3-70b-versatile")
+        
+        # Cohere
+        llm = create_chat("cohere", model="command-r-plus")
         
         # Ollama
         llm = create_chat("ollama", model="llama3.2")
@@ -174,6 +184,10 @@ def create_chat(
     elif provider == "gemini" or provider == "google":
         from agenticflow.models.gemini import GeminiChat
         return GeminiChat(model=model or "gemini-2.0-flash-exp", **kwargs)
+
+    elif provider == "cohere":
+        from agenticflow.models.cohere import CohereChat
+        return CohereChat(model=model or "command-r-plus", **kwargs)
     
     elif provider == "ollama":
         from agenticflow.models.ollama import OllamaChat
@@ -190,7 +204,7 @@ def create_chat(
     else:
         raise ValueError(
             f"Unknown provider: {provider}. "
-            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, ollama, mistral, custom"
+            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, ollama, mistral, custom"
         )
 
 
@@ -202,7 +216,7 @@ def create_embedding(
     """Create an embedding model for any provider.
     
     Args:
-        provider: Provider name (openai, azure, gemini, ollama, custom)
+        provider: Provider name (openai, azure, gemini, cohere, ollama, custom)
         model: Model name (provider-specific). Uses provider default if not specified.
         **kwargs: Additional provider-specific arguments.
     
@@ -239,6 +253,10 @@ def create_embedding(
     elif provider == "gemini" or provider == "google":
         from agenticflow.models.gemini import GeminiEmbedding
         return GeminiEmbedding(model=model or "text-embedding-004", **kwargs)
+
+    elif provider == "cohere":
+        from agenticflow.models.cohere import CohereEmbedding
+        return CohereEmbedding(model=model or "embed-english-v3.0", **kwargs)
     
     elif provider == "ollama":
         from agenticflow.models.ollama import OllamaEmbedding
@@ -251,7 +269,7 @@ def create_embedding(
     else:
         raise ValueError(
             f"Unknown embedding provider: {provider}. "
-            f"Supported: openai, azure, gemini, ollama, custom"
+            f"Supported: openai, azure, gemini, cohere, ollama, custom"
         )
 
 
@@ -278,6 +296,9 @@ __all__ = [
     # OpenAI models (also aliased as ChatModel/EmbeddingModel)
     "OpenAIChat",
     "OpenAIEmbedding",
+    # Cohere
+    "CohereChat",
+    "CohereEmbedding",
     "ChatModel",  # Alias for OpenAIChat
     "EmbeddingModel",  # Alias for OpenAIEmbedding
     # Mock models for testing

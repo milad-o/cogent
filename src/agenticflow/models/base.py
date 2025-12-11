@@ -84,6 +84,7 @@ class ModelProvider(str, Enum):
     """Supported model providers."""
     
     OPENAI = "openai"
+    COHERE = "cohere"
     AZURE = "azure"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
@@ -355,6 +356,7 @@ def tool_result(content: str, tool_call_id: str) -> dict[str, str]:
 # Default model names by provider
 DEFAULT_CHAT_MODELS: dict[ModelProvider, str] = {
     ModelProvider.OPENAI: "gpt-4o-mini",
+    ModelProvider.COHERE: "command-r-plus",
     ModelProvider.AZURE: "gpt-4o-mini",
     ModelProvider.ANTHROPIC: "claude-3-5-sonnet-20241022",
     ModelProvider.GOOGLE: "gemini-2.0-flash-exp",
@@ -365,6 +367,7 @@ DEFAULT_CHAT_MODELS: dict[ModelProvider, str] = {
 
 DEFAULT_EMBEDDING_MODELS: dict[ModelProvider, str] = {
     ModelProvider.OPENAI: "text-embedding-3-small",
+    ModelProvider.COHERE: "embed-english-v3.0",
     ModelProvider.AZURE: "text-embedding-3-small",
     ModelProvider.ANTHROPIC: "voyage-3",
     ModelProvider.GOOGLE: "text-embedding-004",

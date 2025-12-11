@@ -32,8 +32,8 @@ EXAMPLES_DIR = Path(__file__).parent
 PROJECT_ROOT = EXAMPLES_DIR.parent
 
 # Valid provider choices
-LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama", "mistral", "github"]
-EmbeddingProvider = Literal["openai", "azure", "ollama", "github"]
+LLMProvider = Literal["gemini", "openai", "anthropic", "groq", "azure", "ollama", "mistral", "github", "cohere"]
+EmbeddingProvider = Literal["openai", "azure", "ollama", "github", "cohere"]
 
 
 class Settings(BaseSettings):
@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
     mistral_api_key: str | None = Field(default=None, alias="MISTRAL_API_KEY")
     github_token: str | None = Field(default=None, alias="GITHUB_TOKEN")
+    cohere_api_key: str | None = Field(default=None, alias="COHERE_API_KEY")
     
     # ==========================================================================
     # Azure OpenAI Configuration
@@ -126,6 +127,7 @@ class Settings(BaseSettings):
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
     mistral_model: str = Field(default="mistral-small-latest", alias="MISTRAL_MODEL")
     github_model: str = Field(default="gpt-4o-mini", alias="GITHUB_MODEL")
+    cohere_model: str = Field(default="command-r-plus", alias="COHERE_MODEL")
     
     # ==========================================================================
     # Embedding Model Names
@@ -133,6 +135,7 @@ class Settings(BaseSettings):
     
     openai_embedding_model: str = Field(default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL")
     github_embedding_model: str = Field(default="text-embedding-3-large", alias="GITHUB_EMBEDDING_MODEL")
+    cohere_embedding_model: str = Field(default="embed-english-v3.0", alias="COHERE_EMBEDDING_MODEL")
     
     # ==========================================================================
     # Example Settings
@@ -214,6 +217,12 @@ def get_model(provider: LLMProvider | None = None):
             model=s.github_model,
             token=s.github_token,
         )
+
+    elif provider == "cohere":
+        if not s.cohere_api_key:
+            raise ValueError("LLM_PROVIDER=cohere requires COHERE_API_KEY")
+        from agenticflow.models.cohere import CohereChat
+        return CohereChat(model=s.cohere_model, api_key=s.cohere_api_key)
     
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
@@ -303,6 +312,12 @@ def get_embeddings(provider: EmbeddingProvider | None = None):
             api_key=s.github_token,
             base_url="https://models.github.ai/inference",
         )
+
+    elif provider == "cohere":
+        if not s.cohere_api_key:
+            raise ValueError("EMBEDDING_PROVIDER=cohere requires COHERE_API_KEY")
+        from agenticflow.models.cohere import CohereEmbedding
+        return CohereEmbedding(model=s.cohere_embedding_model, api_key=s.cohere_api_key)
     
     else:
         raise ValueError(f"Unknown EMBEDDING_PROVIDER: {provider}")
@@ -369,6 +384,9 @@ def print_config():
     elif s.llm_provider == "anthropic":
         print(f"  Model: {s.anthropic_model}")
         print(f"  API Key: {'✓ set' if s.anthropic_api_key else '✗ missing!'}")
+    elif s.llm_provider == "cohere":
+        print(f"  Model: {s.cohere_model}")
+        print(f"  API Key: {'✓ set' if s.cohere_api_key else '✗ missing!'}")
     elif s.llm_provider == "groq":
         print(f"  Model: {s.groq_model}")
         print(f"  API Key: {'✓ set' if s.groq_api_key else '✗ missing!'}")
