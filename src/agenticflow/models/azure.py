@@ -433,7 +433,14 @@ def _parse_foundry_response(response: Any) -> AIMessage:
 def _format_foundry_messages(messages: list[dict[str, Any]] | list[Any]) -> list[Any]:
     """Format messages for Azure AI Foundry SDK."""
     try:
-        from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage, ToolMessage
+        from azure.ai.inference.models import (
+            SystemMessage,
+            UserMessage,
+            AssistantMessage,
+            ToolMessage,
+            ChatCompletionsToolCall,
+            FunctionCall,
+        )
     except ImportError:
         raise ImportError(
             "azure-ai-inference required for Azure AI Foundry. "
@@ -455,8 +462,22 @@ def _format_foundry_messages(messages: list[dict[str, Any]] | list[Any]) -> list
             # Handle tool calls if present
             tool_calls = msg.get("tool_calls")
             if tool_calls:
-                # For now, just add content - SDK handles tool calls differently
-                foundry_messages.append(AssistantMessage(content or ""))
+                # Convert tool_calls to SDK format
+                sdk_tool_calls = []
+                for tc in tool_calls:
+                    func_info = tc.get("function", {})
+                    func_name = func_info.get("name", tc.get("name", ""))
+                    func_args = func_info.get("arguments", "")
+                    if not isinstance(func_args, str):
+                        import json
+                        func_args = json.dumps(func_args)
+                    sdk_tool_calls.append(
+                        ChatCompletionsToolCall(
+                            id=tc.get("id", ""),
+                            function=FunctionCall(name=func_name, arguments=func_args),
+                        )
+                    )
+                foundry_messages.append(AssistantMessage(content=content or "", tool_calls=sdk_tool_calls))
             else:
                 foundry_messages.append(AssistantMessage(content))
         elif role == "tool":

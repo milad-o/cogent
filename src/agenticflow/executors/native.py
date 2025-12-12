@@ -721,6 +721,12 @@ class NativeExecutor(BaseExecutor):
             
             # Emit LLM response event (for deep observability)
             tool_calls = response.tool_calls or []
+            # Defensive: some providers/SDKs may omit tool_call IDs.
+            # Azure/OpenAI validators require each tool result to reference a
+            # preceding assistant message with tool_calls containing matching IDs.
+            for i, tc in enumerate(tool_calls):
+                if isinstance(tc, dict) and not tc.get("id"):
+                    tc["id"] = f"call_{iteration + 1}_{i}"
             if event_bus:
                 await event_bus.publish(EventType.LLM_RESPONSE.value, {
                     "agent_name": agent_name,

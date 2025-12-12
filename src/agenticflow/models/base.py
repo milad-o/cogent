@@ -102,7 +102,87 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
         # Fallback: try to convert to string
         result.append({"role": "user", "content": _normalize_content(msg)})
     
-    return result
+    # Provider-facing sanitization:
+    # Some APIs (OpenAI/Azure) validate that every `role="tool"` message must be
+    # a response to a *preceding* assistant message that contains `tool_calls`,
+    # and that tool_call_id values match one of those tool_calls ids.
+    #
+    # To be defensive across all internal execution paths, we:
+    # - Ensure assistant tool_calls all have stable, non-empty string ids
+    # - Ensure tool messages have a tool_call_id that matches a prior tool_call
+    # - If a tool message cannot be paired, we drop it to avoid a hard 400
+    def _sanitize_tool_messages(formatted: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # Tracks ids for the *most recent* assistant tool_calls message.
+        # OpenAI/Azure require tool messages to follow that assistant message
+        # (possibly with other tool messages in between, but no other role).
+        last_tool_call_ids: list[str] = []
+        consumed_last_ids: set[str] = set()
+        in_tool_response_zone: bool = False  # True after assistant with tool_calls
+
+        out: list[dict[str, Any]] = []
+        for idx, m in enumerate(formatted):
+            role = m.get("role")
+
+            if role == "assistant" and m.get("tool_calls"):
+                # Normalize ids on the assistant tool_calls message.
+                last_tool_call_ids = []
+                consumed_last_ids = set()
+                tool_calls = m.get("tool_calls")
+                if isinstance(tool_calls, list):
+                    for i, tc in enumerate(tool_calls):
+                        if not isinstance(tc, dict):
+                            continue
+                        tc_id = tc.get("id")
+                        if not tc_id:
+                            tc_id = f"call_{idx}_{i}"
+                        tc_id_str = str(tc_id)
+                        tc["id"] = tc_id_str
+                        last_tool_call_ids.append(tc_id_str)
+                out.append(m)
+                in_tool_response_zone = True  # Tool messages can now follow
+                continue
+
+            if role == "tool":
+                # Tool messages are only valid in the tool response zone
+                # (after an assistant with tool_calls, possibly after other tool messages).
+                if not in_tool_response_zone or not last_tool_call_ids:
+                    continue  # Drop orphan tool message
+
+                tool_call_id = m.get("tool_call_id")
+                if tool_call_id:
+                    tool_call_id = str(tool_call_id)
+                    m["tool_call_id"] = tool_call_id
+
+                # Ensure the tool_call_id matches one of the preceding tool_calls ids.
+                if tool_call_id and tool_call_id in last_tool_call_ids:
+                    out.append(m)
+                    consumed_last_ids.add(tool_call_id)
+                    continue
+
+                # Try to infer in-order from the preceding tool_calls.
+                inferred: str | None = None
+                for candidate in last_tool_call_ids:
+                    if candidate not in consumed_last_ids:
+                        inferred = candidate
+                        break
+                if inferred is not None:
+                    m["tool_call_id"] = inferred
+                    consumed_last_ids.add(inferred)
+                    out.append(m)
+                    continue
+
+                # Can't pair to preceding assistant tool_calls -> drop.
+                continue
+
+            # Any non-tool, non-assistant-with-tool_calls message ends the zone.
+            in_tool_response_zone = False
+            last_tool_call_ids = []
+            consumed_last_ids = set()
+            out.append(m)
+
+        return out
+
+    return _sanitize_tool_messages(result)
 
 
 class ModelProvider(str, Enum):
