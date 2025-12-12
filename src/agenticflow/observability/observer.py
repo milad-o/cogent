@@ -924,13 +924,21 @@ class Observer:
             return self._format_event_json(event)
         
         def _normalize_content(content: Any) -> str:
-            """Normalize content that might be a list (structured response) to string."""
-            if isinstance(content, list):
-                return " ".join(
-                    item.get("text", "") if isinstance(item, dict) else str(item)
-                    for item in content
-                )
-            return str(content) if content else ""
+            """Normalize arbitrary content to a plain string for safe rendering."""
+            if content is None:
+                return ""
+            if isinstance(content, (list, tuple)):
+                parts: list[str] = []
+                for item in content:
+                    if isinstance(item, dict):
+                        parts.append(item.get("text", "") or item.get("content", "") or str(item))
+                    else:
+                        parts.append(str(item))
+                return " ".join(p for p in parts if p)
+            try:
+                return str(content)
+            except Exception:
+                return ""
         
         s = self._styler
         c = Colors  # Direct access for custom colors
@@ -1199,7 +1207,7 @@ class Observer:
         elif event_type == EventType.MESSAGE_SENT:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
-            content = data.get("content", "")
+            content = _normalize_content(data.get("content", ""))
             # Always truncate message content aggressively for readability
             max_len = min(self.config.truncate or 80, 80)
             if len(content) > max_len:
@@ -1213,7 +1221,7 @@ class Observer:
         elif event_type == EventType.MESSAGE_RECEIVED:
             receiver = data.get("agent_name", data.get("agent", "?"))
             sender = data.get("from", "?")
-            content = data.get("content", "")
+            content = _normalize_content(data.get("content", ""))
             # Always truncate message content aggressively for readability
             max_len = min(self.config.truncate or 80, 80)
             if len(content) > max_len:
@@ -1245,7 +1253,7 @@ class Observer:
         
         elif event_type == EventType.TOKEN_STREAMED:
             agent_name = data.get("agent_name", data.get("agent", "?"))
-            token = data.get("token", data.get("content", ""))
+            token = _normalize_content(data.get("token", data.get("content", "")))
             # Track token count
             if agent_name in self._streaming_agents:
                 self._streaming_agents[agent_name]["token_count"] += 1
@@ -1323,8 +1331,8 @@ class Observer:
             agent_name = data.get("agent_name", "?")
             message_count = data.get("message_count", 0)
             tools_available = data.get("tools_available", [])
-            prompt = data.get("prompt", "")
-            system_prompt = data.get("system_prompt", "")
+            prompt = _normalize_content(data.get("prompt", ""))
+            system_prompt = _normalize_content(data.get("system_prompt", ""))
             
             # Build concise header
             tools_count = f", {len(tools_available)} tools" if tools_available else ""
