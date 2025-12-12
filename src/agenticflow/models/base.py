@@ -21,38 +21,62 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
     
     Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
     This is a shared utility used by all model providers.
-    
-    Args:
-        messages: List of messages in any supported format.
-        
-    Returns:
-        List of message dicts with role and content keys.
     """
+    def _normalize_content(value: Any) -> str:
+        """Coerce arbitrary content to a string acceptable by chat APIs."""
+        if value is None:
+            return ""
+        if isinstance(value, (list, tuple)):
+            parts: list[str] = []
+            for item in value:
+                if isinstance(item, dict):
+                    # Prefer human-readable fields if present
+                    parts.append(
+                        item.get("text", "")
+                        or item.get("content", "")
+                        or json.dumps(item, default=str)
+                    )
+                else:
+                    parts.append(str(item))
+            return " ".join(p for p in parts if p)
+        if isinstance(value, dict):
+            return json.dumps(value, default=str)
+        try:
+            return str(value)
+        except Exception:
+            return ""
+    
+    def _normalize_message_dict(raw: dict[str, Any]) -> dict[str, Any]:
+        msg = dict(raw)  # shallow copy
+        if "content" in msg:
+            msg["content"] = _normalize_content(msg.get("content"))
+        return msg
+    
     result: list[dict[str, Any]] = []
     for msg in messages:
         # Already a dict
         if isinstance(msg, dict):
-            result.append(msg)
+            result.append(_normalize_message_dict(msg))
             continue
         
         # Message object with to_dict method
         if hasattr(msg, "to_dict"):
-            result.append(msg.to_dict())
+            result.append(_normalize_message_dict(msg.to_dict()))
             continue
         
         # Message object with to_openai method (backward compat)
         if hasattr(msg, "to_openai"):
-            result.append(msg.to_openai())
+            result.append(_normalize_message_dict(msg.to_openai()))
             continue
         
         # Message object with role and content attributes
         if hasattr(msg, "role") and hasattr(msg, "content"):
             msg_dict: dict[str, Any] = {
-                "role": msg.role,
-                "content": msg.content or "",
+                "role": getattr(msg, "role", "user"),
+                "content": _normalize_content(getattr(msg, "content", "")),
             }
             # Handle tool calls on assistant messages
-            if hasattr(msg, "tool_calls") and msg.tool_calls:
+            if hasattr(msg, "tool_calls") and getattr(msg, "tool_calls", None):
                 msg_dict["tool_calls"] = [
                     {
                         "id": tc.get("id", f"call_{i}") if isinstance(tc, dict) else getattr(tc, "id", f"call_{i}"),
@@ -60,22 +84,23 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
                         "function": {
                             "name": tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", ""),
                             "arguments": json.dumps(
-                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {}),
+                                default=str,
                             ),
                         },
                     }
-                    for i, tc in enumerate(msg.tool_calls)
+                    for i, tc in enumerate(getattr(msg, "tool_calls"))
                 ]
             # Handle tool result messages
-            if hasattr(msg, "tool_call_id") and msg.tool_call_id:
-                msg_dict["tool_call_id"] = msg.tool_call_id
-            if hasattr(msg, "name") and msg.name:
-                msg_dict["name"] = msg.name
+            if hasattr(msg, "tool_call_id") and getattr(msg, "tool_call_id"):
+                msg_dict["tool_call_id"] = getattr(msg, "tool_call_id")
+            if hasattr(msg, "name") and getattr(msg, "name", None):
+                msg_dict["name"] = getattr(msg, "name")
             result.append(msg_dict)
             continue
         
         # Fallback: try to convert to string
-        result.append({"role": "user", "content": str(msg)})
+        result.append({"role": "user", "content": _normalize_content(msg)})
     
     return result
 
