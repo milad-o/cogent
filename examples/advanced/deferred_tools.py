@@ -14,12 +14,21 @@ Use cases:
 """
 
 import asyncio
+import sys
 from datetime import datetime
+from pathlib import Path
 from uuid import uuid4
 
 from agenticflow import Agent
 from agenticflow.observability.bus import EventBus
+from agenticflow.observability.event import EventType
 from agenticflow.tools import tool, DeferredResult
+
+EXAMPLES_DIR = Path(__file__).resolve().parents[1]
+if str(EXAMPLES_DIR) not in sys.path:
+    sys.path.insert(0, str(EXAMPLES_DIR))
+
+from config import get_model  # type: ignore  # noqa: E402
 
 
 # ==============================================================================
@@ -152,18 +161,20 @@ async def simulate_webhook_server(event_bus: EventBus):
     
     # Simulate video processing complete
     print("\n🔔 [Webhook Received] Video processing complete!")
-    event = {
-        "event_name": "webhook.video_complete",
-        "job_id": list(event_bus._pending_deferreds.keys())[0] if hasattr(event_bus, '_pending_deferreds') else "video-test",
-        "result": {
-            "status": "complete",
-            "output_url": "https://cdn.example.com/processed-video.mp4",
-            "duration": 120,
-            "resolution": "1080p",
-        }
-    }
     # Publish to event bus (agent will resume)
-    await event_bus.publish_custom("webhook.video_complete", event)
+    # Note: we include event_name via the string publish API.
+    await event_bus.publish(
+        "webhook.video_complete",
+        {
+            "job_id": "video-test",
+            "result": {
+                "status": "complete",
+                "output_url": "https://cdn.example.com/processed-video.mp4",
+                "duration": 120,
+                "resolution": "1080p",
+            },
+        },
+    )
 
 
 async def simulate_human_approval(event_bus: EventBus, approval_id: str):
@@ -171,15 +182,90 @@ async def simulate_human_approval(event_bus: EventBus, approval_id: str):
     await asyncio.sleep(1)
     
     print(f"\n✅ [Human Response] Payment approved: {approval_id}")
-    await event_bus.publish_custom("human.approval_response", {
-        "approval_id": approval_id,
-        "result": {
-            "approved": True,
-            "approver": "John Manager",
-            "approved_at": datetime.now().isoformat(),
-            "notes": "Looks good, proceed with payment.",
-        }
-    })
+    await event_bus.publish(
+        "human.approval_response",
+        {
+            "approval_id": approval_id,
+            "result": {
+                "approved": True,
+                "approver": "John Manager",
+                "approved_at": datetime.now().isoformat(),
+                "notes": "Looks good, proceed with payment.",
+            },
+        },
+    )
+
+
+async def demo_end_to_end_agent_deferred() -> None:
+    """End-to-end: agent.act() executes a deferred tool and resumes on event."""
+    print("\n" + "=" * 40)
+    print("Example 5: End-to-End Agent.act() + DeferredResult")
+    print("=" * 40)
+
+    event_bus = EventBus()
+    model = get_model()
+    agent = Agent(
+        name="DeferredE2EAgent",
+        system_prompt="You can run tools. Some tools complete later.",
+        model=model,
+        event_bus=event_bus,
+        tools=[process_video, request_payment_approval],
+    )
+
+    completed_once = {"video": False}
+
+    def auto_complete_when_waiting(event) -> None:
+        # Important: don't publish completion *inside* TOOL_DEFERRED handler.
+        # The agent only starts subscribing for the completion event after it
+        # emits TOOL_DEFERRED_WAITING; otherwise we'd race and miss the event.
+        if event.type != EventType.TOOL_DEFERRED_WAITING:
+            return
+
+        tool_name = event.data.get("tool_name")
+        job_id = event.data.get("job_id")
+
+        if tool_name != "process_video" or not job_id or completed_once["video"]:
+            return
+
+        completed_once["video"] = True
+
+        async def publish_completion() -> None:
+            # Yield control so the agent enters DeferredWaiter.wait() and subscribes.
+            await asyncio.sleep(0)
+            await asyncio.sleep(0.25)
+            await event_bus.publish(
+                "webhook.video_complete",
+                {
+                    "job_id": job_id,
+                    "result": {
+                        "status": "complete",
+                        "output_url": "https://cdn.example.com/processed-video.mp4",
+                    },
+                },
+            )
+
+        asyncio.create_task(publish_completion())
+
+    event_bus.subscribe(EventType.TOOL_DEFERRED_WAITING, auto_complete_when_waiting)
+
+    print("Calling tool via agent.act('process_video', ...) — it should wait then resume...")
+    result = await agent.act(
+        "process_video",
+        {"video_url": "https://example.com/video.mp4"},
+        use_resilience=False,
+    )
+    print(f"\n✅ agent.act returned: {result}")
+
+    print("\n" + "=" * 40)
+    print("Example 6: LLM picks the tool")
+    print("=" * 40)
+    print("Asking the agent to process a video; it should decide to call process_video.")
+    output = await agent.run(
+        "Please process this video URL: https://example.com/video.mp4. "
+        "Use tools if needed, and wait for completion.",
+    )
+    output_text = output.output if hasattr(output, "output") else str(output)
+    print(f"\n✅ agent.run output: {output_text}")
 
 
 # ==============================================================================
@@ -194,12 +280,15 @@ async def demo_deferred_tools():
     
     # Create event bus
     event_bus = EventBus()
+
+    model = get_model()
     
     # Create agent with deferred tool capabilities
     agent = Agent(
         name="DeferredTaskAgent",
         system_prompt="""You are an assistant that handles asynchronous tasks.
 When using deferred tools, wait for them to complete before proceeding.""",
+        model=model,
         event_bus=event_bus,
         tools=[process_video, transcribe_audio, request_payment_approval],
     )
@@ -283,19 +372,13 @@ When using deferred tools, wait for them to complete before proceeding.""",
     
     print(f"Result after timeout: {timeout_result}")
     print(f"Status: {quick_result.status.value}")
+
+    # Example 5: Full end-to-end agent execution that waits and resumes
+    await demo_end_to_end_agent_deferred()
     
     print("\n" + "=" * 60)
     print("✅ Demo Complete!")
     print("=" * 60)
-    print("""
-Key Takeaways:
-1. Tools can return DeferredResult to pause agent execution
-2. Agent waits for matching event before continuing
-3. Supports webhooks, polling, and human approval patterns
-4. Configurable timeout with error, retry, or default value
-5. Events are published via EventBus for completion
-""")
-
 
 if __name__ == "__main__":
     asyncio.run(demo_deferred_tools())

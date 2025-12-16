@@ -100,6 +100,10 @@ from agenticflow.reactive.patterns import (
     SagaPattern,
     SagaStep,
 )
+# Reactive agent API
+from agenticflow.reactive.agent import ReactiveAgent, build_reactive_system_prompt
+# Threading helpers
+from agenticflow.reactive.threading import thread_id_from_data
 # Re-export Observer for convenience
 from agenticflow.observability.observer import Observer
 
@@ -122,6 +126,14 @@ __all__ = [
     "EventFlow",
     "EventFlowConfig",
     "EventFlowResult",
+
+    # Reactive agent helper
+    "ReactiveAgent",
+    "build_reactive_system_prompt",
+
+    # Threading helpers
+    "thread_id_from_data",
+
     # High-level API (recommended)
     "chain",
     "fanout",

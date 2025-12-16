@@ -18,10 +18,12 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
+from agenticflow.retriever.utils.llm_adapter import adapt_llm
 from agenticflow.vectorstore import Document
 
 if TYPE_CHECKING:
     from agenticflow.models import Model
+    from agenticflow.retriever.utils.llm_adapter import LLMProtocol
     from agenticflow.vectorstore import VectorStore
 
 
@@ -132,7 +134,7 @@ Summary:'''
             name: Optional custom name.
         """
         self._vectorstore = vectorstore
-        self._llm = llm
+        self._llm: LLMProtocol | None = adapt_llm(llm) if llm is not None else None
         self._structure_type = structure_type
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap

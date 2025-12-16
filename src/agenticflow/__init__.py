@@ -264,6 +264,9 @@ from agenticflow.tools.deferred import (
     is_deferred,
 )
 
+# Core orchestration events (separate from observability)
+from agenticflow.events import Event as CoreEvent, EventBus as CoreEventBus
+
 # Flow - THE MAIN ENTRY POINT
 from agenticflow.flow import (
     # Base classes

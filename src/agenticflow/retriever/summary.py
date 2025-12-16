@@ -400,7 +400,7 @@ Summary:'''
             max_children: Max children per node (tree branching factor).
             name: Optional custom name.
         """
-        self._llm = llm
+        self._llm: LLMProtocol = adapt_llm(llm)
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
         self._max_children = max_children
@@ -866,7 +866,7 @@ Extract all meaningful entities and relationships:'''
             chunk_size: Size of text chunks.
             name: Optional custom name.
         """
-        self._llm = llm
+        self._llm: LLMProtocol = adapt_llm(llm)
         self._kg = knowledge_graph
         self._vectorstore = vectorstore
         self._include_chunks = include_text_chunks

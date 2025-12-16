@@ -18,9 +18,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
+from agenticflow.retriever.utils.llm_adapter import adapt_llm
 
 if TYPE_CHECKING:
-    from agenticflow.models.base import ChatModel
+    from agenticflow.models import Model
+    from agenticflow.retriever.utils.llm_adapter import LLMProtocol
     from agenticflow.vectorstore import Document
 
 
@@ -68,7 +70,7 @@ class HyDERetriever(BaseRetriever):
     def __init__(
         self,
         base_retriever: BaseRetriever,
-        model: ChatModel,
+        model: Model,
         *,
         prompt_template: str | None = None,
         n_hypotheticals: int = 1,
@@ -89,7 +91,10 @@ class HyDERetriever(BaseRetriever):
                 and fuse results. Default is False.
         """
         self.base_retriever = base_retriever
+        # Keep the original model for introspection/backward compatibility,
+        # but use the internal adapter for consistent generation.
         self.model = model
+        self._llm: LLMProtocol = adapt_llm(model)
         self.prompt_template = prompt_template or DEFAULT_HYDE_PROMPT
         self.n_hypotheticals = n_hypotheticals
         self.include_original_query = include_original_query
@@ -106,9 +111,7 @@ class HyDERetriever(BaseRetriever):
             A hypothetical document passage.
         """
         prompt = self.prompt_template.format(query=query)
-        messages = [{"role": "user", "content": prompt}]
-        response = await self.model.ainvoke(messages)
-        return response.content
+        return await self._llm.generate(prompt)
     
     async def retrieve_with_scores(
         self,

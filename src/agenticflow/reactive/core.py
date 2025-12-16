@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable
 
-from agenticflow.observability.event import Event, EventType
+from agenticflow.events.event import Event
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -28,7 +28,25 @@ class ReactionType(Enum):
 
 # Type aliases
 TriggerCondition = Callable[[Event], bool]
-EventPattern = str | EventType | re.Pattern[str]
+EventPattern = str | re.Pattern[str] | Any
+
+
+def _event_name(event: Any) -> str:
+    """Get the effective event name for both core and legacy observability events."""
+    # Core events
+    if hasattr(event, "name"):
+        return str(getattr(event, "name"))
+
+    # Legacy observability events
+    data = getattr(event, "data", None) or {}
+    if isinstance(data, dict) and data.get("event_name"):
+        return str(data.get("event_name"))
+
+    evt_type = getattr(event, "type", None)
+    if evt_type is not None and hasattr(evt_type, "value"):
+        return str(getattr(evt_type, "value"))
+
+    return ""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -101,26 +119,24 @@ class Trigger:
 
     def _matches_pattern(self, event: Event) -> bool:
         """Check if event matches the pattern."""
-        # Get the effective event name (custom events store name in data)
-        event_name = event.data.get("event_name") or event.type.value
+        event_name = _event_name(event)
 
-        match self.on:
-            case EventType() as event_type:
-                return event.type == event_type
+        # Regex pattern
+        if isinstance(self.on, re.Pattern):
+            return self.on.match(event_name) is not None
 
-            case re.Pattern() as pattern:
-                return pattern.match(event_name) is not None
+        # String pattern (exact or glob)
+        if isinstance(self.on, str):
+            if "*" in self.on:
+                regex = self.on.replace(".", r"\.").replace("*", ".*")
+                return re.match(regex, event_name) is not None
+            return event_name == self.on
 
-            case str() as pattern_str:
-                # Support glob-style wildcards
-                if "*" in pattern_str:
-                    regex = pattern_str.replace(".", r"\.").replace("*", ".*")
-                    return re.match(regex, event_name) is not None
-                # Exact string match
-                return event_name == pattern_str
+        # Enum-like patterns (legacy): match by `.value` if present
+        if hasattr(self.on, "value"):
+            return event_name == str(getattr(self.on, "value"))
 
-            case _:
-                return False
+        return False
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

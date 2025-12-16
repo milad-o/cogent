@@ -2953,15 +2953,12 @@ class Agent:
     ) -> None:
         """Save exchange to conversation history."""
         if self._memory_manager:
-            await self._memory_manager.add_message(
-                thread_id=thread_id,
-                role="user",
-                content=user_message,
-            )
-            await self._memory_manager.add_message(
-                thread_id=thread_id,
-                role="assistant",
-                content=str(assistant_response),
+            await self._memory_manager.add_thread_messages(
+                thread_id,
+                [
+                    HumanMessage(content=user_message),
+                    AIMessage(content=str(assistant_response)),
+                ],
             )
         else:
             await self._memory.add_message(thread_id, HumanMessage(content=user_message))

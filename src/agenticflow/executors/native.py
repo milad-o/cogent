@@ -383,6 +383,83 @@ class NativeExecutor(BaseExecutor):
         return await self._execute_main_loop(
             task, context_dict, messages, event_bus, agent_name, execution_start, run_context
         )
+
+    async def execute_messages(
+        self,
+        *,
+        task: str,
+        messages: list[BaseMessage],
+        context: dict[str, Any] | RunContext | None = None,
+    ) -> Any:
+        """Execute using a pre-built message list.
+
+        This enables structured/reactive execution without converting event
+        context into a single prompt string. The provided `messages` are used
+        as-is (interceptors may still modify them).
+
+        Args:
+            task: High-level task label used for observability and completion checks.
+            messages: Pre-built message list to send to the model.
+            context: Optional context (dict or RunContext). Dict is stored as metadata.
+
+        Returns:
+            Final answer string (or structured output result if configured).
+        """
+        import time
+        from agenticflow.observability.event import EventType
+
+        # Normalize context
+        run_context: RunContext
+        context_dict: dict[str, Any] | None = None
+        if context is None:
+            run_context = EMPTY_CONTEXT
+        elif isinstance(context, RunContext):
+            run_context = context
+            context_dict = context.metadata if context.metadata else None
+        else:
+            run_context = RunContext(metadata=context)
+            context_dict = context
+
+        if not messages:
+            raise ValueError("execute_messages requires at least one message")
+
+        # Ensure system prompt is present if agent has one and caller didn't include it
+        sys_prompt = self.agent.config.system_prompt
+        if sys_prompt and not isinstance(messages[0], SystemMessage):
+            messages = [SystemMessage(content=sys_prompt), *messages]
+
+        event_bus = getattr(self.agent, 'event_bus', None)
+        agent_name = self.agent.name or "agent"
+
+        if self._model_resilience and hasattr(self, "tracker"):
+            self._model_resilience.tracker = self.tracker
+
+        execution_start = time.perf_counter()
+
+        if event_bus:
+            await event_bus.publish(EventType.AGENT_INVOKED.value, {
+                "agent": agent_name,
+                "agent_name": agent_name,
+                "task": task[:200] + "..." if len(task) > 200 else task,
+            })
+
+        # If reasoning is enabled, run it against the provided messages context.
+        reasoning_config = getattr(self.agent, '_reasoning_config', None)
+        if reasoning_config is not None:
+            await self._execute_reasoning(task, context_dict, messages, event_bus, agent_name)
+
+        # Structured output path: keep existing behavior for now.
+        output_config = getattr(self.agent, '_output_config', None)
+        if output_config is not None:
+            # Reuse the structured output executor; it rebuilds messages from an effective task.
+            # This preserves correctness, even though it doesn't preserve custom message shapes.
+            return await self._execute_with_structured_output(
+                task, context_dict, messages, event_bus, agent_name, run_context
+            )
+
+        return await self._execute_main_loop(
+            task, context_dict, messages, event_bus, agent_name, execution_start, run_context
+        )
     
     def _build_messages(
         self,

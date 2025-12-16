@@ -7,8 +7,9 @@ event-driven multi-agent systems.
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.reactive.core import (
@@ -17,7 +18,9 @@ from agenticflow.reactive.core import (
     Trigger,
     TriggerBuilder,
 )
-from agenticflow.observability.bus import EventBus
+from agenticflow.events.bus import EventBus as CoreEventBus
+from agenticflow.events.event import Event as CoreEvent
+from agenticflow.observability.bus import EventBus as ObsEventBus
 from agenticflow.observability.event import Event, EventType
 from agenticflow.observability.observer import Observer
 
@@ -126,8 +129,9 @@ class EventFlow:
         self,
         *,
         config: EventFlowConfig | None = None,
-        event_bus: EventBus | None = None,
+        event_bus: ObsEventBus | None = None,
         observer: Observer | None = None,
+        thread_id_resolver: Callable[[CoreEvent, dict[str, Any]], str | None] | None = None,
     ) -> None:
         """
         Initialize the event flow.
@@ -138,16 +142,25 @@ class EventFlow:
             observer: Optional observer for monitoring and tracing
         """
         self.config = config or EventFlowConfig()
-        self.bus = event_bus or EventBus()
+
+        # Dedicated core bus for orchestration events.
+        self.events = CoreEventBus()
+
+        # Observability bus is for telemetry/subscribers only.
+        self.bus = event_bus or ObsEventBus()
         self.observer = observer
         self._agents: dict[str, tuple[Agent, AgentTriggerConfig]] = {}
-        self._pending_events: asyncio.Queue[Event] = asyncio.Queue()
+        self._pending_events: asyncio.Queue[CoreEvent] = asyncio.Queue()
         self._running = False
         self._stop_event: Event | None = None
+        self._thread_id_resolver = thread_id_resolver
 
-        # Attach observer to the event bus
-        if self.observer:
-            self.observer.attach(self.bus)
+        # Container-like helpers (optional): shared memory and background tasks.
+        self._shared_memory: Any | None = None
+        self._spawned: set[asyncio.Task[Any]] = set()
+
+        # Observer is fed via _observe() (telemetry), not via orchestration bus.
+        # This keeps observability separated from core orchestration.
 
     def register(
         self,
@@ -170,11 +183,70 @@ class EventFlow:
         else:
             trigger_config = triggers
 
+        # Optional: if the flow is acting as a container, inject shared memory
+        # into agents that don't already have one.
+        if self._shared_memory is not None and getattr(agent, "memory_manager", None) is None:
+            setup = getattr(agent, "_setup_memory", None)
+            if callable(setup):
+                setup(memory=self._shared_memory)
+
         self._agents[agent.name] = (agent, trigger_config)
+
+    def with_memory(self, memory: Any | None = None) -> "EventFlow":
+        """Configure shared memory for agents registered to this flow.
+
+        If set, agents without an existing `memory_manager` will receive this
+        memory backend at registration time.
+        """
+        from agenticflow.memory import Memory
+
+        self._shared_memory = memory or Memory()
+        return self
+
+    def spawn(self, coro: Any) -> asyncio.Task[Any]:
+        """Spawn a background task and track it for cleanup."""
+        task = asyncio.create_task(coro)
+        self._spawned.add(task)
+
+        def _done(_t: asyncio.Task[Any]) -> None:
+            self._spawned.discard(_t)
+
+        task.add_done_callback(_done)
+        return task
+
+    async def cancel_spawned(self) -> None:
+        """Cancel any still-running spawned tasks."""
+        if not self._spawned:
+            return
+
+        for task in list(self._spawned):
+            if not task.done():
+                task.cancel()
+
+        await asyncio.gather(*self._spawned, return_exceptions=True)
+        self._spawned.clear()
+
+    def thread_by_data(self, key: str, *, prefix: str | None = None) -> "EventFlow":
+        """Derive `thread_id` from `event.data[key]`.
+
+        This is a mid-level UX helper for per-entity memory without lambdas.
+
+        Example:
+            flow.thread_by_data("job_id")
+        """
+        from agenticflow.reactive.threading import thread_id_from_data
+
+        self._thread_id_resolver = thread_id_from_data(key, prefix=prefix)
+        return self
 
     def unregister(self, agent_name: str) -> None:
         """Remove an agent from the flow."""
         self._agents.pop(agent_name, None)
+
+    @property
+    def memory(self) -> Any | None:
+        """Shared memory configured via `with_memory()` (if any)."""
+        return self._shared_memory
 
     def _observe(
         self,
@@ -246,18 +318,14 @@ class EventFlow:
         )
 
         # Emit initial event
-        initial = Event(
-            id=generate_id(),
-            type=EventType.TASK_CREATED if initial_event == "task.created" else EventType.CUSTOM,
-            timestamp=now_utc(),
-            data={
-                "event_name": initial_event,
-                "task": task,
-                **(initial_data or {}),
-            },
+        initial = CoreEvent(
+            name=initial_event,
+            data={"task": task, **(initial_data or {})},
         )
         await self._pending_events.put(initial)
-        await self.bus.publish(initial)
+        await self.events.publish(initial)
+        # Mirror to observability bus for subscribers/debuggers
+        await self.bus.publish(initial_event, {"task": task, **(initial_data or {})})
 
         self._observe(
             EventType.REACTIVE_EVENT_EMITTED,
@@ -289,7 +357,7 @@ class EventFlow:
                     continue
 
                 events_processed += 1
-                event_name = event.data.get("event_name", event.type.value)
+                event_name = event.name
 
                 self._observe(
                     EventType.REACTIVE_EVENT_PROCESSED,
@@ -338,6 +406,7 @@ class EventFlow:
 
         finally:
             self._running = False
+            await self.cancel_spawned()
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
 
@@ -367,7 +436,7 @@ class EventFlow:
 
     async def _process_event(
         self,
-        event: Event,
+        event: CoreEvent,
         task: str,
         context: dict[str, Any],
     ) -> list[Reaction]:
@@ -391,10 +460,9 @@ class EventFlow:
                 matching.append((agent, trigger))
 
         if not matching:
-            event_name = event.data.get("event_name", event.type.value)
             self._observe(
                 EventType.REACTIVE_NO_MATCH,
-                {"event_name": event_name, "event_id": event.id},
+                {"event_name": event.name, "event_id": event.id},
             )
             return reactions
 
@@ -420,7 +488,7 @@ class EventFlow:
         self,
         agent: Agent,
         trigger: Trigger,
-        event: Event,
+        event: CoreEvent,
         task: str,
         context: dict[str, Any],
     ) -> Reaction:
@@ -440,7 +508,7 @@ class EventFlow:
         emitted: list[str] = []
         output: str | None = None
         error: str | None = None
-        event_name = event.data.get("event_name", event.type.value)
+        event_name = event.name
 
         # Observe: agent triggered
         self._observe(
@@ -454,11 +522,23 @@ class EventFlow:
         )
 
         try:
-            # Build prompt from event context
-            prompt = self._build_prompt(event, task, context)
+            thread_id: str | None = None
+            if self._thread_id_resolver is not None:
+                try:
+                    thread_id = self._thread_id_resolver(event, context)
+                except TypeError:
+                    thread_id = self._thread_id_resolver(event)  # type: ignore[misc]
 
-            # Execute agent - run() returns the output directly (string)
-            result = await agent.run(prompt)
+            # Prefer a first-class reactive API when the agent provides it.
+            if callable(getattr(agent, "react", None)):
+                try:
+                    result = await agent.react(event, task=task, context=context, thread_id=thread_id)
+                except TypeError:
+                    result = await agent.react(event, task=task, context=context)
+            else:
+                # Backward compatible path: build prompt and call run()
+                prompt = self._build_prompt(event, task, context)
+                result = await agent.run(prompt, context=context, thread_id=thread_id)
             # Handle both string return and object with .output attribute
             output = result.output if hasattr(result, "output") else str(result)
 
@@ -524,12 +604,21 @@ class EventFlow:
 
     def _build_prompt(
         self,
-        event: Event,
+        event: CoreEvent,
         task: str,
         context: dict[str, Any],
     ) -> str:
         """Build prompt for agent from event context."""
-        parts = [f"Task: {task}"]
+        event_name = event.name
+        parts = [f"Task: {task}", f"Event: {event_name}"]
+
+        # Include full event payload so agents can reliably react to webhooks.
+        # Keep it compact and JSON so it is easy to parse.
+        try:
+            event_json = json.dumps(event.data or {}, default=str, ensure_ascii=False)
+        except Exception:
+            event_json = str(event.data or {})
+        parts.append(f"Event Data: {event_json}")
 
         # Add event context
         if event.data:
@@ -546,15 +635,12 @@ class EventFlow:
         return "\n".join(parts)
 
     async def _emit_event(self, event_name: str, data: dict[str, Any]) -> None:
-        """Emit an event to the bus and pending queue."""
-        event = Event(
-            id=generate_id(),
-            type=EventType.CUSTOM,
-            timestamp=now_utc(),
-            data={"event_name": event_name, **data},
-        )
-        await self._pending_events.put(event)
-        await self.bus.publish(event)
+        """Emit an orchestration event (core) and mirror it to observability."""
+        core_event = CoreEvent(name=event_name, data=dict(data))
+        await self._pending_events.put(core_event)
+        await self.events.publish(core_event)
+        # Mirror to observability bus for external subscribers/debugging
+        await self.bus.publish(event_name, dict(data))
 
     async def emit(self, event_name: str, data: dict[str, Any] | None = None) -> None:
         """
