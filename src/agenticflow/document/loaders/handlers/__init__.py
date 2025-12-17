@@ -20,6 +20,7 @@ from agenticflow.document.loaders.handlers.pdf_llm import (
     PDFProcessingStatus,
     ProcessingMetrics,
 )
+from agenticflow.document.loaders.handlers.pdf_vision import PDFVisionLoader, PDFVisionOptions
 from agenticflow.document.loaders.handlers.text import TextLoader
 from agenticflow.document.loaders.handlers.word import WordLoader
 from agenticflow.document.loaders.handlers.xlsx import XLSXLoader
@@ -30,6 +31,7 @@ __all__ = [
     "HTMLLoader",
     "PDFLoader",
     "PDFMarkdownLoader",
+    "PDFVisionLoader",
     "WordLoader",
     "CSVLoader",
     "JSONLoader",
@@ -43,5 +45,6 @@ __all__ = [
     "PDFProcessingStatus",
     "PageStatus",
     "OutputFormat",
+    "PDFVisionOptions",
 ]
 

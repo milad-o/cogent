@@ -255,6 +255,21 @@ class NativeExecutor(BaseExecutor):
         
         # Setup model resilience
         if resilience:
+            # If the agent has an explicit resilience config, honor it for LLM calls.
+            # This prevents long hangs in reactive/high-concurrency flows by allowing
+            # fast-fail or tighter timeouts.
+            agent_resilience_cfg = None
+            try:
+                agent_resilience_cfg = getattr(getattr(self.agent, "config", None), "resilience_config", None)
+            except Exception:
+                agent_resilience_cfg = None
+
+            retry_policy = RetryPolicy.aggressive()
+            timeout_seconds = 120.0
+            if agent_resilience_cfg is not None:
+                retry_policy = agent_resilience_cfg.retry_policy
+                timeout_seconds = float(agent_resilience_cfg.timeout_seconds)
+
             # Create on_retry callback that logs to event bus
             async def _log_retry(attempt: int, error: Exception, delay: float) -> None:
                 """Log retry attempt via event bus."""
@@ -276,7 +291,8 @@ class NativeExecutor(BaseExecutor):
                 )
             
             self._model_resilience = ModelResilience(
-                retry_policy=RetryPolicy.aggressive(),
+                retry_policy=retry_policy,
+                timeout_seconds=timeout_seconds,
                 tracker=getattr(self, "tracker", None),
                 on_retry=on_retry_sync,
             )

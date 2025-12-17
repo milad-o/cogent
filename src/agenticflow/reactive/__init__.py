@@ -104,6 +104,8 @@ from agenticflow.reactive.patterns import (
 from agenticflow.reactive.agent import ReactiveAgent, build_reactive_system_prompt
 # Threading helpers
 from agenticflow.reactive.threading import thread_id_from_data
+# Reactive kit helpers
+from agenticflow.reactive.kit import IdempotencyGuard, RetryBudget, emit_later
 # Re-export Observer for convenience
 from agenticflow.observability.observer import Observer
 
@@ -133,6 +135,11 @@ __all__ = [
 
     # Threading helpers
     "thread_id_from_data",
+
+    # Reactive kit helpers
+    "IdempotencyGuard",
+    "RetryBudget",
+    "emit_later",
 
     # High-level API (recommended)
     "chain",

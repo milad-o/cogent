@@ -63,3 +63,21 @@ def test_convert_messages_handles_multiple_tool_calls() -> None:
     assert len(tool_msgs) == 2
     assert tool_msgs[0]["tool_call_id"] == "call_1"
     assert tool_msgs[1]["tool_call_id"] == "call_2"
+
+
+def test_convert_messages_preserves_multimodal_content_parts() -> None:
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "describe"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}},
+            ],
+        }
+    ]
+
+    out = convert_messages(messages)
+
+    assert isinstance(out[0]["content"], list)
+    assert out[0]["content"][0]["type"] == "text"
+    assert out[0]["content"][1]["type"] == "image_url"

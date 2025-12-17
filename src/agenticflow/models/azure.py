@@ -581,6 +581,8 @@ class AzureAIFoundryChat(BaseChatModel):
         try:
             from azure.ai.inference import ChatCompletionsClient
             from azure.core.credentials import AzureKeyCredential
+            from azure.core.pipeline.policies import RetryPolicy
+            from azure.core.pipeline.transport import RequestsTransport
         except ImportError:
             raise ImportError(
                 "azure-ai-inference required for Azure AI Foundry. "
@@ -590,9 +592,36 @@ class AzureAIFoundryChat(BaseChatModel):
         if not self.api_key:
             raise ValueError("api_key required for Azure AI Foundry")
         
+        client_kwargs: dict[str, Any] = {}
+
+        # Ensure we have a real HTTP timeout at the transport layer.
+        # Without this, requests can hang significantly longer than any
+        # asyncio.wait_for / executor-level timeout, leaving threads stuck.
+        if self.timeout is not None:
+            try:
+                timeout_seconds = float(self.timeout)
+                if timeout_seconds > 0:
+                    client_kwargs["transport"] = RequestsTransport(
+                        connection_timeout=min(10.0, timeout_seconds),
+                        read_timeout=timeout_seconds,
+                    )
+            except (TypeError, ValueError):
+                # If timeout isn't a number, fall back to SDK defaults.
+                pass
+
+        # Respect BaseChatModel retry configuration where possible.
+        if self.max_retries is not None:
+            try:
+                client_kwargs["retry_policy"] = RetryPolicy(
+                    retry_total=max(0, int(self.max_retries)),
+                )
+            except (TypeError, ValueError):
+                pass
+
         self._foundry_client = ChatCompletionsClient(
             endpoint=self.endpoint,
             credential=AzureKeyCredential(self.api_key),
+            **client_kwargs,
         )
     
     def bind_tools(

@@ -64,3 +64,5 @@ Thumbs.db
 .plans/
 examples/*.ipynb
 scripts/
+config.py
+examples/data/pdf_output/pdf_vision_showcase/

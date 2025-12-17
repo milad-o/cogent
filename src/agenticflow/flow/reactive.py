@@ -7,6 +7,7 @@ event-driven multi-agent systems where agents react to events.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
@@ -520,7 +521,9 @@ class ReactiveFlow(BaseFlow):
                     thread_id = self._thread_id_resolver(event)  # type: ignore[misc]
 
             # Prefer a first-class reactive API when the agent provides it.
-            if callable(getattr(agent, "react", None)):
+            # Important: don't treat arbitrary objects (e.g. MagicMock) as reactive.
+            react_fn = getattr(agent, "react", None)
+            if react_fn is not None and inspect.iscoroutinefunction(react_fn):
                 try:
                     result = await agent.react(event, task=task, context=context, thread_id=thread_id)
                 except TypeError:

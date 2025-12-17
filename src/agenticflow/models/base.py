@@ -22,8 +22,30 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
     Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
     This is a shared utility used by all model providers.
     """
-    def _normalize_content(value: Any) -> str:
-        """Coerce arbitrary content to a string acceptable by chat APIs."""
+    def _is_multimodal_content(value: Any) -> bool:
+        """Return True if `content` is already in provider multimodal format.
+
+        We intentionally preserve OpenAI-style content parts, e.g.:
+        - [{"type": "text", "text": "..."}, {"type": "image_url", "image_url": {...}}]
+
+        This enables vision-capable chat models to receive images without
+        AgenticFlow flattening them into a single string.
+        """
+        if isinstance(value, list) and value:
+            return all(isinstance(item, dict) and "type" in item for item in value)
+        # Some providers may represent a single part as a dict.
+        if isinstance(value, dict) and "type" in value:
+            return True
+        return False
+
+    def _normalize_content(value: Any) -> Any:
+        """Coerce arbitrary content to a provider-safe representation.
+
+        Default behavior is to convert to string for broad provider compatibility.
+        If content is already in a recognized multimodal format, preserve it.
+        """
+        if _is_multimodal_content(value):
+            return value
         if value is None:
             return ""
         if isinstance(value, (list, tuple)):

@@ -70,6 +70,7 @@ Retrieval-Augmented Generation patterns.
 | [summarizer.py](retrieval/summarizer.py) | Document summarization |
 | [pdf_summarizer.py](retrieval/pdf_summarizer.py) | PDF-specific summarization |
 | [retrievers.py](retrieval/retrievers.py) | All retriever types (dense, sparse, hybrid) |
+| [pdf_vision_showcase.py](retrieval/pdf_vision_showcase.py) | Vision PDF extraction (metadata/TOC/timing + markdown/html/json) |
 
 ---
 

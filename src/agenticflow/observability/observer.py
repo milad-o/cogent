@@ -1574,7 +1574,7 @@ class Observer:
             else:
                 duration_str = s.dim(f" in {execution_time_ms:.0f}ms")
             
-            return f"{prefix}{s.success('✅ Reactive Flow Completed')}{duration_str} {s.dim(f'({reactions} agents, {rounds} rounds, {events_processed} events)')}"
+            return f"{prefix}{s.success('✅ Reactive Flow Completed')}{duration_str} {s.dim(f'({reactions} reactions, {rounds} rounds, {events_processed} events)')}"
         
         elif event_type == EventType.REACTIVE_FLOW_FAILED:
             error = data.get("error", "Unknown error")[:100]
@@ -1586,6 +1586,10 @@ class Observer:
             return f"{prefix}{s.info('📤')} {s.dim('Event emitted:')} {s.info(event_name)}"
         
         elif event_type == EventType.REACTIVE_EVENT_PROCESSED:
+            # This can be very chatty. Keep it for DETAILED+ but suppress in
+            # PROGRESS/minimal modes to improve signal-to-noise.
+            if self.config.level <= ObservabilityLevel.PROGRESS:
+                return None
             event_name = data.get("event_name", "?")
             round_num = data.get("round", 0)
             return f"{prefix}{s.dim('📥')} {s.dim(f'Processing:')} {event_name} {s.dim(f'(round {round_num})')}"
@@ -1600,7 +1604,8 @@ class Observer:
             output_length = data.get("output_length", 0)
             trigger_event = data.get("trigger_event", "")
             output_str = f" ({output_length} chars)" if output_length else ""
-            return f"{prefix}{s.success('✓')} {s.agent(f'[{agent}]')} {s.success('completed')}{s.dim(output_str)}"
+            by = f" {s.dim('←')} {s.dim(trigger_event)}" if trigger_event else ""
+            return f"{prefix}{s.success('✓')} {s.agent(f'[{agent}]')} {s.success('completed')}{s.dim(output_str)}{by}"
         
         elif event_type == EventType.REACTIVE_AGENT_FAILED:
             agent = data.get("agent", "?")
@@ -1608,15 +1613,22 @@ class Observer:
             return f"{prefix}{s.error('✗')} {s.agent(f'[{agent}]')} {s.error(f'FAILED: {error}')}"
         
         elif event_type == EventType.REACTIVE_NO_MATCH:
+            # Useful for debugging, but noisy for normal runs.
+            if self.config.level < ObservabilityLevel.DEBUG:
+                return None
             event_name = data.get("event_name", "?")
             return f"{prefix}{s.dim('⊘')} {s.dim(f'No agents matched:')} {s.dim(event_name)}"
         
         elif event_type == EventType.REACTIVE_ROUND_STARTED:
+            if self.config.level <= ObservabilityLevel.PROGRESS:
+                return None
             round_num = data.get("round", 0)
             pending = data.get("pending_events", 0)
             return f"{prefix}{s.dim('─')} {s.dim(f'Round {round_num}')} {s.dim(f'({pending} pending)')}"
         
         elif event_type == EventType.REACTIVE_ROUND_COMPLETED:
+            if self.config.level <= ObservabilityLevel.PROGRESS:
+                return None
             round_num = data.get("round", 0)
             reactions = data.get("reactions", 0)
             total = data.get("total_reactions", 0)
@@ -1630,14 +1642,37 @@ class Observer:
         
         elif event_type == EventType.CUSTOM:
             event_name = data.get("event_name", "")
+
+            def _kv_preview(keys: list[str]) -> str:
+                parts: list[str] = []
+                for key in keys:
+                    if key not in data:
+                        continue
+                    value = data.get(key)
+                    if value is None:
+                        continue
+                    text = str(value)
+                    if len(text) > 32:
+                        text = text[:29] + "..."
+                    parts.append(f"{s.dim(key + '=')}{s.info(text)}")
+                return (" " + " ".join(parts)) if parts else ""
+
             # Reactive-style custom events (agent completions, etc.)
             if event_name:
                 agent = data.get("agent", "")
-                output = data.get("output", "")
-                output_preview = output[:60] + "..." if len(output) > 60 else output
+                # Common domain IDs (e.g. case_id/scan_id) for reactive apps
+                meta = _kv_preview([
+                    "case_id",
+                    "job_id",
+                    "scan_id",
+                    "customer_id",
+                    "category",
+                    "priority",
+                    "decision",
+                ])
                 if agent:
-                    return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)} {s.dim('from')} {s.agent(f'[{agent}]')}"
-                return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}"
+                    return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}{meta} {s.dim('from')} {s.agent(f'[{agent}]')}"
+                return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}{meta}"
             # Generic custom events
             data_preview = str(data)[:100] if data else ""
             return f"{prefix}{s.dim('📨')} {s.dim('Custom:')} {s.dim(data_preview)}"
