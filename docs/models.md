@@ -105,7 +105,7 @@ model = AzureChat(
     deployment="gpt-4o",
     entra=AzureEntraAuth(
         method="managed_identity",
-        managed_identity_client_id="<USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID>",
+        client_id="<USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID>",
     ),
 )
 

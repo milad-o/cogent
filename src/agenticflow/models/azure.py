@@ -113,9 +113,15 @@ def _entra_token_provider(*, entra: AzureEntraAuth) -> AzureADTokenProvider:
             case "default":
                 credential = DefaultAzureCredential()
             case "managed_identity":
-                if entra.managed_identity_client_id:
+                # Convenience: allow `client_id` to be used for user-assigned MI.
+                # We keep `managed_identity_client_id` as the explicit name to avoid
+                # ambiguity with service principal auth where `client_id` is the app id.
+                managed_identity_client_id = (
+                    entra.managed_identity_client_id or entra.client_id
+                )
+                if managed_identity_client_id:
                     credential = ManagedIdentityCredential(
-                        client_id=entra.managed_identity_client_id
+                        client_id=managed_identity_client_id
                     )
                 else:
                     credential = ManagedIdentityCredential()
