@@ -97,6 +97,18 @@ model = AzureChat(
     entra=AzureEntraAuth(method="default"),  # Uses DefaultAzureCredential
 )
 
+# With Entra ID (Managed Identity)
+# - System-assigned MI: omit client_id
+# - User-assigned MI: set client_id (recommended when multiple identities exist)
+model = AzureChat(
+    azure_endpoint="https://your-resource.openai.azure.com",
+    deployment="gpt-4o",
+    entra=AzureEntraAuth(
+        method="managed_identity",
+        client_id="<USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID>",
+    ),
+)
+
 # Embeddings
 embeddings = AzureEmbedding(
     azure_endpoint="https://your-resource.openai.azure.com",
