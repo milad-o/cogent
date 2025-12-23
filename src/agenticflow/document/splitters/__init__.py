@@ -36,6 +36,7 @@ from agenticflow.document.splitters.html import HTMLSplitter
 from agenticflow.document.splitters.markdown import MarkdownSplitter
 from agenticflow.document.splitters.semantic import SemanticSplitter
 from agenticflow.document.splitters.sentence import SentenceSplitter
+from agenticflow.document.splitters.table_aware import TableAwareSplitter
 from agenticflow.document.splitters.token import TokenSplitter
 from agenticflow.document.splitters.utils import split_text
 
@@ -51,6 +52,7 @@ __all__ = [
     "MarkdownSplitter",
     "HTMLSplitter",
     "CodeSplitter",
+    "TableAwareSplitter",
     # Semantic
     "SemanticSplitter",
     # Token-based
