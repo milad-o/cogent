@@ -231,6 +231,10 @@ pip install agenticflow[all]        # All optional deps
 | `GOOGLE_API_KEY` | Google Gemini API key |
 | `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint |
 | `AZURE_OPENAI_API_KEY` | Azure OpenAI API key |
+| `AZURE_OPENAI_AUTH_TYPE` | Azure OpenAI auth type: `api_key`, `default`, `managed_identity`, `client_secret` |
+| `AZURE_OPENAI_TENANT_ID` | Entra tenant id (for `client_secret`) |
+| `AZURE_OPENAI_CLIENT_ID` | Entra client id (user-assigned MI or service principal) |
+| `AZURE_OPENAI_CLIENT_SECRET` | Entra client secret (for `client_secret`) |
 
 ---
 

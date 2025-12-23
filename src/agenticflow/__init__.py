@@ -1,3 +1,5 @@
+# ruff: noqa: E402
+
 # Suppress Pydantic V1 compatibility warning on Python 3.14+
 import warnings
 
@@ -22,12 +24,12 @@ A lightweight, native multi-agent framework with:
 Quick Start (Standalone Execution):
     ```python
     from agenticflow import run, tool
-    
+
     @tool
     def search(query: str) -> str:
         '''Search the web.'''
         return f"Results for {query}"
-    
+
     # Execute a task with tools - no Agent class needed!
     result = await run(
         "Search for Python tutorials",
@@ -42,19 +44,20 @@ Native Models (Recommended):
     from agenticflow.models.azure import AzureChat
     from agenticflow.models.anthropic import AnthropicChat
     from agenticflow.models import create_chat, create_embedding
-    
+
     # Direct usage
     llm = OpenAIChat(model="gpt-4o")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
-    
+
     # Factory function
     llm = create_chat("anthropic", model="claude-sonnet-4-20250514")
-    
-    # Azure with Managed Identity
+
+    # Azure with Managed Identity (Entra ID)
+    from agenticflow.models.azure import AzureEntraAuth
     llm = AzureChat(
         deployment="gpt-4o",
         azure_endpoint="https://my-resource.openai.azure.com",
-        use_managed_identity=True,
+        entra=AzureEntraAuth(method="managed_identity"),
     )
     ```
 
@@ -62,7 +65,7 @@ With Agent Class:
     ```python
     from agenticflow import Agent, AgentConfig, EventBus
     from agenticflow.models.openai import OpenAIChat
-    
+
     agent = Agent(
         config=AgentConfig(
             name="Assistant",
@@ -70,10 +73,10 @@ With Agent Class:
         ),
         event_bus=EventBus(),
     )
-    
+
     # Think with automatic retry on failures
     response = await agent.think("What should I do?")
-    
+
     # Execute complex tasks
     result = await agent.run("Search and analyze data")
     ```
@@ -81,7 +84,7 @@ With Agent Class:
 Multi-Agent Topology:
     ```python
     from agenticflow import TopologyFactory, TopologyType
-    
+
     # Create a supervisor topology
     topology = TopologyFactory.create(
         TopologyType.SUPERVISOR,
@@ -89,7 +92,7 @@ Multi-Agent Topology:
         agents=[supervisor, researcher, writer],
         supervisor_name="supervisor",
     )
-    
+
     # Run with progress tracking
     result = await topology.run("Create a blog post")
     ```
@@ -98,6 +101,65 @@ Multi-Agent Topology:
 __version__ = "1.1.0"
 
 # Core enums and utilities
+# Graph API (unified visualization)
+from agenticflow import graph
+
+# Agents (THIS IS WHERE WE ADD VALUE)
+from agenticflow.agent.base import Agent
+from agenticflow.agent.config import AgentConfig
+from agenticflow.agent.hitl import (
+    AbortedException,
+    DecisionRequiredException,
+    DecisionType,
+    GuidanceResult,
+    HumanDecision,
+    HumanResponse,
+    InterruptedException,
+    InterruptedState,
+    InterruptReason,
+    PendingAction,
+    should_interrupt,
+)
+from agenticflow.agent.memory import (
+    AgentMemory,
+    InMemoryCheckpointer,  # Backward compat alias
+    InMemorySaver,
+    MemoryCheckpoint,  # Backward compat alias
+    MemorySnapshot,
+    ThreadConfig,
+)
+from agenticflow.agent.output import (
+    OutputMethod,
+    ResponseSchema,
+    StructuredResult,
+)
+from agenticflow.agent.resilience import (
+    CircuitBreaker,
+    CircuitState,
+    FallbackRegistry,
+    ResilienceConfig,
+    RetryPolicy,
+    RetryStrategy,
+    ToolResilience,
+)
+from agenticflow.agent.state import AgentState
+from agenticflow.agent.streaming import (
+    CollectorStreamCallback,
+    PrintStreamCallback,
+    StreamCallback,
+    StreamChunk,
+    StreamConfig,
+    StreamEvent,
+    StreamEventType,
+    ToolCallChunk,
+    chunk_from_message,
+    collect_stream,
+    extract_tool_calls,
+    print_stream,
+)
+
+# Context - invocation-scoped data
+from agenticflow.context import EMPTY_CONTEXT, RunContext
 from agenticflow.core.enums import (
     AgentRole,
     AgentStatus,
@@ -105,239 +167,72 @@ from agenticflow.core.enums import (
     TaskStatus,
     get_role_capabilities,
 )
+from agenticflow.core.message import Message, MessageType
 from agenticflow.core.utils import generate_id, now_utc
 
-# Models
-from agenticflow.observability.event import Event, EventType
-from agenticflow.core.message import Message, MessageType
-from agenticflow.tasks.task import Task
-
-# Agents (THIS IS WHERE WE ADD VALUE)
-from agenticflow.agent.base import Agent
-from agenticflow.agent.config import AgentConfig
-from agenticflow.agent.state import AgentState
-from agenticflow.agent.memory import (
-    AgentMemory,
-    MemorySnapshot,
-    MemoryCheckpoint,  # Backward compat alias
-    ThreadConfig,
-    InMemorySaver,
-    InMemoryCheckpointer,  # Backward compat alias
-)
-from agenticflow.agent.resilience import (
-    ResilienceConfig,
-    RetryPolicy,
-    RetryStrategy,
-    CircuitBreaker,
-    CircuitState,
-    ToolResilience,
-    FallbackRegistry,
-)
-from agenticflow.agent.hitl import (
-    InterruptReason,
-    DecisionType,
-    PendingAction,
-    HumanDecision,
-    InterruptedState,
-    InterruptedException,
-    DecisionRequiredException,
-    AbortedException,
-    GuidanceResult,
-    HumanResponse,
-    should_interrupt,
-)
-from agenticflow.agent.streaming import (
-    StreamChunk,
-    StreamEvent,
-    StreamEventType,
-    StreamConfig,
-    StreamCallback,
-    PrintStreamCallback,
-    CollectorStreamCallback,
-    ObserverStreamCallback,
-    ToolCallChunk,
-    chunk_from_message,
-    extract_tool_calls,
-    collect_stream,
-    print_stream,
-)
-from agenticflow.agent.output import (
-    ResponseSchema,
-    OutputMethod,
-    StructuredResult,
-)
-
-# Interceptors (execution flow control)
-from agenticflow.interceptors import (
-    Interceptor,
-    Phase,
-    InterceptContext,
-    InterceptResult,
-    BudgetGuard,
-    StopExecution,
-    run_interceptors,
-    ContextCompressor,
-    TokenLimiter,
-    PIIAction,
-    PIIShield,
-    ContentFilter,
-    RateLimiter,
-    ThrottleInterceptor,
-    Auditor,
-    AuditEvent,
-    AuditEventType,
-    # Context Layer
-    ToolGate,
-    PermissionGate,
-    ConversationGate,
-    Failover,
-    ToolGuard,
-    CircuitBreaker,
-    PromptAdapter,
-    ContextPrompt,
-    ConversationPrompt,
-    LambdaPrompt,
-)
-
-# Context - invocation-scoped data
-from agenticflow.context import RunContext, EMPTY_CONTEXT
-
+# Core orchestration events (separate from observability)
 # Graphs - Execution strategies
 from agenticflow.executors import (
-    ExecutionStrategy,
     ExecutionPlan,
-    ToolCall,
+    ExecutionStrategy,
     NativeExecutor,
     SequentialExecutor,
+    ToolCall,
     TreeSearchExecutor,
-    run,
     create_executor,
+    run,
 )
-
-# Events (THIS IS WHERE WE ADD VALUE)
-from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
-from agenticflow.observability.handlers import (
-    ConsoleEventHandler,
-    FileEventHandler,
-    FilteringEventHandler,
-    MetricsEventHandler,
-)
-
-# Reactive Flow (event-driven multi-agent orchestration)
-from agenticflow.reactive import (
-    # High-level API (recommended)
-    chain,
-    fanout,
-    route,
-    # Mid-level API
-    Chain,
-    FanIn,
-    FanOut,
-    Router,
-    Saga,
-    # Low-level API
-    EventFlow,
-    EventFlowConfig,
-    EventFlowResult,
-    Trigger,
-    AgentTriggerConfig,
-    react_to,
-    on,  # Backward compat alias
-    when,
-    # New names
-    ReactiveFlow,
-    ReactiveFlowConfig,
-    ReactiveFlowResult,
-)
-
-# Tasks
-from agenticflow.tasks.manager import TaskManager
-
-# Tools (THIS IS WHERE WE ADD VALUE)
-from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
-from agenticflow.tools.base import BaseTool, tool
-from agenticflow.tools.deferred import (
-    DeferredResult,
-    DeferredStatus,
-    DeferredManager,
-    DeferredRetry,
-    is_deferred,
-)
-
-# Core orchestration events (separate from observability)
-from agenticflow.events import Event as CoreEvent, EventBus as CoreEventBus
 
 # Flow - THE MAIN ENTRY POINT
 from agenticflow.flow import (
     # Base classes
     BaseFlow,
-    FlowProtocol,
-    FlowResult,
     # Imperative Flow
     Flow,
     FlowConfig,
+    FlowProtocol,
+    FlowResult,
     create_flow,
-    supervisor_flow,
-    pipeline_flow,
     mesh_flow,
+    pipeline_flow,
+    supervisor_flow,
+)
+from agenticflow.graph import (
+    GraphConfig,
+    GraphDirection,
+    GraphTheme,
+    GraphView,
 )
 
-# Topologies (simple coordination patterns)
-from agenticflow.topologies import (
-    # Core classes
-    AgentConfig as TopologyAgentConfig,
-    BaseTopology,
-    TopologyResult,
-    TopologyType,
-    # Pattern classes
-    Supervisor,
-    Pipeline,
-    Mesh,
-    Hierarchical,
-    # Convenience functions
-    supervisor,
-    pipeline,
-    mesh,
-)
-
-# Observability (THIS IS WHERE WE ADD VALUE)
-from agenticflow.observability import (
-    Tracer,
-    Span,
-    SpanContext,
-    SpanKind,
-    MetricsCollector,
-    Counter,
-    Gauge,
-    Histogram,
-    Timer,
-    ObservabilityLogger,
-    LogLevel,
-    LogEntry,
-    Dashboard,
-    DashboardConfig,
-    SystemInspector,
-    AgentInspector,
-    TaskInspector,
-    EventInspector,
-    # Observer (unified observability for agents, flows, teams)
-    Observer,
-    ObservabilityLevel,
-    Channel,
-    # Progress & Output system
-    OutputConfig,
-    Verbosity,
-    OutputFormat,
-    ProgressStyle,
-    ProgressTracker,
-    ProgressEvent,
-    Styler,
-    Colors,
-    Symbols,
-    create_on_step_callback,
-    create_executor_callback,
-    configure_output,
-    render_dag_ascii,
+# Interceptors (execution flow control)
+from agenticflow.interceptors import (
+    AuditEvent,
+    AuditEventType,
+    Auditor,
+    BudgetGuard,
+    ContentFilter,
+    ContextCompressor,
+    ContextPrompt,
+    ConversationGate,
+    ConversationPrompt,
+    Failover,
+    InterceptContext,
+    Interceptor,
+    InterceptResult,
+    LambdaPrompt,
+    PermissionGate,
+    Phase,
+    PIIAction,
+    PIIShield,
+    PromptAdapter,
+    RateLimiter,
+    StopExecution,
+    ThrottleInterceptor,
+    TokenLimiter,
+    # Context Layer
+    ToolGate,
+    ToolGuard,
+    run_interceptors,
 )
 
 # LLM & Embedding Models (native)
@@ -347,16 +242,121 @@ from agenticflow.models import (
     create_chat,
     create_embedding,
 )
+
 # Provider-specific model imports for convenience
 from agenticflow.models.azure import AzureChat, AzureEmbedding
 
-# Graph API (unified visualization)
-from agenticflow import graph
-from agenticflow.graph import (
-    GraphView,
-    GraphConfig,
-    GraphTheme,
-    GraphDirection,
+# Observability (THIS IS WHERE WE ADD VALUE)
+from agenticflow.observability import (
+    AgentInspector,
+    Channel,
+    Colors,
+    Counter,
+    Dashboard,
+    DashboardConfig,
+    EventInspector,
+    Gauge,
+    Histogram,
+    LogEntry,
+    LogLevel,
+    MetricsCollector,
+    ObservabilityLevel,
+    ObservabilityLogger,
+    # Observer (unified observability for agents, flows, teams)
+    Observer,
+    # Progress & Output system
+    OutputConfig,
+    OutputFormat,
+    ProgressEvent,
+    ProgressStyle,
+    ProgressTracker,
+    Span,
+    SpanContext,
+    SpanKind,
+    Styler,
+    Symbols,
+    SystemInspector,
+    TaskInspector,
+    Timer,
+    Tracer,
+    Verbosity,
+    configure_output,
+    create_executor_callback,
+    create_on_step_callback,
+    render_dag_ascii,
+)
+
+# Events (THIS IS WHERE WE ADD VALUE)
+from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
+
+# Models
+from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.handlers import (
+    ConsoleEventHandler,
+    FileEventHandler,
+    FilteringEventHandler,
+    MetricsEventHandler,
+)
+
+# Reactive Flow (event-driven multi-agent orchestration)
+from agenticflow.reactive import (
+    AgentTriggerConfig,
+    # Mid-level API
+    Chain,
+    # Low-level API
+    EventFlow,
+    EventFlowConfig,
+    EventFlowResult,
+    FanIn,
+    FanOut,
+    # New names
+    ReactiveFlow,
+    ReactiveFlowConfig,
+    ReactiveFlowResult,
+    Router,
+    Saga,
+    Trigger,
+    # High-level API (recommended)
+    chain,
+    fanout,
+    on,  # Backward compat alias
+    route,
+    when,
+)
+
+# Tasks
+from agenticflow.tasks.manager import TaskManager
+from agenticflow.tasks.task import Task
+from agenticflow.tools.base import BaseTool, tool
+from agenticflow.tools.deferred import (
+    DeferredManager,
+    DeferredResult,
+    DeferredRetry,
+    DeferredStatus,
+    is_deferred,
+)
+
+# Tools (THIS IS WHERE WE ADD VALUE)
+from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
+
+# Topologies (simple coordination patterns)
+from agenticflow.topologies import (
+    # Core classes
+    AgentConfig as TopologyAgentConfig,
+)
+from agenticflow.topologies import (
+    BaseTopology,
+    Hierarchical,
+    Mesh,
+    Pipeline,
+    # Pattern classes
+    Supervisor,
+    TopologyResult,
+    TopologyType,
+    mesh,
+    pipeline,
+    # Convenience functions
+    supervisor,
 )
 
 # Backwards-compatible aliases for visualization module
@@ -368,6 +368,8 @@ AgentDiagram = GraphView  # Use GraphView.from_agent() instead
 TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
 
 # Capabilities (composable tools for agents)
+# Document processing module
+from agenticflow import document
 from agenticflow.capabilities import (
     BaseCapability,
     KnowledgeGraph,
@@ -375,15 +377,12 @@ from agenticflow.capabilities import (
 
 # Native message types (from core.messages)
 from agenticflow.core.messages import (
+    AIMessage,
     BaseMessage,
     HumanMessage,
-    AIMessage,
     SystemMessage,
     ToolMessage,
 )
-
-# Document processing module
-from agenticflow import document
 
 # All public exports
 __all__ = [
@@ -485,7 +484,6 @@ __all__ = [
     "ConversationGate",
     "Failover",
     "ToolGuard",
-    "CircuitBreaker",
     "PromptAdapter",
     "ContextPrompt",
     "ConversationPrompt",

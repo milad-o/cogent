@@ -4,17 +4,18 @@ AgentConfig - configuration for an Agent.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.enums import AgentRole
 
 if TYPE_CHECKING:
-    from agenticflow.models.base import BaseChatModel
     from agenticflow.agent.resilience import ResilienceConfig
-    from agenticflow.models.openai import OpenAIChat
-    from agenticflow.models.azure import AzureChat
     from agenticflow.models.anthropic import AnthropicChat
+    from agenticflow.models.azure import AzureChat
+    from agenticflow.models.base import BaseChatModel
+    from agenticflow.models.openai import OpenAIChat
 
 # Type for interrupt rules - bool or callable that takes (tool_name, args) -> bool
 InterruptRule = bool | Callable[[str, dict[str, Any]], bool]
@@ -24,10 +25,10 @@ InterruptRule = bool | Callable[[str, dict[str, Any]], bool]
 class AgentConfig:
     """
     Configuration for an Agent.
-    
+
     Defines the agent's identity, capabilities, and behavior parameters.
     Configuration is immutable after creation to ensure consistent behavior.
-    
+
     Attributes:
         name: Human-readable agent name
         role: Agent's role in the system
@@ -47,28 +48,28 @@ class AgentConfig:
         max_concurrent_tasks: Maximum parallel tasks
         resilience_config: Advanced resilience configuration (retry, circuit breaker, fallback)
         fallback_tools: Mapping of tool -> fallback tools for graceful degradation
-        
+
     Example:
         ```python
         from agenticflow.models import ChatModel, create_chat
-        
+
         # OpenAI
         config = AgentConfig(
             name="DataAnalyst",
             role=AgentRole.SPECIALIST,
             model=ChatModel(model="gpt-4o"),
         )
-        
+
         # Anthropic
         config = AgentConfig(
             name="Writer",
             model=AnthropicChat(model="claude-3-5-sonnet-latest"),
         )
-        
+
         # Azure OpenAI with Managed Identity
         from agenticflow.models import AzureChat
         from azure.identity import DefaultAzureCredential, get_bearer_token_provider
-        
+
         token_provider = get_bearer_token_provider(
             DefaultAzureCredential(),
             "https://cognitiveservices.azure.com/.default"
@@ -81,28 +82,29 @@ class AgentConfig:
                 azure_ad_token_provider=token_provider,
             ),
         )
-        
+
         # Native models - RECOMMENDED
         from agenticflow.models.openai import OpenAIChat
         from agenticflow.models.azure import AzureChat
         from agenticflow.models.anthropic import AnthropicChat
-        
+
         # OpenAI native
         config = AgentConfig(
             name="FastAgent",
             model=OpenAIChat(model="gpt-4o"),
         )
-        
-        # Azure native with Managed Identity
+
+        # Azure native with Managed Identity (Entra ID)
+        from agenticflow.models.azure import AzureEntraAuth
         config = AgentConfig(
             name="AzureNative",
             model=AzureChat(
                 deployment="gpt-4o",
                 azure_endpoint="https://my-resource.openai.azure.com",
-                use_managed_identity=True,
+                entra=AzureEntraAuth(method="managed_identity"),
             ),
         )
-        
+
         # Anthropic native
         config = AgentConfig(
             name="ClaudeAgent",
@@ -117,12 +119,14 @@ class AgentConfig:
 
     # LLM Configuration - native BaseChatModel
     # Native models: from agenticflow.models.openai, azure, anthropic, groq, gemini, etc.
-    model: "BaseChatModel | OpenAIChat | AzureChat | AnthropicChat | None" = None
+    model: BaseChatModel | OpenAIChat | AzureChat | AnthropicChat | None = None
     temperature: float = 0.7  # Used only if model is None (for lazy creation)
     max_tokens: int | None = None  # Used only if model is None
     system_prompt: str | None = None
-    model_kwargs: dict[str, Any] = field(default_factory=dict)  # For lazy model creation
-    
+    model_kwargs: dict[str, Any] = field(
+        default_factory=dict
+    )  # For lazy model creation
+
     # Streaming Configuration
     stream: bool = False  # Enable token-by-token streaming by default
 
@@ -134,15 +138,17 @@ class AgentConfig:
     timeout_seconds: float = 300.0  # Deprecated: use resilience_config
     retry_on_error: bool = True  # Deprecated: use resilience_config
     max_retries: int = 3  # Deprecated: use resilience_config
-    
+
     # Resilience Configuration (intelligent retry, circuit breaker, fallback)
     resilience_config: ResilienceConfig | None = None
-    fallback_tools: dict[str, list[str]] = field(default_factory=dict)  # tool -> [fallbacks]
-    
+    fallback_tools: dict[str, list[str]] = field(
+        default_factory=dict
+    )  # tool -> [fallbacks]
+
     # Human-in-the-Loop Configuration
     # Map tool names to interrupt rules:
     # - True: Always require human approval
-    # - False: Never require approval (auto-approve)  
+    # - False: Never require approval (auto-approve)
     # - Callable[[str, dict], bool]: Dynamic decision based on tool name and args
     # - "*": Wildcard rule for unlisted tools
     interrupt_on: dict[str, InterruptRule] = field(default_factory=dict)
@@ -164,10 +170,10 @@ class AgentConfig:
     def with_tools(self, tools: list[str]) -> AgentConfig:
         """
         Create a new config with additional tools.
-        
+
         Args:
             tools: Tool names to add
-            
+
         Returns:
             New AgentConfig with the tools
         """
@@ -194,10 +200,10 @@ class AgentConfig:
     def with_system_prompt(self, prompt: str) -> AgentConfig:
         """
         Create a new config with a different system prompt.
-        
+
         Args:
             prompt: New system prompt
-            
+
         Returns:
             New AgentConfig with the prompt
         """
@@ -220,21 +226,21 @@ class AgentConfig:
             interrupt_on=self.interrupt_on.copy(),
             metadata=self.metadata.copy(),
         )
-    
+
     def with_resilience(self, config: ResilienceConfig) -> AgentConfig:
         """
         Create a new config with resilience configuration.
-        
+
         Args:
             config: ResilienceConfig for retry, circuit breaker, fallback
-            
+
         Returns:
             New AgentConfig with resilience
-            
+
         Example:
             ```python
             from agenticflow.agent.resilience import ResilienceConfig
-            
+
             config = AgentConfig(
                 name="ResilientAgent",
                 model="gpt-4o",
@@ -260,17 +266,17 @@ class AgentConfig:
             interrupt_on=self.interrupt_on.copy(),
             metadata=self.metadata.copy(),
         )
-    
+
     def with_fallbacks(self, fallback_tools: dict[str, list[str]]) -> AgentConfig:
         """
         Create a new config with fallback tool mappings.
-        
+
         Args:
             fallback_tools: Mapping of primary tool -> list of fallback tools
-            
+
         Returns:
             New AgentConfig with fallbacks
-            
+
         Example:
             ```python
             config = AgentConfig(
@@ -301,21 +307,21 @@ class AgentConfig:
             interrupt_on=self.interrupt_on.copy(),
             metadata=self.metadata.copy(),
         )
-    
+
     def with_interrupt_on(self, interrupt_on: dict[str, InterruptRule]) -> AgentConfig:
         """
         Create a new config with human-in-the-loop interrupt rules.
-        
+
         Args:
             interrupt_on: Mapping of tool names to interrupt rules.
                 - True: Always require human approval
                 - False: Auto-approve (never interrupt)
                 - Callable[[str, dict], bool]: Dynamic decision based on args
                 - "*": Wildcard rule for unlisted tools
-            
+
         Returns:
             New AgentConfig with interrupt rules
-            
+
         Example:
             ```python
             config = AgentConfig(
@@ -352,7 +358,7 @@ class AgentConfig:
     @property
     def effective_model(self) -> BaseChatModel | None:
         """Get the effective model for this config.
-        
+
         Returns the model if set, otherwise None.
         Lazy model creation from model_name is no longer supported -
         users should pass native model instances directly.
@@ -362,10 +368,10 @@ class AgentConfig:
     def can_use_tool(self, tool_name: str) -> bool:
         """
         Check if agent is configured to use a tool.
-        
+
         Args:
             tool_name: Name of the tool
-            
+
         Returns:
             True if tool is in agent's tool list, or if no tools are restricted
         """
@@ -400,7 +406,7 @@ class AgentConfig:
     @classmethod
     def from_dict(cls, data: dict, model: BaseChatModel | None = None) -> AgentConfig:
         """Create from dictionary.
-        
+
         Args:
             data: Configuration dictionary.
             model: Chat model instance to use.

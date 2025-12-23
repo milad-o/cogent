@@ -108,6 +108,7 @@ All examples use `config.py` for model configuration:
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 export AZURE_OPENAI_ENDPOINT="https://..."
+export AZURE_OPENAI_AUTH_TYPE="managed_identity"  # or api_key|default|client_secret
 
 # Or create a .env file in the project root
 ```

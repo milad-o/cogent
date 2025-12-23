@@ -80,7 +80,7 @@ if response.tool_calls:
 Enterprise Azure deployments with Azure AD support:
 
 ```python
-from agenticflow.models.azure import AzureChat, AzureEmbedding
+from agenticflow.models.azure import AzureChat, AzureEmbedding, AzureEntraAuth
 
 # With API key
 model = AzureChat(
@@ -90,18 +90,18 @@ model = AzureChat(
     api_version="2024-02-01",
 )
 
-# With Azure AD (DefaultAzureCredential)
+# With Entra ID (DefaultAzureCredential)
 model = AzureChat(
     azure_endpoint="https://your-resource.openai.azure.com",
     deployment="gpt-4o",
-    use_azure_ad=True,  # Uses DefaultAzureCredential
+    entra=AzureEntraAuth(method="default"),  # Uses DefaultAzureCredential
 )
 
 # Embeddings
 embeddings = AzureEmbedding(
     azure_endpoint="https://your-resource.openai.azure.com",
     deployment="text-embedding-ada-002",
-    use_azure_ad=True,
+    entra=AzureEntraAuth(method="default"),
 )
 ```
 
@@ -109,8 +109,23 @@ embeddings = AzureEmbedding(
 
 ```bash
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_API_KEY=your-api-key  # Or use Azure AD
 AZURE_OPENAI_API_VERSION=2024-02-01
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-ada-002
+
+# Auth selection
+AZURE_OPENAI_AUTH_TYPE=managed_identity  # api_key | default | managed_identity | client_secret
+
+# API key auth
+# AZURE_OPENAI_API_KEY=your-api-key
+
+# Managed identity auth (user-assigned MI)
+# AZURE_OPENAI_CLIENT_ID=...
+
+# Service principal auth (client secret)
+# AZURE_OPENAI_TENANT_ID=...
+# AZURE_OPENAI_CLIENT_ID=...
+# AZURE_OPENAI_CLIENT_SECRET=...
 ```
 
 ---
@@ -266,7 +281,7 @@ model = create_chat(
     "azure",
     deployment="gpt-4o",
     azure_endpoint="https://your-resource.openai.azure.com",
-    use_azure_ad=True,
+    entra=AzureEntraAuth(method="default"),
 )
 
 # Anthropic
