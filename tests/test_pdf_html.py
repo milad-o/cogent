@@ -268,6 +268,53 @@ class TestPDFProcessingResult:
         html = result.to_html(include_page_numbers=True)
         assert "Page 1" in html
 
+    def test_to_html_fragment_wraps_in_container(self) -> None:
+        """Test fragment output is container-scoped for notebook-safe rendering."""
+        page_results = [
+            PageResult(page_number=1, status=PageStatus.SUCCESS, content="<p>Content</p>"),
+        ]
+        result = PDFProcessingResult(
+            file_path=Path("test.pdf"),
+            status=PDFProcessingStatus.COMPLETED,
+            total_pages=1,
+            successful_pages=1,
+            page_results=page_results,
+        )
+
+        fragment = result.to_html_fragment(container_class="af-pdfhtml")
+        assert fragment.lstrip().startswith('<div class="af-pdfhtml">')
+        assert "<p>Content</p>" in fragment
+
+    def test_save_pages_fragment_mode_writes_snippet(self, tmp_path: Path) -> None:
+        """Test saving pages without an HTML document wrapper."""
+        page_results = [
+            PageResult(page_number=1, status=PageStatus.SUCCESS, content="<p>Page 1</p>"),
+            PageResult(page_number=2, status=PageStatus.SUCCESS, content="<p>Page 2</p>"),
+        ]
+        result = PDFProcessingResult(
+            file_path=Path("test.pdf"),
+            status=PDFProcessingStatus.COMPLETED,
+            total_pages=2,
+            successful_pages=2,
+            page_results=page_results,
+        )
+
+        out_dir = tmp_path / "pages"
+        saved = result.save(
+            out_dir,
+            mode="pages",
+            wrap_html_document=False,
+            container_class="af-pdfhtml",
+        )
+        assert isinstance(saved, list)
+        assert len(saved) == 2
+
+        first = saved[0].read_text(encoding="utf-8")
+        assert "<!DOCTYPE html>" not in first
+        assert "<html" not in first
+        assert '<div class="af-pdfhtml"' in first
+        assert "Page 1" in first
+
 
 # ==============================================================================
 # Test PDFHTMLLoader

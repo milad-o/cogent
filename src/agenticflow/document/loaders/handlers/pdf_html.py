@@ -252,6 +252,37 @@ class PDFProcessingResult:
 
         return "\n\n".join(parts)
 
+    def to_html_fragment(
+        self,
+        *,
+        include_page_breaks: bool = True,
+        include_page_numbers: bool = False,
+        page_break_style: str = "hr",
+        container_class: str = "af-pdfhtml",
+    ) -> str:
+        """Convert all pages to a container-scoped HTML fragment.
+
+        This is useful for environments that embed HTML snippets (e.g., Jupyter/VS Code
+        notebook outputs) where rendering a full HTML document can lead to styling
+        collisions or ignored <head>/<style> blocks.
+
+        Args:
+            include_page_breaks: Add separators between pages (default: True).
+            include_page_numbers: Add page number headers (default: False).
+            page_break_style: Separator style ("hr", "div", or custom HTML).
+            container_class: Class applied to the outer container div.
+
+        Returns:
+            HTML fragment wrapped in a single outer <div>.
+        """
+        content = self.to_html(
+            include_page_breaks=include_page_breaks,
+            include_page_numbers=include_page_numbers,
+            page_break_style=page_break_style,
+        )
+        # Keep this intentionally "basic": no CSS injection here.
+        return f'<div class="{container_class}">\n{content}\n</div>'
+
     def save(
         self,
         output_path: str | Path,
@@ -260,6 +291,8 @@ class PDFProcessingResult:
         include_page_breaks: bool = True,
         include_page_numbers: bool = False,
         page_break_style: str = "hr",
+        wrap_html_document: bool = True,
+        container_class: str = "af-pdfhtml",
         encoding: str = "utf-8",
     ) -> Path | list[Path]:
         """Save extracted content to file(s).
@@ -299,14 +332,15 @@ class PDFProcessingResult:
         
         if mode == "single":
             # Combine all pages into one file
-            content = self.to_html(
-                include_page_breaks=include_page_breaks,
-                include_page_numbers=include_page_numbers,
-                page_break_style=page_break_style,
-            )
-            
-            # Wrap in basic HTML structure
-            html_doc = f"""<!DOCTYPE html>
+            if wrap_html_document:
+                content = self.to_html(
+                    include_page_breaks=include_page_breaks,
+                    include_page_numbers=include_page_numbers,
+                    page_break_style=page_break_style,
+                )
+
+                # Wrap in basic HTML structure for standalone viewing.
+                html_doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -326,9 +360,21 @@ class PDFProcessingResult:
 {content}
 </body>
 </html>"""
+
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(html_doc, encoding=encoding)
+                return output_path
+
+            # Fragment mode: write just a container-scoped snippet.
+            fragment = self.to_html_fragment(
+                include_page_breaks=include_page_breaks,
+                include_page_numbers=include_page_numbers,
+                page_break_style=page_break_style,
+                container_class=container_class,
+            )
             
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(html_doc, encoding=encoding)
+            output_path.write_text(fragment, encoding=encoding)
             return output_path
         
         elif mode == "pages":
@@ -345,10 +391,13 @@ class PDFProcessingResult:
 
                 page_content = page_result.content.strip()
                 if include_page_numbers:
-                    page_content = f'<div class="page-number">Page {page_result.page_number}</div>\n\n{page_content}'
-                
-                # Wrap each page in HTML structure
-                html_doc = f"""<!DOCTYPE html>
+                    page_content = (
+                        f'<div class="page-number">Page {page_result.page_number}</div>\n\n{page_content}'
+                    )
+
+                if wrap_html_document:
+                    # Wrap each page in HTML structure for standalone viewing.
+                    html_doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -367,8 +416,20 @@ class PDFProcessingResult:
 </body>
 </html>"""
 
+                    page_path = output_path / f"{stem}_page_{page_result.page_number:04d}.html"
+                    page_path.write_text(html_doc, encoding=encoding)
+                    saved_paths.append(page_path)
+                    continue
+
+                # Fragment mode: write basic HTML snippet wrapped in a container.
+                fragment = (
+                    f'<div class="{container_class}" data-page="{page_result.page_number}">\n'
+                    f"{page_content}\n"
+                    "</div>"
+                )
+
                 page_path = output_path / f"{stem}_page_{page_result.page_number:04d}.html"
-                page_path.write_text(html_doc, encoding=encoding)
+                page_path.write_text(fragment, encoding=encoding)
                 saved_paths.append(page_path)
             
             return saved_paths
@@ -1282,6 +1343,8 @@ class PDFHTMLLoader(BaseLoader):
         include_page_breaks: bool = True,
         include_page_numbers: bool = False,
         page_break_style: str = "hr",
+        wrap_html_document: bool = True,
+        container_class: str = "af-pdfhtml",
         encoding: str = "utf-8",
     ) -> Path | list[Path]:
         """Save the last loaded documents to file(s).
@@ -1323,6 +1386,8 @@ class PDFHTMLLoader(BaseLoader):
             include_page_breaks=include_page_breaks,
             include_page_numbers=include_page_numbers,
             page_break_style=page_break_style,
+            wrap_html_document=wrap_html_document,
+            container_class=container_class,
             encoding=encoding,
         )
 

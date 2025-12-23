@@ -66,3 +66,7 @@ examples/*.ipynb
 scripts/
 /config.py
 examples/data/pdf_output/pdf_vision_showcase/
+
+# Notebook-generated artifacts
+examples/data/pdf_output/notebook-*.html
+examples/data/pdf_output/notebook_pdf_html_pages/
