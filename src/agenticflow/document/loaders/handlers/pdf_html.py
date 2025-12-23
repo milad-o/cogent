@@ -1181,7 +1181,7 @@ class PDFHTMLLoader(BaseLoader):
         fontsize_limit: float = 3.0,
         header: bool = True,
         footer: bool = True,
-        show_progress: bool = True,
+        show_progress: bool = False,
         verbose: bool = False,
         encoding: str = "utf-8",
         parallel: bool = True,
@@ -1198,7 +1198,7 @@ class PDFHTMLLoader(BaseLoader):
             fontsize_limit: Minimum font size to consider.
             header: Include page headers in output (default: True).
             footer: Include page footers in output (default: True).
-            show_progress: Print human-friendly progress messages.
+            show_progress: Print human-friendly progress messages (default: False).
             verbose: Enable structured logging for observability (default: False).
             encoding: Text encoding (not used for PDFs).
             parallel: Whether to process pages in parallel (default: True).
@@ -1216,7 +1216,8 @@ class PDFHTMLLoader(BaseLoader):
             header=header,
             footer=footer,
         )
-        self._show_progress = show_progress
+        # Use show_progress if explicitly set, otherwise follow verbose
+        self._show_progress = show_progress or verbose
         self._verbose = verbose
         self._last_result: PDFProcessingResult | None = None
         self._parallel = parallel

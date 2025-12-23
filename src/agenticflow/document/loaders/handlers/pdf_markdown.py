@@ -574,7 +574,7 @@ class PDFMarkdownLoader(BaseLoader):
         fontsize_limit: float = 3.0,
         header: bool = True,
         footer: bool = True,
-        show_progress: bool = True,
+        show_progress: bool = False,
         verbose: bool = False,
         encoding: str = "utf-8",
         parallel: bool = True,
@@ -591,7 +591,7 @@ class PDFMarkdownLoader(BaseLoader):
             fontsize_limit: Minimum font size to consider.
             header: Include page headers in output (default: True).
             footer: Include page footers in output (default: True).
-            show_progress: Print human-friendly progress messages.
+            show_progress: Print human-friendly progress messages (default: False).
             verbose: Enable structured logging for observability (default: False).
             encoding: Text encoding (not used for PDFs).
             parallel: Whether to process pages in parallel (default: True).
@@ -609,7 +609,8 @@ class PDFMarkdownLoader(BaseLoader):
             header=header,
             footer=footer,
         )
-        self._show_progress = show_progress
+        # Use show_progress if explicitly set, otherwise follow verbose
+        self._show_progress = show_progress or verbose
         self._verbose = verbose
         self._last_result: PDFProcessingResult | None = None
         self._parallel = parallel
@@ -832,7 +833,7 @@ class PDFMarkdownLoader(BaseLoader):
             self._log.info("PDF processing started", file=str(path), parallel=parallel)
 
         if show_progress:
-            print(f"      📖 Loading {path.name}...")
+            print(f"📖 Loading {path.name}...")
 
         try:
             # Get page count and metadata
@@ -854,7 +855,7 @@ class PDFMarkdownLoader(BaseLoader):
             if show_progress:
                 title = doc_metadata.get("title", "")
                 title_str = f" - {title}" if title else ""
-                print(f"      📄 {page_count} pages{title_str}")
+                print(f"📄 {page_count} pages{title_str}")
 
             if page_count == 0:
                 return PDFProcessingResult(
@@ -916,7 +917,7 @@ class PDFMarkdownLoader(BaseLoader):
 
             if show_progress:
                 pages_per_sec = page_count / (total_time_ms / 1000) if total_time_ms > 0 else 0
-                print(f"      ✓ {successful}/{page_count} pages in {total_time_ms/1000:.1f}s ({pages_per_sec:.1f} pages/sec)")
+                print(f"✅ {successful}/{page_count} pages in {total_time_ms/1000:.1f}s ({pages_per_sec:.1f} pages/sec)")
 
             return result
 
@@ -924,7 +925,7 @@ class PDFMarkdownLoader(BaseLoader):
             if self._log:
                 self._log.error("PDF processing failed", file=str(path), error=str(e))
             if show_progress:
-                print(f"      ✗ Error: {e}")
+                print(f"❌ Error: {e}")
             return PDFProcessingResult(
                 file_path=path,
                 status=PDFProcessingStatus.FAILED,
