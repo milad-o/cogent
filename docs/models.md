@@ -125,10 +125,10 @@ if response.tool_calls:
 Enterprise Azure deployments with Azure AD support:
 
 ```python
-from agenticflow.models.azure import AzureChat, AzureEmbedding, AzureEntraAuth
+from agenticflow.models.azure import AzureEntraAuth, AzureOpenAIChat, AzureOpenAIEmbedding
 
 # With API key
-model = AzureChat(
+model = AzureOpenAIChat(
     azure_endpoint="https://your-resource.openai.azure.com",
     deployment="gpt-4o",
     api_key="your-api-key",
@@ -136,7 +136,7 @@ model = AzureChat(
 )
 
 # With Entra ID (DefaultAzureCredential)
-model = AzureChat(
+model = AzureOpenAIChat(
     azure_endpoint="https://your-resource.openai.azure.com",
     deployment="gpt-4o",
     entra=AzureEntraAuth(method="default"),  # Uses DefaultAzureCredential
@@ -145,7 +145,7 @@ model = AzureChat(
 # With Entra ID (Managed Identity)
 # - System-assigned MI: omit client_id
 # - User-assigned MI: set client_id (recommended when multiple identities exist)
-model = AzureChat(
+model = AzureOpenAIChat(
     azure_endpoint="https://your-resource.openai.azure.com",
     deployment="gpt-4o",
     entra=AzureEntraAuth(
@@ -155,7 +155,7 @@ model = AzureChat(
 )
 
 # Embeddings
-embeddings = AzureEmbedding(
+embeddings = AzureOpenAIEmbedding(
     azure_endpoint="https://your-resource.openai.azure.com",
     deployment="text-embedding-ada-002",
     entra=AzureEntraAuth(method="default"),
@@ -482,7 +482,7 @@ class BaseEmbedding(Protocol):
 | Provider | Chat Class | Embedding Class |
 |----------|------------|-----------------|
 | OpenAI | `OpenAIChat` | `OpenAIEmbedding` |
-| Azure | `AzureChat` | `AzureEmbedding` |
+| Azure | `AzureOpenAIChat` | `AzureOpenAIEmbedding` |
 | Anthropic | `AnthropicChat` | - |
 | Groq | `GroqChat` | - |
 | Gemini | `GeminiChat` | `GeminiEmbedding` |

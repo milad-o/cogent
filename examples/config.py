@@ -312,14 +312,14 @@ def _create_azure_chat(s: Settings):
     if not s.azure_openai_deployment:
         raise ValueError("LLM_PROVIDER=azure requires AZURE_OPENAI_DEPLOYMENT")
 
-    from agenticflow.models.azure import AzureChat, AzureEntraAuth
+    from agenticflow.models.azure import AzureEntraAuth, AzureOpenAIChat
 
     if s.azure_auth_type == "api_key":
         if not s.azure_openai_api_key:
             raise ValueError(
                 "AZURE_OPENAI_AUTH_TYPE=api_key requires AZURE_OPENAI_API_KEY"
             )
-        return AzureChat(
+        return AzureOpenAIChat(
             deployment=s.azure_openai_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
@@ -327,7 +327,7 @@ def _create_azure_chat(s: Settings):
         )
 
     elif s.azure_auth_type == "managed_identity":
-        return AzureChat(
+        return AzureOpenAIChat(
             deployment=s.azure_openai_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
@@ -338,7 +338,7 @@ def _create_azure_chat(s: Settings):
         )
 
     elif s.azure_auth_type == "default":
-        return AzureChat(
+        return AzureOpenAIChat(
             deployment=s.azure_openai_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
@@ -359,7 +359,7 @@ def _create_azure_chat(s: Settings):
             raise ValueError(
                 "AZURE_OPENAI_AUTH_TYPE=client_secret requires: " + ", ".join(missing)
             )
-        return AzureChat(
+        return AzureOpenAIChat(
             deployment=s.azure_openai_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
@@ -460,14 +460,14 @@ def _create_azure_embeddings(s: Settings):
             "EMBEDDING_PROVIDER=azure requires AZURE_OPENAI_EMBEDDING_DEPLOYMENT"
         )
 
-    from agenticflow.models.azure import AzureEmbedding, AzureEntraAuth
+    from agenticflow.models.azure import AzureEntraAuth, AzureOpenAIEmbedding
 
     if s.azure_auth_type == "api_key":
         if not s.azure_openai_api_key:
             raise ValueError(
                 "AZURE_OPENAI_AUTH_TYPE=api_key requires AZURE_OPENAI_API_KEY"
             )
-        return AzureEmbedding(
+        return AzureOpenAIEmbedding(
             deployment=s.azure_openai_embedding_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
@@ -475,7 +475,7 @@ def _create_azure_embeddings(s: Settings):
         )
 
     elif s.azure_auth_type == "managed_identity":
-        return AzureEmbedding(
+        return AzureOpenAIEmbedding(
             deployment=s.azure_openai_embedding_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
@@ -486,7 +486,7 @@ def _create_azure_embeddings(s: Settings):
         )
 
     elif s.azure_auth_type == "default":
-        return AzureEmbedding(
+        return AzureOpenAIEmbedding(
             deployment=s.azure_openai_embedding_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,
@@ -507,7 +507,7 @@ def _create_azure_embeddings(s: Settings):
             raise ValueError(
                 "AZURE_OPENAI_AUTH_TYPE=client_secret requires: " + ", ".join(missing)
             )
-        return AzureEmbedding(
+        return AzureOpenAIEmbedding(
             deployment=s.azure_openai_embedding_deployment,
             azure_endpoint=s.azure_openai_endpoint,
             api_version=s.azure_openai_api_version,

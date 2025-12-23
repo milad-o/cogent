@@ -41,7 +41,7 @@ Quick Start (Standalone Execution):
 Native Models (Recommended):
     ```python
     from agenticflow.models.openai import OpenAIChat
-    from agenticflow.models.azure import AzureChat
+    from agenticflow.models.azure import AzureOpenAIChat
     from agenticflow.models.anthropic import AnthropicChat
     from agenticflow.models import create_chat, create_embedding
 
@@ -54,7 +54,7 @@ Native Models (Recommended):
 
     # Azure with Managed Identity (Entra ID)
     from agenticflow.models.azure import AzureEntraAuth
-    llm = AzureChat(
+    llm = AzureOpenAIChat(
         deployment="gpt-4o",
         azure_endpoint="https://my-resource.openai.azure.com",
         entra=AzureEntraAuth(method="managed_identity"),
@@ -244,7 +244,7 @@ from agenticflow.models import (
 )
 
 # Provider-specific model imports for convenience
-from agenticflow.models.azure import AzureChat, AzureEmbedding
+from agenticflow.models.azure import AzureOpenAIChat, AzureOpenAIEmbedding
 
 # Observability (THIS IS WHERE WE ADD VALUE)
 from agenticflow.observability import (
@@ -613,8 +613,8 @@ __all__ = [
     # LLM & Embedding Models (native)
     "ChatModel",
     "EmbeddingModel",
-    "AzureChat",
-    "AzureEmbedding",
+    "AzureOpenAIChat",
+    "AzureOpenAIEmbedding",
     "create_chat",
     "create_embedding",
     # Native message types

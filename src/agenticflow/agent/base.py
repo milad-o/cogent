@@ -1385,7 +1385,7 @@ class Agent:
         """Get the LLM model.
         
         Accepts native AgenticFlow models:
-        - ChatModel, AzureChat, AnthropicChat, GroqChat, etc.
+        - ChatModel, AzureOpenAIChat, AnthropicChat, GroqChat, etc.
         
         Example:
             ```python

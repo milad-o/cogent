@@ -70,7 +70,7 @@ Native SDK wrappers for all major LLM providers with zero abstraction overhead.
 | Provider | Chat | Embeddings | Notes |
 |----------|------|------------|-------|
 | **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | Default provider, GPT-4o, o1, o3 |
-| **Azure** | `AzureChat` | `AzureEmbedding` | Managed Identity, Azure AD support |
+| **Azure** | `AzureOpenAIChat` | `AzureOpenAIEmbedding` | Managed Identity, Azure AD support |
 | **Anthropic** | `AnthropicChat` | — | Claude 4, extended thinking |
 | **Gemini** | `GeminiChat` | `GeminiEmbedding` | Google AI, Vertex AI |
 | **Groq** | `GroqChat` | — | Fast inference, Llama 3.3, Mixtral |

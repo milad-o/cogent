@@ -11,17 +11,21 @@ Azure AI Foundry:
 - Uses azure-ai-inference SDK
 
 Usage:
-    from agenticflow.models.azure import AzureChat, AzureEmbedding, AzureAIFoundryChat
+    from agenticflow.models.azure import (
+        AzureAIFoundryChat,
+        AzureOpenAIChat,
+        AzureOpenAIEmbedding,
+    )
 
     # Azure OpenAI with API Key
-    llm = AzureChat(
+    llm = AzureOpenAIChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         api_key="your-key",
         deployment="gpt-4o",
     )
 
     # Azure OpenAI with DefaultAzureCredential (Entra ID)
-    llm = AzureChat(
+    llm = AzureOpenAIChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         deployment="gpt-4o",
         entra=AzureEntraAuth(method="default"),
@@ -54,6 +58,7 @@ from agenticflow.models.base import (
     BaseChatModel,
     BaseEmbedding,
     convert_messages,
+    normalize_input,
 )
 
 if TYPE_CHECKING:
@@ -225,7 +230,7 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 
 
 @dataclass
-class AzureChat(BaseChatModel):
+class AzureOpenAIChat(BaseChatModel):
     """Azure OpenAI chat model.
 
     Supports API Key and Microsoft Entra ID (Azure AD) authentication.
@@ -236,25 +241,25 @@ class AzureChat(BaseChatModel):
     - Provide an `azure_ad_token_provider` callable directly.
 
     Example:
-        from agenticflow.models.azure import AzureChat
+        from agenticflow.models.azure import AzureOpenAIChat
         from agenticflow.models.azure import AzureEntraAuth
 
         # API Key auth (simple)
-        llm = AzureChat(
+        llm = AzureOpenAIChat(
             azure_endpoint="https://your-resource.openai.azure.com",
             api_key="your-api-key",
             deployment="gpt-4o",
         )
 
         # Entra ID via DefaultAzureCredential (recommended)
-        llm = AzureChat(
+        llm = AzureOpenAIChat(
             azure_endpoint="https://your-resource.openai.azure.com",
             deployment="gpt-4o",
             entra=AzureEntraAuth(method="default"),
         )
 
         # Entra ID via Managed Identity (for Azure-hosted workloads)
-        llm = AzureChat(
+        llm = AzureOpenAIChat(
             azure_endpoint="https://your-resource.openai.azure.com",
             deployment="gpt-4o",
             entra=AzureEntraAuth(
@@ -264,7 +269,7 @@ class AzureChat(BaseChatModel):
         )
 
         # Entra ID via client secret (service principal)
-        llm = AzureChat(
+        llm = AzureOpenAIChat(
             azure_endpoint="https://your-resource.openai.azure.com",
             deployment="gpt-4o",
             entra=AzureEntraAuth(
@@ -277,7 +282,7 @@ class AzureChat(BaseChatModel):
 
         # Use environment variables
         # AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT
-        llm = AzureChat()
+        llm = AzureOpenAIChat()
 
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
     """
@@ -336,11 +341,11 @@ class AzureChat(BaseChatModel):
         tools: list[Any],
         *,
         parallel_tool_calls: bool = True,
-    ) -> AzureChat:
+    ) -> "AzureOpenAIChat":
         """Bind tools to the model."""
         self._ensure_initialized()
 
-        new_model = AzureChat(
+        new_model = AzureOpenAIChat(
             azure_endpoint=self.azure_endpoint,
             deployment=self.deployment,
             api_version=self.api_version,
@@ -366,20 +371,26 @@ class AzureChat(BaseChatModel):
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
-        response = self._client.chat.completions.create(**self._build_request(normalize_input(messages)))
+        response = self._client.chat.completions.create(
+            **self._build_request(normalize_input(messages))
+        )
         return _parse_response(response)
 
-    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke asynchronously."""
         self._ensure_initialized()
+        messages = normalize_input(messages)
         response = await self._async_client.chat.completions.create(
             **self._build_request(messages)
         )
         return _parse_response(response)
 
-    async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
+    async def astream(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously."""
         self._ensure_initialized()
+        messages = normalize_input(messages)
         kwargs = self._build_request(messages)
         kwargs["stream"] = True
 
@@ -415,7 +426,7 @@ class AzureChat(BaseChatModel):
 
 
 @dataclass
-class AzureEmbedding(BaseEmbedding):
+class AzureOpenAIEmbedding(BaseEmbedding):
     """Azure OpenAI embedding model.
 
     Supports API Key and Microsoft Entra ID (Azure AD) authentication.
@@ -426,18 +437,18 @@ class AzureEmbedding(BaseEmbedding):
     - Provide an `azure_ad_token_provider` callable directly.
 
     Example:
-        from agenticflow.models.azure import AzureEmbedding
+        from agenticflow.models.azure import AzureOpenAIEmbedding
         from agenticflow.models.azure import AzureEntraAuth
 
         # API Key auth
-        embedder = AzureEmbedding(
+        embedder = AzureOpenAIEmbedding(
             azure_endpoint="https://your-resource.openai.azure.com",
             api_key="your-api-key",
             deployment="text-embedding-ada-002",
         )
 
         # Entra ID auth
-        embedder = AzureEmbedding(
+        embedder = AzureOpenAIEmbedding(
             azure_endpoint="https://your-resource.openai.azure.com",
             deployment="text-embedding-3-small",
             entra=AzureEntraAuth(method="default"),

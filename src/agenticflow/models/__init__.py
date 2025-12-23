@@ -6,7 +6,7 @@ Supports OpenAI, Azure, Anthropic, Groq, Gemini, Cohere, Cloudflare, Ollama, and
 
 Provider-Specific Imports:
     from agenticflow.models.openai import ChatModel, OpenAIEmbedding
-    from agenticflow.models.azure import AzureChat, AzureEmbedding, AzureAIFoundryChat
+    from agenticflow.models.azure import AzureOpenAIChat, AzureOpenAIEmbedding, AzureAIFoundryChat
     from agenticflow.models.anthropic import AnthropicChat
     from agenticflow.models.groq import GroqChat
     from agenticflow.models.cohere import CohereChat, CohereEmbedding
@@ -31,9 +31,9 @@ Example:
     response = await llm.ainvoke(messages)
 
     # Azure with DefaultAzureCredential (Entra ID)
-    from agenticflow.models.azure import AzureChat, AzureEntraAuth
+    from agenticflow.models.azure import AzureOpenAIChat, AzureEntraAuth
 
-    llm = AzureChat(
+    llm = AzureOpenAIChat(
         azure_endpoint="https://your-resource.openai.azure.com",
         deployment="gpt-4o",
         entra=AzureEntraAuth(method="default"),
@@ -172,9 +172,9 @@ def create_chat(
         return OpenAIChat(model=model or "gpt-4o-mini", **kwargs)
 
     elif provider == "azure":
-        from agenticflow.models.azure import AzureChat
+        from agenticflow.models.azure import AzureOpenAIChat
 
-        return AzureChat(deployment=model or kwargs.pop("deployment", None), **kwargs)
+        return AzureOpenAIChat(deployment=model or kwargs.pop("deployment", None), **kwargs)
 
     elif provider == "azure-foundry":
         from agenticflow.models.azure import AzureAIFoundryChat
@@ -285,9 +285,9 @@ def create_embedding(
         return OpenAIEmbedding(model=model or "text-embedding-3-small", **kwargs)
 
     elif provider == "azure":
-        from agenticflow.models.azure import AzureEmbedding
+        from agenticflow.models.azure import AzureOpenAIEmbedding
 
-        return AzureEmbedding(
+        return AzureOpenAIEmbedding(
             deployment=model or kwargs.pop("deployment", None), **kwargs
         )
 

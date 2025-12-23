@@ -13,7 +13,7 @@ from agenticflow.core.enums import AgentRole
 if TYPE_CHECKING:
     from agenticflow.agent.resilience import ResilienceConfig
     from agenticflow.models.anthropic import AnthropicChat
-    from agenticflow.models.azure import AzureChat
+    from agenticflow.models.azure import AzureOpenAIChat
     from agenticflow.models.base import BaseChatModel
     from agenticflow.models.openai import OpenAIChat
 
@@ -36,7 +36,7 @@ class AgentConfig:
         model: LLM model - must be a native AgenticFlow chat model instance.
             Use native models:
             - ChatModel(model="gpt-4o")
-            - AzureChat(...)
+            - AzureOpenAIChat(...)
             - AnthropicChat(model="claude-3-5-sonnet-latest")
             - GeminiChat(model="gemini-2.0-flash")
             - OllamaChat(model="llama3.2")
@@ -67,7 +67,7 @@ class AgentConfig:
         )
 
         # Azure OpenAI with Managed Identity
-        from agenticflow.models import AzureChat
+        from agenticflow.models.azure import AzureOpenAIChat
         from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
         token_provider = get_bearer_token_provider(
@@ -76,7 +76,7 @@ class AgentConfig:
         )
         config = AgentConfig(
             name="AzureAgent",
-            model=AzureChat(
+            model=AzureOpenAIChat(
                 azure_deployment="gpt-4o",
                 azure_endpoint="https://my-resource.openai.azure.com",
                 azure_ad_token_provider=token_provider,
@@ -85,7 +85,7 @@ class AgentConfig:
 
         # Native models - RECOMMENDED
         from agenticflow.models.openai import OpenAIChat
-        from agenticflow.models.azure import AzureChat
+        from agenticflow.models.azure import AzureOpenAIChat
         from agenticflow.models.anthropic import AnthropicChat
 
         # OpenAI native
@@ -98,7 +98,7 @@ class AgentConfig:
         from agenticflow.models.azure import AzureEntraAuth
         config = AgentConfig(
             name="AzureNative",
-            model=AzureChat(
+            model=AzureOpenAIChat(
                 deployment="gpt-4o",
                 azure_endpoint="https://my-resource.openai.azure.com",
                 entra=AzureEntraAuth(method="managed_identity"),
@@ -119,7 +119,7 @@ class AgentConfig:
 
     # LLM Configuration - native BaseChatModel
     # Native models: from agenticflow.models.openai, azure, anthropic, groq, gemini, etc.
-    model: BaseChatModel | OpenAIChat | AzureChat | AnthropicChat | None = None
+    model: BaseChatModel | OpenAIChat | AzureOpenAIChat | AnthropicChat | None = None
     temperature: float = 0.7  # Used only if model is None (for lazy creation)
     max_tokens: int | None = None  # Used only if model is None
     system_prompt: str | None = None
