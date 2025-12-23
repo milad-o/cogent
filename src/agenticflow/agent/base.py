@@ -342,7 +342,8 @@ class Agent:
             effective_prompt = instructions or system_prompt
             if not effective_prompt:
                 from agenticflow.agent.roles import get_role_prompt
-                effective_prompt = get_role_prompt(role)
+                has_tools = bool(tool_names or self._direct_tools)
+                effective_prompt = get_role_prompt(role, has_tools=has_tools)
             
             # Create config from simplified params
             config = AgentConfig(
@@ -376,6 +377,7 @@ class Agent:
             # Apply default role prompt if no system_prompt provided
             if not config.system_prompt:
                 from agenticflow.agent.roles import get_role_prompt
+                has_tools = bool(config.tools or self._direct_tools)
                 config = AgentConfig(
                     name=config.name,
                     role=config.role,
@@ -383,7 +385,7 @@ class Agent:
                     model=config.model,
                     temperature=config.temperature,
                     max_tokens=config.max_tokens,
-                    system_prompt=get_role_prompt(config.role),
+                    system_prompt=get_role_prompt(config.role, has_tools=has_tools),
                     model_kwargs=config.model_kwargs,
                     stream=config.stream,
                     tools=config.tools,
@@ -1313,7 +1315,8 @@ class Agent:
         if not base_prompt:
             if tools or caps_desc:
                 from agenticflow.agent.roles import get_role_prompt
-                base_prompt = get_role_prompt(self.config.role)
+                has_tools = bool(tools)
+                base_prompt = get_role_prompt(self.config.role, has_tools=has_tools)
             else:
                 return None
         
@@ -3281,7 +3284,7 @@ class Agent:
         """
         from agenticflow.agent.roles import get_role_prompt
         
-        base_prompt = get_role_prompt(AgentRole.SUPERVISOR)
+        base_prompt = get_role_prompt(AgentRole.SUPERVISOR, has_tools=False)
         if workers:
             base_prompt += f"\n\nYour team members: {', '.join(workers)}"
         if instructions:
@@ -3331,7 +3334,8 @@ class Agent:
         """
         from agenticflow.agent.roles import get_role_prompt
         
-        base_prompt = get_role_prompt(AgentRole.WORKER)
+        has_tools = bool(tools)
+        base_prompt = get_role_prompt(AgentRole.WORKER, has_tools=has_tools)
         if specialty:
             base_prompt += f"\n\nYour specialty: {specialty}"
         if instructions:
@@ -3372,7 +3376,7 @@ class Agent:
         """
         from agenticflow.agent.roles import get_role_prompt
         
-        base_prompt = get_role_prompt(AgentRole.REVIEWER)
+        base_prompt = get_role_prompt(AgentRole.REVIEWER, has_tools=False)
         if criteria:
             base_prompt += f"\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
         if instructions:
@@ -3423,7 +3427,8 @@ class Agent:
         """
         from agenticflow.agent.roles import get_role_prompt
         
-        base_prompt = get_role_prompt(AgentRole.AUTONOMOUS)
+        has_tools = bool(tools)
+        base_prompt = get_role_prompt(AgentRole.AUTONOMOUS, has_tools=has_tools)
         if instructions:
             base_prompt += f"\n\n{instructions}"
         

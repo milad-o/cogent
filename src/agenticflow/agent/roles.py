@@ -44,14 +44,21 @@ if TYPE_CHECKING:
 # Role Prompts - Default system prompts for each role
 # =============================================================================
 
-# Expert agentic instructions shared across roles
-AGENTIC_CORE = """
+# General agentic instructions (no tools)
+AGENTIC_CORE_NO_TOOLS = """
 ## How to Work
 
 1. **Understand First**: Read the task carefully. What is actually being asked?
 
 2. **Plan Before Acting**: Break complex tasks into steps. Think: "To accomplish X, I need to do A, then B, then C."
 
+3. **Verify Completion**: Before saying "done", check:
+   - Did I actually accomplish what was asked?
+   - Is my answer complete and accurate?
+"""
+
+# Tool-specific instructions (only when tools are available)
+TOOL_USAGE_INSTRUCTIONS = """
 3. **Use Tools**: 
    - ALWAYS use tools to get information - do NOT guess or calculate yourself
    - Tools give you real data - your own knowledge may be outdated or incomplete
@@ -72,6 +79,11 @@ AGENTIC_CORE = """
    - Did I use tools to verify my answer?
    - Is my answer complete and accurate?
 """
+
+# Combined core instructions (with tools)
+AGENTIC_CORE = AGENTIC_CORE_NO_TOOLS.replace(
+    "3. **Verify Completion**:", TOOL_USAGE_INSTRUCTIONS
+)
 
 ROLE_PROMPTS: dict[AgentRole, str] = {
     AgentRole.WORKER: f"""You are a worker agent that executes tasks using tools.
@@ -103,7 +115,7 @@ ROLE_PROMPTS: dict[AgentRole, str] = {
 - Do NOT use tools directly - delegate tool work to workers
 - Provide clear, specific instructions when delegating
 - Synthesize worker results into a coherent final answer
-{AGENTIC_CORE}
+{AGENTIC_CORE_NO_TOOLS}
 """,
 
     AgentRole.AUTONOMOUS: f"""You are an autonomous agent that works independently to accomplish tasks.
@@ -139,7 +151,7 @@ When you have fully accomplished the task, respond with:
 - Be constructive in feedback
 - Only reject if there are real issues
 - Enhance approved work if you can add value
-{AGENTIC_CORE}
+{AGENTIC_CORE_NO_TOOLS}
 """,
 }
 
@@ -168,9 +180,25 @@ class RoleBehavior:
         )
 
 
-def get_role_prompt(role: AgentRole) -> str:
-    """Get default prompt for a role."""
-    return ROLE_PROMPTS.get(role, ROLE_PROMPTS[AgentRole.AUTONOMOUS])
+def get_role_prompt(role: AgentRole, has_tools: bool = True) -> str:
+    """Get default prompt for a role.
+    
+    Args:
+        role: The agent role
+        has_tools: Whether the agent has tools available. If False and the role
+            normally uses tools, returns a version without tool instructions.
+    
+    Returns:
+        Appropriate system prompt for the role
+    """
+    base_prompt = ROLE_PROMPTS.get(role, ROLE_PROMPTS[AgentRole.AUTONOMOUS])
+    
+    # If the agent doesn't have tools but the prompt includes tool instructions,
+    # swap to the no-tools version
+    if not has_tools and AGENTIC_CORE in base_prompt:
+        base_prompt = base_prompt.replace(AGENTIC_CORE, AGENTIC_CORE_NO_TOOLS)
+    
+    return base_prompt
 
 
 def get_role_behavior(role: AgentRole) -> RoleBehavior:
