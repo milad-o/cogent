@@ -69,6 +69,7 @@ class EventBus:
         self._websocket_clients: set = set()
         self._lock = asyncio.Lock()
         self._max_history = max_history
+        self._loop: asyncio.AbstractEventLoop | None = None  # Store loop reference
 
     def subscribe(self, event_type: EventType, handler: EventHandler) -> None:
         """
@@ -146,6 +147,13 @@ class EventBus:
             event: The Event object, or event type string
             data: Event data (only used if event is a string)
         """
+        # Capture event loop reference on first publish (for publish_sync to use)
+        if self._loop is None:
+            try:
+                self._loop = asyncio.get_running_loop()
+            except RuntimeError:
+                pass
+        
         # Handle simple string/dict API
         if isinstance(event, str):
             from agenticflow.observability.event import EventType
@@ -180,6 +188,51 @@ class EventBus:
 
         # Broadcast to WebSocket clients
         await self._broadcast_to_websockets(event)
+
+    def publish_sync(self, event: Event | str, data: dict | None = None) -> None:
+        """
+        Publish an event synchronously (fire and forget).
+        
+        This method is designed for use in sync contexts (like tool functions)
+        where you need to emit events but can't await. It uses the event loop
+        reference captured during EventBus initialization to schedule events
+        from threads.
+        
+        **Use only when:**
+        - Called from sync code that can't be made async
+        - There's a running event loop (e.g., within async application)
+        - You don't need to wait for event delivery
+        
+        Args:
+            event: The Event object, or event type string
+            data: Event data (only used if event is a string)
+        
+        Example:
+            ```python
+            # From a sync tool function:
+            def my_tool():
+                bus.publish_sync("tool.started", {"tool": "my_tool"})
+                result = do_work()
+                bus.publish_sync("tool.completed", {"result": result})
+                return result
+            ```
+        """
+        # First, try get_running_loop() - works if called from async context
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.publish(event, data))
+            return
+        except RuntimeError:
+            pass
+        
+        # Second, try using stored loop reference (for thread-safe calls)
+        if self._loop is not None and self._loop.is_running():
+            asyncio.run_coroutine_threadsafe(self.publish(event, data), self._loop)
+            return
+        
+        # No event loop available - silently skip
+        # This can happen in pure sync contexts or during testing
+        pass
 
     async def publish_many(self, events: list[Event]) -> None:
         """

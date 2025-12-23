@@ -879,7 +879,7 @@ class Agent:
         """
         # Always create a taskboard for internal use
         if taskboard is None or taskboard is False:
-            self._taskboard = TaskBoard()
+            self._taskboard = TaskBoard(event_bus=self.event_bus)
             self._taskboard_enabled = False
             return
         
@@ -889,7 +889,7 @@ class Agent:
         else:
             config = taskboard
         
-        self._taskboard = TaskBoard(config)
+        self._taskboard = TaskBoard(config, event_bus=self.event_bus)
         self._taskboard_enabled = True
         
         # Add taskboard tools to agent

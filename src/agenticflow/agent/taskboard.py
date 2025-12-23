@@ -53,6 +53,7 @@ from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
     from agenticflow.tools.base import BaseTool
+    from agenticflow.observability.bus import EventBus
 
 
 # ============================================================================
@@ -185,12 +186,14 @@ class TaskBoardConfig:
         max_notes: Maximum notes to retain.
         track_errors: Track errors for learning.
         include_instructions: Add task management instructions to system prompt.
+        emit_events: Emit events to event bus for observability.
     """
     auto_verify: bool = True
     max_tasks: int = 50
     max_notes: int = 30
     track_errors: bool = True
     include_instructions: bool = True
+    emit_events: bool = True
 
 
 # ============================================================================
@@ -227,13 +230,19 @@ class TaskBoard:
         ```
     """
     
-    def __init__(self, config: TaskBoardConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: TaskBoardConfig | None = None,
+        event_bus: EventBus | None = None,
+    ) -> None:
         """Initialize TaskBoard.
         
         Args:
             config: Configuration options.
+            event_bus: Optional event bus for observability.
         """
         self.config = config or TaskBoardConfig()
+        self._event_bus = event_bus
         
         self._tasks: dict[str, Task] = {}
         self._notes: list[Note] = []
@@ -241,6 +250,11 @@ class TaskBoard:
         self._patterns: dict[str, LearnedPattern] = {}
         self._reflections: list[Reflection] = []
         self._goal: str | None = None
+    
+    def _emit_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """Emit event if event bus is configured."""
+        if self._event_bus and self.config.emit_events:
+            self._event_bus.publish_sync(event_type, data)
     
     # ========================================
     # Task Management
@@ -257,6 +271,13 @@ class TaskBoard:
         """
         task_id = generate_id("task")
         self._tasks[task_id] = Task(id=task_id, description=description)
+        
+        # Emit event
+        self._emit_event("taskboard.task_added", {
+            "task_id": task_id,
+            "description": description,
+            "status": TaskStatus.PENDING.value,
+        })
         
         # Trim if over limit
         if len(self._tasks) > self.config.max_tasks:
@@ -312,6 +333,10 @@ class TaskBoard:
         task = self.find_task(query)
         if task:
             task.start()
+            self._emit_event("taskboard.task_started", {
+                "task_id": task.id,
+                "description": task.description,
+            })
             return True
         return False
     
@@ -328,6 +353,11 @@ class TaskBoard:
         task = self.find_task(query)
         if task:
             task.complete(result)
+            self._emit_event("taskboard.task_completed", {
+                "task_id": task.id,
+                "description": task.description,
+                "result": result,
+            })
             return True
         return False
     
@@ -344,6 +374,11 @@ class TaskBoard:
         task = self.find_task(query)
         if task:
             task.fail(error)
+            self._emit_event("taskboard.task_failed", {
+                "task_id": task.id,
+                "description": task.description,
+                "error": error,
+            })
             return True
         return False
     
@@ -405,6 +440,13 @@ class TaskBoard:
         """
         note_id = generate_id("note")
         self._notes.append(Note(id=note_id, content=content, category=category))
+        
+        # Emit event
+        self._emit_event("taskboard.note_added", {
+            "note_id": note_id,
+            "content": content,
+            "category": category,
+        })
         
         # Trim if over limit
         if len(self._notes) > self.config.max_notes:
