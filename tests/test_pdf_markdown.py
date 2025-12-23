@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agenticflow.document.loaders.handlers.pdf_llm import (
+from agenticflow.document.loaders.handlers.pdf_markdown import (
     OutputFormat,
     PageResult,
     PageStatus,
@@ -588,7 +588,7 @@ class TestModuleExports:
 
     def test_all_exports_available(self) -> None:
         """Test that all expected symbols are exported."""
-        from agenticflow.document.loaders.handlers.pdf_llm import __all__
+        from agenticflow.document.loaders.handlers.pdf_markdown import __all__
 
         expected = [
             "PDFMarkdownLoader",

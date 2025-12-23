@@ -122,17 +122,20 @@ Load, split, and process documents for RAG pipelines.
 
 **Loaders** — Support for all common file formats:
 
-| Loader | Formats |
-|--------|---------|
-| `TextLoader` | `.txt`, `.rst` |
-| `MarkdownLoader` | `.md` |
-| `PDFLoader` | `.pdf` (with OCR fallback) |
-| `WordLoader` | `.docx` |
-| `HTMLLoader` | `.html`, `.htm` |
-| `CSVLoader` | `.csv` |
-| `JSONLoader` | `.json`, `.jsonl` |
-| `XLSXLoader` | `.xlsx` |
-| `CodeLoader` | `.py`, `.js`, `.ts`, `.java`, `.go`, `.rs`, `.cpp`, etc. |
+| Loader | Formats | Notes |
+|--------|---------|-------|
+| `TextLoader` | `.txt`, `.rst` | Plain text extraction |
+| `MarkdownLoader` | `.md` | Markdown with structure |
+| `PDFLoader` | `.pdf` | Basic text extraction (pypdf/pdfplumber) |
+| `PDFMarkdownLoader` | `.pdf` | Clean markdown output (pymupdf4llm) |
+| `PDFHTMLLoader` | `.pdf` | Semantic HTML with proper tables (pdfplumber) |
+| `PDFVisionLoader` | `.pdf` | Vision model-based extraction |
+| `WordLoader` | `.docx` | Microsoft Word documents |
+| `HTMLLoader` | `.html`, `.htm` | HTML documents |
+| `CSVLoader` | `.csv` | CSV files |
+| `JSONLoader` | `.json`, `.jsonl` | JSON documents |
+| `XLSXLoader` | `.xlsx` | Excel spreadsheets |
+| `CodeLoader` | `.py`, `.js`, `.ts`, `.java`, `.go`, `.rs`, `.cpp`, etc. | Source code files |
 
 **Splitters** — Multiple chunking strategies:
 
@@ -689,7 +692,8 @@ See `examples/` for complete examples:
 | `31_context_layer.py` | Context management |
 | `32_spawning_agents.py` | Dynamic agent creation |
 | `33_graph_api.py` | Visualization API |
-| `34_pdf_llm.py` | PDF with LLM |
+| `34_pdf_markdown.py` | PDF to Markdown |
+| `35_pdf_html.py` | PDF to HTML (complex tables) |
 | `35_pdf_rag.py` | PDF RAG pipeline |
 | `36_summarizer.py` | Document summarization |
 | `37_pdf_summarizer.py` | PDF summarization |

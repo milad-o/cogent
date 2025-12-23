@@ -10,7 +10,8 @@ from agenticflow.document.loaders.handlers.html import HTMLLoader
 from agenticflow.document.loaders.handlers.json import JSONLoader
 from agenticflow.document.loaders.handlers.markdown import MarkdownLoader
 from agenticflow.document.loaders.handlers.pdf import PDFLoader
-from agenticflow.document.loaders.handlers.pdf_llm import (
+from agenticflow.document.loaders.handlers.pdf_html import PDFHTMLLoader
+from agenticflow.document.loaders.handlers.pdf_markdown import (
     OutputFormat,
     PageResult,
     PageStatus,
@@ -30,6 +31,7 @@ __all__ = [
     "MarkdownLoader",
     "HTMLLoader",
     "PDFLoader",
+    "PDFHTMLLoader",
     "PDFMarkdownLoader",
     "PDFVisionLoader",
     "WordLoader",
@@ -37,7 +39,7 @@ __all__ = [
     "JSONLoader",
     "XLSXLoader",
     "CodeLoader",
-    # PDF LLM types
+    # PDF loader types
     "PDFConfig",
     "PDFProcessingResult",
     "PageResult",
