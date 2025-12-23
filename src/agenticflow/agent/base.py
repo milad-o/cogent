@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Sequence, overload
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Coroutine, Sequence, overload
 
 from agenticflow.models.base import BaseChatModel
 from agenticflow.core.messages import AIMessage, HumanMessage, SystemMessage
@@ -1465,7 +1465,7 @@ class Agent:
         stream: bool | None = None,
         include_tools: bool = True,
         system_prompt_override: str | None = None,
-    ) -> "str | AsyncIterator[StreamChunk]":
+    ) -> "Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]":
         """
         Process a prompt through the agent's reasoning.
         
@@ -1475,37 +1475,31 @@ class Agent:
         Args:
             prompt: The prompt to process
             correlation_id: Optional correlation ID for event tracking
-            stream: Enable streaming response. If None, uses agent's default
-                (set via stream=True in constructor). When True, returns an
-                async iterator of StreamChunk objects.
+            stream: Enable streaming response. If None, uses agent's default.
+                If True, returns async iterator. If False, returns awaitable.
             include_tools: Whether to include tools in system prompt (default: True).
-                Set to False for planning prompts that already list tools.
             system_prompt_override: If provided, use this instead of agent's system prompt.
-                Useful for planning where we need a neutral persona.
             
         Returns:
-            If stream=False: Coroutine that returns the LLM's response string.
-            If stream=True: AsyncIterator[StreamChunk] for token-by-token streaming.
+            If stream=False: Awaitable that yields the response when awaited.
+            If stream=True: AsyncIterator[StreamChunk] for direct iteration.
             
         Raises:
             RuntimeError: If no model is configured
             
-        Example - Non-streaming:
-            ```python
+        Examples:
+            # Non-streaming (await required)
             response = await agent.think("What should I do?")
-            ```
             
-        Example - Streaming:
-            ```python
+            # Streaming (no await - direct iteration)
             async for chunk in agent.think("Write a poem", stream=True):
                 print(chunk.content, end="", flush=True)
-            ```
         """
         # Determine if streaming based on parameter or agent default
         use_streaming = stream if stream is not None else self.config.stream
         
         if use_streaming:
-            # Return async iterator directly (not wrapped in coroutine)
+            # Streaming: return async iterator (no await needed)
             return self.think_stream(
                 prompt,
                 correlation_id=correlation_id,
@@ -1513,7 +1507,7 @@ class Agent:
                 system_prompt_override=system_prompt_override,
             )
         
-        # Return coroutine for non-streaming
+        # Non-streaming: return coroutine (must be awaited)
         return self._think_impl(
             prompt,
             correlation_id=correlation_id,
@@ -1651,41 +1645,28 @@ class Agent:
         stream: bool | None = None,
         correlation_id: str | None = None,
         metadata: dict | None = None,
-    ) -> "str | AsyncIterator[StreamChunk]":
+    ) -> "Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]":
         """
         Chat with the agent, maintaining conversation history per thread.
         
-        This is the recommended way to have multi-turn conversations with
-        an agent. Each thread_id maintains its own conversation history,
-        enabling context-aware responses.
-        
-        Requires a checkpointer to be configured for cross-session persistence.
-        Without a checkpointer, history is only maintained in-memory for the
-        current session.
-        
-        Args:
-            message: The user's message.
-            thread_id: Unique identifier for the conversation thread.
-                If None, uses a default thread for this agent.
-            user_id: Optional user identifier for long-term memory.
-                When provided, the agent can remember facts about the user
-                across different conversation threads.
-            stream: Enable streaming response. If None, uses agent's default
-                (set via stream=True in constructor). When True, returns an
-                async iterator of StreamChunk objects.
-            correlation_id: Optional correlation ID for event tracking.
-            metadata: Optional metadata to store with the conversation.
-            
-        Returns:
-            If stream=False: Coroutine that returns the agent's response string.
-            If stream=True: AsyncIterator[StreamChunk] for token-by-token streaming.
-            
         .. deprecated::
             Use run(task, thread_id=...) instead:
             
             - `await agent.chat("Hi")` → `await agent.run("Hi")`
             - `await agent.chat("Hi", thread_id="t1")` → `await agent.run("Hi", thread_id="t1")`
-            - `agent.chat("Hi", stream=True)` → `agent.run("Hi", stream=True)`
+            - `async for chunk in agent.chat("Hi", stream=True)` → `async for chunk in agent.run("Hi", stream=True)`
+        
+        Args:
+            message: The user's message.
+            thread_id: Unique identifier for the conversation thread.
+            user_id: Optional user identifier for long-term memory.
+            stream: Enable streaming. If True, returns async iterator. If False, returns awaitable.
+            correlation_id: Optional correlation ID for event tracking.
+            metadata: Optional metadata to store with the conversation.
+            
+        Returns:
+            If stream=False: Awaitable that yields response when awaited.
+            If stream=True: AsyncIterator[StreamChunk] for direct iteration.
         """
         import warnings
         warnings.warn(
@@ -1694,10 +1675,10 @@ class Agent:
             stacklevel=2,
         )
         
-        # Determine if streaming based on parameter or agent default
+        # Determine if streaming
         use_streaming = stream if stream is not None else self.config.stream
         
-        # Delegate to the unified run() method
+        # Delegate to run()
         return self.run(message, stream=use_streaming, thread_id=thread_id)
 
     async def get_thread_history(
@@ -1885,8 +1866,8 @@ class Agent:
             DeprecationWarning,
             stacklevel=2,
         )
-        # Delegate to run with streaming
-        async for chunk in await self.run(message, stream=True, thread_id=thread_id):
+        # Delegate to run() which returns async iterator
+        async for chunk in self.run(message, stream=True, thread_id=thread_id):
             yield chunk
 
     async def stream_events(
@@ -2756,7 +2737,7 @@ class Agent:
         thread_id: str | None = None,
         stream: bool = False,
         max_iterations: int = 10,
-    ) -> "Any | AsyncIterator[StreamChunk]":
+    ) -> "Coroutine[Any, Any, Any] | AsyncIterator[StreamChunk]":
         """
         Execute a task with full agent capabilities.
         
@@ -2767,10 +2748,6 @@ class Agent:
         - Structured output (when configured)
         - Reasoning/chain-of-thought (when configured)
         
-        Note: For non-streaming calls, this returns a coroutine that must be 
-        awaited. For streaming calls (stream=True), it returns an async 
-        iterator directly.
-        
         Args:
             task: The task or message to process.
             context: Optional context dict passed to tools.
@@ -2778,26 +2755,25 @@ class Agent:
                 - Loads conversation history from memory
                 - Saves the exchange after completion
                 - Enables multi-turn conversations
-            stream: If True, returns an async iterator of StreamChunk.
+            stream: If True, returns async iterator. If False, returns awaitable.
             max_iterations: Maximum LLM call iterations (default: 10).
             
         Returns:
-            If stream=False: The final response string (or structured output).
-            If stream=True: AsyncIterator[StreamChunk] for token streaming.
+            If stream=False: Awaitable that yields the final result when awaited.
+            If stream=True: AsyncIterator[StreamChunk] for direct iteration.
             
         Examples:
-            # Simple one-shot task
+            # Simple one-shot task (await required)
             result = await agent.run("What is 2+2?")
             
-            # With tools
+            # With tools (await required)
             result = await agent.run("Search for Python tutorials")
             
             # Multi-turn conversation
             await agent.run("Hi, I'm Alice", thread_id="conv-1")
             result = await agent.run("What's my name?", thread_id="conv-1")
-            # Returns something mentioning Alice!
             
-            # Streaming
+            # Streaming (no await - direct iteration)
             async for chunk in agent.run("Write a poem", stream=True):
                 print(chunk.content, end="", flush=True)
             
@@ -2805,11 +2781,11 @@ class Agent:
             async for chunk in agent.run("Tell me more", stream=True, thread_id="conv-1"):
                 print(chunk.content, end="")
         """
-        # Handle streaming mode - return async iterator directly
+        # Streaming: return async iterator directly (no await needed)
         if stream:
             return self._run_stream(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
         
-        # Non-streaming execution - return coroutine (must be awaited by caller)
+        # Non-streaming: return coroutine (must be awaited)
         return self._run_impl(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
     
     async def _run_impl(
