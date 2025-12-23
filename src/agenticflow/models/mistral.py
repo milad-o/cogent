@@ -36,7 +36,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -147,13 +147,13 @@ class MistralChat(BaseChatModel):
     
     async def ainvoke(
         self,
-        messages: list[dict[str, Any]],
+        messages: str | list[dict[str, Any]] | list[Any],
         **kwargs: Any,
     ) -> AIMessage:
         """Async invoke the model.
         
         Args:
-            messages: List of message dicts with role and content.
+            messages: Can be a string, list of dicts, or list of message objects.
             **kwargs: Additional arguments (temperature, max_tokens, etc.)
             
         Returns:
@@ -162,7 +162,7 @@ class MistralChat(BaseChatModel):
         self._ensure_initialized()
         
         # Convert messages to dict format
-        converted_messages = convert_messages(messages)
+        converted_messages = convert_messages(normalize_input(messages))
         
         params: dict[str, Any] = {
             "model": self.model,
@@ -188,13 +188,13 @@ class MistralChat(BaseChatModel):
     
     def invoke(
         self,
-        messages: list[dict[str, Any]],
+        messages: str | list[dict[str, Any]] | list[Any],
         **kwargs: Any,
     ) -> AIMessage:
         """Sync invoke the model.
         
         Args:
-            messages: List of message dicts with role and content.
+            messages: Can be a string, list of dicts, or list of message objects.
             **kwargs: Additional arguments.
             
         Returns:
@@ -203,7 +203,7 @@ class MistralChat(BaseChatModel):
         self._ensure_initialized()
         
         # Convert messages to dict format
-        converted_messages = convert_messages(messages)
+        converted_messages = convert_messages(normalize_input(messages))
         
         params: dict[str, Any] = {
             "model": self.model,
@@ -227,13 +227,13 @@ class MistralChat(BaseChatModel):
     
     async def astream(
         self,
-        messages: list[dict[str, Any]],
+        messages: str | list[dict[str, Any]] | list[Any],
         **kwargs: Any,
     ) -> AsyncIterator[AIMessage]:
         """Stream responses from the model.
         
         Args:
-            messages: List of message dicts.
+            messages: Can be a string, list of dicts, or list of message objects.
             **kwargs: Additional arguments.
             
         Yields:
@@ -242,7 +242,7 @@ class MistralChat(BaseChatModel):
         self._ensure_initialized()
         
         # Convert messages to dict format
-        converted_messages = convert_messages(messages)
+        converted_messages = convert_messages(normalize_input(messages))
         
         params: dict[str, Any] = {
             "model": self.model,

@@ -81,6 +81,7 @@ from agenticflow.models.base import (
     BaseChatModel,
     BaseEmbedding,
     convert_messages,
+    normalize_input,
 )
 from agenticflow.models.cloudflare import CloudflareChat, CloudflareEmbedding
 from agenticflow.models.cohere import CohereChat, CohereEmbedding
