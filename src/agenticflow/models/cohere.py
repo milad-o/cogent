@@ -20,7 +20,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input, convert_messages
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
 
 
 def _schema_to_parameter_definitions(schema: dict[str, Any]) -> dict[str, Any]:

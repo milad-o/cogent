@@ -32,7 +32,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel, convert_messages, normalize_input, BaseEmbedding
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:

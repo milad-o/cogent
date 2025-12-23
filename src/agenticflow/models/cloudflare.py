@@ -14,7 +14,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input, convert_messages
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
 
 
 def _parse_response(response: Any) -> AIMessage:
