@@ -1,0 +1,4757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sample_soc2.pdf</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .page-number { font-weight: bold; color: #666; margin: 20px 0; }
+        .page-separator { margin: 40px 0; border-top: 2px solid #ddd; }
+        hr { margin: 40px 0; }
+    </style>
+</head>
+<body>
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th>ONETRUST, LLC
+SOC 2 REPORT
+FOR
+CERTIFICATION AUTOMATION
+A TYPE 2 INDEPENDENT SERVICE AUDITOR’S REPORT ON CONTROLS
+RELEVANT TO SECURITY, AVAILABILITY, AND CONFIDENTIALITY
+MAY 1, 2024, TO APRIL 30, 2025</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Attestation and Compliance Services</td>
+    </tr>
+    <tr>
+      <td>Proprietary &amp; Confidential
+Unauthorized use, reproduction, or distribution of this report, in whole or in part, is strictly prohibited.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<p>This report is intended solely for use by the management of OneTrust, LLC, user entities of OneTrust, LLC’s services, and other parties who have sufficient knowledge and understanding of OneTrust, LLC’s services covered by this report (each referred to herein as a “specified user”).</p>
+<p>If the report recipient is not a specified user (herein referred to as a "non-specified user"), use of this report is the non-specified user's sole responsibility and at the non-specified user's sole and exclusive risk.  Non-specified users may not rely on this report and do not acquire any rights against Schellman &amp; Company, LLC as a result of such access.  Further, Schellman &amp; Company, LLC does not assume any duties or obligations to any non-specified user who obtains this report and/or has access to it.</p>
+<p>Unauthorized use, reproduction, or distribution of this report, in whole or in part, is strictly prohibited.</p>
+
+<hr>
+
+<hr>
+
+<h3>T ABLE OF</h3>
+<h3>C ONTENTS</h3>
+<p>S1ISA’ECTION   NDEPENDENT ERVICE UDITORS R .................................................... 1 EPORT</p>
+<h3>S2M’A .................. 5 ECTION   ANAGEMENTS SSERTION</h3>
+<h3>3DS ................ 7S ECTION   ESCRIPTION OF THE YSTEM</h3>
+<h3>S4TM ............................... 22 ECTION   ESTING ATRICES</h3>
+
+<hr>
+
+<hr>
+
+<h3>S1 ECTION</h3>
+<h3>IS NDEPENDENT ERVICE</h3>
+<h3>A’R UDITORS EPORT</h3>
+
+<hr>
+
+<hr>
+
+<h3>ISA’R NDEPENDENT ERVICE UDITORS EPORT</h3>
+<p>To OneTrust, LLC:</p>
+<p>Scope</p>
+<p>We have examined OneTrust, LLC’s (“OneTrust” or the “service organization”) accompanying description of its</p>
+<p>“description”), based on the criteria for a description of a service organization’s system in DC section 200, 2018 ® Report (AICPA, Description Description Criteria for a Description of a Service Organization’s System in a SOC 2 Criteria) (“description criteria”), and the suitability of the design and operating effectiveness of controls stated in the</p>
+<p>service commitments and system requirements were achieved based on the trust services criteria relevant to security, availability, and confidentiality (“applicable trust services criteria”) set forth in TSP section 100, Trust Services Criteria for Security, Availability, Processing Integrity, Confidentiality, and Privacy (AICPA, Trust Services Criteria).</p>
+<p>OneTrust uses a subservice organization for cloud hosting and managed database services.  The description indicates that complementary subservice organization controls that are suitably designed and operating effectively are necessary, along with controls at OneTrust, to achieve OneTrust’s service commitments and system requirements based on the applicable trust services criteria.  The description presents OneTrust’s controls, the applicable trust services criteria, and the types of complementary subservice organization controls assumed in the design of OneTrust’s controls.  The description does not disclose the actual controls at the subservice organization. Our examination did not include the services provided by the subservice organization, and we have not evaluated the suitability of the design or operating effectiveness of such complementary subservice organization controls.</p>
+<p>Service Organization’s Responsibilities</p>
+<p>OneTrust is responsible for its service commitments and system requirements and for designing, implementing, and operating effective controls within the system to provide reasonable assurance that OneTrust’s service commitments and system requirements were achieved.  OneTrust has provided the accompanying assertion, in Section 2, (“assertion”) about the description and the suitability of design and operating effectiveness of controls stated therein.  OneTrust is also responsible for preparing the description and assertion, including the completeness, accuracy, and method of presentation of the description and assertion; providing the services covered by the description; selecting the applicable trust services criteria and stating the related controls in the description; and identifying the risks that threaten the achievement of the service organization’s service commitments and system requirements.</p>
+<p>Service Auditor’s Responsibilities</p>
+<p>Our responsibility is to express an opinion on the description and on the suitability of design and operating effectiveness of controls stated in the description based on our examination.  Our examination was conducted in accordance with attestation standards established by the American Institute of Certified Public Accountants (AICPA) and in accordance with International Standard on Assurance Engagements 3000 (Revised), Assurance Engagements Other Than Audits or Reviews of Historical Financial Information, issued by the International Auditing and Assurance Standards Board.  Those standards require that we plan and perform our examination to obtain reasonable assurance about whether, in all material respects, the description is presented in accordance with the description criteria and the controls stated therein were suitably designed and operated effectively to provide reasonable assurance that the service organization’s service commitments and system requirements were achieved based on the applicable trust services criteria.  We believe that the evidence we obtained is sufficient and appropriate to provide a reasonable basis for our opinion.</p>
+
+<hr>
+
+<hr>
+
+<p>An examination of the description of a service organization’s system and the suitability of the design and operating effectiveness of controls involves the following:</p>
+<p>• Obtaining an understanding of the system and the service organization’s service commitments and system requirements.</p>
+<p>• Assessing the risks that the description is not presented in accordance with the description criteria and that controls were not suitably designed or did not operate effectively.</p>
+<p>• Performing procedures to obtain evidence about whether the description is presented in accordance with the description criteria.</p>
+<p>• Performing procedures to obtain evidence about whether controls stated in the description were suitably designed to provide reasonable assurance that the service organization achieved its service commitments and system requirements based on the applicable trust services criteria.</p>
+<p>• Testing the operating effectiveness of controls stated in the description to provide reasonable assurance that the service organization achieved its service commitments and system requirements based on the applicable trust services criteria.</p>
+<p>• Evaluating the overall presentation of the description.</p>
+<p>Our examination also included performing such other procedures as we considered necessary in the circumstances.</p>
+<p>Service Auditor’s Independence and Quality Control</p>
+<p>We are required to be independent and to meet our other ethical responsibilities in accordance with relevant ethical requirements relating to the engagement, including the Code of Professional Conduct established by the AICPA and the International Ethics Standards Board for Accountants’ Code of Ethics for Professional Accountants.</p>
+<p>We applied the Statements on Quality Control Standards established by the AICPA and, accordingly, maintain a comprehensive system of quality control.</p>
+<p>Inherent Limitations</p>
+<p>The description is prepared to meet the common needs of a broad range of report users and may not, therefore, include every aspect of the system that individual users may consider important to meet their informational needs.</p>
+<p>There are inherent limitations in the effectiveness of any system of internal control, including the possibility of human error and the circumvention of controls.</p>
+<p>Because of their nature, controls may not always operate effectively to provide reasonable assurance that the service organization’s service commitments and system requirements are achieved based on the applicable trust services criteria.  Also, the projection to the future of any conclusions about the suitability of the design and operating effectiveness of controls is subject to the risk that controls may become inadequate because of changes in conditions or that the degree of compliance with the policies or procedures may deteriorate.</p>
+<p>Description of Test of Controls</p>
+<p>The specific controls we tested, and the nature, timing, and results of those tests are presented in Section 4 of our report titled “Testing Matrices.”</p>
+<p>Opinion</p>
+<p>In our opinion, in all material respects:</p>
+<p>• the description presents OneTrust’s Certification Automation system that was designed and implemented</p>
+<p>• the controls stated in the description were suitably designed throughout the period May 1, 2024, to April 30, 2025, to provide reasonable assurance that OneTrust’s service commitments and system requirements would be achieved based on the applicable trust services criteria, if its controls operated effectively throughout that period and if the subservice organization applied the complementary controls assumed in the design of OneTrust’s controls throughout that period; and</p>
+
+<hr>
+
+<hr>
+
+<p>• the controls stated in the description operated effectively throughout the period May 1, 2024, to April 30, 2025, to provide reasonable assurance that OneTrust’s service commitments and system requirements were achieved based on the applicable trust services criteria, if complementary subservice organization controls assumed in the design of OneTrust’s controls operated effectively throughout that period.</p>
+<p>Restricted Use</p>
+<p>This report, including the description of tests of controls and results thereof in Section 4, is intended solely for the information and use of OneTrust, user entities of OneTrust’s Certification Automation system during some or all of</p>
+<p>with the Certification Automation system, practitioners providing services to such user entities and business partners, prospective user entities and business partners, and regulators who have sufficient knowledge and understanding of the following:</p>
+<p>• the nature of the service provided by the service organization;</p>
+<p>• how the service organization’s system interacts with user entities, business partners, subservice organizations, and other parties;</p>
+<p>• internal control and its limitations;</p>
+<p>• complementary subservice organizationcontrolsand how those controls interact with the controls at the service organization to achieve the service organization’s service commitments and system requirements;</p>
+<p>• user entity responsibilities and how they may affect the user entity’s ability to effectively use the service organization’s services;</p>
+<p>• the applicable trust services criteria; and</p>
+<p>• the risks that may threaten the achievement of the service organization’s service commitments and system requirements, and how controls address those risks.</p>
+<p>This report is not intended to be, and should not be, used by anyone other than these specified parties.</p>
+<p>Tampa, Florida June 3, 2025</p>
+
+<hr>
+
+<hr>
+
+<h3>S2 ECTION</h3>
+<h3>M’ ANAGEMENTS</h3>
+<h3>A SSERTION</h3>
+
+<hr>
+
+<hr>
+
+<h3>M’A ANAGEMENTS SSERTION</h3>
+<p>We have prepared the accompanying description of OneTrust’s Certification Automation system, in Section 3,</p>
+<p>service organization’s system in DC section 200, 2018 Description Criteria for a Description of a Service ® Report (AICPA, Description Criteria), (“description criteria”).  The description is Organization’s System in a SOC 2 intended to provide report users with information about the Certification Automation system that may be useful when assessing the risks arising from interactions with OneTrust’s system, particularly information about system controls that OneTrust has designed, implemented, and operated to provide reasonable assurance that its service commitments and system requirements were achieved based on the trust services criteria relevant to security, availability, and confidentiality (“applicable trust services criteria”) set forth in TSP section 100, Trust Services Criteria for Security, Availability, Processing Integrity, Confidentiality, and Privacy (AICPA, Trust Services Criteria).</p>
+<p>OneTrust uses a subservice organization for cloud hosting and managed database services.  The description indicates that complementary subservice organization controls that are suitably designed and operating effectively are necessary, along with controls at OneTrust, to achieve OneTrust’s service commitments and system requirements based on the applicable trust services criteria.  The description presents OneTrust’s controls, the applicable trust services criteria, and the types of complementary subservice organization controls assumed in the design of OneTrust’s controls.  The description does not disclose the actual controls at the subservice organization.</p>
+<p>We confirm, to the best of our knowledge and belief, that:</p>
+<p>• the description presents OneTrust’s Certification Automation system that was designed and implemented</p>
+<p>• the controls stated in the description were suitably designed throughout the period May 1, 2024, to April 30, 2025, to provide reasonable assurance that OneTrust’s service commitments and system requirements would be achieved based on the applicable trust services criteria, if its controls operated effectively throughout that period, and if the subservice organization applied the complementary controls assumed in the design ofOneTrust’s controls throughout that period; and</p>
+<p>• the controls stated in the description operated effectively throughout the period May 1, 2024, to April 30, 2025, to provide reasonable assurance that OneTrust’s service commitments and system requirements were achieved based on the applicable trust services criteria if complementary subservice organization controls assumed in the design of OneTrust’s controls operated effectively throughout that period.</p>
+
+<hr>
+
+<hr>
+
+<h3>S3 ECTION</h3>
+<h3>D ESCRIPTION OF THE</h3>
+<h3>S YSTEM</h3>
+
+<hr>
+
+<hr>
+
+<h3>OO VERVIEW OF PERATIONS</h3>
+<p>Company Background</p>
+<p>OneTrust, LLC (“OneTrust” or “the Company”) is Trust Intelligence company, providing solutions that help businesses manage data, ensure compliance, and build trust through responsible data and AI practices, trusted by more than 14,000 customers to comply with the California Consumer Privacy Act (CCPA), General Data Protection Regulation (GDPR), International Organization for Standardization (ISO) 27001 and 27701 standards, and hundreds of the world’s privacy and security laws.</p>
+<p>Description of Services Provided</p>
+<p>OneTrust’s Certification Automation system automates information security policy and control creation, risk assessment, compliance management, compliance monitoring, automated and manual evidence collection, security certification gap assessment, audit process management, vendor risk management, and security questionnaire responses so enterprises can gain trust with customers and increase profits.  The software creates a scalable governance system of record for business teams to manage security policies and controls that support critical business functions such as information security, user security training, network and system operations, vendor management, and sales, with real-time compliance information needed to complete customer request for proposals (RFPs) and contracts.</p>
+<p>The Certification Automation system is a Software as a Service (SaaS) solution that includes a web-based user interface for tracking Information Security program requirements.  Customers have the ability to create their own information security program from Certification Automation system’s predefined database of policies and controls or upload their own information security program.  The solution also enables administrators to upload and respond to security questionnaires automatically utilizing Certification Automation system machine-learning-based Auto- Answer engine.  Outputs include an InfoSec policy documents, security assurance reports, completed security questionnaires and vendor security assessments.</p>
+<p>Certification Automation system integrates with various platforms to help customers automate their evidence collection.  List of integrations available on Certification Automation system:</p>
+<table class="table-0">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Related Service</th>
+      <th></th>
+      <th></th>
+      <th>Integrations Offered</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">Cloud Services</td>
+      <td colspan="3">AWS, Google Cloud Platform, Heroku, Digital Ocean, Microsoft Azure</td>
+    </tr>
+    <tr>
+      <td colspan="3">Version Control</td>
+      <td colspan="3">Microsoft Azure DevOps, BitBucket, GitHub, GitLab</td>
+    </tr>
+    <tr>
+      <td colspan="3">Workstation Management</td>
+      <td colspan="3">Hexnode, JAMF Pro, Jumpcloud, Kandji, Sophos, Microsoft Intune</td>
+    </tr>
+    <tr>
+      <td colspan="3">Employee Population</td>
+      <td colspan="3">Bamboo HR, Ceridian Dayforce, Charthop, Freshteam, Google Workplace
+(GSuite), Gusto, Hibob, HR Cloud, HR Partner, Humaans.io, Justworks, Lano,
+Microsoft Azure Active Directory, Namely, Nmbrs, Okta, Paychex, Paylocity,
+Personio, Rippling, Sage HR, SAP SuccessFactors, Sapling, Sesame, Square
+Payroll, Trinet, UkG Pro, Workday, Zenefits</td>
+    </tr>
+    <tr>
+      <td colspan="3">Other</td>
+      <td colspan="3">Certn, Cloudflare, Cobalt, CrowdStrike, Datadog, Jira Cloud, Lacework,
+OneTrust Consent Management, Slack, Zapier, Zendesk, Knowb4, Shortcut,
+ServiceNow, Visma Nmbrs</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<h3>PSCSR RINCIPAL ERVICE OMMITMENTS AND YSTEM EQUIREMENTS</h3>
+<p>Commitments are declarations made by management to customers regarding the performance of the Certification Automation system.  Commitments are communicated in written contracts, the Master Terms of Service, and Service Level Agreements.  For the Company’s principal service commitments related to the Certification Automation system, OneTrust will:</p>
+<p>• Implement appropriate technical and organizational measures to ensure a level of security appropriate to the level of risk and to protect data from accidental or unlawful destruction, loss, alteration, and unauthorized disclosure or access.</p>
+<p>• Inform customers without undue delay if OneTrust becomes aware of a security breach and provide reasonable information and cooperation to the customer.</p>
+<p>• Make the service available 99.95% of the time in a given calendar month.</p>
+<p>• Protect confidential customer information by using the same level of care and discretion it uses with respect to its own confidential information.</p>
+<p>• Not use confidential information, except for the purposes of providing the services, or disclose confidential customer information to any person other than its employees or authorized users who have a need to know.</p>
+<p>• Promptly destroy customer confidential data upon termination of the services.</p>
+<p>System requirements are specifications regarding how the Certification Automation system should function to meet the Company’s principal commitments to user entities.  System requirements are specified in the Company’s policies and procedures.</p>
+<p>The Company’s system requirements include the following:</p>
+<p>•• Change management standards  Employee provisioning and deprovisioning standards • Logging and monitoring standards • Privileged access reviews • Incident handling standards • Logical access standards • Encryption standards • Risk and vulnerability management • Vendor management standards • Asset management standards • System acquisition, development, and maintenance standards</p>
+<p>In accordance with OneTrust’s assertion, and the description criteria, the aforementioned service commitments and requirements are those principal service commitments and requirements common to the broad base of users of the system and may therefore not fully address the specific service commitments and requirements made to all system users, in each individual case.</p>
+<h3>CSUPS OMPONENTS OF THE YSTEM SED TO ROVIDE THE ERVICE</h3>
+<p>System Boundaries</p>
+<p>A system is designed, implemented, and operated to achieve specific business objectives in accordance with management-specified requirements.  The purpose of the system description is to delineate the boundaries of the system, which includes the services outlined above and the five components described below: infrastructure, software, people, procedures, and data.</p>
+
+<hr>
+
+<hr>
+
+<p>Infrastructure and Software</p>
+<p>OneTust utilizes Amazon Web Services, Inc. (AWS) cloud hosting services to provide the resources to host the Certification Automation system.  Within various AWS regions, three copies of the system are maintained, two hosted in the United States (U.S.) and one hosted in the European Union (EU).  The application stack is composed of a frontend JavaScript application (utilizing React/Redux) and a backend Python API (utilizing Python 3.10).  Nginx is utilized as a web server with gunicorn as the Python container.</p>
+<p>The Certification Automation system stack in the US is deployed in a VPC in the US-EAST-1 (N. Virginia) region as the primary region with US-WEST-2 (Oregon) as the secondary.  The other U.S. region resides in California (CA) known as CA-CENTRAL-1 (Central).  This location has no secondary region.  The application stack in the EU runs in a Virtual Private Cloud (VPC) in the EU-CENTRAL-1 (Frankfurt) region as the primary region and secondary configured as EU-WEST-1 (Ireland).  It currently does not have a secondary region as CA only has one available.</p>
+<p>The back-end API application runs in AWS Elastic Container Service (ECS) behind an AWS Elastic Load Bearing (ELB).  The front-end JavaScript (JS) application is served from CloudFront, with the assets hosted in Simple Storage Service (S3).  All applications utilize AWS ECS for background tasks and utilize AWS API Gateway for the custom API integration feature.</p>
+<p>The database supporting the application is utilizing AWS Relational Database Service (RDS) running PostgreSQL 13.4 and is replicated in real-time to the secondary region.  AWS ElastiCache (redis) is also utilized.  S3 is utilized to store user-uploaded files and is replicated in real-time to the secondary region.  CloudWatch is utilized for both monitoring and log storage.  Encryption keys are managed through the AWS Key Management Service (KMS). Access to the keys is restricted to a small number of senior team members.</p>
+<p>The platform is a SaaS-multi-tenant client server application.  Customers receive their own tenant in the Certification Automation system, and their data is encrypted and logically separated and not accessible to other tenants to prevent unauthorized access.  Client data locations and data flows are outlined in the diagram below along with the security measures in place to protect this data.</p>
+<p>[Intentionally Blank]</p>
+
+<hr>
+
+<hr>
+
+<p>The following diagrams identifies the virtual design of the solution, including all places where customer data resides, all data flows and how it is secured by OneTrust:</p>
+<p>The following provides a summary of supporting software systems utilized to deliver the Certification Automation system:</p>
+<p>• CloudWatch: utilized for the monitoring of production systems and log storage</p>
+<p>• RDS: utilized for the hosting and operation of SQL databases</p>
+<p>• ElastiCache: utilized for application performance and scalability</p>
+<p>• Route 53: utilized for the management of Domain Name System (DNS) and routing traffic within AWS</p>
+<p>• ECS: utilized for container deployment and management</p>
+<p>• VPC: utilized for the building of secure, scalable, and customizable architectures within the AWS cloud</p>
+<p>• ELB: utilized for the distribution of incoming network traffic across multiple resources</p>
+<p>• CloudFront: utilized for the delivery of content to end-users with low latency and high data transfer speeds</p>
+<p>• S3: utilized for object storage</p>
+<p>• BetterUptime: utilized for system status</p>
+<p>• GitHub: utilized for source code version control</p>
+<p>• Jira: utilized for tracking development requirements</p>
+<p>• ReactJS: utilized for the frontend web application</p>
+<p>• Node.js v16:  utilized as the gateway server</p>
+
+<hr>
+
+<hr>
+
+<p>• Python 3.10: utilized for backend API programming</p>
+<p>• SendGrid: utilized for sending application e-mails</p>
+<p>• Docker: utilized for the automation of deployments and management of applications in isolated containers</p>
+<p>• GitLab: utilized for vulnerability scanning of containers</p>
+<p>• Qualys: utilized for vulnerability scanning of applications</p>
+<p>People</p>
+<p>OneTrust develops, manages, and secures the OneTrust Platform via separate departments.  The responsibilities of these departments are defined below.</p>
+<p>Information Security and Privacy</p>
+<p>Information security and privacy is governed through an Integrated Management System (IMS) Committee (“IMS Committee,” “Committee”),which is responsible for working with the IMS chair to ensure the following: (a) that the information securitypolicy and objectives are established; (b) that IMS requirements are identified and integrated intoorganizational processes in support of the policy and objectives; (c) the availability of the resources thatare necessary to ensure the success of the IMS; (d) the communication of IMS policies and proceduresand their importance to personnel, as appropriate; (e) that the IMS continuously improves toward achievingits mission; (f) that the IMS has the necessary personnel to achieve its mission; (g) the continualimprovement of the IMS through the establishment of objectives; and (h) that department managers aremade aware of how they are vital to the success of the IMS.</p>
+<p>A team of attorneys focused on privacy and compliance provides development guidance and assists in the identification, implementation, and maintenance of organization-wide information privacy policies andprocedures in coordination with organization management, administration, and legal counsel.  The privacyteam performs initial and periodic privacy impact assessments and conducts related, ongoing compliancemonitoring.  The team also oversees security and privacy training and orientation for all employees.  Finally, the team maintains current knowledge of applicable privacy laws and accreditation standards and monitorsadvancements in information privacy technologies to ensure organizational adaptation and compliance.</p>
+<p>Legal</p>
+<p>The primary responsibility of the legal team is to provide transactional support for the OneTrust business. Additionally, the attorneys provide legal advice and counsel to internal clients at all levels on commercialmatters, support day-to-day initiatives and long-term strategies of OneTrust, and maintain relationships withexternal counsel.</p>
+<p>Product Management</p>
+<p>Product Management defines and drives product requirements, prioritization, and execution pertaining tothe development and features of products.  The team works with customers and cross-functional team members to define and prioritize market-driven features, functionality, and enhancements.The team drives product planning, development, documentation, customer beta testing, and launchactivities.</p>
+<p>Professional Services and Support</p>
+<p>Professional Services handles the overall responsibility for the customer relationship by working directlywith OneTrust customers to enhance their user experience with the services.  Members of this team have a clear understanding of the privacy industry, including the regulatory environment, and usethis knowledge to support customers.  Team members monitor industry trends and customer needs forthe purpose of being active and vocal in making decisions about the direction of the services.</p>
+<p>Human Resources (HR)</p>
+<p>HR drives employee relations and employee engagement activities.  In particular, HRprepares for and assists with new-hire onboarding, supports training and development programs, supports performance management and compensation administration, assists employees by listening to concernsand making recommendations for</p>
+
+<hr>
+
+<hr>
+
+<p>resolutions, assists with benefits programs (including annual openenrolment), and participates in benefits administration.</p>
+<p>HR’s Recruitment Team supports talent-acquisition activities from inception to completion for all positions.  This team manages stakeholder relationships, candidate sourcing, talent selection,interview scheduling, and offer management.</p>
+<p>Research and Development (R&amp;D) and Quality Assurance (QA)</p>
+<p>R&amp;D applies agile methodologies and problem-solving skills to design, develop, and unit test applications deployed to Azure and assists with cloud application architecture.  Additionally, R&amp;D carries out QA audits to ensure that documentation and controls designs are appropriate for the software, then addresses quality issues and follows up and closes pending preventive and corrective action requests.  Finally, the Operations roles support OneTrust's infrastructure by using automation to deploy software, configuration changes, and infrastructure changes; to troubleshoot software and infrastructure-as-a-service (IaaS) problems in its cloud environment; and to support application infrastructure to ensure that the software is optimized for performance and reliability.</p>
+<p>Procedures</p>
+<p>OneTrust maintains and documents operating technology standards and procedures in order to provide staff with centralized up-to-date references and training aids.  OneTrust’s policies and procedures contain guidance regarding aspects of computer usage and security.</p>
+<p>OneTrust has implemented both automated and procedural controls through system tools and through policies and procedures to create the internal control framework.  Management’s involvement in day-to-day operations allows for real-time review of the operating effectiveness of internal controls.</p>
+<p>OneTrust has documented and communicated policies and procedures to its employees to restrict logical access to OneTrust’s systems based on the principle of least privilege.  These procedures cover the following key security lifecycle areas:</p>
+<p>•• Management of access and roles  Policy management and communication</p>
+<p>•• Incident response  Selection, documentation, and implementation of security controls • Maintenance of restricted access to system • Authorization, changes to, and termination configurations, administrative functionality, of information system access passwords, powerful utilities, and security devices • Password protocol</p>
+<p>• Monitoring security controls</p>
+<p>Access, Authentication, and Authorization</p>
+<p>OneTrust applies the principle of least privilege and restricts access to the production environment only to those requiring access to perform their job function.  Access to the infrastructure within AWS requires initial access to a hardened jump server which requires an Active Directory (AD) account, and the use of multi-factor authentication (MFA).  Accounts within AD are unique to specific individuals and sharing of the accounts is prohibited.  AD security groups are utilized to ensure functions performed within the production environment are limited based on a user’s role within the organization.  AD password requirements are also in place to enforce predefined minimum password requirements according to documented policies.  Remote sessions to the production environment are configured to automatically terminate after a predefined time period of inactivity.  Access to perform administrative functions within the production environment and to the AWS management console is restricted to personnel commensurate with their job role.</p>
+<p>Additionally, system components are configured such that the organization and its customers' access is segmented from other tenant users.</p>
+
+<hr>
+
+<hr>
+
+<p>Access Requests and Access Revocation</p>
+<p>Access to in-scope system components require a documented access request along with manager approval prior to access being provisioned.  Termination notifications are provided to relevant teams in the event of an employee termination and system access is revoked as part of the termination process.  The identity management system is configured to sync with the HR system to automatically deactivate Entra ID (Azure) user accounts in the event that an employee’s employment status is no longer active in the HR system.  Quarterly access reviews are performed by management to ensure access to systems within the environment is appropriate.</p>
+<p>Change Management</p>
+<p>OneTrust maintains and documents change management policies and procedures to guide personnel on application and infrastructure changes to the production environment.  A formal system development life cycle (SDLC) methodology is established that governs the development, acquisition, implementation, and maintenance of application development and enhancement projects.</p>
+<p>Changes to the production environment are documented within a ticketing system and require approval prior to implementation.  Additionally, application changes require documented testing to be performed by QA personnel on an as needed basis, and back out plans are documented on an as needed basis for infrastructure changes prior to being implemented.</p>
+<p>Separate environments are maintained for the development and testing purposes from the production environment. OneTrust uses non-production data (fictitious data) within the development and testing environments.  Changes are migrated to production by authorized personnel based on job responsibilities.  Logging is enabled to monitor activities such as administrative activities, logon attempts, changes to functions, security configurations, permissions, and roles.  Automated alerts are configured to notify IT management and issues identified are resolved in a timely manner through the incident management process.</p>
+<p>Release notes for changes that affect the system are documented and communicated to internal and external users.</p>
+<p>System Security and System Monitoring</p>
+<p>OneTrust utilizes a web application firewall is also in place and is configured to protect against external web-based attacks.  Anti-malware software is deployed on production servers and workstations and is configured to scan registered endpoints in real-time.  A Data Loss Prevention (DLP) application is configured to prevent the use of removable media devices on registered endpoints.  Additionally, an Intrusion Detection System (IDS) tool is configured to notify system administrators of potential unauthorized movement of sensitive information.</p>
+<p>In order to help ensure production capacity is adequate, OneTrust utilizes enterprise monitoring software to monitor system capacity, and availability issues are configured to alert cloud personnel when pre-defined thresholds are met.  System changes are implemented as needed to help ensure that processing capacity can meet demand.</p>
+<p>Incident Response</p>
+<p>OneTrust maintains an incident response program to guide personnel on identifying, reporting, and tracking security incidents.  OneTrust utilizes an incident reporting tool to escalate identified security incidents.  A compliance and fraud reporting hotline is in place for employees to report security incidents or unethical behaviors anonymously, and a ticketing system is utilized to prioritize and track incidents and issues.  Incidents related to security, availability, and confidentiality are logged, tracked, and communicated to affected parties (where applicable) by management until resolution.  Incidents are evaluated to determine whether they could have resulted in a failure to meet security, availability, and confidentiality commitments and objectives.</p>
+<p>Data Backup, Disaster Recovery, and Business Disruption Management</p>
+<p>OneTrust employs multiple methods to ensure high availability of systems for end users.  Backup restore points are created and stored to ensure the availability of customer data in the event that data loss occurs.  Databases are replicated to a secondary region in real time.  Backup restoration testing is performed on an annual basis to test the integrity and completeness of back-up information.  The incident management process is invoked for anomalies. Additionally, a multi-location strategy is employed for production environment to permit the resumption of operations at other availability zones in the event of the loss of a facility.  Documented procedures outline the process that the</p>
+
+<hr>
+
+<hr>
+
+<p>Company’s staff follows to back up and recover customer data.  The procedures are reviewed by management at least annually.</p>
+<p>A disaster recovery production environment is maintained within AWS that is geographically separated from the main production environment.  A disaster recovery program is in place to protect the infrastructure in the occurrence of an adverse event that can impact operations and this plan is tested annually.  The business continuity plan is tested at least on an annual basis and recommendations and actions are documented.  A documented business continuity plan is in place and is tested at least on an annual basis and recommendations and actions are documented.</p>
+<p>To manage risks associated with business disruptions, A business impact analysis is performed on an annual basis to determine and evaluate the effects of an interruption to critical business operations.  This business impact analysis informs OneTrust on their strategies for system redundancy and recovery plans.</p>
+<p>Vendor Management</p>
+<p>Procedures for managing the risks associated with engaging with third parties, such as vendors.  Management obtains and reviews the subservice organization’s third-party compliance reports on an annual basis.  Additionally, a vendor risk assessment is performed at least annually for critical vendors.  Exceptions or concerns noted in the vendor risk assessments or vendor risk assessments are evaluated to determine impact on service.</p>
+<p>Data</p>
+<p>Data refers to transaction streams, files, data stores, tables, and output used or processed by OneTrust.  Through the API, the customer or end user defines and controls the data they load into and store in the Certification Automation system production environment.  Once stored in the environment, the data is accessed remotely from customer systems via the internet.</p>
+<p>Customer data is managed, processed, and stored in accordance with relevant data protection and other regulations and with specific requirements formally established in client contracts and in accordance with the OneTrust’s Classification Standards.</p>
+<p>OneTrust has deployed secure methods and protocols for the transmission of confidential or sensitive information over public networks.  Data transmitted through public networks is encrypted utilizing acceptable industry standards. The connection between the database and the application servers is not encrypted but occurs in a private and secure subnet.</p>
+<p>The Certification Automation system collects the following information:</p>
+<p>• User information – Typically keeps track of the name and e-mail address assigned to the system to create a user account.</p>
+<p>• Usage information –Tracks user activity in relation to the types of services customers and their users use, the configuration of their computers, and performance metrics related to their use of the services.</p>
+<p>• Log information – Logs system activity, including Internet Protocol (IP) address.</p>
+<p>• Information collected by cookies and similar technologies – OneTrust uses various technologies to collect information that may include saving cookies to users’ computers.</p>
+<p>The Certification Automation system provides a system that forms a system of record for the Information Security Management System of an enterprise.  This solution collects data only from authorized users and does not collect any data from public sources, social media, or the Internet.  The Certification Automation system may collect data from other enterprise systems but only via partner APIs and authorized users.</p>
+<p>System boundaries pertaining to  collection, use, retention, disclosure, and disposal or anonymization, or personalization of data are governed by contract provisions for particular service engagements.  Data is not utilized or disclosed to third parties outside of the scope allowed in such contracts and agreements.</p>
+
+<hr>
+
+<hr>
+
+<p>Significant Changes During the Period</p>
+<table class="table-0">
+  <thead>
+    <tr>
+      <th>There were no significant changes that are likely to affect report users’ understanding of how the in-scope system</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>is used to provide the services covered by this examination during the period.</td>
+    </tr>
+  </tbody>
+</table>
+<p>Subservice Organizations</p>
+<p>The cloud hosting and managed database services provided by AWS were not included within the scope of this examination.</p>
+<p>The following table presents the applicable Trust Services criteria that are intended to be met by controls at AWS, alone or in combination with controls at OneTrust, and the types of controls expected to be implemented at AWS to achieve OneTrust’s principal service commitments and system requirements based on the applicable trust services criteria.</p>
+<table class="table-1">
+  <thead>
+    <tr>
+      <th rowspan="2">Ref.</th>
+      <th rowspan="2">Control Activities Expected to be Implemented by AWS</th>
+      <th rowspan="2"></th>
+      <th>Applicable Trust</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="2">Services Criteria</td>
+    </tr>
+    <tr>
+      <td>CSOC1</td>
+      <td>AWS is expected to implement control activities to manage logical access to the
+underlying network, virtualization management, and storage devices for its
+cloud hosting services where in-scope systems reside. AWS is also expected
+to implement control activities for managing logical access to database server
+operating systems for its cloud hosting services where in-scope systems reside.</td>
+      <td colspan="3">CC6.1 - CC6.3,
+CC6.6</td>
+    </tr>
+    <tr>
+      <td>CSOC2</td>
+      <td>AWS is expected to implement control activities that ensure physical access to
+facilities, backup media, and other system components including firewalls,
+routers, and servers is restricted to authorized personnel.</td>
+      <td colspan="3">CC6.4 - CC6.5</td>
+    </tr>
+    <tr>
+      <td>CSOC3</td>
+      <td>AWS is expected to implement control activities that ensure environmental
+protection controls are in place at facilities housing production infrastructure and
+backup media where in-scope systems reside.</td>
+      <td colspan="3">A1.2</td>
+    </tr>
+  </tbody>
+</table>
+<h3>CE ONTROL NVIRONMENT</h3>
+<p>The control environment at OneTrust is the foundation for the other areas of internal control.  It sets the tone of the organization and influences the control consciousness of its personnel.  The components of the control environment factors include the integrity and ethical values; management’s commitment to competence; its organizational structure; the assignment of authority and responsibility; and the oversight and direction provided by executive management and operations management.</p>
+<p>Integrity and Ethical Values</p>
+<p>A “tone at the top” is established by OneTrust, including explicit guidance about what is right and wrong.  This tone is communicated and practiced by executives and management throughout the organization.  The importance of high ethics and controls is discussed with newly hired employees throughout the interview process and orientation. Employees must acknowledge the employee handbook upon hire, which describes the responsibilities and expected behavior with regard to data and information system usage.  New employees are also subjected to background and reference checks prior to joining the organization.  A formalized whistleblower policy is established, and an anonymous communication channel is available for employees to report potential security issues or fraud concerns.</p>
+
+<hr>
+
+<hr>
+
+<p>Executive Management, Board of Directors, and Audit Committee Oversight</p>
+<p>The IMS Committee has been appointed to provide oversight for the development and performance of internal control.  The committee meets on a quarterly basis and maintains formal meeting minutes.  The IMS Committee responsibilities, inclusive of the establishment, implementation, maintenance, and continual improvement of the IMS, are documented within the information security policy.  These responsibilities include ensuring that information security and privacy policies and objectives are established and compatible with the strategic direction of the company.  The chair of the IMS Committee is responsible for reporting performance to OneTrust’s CEO and others, as relevant.</p>
+<p>The organization also performs an internal audit on an annual basis to ensure compliance with organizational policies and procedures and to identify new risks.</p>
+<p>OneTrust's Board of Directors consists of the CEO and three independent non-employee directors.  The Board provides strategic direction and drives accountability, while overseeing the governance, compliance, reporting, and financials of the organization.</p>
+<p>Organizational Structure and Assignment of Authority and Responsibility</p>
+<p>OneTrust has established lines of reporting that facilitate the flow of information to appropriate personnel.  Roles and responsibilities are segregated based on functional requirements.  OneTrust has documented an organization chart that sets forth the company’s lines of reporting and is updated as necessary.</p>
+<p>Management and employees are assigned levels of authority and responsibility to facilitate effective internal control.</p>
+<p>Commitment to Competence</p>
+<p>OneTrust’s has established a framework for the basic skills necessary to perform each of the jobs at OneTrust. This framework is then augmented with more specific requirements for each position and for additional specialization within each position based upon any other skills an employee may have.  Job descriptions are documented for employees to define the skills and knowledge levels required for the competence levels of jobs. Candidates looking to work at the company are assessed during interviewing to determine if their skills match the requirements of the position and to determine if the candidate fits the company culture.  Management is required to provide feedback to HR during candidate interviewing to assess the competency of the candidate prior to being offered a position.  New employees are subjected to background and reference checks prior to joining the organization.  Employees are also required to undergo mandatory security and privacy training upon hire, and on an annual basis thereafter.  Employees' performance is also evaluated by managers on at least an annual basis.</p>
+<p>Accountability</p>
+<p>OneTrust’s senior management takes a “hands on” approach and are heavily involved in all phases of business operations.  OneTrust has company-wide staff meetings on a quarterly basis that enable senior management to remain in close contact with all personnel and to consistently emphasize appropriate behavior to personnel and to key vendor personnel.</p>
+<p>OneTrust maintains formal hiring, employment, and termination policies and procedures.  Employees are subject to background checks, must successfully complete privacy and security training, and are subject to disciplinary action as a result of policy violations or acts that are deemed contrary to the company’s mission and objectives. Job descriptions are documented for employees to define the knowledge and skillset required for the competence levels of jobs.</p>
+
+<hr>
+
+<hr>
+
+<h3>RA ISK SSESSMENT</h3>
+<p>Objective Setting</p>
+<p>OneTrust identifies risks to the achievement of its objectives across the entity and analyzes risks as a basis for determining how to manage them.  Documented policies and procedures are in place to guide personnel when performing the risk assessment process.  The process incorporates the security program by reviewing security testing and include items that need remediation.  Management has committed to customers to carry out certain objectives in relation to the services provided.  OneTrust has a risk assessment process to identify and manage risks that could affect the company’s ability to provide reliable services to its clients.  This process requires management to identify significant risks in their areas of responsibility and to implement measures to address those risks.  In designing its controls, the company has considered the risks that could prevent it from effectively addressing the criteria under the security, availability, and confidentiality Trust Services Criteria.  As part of this process, threats and changes to service commitments are identified and the risks are formally assessed.  A documented risk management program is in place that includes guidance on the identification of potential threats, rating the significance of the risks associated with the identified threats, and mitigation strategies for those risks.</p>
+<p>Risk Identification and Analysis</p>
+<p>After objectives have been defined, risks are identified.  The risk identification process includes the consideration of both internal and external factors and their impact on the achievement of the objectives.</p>
+<p>OneTrust identifies and assesses changes that could significantly impact the system of internal control.  The risk identification process considers changes to the regulatory, economic, and physical environment in which the company operates.  OneTrust also considers the potential impacts of new business lines, dramatically altered compositions of existing business lines, acquired or divested business operations, rapid growth, and new technologies on the system of internal control.</p>
+<p>Subsequently, identified risks are analyzed through a process that includes estimating the potential significance of the risk.  Risks are assigned a score based on the combined level of impact and likelihood of the risk occurring, ranging from low to critical impact and unlikely to expected likelihood.  Risks are then formally documented with mitigation strategies for management review.</p>
+<p>Risk Factors</p>
+<p>Management considers risks that can arise from both external and internal factors including the following:</p>
+<p>External Factors</p>
+<p>• Technological developments</p>
+<p>• Competition that could alter marketing or service activities</p>
+<p>• New legislation and regulation that could force changes in policies and strategies</p>
+<p>• Economic changes that could have an impact on management decisions</p>
+<p>Internal Factors</p>
+<p>• Significant changes in policies, processes, or personnel</p>
+<p>• Types of fraud</p>
+<p>• Fraud incentives and pressures for employees</p>
+<p>• Fraud opportunities</p>
+
+<hr>
+
+<hr>
+
+<p>• Employee attitudes and rationalizations for fraud</p>
+<p>• A disruption in information systems processing</p>
+<p>Potential for Fraud</p>
+<p>OneTrust considers the potential for fraud in assessing risks to the achievement of objectives.  The assessment of fraud risk considers fraudulent reporting, possible loss of assets, or data and corruption resulting from the various ways that fraud and misconduct can occur.  It also considers opportunities for unauthorized acquisition, use or disposal of assets, altering of the entity’s reporting records, or committing other inappropriate acts and how management and other personnel might engage in or justify inappropriate actions.</p>
+<p>Risk Mitigation</p>
+<p>Documented policies and procedures are in place to guide personnel in identifying and selecting and developing risk management strategies as a component of the annual risk assessment.  Upon completion of the annual risk assessment, OneTrust has implemented a risk mitigation procedure for the risks identified during the risk assessment.  Risks are documented with mitigation strategies and are reviewed during the quarterly IMS Management Committee quarterly meetings.</p>
+<h3>TSCRCA RUST ERVICES RITERIA AND ELATED ONTROL CTIVITIES</h3>
+<p>Integration with Risk Assessment</p>
+<p>Along with assessing risks, management has identified and put into effect actions needed to address those risks. In order to address risks, control activities have been placed into operation to help ensure that the actions are carried out properly and efficiently.  Control activities serve as mechanisms for managing the achievement of the security, availability, and confidentiality categories.</p>
+<p>Selection and Development of Control Activities</p>
+<p>The applicable trust services criteria and related control activities are included in Section 4 of this report to eliminate the redundancy that would result from listing the items in this section and repeating them in Section 4.  Although the applicable trust services criteria and related control activities are included in Section 4, they are, nevertheless, an integral part of OneTrust’s description of the system.</p>
+<p>The description of the service auditor’s tests of operating effectiveness and the results of those tests are also presented in Section 4, the Testing Matrices, adjacent to the service organization’s description of controls.  The description of the tests of operating effectiveness and the results of those tests are the responsibility of the service auditor and should be considered information provided by the service auditor.</p>
+<p>Trust Services Criteria Not Applicable to the In-Scope System</p>
+<p>All criteria within the security, availability, and confidentiality categories are applicable to the Certification Automation system.</p>
+
+<hr>
+
+<hr>
+
+<h3>ICS NFORMATION AND OMMUNICATION YSTEMS</h3>
+<p>OneTrust obtains or generates and uses relevant information to support the functioning of internal control.  OneTrust maintains architectural diagrams and procedural documentation to allow for identification of data sources, responsible personnel, and other relevant information.  OneTrust has methods in place to help information systems maintain and produce information that is timely, current, accurate, and complete.</p>
+<p>Internal Communications</p>
+<p>OneTrust maintains information security policies to help ensure that employees understand their individual roles and responsibilities concerning processing and controls to ensure significant events are communicated in a timely manner.  These include training programs and the use of e-mail to communicate time sensitive information and processes for security and system availability purposes that notify key personnel in the event of potential security issues or system outages.</p>
+<p>External Communications</p>
+<p>OneTrust provides external users with guidelines and technical support resources relating to system operations on OneTrust’s website.  OneTrust provides an external-facing support system and contact information to allow users to report system information on failures, incidents, concerns, and other complaints to appropriate personnel. OneTrust notifies customers of critical changes that may affect their processing.</p>
+<h3>M ONITORING</h3>
+<p>Monitoring is a process that assesses the quality of internal control performance over time.  It involves assessing the design and operation of controls and taking necessary corrective actions.  This process is accomplished through ongoing activities, separate evaluation, or a combination of the two.  Monitoring activities also include using information from communications from external parties such as user entity complaints and regulatory comments that may indicate problems or highlight areas in need of improvement.  Management has implemented a self- assessment and compliance program to ensure the controls are consistently applied as designed.</p>
+<p>Ongoing Monitoring</p>
+<p>OneTrust’s management performs monitoring activities in order to assess the quality of internal control over time, monitors activities throughout the year, and takes corrective actions to address deviations from company policy and procedures.  Management utilizes a risk-based approach to monitor business units and other auditable entities throughout the organization, ensuring that enterprise-wide risks are prioritized and addressed in order of significance.</p>
+<p>OneTrust monitors customer communications through the Professional Services and Support department.  This information is provided to management providing the ability to track, monitor, and assist in understanding customer complaints, concerns, and to evaluate and resolve special requests in a timely fashion.  Management’s ability to actively monitor customer communications is an integral role in controlling the quality of the services provided.</p>
+<p>Management is proactive in responding to customer complaints and there is a high level of inter-departmental communication about these events.  Customer complaints and other issues are handled through an internal ticketing system and by personal contact by management staff.  Major customer-facing issues are reported to management for discussion and approval of action.</p>
+<p>OneTrust utilizes monitoring tools to monitor system security and performance events such as failed access attempts, intrusion signature detection, firewall events, central processing unit (CPU), and memory usage. Monitoring systems are configured to notify personnel when pre-defined thresholds are met and are followed up with and remediated.</p>
+
+<hr>
+
+<hr>
+
+<p>Separate Evaluations</p>
+<p>The IMS Committee is responsible for providing oversight for the development and performance of internal controls. The committee meets on a quarterly basis to review security incidents and various other metrics to determine the effectiveness of internal controls.  Additionally, the organization performs an internal audit on an annual basis to ensure compliance with organizational policies and procedures and to identify new risks.  Vulnerability scans are performed on a daily basis to identify threats and vulnerabilities to the production systems.  Issues identified are analyzed and remediated in a timely manner.  OneTrust also contracts with a third-party to perform penetration testing on an annual basis to identify vulnerabilities and deficiencies.</p>
+<p>Subservice Organization Monitoring</p>
+<p>The externally supported systems managed by AWS that support the Certification Automation system are monitored daily by OneTrust IT personnel as part of the day-to-day IT and business operations.  Vendor risk assessments are performed at least annually for critical vendors, and any exceptions identified in the assessment are evaluated to determine the impact on service.  OneTrust also obtains and reviews third-party attestation and compliance reports for AWS on at least an annual basis to monitor and evaluate the adequacy and effectiveness of controls in place at the subservice organization to safeguard client data.</p>
+<p>Evaluating and Communicating Deficiencies</p>
+<p>OneTrust evaluates and communicates internal control deficiencies to those parties responsible for taking corrective action, including senior management and the board of managers, as appropriate.  Guidelines for reporting deficiencies have been developed and are provided to all employees.  The IMS Committee meets on a quarterly basis to review reported security incidents.</p>
+<p>There were no identified significant system incidents that (a) were the result of controls that were not suitably designed or operating effectively to achieve one or more of the service commitments and system requirements or (b) otherwise resulted in a significant failure in the achievement of one or more of those service commitments and system requirements during the period.</p>
+<p>System Incident Disclosures</p>
+<table class="table-0">
+  <thead>
+    <tr>
+      <th>No system incidents occurred that were the result of controls that were not suitably designed or operating effectively</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>or otherwise resulted in a significant failure of the achievement of one or more of the service commitments and</td>
+    </tr>
+    <tr>
+      <td>systems requirements during the period.</td>
+    </tr>
+  </tbody>
+</table>
+<h3>CCUE OMPLEMENTARY ONTROLS AT SER NTITIES</h3>
+<p>OneTrust’s controls are designed to provide reasonable assurance that the principal service commitments and system requirements can be achieved without the implementation of complementary controls at user entities.  As a result, complementary user entity controls are not required, or significant, to achieve the principal service commitments and system requirements based on the applicable trust services criteria.</p>
+
+<hr>
+
+<hr>
+
+<h3>S4 ECTION</h3>
+<h3>TM ESTING ATRICES</h3>
+
+<hr>
+
+<hr>
+
+<h3>TOERT ESTS OF PERATING FFECTIVENESS AND ESULTS OF ESTS</h3>
+<p>Scope of Testing</p>
+<p>This report on the controls relates to the Certification Automation system provided by OneTrust.  The scope of the testing was restricted to the Certification Automation system and its boundaries as defined in Section 3.  Schellman</p>
+<p>Tests of Operating Effectiveness</p>
+<p>The tests applied to test the operating effectiveness of controls are listed alongside each of the respective control activities within the Testing Matrices.  Such tests were considered necessary to evaluate whether the controls were sufficient to provide reasonable, but not absolute, assurance that the applicable trust services criteria were achieved during the period.  In selecting the tests of controls, Schellman considered various factors including, but not limited to, the following:</p>
+<p>• the nature of the control and the frequency with which it operates;</p>
+<p>• the control risk mitigated by the control;</p>
+<p>• the effectiveness of entity-level controls, especially controls that monitor other controls;</p>
+<p>• the degree to which the control relies on the effectiveness of other controls; and</p>
+<p>• whether the control is manually performed or automated.</p>
+<p>The types of tests performed with respect to the operational effectiveness of the control activities detailed in this section are briefly described below:</p>
+<table class="table-0">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Test Approach</th>
+      <th></th>
+      <th></th>
+      <th>Description</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">Inquiry</td>
+      <td colspan="3">Inquired of relevant personnel with the requisite knowledge and experience regarding
+the performance and application of the related control activity. This included in-person
+interviews, telephone calls, e-mails, web-based conferences, or a combination of the
+preceding.</td>
+    </tr>
+    <tr>
+      <td colspan="3">Observation</td>
+      <td colspan="3">Observed the relevant processes or procedures during fieldwork. This included, but
+was not limited to, witnessing the performance of controls or evidence of control
+performance with relevant personnel, systems, or locations relevant to the
+performance of control policies and procedures.</td>
+    </tr>
+    <tr>
+      <td colspan="3">Inspection</td>
+      <td colspan="3">Inspected the relevant audit records. This included, but was not limited to, documents,
+system configurations and settings, or the existence of sampling attributes, such as
+signatures, approvals, or logged events. In some cases, inspection testing involved
+tracing events forward to consequent system documentation or processes (e.g.,
+resolution, detailed documentation, alarms, etc.) or vouching backwards for
+prerequisite events (e.g., approvals, authorizations, etc.).</td>
+    </tr>
+  </tbody>
+</table>
+<p>Sampling</p>
+<p>Consistent with American Institute of Certified Public Accountants (AICPA) authoritative literature, Schellman utilizes professional judgment to consider the tolerable deviation rate, the expected deviation rate, the audit risk, the characteristics of the population, and other factors, in order to determine the number of items to be selected in a sample for a particular test.  Schellman, in accordance with AICPA authoritative literature, selected samples in such a way that the samples were expected to be representative of the population.  This included judgmental selection methods, where applicable, to ensure representative samples were obtained.</p>
+
+<hr>
+
+<hr>
+
+<p>System-generated population listings were obtained whenever possible to ensure completeness prior to selecting samples.  In some instances, full populations were tested in cases including but not limited to, the uniqueness of the event or low overall population size.</p>
+<p>Reliability of Information Provided by the Service Organization</p>
+<p>Observation and inspection procedures were performed related to certain system-generated reports, listings, and queries to assess the accuracy and completeness (reliability) of the information used in the performance of our testing of the controls.</p>
+<p>Test Results</p>
+<p>The results of each test applied are listed alongside each respective test applied within the Testing Matrices.  Test results not deemed as control deviations are noted by the phrase “No exceptions noted.” in the test result column of the Testing Matrices.  Any phrase other than the aforementioned, constitutes either a test result that is the result of non-occurrence, a change in the application of the control activity, or a deficiency in the operating effectiveness of the control activity.  Testing deviations identified within the Testing Matrices are not necessarily weaknesses in the total system of controls, as this determination can only be made after consideration of controls in place at user entities and subservice organizations, if applicable, and other factors.  Control considerations that should be implemented by subservice organizations, in order to complement the control activities and achieve the applicable trust services criteria are presented in the “Subservice Organizations” section within Section 3.</p>
+<h3>SCECURITY ATEGORY</h3>
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">Control Environment</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC1.1 – COSO Principle 1: The entity demonstrates a commitment to integrity and ethical values.</td>
+    </tr>
+    <tr>
+      <td>CC1.1.1</td>
+      <td colspan="3">Employees must acknowledge the
+employee handbook upon hire,
+which describes the
+responsibilities and expected
+behavior with regard to data and
+information system usage.</td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+    <tr>
+      <td>CC1.1.2</td>
+      <td colspan="3">A formalized whistleblower policy
+is established and an anonymous
+communication channel is
+available for employees to report
+potential security issues or fraud
+concerns.</td>
+      <td colspan="3">Inspected the whistleblower policy
+and the communication channel
+on the Company website to
+determine that a formalized
+whistleblower policy was
+established and an anonymous
+communication channel was
+available for employees to report
+potential security issues or fraud
+concerns.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC1.1.3</td>
+      <td colspan="3">New employees are subjected to
+background checks prior to joining
+the organization.</td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC1.1.4</td>
+      <td colspan="3">Employees and contractors who
+violate the code of conduct are
+subject to disciplinary actions
+documented in the employee
+handbook.</td>
+      <td colspan="3">Inspected the employee handbook
+to determine that employees and
+contractors who violate the code
+of conduct were subject to
+disciplinary actions.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC1.2 – COSO Principle 2: The board of directors demonstrates independence from management and exercises oversight
+of the development and performance of internal control.</td>
+    </tr>
+    <tr>
+      <td>CC1.2.1</td>
+      <td colspan="3">IMS Management Committee
+responsibilities, inclusive of the
+establishment, implementation,
+maintenance, and continual
+improvement of the IMS, are
+documented within the information
+security policy.</td>
+      <td colspan="3">Inspected the information security
+policy to determine that the IMS
+Management Committee
+responsibilities, inclusive of the
+establishment, implementation,
+maintenance, and continual
+improvement of the IMS, were
+documented within the information
+security policy.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC1.2.2</td>
+      <td colspan="3">The IMS Management Committee
+is comprised of an appointed IMS
+chair and supporting leadership
+members.</td>
+      <td colspan="3">Inspected the information security
+policy to determine that the IMS
+Management Committee was
+comprised of an appointed IMS
+chair and supporting leadership
+members.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC1.2.3</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC1.3 – COSO Principle 3: Management establishes, with board oversight, structures, reporting lines, and appropriate
+authorities and responsibilities in the pursuit of objectives.</td>
+    </tr>
+    <tr>
+      <td>CC1.3.1</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC1.3.2</td>
+      <td colspan="3">Job descriptions are documented
+for employees to define the skills
+and knowledge levels required for
+the competence levels of jobs.</td>
+      <td colspan="3">Inspected the documented job
+description for a sample of unique
+job positions from the current
+employee listing to determine that
+job descriptions were documented
+for employees and defined the
+skills and knowledge levels
+required for the competence
+levels of jobs for each job position
+sampled.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC1.3.3</td>
+      <td colspan="3">An organization chart is
+documented and defines the
+organizational structure and
+reporting lines.</td>
+      <td colspan="3">Inspected the organizational chart
+to determine that an organization
+chart was documented and
+defines the organizational
+structure and reporting lines.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC1.3.4</td>
+      <td colspan="3">Management has established
+defined roles and responsibilities
+to oversee the implementation of
+security and internal controls.</td>
+      <td colspan="3">Inspected the information security
+policy documentation to determine
+that management established
+defined roles and responsibilities
+to oversee the implementation of
+security and internal controls.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC1.4 – COSO Principle 4: The entity demonstrates a commitment to attract, develop, and retain competent individuals in
+alignment with objectives.</td>
+    </tr>
+    <tr>
+      <td>CC1.4.1</td>
+      <td colspan="3">The organization has
+implemented a process that
+requires managers to evaluate
+employee performance on at least
+an annual basis.</td>
+      <td colspan="3">Inspected the completed
+performance evaluation for a
+sample of current employees to
+determine that the organization
+has implemented a process that
+requires managers to evaluate
+employee performance on at least
+an annual basis.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC1.4.2</td>
+      <td colspan="3" rowspan="2">Employees complete security
+awareness training upon hire and
+annually thereafter.</td>
+      <td colspan="3">Inspected the training
+documentation for a sample of
+current employees to determine
+that employees completed
+security awareness training
+annually.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+    <tr>
+      <td>CC1.4.3</td>
+      <td colspan="3">New employees are subjected to
+background checks prior to joining
+the organization.</td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+    <tr>
+      <td>CC.1.4.4</td>
+      <td colspan="3">Job descriptions are documented
+for employees to define the skills
+and knowledge levels required for
+the competence levels of jobs.</td>
+      <td colspan="3">Inspected the documented job
+description for a sample of unique
+job positions from the current
+employee listing to determine that
+job descriptions were documented
+for employees and defined the
+skills and knowledge levels
+required for the competence
+levels of jobs for each job position
+sampled.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC1.5 – COSO Principle 5: The entity holds individuals accountable for their internal control responsibilities in the pursuit of
+objectives.</td>
+    </tr>
+    <tr>
+      <td>CC1.5.1</td>
+      <td colspan="3">The organization has
+implemented a process that
+requires managers to evaluate
+employee performance on at least
+an annual basis.</td>
+      <td colspan="3">Inspected the completed
+performance evaluation for a
+sample of current employees to
+determine that the organization
+has implemented a process that
+requires managers to evaluate
+employee performance on at least
+an annual basis.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC1.5.2</td>
+      <td colspan="3">Employees must acknowledge the
+employee handbook upon hire,
+which describes the
+responsibilities and expected
+behavior with regard to data and
+information system usage.</td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+    <tr>
+      <td>CC1.5.3</td>
+      <td colspan="3">Employees and contractors who
+violate the code of conduct are
+subject to disciplinary actions
+documented in the employee
+handbook.</td>
+      <td colspan="3">Inspected the employee
+handbook to determine that
+employees and contractors who
+violate the code of conduct were
+subject to disciplinary actions.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC1.5.4</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">Communication and Information</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC2.1 – COSO Principle 13: The entity obtains or generates and uses relevant, quality information to support the
+functioning of internal control.</td>
+    </tr>
+    <tr>
+      <td>CC2.1.1</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.1.2</td>
+      <td colspan="3">The security owners subscribe to
+industry security bulletins and
+e-mail alerts and use them to
+monitor the impact of emerging
+technologies and security on the
+production systems.</td>
+      <td colspan="3">Inspected example security
+bulletins and e-mail alerts to
+determine that the security
+owners were subscribed to
+industry security bulletins and
+e-mail alerts and used them to
+monitor the impact of emerging
+technologies and security on the
+production systems.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC2.1.3</td>
+      <td colspan="3" rowspan="2">Vulnerability scans are performed
+on a daily basis to identify threats
+and vulnerabilities to the
+production systems. Issues
+identified are analyzed and
+remediated in a timely manner.</td>
+      <td colspan="3">Inspected the vulnerability
+dashboard and configuration to
+determine that vulnerability scans
+were performed on a daily basis
+to identify threats and
+vulnerabilities to the production
+systems.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected an example
+remediation ticket to determine
+that issues identified were
+analyzed and remediated in a
+timely manner.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC2.1.4</td>
+      <td colspan="3" rowspan="2">A third-party penetration test is
+performed on an annual basis to
+identify vulnerabilities and
+deficiencies. Remediation plans
+are proposed and monitored
+through resolution.</td>
+      <td colspan="3">Inspected the penetration test to
+determine that a third-party
+penetration test was performed
+during the period to identify
+vulnerabilities and deficiencies.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected a remediation ticket to
+determine that remediation plans
+were proposed and monitored
+through resolution.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC2.2 – COSO Principle 14: The entity internally communicates information, including objectives and responsibilities for
+internal control, necessary to support the functioning of internal control.</td>
+    </tr>
+    <tr>
+      <td>CC2.2.1</td>
+      <td colspan="3">Information security policies and
+procedures are documented and
+define the information security
+rules and requirements for the
+service environment.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures to
+determine that information
+security policies and procedures
+were documented and defined the
+information security rules and
+requirements for the service
+environment.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC2.2.2</td>
+      <td colspan="3" rowspan="2">The organization utilizes OneTrust
+platform to manage its Information
+Security policies and procedures.
+Internal policy and procedure
+documents relating to security,
+confidentiality, and availability are
+maintained and made available to
+employees. The policies and
+procedure documents are
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures shared
+on the OneTrust platform to
+determine that the Company
+utilized the OneTrust platform to
+manage its information security
+policies and procedures related to
+security, confidentiality, and
+availability and were maintained
+and made available to employees.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the information security
+policies on the company intranet
+to determine that documents were
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.2.3</td>
+      <td colspan="3">Guidelines and technical support
+resources related to system
+operations are provided to internal
+and external users on the
+Company's website.</td>
+      <td colspan="3">Inspected the guidelines and
+technical support resources on
+the Company website to
+determine that guidelines and
+technical support resources
+related to system operations were
+provided to internal and external
+users on the Company's website.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.2.4</td>
+      <td colspan="3">Release notes for changes that
+affect the system are documented
+and communicated to internal and
+external users.</td>
+      <td colspan="3">Inspected the release notes
+webpage to determine that
+release notes for changes that
+affected the system were
+documented and communicated
+to internal and external users.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC2.2.5</td>
+      <td colspan="3">Security incident response
+policies and procedures are
+documented and provide
+guidance to Company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td colspan="3">Inspected the incident response
+policies and procedures to
+determine that security incident
+response policies and procedures
+were documented and provided
+guidance to company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.2.6</td>
+      <td colspan="3">Management has established
+defined roles and responsibilities
+to oversee the implementation of
+security and internal controls.</td>
+      <td colspan="3">Inspected the information security
+policy documentation to determine
+that management established
+defined roles and responsibilities
+to oversee the implementation of
+security and internal controls.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.2.7</td>
+      <td colspan="3">A formalized whistleblower policy
+is established and an anonymous
+communication channel is
+available for employees to report
+potential security issues or fraud
+concerns.</td>
+      <td colspan="3">Inspected the whistleblower policy
+and the communication channel
+on the Company website to
+determine that a formalized
+whistleblower policy was
+established and an anonymous
+communication channel was
+available for employees to report
+potential security issues or fraud
+concerns.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.2.8</td>
+      <td colspan="3">Employees must acknowledge the
+employee handbook upon hire,
+which describes the
+responsibilities and expected
+behavior with regard to data and
+information system usage.</td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC2.2.9</td>
+      <td colspan="3" rowspan="2">Employees complete security
+awareness training upon hire and
+annually thereafter.</td>
+      <td colspan="3">Inspected the training
+documentation for a sample of
+current employees to determine
+that employees completed
+security awareness training
+annually.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+    <tr>
+      <td>CC2.2.10</td>
+      <td colspan="3">Employees are required to sign a
+confidentiality agreement upon
+hire. This agreement prohibits
+any disclosure of information and
+other data to which the employee
+has been granted access during
+employment and after termination.</td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC2.2.11</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC2.3 – COSO Principle 15: The entity communicates with external parties regarding matters affecting the functioning of
+internal control.</td>
+    </tr>
+    <tr>
+      <td>CC2.3.1</td>
+      <td colspan="3">The master terms of service and
+service level agreements include
+the communication of the
+Company's commitments to its
+customers.</td>
+      <td colspan="3">Inspected the terms of service to
+determine that the master terms
+of service and service level
+agreements included the
+communication of the Company's
+commitments to its customers.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.3.2</td>
+      <td colspan="3">Data protection agreements are in
+place with third-party vendors.
+These agreements include
+confidentiality commitments
+applicable to that entity.</td>
+      <td colspan="3">Inspected the service terms and
+customer agreement for a sample
+of critical vendors to determine
+that data protection agreements
+were in place with third-party
+vendors and that these
+agreements included
+confidentiality commitments
+applicable to that entity.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.3.3</td>
+      <td colspan="3">Guidelines and technical support
+resources related to system
+operations are provided to internal
+and external users on the
+Company's website.</td>
+      <td colspan="3">Inspected the guidelines and
+technical support resources on
+the Company website to
+determine that guidelines and
+technical support resources
+related to system operations were
+provided to internal and external
+users on the Company's website.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.3.4</td>
+      <td colspan="3">Release notes for changes that
+affect the system are documented
+and communicated to internal and
+external users.</td>
+      <td colspan="3">Inspected the release notes
+webpage to determine that
+release notes for changes that
+affected the system were
+documented and communicated
+to internal and external users.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC2.3.5</td>
+      <td colspan="3">An external-facing support system
+is in place that allows external
+users to report system information
+on failures, incidents, concerns,
+and other complaints to the
+company.</td>
+      <td colspan="3">Inspected the customer support
+tickets for a sample of help desk
+tickets resolved during the period
+to determine that that an external-
+facing support system was in
+place that allowed external users
+to report system information on
+failures, incidents, concerns, and
+other complaints to the company.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">Risk Assessment</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC3.1 – COSO Principle 6: The entity specifies objectives with sufficient clarity to enable the identification and assessment
+of risks relating to objectives.</td>
+    </tr>
+    <tr>
+      <td>CC3.1.1</td>
+      <td colspan="3">A documented risk methodology
+program is in place that includes
+guidance on the identification of
+potential threats, rating the
+significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks.</td>
+      <td colspan="3">Inspected the risk methodology
+document to determine that a
+documented risk management
+program was in place that
+included guidance on the
+identification of potential threats,
+rating the significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC3.1.2</td>
+      <td colspan="3">A formal risk assessment process
+is performed on at least an annual
+basis. Risks that are identified
+are rated using a risk evaluation
+process and are formally
+documented, with mitigation
+strategies for management
+review.</td>
+      <td colspan="3">Inspected the documentation for
+the most recently completed risk
+assessment to determine that a
+risk assessment was performed
+during the period and that
+identified risks were rated using a
+risk evaluation process and were
+formally documented, with
+mitigation strategies for
+management review.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC3.2 – COSO Principle 7: The entity identifies risks to the achievement of its objectives across the entity and analyzes
+risks as a basis for determining how the risks should be managed.</td>
+    </tr>
+    <tr>
+      <td>CC3.2.1</td>
+      <td colspan="3">A documented risk methodology
+program is in place that includes
+guidance on the identification of
+potential threats, rating the
+significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks.</td>
+      <td colspan="3">Inspected the risk methodology
+document to determine that a
+documented risk management
+program was in place that
+included guidance on the
+identification of potential threats,
+rating the significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC3.2.2</td>
+      <td colspan="3">A formal risk assessment process
+is performed on at least an annual
+basis. Risks that are identified
+are rated using a risk evaluation
+process and are formally
+documented, with mitigation
+strategies for management
+review.</td>
+      <td colspan="3">Inspected the documentation for
+the most recently completed risk
+assessment to determine that a
+risk assessment was performed
+during the period and that
+identified risks were rated using a
+risk evaluation process and were
+formally documented, with
+mitigation strategies for
+management review.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC3.3 – COSO Principle 8: The entity considers the potential for fraud in assessing risks to the achievement of objectives.</td>
+    </tr>
+    <tr>
+      <td>CC3.3.1</td>
+      <td colspan="3">A risk assessment is performed
+on an annual basis that considers
+the potential for fraud.</td>
+      <td colspan="3">Inspected the documentation for
+the most recently completed risk
+assessment to determine that a
+risk assessment was performed
+during the period and that
+considered the potential for fraud.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC3.4 – COSO Principle 9: The entity identifies and assesses changes that could significantly impact the system of internal
+control.</td>
+    </tr>
+    <tr>
+      <td>CC3.4.1</td>
+      <td colspan="3">A documented risk methodology
+program is in place that includes
+guidance on the identification of
+potential threats, rating the
+significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks.</td>
+      <td colspan="3">Inspected the risk methodology
+document to determine that a
+documented risk management
+program was in place that
+included guidance on the
+identification of potential threats,
+rating the significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC3.4.2</td>
+      <td colspan="3">A formal risk assessment process
+is performed on at least an annual
+basis. Risks that are identified
+are rated using a risk evaluation
+process and are formally
+documented, with mitigation
+strategies for management
+review.</td>
+      <td colspan="3">Inspected the documentation for
+the most recently completed risk
+assessment to determine that a
+risk assessment was performed
+during the period and that
+identified risks were rated using a
+risk evaluation process and were
+formally documented, with
+mitigation strategies for
+management review.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC3.4.3</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">Monitoring Activities</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC4.1 – COSO Principle 16: The entity selects, develops, and performs ongoing and/or separate evaluations to ascertain
+whether the components of internal control are present and functioning.</td>
+    </tr>
+    <tr>
+      <td>CC4.1.1</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC4.1.2</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC4.1.3</td>
+      <td colspan="3">Management obtains and reviews
+the subservice organizations third-
+party compliance reports on an
+annual basis.</td>
+      <td colspan="3">Inspected the attestation reports
+and the completed risk
+assessments for a sample of
+critical vendors engaged with
+throughout the period to
+determine that management
+obtained and reviewed the
+subservice organization’s third-
+party compliance reports during
+the period.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC4.1.4</td>
+      <td colspan="3" rowspan="2">Vulnerability scans are performed
+on a daily basis to identify threats
+and vulnerabilities to the
+production systems. Issues
+identified are analyzed and
+remediated through resolution.</td>
+      <td colspan="3">Inspected the vulnerability
+dashboard and configuration to
+determine that vulnerability scans
+were performed on a daily basis
+to identify threats and
+vulnerabilities to the production
+systems.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected a remediation ticket to
+determine that remediation plans
+were proposed and monitored
+through resolution.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC4.1.5</td>
+      <td colspan="3" rowspan="2">A third-party penetration test is
+performed on an annual basis to
+identify vulnerabilities and
+deficiencies. Remediation plans
+are proposed and monitored
+through resolution.</td>
+      <td colspan="3">Inspected the penetration test to
+determine that a third-party
+penetration test was performed
+during the period to identify
+vulnerabilities and deficiencies.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected a remediation ticket to
+determine that remediation plans
+were proposed and monitored
+through resolution.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC4.2 – COSO Principle 17: The entity evaluates and communicates internal control deficiencies in a timely manner to
+those parties responsible for taking corrective action, including senior management and the board of directors, as
+appropriate.</td>
+    </tr>
+    <tr>
+      <td>CC4.2.1</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC4.2.2</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC4.2.3</td>
+      <td colspan="3">Management obtains and reviews
+the subservice organizations third-
+party compliance reports on an
+annual basis.</td>
+      <td colspan="3">Inspected the attestation reports
+and the completed risk
+assessments for a sample of
+critical vendors engaged with
+throughout the period to
+determine that management
+obtained and reviewed the
+subservice organization’s third-
+party compliance reports during
+the period.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC4.2.4</td>
+      <td colspan="3">Incidents related to security,
+availability, and confidentiality are
+logged, tracked, and
+communicated to affected parties
+(where applicable) by
+management until resolved.
+Incidents are evaluated to
+determine whether they could
+have resulted in a failure to meet
+security, availability, and
+confidentiality commitments and
+objectives.</td>
+      <td colspan="3">Inspected the incident ticket and
+communication documentation for
+a listing of incidents reported
+during the period to determine
+that for each incident sampled,
+incidents were logged, tracked,
+and communicated to affected
+parties by management until
+resolved and that incidents were
+evaluated to determine whether
+they could have resulted in a
+failure to meet security,
+availability, and confidentiality
+commitments and objectives.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">Control Activities</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC5.1 – COSO Principle 10: The entity selects and develops control activities that contribute to the mitigation of risks to the
+achievement of objectives to acceptable levels.</td>
+    </tr>
+    <tr>
+      <td>CC5.1.1</td>
+      <td colspan="3">A documented risk methodology
+program is in place that includes
+guidance on the identification of
+potential threats, rating the
+significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks.</td>
+      <td colspan="3">Inspected the risk methodology
+document to determine that a
+documented risk management
+program was in place that
+included guidance on the
+identification of potential threats,
+rating the significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.1.2</td>
+      <td colspan="3">A formal risk assessment process
+is performed on at least an annual
+basis. Risks that are identified
+are rated using a risk evaluation
+process and are formally
+documented, with mitigation
+strategies for management
+review.</td>
+      <td colspan="3">Inspected the documentation for
+the most recently completed risk
+assessment to determine that a
+risk assessment was performed
+during the period and that
+identified risks were rated using a
+risk evaluation process and were
+formally documented, with
+mitigation strategies for
+management review.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.1.3</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC5.1.4</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC5.2 – COSO Principle 11: The entity also selects and develops general control activities over technology to support the
+achievement of objectives.</td>
+    </tr>
+    <tr>
+      <td>CC5.2.1</td>
+      <td colspan="3">A documented risk methodology
+program is in place that includes
+guidance on the identification of
+potential threats, rating the
+significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks.</td>
+      <td colspan="3">Inspected the risk methodology
+document to determine that a
+documented risk management
+program was in place that
+included guidance on the
+identification of potential threats,
+rating the significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.2.2</td>
+      <td colspan="3">A formal risk assessment process
+is performed on at least an annual
+basis. Risks that are identified
+are rated using a risk evaluation
+process and are formally
+documented, with mitigation
+strategies for management
+review.</td>
+      <td colspan="3">Inspected the documentation for
+the most recently completed risk
+assessment to determine that a
+risk assessment was performed
+during the period and that
+identified risks were rated using a
+risk evaluation process and were
+formally documented, with
+mitigation strategies for
+management review.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.2.3</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.2.4</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC5.3 – COSO Principle 12: The entity deploys control activities through policies that establish what is expected and in
+procedures that put policies into action.</td>
+    </tr>
+    <tr>
+      <td>CC5.3.1</td>
+      <td colspan="3">Information security policies and
+procedures are documented and
+define the information security
+rules and requirements for the
+service environment.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures to
+determine that information
+security policies and procedures
+were documented and defined the
+information security rules and
+requirements for the service
+environment.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC5.3.2</td>
+      <td colspan="3" rowspan="2">The organization utilizes OneTrust
+platform to manage its Information
+Security policies and procedures.
+Internal policy and procedure
+documents relating to security,
+confidentiality, and availability are
+maintained and made available to
+employees. The policies and
+procedure documents are
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures shared
+on the OneTrust platform to
+determine that the Company
+utilized the OneTrust platform to
+manage its information security
+policies and procedures related to
+security, confidentiality, and
+availability and were maintained
+and made available to employees.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the information security
+policies on the company intranet
+to determine that documents were
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.3.3</td>
+      <td colspan="3">Security incident response
+policies and procedures are
+documented and provide
+guidance to Company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td colspan="3">Inspected the incident response
+policies and procedures to
+determine that security incident
+response policies and procedures
+were documented and provided
+guidance to company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.3.4</td>
+      <td colspan="3">The IMS Management Committee
+has been appointed to provide
+oversight for the development and
+performance of internal control.
+The committee meets at least
+quarterly and maintains formal
+meeting minutes.</td>
+      <td colspan="3">Inspected the executive team
+meeting minutes for a sample of
+quarters during the period to
+determine that the IMS
+Management Committee was
+appointed to provide oversight for
+the development and performance
+of internal control and that the
+committee met quarterly and
+maintained formal meeting
+minutes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC5.3.5</td>
+      <td colspan="3">An internal audit is performed at
+least annually to validate that
+controls are in place and
+operating effectively. Internal
+control deficiencies are
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td colspan="3">Inspected the most recent internal
+audit results to determine that an
+internal audit was performed
+during the period to validate that
+controls were in place and
+operated effectively and that
+internal control deficiencies were
+communicated to parties
+responsible for taking corrective
+action.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">Logical and Physical Access Controls</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.1 – The entity implements logical access security software, infrastructure, and architectures over protected information
+assets to protect them from security events to meet the entity's objectives.</td>
+    </tr>
+    <tr>
+      <td>CC6.1.1</td>
+      <td colspan="3">Information security policies and
+procedures are documented and
+define the information security
+rules and requirements for the
+service environment.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures to
+determine that information
+security policies and procedures
+were documented and defined the
+information security rules and
+requirements for the service
+environment.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.1.2</td>
+      <td colspan="3">A formal inventory of production
+system assets that includes asset
+owners is maintained, and
+changes to the inventory are
+logged.</td>
+      <td colspan="3">Inspected the asset inventory
+listing to determine that a formal
+inventory of production system
+assets was maintained, and
+changes to the inventory were
+logged.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.1.3</td>
+      <td colspan="3">Authentication to the following in-
+scope systems components
+requires a unique username and
+password:
+• Application production
+environment
+• AWS console</td>
+      <td colspan="3">Inspected the authentication
+configurations to determine that
+authentication to the following in-
+scope systems components
+required a unique username and
+password or authorized SSH
+keys:
+• Production environment
+• AWS console</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.1.4</td>
+      <td colspan="3">MFA is required for remote
+access to production systems
+over an encrypted gateway.</td>
+      <td colspan="3">Inspected the MFA configurations
+and remote authentication
+process to determine MFA was
+required for remote access to
+production systems over an
+encrypted gateway.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC6.1.5</td>
+      <td colspan="3" rowspan="2">Remote access to production
+systems is permitted to authorized
+employees only with multi-factor
+authentication (MFA) over
+encrypted channels and through
+IP whitelisting.</td>
+      <td colspan="3">Inspected the MFA configurations
+to determine that remote access
+to production systems was
+permitted to authorized
+employees only with multi-factor
+authentication (MFA) over
+encrypted channels and through
+IP whitelisting.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the list of users with
+remote access to production
+systems to determine that remote
+access to production systems was
+permitted to authorized
+employees only with multi-factor
+authentication (MFA) over
+encrypted channels and through
+IP whitelisting.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC6.1.6</td>
+      <td colspan="3">Administrative access to the in-
+scope system components is
+restricted to user accounts
+accessible by authorized
+personnel commensurate to their
+job functions:
+• Network domain
+• AWS console
+• Application
+• Firewall</td>
+      <td colspan="3">Inspected the administrative
+access configurations and
+administrative listings with the
+assistance of the senior
+information security analyst to
+determine that the administrative
+access to the following in-scope
+system components was
+restricted to user accounts
+accessible by authorized
+personnel commensurate to their
+job functions:
+• Network domain
+• AWS console
+• Application
+• Firewall</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.1.7</td>
+      <td colspan="3">The organization uses its cloud
+provider key management service
+to encrypt data at rest and to store
+and manage encryption keys.
+Access to production access keys
+is restricted to authorized
+individuals.</td>
+      <td colspan="3">Inspected database encryption
+configuration to determine that the
+organization used its cloud
+provider key management service
+to encrypt data at rest and to store
+and manage encryption keys.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CSOC1</td>
+      <td colspan="7">AWS is expected to implement control activities to manage logical access to the underlying network,
+virtualization management, and storage devices for its cloud hosting services where in-scope systems
+reside. AWS is also expected to implement control activities for managing logical access to database server
+operating systems for its cloud hosting services where in-scope systems reside.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.2 – Prior to issuing system credentials and granting system access, the entity registers and authorizes new internal
+and external users whose access is administered by the entity. For those users whose access is administered by the entity,
+user system credentials are removed when user access is no longer authorized.</td>
+    </tr>
+    <tr>
+      <td>CC6.2.1</td>
+      <td colspan="3">Information security policies and
+procedures are documented and
+define the information security
+rules and requirements for the
+service environment.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures to
+determine that information
+security policies and procedures
+were documented and defined the
+information security rules and
+requirements for the service
+environment.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.2.2</td>
+      <td colspan="3">Access to in-scope system
+components requires a
+documented access request and
+manager approval prior to access
+being provisioned.</td>
+      <td colspan="3">Inspected access request tickets
+for a sample of users with new
+access to the Certification
+Automation application to
+determine that access to in-scope
+components required a
+documented access request and
+manager approval prior to access
+being provisioned.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.2.3</td>
+      <td colspan="3">In the event of a user termination,
+notification is provided to
+appropriate teams and access is
+revoked for employees as part of
+the termination process.</td>
+      <td colspan="3">Inspected the termination tickets
+for a sample of terminated
+employees during the period to
+determine that notification was
+provided to appropriate teams and
+access was revoked for
+employees as part of the
+termination process.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC6.2.4</td>
+      <td colspan="3">Annual user access reviews for in-
+scope systems are conducted by
+management to help ensure that
+access is restricted to authorized
+users.</td>
+      <td colspan="3">Inspected the annual user access
+review documentation to
+determine that management
+performed annual user access
+review for in-scope system
+components to ensure that access
+was restricted appropriately.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CSOC1</td>
+      <td colspan="7">AWS is expected to implement control activities to manage logical access to the underlying network,
+virtualization management, and storage devices for its cloud hosting services where in-scope systems
+reside. AWS is also expected to implement control activities for managing logical access to database server
+operating systems for its cloud hosting services where in-scope systems reside.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.3 – The entity authorizes, modifies, or removes access to data, software, functions, and other protected information
+assets based on roles, responsibilities, or the system design and changes, giving consideration to the concepts of least
+privilege and segregation of duties, to meet the entity's objectives.</td>
+    </tr>
+    <tr>
+      <td>CC6.3.1</td>
+      <td colspan="3">Access to in-scope system
+components requires a
+documented access request and
+manager approval prior to access
+being provisioned.</td>
+      <td colspan="3">Inspected access request tickets
+for a sample of users with new
+access to the Certification
+Automation application to
+determine that access to in-scope
+components required a
+documented access request and
+manager approval prior to access
+being provisioned.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.3.2</td>
+      <td colspan="3">In the event of a user termination,
+notification is provided to
+appropriate teams and access is
+revoked for employees as part of
+the termination process.</td>
+      <td colspan="3">Inspected the termination tickets
+for a sample of terminated
+employees during the period to
+determine that notification was
+provided to appropriate teams and
+access was revoked for
+employees as part of the
+termination process.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.3.3</td>
+      <td colspan="3">Annual user access reviews for in-
+scope systems are conducted by
+management to help ensure that
+access is restricted to authorized
+users.</td>
+      <td colspan="3">Inspected the annual user access
+review documentation to
+determine that management
+performed annual user access
+review for in-scope system
+components to ensure that access
+was restricted appropriately.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.3.4</td>
+      <td colspan="3">Administrative access to the in-
+scope system components is
+restricted to user accounts
+accessible by authorized
+personnel commensurate to their
+job functions:
+• Network domain
+• AWS console
+• Application
+• Firewall</td>
+      <td colspan="3">Inspected the administrative
+access configurations and
+administrative listings with the
+assistance of the senior
+information security analyst to
+determine that the administrative
+access to the following in-scope
+system components was
+restricted to user accounts
+accessible by authorized
+personnel commensurate to their
+job functions:
+• Network domain
+• AWS console
+• Application
+• Firewall</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC6.3.5</td>
+      <td colspan="3">Access to migrate changes to
+production is restricted to
+authorized personnel.</td>
+      <td colspan="3">Inspected the list of users with
+access to migrate changes to
+production with the assistance of
+the senior cloud ops engineer to
+determine that the ability the
+migrate changes to production
+was restricted to authorized
+personnel with relevant job
+responsibilities.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CSOC1</td>
+      <td colspan="7">AWS is expected to implement control activities to manage logical access to the underlying network,
+virtualization management, and storage devices for its cloud hosting services where in-scope systems
+reside. AWS is also expected to implement control activities for managing logical access to database server
+operating systems for its cloud hosting services where in-scope systems reside.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.4 – The entity restricts physical access to facilities and protected information assets (for example, data center facilities,
+backup media storage, and other sensitive locations) to authorized personnel to meet the entity's objectives.</td>
+    </tr>
+    <tr>
+      <td>CSOC2</td>
+      <td colspan="7">AWS is expected to implement control activities that ensure physical access to facilities, backup media, and
+other system components including firewalls, routers, and servers is restricted to authorized personnel.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.5 – The entity discontinues logical and physical protections over physical assets only after the ability to read or recover
+data and software from those assets has been diminished and is no longer required to meet the entity's objectives.</td>
+    </tr>
+    <tr>
+      <td>CC6.5.1</td>
+      <td colspan="3">Formal data retention and
+disposal procedures are
+documented to guide the secure
+retention and disposal of
+Company and customer data.</td>
+      <td colspan="3">Inspected the asset management
+policy to determine that formal
+data retention and disposal
+procedures were documented to
+guide the secure retention and
+disposal of Company and
+customer data.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.5.2</td>
+      <td colspan="3">Electronic media containing
+confidential information is purged
+or destroyed, and certificates of
+destruction are issued for each
+device destroyed.</td>
+      <td colspan="3">Inspected the certificate of
+destruction for a sample of
+disposed assets throughout the
+period to verify data and software
+stored on equipment was
+confirmed to removed and
+rendered unreadable prior to
+disposal.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CSOC2</td>
+      <td colspan="7">AWS is expected to implement control activities that ensure physical access to facilities, backup media, and
+other system components including firewalls, routers, and servers is restricted to authorized personnel.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.6 – The entity implements logical access security measures to protect against threats from sources outside its system
+boundaries.</td>
+    </tr>
+    <tr>
+      <td>CC6.6.1</td>
+      <td colspan="3">A current network diagram exists
+that defines an objective
+description of the system.</td>
+      <td colspan="3">Inspected the network diagram to
+determine that a formal network
+diagram existed that defined an
+objective description of the
+system.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.6.2</td>
+      <td colspan="3">Secure data transmission
+protocols are used to encrypt
+confidential and sensitive data
+when transmitted over public
+networks.</td>
+      <td colspan="3">Inspected the SSL configurations
+to determine that secure data
+transmission protocols were used
+to encrypt confidential and
+sensitive data when transmitted
+over public networks.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.6.3</td>
+      <td colspan="3">The databases are configured to
+encrypt data at rest.</td>
+      <td colspan="3">Inspected the encryption
+configurations for customer data
+stored in S3 buckets to determine
+that the databases were
+configured to encrypt data at rest.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC6.6.4</td>
+      <td colspan="3">System components are
+configured such that the
+organization and its customers'
+access is appropriately
+segmented from other tenant
+users.</td>
+      <td colspan="3">Inspected the system
+configuration and architecture
+diagram to determine that system
+components were configured such
+that the organization and its
+customers' access was
+appropriately segmented from
+other tenant users.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.6.5</td>
+      <td colspan="3">A web application firewall system
+is in place and is configured to
+filter unauthorized inbound
+network traffic from the Internet.</td>
+      <td colspan="3">Inspected the security group rules
+and network ACLs for the
+production environment to
+determine that a web application
+firewall system was in place and
+was configured to filter
+unauthorized inbound network
+traffic from the internet.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.6.6</td>
+      <td colspan="3">The IDS tool is configured to
+prevent the use of removable
+media devices on registered
+endpoints.</td>
+      <td colspan="3">Inspected the IDS configurations
+to determine that the IDS tool was
+configured to prevent the use of
+removable media devices on
+registered endpoints.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CSOC1</td>
+      <td colspan="7">AWS is expected to implement control activities to manage logical access to the underlying network,
+virtualization management, and storage devices for its cloud hosting services where in-scope systems
+reside. AWS is also expected to implement control activities for managing logical access to database server
+operating systems for its cloud hosting services where in-scope systems reside.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.7 – The entity restricts the transmission, movement, and removal of information to authorized internal and external
+users and processes, and protects it during transmission, movement, or removal to meet the entity's objectives.</td>
+    </tr>
+    <tr>
+      <td>CC6.7.1</td>
+      <td colspan="3">Secure data transmission
+protocols are used to encrypt
+confidential and sensitive data
+when transmitted over public
+networks.</td>
+      <td colspan="3">Inspected the SSL configurations
+to determine that secure data
+transmission protocols were used
+to encrypt confidential and
+sensitive data when transmitted
+over public networks.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.7.2</td>
+      <td colspan="3">The databases are configured to
+encrypt data at rest.</td>
+      <td colspan="3">Inspected the encryption
+configurations for customer data
+stored in S3 buckets to determine
+that the databases were
+configured to encrypt data at rest.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.7.3</td>
+      <td colspan="3">Disk encryption and system
+passwords are enabled across
+organization workstations.</td>
+      <td colspan="3">Inspected the disk encryption
+configuration and password
+enforcement configuration to
+determine that disk encryption
+and system passwords were
+enabled across organization
+workstations.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.7.4</td>
+      <td colspan="3">A mobile device management
+(MDM) system is in place to
+centrally manage mobile devices
+supporting the service.</td>
+      <td colspan="3">Inspected the MDM system
+configurations and acceptable use
+standard to determine that a MDM
+system was in place to centrally
+manage mobile devices
+supporting the service.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC6.7.5</td>
+      <td colspan="3" rowspan="2">The organization uses its cloud
+provider key management service
+to encrypt data at rest and to store
+and manage encryption keys.
+Access to production access keys
+is restricted to authorized
+individuals.</td>
+      <td colspan="3">Inspected database encryption
+configuration to determine that the
+organization used its cloud
+provider key management service
+to encrypt data at rest and to store
+and manage encryption keys.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the listing of users with
+access to production access keys
+to determine that access to
+production access keys was
+restricted to authorized
+individuals.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.7.6</td>
+      <td colspan="3">Customer credentials for
+integrations are stored in
+encrypted format and access to
+the customer credentials is
+restricted.</td>
+      <td colspan="3">Inspected the customer
+authentication system and a list of
+users with access to customer
+credentials to verify that client
+credentials for integrations were
+store in an encrypted format and
+access to customer credentials
+was restricted to personnel with
+production system access.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC6.8 – The entity implements controls to prevent or detect and act upon the introduction of unauthorized or malicious
+software to meet the entity's objectives.</td>
+    </tr>
+    <tr>
+      <td>CC6.8.1</td>
+      <td colspan="3">Security software (firewall, anti-
+virus, and anti-spam) is installed
+and enabled on workstations.</td>
+      <td colspan="3">Inspected the endpoint security
+report
+and Windows firewall to determine
+that security software was
+installed and enabled on
+workstations.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.8.2</td>
+      <td colspan="3">The IDS tool is configured to
+prevent the use of removable
+media devices on registered
+endpoints.</td>
+      <td colspan="3">Inspected the IDS configurations
+to determine that the IDS tool was
+configured to prevent the use of
+removable media devices on
+registered endpoints.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC6.8.3</td>
+      <td colspan="3">Infrastructure supporting the
+service is patched as a part of
+routine maintenance and as a
+result of identified vulnerabilities
+to help ensure that servers
+supporting the service are
+hardened against security threats.</td>
+      <td colspan="3">Inspected the patch management
+process to determine that
+infrastructure supporting the
+service was patched as a part of
+routine maintenance and as a
+result of identified vulnerabilities
+to help ensure that servers
+supporting the service were
+hardened against security threats.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">System Operations</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC7.1 – To meet its objectives, the entity uses detection and monitoring procedures to identify (1) changes to
+configurations that result in the introduction of new vulnerabilities, and (2) susceptibilities to newly discovered vulnerabilities.</td>
+    </tr>
+    <tr>
+      <td>CC7.1.1</td>
+      <td colspan="3">The IDS tool is configured to
+prevent the use of removable
+media devices on registered
+endpoints.</td>
+      <td colspan="3">Inspected the IDS configurations
+to determine that the IDS tool was
+configured to prevent the use of
+removable media devices on
+registered endpoints.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC7.1.2</td>
+      <td colspan="3" rowspan="2">Logging is enabled to monitor
+activities such as administrative
+activities, logon attempts,
+changes to functions, security
+configurations, permissions, and
+roles. Automated alerts are
+configured to notify IT
+management and issues identified
+are resolved in a timely manner
+through the incident management
+process.</td>
+      <td colspan="3">Inspected the logging, monitoring,
+and alerting configurations to
+determine that logging was
+enabled to monitor administrative
+activities, logon attempts,
+changes to functions, security
+configurations, permissions, and
+roles.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected an example alert to
+determine that automated alerts
+were configured to notify IT
+management and issues identified
+were resolved in a timely manner
+through the incident management
+process.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC7.1.3</td>
+      <td colspan="3" rowspan="2">Enterprise monitoring tools are
+configured to monitor system
+capacity and availability issues
+and alert cloud operations
+personnel when pre-defined
+thresholds are met. System
+changes are implemented as
+needed to help ensure that
+processing capacity can meet
+demand.</td>
+      <td colspan="3">Inspected the monitoring
+configuration alarm settings and
+an example alert notification to
+determine that enterprise
+monitoring tools were configured
+to monitor system capacity and
+availability issues and alert cloud
+operations personnel when pre-
+defined thresholds were met.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the auto scale
+configuration to determine that
+system changes were
+implemented as needed to help
+ensure that processing capacity
+can meet demand.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC7.1.4</td>
+      <td colspan="3">A third-party penetration test is
+performed on an annual basis to
+identify vulnerabilities and
+deficiencies. Remediation plans
+are proposed and monitored
+through resolution.</td>
+      <td colspan="3">Inspected the penetration test to
+determine that a third-party
+penetration test was performed
+during the period to identify
+vulnerabilities and deficiencies.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC7.1.5</td>
+      <td colspan="3" rowspan="2">Vulnerability scans are performed
+on a daily basis to identify threats
+and vulnerabilities to the
+production systems. Issues
+identified are analyzed and
+remediated in a timely manner.</td>
+      <td colspan="3">Inspected the vulnerability
+dashboard and configuration to
+determine that vulnerability scans
+were performed on a daily basis
+to identify threats and
+vulnerabilities to the production
+systems.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected an example
+remediation ticket to determine
+that issues identified were
+analyzed and remediated in a
+timely manner.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC7.2 – The entity monitors system components and the operation of those components for anomalies that are indicative of
+malicious acts, natural disasters, and errors affecting the entity's ability to meet its objectives; anomalies are analyzed to
+determine whether they represent security events.</td>
+    </tr>
+    <tr>
+      <td>CC7.2.1</td>
+      <td colspan="3">Security incident response
+policies and procedures are
+documented and provide
+guidance to Company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td colspan="3">Inspected the incident response
+policies and procedures to
+determine that security incident
+response policies and procedures
+were documented and provided
+guidance to company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC7.2.2</td>
+      <td colspan="3">Incidents related to security,
+availability, and confidentiality are
+logged, tracked, and
+communicated to affected parties
+(where applicable) by
+management until resolved.
+Incidents are evaluated to
+determine whether they could
+have resulted in a failure to meet
+security, availability, and
+confidentiality commitments and
+objectives.</td>
+      <td colspan="3">Inspected the incident ticket and
+communication documentation for
+a listing of incidents reported
+during the period to determine
+that for each incident sampled,
+incidents were logged, tracked,
+and communicated to affected
+parties by management until
+resolved and that incidents were
+evaluated to determine whether
+they could have resulted in a
+failure to meet security,
+availability, and confidentiality
+commitments and objectives.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC7.3 – The entity evaluates security events to determine whether they could or have resulted in a failure of the entity to
+meet its objectives (security incidents) and, if so, takes actions to prevent or address such failures.</td>
+    </tr>
+    <tr>
+      <td>CC7.3.1</td>
+      <td colspan="3">Security incident response
+policies and procedures are
+documented and provide
+guidance to Company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td colspan="3">Inspected the incident response
+policies and procedures to
+determine that security incident
+response policies and procedures
+were documented and provided
+guidance to company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC7.3.2</td>
+      <td colspan="3">Incidents related to security,
+availability, and confidentiality are
+logged, tracked, and
+communicated to affected parties
+(where applicable) by
+management until resolved.
+Incidents are evaluated to
+determine whether they could
+have resulted in a failure to meet
+security, availability, and
+confidentiality commitments and
+objectives.</td>
+      <td colspan="3">Inspected the incident ticket and
+communication documentation for
+a listing of incidents reported
+during the period to determine
+that for each incident sampled,
+incidents were logged, tracked,
+and communicated to affected
+parties by management until
+resolved and that incidents were
+evaluated to determine whether
+they could have resulted in a
+failure to meet security,
+availability, and confidentiality
+commitments and objectives.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC7.4 - The entity responds to identified security incidents by executing a defined incident-response program to
+understand, contain, remediate, and communicate security incidents, as appropriate.</td>
+    </tr>
+    <tr>
+      <td>CC7.4.1</td>
+      <td colspan="3">Security incident response
+policies and procedures are
+documented and provide
+guidance to Company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td colspan="3">Inspected the incident response
+policies and procedures to
+determine that security incident
+response policies and procedures
+were documented and provided
+guidance to company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC7.4.2</td>
+      <td colspan="3">Incidents related to security,
+availability, and confidentiality are
+logged, tracked, and
+communicated to affected parties
+(where applicable) by
+management until resolved.
+Incidents are evaluated to
+determine whether they could
+have resulted in a failure to meet
+security, availability, and
+confidentiality commitments and
+objectives.</td>
+      <td colspan="3">Inspected the incident ticket and
+communication documentation for
+a listing of incidents reported
+during the period to determine
+that for each incident sampled,
+incidents were logged, tracked,
+and communicated to affected
+parties by management until
+resolved and that incidents were
+evaluated to determine whether
+they could have resulted in a
+failure to meet security,
+availability, and confidentiality
+commitments and objectives.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC7.4.3</td>
+      <td colspan="3">The organization documents its
+breach assessment and
+notification process in the event of
+a breach.</td>
+      <td colspan="3">Inspected the incident
+management policy to determine
+that the organization documented
+its breach assessment and
+notification process in the event of
+a breach.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC7.5 – The entity identifies, develops, and implements activities to recover from identified security incidents.</td>
+    </tr>
+    <tr>
+      <td>CC7.5.1</td>
+      <td colspan="3">Security incident response
+policies and procedures are
+documented and provide
+guidance to Company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td colspan="3">Inspected the incident response
+policies and procedures to
+determine that security incident
+response policies and procedures
+were documented and provided
+guidance to company personnel
+for detecting, responding to, and
+recovering from security events
+and incidents.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC7.5.2</td>
+      <td colspan="3">Incidents related to security,
+availability, and confidentiality are
+logged, tracked, and
+communicated to affected parties
+(where applicable) by
+management until resolved.
+Incidents are evaluated to
+determine whether they could
+have resulted in a failure to meet
+security, availability, and
+confidentiality commitments and
+objectives.</td>
+      <td colspan="3">Inspected the incident ticket and
+communication documentation for
+a listing of incidents reported
+during the period to determine
+that for each incident sampled,
+incidents were logged, tracked,
+and communicated to affected
+parties by management until
+resolved and that incidents were
+evaluated to determine whether
+they could have resulted in a
+failure to meet security,
+availability, and confidentiality
+commitments and objectives.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC7.5.3</td>
+      <td colspan="3">The organization documents its
+breach assessment and
+notification process in the event of
+a breach.</td>
+      <td colspan="3">Inspected the incident
+management policy to determine
+that the organization documented
+its breach assessment and
+notification process in the event of
+a breach.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC.7.5.4</td>
+      <td colspan="3">An information security incident
+tabletop exercise is performed on
+an annual basis to test the
+incident response plan.</td>
+      <td colspan="3">Inspected the most recent incident
+response test results to determine
+that an annual information
+security incident tabletop exercise
+was performed to test the
+information security incident
+response plan during the period.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">Change Management</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC8.1 – The entity authorizes, designs, develops or acquires, configures, documents, tests, approves, and implements
+changes to infrastructure, data, software, and procedures to meet its objectives.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.1</td>
+      <td colspan="3">The organization has a
+documented change management
+policy made available to
+personnel that communicates the
+process for managing changes to
+the environment.</td>
+      <td colspan="3">Inspected the change
+management policy to determine
+that the organization had a
+documented change management
+policy made available to
+personnel that communicated the
+process for managing changes to
+the environment.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.2</td>
+      <td colspan="3">A formal SDLC methodology is in
+place that governs the project
+planning, design, acquisition,
+testing, implementation,
+maintenance, and
+decommissioning of information
+systems and related technologies.</td>
+      <td colspan="3">Inspected the system acquisition,
+development, and maintenance
+procedure document to determine
+that a formal SDLC methodology
+was in place that governed the
+project planning, design,
+acquisition, testing,
+implementation, maintenance,
+and decommissioning of
+information systems and related
+technologies.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.3</td>
+      <td colspan="3">Changes to the application(s) and
+supporting infrastructure are
+documented, tested, and
+approved by authorized personnel
+prior to implementation into the
+production environment in
+accordance with the change
+management process.</td>
+      <td colspan="3">Inspected the change
+management policy and the
+change tickets for a sample of
+application and infrastructure
+changes implemented during the
+period to determine that changes
+to the applications were
+documented, tested, and
+approved by authorized personnel
+prior to implementation into the
+production environment in
+accordance with the change
+management policy for each
+change sampled.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.4</td>
+      <td colspan="3">Development and testing activities
+are performed in development
+and testing environments that are
+logically separate from the
+production environment.</td>
+      <td colspan="3">Inspected the network
+segmentation configurations to
+determine that development and
+testing activities were performed
+in development and testing
+environments that were logically
+separate from the production
+environment.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC8.1.5</td>
+      <td colspan="3">Customer production data is not
+used in testing or development
+environments.</td>
+      <td colspan="3">Inspected the testing and
+development environment
+database to determine that
+customer production data was not
+used in testing or development
+environments.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.6</td>
+      <td colspan="3">Access to promote changes to
+production is restricted to
+authorized personnel based on
+job responsibilities.</td>
+      <td colspan="3">Inspected the list of users with
+access to promote changes to the
+production environment to
+determine that the ability the
+promote changes into the
+production environment was
+restricted to authorized personnel
+with relevant job responsibilities.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.7</td>
+      <td colspan="3">Release notes for changes that
+affect the system are documented
+and communicated to internal and
+external users.</td>
+      <td colspan="3">Inspected the release notes
+webpage to determine that
+release notes for changes that
+affected the system were
+documented and communicated
+to internal and external users.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.8</td>
+      <td colspan="3">Emergency change requests are
+documented and subject to the
+standard change management
+process but at an accelerated
+timeline. Prior to initiating an
+emergency change, appropriate
+approval is obtained and
+documented.</td>
+      <td colspan="3">Inspected the change
+management policy and the
+change tickets for a sample of
+emergency changes throughout
+the period to verify that
+emergency changes were
+documented, approved, and were
+released at an accelerated
+timeline.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.9</td>
+      <td colspan="3">Documented integration policies
+and procedures have been
+established to provide guidelines
+for managing system integrations.</td>
+      <td colspan="3">Inspected the data integrity
+policies to determine that
+documented integration policy and
+procedures have been
+established to provide guidelines
+for managing system integrations.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.10</td>
+      <td colspan="3">Access to make changes to
+Integrations is restricted to
+authorized individuals.</td>
+      <td colspan="3">Inspected the list of users with
+access to make changes to
+integrations to determine that the
+ability to make changes to
+integrations was restricted to
+authorized personnel with relevant
+job responsibilities.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.11</td>
+      <td colspan="3">An incident management process
+is invoked for timely resolution of
+identified data integration errors in
+accordance with the system
+commitments.</td>
+      <td colspan="3">Inspected the tickets for a sample
+of errors detected during the
+period to determine that an
+incident management process
+was invoked for timely resolution
+of identified data integration errors
+in accordance with the system
+commitments.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC8.1.12</td>
+      <td colspan="3">Changes to integrations are
+documented, tested, and
+approved by authorized personnel
+prior to implementation into the
+production environment in
+accordance with the change
+management process.</td>
+      <td colspan="3">Inspected the change tickets for a
+sample of integration changes
+during the period to determine
+that changes to integrations were
+documented, tested, and
+approved by authorized personnel
+prior to implementation into the
+production environment in
+accordance with the change
+management process.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">CC8.1.13</td>
+      <td colspan="3" rowspan="2">Logging is enabled to monitor
+activities such as administrative
+activities, logon attempts,
+changes to functions, security
+configurations, permissions, and
+roles. Automated alerts are
+configured to notify IT
+management and issues identified
+are resolved in a timely manner
+through the incident management
+process.</td>
+      <td colspan="3">Inspected the logging, monitoring,
+and alerting configurations to
+determine that logging was
+enabled to monitor administrative
+activities, logon attempts,
+changes to functions, security
+configurations, permissions, and
+roles.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected an example alert to
+determine that automated alerts
+were configured to notify IT
+management and issues identified
+were resolved in a timely manner
+through the incident management
+process.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC8.1.14</td>
+      <td colspan="3">Users do not have the ability to
+modify auto evidence collection
+output data.</td>
+      <td colspan="3">Inspected the auto evidence
+collection configuration to
+determine that users did not have
+the ability to modify auto evidence
+collection output data.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">Risk Mitigation</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC9.1 – The entity identifies, selects, and develops risk mitigation activities for risks arising from potential business
+disruptions.</td>
+    </tr>
+    <tr>
+      <td>CC9.1.1</td>
+      <td colspan="3">A documented risk methodology
+program is in place that includes
+guidance on the identification of
+potential threats, rating the
+significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks.</td>
+      <td colspan="3">Inspected the risk methodology
+document to determine that a
+documented risk management
+program was in place that
+included guidance on the
+identification of potential threats,
+rating the significance of the risks
+associated with the identified
+threats, and mitigation strategies
+for those risks</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC9.1.2</td>
+      <td colspan="3">A formal risk assessment process
+is performed on at least an annual
+basis. Risks that are identified
+are rated using a risk evaluation
+process and are formally
+documented, with mitigation
+strategies for management
+review.</td>
+      <td colspan="3">Inspected the documentation for
+the most recently completed risk
+assessment to determine that a
+risk assessment was performed
+during the period and that
+identified risks were rated using a
+risk evaluation process and were
+formally documented, with
+mitigation strategies for
+management review.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC9.1.3</td>
+      <td colspan="3">Management maintains insurance
+coverage through an external
+service provider against major
+financial risks and cyber risks for
+the overall business.</td>
+      <td colspan="3">Inspected the cyber security
+insurance policy to determine that
+management maintained
+insurance coverage through an
+external service provider against
+financial and cyber risks for the
+overall business.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC9.1.4</td>
+      <td colspan="3">A disaster recovery plan is in
+place to guide personnel in
+procedures against disruptions
+caused by an unexpected event.
+The plan is tested at least
+annually.</td>
+      <td colspan="3">Inspected the disaster recovery
+plan and completed disaster
+recovery test results to determine
+that a disaster recovery plan was
+in place to guide personnel in
+procedures to protect against
+disruptions caused by an
+unexpected event and that the
+plan was tested during the period.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">CC9.2 – The entity assesses and manages risks associated with vendors and business partners.</td>
+    </tr>
+    <tr>
+      <td>CC9.2.1</td>
+      <td colspan="3">Formal policies and procedures
+that outline the requirements for
+vendor management are
+documented and include the
+following components:
+• Maintaining a list of critical
+vendors
+• Requirements for the
+assessment of risks resulting
+from the procurement of third-
+party services
+• Requirements for the
+classification of third parties
+• Information security
+requirements for the
+processing, storage, or
+transmission of information
+by third parties
+• Specifications for the
+contractual agreement and
+monitoring of third-party
+vendor requirements
+• Requirements for critical
+vendors to maintain their own
+security practices and
+procedures
+• Annually reviewing attestation
+reports for critical vendors or
+performing a vendor risk
+assessment</td>
+      <td colspan="3">Inspected the vendor
+management policies and
+procedures to determine that
+formal policies and procedures
+that outlined the requirements for
+vendor management were
+documented and included the
+following components:
+• Maintaining a list of critical
+vendors
+• Requirements for the
+assessment of risks resulting
+from the procurement of third-
+party services
+• Requirements for the
+classification of third parties
+• Information security
+requirements for the
+processing, storage, or
+transmission of information
+by third parties
+• Specifications for the
+contractual agreement and
+monitoring of third-party
+vendor requirements
+• Requirements for critical
+vendors to maintain their own
+security practices and
+procedures
+• Annually reviewing attestation
+reports for critical vendors or
+performing a vendor risk
+assessment</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>CC9.2.2</td>
+      <td colspan="3">Management obtains and reviews
+the subservice organizations third-
+party compliance reports on an
+annual basis.</td>
+      <td colspan="3">Inspected the attestation reports
+and the completed risk
+assessments for a sample of
+critical vendors engaged with
+throughout the period to
+determine that management
+obtained and reviewed the
+subservice organization’s third-
+party compliance reports during
+the period.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CC9.2.3</td>
+      <td colspan="3">A vendor risk assessment is
+performed at least annually for
+critical vendors. Exceptions noted
+in the vendor risk assessments
+are evaluated to determine impact
+on service.</td>
+      <td colspan="3">Inspected the vendor risk
+assessment for a sample of
+critical vendors to determine that
+a vendor risk assessment is
+performed at annually for critical
+vendors and that exceptions
+noted in the vendor risk
+assessments are evaluated to
+determine impact on service.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+<h3>ACADDITIONAL RITERIA FOR VAILABILITY</h3>
+<table class="table-1">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">A1.1 - The entity maintains, monitors, and evaluates current processing capacity and use of system components
+(infrastructure, data, and software) to manage capacity demand and to enable the implementation of additional capacity to
+help meet its objectives.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">A1.1.1</td>
+      <td colspan="3" rowspan="2">The organization utilizes OneTrust
+platform to manage its Information
+Security policies and procedures.
+Internal policy and procedure
+documents relating to security,
+confidentiality, and availability are
+maintained and made available to
+employees. The policies and
+procedure documents are
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures shared
+on the OneTrust platform to
+determine that the Company
+utilized the OneTrust platform to
+manage its information security
+policies and procedures related to
+security, confidentiality, and
+availability and were maintained
+and made available to employees.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the information security
+policies on the company intranet
+to determine that documents were
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>A1.1.2</td>
+      <td colspan="3">Enterprise monitoring tools are
+configured to monitor system
+capacity and availability issues
+and alert cloud operations
+personnel when pre-defined
+thresholds are met. System
+changes are implemented as
+needed to help ensure that
+processing capacity can meet
+demand.</td>
+      <td colspan="3">Inspected the monitoring
+configuration alarm settings and
+an example alert notification to
+determine that enterprise
+monitoring tools were configured
+to monitor system capacity and
+availability issues and alert cloud
+operations personnel when pre-
+defined thresholds were met.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td colspan="3"></td>
+      <td colspan="3">Inspected the auto scale
+configuration to determine that
+system changes were
+implemented as needed to help
+ensure that processing capacity
+can meet demand.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>A1.1.3</td>
+      <td colspan="3">Future processing demand is
+forecasted and compared to
+schedule capacity on an ongoing
+basis. Forecasts are reviewed
+and approved by IT management.
+Change requests are initiated as
+needed based on approved
+forecasts.</td>
+      <td colspan="3">Inspected the capacity monitoring
+and forecast report and approval
+from management to verify that
+future processing demand was
+forecasted and scheduled to
+ensure that processing demand
+was met and forecasts were
+approved by management.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td colspan="8">A1.2 - The entity authorizes, designs, develops or acquires, implements, operates, approves, maintains, and monitors
+environmental protections, software, data backup processes, and recovery infrastructure to meet its objectives.</td>
+    </tr>
+    <tr>
+      <td>A1.2.1</td>
+      <td colspan="3">Documented procedures outline
+the process the Company's staff
+follows to back up and recover
+customer data. The procedures
+are reviewed by management at
+least annually.</td>
+      <td colspan="3">"Inspected the backup and
+restoration policy document to
+determine that documented
+procedures outlined the process
+that the Company's staff followed
+to back up and recover customer
+data and that the document was
+reviewed by management
+annually.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>A1.2.2</td>
+      <td colspan="3">Daily incremental back-ups are
+performed using an automated
+system and replicated to an offsite
+location.</td>
+      <td colspan="3">Inspected the backup
+configuration to determine that
+daily incremental back-ups are
+performed and replicated to an
+offsite location.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>A1.2.3</td>
+      <td colspan="3">A multi-location strategy is
+employed for production
+environments to permit the
+resumption of operations at other
+availability zones in the event of
+the loss of a facility.</td>
+      <td colspan="3">Inspected the replication settings
+for the only database utilized
+throughout the period to verify that
+multiple availability zones were
+utilized to ensure system
+recoverability through database
+redundancy through different
+physical locations.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>A1.2.4</td>
+      <td colspan="3">A disaster recovery plan is in
+place to guide personnel in
+procedures against disruptions
+caused by an unexpected event.
+The plan is tested at least
+annually.</td>
+      <td colspan="3">Inspected the disaster recovery
+plan and completed disaster
+recovery test results to determine
+that a disaster recovery plan was
+in place to guide personnel in
+procedures to protect against
+disruptions caused by an
+unexpected event and that the
+plan was tested during the period.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>CSOC3</td>
+      <td colspan="7">AWS is expected to implement control activities that ensure environmental protection controls are in place at
+facilities housing production infrastructure and backup media where in-scope systems reside.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">A1.3 - The entity tests recovery plan procedures supporting system recovery to meet its objectives.</td>
+    </tr>
+    <tr>
+      <td>A1.3.1</td>
+      <td colspan="3">Backup restoration testing is
+performed on an annual basis to
+test the integrity and
+completeness of back-up
+information. The incident
+management process is invoked
+for anomalies.</td>
+      <td colspan="3">Inspected the backup restoration
+testing to determine that the
+backup restoration testing was
+performed on an annual basis to
+test the integrity and
+completeness of back-up
+information and the incident
+management process was
+invoked for anomalies.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>A1.3.2</td>
+      <td colspan="3">Backup restoration testing is
+performed on an annual basis to
+test the integrity and
+completeness of back-up
+information. The incident
+management process is invoked
+for anomalies.</td>
+      <td colspan="3">Inspected the backup restoration
+testing to determine that the
+backup restoration testing was
+performed on an annual basis to
+test the integrity and
+completeness of back-up
+information and the incident
+management process was
+invoked for anomalies.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+<h3>ACCDDITIONAL RITERIA FOR ONFIDENTIALITY</h3>
+<table class="table-1">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td colspan="8">C1.1 - The entity identifies and maintains confidential information to meet the entity's objectives related to confidentiality.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">C1.1.1</td>
+      <td colspan="3" rowspan="2">The organization utilizes OneTrust
+platform to manage its Information
+Security policies and procedures.
+Internal policy and procedure
+documents relating to security,
+confidentiality, and availability are
+maintained and made available to
+employees. The policies and
+procedure documents are
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures shared
+on the OneTrust platform to
+determine that the Company
+utilized the OneTrust platform to
+manage its information security
+policies and procedures related to
+security, confidentiality, and
+availability and were maintained
+and made available to employees.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the information security
+policies on the company intranet
+to determine that documents were
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>C1.1.2</td>
+      <td colspan="3">A data classification policy is
+documented to help ensure that
+confidential data is properly
+secured and restricted to
+authorized personnel.</td>
+      <td colspan="3">Inspected the asset management
+policy to determine that the
+organization had policies and
+procedures in place for
+identification handling and
+labeling of confidential information
+related to the sensitivity of the
+information.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>C1.1.3</td>
+      <td colspan="3">Formal data retention and
+disposal procedures are
+documented to guide the secure
+retention and disposal of
+Company and customer data.</td>
+      <td colspan="3">Inspected the asset management
+policy to determine that formal
+data retention and disposal
+procedures were documented to
+guide the secure retention and
+disposal of Company and
+customer data.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">C1.1.4</td>
+      <td colspan="3" rowspan="2">Employees are required to sign a
+confidentiality agreement upon
+hire. This agreement prohibits
+any disclosure of information and
+other data to which the employee
+has been granted access during
+employment and after termination.</td>
+      <td colspan="3">Inquired of the senior information
+security GRC analyst regarding
+confidentiality agreements to
+determine that employees are
+required to sign a confidentiality
+agreement upon hire and that this
+agreement prohibits any
+disclosure of information and
+other data to which the employee
+has been granted access during
+employment and after termination.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="4">Inspected the listing of employees hired during the period and the query
+used to generate the listing and determined that no employees were
+hired during the period; therefore, no testing of operating effectiveness
+was performed.</td>
+    </tr>
+    <tr>
+      <td colspan="8">C1.2 - The entity disposes of confidential information to meet the entity's objectives related to confidentiality.</td>
+    </tr>
+    <tr>
+      <td rowspan="2">C1.2.1</td>
+      <td colspan="3" rowspan="2">The organization utilizes OneTrust
+platform to manage its Information
+Security policies and procedures.
+Internal policy and procedure
+documents relating to security,
+confidentiality, and availability are
+maintained and made available to
+employees. The policies and
+procedure documents are
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td colspan="3">Inspected the information security
+policies and procedures shared
+on the OneTrust platform to
+determine that the Company
+utilized the OneTrust platform to
+manage its information security
+policies and procedures related to
+security, confidentiality, and
+availability and were maintained
+and made available to employees.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td colspan="3">Inspected the information security
+policies on the company intranet
+to determine that documents were
+reviewed and approved by
+management annually or during
+significant changes.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>C1.2.2</td>
+      <td colspan="3">A data classification policy is
+documented to help ensure that
+confidential data is properly
+secured and restricted to
+authorized personnel.</td>
+      <td colspan="3">Inspected the asset management
+policy to determine that the
+organization had policies and
+procedures in place for
+identification handling and
+labeling of confidential information
+related to the sensitivity of the
+information.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+    <tr>
+      <td>C1.2.3</td>
+      <td colspan="3">Formal data retention and
+disposal procedures are
+documented to guide the secure
+retention and disposal of
+Company and customer data.</td>
+      <td colspan="3">Inspected the asset management
+policy to determine that formal
+data retention and disposal
+procedures were documented to
+guide the secure retention and
+disposal of Company and
+customer data.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<hr>
+
+<table class="table-0">
+  <thead>
+    <tr>
+      <th rowspan="2">Control #</th>
+      <th rowspan="2"></th>
+      <th>Control Activity Specified</th>
+      <th></th>
+      <th></th>
+      <th>Test Applied by</th>
+      <th></th>
+      <th>Test Results</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3">by the Service Organization</td>
+      <td colspan="3">the Service Auditor</td>
+    </tr>
+    <tr>
+      <td>C1.2.4</td>
+      <td colspan="3">Electronic media containing
+confidential information is purged
+or destroyed, and certificates of
+destruction are issued for each
+device destroyed.</td>
+      <td colspan="3">Inspected the certificate of
+destruction for a sample of
+disposed assets throughout the
+period to verify data and software
+stored on equipment was
+confirmed to removed and
+rendered unreadable prior to
+disposal.</td>
+      <td>No exceptions noted.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+</body>
+</html>
