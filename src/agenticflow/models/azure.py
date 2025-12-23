@@ -359,10 +359,14 @@ class AzureChat(BaseChatModel):
         new_model._initialized = True
         return new_model
 
-    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke synchronously."""
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke synchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        response = self._client.chat.completions.create(**self._build_request(messages))
+        response = self._client.chat.completions.create(**self._build_request(normalize_input(messages)))
         return _parse_response(response)
 
     async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
@@ -787,14 +791,22 @@ class AzureAIFoundryChat(BaseChatModel):
         new_model._initialized = True
         return new_model
 
-    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke synchronously."""
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke synchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        response = self._foundry_client.complete(**self._build_request(messages))
+        response = self._foundry_client.complete(**self._build_request(normalize_input(messages)))
         return _parse_foundry_response(response)
 
-    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke asynchronously."""
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
         # Note: azure-ai-inference SDK doesn't have async support yet
         # Fallback to sync call in thread pool
@@ -803,11 +815,15 @@ class AzureAIFoundryChat(BaseChatModel):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.invoke, messages)
 
-    async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
-        """Stream response asynchronously."""
+    async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
+        """Stream response asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
 
-        kwargs = self._build_request(messages)
+        kwargs = self._build_request(normalize_input(messages))
 
         # Enable streaming and usage tracking
         kwargs["stream"] = True

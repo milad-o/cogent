@@ -27,6 +27,50 @@ model = create_chat("anthropic", model="claude-sonnet-4-20250514")
 
 ---
 
+## Flexible Input Types
+
+All chat models now accept multiple input formats for maximum convenience and flexibility:
+
+### 1. Simple String (Most Convenient)
+```python
+response = await model.ainvoke("What is the capital of France?")
+```
+
+### 2. List of Dicts (Standard Format)
+```python
+response = await model.ainvoke([
+    {"role": "system", "content": "You are helpful"},
+    {"role": "user", "content": "Hello"},
+])
+```
+
+### 3. Message Objects (Type-Safe)
+```python
+from agenticflow.core.messages import SystemMessage, HumanMessage
+
+response = await model.ainvoke([
+    SystemMessage(content="You are helpful"),
+    HumanMessage(content="Hello"),
+])
+```
+
+### 4. Mixed Lists (Flexible)
+```python
+response = await model.ainvoke([
+    SystemMessage(content="You are helpful"),
+    {"role": "user", "content": "Hello"},
+])
+```
+
+**Benefits:**
+- **Convenience**: Quick queries with simple strings
+- **Type Safety**: Message objects for better IDE support
+- **Flexibility**: Mix formats as needed
+- **Backward Compatible**: All existing code continues to work
+- **Multimodal Support**: Complex content (images, etc.) preserved
+
+---
+
 ## OpenAI
 
 The default provider for ChatModel and EmbeddingModel:
@@ -35,8 +79,9 @@ The default provider for ChatModel and EmbeddingModel:
 from agenticflow.models import ChatModel, EmbeddingModel
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
 
-# Alias (recommended)
+# Alias (recommended) - now supports simple strings!
 model = ChatModel(model="gpt-4o")
+response = await model.ainvoke("What is 2+2?")
 
 # Explicit
 model = OpenAIChat(

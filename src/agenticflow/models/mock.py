@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agenticflow.core.messages import AIMessage
-from agenticflow.models.base import BaseChatModel, BaseEmbedding
+from agenticflow.models.base import BaseChatModel, BaseEmbedding, normalize_input
 
 
 @dataclass
@@ -67,27 +67,29 @@ class MockChatModel(BaseChatModel):
         self._response_index += 1
         return response
     
-    def invoke(self, messages: list[dict[str, Any]], **kwargs: Any) -> AIMessage:
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any) -> AIMessage:
         """Generate mock response synchronously.
         
         Args:
-            messages: List of message dicts (ignored, returns next in sequence).
+            messages: Can be a string, list of dicts, or list of message objects.
             **kwargs: Additional arguments (ignored).
             
         Returns:
             AIMessage with next response.
         """
+        # Normalize input (ignored, but maintains API compatibility)
+        _ = normalize_input(messages) if isinstance(messages, str) else messages
         content = self._get_next_response()
         return AIMessage(
             content=content,
             tool_calls=self.mock_tool_calls or [],
         )
     
-    async def ainvoke(self, messages: list[dict[str, Any]], **kwargs: Any) -> AIMessage:
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any) -> AIMessage:
         """Generate mock response asynchronously.
         
         Args:
-            messages: List of message dicts (ignored, returns next in sequence).
+            messages: Can be a string, list of dicts, or list of message objects.
             **kwargs: Additional arguments (ignored).
             
         Returns:

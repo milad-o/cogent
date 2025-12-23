@@ -16,6 +16,20 @@ from typing import Any, AsyncIterator
 from agenticflow.core.messages import AIMessage
 
 
+def normalize_input(messages: str | list[Any]) -> list[Any]:
+    """Normalize various input types to a list of messages.
+    
+    Args:
+        messages: Can be a string or list of messages.
+        
+    Returns:
+        List of messages (dicts or objects).
+    """
+    if isinstance(messages, str):
+        return [{"role": "user", "content": messages}]
+    return messages
+
+
 def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
     """Convert messages to dict format for API calls.
     
@@ -274,11 +288,15 @@ class BaseChatModel(ABC):
         ...
     
     @abstractmethod
-    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke the model synchronously.
         
         Args:
-            messages: List of message dicts with 'role' and 'content'.
+            messages: Can be:
+                - A string (converted to user message)
+                - List of message dicts with 'role' and 'content'
+                - List of message objects (SystemMessage, HumanMessage, etc.)
+                - Mixed list of dicts and objects
             
         Returns:
             AIMessage with response content and optional tool calls.
@@ -286,11 +304,15 @@ class BaseChatModel(ABC):
         ...
     
     @abstractmethod
-    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke the model asynchronously.
         
         Args:
-            messages: List of message dicts with 'role' and 'content'.
+            messages: Can be:
+                - A string (converted to user message)
+                - List of message dicts with 'role' and 'content'
+                - List of message objects (SystemMessage, HumanMessage, etc.)
+                - Mixed list of dicts and objects
             
         Returns:
             AIMessage with response content and optional tool calls.
@@ -317,7 +339,7 @@ class BaseChatModel(ABC):
     
     async def astream(
         self,
-        messages: list[dict[str, Any]],
+        messages: str | list[dict[str, Any]] | list[Any],
     ) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously.
         
@@ -325,7 +347,11 @@ class BaseChatModel(ABC):
         Override for true streaming support.
         
         Args:
-            messages: List of message dicts.
+            messages: Can be:
+                - A string (converted to user message)
+                - List of message dicts with 'role' and 'content'
+                - List of message objects (SystemMessage, HumanMessage, etc.)
+                - Mixed list of dicts and objects
             
         Yields:
             AIMessage chunks with partial content.

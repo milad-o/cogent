@@ -20,7 +20,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input, convert_messages
 
 
 def _schema_to_parameter_definitions(schema: dict[str, Any]) -> dict[str, Any]:
@@ -151,18 +151,26 @@ class CohereChat(BaseChatModel):
         new_model._initialized = True
         return new_model
 
-    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke synchronously."""
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke synchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        payload = self._build_request(messages)
-        response = self._client.chat(**payload)
+        kwargs = self._build_request(normalize_input(messages))
+        response = self._client.chat(**kwargs)
         return _parse_response(response)
 
-    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke asynchronously."""
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        payload = self._build_request(messages)
-        response = await self._async_client.chat(**payload)
+        kwargs = self._build_request(normalize_input(messages))
+        response = await self._async_client.chat(**kwargs)
         return _parse_response(response)
 
     def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:

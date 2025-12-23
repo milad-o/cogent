@@ -16,7 +16,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding
+from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
 
 
 def _messages_to_gemini(messages: list[dict[str, Any]], protos: Any) -> tuple[str | None, list[Any]]:
@@ -321,11 +321,16 @@ class GeminiChat(BaseChatModel):
         new_model._initialized = True
         return new_model
     
-    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke synchronously."""
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke synchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
         
-        system, gemini_messages = _messages_to_gemini(messages, self._protos)
+        normalized = convert_messages(normalize_input(messages))
+        system, gemini_messages = _messages_to_gemini(normalized, self._protos)
         
         # Gemini needs a chat session for multi-turn
         chat = self._client.start_chat(history=gemini_messages[:-1] if len(gemini_messages) > 1 else [])
@@ -350,11 +355,16 @@ class GeminiChat(BaseChatModel):
         response = chat.send_message(last_content)
         return _parse_response(response)
     
-    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke asynchronously."""
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
         
-        system, gemini_messages = _messages_to_gemini(messages, self._protos)
+        normalized = convert_messages(normalize_input(messages))
+        system, gemini_messages = _messages_to_gemini(normalized, self._protos)
         
         chat = self._client.start_chat(history=gemini_messages[:-1] if len(gemini_messages) > 1 else [])
         
@@ -378,11 +388,16 @@ class GeminiChat(BaseChatModel):
         response = await chat.send_message_async(last_content)
         return _parse_response(response)
     
-    async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
-        """Stream response asynchronously."""
+    async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
+        """Stream response asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
         
-        system, gemini_messages = _messages_to_gemini(messages, self._protos)
+        normalized = convert_messages(normalize_input(messages))
+        system, gemini_messages = _messages_to_gemini(normalized, self._protos)
         
         chat = self._client.start_chat(history=gemini_messages[:-1] if len(gemini_messages) > 1 else [])
         

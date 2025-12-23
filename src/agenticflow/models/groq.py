@@ -201,16 +201,24 @@ class GroqChat(BaseChatModel):
         new_model._initialized = True
         return new_model
     
-    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke synchronously."""
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke synchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        response = self._client.chat.completions.create(**self._build_request(messages))
+        response = self._client.chat.completions.create(**self._build_request(normalize_input(messages)))
         return _parse_response(response)
     
-    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke asynchronously."""
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        response = await self._async_client.chat.completions.create(**self._build_request(messages))
+        response = await self._async_client.chat.completions.create(**self._build_request(normalize_input(messages)))
         return _parse_response(response)
     
     async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:

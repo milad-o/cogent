@@ -14,7 +14,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from agenticflow.models.base import AIMessage, BaseChatModel
+from agenticflow.models.base import AIMessage, BaseChatModel, convert_messages, normalize_input
 
 
 def _messages_to_anthropic(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
@@ -179,31 +179,45 @@ class AnthropicChat(BaseChatModel):
         new_model._initialized = True
         return new_model
     
-    def invoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke synchronously."""
+    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke synchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        response = self._client.messages.create(**self._build_request(messages))
+        response = self._client.messages.create(**self._build_request(normalize_input(messages)))
         return _parse_response(response)
     
-    async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
-        """Invoke asynchronously."""
+    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+        """Invoke asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        response = await self._async_client.messages.create(**self._build_request(messages))
+        response = await self._async_client.messages.create(**self._build_request(normalize_input(messages)))
         return _parse_response(response)
     
-    async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
-        """Stream response asynchronously."""
+    async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
+        """Stream response asynchronously.
+        
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+        """
         self._ensure_initialized()
-        kwargs = self._build_request(messages)
+        kwargs = self._build_request(normalize_input(messages))
         kwargs["stream"] = True
         
         async with self._async_client.messages.stream(**kwargs) as stream:
             async for text in stream.text_stream:
                 yield AIMessage(content=text)
     
-    def _build_request(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
+    def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
         """Build API request."""
-        system, anthropic_messages = _messages_to_anthropic(messages)
+        # Convert to standard format first
+        formatted = convert_messages(messages)
+        system, anthropic_messages = _messages_to_anthropic(formatted)
         
         kwargs: dict[str, Any] = {
             "model": self.model,
