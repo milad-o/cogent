@@ -432,6 +432,24 @@ class AgentMemory:
             messages = messages[-limit:]
         return messages
     
+    async def add_message(
+        self,
+        thread_id: str,
+        message: BaseMessage,
+        metadata: dict[str, Any] | None = None,
+    ) -> MemorySnapshot:
+        """Add a single message to a thread.
+        
+        Args:
+            thread_id: Thread identifier.
+            message: Message to add.
+            metadata: Optional metadata to update.
+            
+        Returns:
+            The updated snapshot.
+        """
+        return await self.add_messages(thread_id, [message], metadata)
+    
     async def add_messages(
         self,
         thread_id: str,

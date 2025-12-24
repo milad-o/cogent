@@ -951,6 +951,53 @@ def _group_lines_into_paragraphs(lines: list[str]) -> list[str]:
     return paragraphs
 
 
+def _remove_empty_columns(table: list[list[str | None]]) -> list[list[str | None]]:
+    """Remove columns that are completely empty across all rows.
+    
+    PDFs often use empty columns as spacers for visual layout. This function
+    detects and removes columns where every cell is either None or empty string.
+    
+    Args:
+        table: List of rows, each row is a list of cells.
+        
+    Returns:
+        Table with empty spacer columns removed.
+    """
+    if not table or len(table) == 0:
+        return table
+    
+    num_cols = max(len(row) for row in table)
+    if num_cols == 0:
+        return table
+    
+    # Pad all rows to same length
+    padded_table = [row + [None] * (num_cols - len(row)) for row in table]
+    
+    # Identify columns with any non-empty content
+    cols_to_keep = []
+    for col_idx in range(num_cols):
+        has_content = False
+        for row in padded_table:
+            cell = row[col_idx]
+            if cell is not None and str(cell).strip():
+                has_content = True
+                break
+        if has_content:
+            cols_to_keep.append(col_idx)
+    
+    # If all columns are empty, keep the table as-is
+    if not cols_to_keep:
+        return table
+    
+    # Remove empty columns
+    filtered_table = []
+    for row in padded_table:
+        filtered_row = [row[i] for i in cols_to_keep]
+        filtered_table.append(filtered_row)
+    
+    return filtered_table
+
+
 def _table_to_html(table: list[list[str | None]], table_idx: int) -> str:
     """Convert a table to HTML with proper rowspan/colspan for merged cells.
     
@@ -963,6 +1010,9 @@ def _table_to_html(table: list[list[str | None]], table_idx: int) -> str:
     """
     if not table or len(table) == 0:
         return ""
+    
+    # Remove empty spacer columns (common in PDFs for visual layout)
+    table = _remove_empty_columns(table)
     
     # Calculate rowspan and colspan for merged cells
     merge_info = _calculate_cell_spans(table)
