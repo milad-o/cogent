@@ -498,6 +498,10 @@ class NativeExecutor(BaseExecutor):
         if sys_prompt:
             messages.append(SystemMessage(content=sys_prompt))
         
+        # Include conversation history from agent state (loaded from thread_id)
+        if self.agent.state.message_history:
+            messages.extend(self.agent.state.message_history)
+        
         # User message with task
         if context:
             user_content = f"{task}\n\nContext: {context}"

@@ -2806,6 +2806,9 @@ class Agent:
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
         
+        # Clear previous state to avoid mixing conversations
+        self.state.clear_history()
+        
         # Load conversation history into agent state if thread_id provided
         if thread_id:
             if self._memory_manager:
