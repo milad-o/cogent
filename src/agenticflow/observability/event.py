@@ -124,6 +124,14 @@ class EventType(Enum):
     RERANK_COMPLETE = "retrieval.rerank.complete"  # Reranking finished
     FUSION_APPLIED = "retrieval.fusion"  # Ensemble fusion applied
 
+    # Retrieval index events (build-time indexing, e.g., SummaryIndex)
+    SUMMARY_INDEX_START = "retrieval.summary_index.start"  # Summary indexing started
+    SUMMARY_INDEX_DOCUMENT_SUMMARIZED = (
+        "retrieval.summary_index.document_summarized"  # One document/page summarized
+    )
+    SUMMARY_INDEX_COMPLETE = "retrieval.summary_index.complete"  # Summary indexing finished
+    SUMMARY_INDEX_ERROR = "retrieval.summary_index.error"  # Summary indexing failed
+
     # MCP (Model Context Protocol) events
     MCP_SERVER_CONNECTING = "mcp.server.connecting"  # Connecting to MCP server
     MCP_SERVER_CONNECTED = "mcp.server.connected"  # Server connection established

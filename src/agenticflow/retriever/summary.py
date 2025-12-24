@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -108,6 +109,8 @@ Respond in JSON format:
         extract_entities: bool = False,
         extract_keywords: bool = True,
         name: str | None = None,
+        verbose: bool = False,
+        logger: Any | None = None,
     ) -> None:
         """Create a summary index.
         
@@ -119,11 +122,32 @@ Respond in JSON format:
             extract_entities: Extract entities for KnowledgeGraph integration.
             extract_keywords: Extract keywords for additional matching.
             name: Optional custom name.
+            verbose: If True, emit structured logs via ObservabilityLogger.
+            logger: Optional ObservabilityLogger instance. If provided, overrides
+                `verbose` and will be used for all SummaryIndex logs.
         """
         self._llm: LLMProtocol = adapt_llm(llm)  # Auto-adapt chat models
         self._vectorstore = vectorstore
         self._extract_entities = extract_entities
         self._extract_keywords = extract_keywords
+
+        # Optional observability
+        self._log = None
+        if logger is not None:
+            self._log = logger
+        elif verbose:
+            from agenticflow.observability.logger import LogLevel, ObservabilityLogger
+
+            self._log = ObservabilityLogger(
+                name="agenticflow.retriever.summary_index",
+                level=LogLevel.DEBUG,
+            )
+            self._log.set_context(
+                retriever="SummaryIndex",
+                extract_entities=extract_entities,
+                extract_keywords=extract_keywords,
+                has_vectorstore=vectorstore is not None,
+            )
         
         # Storage
         self._documents: dict[str, Document] = {}
@@ -185,30 +209,122 @@ Respond in JSON format:
         Returns:
             List of document IDs.
         """
-        ids = []
-        summary_texts = []
-        
-        for doc in documents:
-            doc_id = doc.id or self._generate_doc_id(doc.text)
-            
-            # Store original document
-            self._documents[doc_id] = doc
-            
-            # Generate summary
-            summary = await self._summarize_document(doc)
-            self._summaries[doc_id] = summary
-            
-            summary_texts.append(summary.summary)
-            ids.append(doc_id)
-        
-        # Add summaries to vector store if available
-        if self._vectorstore:
-            await self._vectorstore.add_texts(
-                summary_texts,
-                metadatas=[{"doc_id": id_} for id_ in ids],
+        start = time.perf_counter()
+
+        await self._emit(
+            "retrieval.summary_index.start",
+            {
+                "documents_count": len(documents),
+                "has_vectorstore": self._vectorstore is not None,
+                "extract_keywords": self._extract_keywords,
+                "extract_entities": self._extract_entities,
+            },
+        )
+
+        if self._log is not None:
+            self._log.info(
+                "summary_index_add_documents_start",
+                documents_count=len(documents),
             )
-        
-        return ids
+
+        ids: list[str] = []
+        summary_texts: list[str] = []
+
+        try:
+            for idx, doc in enumerate(documents, start=1):
+                doc_id = doc.id or self._generate_doc_id(doc.text)
+
+                # Store original document
+                self._documents[doc_id] = doc
+
+                # Generate summary
+                doc_start = time.perf_counter()
+                summary = await self._summarize_document(doc)
+                self._summaries[doc_id] = summary
+
+                page = doc.metadata.get("page")
+                duration_ms = (time.perf_counter() - doc_start) * 1000
+
+                await self._emit(
+                    "retrieval.summary_index.document_summarized",
+                    {
+                        "doc_index": idx,
+                        "doc_total": len(documents),
+                        "doc_id": doc_id,
+                        "page": page,
+                        "text_chars": len(doc.text),
+                        "summary_chars": len(summary.summary),
+                        "duration_ms": duration_ms,
+                    },
+                )
+
+                if self._log is not None:
+                    self._log.debug(
+                        "summary_index_document_summarized",
+                        doc_index=idx,
+                        doc_total=len(documents),
+                        doc_id=doc_id,
+                        page=page,
+                        text_chars=len(doc.text),
+                        summary_chars=len(summary.summary),
+                        duration_ms=duration_ms,
+                    )
+
+                summary_texts.append(summary.summary)
+                ids.append(doc_id)
+
+            # Add summaries to vector store if available
+            if self._vectorstore:
+                vs_start = time.perf_counter()
+                await self._vectorstore.add_texts(
+                    summary_texts,
+                    metadatas=[{"doc_id": id_} for id_ in ids],
+                )
+
+                if self._log is not None:
+                    self._log.info(
+                        "summary_index_vectorstore_added",
+                        summaries_count=len(summary_texts),
+                        duration_ms=(time.perf_counter() - vs_start) * 1000,
+                    )
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            await self._emit(
+                "retrieval.summary_index.complete",
+                {
+                    "documents_count": len(documents),
+                    "summaries_count": len(summary_texts),
+                    "duration_ms": duration_ms,
+                },
+            )
+
+            if self._log is not None:
+                self._log.info(
+                    "summary_index_add_documents_complete",
+                    documents_count=len(documents),
+                    duration_ms=duration_ms,
+                )
+
+            return ids
+
+        except Exception as exc:
+            duration_ms = (time.perf_counter() - start) * 1000
+            await self._emit(
+                "retrieval.summary_index.error",
+                {
+                    "documents_count": len(documents),
+                    "duration_ms": duration_ms,
+                    "error": str(exc),
+                },
+            )
+            if self._log is not None:
+                self._log.error(
+                    "summary_index_add_documents_error",
+                    documents_count=len(documents),
+                    duration_ms=duration_ms,
+                    error=str(exc),
+                )
+            raise
     
     async def retrieve_with_scores(
         self,
