@@ -136,3 +136,22 @@ def safe_json_value(value: object) -> object:
     if hasattr(value, "to_dict"):
         return value.to_dict()
     return str(value)
+
+
+def model_identifier(model: object) -> str:
+    """Return a safe, human-friendly identifier for a model.
+
+    Observability should never log full model reprs because they may contain
+    secrets (e.g., API keys). This helper prefers common name fields and falls
+    back to the class name.
+    """
+    if model is None:
+        return "unknown"
+
+    for attr in ("model_name", "model", "name", "deployment_name"):
+        value = getattr(model, attr, None)
+        if isinstance(value, str) and value:
+            return value
+
+    # As a last resort, use the type name (safe) rather than str(model).
+    return type(model).__name__

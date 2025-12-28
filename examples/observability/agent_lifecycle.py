@@ -10,7 +10,7 @@ Demonstrates observability of agent lifecycle:
 - Errors
 
 Run:
-    uv run python observability/agent_lifecycle.py
+    uv run ./examples/observability/agent_lifecycle.py
 """
 
 import asyncio
@@ -25,6 +25,7 @@ from agenticflow import Agent
 from agenticflow.observability import Observer, EventBus, EventType
 from agenticflow.observability.observer import ObservabilityLevel, Channel
 from agenticflow.tools.base import tool
+from typing import Literal
 
 
 @tool
@@ -45,21 +46,21 @@ def calculate(expression: str) -> str:
 
 
 @tool
-def get_info(topic: str) -> str:
-    """Get information about a topic (mock).
+def get_info(topic: Literal["python", "async", "agents"]) -> str:
+    """Get information about a specific topic.
     
     Args:
-        topic: Topic to get info about
+        topic: Must be one of: 'python', 'async', or 'agents'
         
     Returns:
         Information about the topic
     """
     info = {
-        "python": "Python is a high-level programming language",
-        "async": "Async programming enables concurrent execution",
-        "agents": "AI agents are autonomous programs that can reason and act",
+        "python": "Python is a high-level programming language known for readability and versatility",
+        "async": "Async programming in Python enables concurrent execution using asyncio, allowing non-blocking I/O operations",
+        "agents": "AI agents are autonomous programs that can reason, make decisions, and act to achieve goals",
     }
-    return info.get(topic.lower(), f"No information available about {topic}")
+    return info.get(topic, "Topic not recognized. Please choose from 'python', 'async', or 'agents'.")
 
 
 class AgentLifecycleObserver(Observer):
@@ -69,22 +70,37 @@ class AgentLifecycleObserver(Observer):
         super().__init__(
             level=ObservabilityLevel.DEBUG,
             channels=[Channel.ALL],
+            truncate=200,
         )
-        self.events = []
+        self.captured_events = []
         self.agent_invocations = 0
         self.tool_calls = 0
         self.llm_requests = 0
+        self._seen_thinking: set[str] = set()
+
+    def _truncate(self, text: str, *, default: int = 100) -> str:
+        limit = self.config.truncate if self.config.truncate else default
+        if not limit:
+            return text
+        if len(text) <= limit:
+            return text
+        return text[:limit] + "..."
         
-    def _handle_event(self, event):
+    def _handle_event(self, event: object) -> None:
         """Override to handle events."""
         # Call parent to maintain Observer functionality
         super()._handle_event(event)
+
+        # Observer._handle_event expects an Event; if something else comes through,
+        # just skip custom logic.
+        if not hasattr(event, "type") or not hasattr(event, "data"):
+            return
         
         # Custom tracking
-        self.events.append(event)
+        self.captured_events.append(event)
         
         # Agent lifecycle events - print our own summaries
-        if event.type == EventType.AGENT_INVOKED.value:
+        if event.type == EventType.AGENT_INVOKED:
             self.agent_invocations += 1
             agent_name = event.data.get('agent_name', 'Unknown')
             task = event.data.get('task', 'No task specified')
@@ -92,52 +108,60 @@ class AgentLifecycleObserver(Observer):
             print(f"   Task: {task}")
             print()
         
-        elif event.type == EventType.AGENT_THINKING.value:
+        elif event.type == EventType.AGENT_THINKING:
             agent_name = event.data.get('agent_name', 'Unknown')
+            if agent_name in self._seen_thinking:
+                return
+            self._seen_thinking.add(agent_name)
             print(f"🧠 [AGENT THINKING] {agent_name} is processing...")
         
-        elif event.type == EventType.LLM_REQUEST.value:
+        elif event.type == EventType.LLM_REQUEST:
             self.llm_requests += 1
             model = event.data.get('model', 'Unknown')
             messages = event.data.get('messages', [])
             print(f"💬 [LLM REQUEST #{self.llm_requests}] Model: {model}")
             print(f"   Messages: {len(messages)} in conversation")
         
-        elif event.type == EventType.LLM_RESPONSE.value:
-            content = event.data.get('content', '')
-            truncated = content[:100] + "..." if len(content) > 100 else content
-            print(f"✨ [LLM RESPONSE] {truncated}")
-        
-        elif event.type == EventType.LLM_TOOL_DECISION.value:
-            tools = event.data.get('tools', [])
-            if tools:
-                print(f"🔧 [TOOL DECISION] Agent decided to call {len(tools)} tool(s):")
-                for tool_call in tools:
-                    print(f"   - {tool_call.get('name', 'unknown')}")
+        elif event.type == EventType.LLM_RESPONSE:
+            content = str(event.data.get('content', ''))
+            content_clean = content.replace("\n", " ").strip()
+            if not content_clean and event.data.get("has_tool_calls"):
+                tool_calls = event.data.get("tool_calls", [])
+                tools = ", ".join(tc.get("name", "?") for tc in tool_calls) if tool_calls else "(unknown)"
+                print(f"✨ [LLM RESPONSE] (tool_calls: {tools})")
             else:
-                print(f"💭 [TOOL DECISION] Agent decided NOT to use tools")
+                print(f"✨ [LLM RESPONSE] {self._truncate(content_clean)}")
         
-        elif event.type == EventType.TOOL_CALLED.value:
+        elif event.type == EventType.LLM_TOOL_DECISION:
+            tools_selected = event.data.get('tools_selected', [])
+            if tools_selected:
+                print(f"🔧 [TOOL DECISION] Agent decided to call {len(tools_selected)} tool(s):")
+                for tool_name in tools_selected:
+                    print(f"   - {tool_name}")
+            else:
+                print("💭 [TOOL DECISION] Agent decided NOT to use tools")
+        
+        elif event.type == EventType.TOOL_CALLED:
             self.tool_calls += 1
-            tool_name = event.data.get('tool_name', 'Unknown')
+            tool_name = event.data.get('tool_name') or event.data.get('tool', 'Unknown')
             args = event.data.get('args', {})
             print(f"⚙️  [TOOL CALL #{self.tool_calls}] {tool_name}")
             print(f"   Args: {args}")
         
-        elif event.type == EventType.TOOL_RESULT.value:
-            tool_name = event.data.get('tool_name', 'Unknown')
-            result = str(event.data.get('result', ''))[:100]
-            print(f"✓ [TOOL RESULT] {tool_name}: {result}")
+        elif event.type == EventType.TOOL_RESULT:
+            tool_name = event.data.get('tool_name') or event.data.get('tool', 'Unknown')
+            result = str(event.data.get('result', ''))
+            print(f"✓ [TOOL RESULT] {tool_name}: {self._truncate(result.replace('\n', ' ').strip())}")
         
-        elif event.type == EventType.AGENT_RESPONDED.value:
+        elif event.type == EventType.AGENT_RESPONDED:
             agent_name = event.data.get('agent_name', 'Unknown')
-            response = event.data.get('response', '')
-            truncated = response[:100] + "..." if len(response) > 100 else response
+            response = str(event.data.get('response', ''))
+            self._seen_thinking.discard(agent_name)
             print(f"✅ [AGENT RESPONDED] {agent_name}")
-            print(f"   Response: {truncated}")
+            print(f"   Response: {self._truncate(response.replace('\n', ' ').strip())}")
             print()
         
-        elif event.type == EventType.AGENT_ERROR.value:
+        elif event.type == EventType.AGENT_ERROR:
             agent_name = event.data.get('agent_name', 'Unknown')
             error = event.data.get('error', 'Unknown error')
             print(f"❌ [AGENT ERROR] {agent_name}")
@@ -150,7 +174,7 @@ class AgentLifecycleObserver(Observer):
         print("=" * 70)
         print("Observer Summary")
         print("=" * 70)
-        print(f"Total Events: {len(self.events)}")
+        print(f"Total Events: {len(self.captured_events)}")
         print(f"Agent Invocations: {self.agent_invocations}")
         print(f"LLM Requests: {self.llm_requests}")
         print(f"Tool Calls: {self.tool_calls}")
@@ -158,12 +182,12 @@ class AgentLifecycleObserver(Observer):
         
         # Count by event type
         type_counts = {}
-        for event in self.events:
+        for event in self.captured_events:
             type_counts[event.type] = type_counts.get(event.type, 0) + 1
         
         print("Events by Type:")
-        for event_type, count in sorted(type_counts.items(), key=lambda x: x[0].value if hasattr(x[0], 'value') else str(x[0])):
-            type_name = event_type.value if hasattr(event_type, 'value') else str(event_type)
+        for event_type, count in sorted(type_counts.items(), key=lambda x: x[0].value):
+            type_name = event_type.value
             print(f"  {type_name}: {count}")
 
 
@@ -196,7 +220,7 @@ async def main():
     print()
     
     # Task that will use tools
-    task = "What is 15 multiplied by 23, and then explain what Python async is"
+    task = "What is 15 multiplied by 23, and then explain what 'async' is"
     
     print(f"Task: {task}")
     print()
@@ -217,22 +241,6 @@ async def main():
     # Print observer summary
     observer.summary()
     
-    print()
-    print("=" * 70)
-    print("✅ Agent Lifecycle Observability Demo Complete!")
-    print("=" * 70)
-    print()
-    print("Key Events Demonstrated:")
-    print("  1. AGENT_INVOKED - When agent starts execution")
-    print("  2. AGENT_THINKING - Agent is processing")
-    print("  3. LLM_REQUEST - Sent request to LLM")
-    print("  4. LLM_RESPONSE - Received LLM response")
-    print("  5. LLM_TOOL_DECISION - Agent decided whether to use tools")
-    print("  6. TOOL_CALLED - Agent called a tool")
-    print("  7. TOOL_RESULT - Tool execution completed")
-    print("  8. AGENT_RESPONDED - Agent finished with final answer")
-    print()
-
 
 if __name__ == "__main__":
     asyncio.run(main())

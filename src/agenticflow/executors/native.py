@@ -46,6 +46,7 @@ from agenticflow.interceptors.base import (
     run_interceptors,
 )
 from agenticflow.context import RunContext, EMPTY_CONTEXT
+from agenticflow.core.utils import model_identifier
 
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
@@ -780,7 +781,7 @@ class NativeExecutor(BaseExecutor):
             if event_bus:
                 await event_bus.publish(EventType.LLM_REQUEST.value, {
                     "agent_name": agent_name,
-                    "model": self.agent.model.model_name if hasattr(self.agent.model, 'model_name') else str(self.agent.model),
+                    "model": model_identifier(self.agent.model),
                     "messages": [{"role": getattr(m, "role", "unknown"), "content": str(getattr(m, "content", ""))[:500]} for m in messages],
                     "message_count": len(messages),
                     "system_prompt": (current_prompt or "")[:300] if current_prompt else "",

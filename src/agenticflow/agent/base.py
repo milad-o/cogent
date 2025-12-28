@@ -49,7 +49,7 @@ from agenticflow.agent.output import (
     schema_to_json,
 )
 from agenticflow.core.enums import AgentRole, AgentStatus
-from agenticflow.core.utils import generate_id, now_utc
+from agenticflow.core.utils import generate_id, model_identifier, now_utc
 from agenticflow.observability.event import Event, EventType
 from agenticflow.core.message import Message
 from agenticflow.tasks.task import Task
@@ -1569,7 +1569,7 @@ class Agent:
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
-                "model": self.model.model_name if hasattr(self.model, 'model_name') else str(self.model),
+                "model": model_identifier(self.model),
                 "messages": dict_messages,
                 "message_count": len(dict_messages),
                 "system_prompt_length": len(effective_prompt) if effective_prompt else 0,

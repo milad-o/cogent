@@ -35,7 +35,6 @@ from agenticflow.document.loaders import PDFMarkdownLoader
 from agenticflow.document.splitters import RecursiveCharacterSplitter
 from agenticflow.observability.bus import EventBus
 from agenticflow.observability.event import EventType
-from agenticflow.observability.observer import ObservabilityLevel, Observer
 from agenticflow.retriever import BM25Retriever, DenseRetriever, EnsembleRetriever, SummaryIndex
 from agenticflow.tools.base import BaseTool
 from agenticflow.vectorstore import Document, VectorStore
@@ -131,8 +130,15 @@ async def _build_summary_index(*, pages: list[Document]) -> SummaryIndex:
                 f"error={event.data.get('error')}",
             )
 
-    observer = Observer(level=ObservabilityLevel.OFF, on_event=_print_summary_index_event)
-    observer.attach(event_bus)
+    event_bus.subscribe_many(
+        [
+            EventType.SUMMARY_INDEX_START,
+            EventType.SUMMARY_INDEX_DOCUMENT_SUMMARIZED,
+            EventType.SUMMARY_INDEX_COMPLETE,
+            EventType.SUMMARY_INDEX_ERROR,
+        ],
+        _print_summary_index_event,
+    )
     summary_index.event_bus = event_bus
 
     await summary_index.add_documents(pages)

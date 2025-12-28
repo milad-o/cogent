@@ -28,7 +28,7 @@ dependencies = [
     "pydantic-settings>=2.12.0",
     "structlog>=25.5.0",
     "pdfplumber>=0.11.8",
-    "camelot-py[base]>=0.11.0",
+    "camelot-py[base,plot]>=0.11.0",
 ]
 
 [project.optional-dependencies]

@@ -939,6 +939,20 @@ class Observer:
                 return str(content)
             except Exception:
                 return ""
+
+        def _truncate_text(text: str, *, max_len: int | None = None) -> str:
+            """Truncate text according to observer config.
+
+            If `self.config.truncate` (or `max_len`) is 0, truncation is disabled.
+            """
+            if not text:
+                return ""
+            limit = self.config.truncate if max_len is None else max_len
+            if not limit:
+                return text
+            if len(text) <= limit:
+                return text
+            return text[:limit] + "..."
         
         s = self._styler
         c = Colors  # Direct access for custom colors
@@ -969,12 +983,7 @@ class Observer:
         if event_type == EventType.USER_INPUT:
             content = _normalize_content(data.get("content", data.get("input", "")))
             source = data.get("source", "user")
-            # Truncate long inputs
-            max_len = min(self.config.truncate or 100, 100)
-            if len(content) > max_len:
-                content = content[:max_len].replace("\n", " ").strip() + "..."
-            else:
-                content = content.replace("\n", " ").strip()
+            content = _truncate_text(content.replace("\n", " ").strip())
             return f"{prefix}{s.info('👤')} {s.bold('User:')} {content}"
         
         elif event_type == EventType.USER_FEEDBACK:
@@ -982,9 +991,7 @@ class Observer:
             decision = data.get("decision", "")
             if decision:
                 return f"{prefix}{s.info('👤')} {s.bold('User feedback:')} {decision}"
-            max_len = min(self.config.truncate or 80, 80)
-            if len(feedback) > max_len:
-                feedback = feedback[:max_len].replace("\n", " ").strip() + "..."
+            feedback = _truncate_text(str(feedback).replace("\n", " ").strip())
             return f"{prefix}{s.info('👤')} {s.bold('User feedback:')} {feedback}"
         
         elif event_type == EventType.OUTPUT_GENERATED:
@@ -998,12 +1005,7 @@ class Observer:
                     duration_str = s.success(f" ({ms/1000:.1f}s)")
                 else:
                     duration_str = s.dim(f" ({ms:.0f}ms)")
-            # Truncate output preview
-            max_len = min(self.config.truncate or 120, 120)
-            if len(content) > max_len:
-                content = content[:max_len].replace("\n", " ").strip() + "..."
-            else:
-                content = content.replace("\n", " ").strip()
+            content = _truncate_text(content.replace("\n", " ").strip())
             agent_ctx = f" [{agent_name}]" if agent_name else ""
             return f"{prefix}{s.success('📤')} {s.bold('Output')}{agent_ctx}{duration_str}: {content}"
         
@@ -1022,7 +1024,7 @@ class Observer:
         
         elif event_type == EventType.AGENT_INVOKED:
             agent_name = data.get('agent_name', '?')
-            return f"{prefix}{s.agent(f'▶ [{agent_name}]')} {s.dim('starting...')}"
+            return f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('▶')} {s.dim('starting...')}"
         
         elif event_type == EventType.AGENT_THINKING:
             agent_name = data.get('agent_name', '?')
@@ -1036,7 +1038,7 @@ class Observer:
             
             # Only show first thinking event per agent - subsequent work shows via tool calls
             if count == 1:
-                return f"{prefix}{s.agent(f'🧠 [{agent_name}]')} {s.dim('thinking...')}"
+                return f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('🧠')} {s.dim('thinking...')}"
             else:
                 # Suppress subsequent thinking events - tool calls will show the actual work
                 return None
@@ -1055,13 +1057,25 @@ class Observer:
                 'correction': '🔄',
             }
             icon = type_icons.get(reasoning_type, '💭')
-            
-            header = f"{prefix}{s.agent(f'{icon} [{agent_name}]')} {s.dim(f'reasoning (round {round_num})...')}"
+
+            # Style icon separately so it doesn't blend with the preview text
+            icon_styled = {
+                'analysis': s.info(icon),
+                'plan': s.warning(icon),
+                'reflection': s.agent(icon),
+                'correction': s.warning(icon),
+            }.get(reasoning_type, s.agent(icon))
+
+            header = (
+                f"{prefix}{s.agent(f'[{agent_name}]')} {icon_styled} "
+                f"{s.dim(f'reasoning (round {round_num})...')}"
+            )
             
             if thought_preview and self.config.level >= ObservabilityLevel.DETAILED:
                 # Show thought preview for detailed level
                 lines.append(header)
-                for line in thought_preview.split('\n')[:5]:
+                preview = _truncate_text(str(thought_preview))
+                for line in preview.split('\n')[:5]:
                     lines.append(f"      {s.dim(line)}")
                 return "\n".join(lines)
             else:
@@ -1069,7 +1083,7 @@ class Observer:
         
         elif event_type == EventType.AGENT_ACTING:
             agent_name = data.get('agent_name', '?')
-            return f"{prefix}{s.agent(f'⚡ [{agent_name}]')} {s.dim('acting...')}"
+            return f"{prefix}{s.agent(f'[{agent_name}]')} {s.warning('⚡')} {s.dim('acting...')}"
         
         elif event_type == EventType.AGENT_RESPONDED:
             agent_name = data.get('agent_name', '?')
@@ -1093,11 +1107,7 @@ class Observer:
             header = f"{prefix}{s.success('✓')} {s.agent(f'[{agent_name}]')}{duration_str}"
             
             if result:
-                # Truncate more aggressively for cleaner output
-                truncate_len = min(self.config.truncate or 150, 150)
-                result_clean = result.replace("\n", " ").strip()
-                if len(result_clean) > truncate_len:
-                    result_clean = result_clean[:truncate_len] + "..."
+                result_clean = _truncate_text(result.replace("\n", " ").strip())
                 return f"{header}\n      {result_clean}"
             else:
                 return header
@@ -1122,8 +1132,7 @@ class Observer:
             args_str = ""
             if args and self.config.level >= ObservabilityLevel.DETAILED:
                 args_preview = str(args)
-                if self.config.truncate and len(args_preview) > 80:
-                    args_preview = args_preview[:80] + "..."
+                args_preview = _truncate_text(args_preview)
                 args_str = f"\n{prefix}      {s.dim(f'args: {args_preview}')}"
             
             return f"{prefix}   {agent_ctx}{s.info('↳')} {s.tool(f'🔧 {tool_name}')}{args_str}"
@@ -1146,9 +1155,7 @@ class Observer:
                     duration_str = s.dim(f" ({ms:.0f}ms)")
             
             # Truncate result - show more context
-            truncate_len = min(self.config.truncate or 200, 200)
-            if len(result) > truncate_len:
-                result = result[:truncate_len] + "..."
+            result = _truncate_text(str(result))
             
             # Clean up result for single line display
             result_clean = result.replace("\n", " ").strip()
@@ -1208,13 +1215,7 @@ class Observer:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
             content = _normalize_content(data.get("content", ""))
-            # Always truncate message content aggressively for readability
-            max_len = min(self.config.truncate or 80, 80)
-            if len(content) > max_len:
-                # Show just the start for context
-                content = content[:max_len].replace("\n", " ").strip() + "..."
-            else:
-                content = content.replace("\n", " ").strip()
+            content = _truncate_text(content.replace("\n", " ").strip())
             content_str = f' "{content}"' if content else ""
             return f"{prefix}{s.dim('📤')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
         
@@ -1222,12 +1223,7 @@ class Observer:
             receiver = data.get("agent_name", data.get("agent", "?"))
             sender = data.get("from", "?")
             content = _normalize_content(data.get("content", ""))
-            # Always truncate message content aggressively for readability
-            max_len = min(self.config.truncate or 80, 80)
-            if len(content) > max_len:
-                content = content[:max_len].replace("\n", " ").strip() + "..."
-            else:
-                content = content.replace("\n", " ").strip()
+            content = _truncate_text(content.replace("\n", " ").strip())
             content_str = f' "{content}"' if content else ""
             return f"{prefix}{s.dim('📥')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
         
@@ -1273,8 +1269,9 @@ class Observer:
             agent_name = data.get("agent_name", data.get("agent", "?"))
             tool_name = data.get("tool_name", data.get("tool", "?"))
             tool_args = data.get("args", {})
-            args_preview = str(tool_args)[:50] if tool_args else ""
-            return f"{prefix}   {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{s.dim(f' {args_preview}') if args_preview else ''}"
+            args_preview = _truncate_text(str(tool_args)) if tool_args else ""
+            args_part = f" {args_preview}" if args_preview else ""
+            return f"{prefix}   {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{s.dim(args_part) if args_part else ''}"
         
         elif event_type == EventType.STREAM_END:
             agent_name = data.get("agent_name", data.get("agent", "?"))
@@ -1336,20 +1333,16 @@ class Observer:
             
             # Build concise header
             tools_count = f", {len(tools_available)} tools" if tools_available else ""
-            header = f"{prefix}{s.info('📤')} {s.agent(f'[{agent_name}]')} LLM request {s.dim(f'({message_count} msgs{tools_count})')}"
+            header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('📤')} LLM request {s.dim(f'({message_count} msgs{tools_count})')}"
             
             # Only show prompt preview at DETAILED+ level, single line
             if self.config.level >= ObservabilityLevel.DETAILED and (prompt or system_prompt):
                 lines.append(header)
                 if system_prompt:
-                    sys_preview = system_prompt[:60].replace("\n", " ").strip()
-                    if len(system_prompt) > 60:
-                        sys_preview += "..."
+                    sys_preview = _truncate_text(system_prompt.replace("\n", " ").strip())
                     lines.append(f"      {s.dim(f'System: {sys_preview}')}")
                 if prompt:
-                    prompt_preview = prompt[:80].replace("\n", " ").strip()
-                    if len(prompt) > 80:
-                        prompt_preview += "..."
+                    prompt_preview = _truncate_text(prompt.replace("\n", " ").strip())
                     lines.append(f"      {s.dim(f'Prompt: {prompt_preview}')}")
                 return "\n".join(lines)
             return header
@@ -1371,15 +1364,13 @@ class Observer:
             
             tool_str = f", {len(tool_calls)} tools" if tool_calls else ""
             reason_str = f" {s.dim(f'({finish_reason})')}" if finish_reason else ""
-            header = f"{prefix}{s.success('📥')} {s.agent(f'[{agent_name}]')} LLM response{duration_str}{reason_str}{s.dim(tool_str)}"
+            header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.success('📥')} LLM response{duration_str}{reason_str}{s.dim(tool_str)}"
             
             # Show brief content preview at DETAILED+ level
             if self.config.level >= ObservabilityLevel.DETAILED and content:
                 lines.append(header)
                 # Single-line preview only
-                content_preview = content[:100].replace("\n", " ").strip()
-                if len(content) > 100:
-                    content_preview += "..."
+                content_preview = _truncate_text(content.replace("\n", " ").strip())
                 lines.append(f"      {s.dim(content_preview)}")
                 return "\n".join(lines)
             
@@ -1394,13 +1385,13 @@ class Observer:
                 tools_str = ", ".join(tools_selected[:5])
                 if len(tools_selected) > 5:
                     tools_str += f" ... (+{len(tools_selected) - 5})"
-                header = f"{prefix}{s.info('🎯')} {s.agent(f'[{agent_name}]')} {s.bold('Tool Decision:')} {s.tool(tools_str)}"
+                header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('🎯')} {s.bold('Tool Decision:')} {s.tool(tools_str)}"
             else:
-                header = f"{prefix}{s.info('🎯')} {s.agent(f'[{agent_name}]')} {s.bold('Tool Decision:')} {s.dim('(no tools selected)')}"
+                header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('🎯')} {s.bold('Tool Decision:')} {s.dim('(no tools selected)')}"
             
             if reasoning:
                 lines.append(header)
-                reasoning_preview = reasoning[:200] + "..." if len(reasoning) > 200 else reasoning
+                reasoning_preview = _truncate_text(str(reasoning).replace("\n", " ").strip())
                 lines.append(f"      {s.dim('Reasoning:')} {reasoning_preview}")
                 return "\n".join(lines)
             
