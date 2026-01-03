@@ -55,6 +55,19 @@ Example - Full Control:
         on_tool=lambda name, action, data: log_tool(name, data),
     )
     ```
+
+Example - Subscribe to LLM Events (Opt-in):
+    ```python
+    # By default, LLM events show subtle presence only
+    # To see detailed LLM request/response content, subscribe to LLM channel
+    observer = Observer(
+        level=ObservabilityLevel.DEBUG,
+        channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM],  # Add LLM channel
+    )
+    
+    # Or use TRACE level to see all LLM details
+    observer = Observer.trace()  # Includes all channels
+    ```
 """
 
 from __future__ import annotations
@@ -116,6 +129,7 @@ class Channel(str, Enum):
     - TOOLS: Tool calls, results, errors, retries
     - MESSAGES: Inter-agent communication
     - TASKS: Task lifecycle events
+    - LLM: Raw LLM request/response events (opt-in for deep debugging)
     - STREAMING: Token-by-token LLM output streaming
     - MEMORY: Memory read/write/search operations
     - RETRIEVAL: RAG retrieval pipeline events
@@ -131,6 +145,7 @@ class Channel(str, Enum):
     TOOLS = "tools"
     MESSAGES = "messages"
     TASKS = "tasks"
+    LLM = "llm"
     STREAMING = "streaming"
     MEMORY = "memory"
     RETRIEVAL = "retrieval"
@@ -154,9 +169,6 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.AGENT_RESPONDED,
         EventType.AGENT_ERROR,
         EventType.AGENT_STATUS_CHANGED,
-        EventType.LLM_REQUEST,
-        EventType.LLM_RESPONSE,
-        EventType.LLM_TOOL_DECISION,
         # Spawning events
         EventType.AGENT_SPAWNED,
         EventType.AGENT_SPAWN_COMPLETED,
@@ -167,6 +179,11 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.USER_FEEDBACK,
         EventType.OUTPUT_GENERATED,
         EventType.OUTPUT_STREAMED,
+    },
+    Channel.LLM: {
+        EventType.LLM_REQUEST,
+        EventType.LLM_RESPONSE,
+        EventType.LLM_TOOL_DECISION,
     },
     Channel.TOOLS: {
         EventType.TOOL_REGISTERED,
@@ -755,7 +772,6 @@ class Observer:
             EventType.TOOL_ERROR,
             EventType.AGENT_ACTING,
             EventType.TASK_RETRYING,
-            EventType.LLM_TOOL_DECISION,  # Show tool decisions at detailed level
             EventType.AGENT_DESPAWNED,  # Cleanup at detailed level
             # MCP tool calls at detailed level (same as regular tools)
             EventType.MCP_TOOL_CALLED,
@@ -768,10 +784,12 @@ class Observer:
         }:
             return ObservabilityLevel.DETAILED
         
-        # Debug-level events - LLM requests/responses (more verbose)
+        # LLM events - opt-in only (requires explicit LLM channel subscription)
+        # Show subtle presence at DEBUG, full details at TRACE
         if event.type in {
             EventType.LLM_REQUEST,
             EventType.LLM_RESPONSE,
+            EventType.LLM_TOOL_DECISION,
         }:
             return ObservabilityLevel.DEBUG
         
@@ -1321,79 +1339,82 @@ class Observer:
             return f"{prefix}{s.error('✗')} {s.agent(f'[{agent_name}]')} {s.error(f'Stream error: {error}')}"
         
         # ═══════════════════════════════════════════════════════════
-        # LLM OBSERVABILITY EVENTS - Concise LLM interaction logging
+        # LLM OBSERVABILITY EVENTS - Subtle presence, details opt-in
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.LLM_REQUEST:
             agent_name = data.get("agent_name", "?")
             message_count = data.get("message_count", 0)
             tools_available = data.get("tools_available", [])
-            prompt = _normalize_content(data.get("prompt", ""))
-            system_prompt = _normalize_content(data.get("system_prompt", ""))
             
-            # Build concise header
-            tools_count = f", {len(tools_available)} tools" if tools_available else ""
-            header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('📤')} LLM request {s.dim(f'({message_count} msgs{tools_count})')}"
+            # Subtle presence: just show request was made
+            tools_str = f", {len(tools_available)} tools" if tools_available else ""
+            header = f"{prefix}{s.dim('→')} {s.agent(f'[{agent_name}]')} {s.dim(f'LLM request ({message_count} messages{tools_str})')}"
             
-            # Only show prompt preview at DETAILED+ level, single line
-            if self.config.level >= ObservabilityLevel.DETAILED and (prompt or system_prompt):
-                lines.append(header)
-                if system_prompt:
-                    sys_preview = _truncate_text(system_prompt.replace("\n", " ").strip())
-                    lines.append(f"      {s.dim(f'System: {sys_preview}')}")
-                if prompt:
-                    prompt_preview = _truncate_text(prompt.replace("\n", " ").strip())
-                    lines.append(f"      {s.dim(f'Prompt: {prompt_preview}')}")
-                return "\n".join(lines)
+            # Details only at TRACE level or if explicitly subscribed to LLM channel
+            if self.config.level >= ObservabilityLevel.TRACE:
+                prompt = _normalize_content(data.get("prompt", ""))
+                system_prompt = _normalize_content(data.get("system_prompt", ""))
+                if system_prompt or prompt:
+                    lines.append(header)
+                    if system_prompt:
+                        sys_preview = _truncate_text(system_prompt.replace("\n", " ").strip())
+                        lines.append(f"      {s.dim(f'System: {sys_preview}')}") 
+                    if prompt:
+                        prompt_preview = _truncate_text(prompt.replace("\n", " ").strip())
+                        lines.append(f"      {s.dim(f'Prompt: {prompt_preview}')}")
+                    return "\n".join(lines)
             return header
         
         elif event_type == EventType.LLM_RESPONSE:
             agent_name = data.get("agent_name", "?")
-            content = _normalize_content(data.get("content", ""))
             tool_calls = data.get("tool_calls", [])
-            finish_reason = data.get("finish_reason", "")
             duration_ms = data.get("duration_ms", 0)
             
             # Duration formatting
             duration_str = ""
             if duration_ms:
                 if duration_ms > 1000:
-                    duration_str = s.success(f" ({duration_ms/1000:.1f}s)")
+                    duration_str = s.success(f" {duration_ms/1000:.1f}s")
                 else:
-                    duration_str = s.dim(f" ({duration_ms:.0f}ms)")
+                    duration_str = s.dim(f" {duration_ms:.0f}ms")
             
+            # Subtle presence: just show response received
             tool_str = f", {len(tool_calls)} tools" if tool_calls else ""
-            reason_str = f" {s.dim(f'({finish_reason})')}" if finish_reason else ""
-            header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.success('📥')} LLM response{duration_str}{reason_str}{s.dim(tool_str)}"
+            header = f"{prefix}{s.dim('←')} {s.agent(f'[{agent_name}]')} {s.dim(f'LLM response{duration_str}{tool_str}')}"
             
-            # Show brief content preview at DETAILED+ level
-            if self.config.level >= ObservabilityLevel.DETAILED and content:
-                lines.append(header)
-                # Single-line preview only
-                content_preview = _truncate_text(content.replace("\n", " ").strip())
-                lines.append(f"      {s.dim(content_preview)}")
-                return "\n".join(lines)
+            # Details only at TRACE level
+            if self.config.level >= ObservabilityLevel.TRACE:
+                content = _normalize_content(data.get("content", ""))
+                if content:
+                    lines.append(header)
+                    content_preview = _truncate_text(content.replace("\n", " ").strip())
+                    lines.append(f"      {s.dim(content_preview)}")
+                    return "\n".join(lines)
             
             return header
         
         elif event_type == EventType.LLM_TOOL_DECISION:
             agent_name = data.get("agent_name", "?")
             tools_selected = data.get("tools_selected", [])
-            reasoning = data.get("reasoning", "")
             
+            # Subtle presence
             if tools_selected:
-                tools_str = ", ".join(tools_selected[:5])
-                if len(tools_selected) > 5:
-                    tools_str += f" ... (+{len(tools_selected) - 5})"
-                header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('🎯')} {s.bold('Tool Decision:')} {s.tool(tools_str)}"
+                tools_str = ", ".join(tools_selected[:3])
+                if len(tools_selected) > 3:
+                    tools_str += f" (+{len(tools_selected) - 3})"
+                header = f"{prefix}{s.dim('→')} {s.agent(f'[{agent_name}]')} {s.dim(f'Tool decision: {tools_str}')}"
             else:
-                header = f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('🎯')} {s.bold('Tool Decision:')} {s.dim('(no tools selected)')}"
+                header = f"{prefix}{s.dim('→')} {s.agent(f'[{agent_name}]')} {s.dim('Tool decision: none')}"
             
-            if reasoning:
-                lines.append(header)
-                reasoning_preview = _truncate_text(str(reasoning).replace("\n", " ").strip())
-                lines.append(f"      {s.dim('Reasoning:')} {reasoning_preview}")
-                return "\n".join(lines)
+            # Show reasoning only at TRACE level
+            if self.config.level >= ObservabilityLevel.TRACE:
+                reasoning = data.get("reasoning", "")
+                if reasoning:
+                    lines.append(header)
+                    reasoning_preview = _truncate_text(str(reasoning).replace("\n", " ").strip())
+                    lines.append(f"      {s.dim('Reasoning:')} {reasoning_preview}")
+                    return "\n".join(lines)
             
             return header
         

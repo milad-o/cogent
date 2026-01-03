@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model
 
 from agenticflow.document.loaders import PDFVisionLoader
-from agenticflow.document.loaders.handlers.pdf_vision import OutputFormat
+from agenticflow.document.loaders.pdf import OutputFormat
 
 
 def _print_doc_header(title: str) -> None:

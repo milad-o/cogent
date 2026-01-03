@@ -23,17 +23,12 @@ def _build_default_registry() -> dict[str, type[BaseLoader]]:
     Returns:
         Dictionary mapping extensions to loader classes.
     """
-    from agenticflow.document.loaders.handlers import (
-        CodeLoader,
-        CSVLoader,
-        HTMLLoader,
-        JSONLoader,
-        MarkdownLoader,
-        PDFLoader,
-        TextLoader,
-        WordLoader,
-        XLSXLoader,
-    )
+    from agenticflow.document.loaders.code import CodeLoader
+    from agenticflow.document.loaders.data import CSVLoader, JSONLoader, XLSXLoader
+    from agenticflow.document.loaders.markup import HTMLLoader, MarkdownLoader
+    from agenticflow.document.loaders.pdf import PDFLoader
+    from agenticflow.document.loaders.plaintext import TextLoader
+    from agenticflow.document.loaders.word import WordLoader
     
     registry: dict[str, type[BaseLoader]] = {}
     

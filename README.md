@@ -128,7 +128,7 @@ Load, split, and process documents for RAG pipelines.
 | `MarkdownLoader` | `.md` | Markdown with structure |
 | `PDFLoader` | `.pdf` | Basic text extraction (pypdf/pdfplumber) |
 | `PDFMarkdownLoader` | `.pdf` | Clean markdown output (pymupdf4llm) |
-| `PDFHTMLLoader` | `.pdf` | Semantic HTML with proper tables (pdfplumber) |
+
 | `PDFVisionLoader` | `.pdf` | Vision model-based extraction |
 | `WordLoader` | `.docx` | Microsoft Word documents |
 | `HTMLLoader` | `.html`, `.htm` | HTML documents |

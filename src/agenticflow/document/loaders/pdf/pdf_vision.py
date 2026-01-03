@@ -14,7 +14,7 @@ Notes:
   `convert_messages` preserves OpenAI-style multimodal message content.
 
 Example:
-    >>> from agenticflow.document.loaders.handlers.pdf_vision import PDFVisionLoader
+    >>> from agenticflow.document.loaders.pdf import PDFVisionLoader
     >>> from agenticflow.models import ChatModel
     >>> loader = PDFVisionLoader(model=ChatModel(model="gpt-4o"), output_format="markdown")
     >>> docs = await loader.load("document.pdf", include_headers=True, include_footers=True)

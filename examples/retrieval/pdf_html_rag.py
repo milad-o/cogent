@@ -13,7 +13,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model, get_embeddings
 
 from agenticflow import Agent
-from agenticflow.document.loaders.handlers.pdf_html import PDFHTMLLoader
+from agenticflow.document.loaders.pdf import PDFVisionLoader
+from agenticflow.models import ChatModel
 from agenticflow.vectorstore import VectorStore
 
 
@@ -22,7 +23,7 @@ async def main() -> None:
     
     # Load PDF with complex tables as HTML
     print("📄 Loading PDF with HTML table extraction...")
-    loader = PDFHTMLLoader()
+    loader = PDFVisionLoader(model=ChatModel(model="gpt-4o"), output_format="html")
     docs = await loader.load(Path("examples/data/sample-tables.pdf"))
     
     print(f"✅ Loaded {len(docs)} pages")

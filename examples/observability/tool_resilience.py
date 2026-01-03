@@ -89,10 +89,19 @@ async def demo_default_resilience():
     _api_call_attempts = 0
     
     model = get_model()
+    
+    # Add observer to see resilience events
+    observer = Observer(
+        level=ObservabilityLevel.DETAILED,
+        show_timestamps=True,
+        show_duration=True,
+    )
+    
     agent = Agent(
         name="DefaultAgent",
         model=model,
         tools=[unreliable_api],
+        observer=observer,
     )
     
     print(f"Config: retry_on_error={agent.config.retry_on_error}, max_retries={agent.config.max_retries}")
@@ -123,6 +132,12 @@ async def demo_aggressive_resilience():
     model = get_model()
     aggressive_config = ResilienceConfig.aggressive()
     
+    observer = Observer(
+        level=ObservabilityLevel.DETAILED,
+        show_timestamps=True,
+        show_duration=True,
+    )
+    
     print(f"Config: max_retries={aggressive_config.retry_policy.max_retries}, "
           f"strategy={aggressive_config.retry_policy.strategy.value}, "
           f"timeout={aggressive_config.timeout_seconds}s")
@@ -133,6 +148,7 @@ async def demo_aggressive_resilience():
         model=model,
         tools=[flaky_search],
         resilience=aggressive_config,
+        observer=observer,
     )
     
     try:
@@ -206,11 +222,26 @@ async def demo_fallback_tools():
     print("=" * 80)
     
     model = get_model()
+    
+    observer = Observer(
+        level=ObservabilityLevel.DETAILED,
+        show_timestamps=True,
+        show_duration=True,
+    )
+    
     fallback_config = ResilienceConfig(
         retry_policy=RetryPolicy(max_retries=2),
         circuit_breaker_enabled=True,
         fallback_enabled=True,
         learning_enabled=True,
+    )
+    
+    agent = Agent(
+        name="FallbackAgent",
+        model=model,
+        tools=[always_fails, reliable_backup],
+        resilience=fallback_config,
+        observer=observer
     )
     
     agent = Agent(

@@ -12,7 +12,7 @@ Features:
 - Progress tracking and metrics
 
 Example:
-    >>> from agenticflow.document.loaders.handlers.pdf_markdown import PDFMarkdownLoader
+    >>> from agenticflow.document.loaders.pdf import PDFMarkdownLoader
     >>> 
     >>> loader = PDFMarkdownLoader(max_workers=4, batch_size=10)
     >>> docs = await loader.load(Path("large_document.pdf"))

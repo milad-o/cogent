@@ -76,6 +76,68 @@ observer = Observer(
 )
 ```
 
+### Modular Channels (Opt-in Observability)
+
+The observability system uses **channels** to let you subscribe to specific event categories. This keeps output clean and focused on what matters to you:
+
+```python
+from agenticflow.observability import Observer, Channel
+
+# Subscribe to specific channels
+observer = Observer(
+    level=ObservabilityLevel.DEBUG,
+    channels=[
+        Channel.AGENTS,     # Agent lifecycle events
+        Channel.TOOLS,      # Tool calls and results
+        Channel.TASKS,      # Task execution
+    ],
+)
+
+# Available channels:
+# - Channel.AGENTS: Agent thinking, acting, status
+# - Channel.TOOLS: Tool calls, results, errors
+# - Channel.MESSAGES: Inter-agent communication
+# - Channel.TASKS: Task lifecycle
+# - Channel.LLM: Raw LLM request/response (opt-in)
+# - Channel.STREAMING: Token-by-token output
+# - Channel.MEMORY: Memory operations
+# - Channel.RETRIEVAL: RAG retrieval
+# - Channel.DOCUMENTS: Document loading/splitting
+# - Channel.MCP: Model Context Protocol
+# - Channel.REACTIVE: Reactive flow events
+# - Channel.SYSTEM: System-level events
+# - Channel.RESILIENCE: Retries, circuit breakers
+# - Channel.ALL: Everything
+```
+
+**LLM Events are Opt-in**: By default, LLM request/response events show **subtle presence** (just that a request/response occurred). To see full details (prompts, responses, content), explicitly subscribe to `Channel.LLM`:
+
+```python
+# Default behavior: LLM events show subtle presence only
+observer = Observer(
+    level=ObservabilityLevel.DEBUG,
+    channels=[Channel.AGENTS, Channel.TOOLS],
+)
+# → LLM request (5 messages, 3 tools)
+# ← LLM response 1.2s, 2 tools
+
+# Opt-in for LLM details
+observer = Observer(
+    level=ObservabilityLevel.DEBUG,
+    channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM],  # Add LLM channel
+)
+# Now you'll see prompts, system messages, response content at TRACE level
+
+# Or use TRACE level for everything
+observer = Observer.trace()  # Includes all channels + full details
+```
+
+This modular design ensures:
+- ✅ Clean, focused output by default
+- ✅ Opt-in to detailed LLM debugging when needed
+- ✅ No noise from internal LLM calls unless you want it
+- ✅ Easy to filter what you care about
+
 ---
 
 ## EventBus

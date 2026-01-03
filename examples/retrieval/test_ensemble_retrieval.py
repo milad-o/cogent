@@ -11,7 +11,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_embeddings
 
-from agenticflow.document.loaders.handlers.pdf_html import PDFHTMLLoader
+from agenticflow.document.loaders.pdf import PDFVisionLoader
+from agenticflow.models import ChatModel
 from agenticflow.vectorstore import VectorStore
 from agenticflow.retriever import DenseRetriever, BM25Retriever, EnsembleRetriever
 
@@ -21,7 +22,7 @@ async def main() -> None:
     
     # Load PDF
     print("📄 Loading PDF with HTML tables...")
-    loader = PDFHTMLLoader()
+    loader = PDFVisionLoader(model=ChatModel(model="gpt-4o"), output_format="html")
     docs = await loader.load(Path("examples/data/sample-tables.pdf"))
     print(f"✅ Loaded {len(docs)} pages\n")
     

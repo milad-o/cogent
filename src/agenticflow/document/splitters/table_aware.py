@@ -64,10 +64,11 @@ class TableAwareSplitter(BaseSplitter):
     - Reducing noise from multiple tables on same page
     
     Example:
-        >>> from agenticflow.document.loaders.handlers import PDFHTMLLoader
+        >>> from agenticflow.document.loaders.pdf import PDFVisionLoader
         >>> from agenticflow.document.splitters import TableAwareSplitter
+        >>> from agenticflow.models import ChatModel
         >>> 
-        >>> loader = PDFHTMLLoader()
+        >>> loader = PDFVisionLoader(model=ChatModel(model="gpt-4o"), output_format="html")
         >>> docs = await loader.load("document.pdf")
         >>> 
         >>> splitter = TableAwareSplitter(

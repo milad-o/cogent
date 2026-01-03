@@ -27,33 +27,30 @@ This module provides document loading capabilities for various file formats.
 """
 
 from agenticflow.document.loaders.base import BaseLoader
-from agenticflow.document.loaders.handlers import (
-    CodeLoader,
-    CSVLoader,
-    HTMLLoader,
-    JSONLoader,
-    MarkdownLoader,
+from agenticflow.document.loaders.code import CodeLoader
+from agenticflow.document.loaders.data import CSVLoader, JSONLoader, XLSXLoader
+from agenticflow.document.loaders.loader import DocumentLoader
+from agenticflow.document.loaders.markup import HTMLLoader, MarkdownLoader
+from agenticflow.document.loaders.pdf import (
     OutputFormat,
     PageResult,
     PageStatus,
     PDFConfig,
     PDFLoader,
     PDFMarkdownLoader,
-    PDFVisionLoader,
-    PDFVisionOptions,
     PDFProcessingResult,
     PDFProcessingStatus,
+    PDFVisionLoader,
+    PDFVisionOptions,
     ProcessingMetrics,
-    TextLoader,
-    WordLoader,
-    XLSXLoader,
 )
-from agenticflow.document.loaders.loader import DocumentLoader
+from agenticflow.document.loaders.plaintext import TextLoader
 from agenticflow.document.loaders.registry import LOADERS, get_loader, register_loader
 from agenticflow.document.loaders.utils import (
     load_documents,
     load_documents_sync,
 )
+from agenticflow.document.loaders.word import WordLoader
 
 __all__ = [
     # Core
