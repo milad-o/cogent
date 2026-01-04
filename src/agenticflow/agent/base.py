@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Coroutine, Sequence, overload
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Coroutine, Literal, Sequence, overload
 
 from agenticflow.models.base import BaseChatModel
 from agenticflow.core.messages import AIMessage, HumanMessage, SystemMessage
@@ -53,14 +53,18 @@ from agenticflow.core.utils import generate_id, model_identifier, now_utc
 from agenticflow.observability.event import Event, EventType
 from agenticflow.core.message import Message
 from agenticflow.tasks.task import Task
+from agenticflow.agent.spawning import SpawningConfig
+from agenticflow.agent.roles import RoleConfig
 
 if TYPE_CHECKING:
     from agenticflow.observability.bus import EventBus
     from agenticflow.tools.registry import ToolRegistry
     from agenticflow.observability.progress import ProgressTracker
+    from agenticflow.observability.observer import Observer
     from agenticflow.agent.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
     from agenticflow.agent.streaming import StreamChunk, StreamEvent
     from agenticflow.graph import AgentGraph, GraphView
+    from agenticflow.agent.memory import AgentMemory
 
 
 class Agent:
@@ -134,14 +138,14 @@ class Agent:
         *,
         name: str,
         model: BaseChatModel | None = None,
-        role: AgentRole | str = AgentRole.WORKER,
+        role: AgentRole | Literal["worker", "supervisor", "reviewer", "autonomous"] | RoleConfig = AgentRole.WORKER,
         description: str = "",
         instructions: str | None = None,
-        tools: Sequence[BaseTool | str] | None = None,
-        capabilities: Sequence[Any] | None = None,
+        tools: Sequence[BaseTool | str | Callable] | None = None,
+        capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
-        memory: Any = None,
+        memory: bool | AgentMemory | None = None,
         store: Any = None,
         taskboard: bool | TaskBoardConfig | None = None,
     ) -> None:
@@ -154,7 +158,7 @@ class Agent:
         config: AgentConfig,
         event_bus: EventBus | None = None,
         tool_registry: ToolRegistry | None = None,
-        memory: Any = None,
+        memory: bool | AgentMemory | None = None,
         store: Any = None,
     ) -> None:
         """Advanced constructor - create agent with AgentConfig."""
@@ -165,32 +169,32 @@ class Agent:
         config: AgentConfig | None = None,
         event_bus: EventBus | None = None,
         tool_registry: ToolRegistry | None = None,
-        memory: Any = None,
+        memory: bool | AgentMemory | None = None,
         store: Any = None,
         *,
         # Simplified API parameters
         name: str | None = None,
         model: BaseChatModel | None = None,
-        role: Any = AgentRole.WORKER,  # AgentRole | str | RoleConfig
+        role: AgentRole | Literal["worker", "supervisor", "reviewer", "autonomous"] | RoleConfig = AgentRole.WORKER,
         description: str = "",
         instructions: str | None = None,
-        tools: Sequence[BaseTool | str] | None = None,
-        capabilities: Sequence[Any] | None = None,
+        tools: Sequence[BaseTool | str | Callable] | None = None,
+        capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
-        interrupt_on: dict[str, Any] | None = None,  # HITL: tool approval rules
+        interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,  # HITL: tool approval rules
         stream: bool = False,  # Enable streaming by default for this agent
         # Reasoning - extended thinking mode
-        reasoning: bool | Any = False,  # ReasoningConfig or True for default
+        reasoning: bool | ReasoningConfig = False,
         # Structured output - enforce response schema
         output: type | dict | ResponseSchema | None = None,
         # Interceptors - composable execution hooks
-        intercept: Sequence[Any] | None = None,
+        intercept: Sequence[Callable] | None = None,
         # Spawning - dynamic agent creation
-        spawning: Any | None = None,  # SpawningConfig for dynamic agent spawning
+        spawning: SpawningConfig | None = None,
         # Observability
-        verbose: bool | str = False,  # Simple observability for standalone usage
-        observer: Any | None = None,  # Observer for rich observability
+        verbose: bool | Literal["verbose", "debug", "trace"] = False,  # Simple observability for standalone usage
+        observer: Observer | None = None,  # Observer for rich observability
         # TaskBoard: Human-like task tracking
         taskboard: bool | TaskBoardConfig | None = None,
         # Role-specific parameters (only used if role is string/enum, ignored if RoleConfig)
@@ -219,7 +223,6 @@ class Agent:
             tool_registry: Registry of available tools (optional, Flow provides this)
             memory: Memory backend for conversation persistence. Accepts:
                 - True: Use built-in InMemoryCheckpointer (for testing)
-                - Checkpointer instance: MemorySaver, SqliteSaver, etc.
                 - AgentMemory instance: For custom configuration
             store: Store for long-term memory across threads.
             name: Agent name (simplified API)
