@@ -44,33 +44,50 @@ async def demo_role_system():
 
 
 async def demo_role_factories():
-    """Show role-specific factory methods."""
-    print("\n--- Role Factory Methods ---")
+    """Show role configuration objects and backwards compatibility."""
+    print("\n--- Role Configuration API ---")
     
     model = get_model()
     
-    # Create role-specific agents
-    supervisor = Agent.as_supervisor(
+    # New API: Role configuration objects (recommended)
+    from agenticflow import SupervisorRole, WorkerRole, ReviewerRole
+    
+    supervisor_role = SupervisorRole(workers=["Analyst", "Writer"])
+    supervisor = Agent(
         name="Manager",
         model=model,
-        workers=["Analyst", "Writer"],
+        role=supervisor_role,
     )
-    print(f"\n  Agent.as_supervisor() → {supervisor.role.value}")
+    print(f"\n  SupervisorRole(workers=[...]) → {supervisor.role.value}")
     print(f"    Can finish: {supervisor.can_finish}, Can delegate: {supervisor.can_delegate}")
     
-    worker = Agent.as_worker(
+    worker_role = WorkerRole(specialty="data analysis")
+    worker = Agent(
         name="Analyst",
         model=model,
+        role=worker_role,
     )
-    print(f"\n  Agent.as_worker() → {worker.role.value}")
+    print(f"\n  WorkerRole(specialty='...') → {worker.role.value}")
     print(f"    Can finish: {worker.can_finish}, Can use tools: {worker.can_use_tools}")
     
-    critic = Agent.as_critic(
+    reviewer_role = ReviewerRole(criteria=["accuracy", "clarity"])
+    reviewer = Agent(
         name="QA",
         model=model,
+        role=reviewer_role,
     )
-    print(f"\n  Agent.as_critic() → {critic.role.value}")  # Uses REVIEWER
-    print(f"    Can finish: {critic.can_finish}, Can use tools: {critic.can_use_tools}")
+    print(f"\n  ReviewerRole(criteria=[...]) → {reviewer.role.value}")
+    print(f"    Can finish: {reviewer.can_finish}, Can use tools: {reviewer.can_use_tools}")
+    
+    # Backwards compatible: String/enum still works
+    print("\n--- Backwards Compatible (String/Enum) ---")
+    
+    simple = Agent(
+        name="Simple",
+        model=model,
+        role="worker",  # String still works
+    )
+    print(f"\n  role='worker' (string) → {simple.role.value}")
 
 
 async def demo_role_prompts():
@@ -117,23 +134,27 @@ async def demo_supervisor_flow():
     
     model = get_model()
     
+    from agenticflow import SupervisorRole, WorkerRole
+    
     # Create team
-    supervisor = Agent.as_supervisor(
+    supervisor = Agent(
         name="Manager",
         model=model,
-        workers=["Researcher", "Writer"],
+        role=SupervisorRole(workers=["Researcher", "Writer"]),
         instructions="Coordinate the team to analyze the topic. Delegate to workers, then synthesize.",
     )
     
-    researcher = Agent.as_worker(
+    researcher = Agent(
         name="Researcher",
         model=model,
+        role=WorkerRole(),
         instructions="Research and provide key facts.",
     )
     
-    writer = Agent.as_worker(
+    writer = Agent(
         name="Writer",
         model=model,
+        role=WorkerRole(),
         instructions="Write clear summaries.",
     )
     
@@ -146,7 +167,7 @@ async def demo_supervisor_flow():
     )
     
     result = await flow.run("Benefits of remote work")
-    print(f"\n  Result: {result.results[-1]['thought'][:200]}...")
+    print(f"\n  Result: {result.output[:200]}...")
 
 
 async def demo_review_flow():
@@ -157,15 +178,19 @@ async def demo_review_flow():
     
     model = get_model()
     
-    writer = Agent.as_worker(
+    from agenticflow import WorkerRole, ReviewerRole
+    
+    writer = Agent(
         name="Writer",
         model=model,
+        role=WorkerRole(),
         instructions="Write a short paragraph about the topic.",
     )
     
-    reviewer = Agent.as_critic(
+    reviewer = Agent(
         name="QA",
         model=model,
+        role=ReviewerRole(criteria=["clarity"]),
         instructions="Review for clarity. Give FINAL ANSWER when approved.",
     )
     
@@ -178,7 +203,7 @@ async def demo_review_flow():
     )
     
     result = await flow.run("Cloud computing benefits")
-    print(f"\n  Final output: {result.results[-1]['thought'][:200]}...")
+    print(f"\n  Final output: {result.output[:200]}...")
 
 
 async def demo_autonomous():
@@ -188,23 +213,18 @@ async def demo_autonomous():
     print("  Can use tools AND finish (perfect for solo tasks)")
     
     model = get_model()
+    from agenticflow import AutonomousRole
     
     assistant = Agent(
         name="Assistant",
         model=model,
-        role=AgentRole.AUTONOMOUS,
-        instructions="Help the user with their request. Give FINAL ANSWER when done.",
+        role=AutonomousRole(),
+        instructions="Help the user with their request. Answer directly.",
     )
     
-    flow = Flow(
-        name="solo",
-        agents=[assistant],
-        topology="single",
-        observer=Observer.normal(),
-    )
-    
-    result = await flow.run("What's 2+2?")
-    print(f"\n  Answer: {result.results[-1]['thought'][:200]}...")
+    # For single agent, just run directly (no Flow needed)
+    result = await assistant.run("What's 2+2?")
+    print(f"\n  Answer: {result[:200]}...")
 
 
 async def main():

@@ -171,7 +171,7 @@ class Agent:
         # Simplified API parameters
         name: str | None = None,
         model: BaseChatModel | None = None,
-        role: AgentRole | str = AgentRole.WORKER,
+        role: Any = AgentRole.WORKER,  # AgentRole | str | RoleConfig
         description: str = "",
         instructions: str | None = None,
         tools: Sequence[BaseTool | str] | None = None,
@@ -193,6 +193,14 @@ class Agent:
         observer: Any | None = None,  # Observer for rich observability
         # TaskBoard: Human-like task tracking
         taskboard: bool | TaskBoardConfig | None = None,
+        # Role-specific parameters (only used if role is string/enum, ignored if RoleConfig)
+        workers: list[str] | None = None,  # SUPERVISOR: list of worker agent names
+        criteria: list[str] | None = None,  # REVIEWER: evaluation criteria
+        specialty: str | None = None,  # WORKER: description of specialty
+        # Capability overrides (customize role behavior)
+        can_finish: bool | None = None,  # Override: can provide FINAL ANSWER
+        can_delegate: bool | None = None,  # Override: can delegate to other agents
+        can_use_tools: bool | None = None,  # Override: can call tools
     ) -> None:
         """
         Initialize an Agent.
@@ -216,12 +224,19 @@ class Agent:
             store: Store for long-term memory across threads.
             name: Agent name (simplified API)
             model: Chat model (simplified API)
-            role: Agent role (simplified API)
+            role: Agent role - accepts string ("worker", "supervisor", "reviewer", "autonomous")
+                  or AgentRole enum (simplified API)
             description: Agent description (simplified API)
             instructions: Instructions for the agent - defines behavior and personality
             tools: List of tools - can be BaseTool objects or strings (simplified API)
             system_prompt: System prompt (alias for instructions, for compatibility)
             resilience: Resilience configuration (simplified API)
+            workers: List of worker agent names (for SUPERVISOR role, enhances prompt)
+            criteria: List of evaluation criteria (for REVIEWER role, enhances prompt)
+            specialty: Description of specialty (for WORKER role, enhances prompt)
+            can_finish: Override capability to provide FINAL ANSWER (custom roles)
+            can_delegate: Override capability to delegate to other agents (custom roles)
+            can_use_tools: Override capability to call tools (custom roles)
             stream: Enable token-by-token streaming by default for this agent.
                    When True, chat() and think() return async iterators.
             output: Enforce structured output schema. Accepts:
@@ -308,6 +323,54 @@ class Agent:
             # Check what the agent tracked
             print(agent.taskboard.summary())
             ```
+            
+        Example with role-specific parameters:
+            ```python
+            # Supervisor with team members
+            supervisor = Agent(
+                name="Manager",
+                model=model,
+                role="supervisor",
+                workers=["Alice", "Bob"],  # Adds to prompt
+            )
+            
+            # Reviewer with criteria
+            reviewer = Agent(
+                name="QA",
+                model=model,
+                role="reviewer",
+                criteria=["accuracy", "clarity"],  # Adds to prompt
+            )
+            
+            # Worker with specialty
+            worker = Agent(
+                name="Analyst",
+                model=model,
+                role="worker",
+                specialty="data analysis",  # Adds to prompt
+            )
+            ```
+            
+        Example with custom roles (capability overrides):
+            ```python
+            # Hybrid: Reviewer that can use tools
+            hybrid = Agent(
+                name="TechnicalReviewer",
+                model=model,
+                role="reviewer",
+                can_use_tools=True,  # Override!
+                tools=[linter, analyzer],
+            )
+            
+            # Custom orchestrator: Worker that can finish and delegate
+            orchestrator = Agent(
+                name="Orchestrator",
+                model=model,
+                role="worker",
+                can_finish=True,    # Override!
+                can_delegate=True,  # Override!
+            )
+            ```
         """
         # Handle simplified API
         if config is None:
@@ -318,9 +381,20 @@ class Agent:
                     "Advanced: Agent(config=AgentConfig(...))"
                 )
             
-            # Parse role if string
+            # Handle role - can be string, enum, or RoleConfig object
+            role_config = None
+            role_enum = None
+            
             if isinstance(role, str):
-                role = AgentRole(role.lower())
+                # String role - convert to enum
+                role_enum = AgentRole(role.lower())
+            elif hasattr(role, 'get_role_type'):
+                # RoleConfig object
+                role_config = role
+                role_enum = role_config.get_role_type()
+            else:
+                # AgentRole enum directly
+                role_enum = role
             
             # Extract tool names and store tool objects
             tool_names: list[str] = []
@@ -343,12 +417,30 @@ class Agent:
             if not effective_prompt:
                 from agenticflow.agent.roles import get_role_prompt
                 has_tools = bool(tool_names or self._direct_tools)
-                effective_prompt = get_role_prompt(role, has_tools=has_tools)
+                effective_prompt = get_role_prompt(role_enum, has_tools=has_tools)
+            
+            # If we have a RoleConfig object, let it enhance the prompt
+            if role_config:
+                effective_prompt = role_config.enhance_prompt(effective_prompt)
+            else:
+                # Otherwise, use legacy parameter-based enhancement
+                # (workers, criteria, specialty are ignored if RoleConfig is used)
+                if workers and role_enum == AgentRole.SUPERVISOR:
+                    effective_prompt += f"\n\nYour team members: {', '.join(workers)}"
+                
+                if criteria and role_enum == AgentRole.REVIEWER:
+                    effective_prompt += f"\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
+                
+                if specialty and role_enum == AgentRole.WORKER:
+                    effective_prompt += f"\n\nYour specialty: {specialty}"
+            
+            # Store role config for capability lookups
+            self._role_config = role_config
             
             # Create config from simplified params
             config = AgentConfig(
                 name=name,
-                role=role,
+                role=role_enum,
                 description=description,
                 model=model,
                 system_prompt=effective_prompt,
@@ -398,6 +490,9 @@ class Agent:
                     interrupt_on=config.interrupt_on,
                     metadata=config.metadata,
                 )
+            
+            # No role config in advanced API mode
+            self._role_config = None
         
         self.id = generate_id()
         self.config = config
@@ -411,6 +506,15 @@ class Agent:
         self._capabilities_initialized: bool = False  # Track if async init done
         self._observer = None  # Observer for standalone usage
         self._setup_resilience()
+        
+        # Apply capability overrides if provided
+        self._capability_overrides: dict[str, bool] = {}
+        if can_finish is not None:
+            self._capability_overrides["can_finish"] = can_finish
+        if can_delegate is not None:
+            self._capability_overrides["can_delegate"] = can_delegate
+        if can_use_tools is not None:
+            self._capability_overrides["can_use_tools"] = can_use_tools
         
         # Setup observer for standalone agent usage
         # observer parameter takes precedence over verbose
@@ -1148,16 +1252,37 @@ class Agent:
     @property
     def can_delegate(self) -> bool:
         """Whether this agent can delegate to other agents."""
+        # Check RoleConfig first
+        if hasattr(self, '_role_config') and self._role_config:
+            return self._role_config.get_capabilities()["can_delegate"]
+        # Then check capability overrides
+        if "can_delegate" in self._capability_overrides:
+            return self._capability_overrides["can_delegate"]
+        # Fall back to role behavior
         return self.role_behavior.can_delegate
 
     @property
     def can_finish(self) -> bool:
-        """Whether this agent can produce final answers."""
+        """Whether this agent can provide final answers."""
+        # Check RoleConfig first
+        if hasattr(self, '_role_config') and self._role_config:
+            return self._role_config.get_capabilities()["can_finish"]
+        # Then check capability overrides
+        if "can_finish" in self._capability_overrides:
+            return self._capability_overrides["can_finish"]
+        # Fall back to role behavior
         return self.role_behavior.can_finish
 
     @property
     def can_use_tools(self) -> bool:
         """Whether this agent can use tools directly."""
+        # Check RoleConfig first
+        if hasattr(self, '_role_config') and self._role_config:
+            return self._role_config.get_capabilities()["can_use_tools"]
+        # Then check capability overrides
+        if "can_use_tools" in self._capability_overrides:
+            return self._capability_overrides["can_use_tools"]
+        # Fall back to role behavior
         return self.role_behavior.can_use_tools
 
     @property
@@ -3227,198 +3352,8 @@ class Agent:
         return view.png()
 
     # =========================================================================
-    # Factory Methods - Create role-specific agents
+    # Factory Methods - Legacy aliases (deprecated, use role= argument)
     # =========================================================================
-    
-    @classmethod
-    def as_supervisor(
-        cls,
-        name: str,
-        model: Any,
-        *,
-        workers: list[str] | None = None,
-        instructions: str | None = None,
-        **kwargs,
-    ) -> "Agent":
-        """Create a supervisor agent.
-        
-        Supervisors delegate tasks to workers and synthesize results.
-        
-        Args:
-            name: Agent name
-            model: LLM model to use
-            workers: List of worker agent names this supervisor manages
-            instructions: Additional instructions (appended to role prompt)
-            **kwargs: Additional Agent parameters
-            
-        Returns:
-            Agent configured as a supervisor
-            
-        Example:
-            supervisor = Agent.as_supervisor(
-                name="Manager",
-                model=ChatOpenAI(),
-                workers=["Researcher", "Analyst"],
-            )
-        """
-        from agenticflow.agent.roles import get_role_prompt
-        
-        base_prompt = get_role_prompt(AgentRole.SUPERVISOR, has_tools=False)
-        if workers:
-            base_prompt += f"\n\nYour team members: {', '.join(workers)}"
-        if instructions:
-            base_prompt += f"\n\n{instructions}"
-        
-        return cls(
-            name=name,
-            model=model,
-            role=AgentRole.SUPERVISOR,
-            instructions=base_prompt,
-            **kwargs,
-        )
-    
-    @classmethod
-    def as_worker(
-        cls,
-        name: str,
-        model: Any,
-        *,
-        specialty: str | None = None,
-        instructions: str | None = None,
-        tools: list | None = None,
-        **kwargs,
-    ) -> "Agent":
-        """Create a worker agent.
-        
-        Workers execute tasks using their tools.
-        
-        Args:
-            name: Agent name
-            model: LLM model to use  
-            specialty: Description of worker's specialty
-            instructions: Additional instructions
-            tools: List of tools for this worker
-            **kwargs: Additional Agent parameters
-            
-        Returns:
-            Agent configured as a worker
-            
-        Example:
-            researcher = Agent.as_worker(
-                name="Researcher",
-                model=ChatOpenAI(),
-                specialty="web research and data gathering",
-                tools=[search_tool, scrape_tool],
-            )
-        """
-        from agenticflow.agent.roles import get_role_prompt
-        
-        has_tools = bool(tools)
-        base_prompt = get_role_prompt(AgentRole.WORKER, has_tools=has_tools)
-        if specialty:
-            base_prompt += f"\n\nYour specialty: {specialty}"
-        if instructions:
-            base_prompt += f"\n\n{instructions}"
-        
-        return cls(
-            name=name,
-            model=model,
-            role=AgentRole.WORKER,
-            instructions=base_prompt,
-            tools=tools,
-            **kwargs,
-        )
-    
-    @classmethod
-    def as_critic(
-        cls,
-        name: str,
-        model: Any,
-        *,
-        criteria: list[str] | None = None,
-        instructions: str | None = None,
-        **kwargs,
-    ) -> "Agent":
-        """Create a reviewer/critic agent.
-        
-        Reviewers evaluate work and can approve (finish) or request revisions.
-        
-        Args:
-            name: Agent name
-            model: LLM model to use
-            criteria: List of criteria to evaluate against
-            instructions: Additional instructions
-            **kwargs: Additional Agent parameters
-            
-        Returns:
-            Agent configured as a reviewer
-        """
-        from agenticflow.agent.roles import get_role_prompt
-        
-        base_prompt = get_role_prompt(AgentRole.REVIEWER, has_tools=False)
-        if criteria:
-            base_prompt += f"\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
-        if instructions:
-            base_prompt += f"\n\n{instructions}"
-        
-        return cls(
-            name=name,
-            model=model,
-            role=AgentRole.REVIEWER,
-            instructions=base_prompt,
-            **kwargs,
-        )
-    
-    # Alias for as_critic
-    as_reviewer = as_critic
-    
-    @classmethod
-    def as_autonomous(
-        cls,
-        name: str,
-        model: Any,
-        *,
-        tools: list | None = None,
-        instructions: str | None = None,
-        **kwargs,
-    ) -> "Agent":
-        """Create an autonomous agent.
-        
-        Autonomous agents work independently - they use tools AND can finish.
-        Perfect for single-agent flows or independent tasks.
-        
-        Args:
-            name: Agent name
-            model: LLM model to use
-            tools: Tools available to this agent
-            instructions: Additional instructions
-            **kwargs: Additional Agent parameters
-            
-        Returns:
-            Agent configured as autonomous
-            
-        Example:
-            assistant = Agent.as_autonomous(
-                name="Assistant",
-                model=ChatOpenAI(),
-                tools=[search, calculator],
-            )
-        """
-        from agenticflow.agent.roles import get_role_prompt
-        
-        has_tools = bool(tools)
-        base_prompt = get_role_prompt(AgentRole.AUTONOMOUS, has_tools=has_tools)
-        if instructions:
-            base_prompt += f"\n\n{instructions}"
-        
-        return cls(
-            name=name,
-            model=model,
-            role=AgentRole.AUTONOMOUS,
-            tools=tools,
-            instructions=base_prompt,
-            **kwargs,
-        )
     
     @classmethod
     def as_planner(

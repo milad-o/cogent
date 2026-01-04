@@ -39,13 +39,14 @@ from agenticflow import Agent
 agent = Agent(
     name="Writer",
     model=model,
-    role="worker",  # or "supervisor", "autonomous", "reviewer"
+    role="worker",  # String: "worker", "supervisor", "autonomous", "reviewer"
     tools=[write_tool],
     instructions="You write compelling content.",
 )
 
 # Advanced API with AgentConfig
 from agenticflow.agent import AgentConfig
+from agenticflow.core.enums import AgentRole
 
 config = AgentConfig(
     name="Writer",
@@ -57,34 +58,161 @@ config = AgentConfig(
 agent = Agent(config=config)
 ```
 
-### Role-Specific Factory Methods
+### RoleConfig Objects (Recommended)
+
+Use role configuration objects for type-safe, immutable role definitions:
 
 ```python
-# Supervisor - coordinates work, can finish workflows
-supervisor = Agent.as_supervisor(
-    name="Manager",
-    model=model,
-    workers=["analyst", "writer"],
+from agenticflow import (
+    SupervisorRole,
+    WorkerRole,
+    ReviewerRole,
+    AutonomousRole,
+    CustomRole,
 )
 
-# Worker - executes tasks, cannot finish workflows
-worker = Agent.as_worker(
-    name="Analyst", 
+# Supervisor - coordinates workers
+supervisor = Agent(
+    name="Manager",
     model=model,
+    role=SupervisorRole(workers=["Analyst", "Writer"]),
+)
+
+# Worker - executes tasks with tools
+worker = Agent(
+    name="Analyst",
+    model=model,
+    role=WorkerRole(specialty="data analysis and visualization"),
     tools=[search, analyze],
 )
 
-# Autonomous - works independently, can finish
-autonomous = Agent.as_autonomous(
+# Reviewer - evaluates and approves work
+reviewer = Agent(
+    name="QA",
+    model=model,
+    role=ReviewerRole(criteria=["accuracy", "clarity", "completeness"]),
+)
+
+# Autonomous - independent agent with full capabilities
+autonomous = Agent(
     name="Assistant",
     model=model,
+    role=AutonomousRole(),
     tools=[search, write],
 )
 
-# Reviewer - approves/rejects, can finish
-reviewer = Agent.as_reviewer(
+# Custom - hybrid role with explicit capability overrides
+custom = Agent(
+    name="TechnicalReviewer",
+    model=model,
+    role=CustomRole(
+        base_role=AgentRole.REVIEWER,
+        can_use_tools=True,  # Reviewer that can use tools!
+    ),
+    tools=[code_analyzer, linter],
+)
+```
+
+**Benefits of RoleConfig objects:**
+- Type-safe configuration
+- Immutable (frozen dataclasses)
+- Built-in prompt enhancement
+- Clear, explicit role definitions
+- IDE autocomplete and type checking
+
+### Role-Specific Parameters (Backward Compatible)
+
+You can also use string/enum roles with parameters:
+
+```python
+# Supervisor - with team members
+supervisor = Agent(
+    name="Manager",
+    model=model,
+    role=AgentRole.SUPERVISOR,  # or "supervisor"
+    workers=["analyst", "writer"],  # Adds team members to prompt
+)
+
+# Worker - with specialty description
+worker = Agent(
+    name="Analyst", 
+    model=model,
+    role="worker",
+    specialty="data analysis and visualization",  # Adds specialty to prompt
+    tools=[search, analyze],
+)
+
+# Reviewer - with evaluation criteria
+reviewer = Agent(
     name="QA",
     model=model,
+    role="reviewer",
+    criteria=["accuracy", "clarity", "completeness"],  # Adds criteria to prompt
+)
+
+# Autonomous - works independently, can finish
+autonomous = Agent(
+    name="Assistant",
+    model=model,
+    role="autonomous",
+    tools=[search, write],
+)
+```
+
+**Note:** While backward compatible, RoleConfig objects are recommended for new code.
+
+### Custom Roles (Capability Overrides)
+
+**Recommended:** Use `CustomRole` for hybrid capabilities:
+
+```python
+from agenticflow import CustomRole
+from agenticflow.core import AgentRole
+
+# Reviewer that can use tools
+hybrid_reviewer = Agent(
+    name="TechnicalReviewer",
+    model=model,
+    role=CustomRole(
+        base_role=AgentRole.REVIEWER,
+        can_use_tools=True,  # Override!
+    ),
+    tools=[code_analyzer, linter],
+)
+
+# Worker that can finish and delegate
+orchestrator = Agent(
+    name="Orchestrator",
+    model=model,
+    role=CustomRole(
+        base_role=AgentRole.WORKER,
+        can_finish=True,      # Override!
+        can_delegate=True,    # Override!
+    ),
+    tools=[deployment_tool],
+)
+```
+
+**Backward compatible:** You can also use capability overrides with string/enum roles:
+
+```python
+# Hybrid: Reviewer that can use tools
+hybrid_reviewer = Agent(
+    name="TechnicalReviewer",
+    model=model,
+    role="reviewer",
+    can_use_tools=True,  # Override! Reviewer normally can't use tools
+    tools=[code_analyzer, linter],
+)
+
+# Custom orchestrator: Worker that can finish and delegate
+orchestrator = Agent(
+    name="Orchestrator",
+    model=model,
+    role="worker",
+    can_finish=True,      # Override! Worker normally can't finish
+    can_delegate=True,   # Override! Worker normally can't delegate
+    tools=[deployment_tool],
 )
 ```
 

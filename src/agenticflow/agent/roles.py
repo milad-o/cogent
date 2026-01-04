@@ -41,6 +41,169 @@ if TYPE_CHECKING:
 
 
 # =============================================================================
+# Role Configuration Classes - First-class role objects
+# =============================================================================
+
+@dataclass(frozen=True)
+class RoleConfig:
+    """Base configuration for agent roles.
+    
+    Role configurations are immutable, reusable objects that define:
+    - Capabilities (what the agent CAN do)
+    - Role-specific parameters (workers, criteria, specialty)
+    - Enhanced prompts based on configuration
+    """
+    
+    def get_role_type(self) -> AgentRole:
+        """Get the AgentRole enum for this configuration."""
+        raise NotImplementedError
+    
+    def get_capabilities(self) -> dict[str, bool]:
+        """Get capability flags for this role."""
+        caps = get_role_capabilities(self.get_role_type())
+        return {
+            "can_finish": caps["can_finish"],
+            "can_delegate": caps["can_delegate"],
+            "can_use_tools": caps["can_use_tools"],
+        }
+    
+    def enhance_prompt(self, base_prompt: str) -> str:
+        """Enhance the base role prompt with configuration-specific details."""
+        return base_prompt
+
+
+@dataclass(frozen=True)
+class SupervisorRole(RoleConfig):
+    """Supervisor role - coordinates workers and makes final decisions.
+    
+    Capabilities:
+    - can_finish: ✅ (can provide FINAL ANSWER)
+    - can_delegate: ✅ (can assign work to others)
+    - can_use_tools: ❌ (delegates tool work to workers)
+    
+    Example:
+        supervisor = SupervisorRole(workers=["Alice", "Bob", "Charlie"])
+        agent = Agent(name="Manager", model=model, role=supervisor)
+    """
+    workers: list[str] | None = None
+    
+    def get_role_type(self) -> AgentRole:
+        return AgentRole.SUPERVISOR
+    
+    def enhance_prompt(self, base_prompt: str) -> str:
+        if self.workers:
+            return base_prompt + f"\n\nYour team members: {', '.join(self.workers)}"
+        return base_prompt
+
+
+@dataclass(frozen=True)
+class WorkerRole(RoleConfig):
+    """Worker role - executes tasks using tools.
+    
+    Capabilities:
+    - can_finish: ❌ (cannot conclude workflow)
+    - can_delegate: ❌ (executes tasks, doesn't delegate)
+    - can_use_tools: ✅ (uses tools to accomplish work)
+    
+    Example:
+        worker = Worker(specialty="data analysis and visualization")
+        agent = Agent(name="Analyst", model=model, role=worker, tools=[...])
+    """
+    specialty: str | None = None
+    
+    def get_role_type(self) -> AgentRole:
+        return AgentRole.WORKER
+    
+    def enhance_prompt(self, base_prompt: str) -> str:
+        if self.specialty:
+            return base_prompt + f"\n\nYour specialty: {self.specialty}"
+        return base_prompt
+
+
+@dataclass(frozen=True)
+class ReviewerRole(RoleConfig):
+    """Reviewer role - evaluates work and approves/rejects.
+    
+    Capabilities:
+    - can_finish: ✅ (can approve and conclude)
+    - can_delegate: ❌ (reviews, doesn't delegate)
+    - can_use_tools: ❌ (focuses on judgment, not execution)
+    
+    Example:
+        reviewer = Reviewer(criteria=["accuracy", "clarity", "completeness"])
+        agent = Agent(name="QA", model=model, role=reviewer)
+    """
+    criteria: list[str] | None = None
+    
+    def get_role_type(self) -> AgentRole:
+        return AgentRole.REVIEWER
+    
+    def enhance_prompt(self, base_prompt: str) -> str:
+        if self.criteria:
+            return base_prompt + f"\n\nEvaluation criteria:\n- " + "\n- ".join(self.criteria)
+        return base_prompt
+
+
+@dataclass(frozen=True)
+class AutonomousRole(RoleConfig):
+    """Autonomous role - works independently with full capabilities.
+    
+    Capabilities:
+    - can_finish: ✅ (can conclude workflow)
+    - can_delegate: ❌ (works independently)
+    - can_use_tools: ✅ (uses tools to accomplish work)
+    
+    Perfect for single-agent flows or independent tasks.
+    
+    Example:
+        autonomous = Autonomous()
+        agent = Agent(name="Assistant", model=model, role=autonomous, tools=[...])
+    """
+    
+    def get_role_type(self) -> AgentRole:
+        return AgentRole.AUTONOMOUS
+
+
+@dataclass(frozen=True)
+class CustomRole(RoleConfig):
+    """Custom role - fully configurable capabilities.
+    
+    Use this to create hybrid roles that don't fit the predefined patterns.
+    
+    Example:
+        # Reviewer that can use tools
+        hybrid = Custom(
+            base_role=AgentRole.REVIEWER,
+            can_use_tools=True,  # Override!
+        )
+        
+        # Worker that can finish (unusual but valid)
+        finisher = Custom(
+            base_role=AgentRole.WORKER,
+            can_finish=True,  # Override!
+        )
+    """
+    base_role: AgentRole = AgentRole.AUTONOMOUS
+    can_finish: bool | None = None
+    can_delegate: bool | None = None
+    can_use_tools: bool | None = None
+    
+    def get_role_type(self) -> AgentRole:
+        return self.base_role
+    
+    def get_capabilities(self) -> dict[str, bool]:
+        """Get capabilities with overrides applied."""
+        caps = super().get_capabilities()
+        if self.can_finish is not None:
+            caps["can_finish"] = self.can_finish
+        if self.can_delegate is not None:
+            caps["can_delegate"] = self.can_delegate
+        if self.can_use_tools is not None:
+            caps["can_use_tools"] = self.can_use_tools
+        return caps
+
+
+# =============================================================================
 # Role Prompts - Default system prompts for each role
 # =============================================================================
 

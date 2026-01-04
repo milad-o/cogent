@@ -97,6 +97,71 @@ if TYPE_CHECKING:
     from agenticflow.observability.bus import EventBus
 
 
+# =============================================================================
+# Formatting Utilities - Consistent output formatting
+# =============================================================================
+
+def _format_agent_name(name: str, width: int = 12) -> str:
+    """Format agent name with consistent width for column alignment."""
+    if len(name) > width - 2:
+        name = name[:width - 2]
+    return f"[{name}]".ljust(width)
+
+
+def _format_duration(duration_ms: float) -> str:
+    """Consistent duration formatting."""
+    if duration_ms < 1000:
+        return f"({duration_ms:.0f}ms)"
+    elif duration_ms < 60000:
+        return f"({duration_ms/1000:.1f}s)"
+    else:
+        mins = int(duration_ms / 60000)
+        secs = (duration_ms % 60000) / 1000
+        return f"({mins}m {secs:.0f}s)"
+
+
+def _truncate_smart(text: str, max_chars: int = 200) -> str:
+    """Smart truncation that respects word boundaries and adds clear marker."""
+    if len(text) <= max_chars:
+        return text
+    
+    # Find last space before max_chars
+    truncated = text[:max_chars]
+    last_space = truncated.rfind(' ')
+    
+    # Use the space if it's reasonably close to the limit
+    if last_space > max_chars * 0.8:
+        truncated = truncated[:last_space]
+    
+    return truncated + "... (truncated)"
+
+
+def _wrap_content(text: str, indent: str, max_width: int = 80) -> str:
+    """Wrap and indent content consistently."""
+    if not text:
+        return ""
+    
+    words = text.split()
+    lines = []
+    current_line = []
+    current_length = len(indent)
+    
+    for word in words:
+        word_len = len(word) + 1  # +1 for space
+        if current_length + word_len > max_width and current_line:
+            lines.append(indent + " ".join(current_line))
+            current_line = [word]
+            current_length = len(indent) + len(word)
+        else:
+            current_line.append(word)
+            current_length += word_len
+    
+    if current_line:
+        lines.append(indent + " ".join(current_line))
+    
+    return "\n".join(lines)
+
+
 class ObservabilityLevel(IntEnum):
     """
     Preset observability levels.
@@ -995,37 +1060,55 @@ class Observer:
         data = event.data
         
         # ═══════════════════════════════════════════════════════════
-        # USER & OUTPUT EVENTS - Clear visibility into user interactions
+        # USER & OUTPUT EVENTS - Consistent [Name] format
+        # Format: [User] 👤 input: content
+        #         [Agent] 📤 output (duration)
         # ═══════════════════════════════════════════════════════════
         
         if event_type == EventType.USER_INPUT:
             content = _normalize_content(data.get("content", data.get("input", "")))
             source = data.get("source", "user")
-            content = _truncate_text(content.replace("\n", " ").strip())
-            return f"{prefix}{s.info('👤')} {s.bold('User:')} {content}"
+            content = _truncate_smart(content.replace("\n", " ").strip(), self.config.truncate)
+            formatted_name = _format_agent_name("User")
+            return f"{prefix}{s.info(formatted_name)}  {s.info('👤 input')}: {content}"
         
         elif event_type == EventType.USER_FEEDBACK:
             feedback = data.get("feedback", data.get("content", ""))
             decision = data.get("decision", "")
+            formatted_name = _format_agent_name("User")
             if decision:
-                return f"{prefix}{s.info('👤')} {s.bold('User feedback:')} {decision}"
-            feedback = _truncate_text(str(feedback).replace("\n", " ").strip())
-            return f"{prefix}{s.info('👤')} {s.bold('User feedback:')} {feedback}"
+                return f"{prefix}{s.info(formatted_name)}  {s.info('👤 feedback')}: {decision}"
+            feedback = _truncate_smart(str(feedback).replace("\n", " ").strip(), self.config.truncate)
+            return f"{prefix}{s.info(formatted_name)}  {s.info('👤 feedback')}: {feedback}"
         
         elif event_type == EventType.OUTPUT_GENERATED:
             content = _normalize_content(data.get("content", data.get("output", "")))
             agent_name = data.get("agent_name", "")
+            flow_name = data.get("flow_name", "")
+            
             # Duration if available
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                ms = data['duration_ms']
-                if ms > 1000:
-                    duration_str = s.success(f" ({ms/1000:.1f}s)")
-                else:
-                    duration_str = s.dim(f" ({ms:.0f}ms)")
-            content = _truncate_text(content.replace("\n", " ").strip())
-            agent_ctx = f" [{agent_name}]" if agent_name else ""
-            return f"{prefix}{s.success('📤')} {s.bold('Output')}{agent_ctx}{duration_str}: {content}"
+                duration_str = " " + _format_duration(data['duration_ms'])
+            
+            # Format: [Agent] 📤 output (duration) OR [flow-name] 📤 flow output (duration)
+            #         content wrapped and indented
+            if agent_name:
+                formatted_name = _format_agent_name(agent_name)
+                header = f"{prefix}{s.agent(formatted_name)}  {s.success('📤 output')}{s.dim(duration_str)}"
+            elif flow_name:
+                formatted_flow = _format_agent_name(flow_name)
+                header = f"{prefix}{s.info(formatted_flow)}  {s.success('📤 flow output')}{s.dim(duration_str)}"
+            else:
+                header = f"{prefix}{s.success('📤 output')}{s.dim(duration_str)}"
+            
+            if content:
+                content_clean = _truncate_smart(content.replace("\n", " ").strip(), self.config.truncate)
+                indent = " " * 2
+                wrapped = _wrap_content(content_clean, indent)
+                return f"{header}\n{wrapped}"
+            else:
+                return header
         
         elif event_type == EventType.OUTPUT_STREAMED:
             # Similar to TOKEN_STREAMED but for final user-facing output
@@ -1037,12 +1120,15 @@ class Observer:
             return ""  # Don't show at lower levels
         
         # ═══════════════════════════════════════════════════════════
-        # AGENT EVENTS - Purple/Magenta theme with emojis
+        # AGENT EVENTS - Purple/Magenta theme with consistent formatting
+        # Format: [AgentName] ICON status (duration) label
+        #         content indented consistently
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.AGENT_INVOKED:
             agent_name = data.get('agent_name', '?')
-            return f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('▶')} {s.dim('starting...')}"
+            formatted_name = _format_agent_name(agent_name)
+            return f"{prefix}{s.agent(formatted_name)} {s.dim('▶ starting...')}"
         
         elif event_type == EventType.AGENT_THINKING:
             agent_name = data.get('agent_name', '?')
@@ -1056,7 +1142,8 @@ class Observer:
             
             # Only show first thinking event per agent - subsequent work shows via tool calls
             if count == 1:
-                return f"{prefix}{s.agent(f'[{agent_name}]')} {s.info('🧠')} {s.dim('thinking...')}"
+                formatted_name = _format_agent_name(agent_name)
+                return f"{prefix}{s.agent(formatted_name)} {s.info('🧠 thinking...')}"
             else:
                 # Suppress subsequent thinking events - tool calls will show the actual work
                 return None
@@ -1084,24 +1171,27 @@ class Observer:
                 'correction': s.warning(icon),
             }.get(reasoning_type, s.agent(icon))
 
+            formatted_name = _format_agent_name(agent_name)
             header = (
-                f"{prefix}{s.agent(f'[{agent_name}]')} {icon_styled} "
+                f"{prefix}{s.agent(formatted_name)} {icon_styled} "
                 f"{s.dim(f'reasoning (round {round_num})...')}"
             )
             
             if thought_preview and self.config.level >= ObservabilityLevel.DETAILED:
                 # Show thought preview for detailed level
                 lines.append(header)
-                preview = _truncate_text(str(thought_preview))
+                preview = _truncate_smart(str(thought_preview), self.config.truncate)
+                indent = " " * (len(formatted_name) + 1)
                 for line in preview.split('\n')[:5]:
-                    lines.append(f"      {s.dim(line)}")
+                    lines.append(f"{indent}{s.dim(line)}")
                 return "\n".join(lines)
             else:
                 return header
         
         elif event_type == EventType.AGENT_ACTING:
             agent_name = data.get('agent_name', '?')
-            return f"{prefix}{s.agent(f'[{agent_name}]')} {s.warning('⚡')} {s.dim('acting...')}"
+            formatted_name = _format_agent_name(agent_name)
+            return f"{prefix}{s.agent(formatted_name)} {s.warning('⚡ acting...')}"
         
         elif event_type == EventType.AGENT_RESPONDED:
             agent_name = data.get('agent_name', '?')
@@ -1115,28 +1205,32 @@ class Observer:
             # Duration formatting
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                ms = data['duration_ms']
-                if ms > 1000:
-                    duration_str = s.success(f" ({ms/1000:.1f}s)")
-                else:
-                    duration_str = s.dim(f" ({ms:.0f}ms)")
+                duration_str = " " + _format_duration(data['duration_ms'])
             
-            # Header with checkmark
-            header = f"{prefix}{s.success('✓')} {s.agent(f'[{agent_name}]')}{duration_str}"
+            # Format: [Agent] ✓ completed (Xs)
+            #         content indented
+            formatted_name = _format_agent_name(agent_name)
+            header = f"{prefix}{s.agent(formatted_name)} {s.success('✓ completed')}{s.success(duration_str)}"
             
             if result:
-                result_clean = _truncate_text(result.replace("\n", " ").strip())
-                return f"{header}\n      {result_clean}"
+                # Truncate and wrap content
+                result_clean = _truncate_smart(result.replace("\n", " ").strip(), self.config.truncate)
+                indent = " " * (len(formatted_name) + 1)
+                wrapped = _wrap_content(result_clean, indent)
+                return f"{header}\n{wrapped}"
             else:
                 return header
         
         elif event_type == EventType.AGENT_ERROR:
             agent_name = data.get('agent_name', '?')
             error = data.get('error', 'Unknown error')
-            return f"{prefix}{s.error(f'✗ [{agent_name}] ERROR:')} {s.error(error)}"
+            formatted_name = _format_agent_name(agent_name)
+            return f"{prefix}{s.agent(formatted_name)} {s.error('✗ error:')} {s.error(error)}"
         
         # ═══════════════════════════════════════════════════════════
-        # TOOL EVENTS - Blue/Cyan theme with agent context
+        # TOOL EVENTS - Shown as children of agents with consistent indentation
+        # Format: [Agent]   ↳ 🔧 tool_name
+        #         [Agent]     → result preview
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.TOOL_CALLED:
@@ -1144,78 +1238,83 @@ class Observer:
             tool_name = data.get("tool_name", data.get("tool", "?"))
             args = data.get("args", {})
             
-            # Agent context for spawned agents
-            agent_ctx = f"{s.dim(f'[{agent_name}]')} " if agent_name else ""
+            formatted_name = _format_agent_name(agent_name) if agent_name else " " * 12
             
             args_str = ""
             if args and self.config.level >= ObservabilityLevel.DETAILED:
                 args_preview = str(args)
-                args_preview = _truncate_text(args_preview)
-                args_str = f"\n{prefix}      {s.dim(f'args: {args_preview}')}"
+                args_preview = _truncate_smart(args_preview, 100)
+                indent = " " * (len(formatted_name) + 5)  # Align under tool name
+                args_str = f"\n{indent}{s.dim(args_preview)}"
             
-            return f"{prefix}   {agent_ctx}{s.info('↳')} {s.tool(f'🔧 {tool_name}')}{args_str}"
+            return f"{prefix}{s.agent(formatted_name)}  {s.dim('↳')} {s.tool(f'🔧 {tool_name}')}{args_str}"
         
         elif event_type == EventType.TOOL_RESULT:
             agent_name = data.get("agent_name", "")
             tool_name = data.get("tool_name", data.get("tool", "?"))
             result = data.get("result_preview", str(data.get("result", "")))
             
-            # Agent context
-            agent_ctx = f"{s.dim(f'[{agent_name}]')} " if agent_name else ""
+            formatted_name = _format_agent_name(agent_name) if agent_name else " " * 12
             
             # Duration
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                ms = data['duration_ms']
-                if ms > 1000:
-                    duration_str = s.success(f" ({ms/1000:.1f}s)")
-                else:
-                    duration_str = s.dim(f" ({ms:.0f}ms)")
+                duration_str = " " + _format_duration(data['duration_ms'])
             
-            # Truncate result - show more context
-            result = _truncate_text(str(result))
+            # Truncate result - show inline preview if short enough
+            result_str = _truncate_smart(str(result), max_chars=80)
+            result_clean = result_str.replace("\n", " ").strip()
             
-            # Clean up result for single line display
-            result_clean = result.replace("\n", " ").strip()
-            result_preview = f"\n{prefix}      {s.dim(f'→ {result_clean}')}" if result_clean else ""
+            # Format: [Agent]   ✓ 🔧 tool (duration) → result
+            result_part = ""
+            if result_clean and len(result_clean) < 60:
+                result_part = f" {s.dim(f'→ {result_clean}')}"
+            elif result_clean:
+                # Longer results on next line
+                indent = " " * (len(formatted_name) + 5)
+                result_part = f"\n{indent}{s.dim(f'→ {result_clean}')}"
             
-            return f"{prefix}   {agent_ctx}{s.success('✓')} {s.tool(f'🔧 {tool_name}')}{duration_str}{result_preview}"
+            return f"{prefix}{s.agent(formatted_name)}  {s.success(f'✓ 🔧 {tool_name}')}{s.dim(duration_str)}{result_part}"
         
         elif event_type == EventType.TOOL_ERROR:
             agent_name = data.get("agent_name", "")
             tool_name = data.get("tool_name", data.get("tool", "?"))
             error = data.get("error", "Unknown error")
-            agent_ctx = f"{s.dim(f'[{agent_name}]')} " if agent_name else ""
-            return f"{prefix}   {agent_ctx}{s.error('✗')} {s.tool(f'🔧 {tool_name}')} {s.error(f'FAILED: {error}')}"
+            formatted_name = _format_agent_name(agent_name) if agent_name else " " * 12
+            return f"{prefix}{s.agent(formatted_name)}  {s.error(f'✗ 🔧 {tool_name}')} {s.error(f'{error}')}"
         
         # ═══════════════════════════════════════════════════════════
-        # TASK EVENTS - Green theme with clear status
+        # TASK EVENTS - Consistent task lifecycle tracking
+        # Format: [Task] icon status (duration) description
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.TASK_CREATED:
-            task = data.get("task", data.get("task_name", ""))[:80]
+            task = data.get("task", data.get("task_name", ""))
+            task_truncated = _truncate_smart(task, max_chars=100)
             event_name = data.get("event_name", "")
             if event_name and event_name != "task.created":
-                return f"{prefix}{s.info('📋')} {s.bold('Task:')} {task} {s.dim(f'({event_name})')}"
-            return f"{prefix}{s.info('📋')} {s.bold('Task:')} {task}"
+                return f"{prefix}{s.success('📋 created')} {task_truncated} {s.dim(f'({event_name})')}"
+            return f"{prefix}{s.success('📋 created')} {task_truncated}"
         
         elif event_type == EventType.TASK_STARTED:
             task_name = data.get("task_name", data.get("task", "task"))
-            return f"{prefix}{s.success('🚀')} {s.bold('Task started:')} {task_name}"
+            task_truncated = _truncate_smart(task_name, max_chars=100)
+            return f"{prefix}{s.success('▶ started')} {task_truncated}"
         
         elif event_type == EventType.TASK_COMPLETED:
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                ms = data['duration_ms']
-                if ms > 1000:
-                    duration_str = f" in {s.success(f'{ms/1000:.1f}s')}"
-                else:
-                    duration_str = f" in {s.dim(f'{ms:.0f}ms')}"
-            return f"{prefix}{s.success('✅ Task completed')}{duration_str}"
+                duration_str = f" {_format_duration(data['duration_ms'])}"
+            task_result = data.get("result", "")
+            if task_result:
+                result_preview = _truncate_smart(str(task_result), max_chars=80)
+                return f"{prefix}{s.success(f'✓ completed{duration_str}')}\n  {s.dim(result_preview)}"
+            return f"{prefix}{s.success(f'✓ completed{duration_str}')}"
         
         elif event_type == EventType.TASK_FAILED:
             error = data.get('error', 'unknown')
-            return f"{prefix}{s.error(f'❌ Task FAILED: {error}')}"
+            error_truncated = _truncate_smart(str(error), max_chars=100)
+            return f"{prefix}{s.error(f'✗ failed: {error_truncated}')}"
         
         elif event_type == EventType.TASK_RETRYING:
             attempt = data.get("attempt", "?")
@@ -1223,47 +1322,52 @@ class Observer:
             delay_str = ""
             if "delay" in data:
                 delay_str = s.dim(f" in {data['delay']:.1f}s")
-            return f"{prefix}{s.warning(f'🔄 Retrying ({attempt}/{max_retries})')}{delay_str}"
+            return f"{prefix}{s.warning(f'🔄 retrying ({attempt}/{max_retries})')}{delay_str}"
         
         # ═══════════════════════════════════════════════════════════
-        # MESSAGE EVENTS - Communication between agents (concise)
+        # MESSAGE EVENTS - Agent-to-agent communication (concise)
+        # Format: 📤 Sender → Receiver: "preview"
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.MESSAGE_SENT:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
             content = _normalize_content(data.get("content", ""))
-            content = _truncate_text(content.replace("\n", " ").strip())
-            content_str = f' "{content}"' if content else ""
-            return f"{prefix}{s.dim('📤')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
+            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=60)
+            content_str = f': "{content_preview}"' if content_preview else ""
+            return f"{prefix}{s.dim('📤')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
         
         elif event_type == EventType.MESSAGE_RECEIVED:
             receiver = data.get("agent_name", data.get("agent", "?"))
             sender = data.get("from", "?")
             content = _normalize_content(data.get("content", ""))
-            content = _truncate_text(content.replace("\n", " ").strip())
-            content_str = f' "{content}"' if content else ""
-            return f"{prefix}{s.dim('📥')} {sender} {s.dim('→')} {receiver}{s.dim(content_str)}"
+            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=60)
+            content_str = f': "{content_preview}"' if content_preview else ""
+            return f"{prefix}{s.dim('📥')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
         
         elif event_type == EventType.MESSAGE_BROADCAST:
             sender = data.get("sender_id", "?")
-            return f"{prefix}{s.dim('📢')} {sender} {s.dim('broadcast')}"
+            topic = data.get("topic", "")
+            topic_str = f" ({topic})" if topic else ""
+            return f"{prefix}{s.dim('📢')} {s.agent(sender)} {s.dim(f'broadcast{topic_str}')}"
         
         # ═══════════════════════════════════════════════════════════
-        # STREAMING EVENTS - Real-time LLM output
+        # STREAMING EVENTS - Real-time LLM output with consistent formatting
+        # Format: [Agent] ▸ streaming... → [Agent] ✓ stream complete (duration, tok/s)
         # ═══════════════════════════════════════════════════════════
         
         elif event_type == EventType.STREAM_START:
             agent_name = data.get("agent_name", data.get("agent", "?"))
+            formatted_name = _format_agent_name(agent_name)
             model = data.get("model", "")
-            model_str = f" ({model})" if model else ""
+            model_str = f" {s.dim(f'({model})')}" if model else ""
             # Track streaming state
             self._streaming_agents[agent_name] = {
                 "start_time": event.timestamp,
                 "token_count": 0,
             }
             self._stream_buffer[agent_name] = ""
-            return f"{prefix}{s.info('▸')} {s.agent(f'[{agent_name}]')} {s.dim('streaming...')}{s.dim(model_str)}"
+            return f"{prefix}{s.agent(formatted_name)}  {s.info('▸ streaming...')}{model_str}"
         
         elif event_type == EventType.TOKEN_STREAMED:
             agent_name = data.get("agent_name", data.get("agent", "?"))
@@ -1285,14 +1389,16 @@ class Observer:
         
         elif event_type == EventType.STREAM_TOOL_CALL:
             agent_name = data.get("agent_name", data.get("agent", "?"))
+            formatted_name = _format_agent_name(agent_name)
             tool_name = data.get("tool_name", data.get("tool", "?"))
             tool_args = data.get("args", {})
-            args_preview = _truncate_text(str(tool_args)) if tool_args else ""
-            args_part = f" {args_preview}" if args_preview else ""
-            return f"{prefix}   {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{s.dim(args_part) if args_part else ''}"
+            args_preview = _truncate_smart(str(tool_args), max_chars=100) if tool_args else ""
+            args_part = f"\n               {s.dim(args_preview)}" if args_preview else ""
+            return f"{prefix}{s.agent(formatted_name)}    {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{args_part}"
         
         elif event_type == EventType.STREAM_END:
             agent_name = data.get("agent_name", data.get("agent", "?"))
+            formatted_name = _format_agent_name(agent_name)
             # Calculate stats
             token_count = 0
             duration_str = ""
@@ -1303,10 +1409,9 @@ class Observer:
                     start = stream_info["start_time"]
                     duration_ms = (event.timestamp - start).total_seconds() * 1000
                     tokens_per_sec = token_count / (duration_ms / 1000) if duration_ms > 0 else 0
-                    if duration_ms > 1000:
-                        duration_str = s.success(f" ({duration_ms/1000:.1f}s, {tokens_per_sec:.0f} tok/s)")
-                    else:
-                        duration_str = s.dim(f" ({duration_ms:.0f}ms, {token_count} tokens)")
+                    duration_str = f" {_format_duration(duration_ms)}"
+                    if tokens_per_sec > 0:
+                        duration_str = f" {s.success(f'({duration_ms/1000:.1f}s, {tokens_per_sec:.0f} tok/s)')}"
                 # Clean up
                 del self._streaming_agents[agent_name]
             
@@ -1315,28 +1420,28 @@ class Observer:
             if agent_name in self._stream_buffer:
                 content = self._stream_buffer[agent_name]
                 if content:
-                    truncate_len = self.config.truncate or 200
-                    content_preview = content[:truncate_len]
-                    if len(content) > truncate_len:
-                        content_preview += "..."
+                    content_preview = _truncate_smart(content, max_chars=200)
                 del self._stream_buffer[agent_name]
             
             # If we were at DEBUG level, add newline after streaming tokens
             if self.config.level >= ObservabilityLevel.DEBUG:
                 self.config.stream.write("\n")
             
-            header = f"{prefix}{s.success('✓')} {s.agent(f'[{agent_name}]')} {s.dim('stream complete')}{duration_str}"
+            header = f"{prefix}{s.agent(formatted_name)}  {s.success(f'✓ stream complete{duration_str}')}"
             if content_preview and self.config.level >= ObservabilityLevel.DETAILED:
-                return f"{header}\n      {s.dim(content_preview)}"
+                wrapped = _wrap_content(content_preview, indent="  ")
+                return f"{header}\n{wrapped}"
             return header
         
         elif event_type == EventType.STREAM_ERROR:
             agent_name = data.get("agent_name", data.get("agent", "?"))
+            formatted_name = _format_agent_name(agent_name)
             error = data.get("error", "Unknown streaming error")
+            error_truncated = _truncate_smart(str(error), max_chars=100)
             # Clean up streaming state
             self._streaming_agents.pop(agent_name, None)
             self._stream_buffer.pop(agent_name, None)
-            return f"{prefix}{s.error('✗')} {s.agent(f'[{agent_name}]')} {s.error(f'Stream error: {error}')}"
+            return f"{prefix}{s.agent(formatted_name)}  {s.error(f'✗ stream error: {error_truncated}')}"
         
         # ═══════════════════════════════════════════════════════════
         # LLM OBSERVABILITY EVENTS - Subtle presence, details opt-in
@@ -1346,10 +1451,11 @@ class Observer:
             agent_name = data.get("agent_name", "?")
             message_count = data.get("message_count", 0)
             tools_available = data.get("tools_available", [])
+            formatted_name = _format_agent_name(agent_name)
             
             # Subtle presence: just show request was made
             tools_str = f", {len(tools_available)} tools" if tools_available else ""
-            header = f"{prefix}{s.dim('→')} {s.agent(f'[{agent_name}]')} {s.dim(f'LLM request ({message_count} messages{tools_str})')}"
+            header = f"{prefix}{s.agent(formatted_name)}  {s.dim('→ LLM request')} {s.dim(f'({message_count} messages{tools_str})')}"
             
             # Details only at TRACE level or if explicitly subscribed to LLM channel
             if self.config.level >= ObservabilityLevel.TRACE:
@@ -1370,18 +1476,16 @@ class Observer:
             agent_name = data.get("agent_name", "?")
             tool_calls = data.get("tool_calls", [])
             duration_ms = data.get("duration_ms", 0)
+            formatted_name = _format_agent_name(agent_name)
             
             # Duration formatting
             duration_str = ""
             if duration_ms:
-                if duration_ms > 1000:
-                    duration_str = s.success(f" {duration_ms/1000:.1f}s")
-                else:
-                    duration_str = s.dim(f" {duration_ms:.0f}ms")
+                duration_str = " " + _format_duration(duration_ms)
             
             # Subtle presence: just show response received
             tool_str = f", {len(tool_calls)} tools" if tool_calls else ""
-            header = f"{prefix}{s.dim('←')} {s.agent(f'[{agent_name}]')} {s.dim(f'LLM response{duration_str}{tool_str}')}"
+            header = f"{prefix}{s.agent(formatted_name)}  {s.dim('← LLM response')}{s.dim(duration_str)}{s.dim(tool_str)}"
             
             # Details only at TRACE level
             if self.config.level >= ObservabilityLevel.TRACE:
@@ -1397,15 +1501,16 @@ class Observer:
         elif event_type == EventType.LLM_TOOL_DECISION:
             agent_name = data.get("agent_name", "?")
             tools_selected = data.get("tools_selected", [])
+            formatted_name = _format_agent_name(agent_name)
             
             # Subtle presence
             if tools_selected:
                 tools_str = ", ".join(tools_selected[:3])
                 if len(tools_selected) > 3:
                     tools_str += f" (+{len(tools_selected) - 3})"
-                header = f"{prefix}{s.dim('→')} {s.agent(f'[{agent_name}]')} {s.dim(f'Tool decision: {tools_str}')}"
+                header = f"{prefix}{s.agent(formatted_name)}  {s.dim(f'→ tool decision: {tools_str}')}"
             else:
-                header = f"{prefix}{s.dim('→')} {s.agent(f'[{agent_name}]')} {s.dim('Tool decision: none')}"
+                header = f"{prefix}{s.agent(formatted_name)}  {s.dim('→ tool decision: none')}"
             
             # Show reasoning only at TRACE level
             if self.config.level >= ObservabilityLevel.TRACE:

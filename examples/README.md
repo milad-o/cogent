@@ -24,6 +24,7 @@ Core concepts every user should know.
 | [hello_world.py](basics/hello_world.py) | Single agent basics |
 | [memory.py](basics/memory.py) | Thread-based conversation memory |
 | [roles.py](basics/roles.py) | Agent roles (worker, supervisor, etc.) |
+| [role_configs.py](basics/role_configs.py) | RoleConfig objects (recommended API) |
 | [streaming.py](basics/streaming.py) | Token-by-token LLM streaming |
 | [structured_output.py](basics/structured_output.py) | Pydantic/TypedDict responses |
 

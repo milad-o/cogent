@@ -196,14 +196,15 @@ class TestAgentRoleIntegration:
         assert agent.can_delegate is True
         assert agent.can_finish is True
     
-    def test_agent_factory_as_supervisor(self):
-        """Test Agent.as_supervisor factory method."""
+    def test_agent_with_role_and_workers(self):
+        """Test Agent with role=SUPERVISOR and workers parameter."""
         from unittest.mock import MagicMock
         
         mock_model = MagicMock()
-        supervisor = Agent.as_supervisor(
+        supervisor = Agent(
             name="Manager",
             model=mock_model,
+            role=AgentRole.SUPERVISOR,
             workers=["Alice", "Bob"],
         )
         
@@ -212,14 +213,15 @@ class TestAgentRoleIntegration:
         assert "Alice" in supervisor.instructions
         assert "Bob" in supervisor.instructions
     
-    def test_agent_factory_as_worker(self):
-        """Test Agent.as_worker factory method."""
+    def test_agent_with_role_and_specialty(self):
+        """Test Agent with role=WORKER and specialty parameter."""
         from unittest.mock import MagicMock
         
         mock_model = MagicMock()
-        worker = Agent.as_worker(
+        worker = Agent(
             name="Analyst",
             model=mock_model,
+            role=AgentRole.WORKER,
             specialty="data analysis",
         )
         
@@ -227,21 +229,21 @@ class TestAgentRoleIntegration:
         assert worker.can_delegate is False
         assert "data analysis" in worker.instructions
     
-    def test_agent_factory_as_critic(self):
-        """Test Agent.as_critic factory method (uses REVIEWER role)."""
+    def test_agent_with_role_and_criteria(self):
+        """Test Agent with role=REVIEWER and criteria parameter."""
         from unittest.mock import MagicMock
         
         mock_model = MagicMock()
-        critic = Agent.as_critic(
+        reviewer = Agent(
             name="Reviewer",
             model=mock_model,
+            role=AgentRole.REVIEWER,
             criteria=["correctness", "clarity"],
         )
         
-        # as_critic now uses REVIEWER role
-        assert critic.role == AgentRole.REVIEWER
-        assert "correctness" in critic.instructions
-        assert "clarity" in critic.instructions
+        assert reviewer.role == AgentRole.REVIEWER
+        assert "correctness" in reviewer.instructions
+        assert "clarity" in reviewer.instructions
     
     def test_worker_capabilities(self):
         """Worker: can_tools=✅, can_finish=❌, can_delegate=❌."""

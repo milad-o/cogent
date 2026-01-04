@@ -107,6 +107,14 @@ from agenticflow import graph
 # Agents (THIS IS WHERE WE ADD VALUE)
 from agenticflow.agent.base import Agent
 from agenticflow.agent.config import AgentConfig
+from agenticflow.agent.roles import (
+    AutonomousRole,
+    CustomRole,
+    ReviewerRole,
+    RoleConfig,
+    SupervisorRole,
+    WorkerRole,
+)
 from agenticflow.agent.hitl import (
     AbortedException,
     DecisionRequiredException,
@@ -407,6 +415,13 @@ __all__ = [
     "Agent",
     "AgentConfig",
     "AgentState",
+    # Roles
+    "RoleConfig",
+    "SupervisorRole",
+    "WorkerRole",
+    "ReviewerRole",
+    "AutonomousRole",
+    "CustomRole",
     # Memory
     "AgentMemory",
     "MemorySnapshot",
