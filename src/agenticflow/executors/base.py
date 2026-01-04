@@ -71,7 +71,7 @@ class BaseExecutor(ABC):
             agent: The agent that will think and act.
         """
         self.agent = agent
-        self.max_iterations: int = 10
+        self.max_iterations: int = 25
         self.on_step: Callable[[str, Any], None] | None = None
         self.tracker: ProgressTracker | None = None
         self.verify_completion: bool = False  # Enable for strict verification

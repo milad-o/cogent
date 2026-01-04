@@ -137,7 +137,7 @@ class ReactiveAgent(Agent):
         task: str,
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
-        max_iterations: int = 10,
+        max_iterations: int = 25,
     ) -> Any:
         """React to an event.
 

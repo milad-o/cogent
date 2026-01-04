@@ -57,7 +57,7 @@ async def run(
     tools: list[BaseTool] | None = None,
     model: str | BaseChatModel = "gpt-4o-mini",
     system_prompt: str | None = None,
-    max_iterations: int = 10,
+    max_iterations: int = 25,
     max_tool_calls: int = 20,
     resilience: bool = True,
     verbose: bool = False,

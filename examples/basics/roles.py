@@ -24,7 +24,7 @@ from pathlib import Path
 # Add examples directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import get_model, settings
+from config import get_model
 
 from agenticflow import Agent, Flow, Observer
 from agenticflow.agent import parse_delegation, get_role_prompt, get_role_behavior

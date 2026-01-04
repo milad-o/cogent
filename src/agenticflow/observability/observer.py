@@ -78,6 +78,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, IntEnum
+from pathlib import Path
 from typing import Any, Callable, TextIO, TYPE_CHECKING
 
 from agenticflow.observability.event import EventType
@@ -120,7 +121,7 @@ def _format_duration(duration_ms: float) -> str:
         return f"({mins}m {secs:.0f}s)"
 
 
-def _truncate_smart(text: str, max_chars: int = 200) -> str:
+def _truncate_smart(text: str, max_chars: int = 500) -> str:
     """Smart truncation that respects word boundaries and adds clear marker."""
     if len(text) <= max_chars:
         return text
@@ -373,8 +374,19 @@ class ObserverConfig:
     show_timestamps: bool = False
     show_duration: bool = True
     show_trace_ids: bool = False
-    truncate: int = 200
+    truncate: int = 500  # General content truncation
+    truncate_tool_args: int = 300  # Tool arguments
+    truncate_tool_results: int = 400  # Tool results
+    truncate_messages: int = 500  # Message content
     use_colors: bool = True
+    
+    # Token tracking
+    track_tokens: bool = True  # Track token usage from LLM responses
+    show_token_usage: bool = True  # Display token counts in output
+    show_cost_estimates: bool = False  # Show estimated costs (requires model pricing)
+    
+    # Progress tracking
+    show_progress_steps: bool = False  # Show step N/M progress indicators
     
     # Callbacks
     on_event: Callable[[Event], None] | None = None
@@ -466,8 +478,17 @@ class Observer:
         show_timestamps: bool = False,
         show_duration: bool = True,
         show_trace_ids: bool = False,
-        truncate: int = 200,
+        truncate: int = 500,
+        truncate_tool_args: int = 300,
+        truncate_tool_results: int = 400,
+        truncate_messages: int = 500,
         use_colors: bool = True,
+        # Token tracking
+        track_tokens: bool = True,
+        show_token_usage: bool = True,
+        show_cost_estimates: bool = False,
+        # Progress tracking
+        show_progress_steps: bool = False,
         # Callbacks
         on_event: Callable[[Event], None] | None = None,
         on_agent: Callable[[str, str, dict], None] | None = None,
@@ -492,7 +513,10 @@ class Observer:
             show_timestamps: Show timestamps in output
             show_duration: Show operation duration
             show_trace_ids: Show correlation IDs
-            truncate: Max chars for results (0 = no limit)
+            truncate: Max chars for general content (default: 500)
+            truncate_tool_args: Max chars for tool arguments (default: 300)
+            truncate_tool_results: Max chars for tool results (default: 400)
+            truncate_messages: Max chars for messages (default: 500)
             use_colors: Use ANSI colors
             on_event: Callback for every event
             on_agent: Callback for agent events (name, action, data)
@@ -514,7 +538,14 @@ class Observer:
             show_duration=show_duration,
             show_trace_ids=show_trace_ids,
             truncate=truncate,
+            truncate_tool_args=truncate_tool_args,
+            truncate_tool_results=truncate_tool_results,
+            truncate_messages=truncate_messages,
             use_colors=use_colors,
+            track_tokens=track_tokens,
+            show_token_usage=show_token_usage,
+            show_cost_estimates=show_cost_estimates,
+            show_progress_steps=show_progress_steps,
             on_event=on_event,
             on_agent=on_agent,
             on_tool=on_tool,
@@ -558,6 +589,45 @@ class Observer:
         
         # Thinking event deduplication - track iteration count per agent
         self._agent_thinking_count: dict[str, int] = {}  # agent_name -> iteration count
+        
+        # Token usage tracking
+        self._token_usage: dict[str, dict[str, int]] = defaultdict(lambda: {"input": 0, "output": 0, "total": 0})  # agent_name -> token counts
+        self._total_tokens: dict[str, int] = {"input": 0, "output": 0, "total": 0}
+        
+        # Progress step tracking
+        self._progress_steps: dict[str, dict[str, Any]] = {}  # agent_name -> {current: int, total: int, description: str}
+        
+        # State change tracking (for diff visualization)
+        self._state_snapshots: dict[str, dict[str, Any]] = {}  # entity_id -> latest state
+        
+        # Error context enhancement
+        self._error_suggestions: dict[str, list[str]] = {  # error_pattern -> suggestions
+            "permission denied": [
+                "Check file/directory permissions",
+                "Verify the process has necessary access rights",
+                "Consider running with elevated permissions if appropriate"
+            ],
+            "connection refused": [
+                "Verify the target service is running",
+                "Check network connectivity",
+                "Confirm the port number is correct"
+            ],
+            "timeout": [
+                "Check network connectivity",
+                "Verify the service is responding",
+                "Consider increasing timeout duration"
+            ],
+            "not found": [
+                "Verify the resource exists",
+                "Check the path or identifier is correct",
+                "Ensure required dependencies are installed"
+            ],
+            "invalid credentials": [
+                "Verify API keys and secrets are correct",
+                "Check credentials haven't expired",
+                "Ensure environment variables are set"
+            ],
+        }
     
     # ==================== Factory Methods (Presets) ====================
     
@@ -1070,16 +1140,16 @@ class Observer:
             source = data.get("source", "user")
             content = _truncate_smart(content.replace("\n", " ").strip(), self.config.truncate)
             formatted_name = _format_agent_name("User")
-            return f"{prefix}{s.info(formatted_name)}  {s.info('👤 input')}: {content}"
+            return f"{prefix}{s.info(formatted_name)} {s.dim('[input]')}: {content}"
         
         elif event_type == EventType.USER_FEEDBACK:
             feedback = data.get("feedback", data.get("content", ""))
             decision = data.get("decision", "")
             formatted_name = _format_agent_name("User")
             if decision:
-                return f"{prefix}{s.info(formatted_name)}  {s.info('👤 feedback')}: {decision}"
+                return f"{prefix}{s.info(formatted_name)} {s.dim('[feedback]')}: {decision}"
             feedback = _truncate_smart(str(feedback).replace("\n", " ").strip(), self.config.truncate)
-            return f"{prefix}{s.info(formatted_name)}  {s.info('👤 feedback')}: {feedback}"
+            return f"{prefix}{s.info(formatted_name)} {s.dim('[feedback]')}: {feedback}"
         
         elif event_type == EventType.OUTPUT_GENERATED:
             content = _normalize_content(data.get("content", data.get("output", "")))
@@ -1091,16 +1161,17 @@ class Observer:
             if self.config.show_duration and "duration_ms" in data:
                 duration_str = " " + _format_duration(data['duration_ms'])
             
-            # Format: [Agent] 📤 output (duration) OR [flow-name] 📤 flow output (duration)
+            # Format: [Agent] [output] OR [flow-name] [flow-output] (no duration - shown in completed)
             #         content wrapped and indented
             if agent_name:
                 formatted_name = _format_agent_name(agent_name)
-                header = f"{prefix}{s.agent(formatted_name)}  {s.success('📤 output')}{s.dim(duration_str)}"
+                header = f"{prefix}{s.agent(formatted_name)} {s.dim('[output]')}"
             elif flow_name:
                 formatted_flow = _format_agent_name(flow_name)
-                header = f"{prefix}{s.info(formatted_flow)}  {s.success('📤 flow output')}{s.dim(duration_str)}"
+                # Flow output keeps duration since there's no separate "completed" event
+                header = f"{prefix}{s.info(formatted_flow)} {s.dim('[flow-output]')}{s.success(duration_str)}"
             else:
-                header = f"{prefix}{s.success('📤 output')}{s.dim(duration_str)}"
+                header = f"{prefix}{s.dim('[output]')}"
             
             if content:
                 content_clean = _truncate_smart(content.replace("\n", " ").strip(), self.config.truncate)
@@ -1128,11 +1199,15 @@ class Observer:
         elif event_type == EventType.AGENT_INVOKED:
             agent_name = data.get('agent_name', '?')
             formatted_name = _format_agent_name(agent_name)
-            return f"{prefix}{s.agent(formatted_name)} {s.dim('▶ starting...')}"
+            return f"{prefix}{s.agent(formatted_name)} {s.dim('[starting]')}"
         
         elif event_type == EventType.AGENT_THINKING:
             agent_name = data.get('agent_name', '?')
             iteration = data.get('iteration', 1)
+            max_iterations = data.get('max_iterations', 0)
+            current_step = data.get('current_step', 0)
+            total_steps = data.get('total_steps', 0)
+            step_description = data.get('step_description', '')
             
             # Track thinking iterations per agent to reduce noise
             if agent_name not in self._agent_thinking_count:
@@ -1140,10 +1215,29 @@ class Observer:
             self._agent_thinking_count[agent_name] += 1
             count = self._agent_thinking_count[agent_name]
             
+            # Update progress tracking if step info provided
+            if current_step and total_steps:
+                self._progress_steps[agent_name] = {
+                    "current": current_step,
+                    "total": total_steps,
+                    "description": step_description
+                }
+            
             # Only show first thinking event per agent - subsequent work shows via tool calls
             if count == 1:
                 formatted_name = _format_agent_name(agent_name)
-                return f"{prefix}{s.agent(formatted_name)} {s.info('🧠 thinking...')}"
+                
+                # Add progress indicator if enabled and available
+                progress_suffix = ""
+                if self.config.show_progress_steps and agent_name in self._progress_steps:
+                    progress = self._progress_steps[agent_name]
+                    step_text = f" Step {progress['current']}/{progress['total']}"
+                    if progress['description']:
+                        step_text += f": {progress['description']}"
+                    progress_suffix = s.dim(step_text)
+                
+                base_msg = f"{prefix}{s.agent(formatted_name)} {s.dim('[thinking]')}"
+                return base_msg + progress_suffix if progress_suffix else base_msg
             else:
                 # Suppress subsequent thinking events - tool calls will show the actual work
                 return None
@@ -1191,7 +1285,7 @@ class Observer:
         elif event_type == EventType.AGENT_ACTING:
             agent_name = data.get('agent_name', '?')
             formatted_name = _format_agent_name(agent_name)
-            return f"{prefix}{s.agent(formatted_name)} {s.warning('⚡ acting...')}"
+            return f"{prefix}{s.agent(formatted_name)} {s.dim('[acting]')}"
         
         elif event_type == EventType.AGENT_RESPONDED:
             agent_name = data.get('agent_name', '?')
@@ -1207,25 +1301,105 @@ class Observer:
             if self.config.show_duration and "duration_ms" in data:
                 duration_str = " " + _format_duration(data['duration_ms'])
             
-            # Format: [Agent] ✓ completed (Xs)
-            #         content indented
+            # Format: [Agent] [completed] (Xs) - just status, no content duplication
             formatted_name = _format_agent_name(agent_name)
-            header = f"{prefix}{s.agent(formatted_name)} {s.success('✓ completed')}{s.success(duration_str)}"
-            
-            if result:
-                # Truncate and wrap content
-                result_clean = _truncate_smart(result.replace("\n", " ").strip(), self.config.truncate)
-                indent = " " * (len(formatted_name) + 1)
-                wrapped = _wrap_content(result_clean, indent)
-                return f"{header}\n{wrapped}"
-            else:
-                return header
+            return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.success(duration_str)}"
         
         elif event_type == EventType.AGENT_ERROR:
             agent_name = data.get('agent_name', '?')
             error = data.get('error', 'Unknown error')
+            error_str = str(error)
             formatted_name = _format_agent_name(agent_name)
-            return f"{prefix}{s.agent(formatted_name)} {s.error('✗ error:')} {s.error(error)}"
+            
+            # Build error message with context
+            error_lines = [f"{prefix}{s.agent(formatted_name)} {s.error('[error]')} {s.error(error_str)}"]
+            
+            # Add error suggestions if pattern matches
+            error_lower = error_str.lower()
+            suggestions = []
+            for pattern, pattern_suggestions in self._error_suggestions.items():
+                if pattern in error_lower:
+                    suggestions.extend(pattern_suggestions)
+                    break
+            
+            # Add context from data if available
+            context_info = []
+            if "file" in data or "path" in data:
+                file_path = data.get("file") or data.get("path")
+                context_info.append(f"File: {file_path}")
+            if "line" in data:
+                context_info.append(f"Line: {data['line']}")
+            if "tool" in data:
+                context_info.append(f"Tool: {data['tool']}")
+            
+            # Add suggestions and context at DEBUG level
+            if self.config.level >= ObservabilityLevel.DEBUG:
+                indent = " " * (len(formatted_name) + 1)
+                
+                if context_info:
+                    for info in context_info:
+                        error_lines.append(f"{indent}{s.dim(info)}")
+                
+                if suggestions:
+                    error_lines.append(f"{indent}{s.warning('Suggestions:')}")
+                    for suggestion in suggestions[:3]:  # Limit to top 3
+                        error_lines.append(f"{indent}  • {s.dim(suggestion)}")
+            
+            return "\n".join(error_lines)
+        
+        elif event_type == EventType.AGENT_STATUS_CHANGED:
+            # State change diff visualization
+            agent_name = data.get('agent_name', '?')
+            entity_id = data.get('entity_id', agent_name)
+            old_state = data.get('old_state', {})
+            new_state = data.get('new_state', {})
+            formatted_name = _format_agent_name(agent_name)
+            
+            # Track state snapshots
+            if entity_id and new_state:
+                self._state_snapshots[entity_id] = new_state.copy()
+            
+            # Build diff visualization
+            diff_lines = [f"{prefix}{s.agent(formatted_name)} {s.dim('[state-change]')}"]
+            
+            # Show at DETAILED level or higher
+            if self.config.level >= ObservabilityLevel.DETAILED:
+                indent = " " * (len(formatted_name) + 1)
+                
+                # Find changed fields
+                all_keys = set(old_state.keys()) | set(new_state.keys())
+                changes = []
+                
+                for key in sorted(all_keys):
+                    old_val = old_state.get(key)
+                    new_val = new_state.get(key)
+                    
+                    if old_val != new_val:
+                        # Format change
+                        old_str = str(old_val) if old_val is not None else "null"
+                        new_str = str(new_val) if new_val is not None else "null"
+                        
+                        # Truncate long values
+                        if len(old_str) > 40:
+                            old_str = old_str[:37] + "..."
+                        if len(new_str) > 40:
+                            new_str = new_str[:37] + "..."
+                        
+                        # Color: old in dim, new in bright
+                        change_line = f"{key}: {s.dim(old_str)} {s.info('→')} {s.success(new_str)}"
+                        changes.append(change_line)
+                
+                # Display changes
+                if changes:
+                    for change in changes[:5]:  # Limit to 5 changes
+                        diff_lines.append(f"{indent}{change}")
+                    
+                    if len(changes) > 5:
+                        diff_lines.append(f"{indent}{s.dim(f'... and {len(changes) - 5} more changes')}")
+                else:
+                    diff_lines.append(f"{indent}{s.dim('(no changes detected)')}")
+            
+            return "\n".join(diff_lines)
         
         # ═══════════════════════════════════════════════════════════
         # TOOL EVENTS - Shown as children of agents with consistent indentation
@@ -1243,11 +1417,11 @@ class Observer:
             args_str = ""
             if args and self.config.level >= ObservabilityLevel.DETAILED:
                 args_preview = str(args)
-                args_preview = _truncate_smart(args_preview, 100)
-                indent = " " * (len(formatted_name) + 5)  # Align under tool name
+                args_preview = _truncate_smart(args_preview, self.config.truncate_tool_args)
+                indent = " " * (len(formatted_name) + 3)  # Align under tool name
                 args_str = f"\n{indent}{s.dim(args_preview)}"
             
-            return f"{prefix}{s.agent(formatted_name)}  {s.dim('↳')} {s.tool(f'🔧 {tool_name}')}{args_str}"
+            return f"{prefix}{s.agent(formatted_name)} {s.dim('[tool-call]')} {s.tool(tool_name)}{args_str}"
         
         elif event_type == EventType.TOOL_RESULT:
             agent_name = data.get("agent_name", "")
@@ -1262,26 +1436,46 @@ class Observer:
                 duration_str = " " + _format_duration(data['duration_ms'])
             
             # Truncate result - show inline preview if short enough
-            result_str = _truncate_smart(str(result), max_chars=80)
+            result_str = _truncate_smart(str(result), max_chars=self.config.truncate_tool_results)
             result_clean = result_str.replace("\n", " ").strip()
             
-            # Format: [Agent]   ✓ 🔧 tool (duration) → result
+            # Format: [Agent] [tool-result] tool_name (duration) ⮕ result
             result_part = ""
-            if result_clean and len(result_clean) < 60:
-                result_part = f" {s.dim(f'→ {result_clean}')}"
+            if result_clean and len(result_clean) < 120:
+                result_part = f" {s.dim('⮕')} {result_clean}"
             elif result_clean:
                 # Longer results on next line
-                indent = " " * (len(formatted_name) + 5)
-                result_part = f"\n{indent}{s.dim(f'→ {result_clean}')}"
+                indent = " " * (len(formatted_name) + 3)
+                result_part = f"\n{indent}{s.dim('⮕')} {result_clean}"
             
-            return f"{prefix}{s.agent(formatted_name)}  {s.success(f'✓ 🔧 {tool_name}')}{s.dim(duration_str)}{result_part}"
+            return f"{prefix}{s.agent(formatted_name)} {s.success('[tool-result]')} {s.tool(tool_name)}{s.success(duration_str)}{result_part}"
         
         elif event_type == EventType.TOOL_ERROR:
             agent_name = data.get("agent_name", "")
             tool_name = data.get("tool_name", data.get("tool", "?"))
             error = data.get("error", "Unknown error")
+            error_str = str(error)
             formatted_name = _format_agent_name(agent_name) if agent_name else " " * 12
-            return f"{prefix}{s.agent(formatted_name)}  {s.error(f'✗ 🔧 {tool_name}')} {s.error(f'{error}')}"
+            
+            # Build error message
+            error_lines = [f"{prefix}{s.agent(formatted_name)} {s.error('[tool-error]')} {s.tool(tool_name)}: {s.error(error_str)}"]
+            
+            # Add error suggestions if pattern matches
+            error_lower = error_str.lower()
+            suggestions = []
+            for pattern, pattern_suggestions in self._error_suggestions.items():
+                if pattern in error_lower:
+                    suggestions.extend(pattern_suggestions)
+                    break
+            
+            # Add suggestions at DEBUG level
+            if self.config.level >= ObservabilityLevel.DEBUG and suggestions:
+                indent = " " * (len(formatted_name) + 1)
+                error_lines.append(f"{indent}{s.warning('Suggestions:')}")
+                for suggestion in suggestions[:3]:
+                    error_lines.append(f"{indent}  • {s.dim(suggestion)}")
+            
+            return "\n".join(error_lines)
         
         # ═══════════════════════════════════════════════════════════
         # TASK EVENTS - Consistent task lifecycle tracking
@@ -1333,7 +1527,7 @@ class Observer:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
             content = _normalize_content(data.get("content", ""))
-            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=60)
+            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=self.config.truncate_messages)
             content_str = f': "{content_preview}"' if content_preview else ""
             return f"{prefix}{s.dim('📤')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
         
@@ -1341,7 +1535,7 @@ class Observer:
             receiver = data.get("agent_name", data.get("agent", "?"))
             sender = data.get("from", "?")
             content = _normalize_content(data.get("content", ""))
-            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=60)
+            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=self.config.truncate_messages)
             content_str = f': "{content_preview}"' if content_preview else ""
             return f"{prefix}{s.dim('📥')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
         
@@ -1453,9 +1647,9 @@ class Observer:
             tools_available = data.get("tools_available", [])
             formatted_name = _format_agent_name(agent_name)
             
-            # Subtle presence: just show request was made
+            # Professional format with brackets
             tools_str = f", {len(tools_available)} tools" if tools_available else ""
-            header = f"{prefix}{s.agent(formatted_name)}  {s.dim('→ LLM request')} {s.dim(f'({message_count} messages{tools_str})')}"
+            header = f"{prefix}{s.agent(formatted_name)} {s.dim(f'[llm-request] ({message_count} messages{tools_str})')}"
             
             # Details only at TRACE level or if explicitly subscribed to LLM channel
             if self.config.level >= ObservabilityLevel.TRACE:
@@ -1478,14 +1672,37 @@ class Observer:
             duration_ms = data.get("duration_ms", 0)
             formatted_name = _format_agent_name(agent_name)
             
+            # Token usage tracking
+            input_tokens = data.get("input_tokens", 0) or data.get("prompt_tokens", 0)
+            output_tokens = data.get("output_tokens", 0) or data.get("completion_tokens", 0)
+            total_tokens = data.get("total_tokens", 0) or (input_tokens + output_tokens)
+            
+            # Track tokens if enabled
+            if self.config.track_tokens and total_tokens > 0:
+                self._token_usage[agent_name]["input"] += input_tokens
+                self._token_usage[agent_name]["output"] += output_tokens
+                self._token_usage[agent_name]["total"] += total_tokens
+                self._total_tokens["input"] += input_tokens
+                self._total_tokens["output"] += output_tokens
+                self._total_tokens["total"] += total_tokens
+            
             # Duration formatting
             duration_str = ""
             if duration_ms:
                 duration_str = " " + _format_duration(duration_ms)
             
-            # Subtle presence: just show response received
+            # Token usage display
+            token_str = ""
+            if self.config.show_token_usage and total_tokens > 0:
+                # Format: ~850 tokens (650 in, 200 out)
+                if input_tokens and output_tokens:
+                    token_str = f" ~{total_tokens} tokens ({input_tokens} in, {output_tokens} out)"
+                else:
+                    token_str = f" ~{total_tokens} tokens"
+            
+            # Professional format with brackets
             tool_str = f", {len(tool_calls)} tools" if tool_calls else ""
-            header = f"{prefix}{s.agent(formatted_name)}  {s.dim('← LLM response')}{s.dim(duration_str)}{s.dim(tool_str)}"
+            header = f"{prefix}{s.agent(formatted_name)} {s.dim(f'[llm-response]{duration_str}{token_str}{tool_str}')}"
             
             # Details only at TRACE level
             if self.config.level >= ObservabilityLevel.TRACE:
@@ -1503,14 +1720,14 @@ class Observer:
             tools_selected = data.get("tools_selected", [])
             formatted_name = _format_agent_name(agent_name)
             
-            # Subtle presence
+            # Professional format
             if tools_selected:
                 tools_str = ", ".join(tools_selected[:3])
                 if len(tools_selected) > 3:
                     tools_str += f" (+{len(tools_selected) - 3})"
-                header = f"{prefix}{s.agent(formatted_name)}  {s.dim(f'→ tool decision: {tools_str}')}"
+                header = f"{prefix}{s.agent(formatted_name)} {s.dim('[tool-decision]')} {s.tool(tools_str)}"
             else:
-                header = f"{prefix}{s.agent(formatted_name)}  {s.dim('→ tool decision: none')}"
+                header = f"{prefix}{s.agent(formatted_name)} {s.dim('[tool-decision] none')}"
             
             # Show reasoning only at TRACE level
             if self.config.level >= ObservabilityLevel.TRACE:
@@ -2309,6 +2526,22 @@ class Observer:
             if failed:
                 lines.append(f"  ✗ Failed: {failed}")
         
+        # Token usage stats (if tracked)
+        if self.config.track_tokens and self._total_tokens["total"] > 0:
+            lines.append("")
+            lines.append("Token Usage:")
+            lines.append(f"  📊 Total: {self._total_tokens['total']:,}")
+            lines.append(f"  ⬇️  Input: {self._total_tokens['input']:,}")
+            lines.append(f"  ⬆️  Output: {self._total_tokens['output']:,}")
+            
+            # Per-agent breakdown if multiple agents
+            if len(self._token_usage) > 1:
+                lines.append("")
+                lines.append("  By agent:")
+                for agent_name, tokens in sorted(self._token_usage.items(), key=lambda x: x[1]["total"], reverse=True):
+                    if tokens["total"] > 0:
+                        lines.append(f"    {agent_name}: {tokens['total']:,} ({tokens['input']:,} in, {tokens['output']:,} out)")
+        
         # Channel breakdown
         if "by_channel" in m and m["by_channel"]:
             lines.append("")
@@ -2318,6 +2551,111 @@ class Observer:
         
         lines.append("═" * 50)
         return "\n".join(lines)
+    
+    def export(self, filepath: str | Path, format: str = "jsonl") -> None:
+        """
+        Export captured events to a file for analysis.
+        
+        Supports structured export formats for post-processing, analytics,
+        and integration with logging/monitoring systems.
+        
+        Args:
+            filepath: Path to export file
+            format: Export format - 'jsonl' (JSON Lines), 'json', or 'csv'
+        
+        Example:
+            ```python
+            observer = Observer.trace()
+            await flow.run("task")
+            
+            # Export for analysis
+            observer.export("trace.jsonl")  # One event per line
+            observer.export("trace.json", format="json")  # Full array
+            ```
+        
+        JSON Lines format (default):
+            Each line is a complete JSON object:
+            ```
+            {"timestamp":"2026-01-03T10:30:45.123Z","event":"agent.invoked","agent":"Manager",...}
+            {"timestamp":"2026-01-03T10:30:46.234Z","event":"tool.called","tool":"search",...}
+            ```
+        
+        JSON format:
+            Single JSON array with all events:
+            ```json
+            [
+              {"timestamp": "...", "event": "agent.invoked", ...},
+              {"timestamp": "...", "event": "tool.called", ...}
+            ]
+            ```
+        """
+        filepath = Path(filepath)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        
+        if format == "jsonl":
+            # JSON Lines: one event per line
+            with filepath.open("w") as f:
+                for observed in self._events:
+                    event_data = {
+                        "timestamp": observed.timestamp.isoformat(),
+                        "event": observed.event.type.value,
+                        "channel": observed.channel.value,
+                        "data": observed.event.data,
+                        "source": observed.event.source,
+                        "correlation_id": observed.event.correlation_id,
+                    }
+                    f.write(json.dumps(event_data, default=str) + "\n")
+        
+        elif format == "json":
+            # Single JSON array
+            events = []
+            for observed in self._events:
+                event_data = {
+                    "timestamp": observed.timestamp.isoformat(),
+                    "event": observed.event.type.value,
+                    "channel": observed.channel.value,
+                    "data": observed.event.data,
+                    "source": observed.event.source,
+                    "correlation_id": observed.event.correlation_id,
+                }
+                events.append(event_data)
+            
+            with filepath.open("w") as f:
+                json.dump(events, f, indent=2, default=str)
+        
+        elif format == "csv":
+            # CSV with flattened data
+            import csv
+            
+            with filepath.open("w", newline="") as f:
+                # Determine all possible fields
+                fields = ["timestamp", "event", "channel", "source", "correlation_id"]
+                data_fields = set()
+                for observed in self._events:
+                    data_fields.update(observed.event.data.keys())
+                fields.extend(sorted(data_fields))
+                
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                
+                for observed in self._events:
+                    row = {
+                        "timestamp": observed.timestamp.isoformat(),
+                        "event": observed.event.type.value,
+                        "channel": observed.channel.value,
+                        "source": observed.event.source,
+                        "correlation_id": observed.event.correlation_id or "",
+                    }
+                    # Add flattened data fields
+                    for key, value in observed.event.data.items():
+                        if isinstance(value, (dict, list)):
+                            row[key] = json.dumps(value, default=str)
+                        else:
+                            row[key] = str(value) if value is not None else ""
+                    writer.writerow(row)
+        
+        else:
+            raise ValueError(f"Unsupported export format: {format}. Use 'jsonl', 'json', or 'csv'.")
     
     def clear(self) -> None:
         """Clear all observed events, metrics, and trace data."""
@@ -2330,6 +2668,17 @@ class Observer:
         self._nodes.clear()
         self._edges.clear()
         self._current_agents.clear()
+        self._tool_calls.clear()
+        self._current_tools.clear()
+        self._spans.clear()
+        self._span_stack.clear()
+        
+        # Clear new tracking structures
+        self._token_usage.clear()
+        self._total_tokens = {"input": 0, "output": 0, "total": 0}
+        self._progress_steps.clear()
+        self._state_snapshots.clear()
+        self._agent_thinking_count.clear()
         self._tool_calls.clear()
         self._current_tools.clear()
         self._spans.clear()

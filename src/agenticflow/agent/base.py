@@ -2861,7 +2861,7 @@ class Agent:
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
         stream: bool = False,
-        max_iterations: int = 10,
+        max_iterations: int = 25,
     ) -> "Coroutine[Any, Any, Any] | AsyncIterator[StreamChunk]":
         """
         Execute a task with full agent capabilities.
@@ -2881,7 +2881,7 @@ class Agent:
                 - Saves the exchange after completion
                 - Enables multi-turn conversations
             stream: If True, returns async iterator. If False, returns awaitable.
-            max_iterations: Maximum LLM call iterations (default: 10).
+            max_iterations: Maximum LLM call iterations (default: 25).
             
         Returns:
             If stream=False: Awaitable that yields the final result when awaited.
@@ -2919,7 +2919,7 @@ class Agent:
         *,
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
-        max_iterations: int = 10,
+        max_iterations: int = 25,
     ) -> Any:
         """Internal implementation of non-streaming run()."""
         from agenticflow.executors import NativeExecutor
@@ -2963,7 +2963,7 @@ class Agent:
         *,
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
-        max_iterations: int = 10,
+        max_iterations: int = 25,
     ) -> "AsyncIterator[StreamChunk]":
         """Internal streaming implementation of run()."""
         from agenticflow.agent.streaming import StreamChunk
