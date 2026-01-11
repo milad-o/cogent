@@ -40,6 +40,23 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
+## 🎉 Latest Changes (v1.4.0 - January 2026)
+
+**External Event Integration** — Connect reactive agents to real-world event sources
+- 📁 **FileWatcherSource** — Monitor directories for file changes
+- 🌐 **WebhookSource** — Receive HTTP webhooks as events
+- 🔴 **RedisStreamSource** — Consume from Redis Streams with consumer groups
+- 🎯 **EventFlow.source()** & **sink()** — Inject/emit events from external systems
+
+**Observability Improvements** — Clearer naming and token tracking
+- 🔄 Renamed `Event` → `Trace` in observability module (core events unchanged)
+- 📊 Token usage tracking and export (JSONL, JSON, CSV)
+- 🎯 Progress indicators and enhanced error context
+
+See [CHANGELOG.md](CHANGELOG.md) for full version history.
+
+---
+
 ## Features
 
 - **Native Executor** — High-performance parallel tool execution with zero framework overhead
