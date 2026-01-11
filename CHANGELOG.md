@@ -5,6 +5,33 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-10
+
+### Changed
+
+- **LLM Channel Now Opt-in**: `Observer.debug()` and `Observer.trace()` no longer include `Channel.LLM` by default
+  - LLM request/response content requires explicit opt-in for privacy
+  - Users must add `Channel.LLM` to their channels list to see raw LLM content
+  - This is a **breaking change** for users who relied on debug/trace showing LLM payloads
+  - Updated documentation to reflect opt-in behavior
+
+### Migration
+
+To restore previous behavior where debug/trace included LLM content:
+
+```python
+# Before (1.2.0): LLM content shown automatically
+observer = Observer.debug()
+
+# After (1.3.0): Explicitly opt-in to LLM content
+observer = Observer(
+    level=ObservabilityLevel.DEBUG,
+    channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM, ...],
+)
+```
+
+---
+
 ## [1.2.0] - 2026-01-03
 
 ### Added
@@ -95,5 +122,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **1.3.0** (2026-01-10) - LLM channel opt-in by default for privacy
 - **1.2.0** (2026-01-03) - Enhanced observability with token tracking, export, and contextual features
 - **1.1.0** (Previous) - Professional formatting and configuration improvements

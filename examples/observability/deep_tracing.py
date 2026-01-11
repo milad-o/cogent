@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model, settings
 
 from agenticflow import Agent, Flow
-from agenticflow.observability import Observer, ObservabilityLevel
+from agenticflow.observability import Observer, ObservabilityLevel, Channel
 from agenticflow.tools import tool
 
 
@@ -64,10 +64,11 @@ async def main():
     model = get_model()
     print(f"Using LLM provider: {settings.llm_provider}")
 
-    # Create an observer with DEBUG level to see full LLM interactions
-    # Try different levels: PROGRESS, DETAILED, DEBUG, TRACE
+    # Create an observer with DEBUG level AND explicit LLM channel opt-in
+    # Note: Channel.LLM must be explicitly added to see LLM request/response details
     observer = Observer(
-        level=ObservabilityLevel.DEBUG,  # Shows LLM request/response details
+        level=ObservabilityLevel.DEBUG,
+        channels=[Channel.AGENTS, Channel.TOOLS, Channel.TASKS, Channel.LLM],  # Opt-in to LLM content
         show_timestamps=True,
         truncate=300,  # Show more content
     )

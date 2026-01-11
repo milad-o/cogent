@@ -227,21 +227,24 @@ class Agent:
             store: Store for long-term memory across threads.
             name: Agent name (simplified API)
             model: Chat model (simplified API)
-            role: Agent role - accepts string ("worker", "supervisor", "reviewer", "autonomous")
-                  or AgentRole enum (simplified API)
+            role: Agent role - accepts string ("worker", "supervisor", "reviewer", "autonomous"),
+                  AgentRole enum, or RoleConfig object (simplified API)
             description: Agent description (simplified API)
             instructions: Instructions for the agent - defines behavior and personality
-            tools: List of tools - can be BaseTool objects or strings (simplified API)
+            tools: List of tools - can be BaseTool objects, strings, or callable functions (simplified API)
+            capabilities: Additional capabilities to enable (tools, document loaders, retrievers, etc.)
             system_prompt: System prompt (alias for instructions, for compatibility)
-            resilience: Resilience configuration (simplified API)
-            workers: List of worker agent names (for SUPERVISOR role, enhances prompt)
-            criteria: List of evaluation criteria (for REVIEWER role, enhances prompt)
-            specialty: Description of specialty (for WORKER role, enhances prompt)
-            can_finish: Override capability to provide FINAL ANSWER (custom roles)
-            can_delegate: Override capability to delegate to other agents (custom roles)
-            can_use_tools: Override capability to call tools (custom roles)
+            resilience: ResilienceConfig for retry logic, circuit breakers, and fallback strategies
+            interrupt_on: HITL rules for tool approval. Dict mapping tool names to approval rules:
+                - True: Always require approval
+                - False: Never require approval  
+                - Callable: Function (tool_name, args) -> bool to decide dynamically
             stream: Enable token-by-token streaming by default for this agent.
                    When True, chat() and think() return async iterators.
+            reasoning: Enable extended thinking/chain-of-thought mode:
+                - True: Use default ReasoningConfig
+                - ReasoningConfig: Custom reasoning configuration
+                - False: Disabled (default)
             output: Enforce structured output schema. Accepts:
                 - Pydantic BaseModel class
                 - dataclass class
@@ -249,19 +252,27 @@ class Agent:
                 - JSON Schema dict
                 - ResponseSchema for fine-grained control
                 When set, agent.run() returns StructuredResult with validated data.
-            intercept: List of interceptors for execution hooks. Interceptors can:
-                - Limit calls (BudgetGuard)
-                - Compress context (ContextCompressor)
-                - Mask PII (PIIShield)
-                - Log/audit actions (Auditor)
+            intercept: List of interceptors for execution hooks (BudgetGuard, ContextCompressor, etc.)
+            spawning: SpawningConfig for dynamic agent creation. Enables agents to spawn specialist
+                     child agents for parallel task execution.
             verbose: Enable observability for standalone agent usage:
                 - False: No output (silent)
                 - True: Progress (thinking/responding with timing)
                 - "verbose": Show agent outputs/thoughts
                 - "debug": Show everything including tool calls
                 - "trace": Maximum detail + execution graph
-            observer: Observer instance for rich observability. Takes precedence
-                over verbose. Use this when you want full control over observability.
+            observer: Observer instance for rich observability. Takes precedence over verbose.
+                     Use Observer.debug(), Observer.trace(), etc.
+            taskboard: Enable task tracking with planning/execution tools:
+                - True: Use default TaskBoardConfig
+                - TaskBoardConfig: Custom task management configuration
+                - False/None: Disabled (default)
+            workers: List of worker agent names (for SUPERVISOR role, enhances prompt)
+            criteria: List of evaluation criteria (for REVIEWER role, enhances prompt)
+            specialty: Description of specialty (for WORKER role, enhances prompt)
+            can_finish: Override capability to provide FINAL ANSWER (custom roles)
+            can_delegate: Override capability to delegate to other agents (custom roles)
+            can_use_tools: Override capability to call tools (custom roles)
             
         Example with memory:
             ```python

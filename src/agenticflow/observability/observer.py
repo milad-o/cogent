@@ -679,10 +679,23 @@ class Observer:
     
     @classmethod
     def debug(cls) -> Observer:
-        """Create observer showing everything."""
+        """
+        Create observer showing everything except raw LLM content.
+        
+        To include LLM request/response details, add Channel.LLM explicitly:
+            observer = Observer(
+                level=ObservabilityLevel.DEBUG,
+                channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM, ...],
+            )
+        """
         return cls(
             level=ObservabilityLevel.DEBUG,
-            channels=[Channel.ALL],
+            channels=[
+                Channel.AGENTS, Channel.TOOLS, Channel.MESSAGES,
+                Channel.TASKS, Channel.STREAMING, Channel.MEMORY,
+                Channel.RETRIEVAL, Channel.DOCUMENTS, Channel.MCP,
+                Channel.REACTIVE, Channel.SYSTEM, Channel.RESILIENCE,
+            ],
             show_timestamps=True,
             show_duration=True,
             show_trace_ids=True,
@@ -692,7 +705,7 @@ class Observer:
     @classmethod
     def trace(cls) -> Observer:
         """
-        Create observer with maximum observability.
+        Create observer with maximum observability (excluding raw LLM content).
         
         Shows everything + builds execution graph.
         After running, call:
@@ -700,10 +713,21 @@ class Observer:
         - observer.timeline(detailed=True) - chronological view
         - observer.summary() - stats and metrics
         - observer.execution_trace() - structured data for export
+        
+        To include LLM request/response details, add Channel.LLM explicitly:
+            observer = Observer(
+                level=ObservabilityLevel.TRACE,
+                channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM, ...],
+            )
         """
         return cls(
             level=ObservabilityLevel.TRACE,
-            channels=[Channel.ALL],
+            channels=[
+                Channel.AGENTS, Channel.TOOLS, Channel.MESSAGES,
+                Channel.TASKS, Channel.STREAMING, Channel.MEMORY,
+                Channel.RETRIEVAL, Channel.DOCUMENTS, Channel.MCP,
+                Channel.REACTIVE, Channel.SYSTEM, Channel.RESILIENCE,
+            ],
             show_timestamps=True,
             show_duration=True,
             show_trace_ids=True,

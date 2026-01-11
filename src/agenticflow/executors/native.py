@@ -304,10 +304,10 @@ class NativeExecutor(BaseExecutor):
         """Pre-cache model binding and tool map."""
         # Cache bound model with parallel tool calls enabled
         if self.agent.all_tools:
-            # Enable parallel_tool_calls for batched tool execution (like Agno)
+            # Enable parallel_tool_calls for batched tool execution
             self._bound_model = self.agent.model.bind_tools(
                 self.agent.all_tools,
-                parallel_tool_calls=True,  # Key optimization from Agno
+                parallel_tool_calls=True,
             )
             # Cache tool lookup map
             self._tool_map = {t.name: t for t in self.agent.all_tools}
@@ -1209,8 +1209,6 @@ class NativeExecutor(BaseExecutor):
         run_context: RunContext | None = None,
     ) -> list[ToolMessage]:
         """Execute all tool calls in parallel using asyncio.gather.
-        
-        This is the key optimization from Agno's architecture.
         
         Args:
             tool_calls: List of tool call dictionaries from the LLM.

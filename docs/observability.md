@@ -37,8 +37,8 @@ from agenticflow.observability import Observer
 observer = Observer.silent()    # No output
 observer = Observer.progress()  # Basic progress
 observer = Observer.verbose()   # Show agent outputs
-observer = Observer.debug()     # Include tool calls
-observer = Observer.trace()     # Maximum detail + graph
+observer = Observer.debug()     # Include tool calls (excludes raw LLM content)
+observer = Observer.trace()     # Maximum detail + graph (excludes raw LLM content)
 
 # Use with agents
 result = await agent.run("Query", observer=observer)
@@ -121,15 +121,15 @@ observer = Observer(
 # → LLM request (5 messages, 3 tools)
 # ← LLM response 1.2s, 2 tools
 
-# Opt-in for LLM details
+# Opt-in for LLM details (explicit channel subscription required)
 observer = Observer(
     level=ObservabilityLevel.DEBUG,
-    channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM],  # Add LLM channel
+    channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM],  # Explicitly add LLM channel
 )
-# Now you'll see prompts, system messages, response content at TRACE level
+# Now you'll see prompts, system messages, response content
 
-# Or use TRACE level for everything
-observer = Observer.trace()  # Includes all channels + full details
+# Note: Observer.debug() and Observer.trace() do NOT include Channel.LLM by default
+# This is intentional - LLM content requires explicit opt-in for privacy
 ```
 
 This modular design ensures:
