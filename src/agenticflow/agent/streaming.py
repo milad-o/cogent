@@ -26,9 +26,9 @@ Example:
     
     # Or use event-based streaming
     async for event in agent.stream_events("Write a poem"):
-        if event.type == StreamEventType.TOKEN:
+        if event.type == StreamTraceType.TOKEN:
             print(event.content, end="", flush=True)
-        elif event.type == StreamEventType.TOOL_CALL:
+        elif event.type == StreamTraceType.TOOL_CALL:
             print(f"\\n[Calling {event.tool_name}...]")
     ```
 """
@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
 
 
-class StreamEventType(Enum):
+class StreamTraceType(Enum):
     """Types of streaming events."""
     
     STREAM_START = "stream_start"
@@ -184,7 +184,7 @@ class StreamEvent:
         accumulated: All content accumulated so far.
     """
     
-    type: StreamEventType
+    type: StreamTraceType
     """The type of streaming event."""
     
     content: str = ""
@@ -217,7 +217,7 @@ class StreamEvent:
     @property
     def is_final(self) -> bool:
         """Check if this is the final event."""
-        return self.type in (StreamEventType.STREAM_END, StreamEventType.ERROR)
+        return self.type in (StreamTraceType.STREAM_END, StreamTraceType.ERROR)
     
     @property
     def has_content(self) -> bool:
@@ -228,10 +228,10 @@ class StreamEvent:
     def is_tool_related(self) -> bool:
         """Check if this is a tool-related event."""
         return self.type in (
-            StreamEventType.TOOL_CALL_START,
-            StreamEventType.TOOL_CALL_ARGS,
-            StreamEventType.TOOL_CALL_END,
-            StreamEventType.TOOL_RESULT,
+            StreamTraceType.TOOL_CALL_START,
+            StreamTraceType.TOOL_CALL_ARGS,
+            StreamTraceType.TOOL_CALL_END,
+            StreamTraceType.TOOL_RESULT,
         )
 
 
@@ -618,9 +618,9 @@ class ObserverStreamCallback:
         
         # Emit token event to observer
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.observability.event import EventType
+            from agenticflow.observability.trace_record import TraceType
             self.observer._emit(
-                EventType.TOKEN_STREAMED,
+                TraceType.TOKEN_STREAMED,
                 agent_name=self.agent_name,
                 token=token,
                 token_index=self._token_count,
@@ -630,9 +630,9 @@ class ObserverStreamCallback:
     def on_stream_start(self, metadata: dict[str, Any]) -> None:
         """Handle stream start."""
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.observability.event import EventType
+            from agenticflow.observability.trace_record import TraceType
             self.observer._emit(
-                EventType.STREAM_START,
+                TraceType.STREAM_START,
                 agent_name=self.agent_name,
                 metadata=metadata,
             )
@@ -644,9 +644,9 @@ class ObserverStreamCallback:
             print()
         
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.observability.event import EventType
+            from agenticflow.observability.trace_record import TraceType
             self.observer._emit(
-                EventType.STREAM_END,
+                TraceType.STREAM_END,
                 agent_name=self.agent_name,
                 response_preview=full_response[:500] if len(full_response) > 500 else full_response,
                 total_tokens=self._token_count,
@@ -658,9 +658,9 @@ class ObserverStreamCallback:
             print(f"\n[Calling {name}...]", flush=True)
         
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.observability.event import EventType
+            from agenticflow.observability.trace_record import TraceType
             self.observer._emit(
-                EventType.STREAM_TOOL_CALL,
+                TraceType.STREAM_TOOL_CALL,
                 agent_name=self.agent_name,
                 tool=name,
                 args=args,
@@ -672,9 +672,9 @@ class ObserverStreamCallback:
             print(f"\n[Stream error: {error}]", flush=True)
         
         if self.emit_events and hasattr(self.observer, "_emit"):
-            from agenticflow.observability.event import EventType
+            from agenticflow.observability.trace_record import TraceType
             self.observer._emit(
-                EventType.STREAM_ERROR,
+                TraceType.STREAM_ERROR,
                 agent_name=self.agent_name,
                 error=str(error),
             )

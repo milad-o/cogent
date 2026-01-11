@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 from uuid import uuid4
 
-from agenticflow.observability.event import EventType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.tools.base import BaseTool, tool
 
@@ -293,7 +293,7 @@ class SpawnManager:
         self._active_spawns[spawn_id] = info
         
         # Emit spawn event
-        await self._emit_spawn_event(EventType.AGENT_SPAWNED, info)
+        await self._emit_spawn_event(TraceType.AGENT_SPAWNED, info)
         
         # Create the spawned agent
         spawned = Agent(
@@ -330,20 +330,20 @@ class SpawnManager:
                 info.result = str(result)
                 info.status = "completed"
                 info.completed_at = now_utc()
-                await self._emit_spawn_event(EventType.AGENT_SPAWN_COMPLETED, info)
+                await self._emit_spawn_event(TraceType.AGENT_SPAWN_COMPLETED, info)
                 return str(result)
             except Exception as e:
                 info.error = str(e)
                 info.status = "failed"
                 info.completed_at = now_utc()
-                await self._emit_spawn_event(EventType.AGENT_SPAWN_FAILED, info)
+                await self._emit_spawn_event(TraceType.AGENT_SPAWN_FAILED, info)
                 raise
             finally:
                 # Cleanup
                 del self._active_spawns[spawn_id]
                 self._spawn_history.append(info)
                 if self._config.ephemeral:
-                    await self._emit_spawn_event(EventType.AGENT_DESPAWNED, info)
+                    await self._emit_spawn_event(TraceType.AGENT_DESPAWNED, info)
     
     async def spawn_many(
         self,
@@ -402,7 +402,7 @@ class SpawnManager:
     
     async def _emit_spawn_event(
         self,
-        event_type: EventType,
+        event_type: TraceType,
         info: SpawnedAgentInfo,
     ) -> None:
         """Emit spawning-related event."""

@@ -292,8 +292,8 @@ class Mesh(BaseTopology):
         team_memory: TeamMemory | None = None,
     ) -> TopologyResult:
         """Execute mesh collaboration pattern."""
-        from agenticflow.observability.event import EventType
-        from agenticflow.observability.bus import EventBus
+        from agenticflow.observability.trace_record import TraceType
+        from agenticflow.observability.bus import TraceBus
         
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []
@@ -310,7 +310,7 @@ class Mesh(BaseTopology):
             
             # Emit round start event
             if event_bus:
-                await event_bus.publish(EventType.TASK_STARTED.value, {
+                await event_bus.publish(TraceType.TASK_STARTED.value, {
                     "task": f"Mesh Round {round_num}/{self.max_rounds}",
                     "round": round_num,
                     "agents": [a.name for a in self.agents],
@@ -354,7 +354,7 @@ Provide your initial analysis and contribution."""
                     if agent_event_bus:
                         # Show the actual context being received (summarized)
                         contributors = ", ".join(round_history[-1].keys()) if round_history else "team"
-                        await agent_event_bus.publish(EventType.MESSAGE_RECEIVED.value, {
+                        await agent_event_bus.publish(TraceType.MESSAGE_RECEIVED.value, {
                             "agent_name": name,
                             "from": contributors,
                             "content": ctx.strip() if ctx else f"Context from {len(round_history)} round(s)",
@@ -374,7 +374,7 @@ Build on good ideas, offer corrections, and add new insights."""
                 
                 # Emit message sent event - agent shares their contribution
                 if agent_event_bus:
-                    await agent_event_bus.publish(EventType.MESSAGE_SENT.value, {
+                    await agent_event_bus.publish(TraceType.MESSAGE_SENT.value, {
                         "sender_id": name,
                         "receiver_id": "team",
                         "agent_name": name,
@@ -402,7 +402,7 @@ Build on good ideas, offer corrections, and add new insights."""
             
             # Emit round complete event
             if event_bus:
-                await event_bus.publish(EventType.TASK_COMPLETED.value, {
+                await event_bus.publish(TraceType.TASK_COMPLETED.value, {
                     "task": f"Mesh Round {round_num}/{self.max_rounds}",
                     "round": round_num,
                     "contributions": list(round_outputs.keys()),

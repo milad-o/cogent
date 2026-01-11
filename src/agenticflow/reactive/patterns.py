@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from agenticflow.reactive.core import AgentTriggerConfig, TriggerCondition, react_to
 from agenticflow.flow.reactive import ReactiveFlow, ReactiveFlowConfig, ReactiveFlowResult
-from agenticflow.observability.event import Event
+from agenticflow.observability.trace_record import Trace
 from agenticflow.observability.observer import Observer
 
 # Backward compatibility aliases

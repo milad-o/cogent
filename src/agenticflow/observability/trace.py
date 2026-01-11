@@ -1017,13 +1017,13 @@ class TracingObserver:
     
     def handle_event(self, event) -> None:
         """Handle an event from the event bus."""
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.trace_record import TraceType
         
         event_type = event.type
         data = event.data
         
         # Agent events
-        if event_type == EventType.AGENT_THINKING:
+        if event_type == TraceType.AGENT_THINKING:
             agent_name = data.get("agent_name", "unknown")
             node = self.tracer.start_node(
                 name=agent_name,
@@ -1033,14 +1033,14 @@ class TracingObserver:
             )
             self._current_nodes[agent_name] = node
         
-        elif event_type == EventType.AGENT_RESPONDED:
+        elif event_type == TraceType.AGENT_RESPONDED:
             agent_name = data.get("agent_name", "unknown")
             node = self._current_nodes.pop(agent_name, None)
             if node:
                 output = data.get("response_preview") or data.get("response")
                 self.tracer.end_node(node, output=output)
         
-        elif event_type == EventType.AGENT_ERROR:
+        elif event_type == TraceType.AGENT_ERROR:
             agent_name = data.get("agent_name", "unknown")
             node = self._current_nodes.pop(agent_name, None)
             if node:
@@ -1051,7 +1051,7 @@ class TracingObserver:
                 )
         
         # Tool events
-        elif event_type == EventType.TOOL_CALLED:
+        elif event_type == TraceType.TOOL_CALLED:
             tool_name = data.get("tool", "unknown")
             agent_name = data.get("agent_name")
             
@@ -1068,13 +1068,13 @@ class TracingObserver:
             )
             self._current_tools[tool_name] = trace
         
-        elif event_type == EventType.TOOL_RESULT:
+        elif event_type == TraceType.TOOL_RESULT:
             tool_name = data.get("tool", "unknown")
             trace = self._current_tools.pop(tool_name, None)
             if trace:
                 self.tracer.end_tool(trace, result=data.get("result"))
         
-        elif event_type == EventType.TOOL_ERROR:
+        elif event_type == TraceType.TOOL_ERROR:
             tool_name = data.get("tool", "unknown")
             trace = self._current_tools.pop(tool_name, None)
             if trace:

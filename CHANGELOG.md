@@ -5,6 +5,51 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-01-11
+
+### Added
+
+#### External Event Sources & Sinks
+
+- **`FileWatcherSource`**: Monitor directories for file changes, emit events for created/modified/deleted files
+- **`WebhookSource`**: Receive HTTP webhooks as events (requires `starlette`, `uvicorn`)
+- **`RedisStreamSource`**: Consume from Redis Streams with consumer group support (requires `redis`)
+- **`WebhookSink`**: POST events to HTTP endpoints with pattern matching (requires `httpx`)
+- **`EventFlow.source()`**: Register external event sources to inject events into reactive flows
+- **`EventFlow.sink()`**: Register sinks to emit events to external systems
+
+### Changed
+
+#### Observability Renamed for Clarity (Breaking)
+
+- **File Renames**:
+  - `observability/event.py` → `trace_record.py`
+  - `tests/test_events.py` → `test_traces.py`
+
+- **Class/Function Renames** (observability module only):
+  - `Event` → `Trace`
+  - `EventType` → `TraceType`
+  - `EventBus` → `TraceBus`
+  - `get_event_bus()` → `get_trace_bus()`
+  - `set_event_bus()` → `set_trace_bus()`
+
+- **Core orchestration unchanged**: `agenticflow.events.Event` and `agenticflow.events.EventBus` remain for agent-to-agent routing
+
+### Migration
+
+```python
+# Before (1.3.0): Observability
+from agenticflow.observability import Event, EventType, EventBus, get_event_bus
+
+# After (1.4.0): Observability
+from agenticflow.observability import Trace, TraceType, TraceBus, get_trace_bus
+
+# Core orchestration (unchanged)
+from agenticflow.events import Event, EventBus
+```
+
+---
+
 ## [1.3.0] - 2026-01-10
 
 ### Changed

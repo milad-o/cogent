@@ -45,7 +45,7 @@ class AgentStatus(Enum):
         return self in (AgentStatus.THINKING, AgentStatus.ACTING)
 
 
-class EventType(Enum):
+class TraceType(Enum):
     """All event types in the system."""
 
     # System events

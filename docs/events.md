@@ -1,34 +1,245 @@
 # Events Module
 
-> **Note:** The events module has been consolidated into `agenticflow.observability`.
-> Import from `agenticflow.observability` instead of `agenticflow.events`.
-> See [Observability Module](observability.md) for the complete documentation.
+The events module provides the foundation for event-driven orchestration in AgenticFlow.
+
+## Core Events (`agenticflow.events`)
+
+The core events module powers reactive agent orchestration with:
+
+- **Event**: Immutable event records with name, data, timestamp, and correlation support
+- **EventBus**: Lightweight pub/sub for routing events between agents
+- **EventSource**: Ingest events from external systems (webhooks, files, queues)
+- **EventSink**: Deliver events to external systems (webhooks, databases)
+
+```python
+from agenticflow.events import (
+    Event,
+    EventBus,
+    # Sources
+    EventSource,
+    WebhookSource,
+    FileWatcherSource,
+    RedisStreamSource,
+    # Sinks
+    EventSink,
+    WebhookSink,
+)
+```
+
+---
+
+## Event Sources
+
+Event sources inject events from external systems into your reactive flows.
+
+### FileWatcherSource
+
+Monitor directories for file changes:
+
+```python
+from agenticflow.reactive.flow import EventFlow
+from agenticflow.reactive import react_to
+from agenticflow.events import FileWatcherSource
+
+flow = EventFlow()
+
+# Register agents that react to file events
+flow.register(json_processor, [react_to("file.created").when(
+    lambda e: e.data.get("extension") == ".json"
+)])
+flow.register(csv_processor, [react_to("file.created").when(
+    lambda e: e.data.get("extension") == ".csv"
+)])
+
+# Watch directories for new files
+flow.source(FileWatcherSource(
+    paths=["./incoming", "./uploads"],
+    patterns=["*.json", "*.csv", "*.txt"],
+    event_prefix="file",  # Emits: file.created, file.modified, file.deleted
+))
+
+await flow.run("Process incoming files")
+```
+
+**Emitted Events:**
+| Event | Data |
+|-------|------|
+| `file.created` | `{path, filename, extension}` |
+| `file.modified` | `{path, filename, extension}` |
+| `file.deleted` | `{path, filename, extension}` |
+
+### WebhookSource
+
+Receive HTTP webhooks as events:
+
+```python
+from agenticflow.events import WebhookSource
+
+flow.source(WebhookSource(
+    path="/api/webhooks",
+    port=8080,
+    event_type="webhook.received",  # Or extract from request
+))
+
+# Handle incoming webhooks
+flow.register(webhook_handler, [react_to("webhook.received")])
+```
+
+**Requirements:** `starlette`, `uvicorn`
+
+### RedisStreamSource
+
+Consume from Redis Streams with consumer groups:
+
+```python
+from agenticflow.events import RedisStreamSource
+
+flow.source(RedisStreamSource(
+    redis_url="redis://localhost:6379",
+    stream="events",
+    group="my-consumer-group",
+    consumer="worker-1",
+))
+
+flow.register(event_handler, [react_to("redis.*")])
+```
+
+**Features:**
+- Consumer groups for distributed processing
+- Message acknowledgment
+- Automatic reconnection
+
+**Requirements:** `redis`
+
+---
+
+## Event Sinks
+
+Event sinks send events to external systems when they occur in your flow.
+
+### WebhookSink
+
+POST events to HTTP endpoints:
+
+```python
+from agenticflow.events import WebhookSink
+
+# Send completion events to a webhook
+flow.sink(
+    WebhookSink(
+        url="https://your-service.com/webhooks",
+        headers={"Authorization": "Bearer token123"},
+    ),
+    pattern="*.completed",  # Glob pattern matching
+)
+
+# Send error events to Slack
+flow.sink(
+    WebhookSink(url="https://hooks.slack.com/services/..."),
+    pattern="*.error",
+)
+```
+
+**Pattern Matching:**
+| Pattern | Matches |
+|---------|---------|
+| `*` | All events |
+| `*.completed` | `task.completed`, `order.completed`, etc. |
+| `order.*` | `order.created`, `order.shipped`, etc. |
+| `agent.*.error` | `agent.processor.error`, etc. |
+
+**Requirements:** `httpx`
+
+### Custom Sinks
+
+Create your own sink by extending `EventSink`:
+
+```python
+from agenticflow.events import EventSink
+
+class DatabaseSink(EventSink):
+    """Store events in a database."""
+    
+    def __init__(self, connection_string: str):
+        self.db = connect(connection_string)
+    
+    async def send(self, event) -> None:
+        await self.db.insert("events", {
+            "name": event.name,
+            "data": event.data,
+            "timestamp": event.timestamp,
+        })
+    
+    async def close(self) -> None:
+        await self.db.close()
+
+flow.sink(DatabaseSink("postgresql://..."), pattern="*")
+```
+
+---
+
+## Integration with EventFlow
+
+Sources and sinks integrate seamlessly with `EventFlow`:
+
+```python
+from agenticflow.reactive.flow import EventFlow
+from agenticflow.reactive import react_to, Observer
+from agenticflow.events import FileWatcherSource, WebhookSink
+
+# Create flow with observability
+flow = EventFlow(observer=Observer.progress())
+
+# External sources → inject events into flow
+flow.source(FileWatcherSource(paths=["./incoming"]))
+
+# Agents react to events
+flow.register(processor, [react_to("file.created")])
+flow.register(notifier, [react_to("*.completed")])
+
+# Event sinks → send events out of flow
+flow.sink(WebhookSink(url="https://api.example.com/events"), pattern="*.completed")
+
+# Run the reactive flow
+await flow.run("Process incoming events")
+```
+
+**Lifecycle:**
+1. Sources start when flow runs
+2. Sources emit events → agents react
+3. Agent completions trigger sinks
+4. Sources and sinks stop when flow completes
+
+---
+
+## Observability (TraceBus + Trace)
+
+> **Note:** For observability/telemetry, use `Trace` and `TraceBus` from `agenticflow.observability`.
+> The `agenticflow.events.Event` is for core orchestration routing.
+
+```python
+# Observability (telemetry, logging)
+from agenticflow.observability import Trace, TraceBus, get_trace_bus
+
+# Core orchestration (agent-to-agent events)
+from agenticflow.events import Event, EventBus
+```
+
+---
 
 ## Migration Guide
 
-The events functionality is now part of the unified observability module:
+The observability module has been renamed for clarity:
 
 ```python
 # Old (deprecated)
-from agenticflow.events import EventBus, ConsoleEventHandler
+from agenticflow.observability import Event, EventBus, get_event_bus
 
 # New (recommended)
-from agenticflow.observability import EventBus, Event, ConsoleEventHandler
-
-bus = EventBus()
-
-# Subscribe to specific events
-bus.subscribe(EventType.TASK_COMPLETED, handle_completion)
-
-# Subscribe to all events (for logging)
-bus.subscribe_all(ConsoleEventHandler())
-
-# Publish events
-await bus.publish(Event(
-    type=EventType.TASK_STARTED,
-    data={"task_id": "123"},
-))
+from agenticflow.observability import Trace, TraceBus, get_trace_bus
 ```
+
+---
 
 ## EventBus
 

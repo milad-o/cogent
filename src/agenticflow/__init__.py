@@ -71,7 +71,7 @@ With Agent Class:
             name="Assistant",
             model=OpenAIChat(model="gpt-4o"),
         ),
-        event_bus=EventBus(),
+        event_bus=TraceBus(),
     )
 
     # Think with automatic retry on failures
@@ -158,7 +158,7 @@ from agenticflow.agent.streaming import (
     StreamChunk,
     StreamConfig,
     StreamEvent,
-    StreamEventType,
+    StreamTraceType,
     ToolCallChunk,
     chunk_from_message,
     collect_stream,
@@ -215,7 +215,7 @@ from agenticflow.graph import (
 # Interceptors (execution flow control)
 from agenticflow.interceptors import (
     AuditEvent,
-    AuditEventType,
+    AuditTraceType,
     Auditor,
     BudgetGuard,
     ContentFilter,
@@ -295,10 +295,10 @@ from agenticflow.observability import (
 )
 
 # Events (THIS IS WHERE WE ADD VALUE)
-from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
+from agenticflow.observability.bus import TraceBus, get_trace_bus, set_trace_bus
 
 # Models
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.observability.handlers import (
     ConsoleEventHandler,
     FileEventHandler,
@@ -399,7 +399,7 @@ __all__ = [
     # Core enums
     "TaskStatus",
     "AgentStatus",
-    "EventType",
+    "TraceType",
     "Priority",
     "AgentRole",
     "get_role_capabilities",
@@ -461,7 +461,7 @@ __all__ = [
     # Streaming
     "StreamChunk",
     "StreamEvent",
-    "StreamEventType",
+    "StreamTraceType",
     "StreamConfig",
     "StreamCallback",
     "PrintStreamCallback",
@@ -492,7 +492,7 @@ __all__ = [
     "ThrottleInterceptor",
     "Auditor",
     "AuditEvent",
-    "AuditEventType",
+    "AuditTraceType",
     # Context Layer
     "ToolGate",
     "PermissionGate",
@@ -507,9 +507,9 @@ __all__ = [
     "RunContext",
     "EMPTY_CONTEXT",
     # Events
-    "EventBus",
-    "get_event_bus",
-    "set_event_bus",
+    "TraceBus",
+    "get_trace_bus",
+    "set_trace_bus",
     "ConsoleEventHandler",
     "FileEventHandler",
     "FilteringEventHandler",

@@ -8,7 +8,7 @@ from agenticflow.events.event import Event
 from agenticflow.models.base import BaseChatModel
 from agenticflow.models.mock import MockChatModel
 from agenticflow.memory import Memory
-from agenticflow.reactive import EventFlow, ReactiveAgent
+from agenticflow.reactive import TraceFlow, ReactiveAgent
 from agenticflow.reactive.core import react_to
 from agenticflow.tools import tool
 

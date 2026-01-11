@@ -12,7 +12,7 @@ from enum import Enum
 from agenticflow.core.utils import generate_id, now_utc
 
 
-class EventType(Enum):
+class TraceType(Enum):
     """All event types in the system."""
 
     # System events
@@ -180,28 +180,32 @@ class EventType(Enum):
 
 
 @dataclass(frozen=False)  # Not frozen to allow default_factory
-class Event:
+class Trace:
     """
-    An immutable event representing something that happened in the system.
+    A trace record representing something that happened in the system.
     
-    Events are the foundation of the event-driven architecture. They provide:
+    Traces are the foundation of observability. They provide:
     - Full audit trail of system activity
     - Decoupled communication between components
     - Replay capability for debugging and recovery
     
+    Note:
+        This is for observability/telemetry. For core orchestration events,
+        use `agenticflow.events.Event` instead.
+    
     Attributes:
-        type: The type of event (from EventType enum)
-        data: Event-specific payload data
-        id: Unique identifier for this event
-        timestamp: When the event occurred (UTC)
-        source: Identifier of the component that created this event
-        parent_event_id: ID of the event that triggered this one (if any)
-        correlation_id: ID linking related events across the system
+        type: The type of trace (from TraceType enum)
+        data: Trace-specific payload data
+        id: Unique identifier for this trace
+        timestamp: When the trace occurred (UTC)
+        source: Identifier of the component that created this trace
+        parent_event_id: ID of the trace that triggered this one (if any)
+        correlation_id: ID linking related traces across the system
         
     Example:
         ```python
-        event = Event(
-            type=EventType.TASK_COMPLETED,
+        trace = Trace(
+            type=TraceType.TASK_COMPLETED,
             data={"task_id": "abc123", "result": "success"},
             source="agent:writer",
             correlation_id="request-456",
@@ -209,7 +213,7 @@ class Event:
         ```
     """
 
-    type: EventType
+    type: TraceType
     data: dict = field(default_factory=dict)
     id: str = field(default_factory=generate_id)
     timestamp: datetime = field(default_factory=now_utc)
@@ -222,7 +226,7 @@ class Event:
         Convert to JSON-serializable dictionary.
         
         Returns:
-            Dictionary representation of the event
+            Dictionary representation of the trace
         """
         return {
             "id": self.id,
@@ -244,19 +248,19 @@ class Event:
         return json.dumps(self.to_dict(), default=str)
 
     @classmethod
-    def from_dict(cls, data: dict) -> Event:
+    def from_dict(cls, data: dict) -> "Trace":
         """
-        Create an Event from a dictionary.
+        Create a Trace from a dictionary.
         
         Args:
-            data: Dictionary with event data
+            data: Dictionary with trace data
             
         Returns:
-            New Event instance
+            New Trace instance
         """
         return cls(
             id=data.get("id", generate_id()),
-            type=EventType(data["type"]),
+            type=TraceType(data["type"]),
             timestamp=datetime.fromisoformat(data["timestamp"]),
             data=data.get("data", {}),
             source=data.get("source", "system"),
@@ -265,29 +269,29 @@ class Event:
         )
 
     @classmethod
-    def from_json(cls, json_str: str) -> Event:
+    def from_json(cls, json_str: str) -> "Trace":
         """
-        Create an Event from a JSON string.
+        Create a Trace from a JSON string.
         
         Args:
             json_str: JSON string representation
             
         Returns:
-            New Event instance
+            New Trace instance
         """
         return cls.from_dict(json.loads(json_str))
 
-    def with_correlation(self, correlation_id: str) -> Event:
+    def with_correlation(self, correlation_id: str) -> "Trace":
         """
-        Create a copy of this event with a correlation ID.
+        Create a copy of this trace with a correlation ID.
         
         Args:
             correlation_id: The correlation ID to set
             
         Returns:
-            New Event with the correlation ID
+            New Trace with the correlation ID
         """
-        return Event(
+        return Trace(
             type=self.type,
             data=self.data,
             id=self.id,
@@ -297,24 +301,24 @@ class Event:
             correlation_id=correlation_id,
         )
 
-    def child_event(
+    def child_trace(
         self,
-        event_type: EventType,
+        event_type: TraceType,
         data: dict | None = None,
         source: str | None = None,
-    ) -> Event:
+    ) -> "Trace":
         """
-        Create a child event linked to this one.
+        Create a child trace linked to this one.
         
         Args:
-            event_type: Type of the child event
-            data: Event data (default empty)
-            source: Event source (defaults to this event's source)
+            event_type: Type of the child trace
+            data: Trace data (default empty)
+            source: Trace source (defaults to this trace's source)
             
         Returns:
-            New Event linked to this one
+            New Trace linked to this one
         """
-        return Event(
+        return Trace(
             type=event_type,
             data=data or {},
             source=source or self.source,
@@ -324,8 +328,8 @@ class Event:
 
     @property
     def category(self) -> str:
-        """Get the event category (e.g., 'task', 'agent')."""
+        """Get the trace category (e.g., 'task', 'agent')."""
         return self.type.category
 
     def __repr__(self) -> str:
-        return f"Event(type={self.type.value}, id={self.id}, source={self.source})"
+        return f"Trace(type={self.type.value}, id={self.id}, source={self.source})"

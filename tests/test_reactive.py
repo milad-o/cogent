@@ -27,7 +27,8 @@ from agenticflow.reactive import (
     react_to,
     when,
 )
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.trace_record import TraceType
+from agenticflow.events.event import Event
 
 
 # =============================================================================
@@ -74,35 +75,35 @@ class TestTrigger:
     """Tests for Trigger matching."""
 
     def test_matches_event_type(self) -> None:
-        """Trigger matches EventType."""
-        trigger = Trigger(on=EventType.TASK_CREATED)
-        event = Event(type=EventType.TASK_CREATED, data={})
+        """Trigger matches TraceType."""
+        trigger = Trigger(on=TraceType.TASK_CREATED)
+        event = Event(name="task.created", data={})
 
         assert trigger.matches(event)
 
     def test_matches_string_pattern(self) -> None:
         """Trigger matches string pattern."""
         trigger = Trigger(on="task.created")
-        event = Event(type=EventType.TASK_CREATED, data={})
+        event = Event(name="task.created", data={})
 
         assert trigger.matches(event)
 
     def test_matches_wildcard_pattern(self) -> None:
         """Trigger matches wildcard pattern."""
         trigger = Trigger(on="task.*")
-        event = Event(type=EventType.TASK_CREATED, data={})
+        event = Event(name="task.created", data={})
 
         assert trigger.matches(event)
 
     def test_condition_filters(self) -> None:
         """Trigger respects condition."""
         trigger = Trigger(
-            on=EventType.TASK_CREATED,
+            on=TraceType.TASK_CREATED,
             condition=lambda e: e.data.get("priority") == "high",
         )
 
-        high_priority = Event(type=EventType.TASK_CREATED, data={"priority": "high"})
-        low_priority = Event(type=EventType.TASK_CREATED, data={"priority": "low"})
+        high_priority = Event(name="task.created", data={"priority": "high"})
+        low_priority = Event(name="task.created", data={"priority": "low"})
 
         assert trigger.matches(high_priority)
         assert not trigger.matches(low_priority)
@@ -534,7 +535,7 @@ class TestObservability:
 
         # Check that flow started was recorded
         events = [e.event for e in observer._events]
-        flow_started = [e for e in events if e.type == EventType.REACTIVE_FLOW_STARTED]
+        flow_started = [e for e in events if e.type == TraceType.REACTIVE_FLOW_STARTED]
         assert len(flow_started) == 1
         assert "task" in flow_started[0].data
 
@@ -547,7 +548,7 @@ class TestObservability:
         await chain(researcher, observer=observer).run("Task")
 
         events = [e.event for e in observer._events]
-        triggered = [e for e in events if e.type == EventType.REACTIVE_AGENT_TRIGGERED]
+        triggered = [e for e in events if e.type == TraceType.REACTIVE_AGENT_TRIGGERED]
         assert len(triggered) == 1
         assert triggered[0].data["agent"] == "researcher"
 
@@ -560,6 +561,6 @@ class TestObservability:
         await chain(researcher, observer=observer).run("Task")
 
         events = [e.event for e in observer._events]
-        completed = [e for e in events if e.type == EventType.REACTIVE_FLOW_COMPLETED]
+        completed = [e for e in events if e.type == TraceType.REACTIVE_FLOW_COMPLETED]
         assert len(completed) == 1
         assert "execution_time_ms" in completed[0].data

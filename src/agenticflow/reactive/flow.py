@@ -10,7 +10,7 @@ import asyncio
 import inspect
 import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Self
 
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.reactive.core import (
@@ -21,8 +21,10 @@ from agenticflow.reactive.core import (
 )
 from agenticflow.events.bus import EventBus as CoreEventBus
 from agenticflow.events.event import Event as CoreEvent
-from agenticflow.observability.bus import EventBus as ObsEventBus
-from agenticflow.observability.event import Event, EventType
+from agenticflow.events.sources.base import EventSource
+from agenticflow.events.sinks.base import EventSink
+from agenticflow.observability.bus import TraceBus as ObsEventBus
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.observability.observer import Observer
 
 if TYPE_CHECKING:
@@ -130,7 +132,7 @@ class EventFlow:
         self,
         *,
         config: EventFlowConfig | None = None,
-        event_bus: ObsEventBus | None = None,
+        event_bus: ObsTraceBus | None = None,
         observer: Observer | None = None,
         thread_id_resolver: Callable[[CoreEvent, dict[str, Any]], str | None] | None = None,
     ) -> None:
@@ -148,7 +150,7 @@ class EventFlow:
         self.events = CoreEventBus()
 
         # Observability bus is for telemetry/subscribers only.
-        self.bus = event_bus or ObsEventBus()
+        self.bus = event_bus or ObsTraceBus()
         self.observer = observer
         self._agents: dict[str, tuple[Agent, AgentTriggerConfig]] = {}
         self._pending_events: asyncio.Queue[CoreEvent] = asyncio.Queue()
@@ -159,6 +161,12 @@ class EventFlow:
         # Container-like helpers (optional): shared memory and background tasks.
         self._shared_memory: Any | None = None
         self._spawned: set[asyncio.Task[Any]] = set()
+
+        # External event sources (webhooks, file watchers, queues)
+        self._sources: list[EventSource] = []
+
+        # Outbound event sinks (pattern -> sink pairs)
+        self._sinks: list[tuple[str, EventSink]] = []
 
         # Observer is fed via _observe() (telemetry), not via orchestration bus.
         # This keeps observability separated from core orchestration.
@@ -203,6 +211,116 @@ class EventFlow:
 
         self._shared_memory = memory or Memory()
         return self
+
+    def source(self, source: EventSource) -> Self:
+        """Add an external event source.
+
+        External sources (webhooks, file watchers, message queues) inject
+        events into the flow from the outside world. Sources are started
+        when the flow runs and stopped when the flow completes.
+
+        Args:
+            source: An EventSource implementation
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            ```python
+            from agenticflow.events.sources import WebhookSource, FileWatcherSource
+
+            flow = EventFlow()
+            flow.source(WebhookSource(path="/events", port=8080))
+            flow.source(FileWatcherSource(paths=["./incoming"], patterns=["*.json"]))
+
+            # Flow will react to both HTTP webhooks and file changes
+            await flow.run("Process incoming events")
+            ```
+        """
+        self._sources.append(source)
+        return self
+
+    async def _start_sources(self) -> None:
+        """Start all external event sources as background tasks."""
+        async def run_source(src: EventSource) -> None:
+            """Run a source and emit events into the flow."""
+            async def emit_to_flow(event: CoreEvent) -> None:
+                await self._pending_events.put(event)
+                await self.events.publish(event)
+                # Mirror to observability
+                self._observe(
+                    TraceType.REACTIVE_EVENT_EMITTED,
+                    {"event_name": event.name, "event_id": event.id, "source": src.name},
+                )
+
+            try:
+                await src.start(emit_to_flow)
+            except asyncio.CancelledError:
+                pass  # Normal shutdown
+            except Exception as e:
+                import sys
+                print(f"EventSource {src.name} error: {e}", file=sys.stderr)
+
+        for src in self._sources:
+            self.spawn(run_source(src))
+
+    async def _stop_sources(self) -> None:
+        """Stop all external event sources."""
+        for src in self._sources:
+            try:
+                await src.stop()
+            except Exception as e:
+                import sys
+                print(f"Error stopping {src.name}: {e}", file=sys.stderr)
+
+    def sink(self, sink: EventSink, *, pattern: str = "*") -> Self:
+        """Add an event sink for outbound event delivery.
+
+        Sinks receive events matching the pattern and deliver them
+        to external systems (webhooks, queues, databases).
+
+        Args:
+            sink: An EventSink implementation
+            pattern: Glob pattern to match event names (default: "*" = all events)
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            ```python
+            from agenticflow.events.sinks import WebhookSink
+
+            flow = EventFlow()
+            flow.sink(WebhookSink(url="https://example.com/callback"), pattern="order.*")
+            flow.sink(WebhookSink(url="https://logs.example.com"), pattern="*.completed")
+
+            # order.created -> sent to example.com/callback
+            # task.completed -> sent to logs.example.com
+            ```
+        """
+        self._sinks.append((pattern, sink))
+        return self
+
+    async def _send_to_sinks(self, event: CoreEvent) -> None:
+        """Send event to all matching sinks."""
+        import fnmatch
+
+        for pattern, sink in self._sinks:
+            if fnmatch.fnmatch(event.name, pattern):
+                try:
+                    await sink.send(event)
+                except Exception as e:
+                    import sys
+                    print(f"Sink {sink.name} error: {e}", file=sys.stderr)
+
+    async def _close_sinks(self) -> None:
+        """Close all event sinks."""
+        for _, sink in self._sinks:
+            try:
+                await sink.close()
+            except Exception as e:
+                import sys
+                print(f"Error closing {sink.name}: {e}", file=sys.stderr)
 
     def spawn(self, coro: Any) -> asyncio.Task[Any]:
         """Spawn a background task and track it for cleanup."""
@@ -251,7 +369,7 @@ class EventFlow:
 
     def _observe(
         self,
-        event_type: EventType,
+        event_type: TraceType,
         data: dict[str, Any],
     ) -> None:
         """Emit an observability event if observer is attached."""
@@ -300,13 +418,13 @@ class EventFlow:
 
         # Observe: user input received
         self._observe(
-            EventType.USER_INPUT,
+            TraceType.USER_INPUT,
             {"content": task, "source": "reactive_flow"},
         )
 
         # Observe: flow started
         self._observe(
-            EventType.REACTIVE_FLOW_STARTED,
+            TraceType.REACTIVE_FLOW_STARTED,
             {
                 "task": task[:200],
                 "initial_event": initial_event,
@@ -315,8 +433,13 @@ class EventFlow:
                     "max_rounds": self.config.max_rounds,
                     "max_concurrent": self.config.max_concurrent_agents,
                 },
+                "sources": [s.name for s in self._sources],
             },
         )
+
+        # Start external event sources (webhooks, file watchers, etc.)
+        if self._sources:
+            await self._start_sources()
 
         # Emit initial event
         initial = CoreEvent(
@@ -329,7 +452,7 @@ class EventFlow:
         await self.bus.publish(initial_event, {"task": task, **(initial_data or {})})
 
         self._observe(
-            EventType.REACTIVE_EVENT_EMITTED,
+            TraceType.REACTIVE_EVENT_EMITTED,
             {"event_name": initial_event, "event_id": initial.id},
         )
 
@@ -342,7 +465,7 @@ class EventFlow:
                 rounds += 1
 
                 self._observe(
-                    EventType.REACTIVE_ROUND_STARTED,
+                    TraceType.REACTIVE_ROUND_STARTED,
                     {"round": rounds, "pending_events": self._pending_events.qsize()},
                 )
 
@@ -361,7 +484,7 @@ class EventFlow:
                 event_name = event.name
 
                 self._observe(
-                    EventType.REACTIVE_EVENT_PROCESSED,
+                    TraceType.REACTIVE_EVENT_PROCESSED,
                     {"event_name": event_name, "event_id": event.id, "round": rounds},
                 )
 
@@ -384,7 +507,7 @@ class EventFlow:
                         last_output = reaction.output
 
                 self._observe(
-                    EventType.REACTIVE_ROUND_COMPLETED,
+                    TraceType.REACTIVE_ROUND_COMPLETED,
                     {
                         "round": rounds,
                         "reactions": len(agent_reactions),
@@ -400,13 +523,15 @@ class EventFlow:
         except Exception as e:
             error = e
             self._observe(
-                EventType.REACTIVE_FLOW_FAILED,
+                TraceType.REACTIVE_FLOW_FAILED,
                 {"error": str(e), "rounds": rounds, "events_processed": events_processed},
             )
             raise
 
         finally:
             self._running = False
+            await self._stop_sources()
+            await self._close_sinks()
             await self.cancel_spawned()
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
@@ -414,7 +539,7 @@ class EventFlow:
         # Observe: flow completed
         if not error:
             self._observe(
-                EventType.REACTIVE_FLOW_COMPLETED,
+                TraceType.REACTIVE_FLOW_COMPLETED,
                 {
                     "output_length": len(last_output),
                     "events_processed": events_processed,
@@ -462,7 +587,7 @@ class EventFlow:
 
         if not matching:
             self._observe(
-                EventType.REACTIVE_NO_MATCH,
+                TraceType.REACTIVE_NO_MATCH,
                 {"event_name": event.name, "event_id": event.id},
             )
             return reactions
@@ -513,7 +638,7 @@ class EventFlow:
 
         # Observe: agent triggered
         self._observe(
-            EventType.REACTIVE_AGENT_TRIGGERED,
+            TraceType.REACTIVE_AGENT_TRIGGERED,
             {
                 "agent": agent.name,
                 "trigger_event": event_name,
@@ -545,7 +670,7 @@ class EventFlow:
 
             # Observe: agent completed
             self._observe(
-                EventType.REACTIVE_AGENT_COMPLETED,
+                TraceType.REACTIVE_AGENT_COMPLETED,
                 {
                     "agent": agent.name,
                     "output_length": len(output) if output else 0,
@@ -576,7 +701,7 @@ class EventFlow:
 
             # Observe: agent failed
             self._observe(
-                EventType.REACTIVE_AGENT_FAILED,
+                TraceType.REACTIVE_AGENT_FAILED,
                 {
                     "agent": agent.name,
                     "error": error,
@@ -642,6 +767,9 @@ class EventFlow:
         await self.events.publish(core_event)
         # Mirror to observability bus for external subscribers/debugging
         await self.bus.publish(event_name, dict(data))
+        # Send to registered sinks
+        if self._sinks:
+            await self._send_to_sinks(core_event)
 
     async def emit(self, event_name: str, data: dict[str, Any] | None = None) -> None:
         """

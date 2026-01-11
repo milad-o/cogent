@@ -31,7 +31,7 @@ from agenticflow.interceptors.security import (
     ContentFilter,
 )
 from agenticflow.interceptors.ratelimit import RateLimiter, ThrottleInterceptor
-from agenticflow.interceptors.audit import Auditor, AuditEvent, AuditEventType
+from agenticflow.interceptors.audit import Auditor, AuditEvent, AuditTraceType
 
 
 # =============================================================================
@@ -909,7 +909,7 @@ class TestAuditor:
         await auditor.pre_run(ctx)
         
         assert len(auditor.events) == 1
-        assert auditor.events[0].event_type == AuditEventType.RUN_START
+        assert auditor.events[0].event_type == AuditTraceType.RUN_START
         assert auditor.events[0].agent_name == "TestAgent"
     
     @pytest.mark.asyncio
@@ -929,7 +929,7 @@ class TestAuditor:
         await auditor.pre_think(ctx)
         
         assert len(auditor.events) == 1
-        assert auditor.events[0].event_type == AuditEventType.MODEL_REQUEST
+        assert auditor.events[0].event_type == AuditTraceType.MODEL_REQUEST
         assert auditor.events[0].data["model_call_number"] == 1
     
     @pytest.mark.asyncio
@@ -951,7 +951,7 @@ class TestAuditor:
         await auditor.pre_act(ctx)
         
         assert len(auditor.events) == 1
-        assert auditor.events[0].event_type == AuditEventType.TOOL_REQUEST
+        assert auditor.events[0].event_type == AuditTraceType.TOOL_REQUEST
         assert auditor.events[0].data["tool_name"] == "search"
     
     @pytest.mark.asyncio
@@ -975,21 +975,21 @@ class TestAuditor:
         await auditor.pre_run(ctx)
         
         assert len(events_received) == 1
-        assert events_received[0].event_type == AuditEventType.RUN_START
+        assert events_received[0].event_type == AuditTraceType.RUN_START
     
     def test_summary(self):
         auditor = Auditor()
         auditor._events = [
             AuditEvent(
                 timestamp="2024-01-01T00:00:00Z",
-                event_type=AuditEventType.RUN_START,
+                event_type=AuditTraceType.RUN_START,
                 agent_name="Test",
                 task="test",
                 phase=Phase.PRE_RUN,
             ),
             AuditEvent(
                 timestamp="2024-01-01T00:00:01Z",
-                event_type=AuditEventType.MODEL_REQUEST,
+                event_type=AuditTraceType.MODEL_REQUEST,
                 agent_name="Test",
                 task="test",
                 phase=Phase.PRE_THINK,
@@ -1007,7 +1007,7 @@ class TestAuditor:
         auditor._events = [
             AuditEvent(
                 timestamp="2024-01-01T00:00:00Z",
-                event_type=AuditEventType.RUN_START,
+                event_type=AuditTraceType.RUN_START,
                 agent_name="Test",
                 task="test",
                 phase=Phase.PRE_RUN,
@@ -1036,7 +1036,7 @@ class TestAuditEvent:
     def test_to_dict(self):
         event = AuditEvent(
             timestamp="2024-01-01T00:00:00Z",
-            event_type=AuditEventType.RUN_START,
+            event_type=AuditTraceType.RUN_START,
             agent_name="TestAgent",
             task="test task",
             phase=Phase.PRE_RUN,
@@ -1054,7 +1054,7 @@ class TestAuditEvent:
     def test_to_json(self):
         event = AuditEvent(
             timestamp="2024-01-01T00:00:00Z",
-            event_type=AuditEventType.RUN_START,
+            event_type=AuditTraceType.RUN_START,
             agent_name="Test",
             task="test",
             phase=Phase.PRE_RUN,

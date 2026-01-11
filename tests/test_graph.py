@@ -17,13 +17,13 @@ from agenticflow.graph import (
 
 
 @pytest.fixture
-def event_bus() -> EventBus:
+def event_bus() -> TraceBus:
     """Create event bus for tests."""
-    return EventBus()
+    return TraceBus()
 
 
 @pytest.fixture
-def sample_agent(event_bus: EventBus) -> Agent:
+def sample_agent(event_bus: TraceBus) -> Agent:
     """Create a sample agent with tools."""
     return Agent(
         config=AgentConfig(
@@ -279,7 +279,7 @@ class TestClassDefinitions:
 class TestEdgeCases:
     """Tests for edge cases."""
 
-    def test_agent_no_tools(self, event_bus: EventBus) -> None:
+    def test_agent_no_tools(self, event_bus: TraceBus) -> None:
         """Test agent with no tools."""
         agent = Agent(
             config=AgentConfig(
@@ -293,7 +293,7 @@ class TestEdgeCases:
 
         assert "NoToolsAgent" in mermaid
 
-    def test_agent_special_characters_in_name(self, event_bus: EventBus) -> None:
+    def test_agent_special_characters_in_name(self, event_bus: TraceBus) -> None:
         """Test agent with special characters in name."""
         agent = Agent(
             config=AgentConfig(

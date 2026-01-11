@@ -182,11 +182,11 @@ class MCP(BaseCapability):
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event through the agent's event bus if available."""
         if self._agent and hasattr(self._agent, "event_bus") and self._agent.event_bus:
-            from agenticflow.observability.event import Event, EventType
+            from agenticflow.observability.trace_record import Trace, TraceType
             try:
                 agent_id = self._agent.id if hasattr(self._agent, "id") else None
                 event = Event(
-                    type=EventType(event_type),
+                    type=TraceType(event_type),
                     data={"capability": "mcp", "agent_id": agent_id, **data},
                     source=f"capability:mcp:{agent_id or 'unknown'}",
                 )

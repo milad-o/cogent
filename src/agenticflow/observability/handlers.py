@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TextIO
 
-from agenticflow.observability.event import EventType
-from agenticflow.observability.event import Event
+from agenticflow.observability.trace_record import TraceType
+from agenticflow.observability.trace_record import Trace
 
 
 class ConsoleEventHandler:
@@ -32,52 +32,52 @@ class ConsoleEventHandler:
     """
 
     # Icons for different event types
-    ICONS: dict[EventType, str] = {
+    ICONS: dict[TraceType, str] = {
         # System
-        EventType.SYSTEM_STARTED: "🚀",
-        EventType.SYSTEM_STOPPED: "🏁",
-        EventType.SYSTEM_ERROR: "💥",
+        TraceType.SYSTEM_STARTED: "🚀",
+        TraceType.SYSTEM_STOPPED: "🏁",
+        TraceType.SYSTEM_ERROR: "💥",
         # Tasks
-        EventType.TASK_CREATED: "📝",
-        EventType.TASK_SCHEDULED: "📋",
-        EventType.TASK_STARTED: "▶️",
-        EventType.TASK_COMPLETED: "✅",
-        EventType.TASK_FAILED: "❌",
-        EventType.TASK_CANCELLED: "🚫",
-        EventType.TASK_BLOCKED: "⏸️",
-        EventType.TASK_UNBLOCKED: "⏯️",
-        EventType.TASK_RETRYING: "🔄",
+        TraceType.TASK_CREATED: "📝",
+        TraceType.TASK_SCHEDULED: "📋",
+        TraceType.TASK_STARTED: "▶️",
+        TraceType.TASK_COMPLETED: "✅",
+        TraceType.TASK_FAILED: "❌",
+        TraceType.TASK_CANCELLED: "🚫",
+        TraceType.TASK_BLOCKED: "⏸️",
+        TraceType.TASK_UNBLOCKED: "⏯️",
+        TraceType.TASK_RETRYING: "🔄",
         # Subtasks
-        EventType.SUBTASK_SPAWNED: "🔀",
-        EventType.SUBTASK_COMPLETED: "✔️",
-        EventType.SUBTASKS_AGGREGATED: "📦",
+        TraceType.SUBTASK_SPAWNED: "🔀",
+        TraceType.SUBTASK_COMPLETED: "✔️",
+        TraceType.SUBTASKS_AGGREGATED: "📦",
         # Agents
-        EventType.AGENT_REGISTERED: "🤖",
-        EventType.AGENT_UNREGISTERED: "👋",
-        EventType.AGENT_INVOKED: "📞",
-        EventType.AGENT_THINKING: "🧠",
-        EventType.AGENT_ACTING: "⚡",
-        EventType.AGENT_RESPONDED: "💬",
-        EventType.AGENT_ERROR: "🔥",
-        EventType.AGENT_STATUS_CHANGED: "🔄",
+        TraceType.AGENT_REGISTERED: "🤖",
+        TraceType.AGENT_UNREGISTERED: "👋",
+        TraceType.AGENT_INVOKED: "📞",
+        TraceType.AGENT_THINKING: "🧠",
+        TraceType.AGENT_ACTING: "⚡",
+        TraceType.AGENT_RESPONDED: "💬",
+        TraceType.AGENT_ERROR: "🔥",
+        TraceType.AGENT_STATUS_CHANGED: "🔄",
         # Tools
-        EventType.TOOL_REGISTERED: "🔧",
-        EventType.TOOL_CALLED: "🛠️",
-        EventType.TOOL_RESULT: "📤",
-        EventType.TOOL_ERROR: "⚠️",
+        TraceType.TOOL_REGISTERED: "🔧",
+        TraceType.TOOL_CALLED: "🛠️",
+        TraceType.TOOL_RESULT: "📤",
+        TraceType.TOOL_ERROR: "⚠️",
         # Planning
-        EventType.PLAN_CREATED: "📊",
-        EventType.PLAN_STEP_STARTED: "⚡",
-        EventType.PLAN_STEP_COMPLETED: "✔️",
-        EventType.PLAN_FAILED: "❌",
+        TraceType.PLAN_CREATED: "📊",
+        TraceType.PLAN_STEP_STARTED: "⚡",
+        TraceType.PLAN_STEP_COMPLETED: "✔️",
+        TraceType.PLAN_FAILED: "❌",
         # Messages
-        EventType.MESSAGE_SENT: "📨",
-        EventType.MESSAGE_RECEIVED: "📩",
-        EventType.MESSAGE_BROADCAST: "📢",
+        TraceType.MESSAGE_SENT: "📨",
+        TraceType.MESSAGE_RECEIVED: "📩",
+        TraceType.MESSAGE_BROADCAST: "📢",
         # Clients
-        EventType.CLIENT_CONNECTED: "🔌",
-        EventType.CLIENT_DISCONNECTED: "🔌",
-        EventType.CLIENT_MESSAGE: "💬",
+        TraceType.CLIENT_CONNECTED: "🔌",
+        TraceType.CLIENT_DISCONNECTED: "🔌",
+        TraceType.CLIENT_MESSAGE: "💬",
     }
 
     def __init__(
@@ -122,61 +122,61 @@ class ConsoleEventHandler:
 
         match event.type:
             # System events
-            case EventType.SYSTEM_STARTED:
+            case TraceType.SYSTEM_STARTED:
                 return "System started"
-            case EventType.SYSTEM_STOPPED:
+            case TraceType.SYSTEM_STOPPED:
                 return "System stopped"
-            case EventType.SYSTEM_ERROR:
+            case TraceType.SYSTEM_ERROR:
                 return f"System error: {data.get('error', 'unknown')}"
 
             # Task events
-            case EventType.TASK_CREATED:
+            case TraceType.TASK_CREATED:
                 name = data.get("name", data.get("task", {}).get("name", "unknown"))
                 deps = data.get("depends_on", [])
                 dep_str = f" → depends on {deps}" if deps else ""
                 return f"Created: {name}{dep_str}"
-            case EventType.TASK_STARTED:
+            case TraceType.TASK_STARTED:
                 task = data.get("task", {})
                 return f"{task.get('name', 'unknown')} STARTED"
-            case EventType.TASK_COMPLETED:
+            case TraceType.TASK_COMPLETED:
                 task = data.get("task", {})
                 duration = task.get("duration_ms", 0)
                 return f"{task.get('name', 'unknown')} COMPLETED ({duration:.0f}ms)"
-            case EventType.TASK_FAILED:
+            case TraceType.TASK_FAILED:
                 task = data.get("task", {})
                 error = task.get("error", "unknown error")
                 return f"{task.get('name', 'unknown')} FAILED: {error}"
 
             # Agent events
-            case EventType.AGENT_REGISTERED:
+            case TraceType.AGENT_REGISTERED:
                 return f"Agent registered: {data.get('agent_name', 'unknown')}"
-            case EventType.AGENT_THINKING:
+            case TraceType.AGENT_THINKING:
                 return f"{data.get('agent_name', 'Agent')} thinking..."
-            case EventType.AGENT_ACTING:
+            case TraceType.AGENT_ACTING:
                 return f"{data.get('agent_name', 'Agent')} acting..."
-            case EventType.AGENT_RESPONDED:
+            case TraceType.AGENT_RESPONDED:
                 preview = data.get("result_preview", "")[:50]
                 return f"{data.get('agent_name', 'Agent')}: {preview}..."
-            case EventType.AGENT_ERROR:
+            case TraceType.AGENT_ERROR:
                 return f"{data.get('agent_name', 'Agent')} error: {data.get('error', 'unknown')}"
 
             # Tool events
-            case EventType.TOOL_CALLED:
+            case TraceType.TOOL_CALLED:
                 return f"Calling {data.get('tool', 'unknown')}"
-            case EventType.TOOL_RESULT:
+            case TraceType.TOOL_RESULT:
                 return f"Tool result received"
-            case EventType.TOOL_ERROR:
+            case TraceType.TOOL_ERROR:
                 return f"Tool error: {data.get('error', 'unknown')}"
 
             # Plan events
-            case EventType.PLAN_CREATED:
+            case TraceType.PLAN_CREATED:
                 return f"Plan created: {data.get('step_count', '?')} steps"
-            case EventType.PLAN_STEP_STARTED:
+            case TraceType.PLAN_STEP_STARTED:
                 step = data.get("step", "?")
                 count = data.get("task_count", 1)
                 parallel = " ⚡PARALLEL" if count > 1 else ""
                 return f"Step {step}: {count} task(s){parallel}"
-            case EventType.PLAN_STEP_COMPLETED:
+            case TraceType.PLAN_STEP_COMPLETED:
                 return f"Step {data.get('step', '?')} completed"
 
             # Default
@@ -258,7 +258,7 @@ class FilteringEventHandler:
     def __init__(
         self,
         inner_handler: ConsoleEventHandler | FileEventHandler,
-        event_types: list[EventType] | None = None,
+        event_types: list[TraceType] | None = None,
         categories: list[str] | None = None,
         sources: list[str] | None = None,
     ) -> None:
@@ -324,7 +324,7 @@ class MetricsEventHandler:
         self.event_counts[key] = self.event_counts.get(key, 0) + 1
 
         # Track task durations
-        if event.type == EventType.TASK_COMPLETED:
+        if event.type == TraceType.TASK_COMPLETED:
             task = event.data.get("task", {})
             duration = task.get("duration_ms")
             if duration:
@@ -332,10 +332,10 @@ class MetricsEventHandler:
 
         # Count errors
         if event.type in (
-            EventType.TASK_FAILED,
-            EventType.AGENT_ERROR,
-            EventType.TOOL_ERROR,
-            EventType.SYSTEM_ERROR,
+            TraceType.TASK_FAILED,
+            TraceType.AGENT_ERROR,
+            TraceType.TOOL_ERROR,
+            TraceType.SYSTEM_ERROR,
         ):
             self.error_count += 1
 

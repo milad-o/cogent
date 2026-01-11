@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 from agenticflow.flow.base import BaseFlow
-from agenticflow.observability.bus import EventBus
+from agenticflow.observability.bus import TraceBus
 from agenticflow.observability.handlers import ConsoleEventHandler
 from agenticflow.tools.base import BaseTool
 from agenticflow.tools.registry import ToolRegistry
@@ -114,6 +114,19 @@ class Flow(BaseFlow):
 
     A Flow wraps agents in a topology (supervisor, pipeline, mesh, hierarchical)
     and provides a simple run() interface.
+
+    .. note::
+        For **event-driven** multi-agent systems, consider using
+        :class:`~agenticflow.reactive.EventFlow` instead. ``EventFlow`` supports:
+
+        - Reactive triggers and event-based agent activation
+        - External event sources (webhooks, file watchers, message queues)
+        - Outbound event sinks for integration with external systems
+        - Dynamic agent orchestration based on event patterns
+
+        ``Flow`` remains the recommended choice for simple, imperative,
+        topology-based orchestration where agents run in a fixed sequence
+        or pattern.
 
     Patterns:
         - **supervisor**: One agent coordinates, others do the work
@@ -401,7 +414,7 @@ class Flow(BaseFlow):
         return self._topology
 
     @property
-    def event_bus(self) -> EventBus:
+    def event_bus(self) -> TraceBus:
         """Access the event bus (alias for bus)."""
         return self._bus
 
@@ -424,10 +437,10 @@ class Flow(BaseFlow):
                 print(f"[{name}]: {output[:100]}...")
             ```
         """
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.trace_record import TraceType
         
         # Emit user input event
-        self._observe(EventType.USER_INPUT, {
+        self._observe(TraceType.USER_INPUT, {
             "content": task,
             "flow_name": self.name,
         })
@@ -436,7 +449,7 @@ class Flow(BaseFlow):
         result = await self._topology.run(task)
         
         # Emit output generated event
-        self._observe(EventType.OUTPUT_GENERATED, {
+        self._observe(TraceType.OUTPUT_GENERATED, {
             "content": result.output,
             "flow_name": self.name,
             "agent_count": len(result.agent_outputs),

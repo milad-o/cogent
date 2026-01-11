@@ -6,8 +6,8 @@ import pytest
 from unittest.mock import AsyncMock
 
 from agenticflow.core.enums import Priority, TaskStatus
-from agenticflow.observability.event import EventType
-from agenticflow.observability.bus import EventBus
+from agenticflow.observability.trace_record import TraceType
+from agenticflow.observability.bus import TraceBus
 from agenticflow.tasks.manager import TaskManager
 
 
@@ -15,11 +15,11 @@ class TestTaskManager:
     """Tests for TaskManager."""
 
     @pytest.fixture
-    def event_bus(self) -> EventBus:
-        return EventBus()
+    def event_bus(self) -> TraceBus:
+        return TraceBus()
 
     @pytest.fixture
-    def task_manager(self, event_bus: EventBus) -> TaskManager:
+    def task_manager(self, event_bus: TraceBus) -> TaskManager:
         return TaskManager(event_bus)
 
     async def test_create_task(self, task_manager: TaskManager) -> None:
@@ -34,16 +34,16 @@ class TestTaskManager:
         assert task.id in task_manager.tasks
 
     async def test_create_task_emits_event(
-        self, task_manager: TaskManager, event_bus: EventBus
+        self, task_manager: TaskManager, event_bus: TraceBus
     ) -> None:
         handler = AsyncMock()
-        event_bus.subscribe(EventType.TASK_CREATED, handler)
+        event_bus.subscribe(TraceType.TASK_CREATED, handler)
 
         await task_manager.create_task(name="Test")
 
         handler.assert_awaited_once()
         event = handler.call_args[0][0]
-        assert event.type == EventType.TASK_CREATED
+        assert event.type == TraceType.TASK_CREATED
 
     async def test_create_subtask(self, task_manager: TaskManager) -> None:
         parent = await task_manager.create_task(name="Parent")
@@ -57,10 +57,10 @@ class TestTaskManager:
         assert child.id in parent.subtask_ids
 
     async def test_create_subtask_emits_spawned_event(
-        self, task_manager: TaskManager, event_bus: EventBus
+        self, task_manager: TaskManager, event_bus: TraceBus
     ) -> None:
         handler = AsyncMock()
-        event_bus.subscribe(EventType.SUBTASK_SPAWNED, handler)
+        event_bus.subscribe(TraceType.SUBTASK_SPAWNED, handler)
 
         parent = await task_manager.create_task(name="Parent")
         await task_manager.create_subtask(parent_id=parent.id, name="Child")

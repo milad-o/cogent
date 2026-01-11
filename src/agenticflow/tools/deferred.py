@@ -75,11 +75,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable
 from uuid import uuid4
 
-from agenticflow.observability.event import EventType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
 
 
 class DeferredStatus(Enum):
@@ -102,7 +102,7 @@ class DeferredResult:
     
     Attributes:
         job_id: Unique identifier for this deferred operation.
-        wait_for: Event type to wait for (string or EventType).
+        wait_for: Event type to wait for (string or TraceType).
         match: Dict of fields that must match in the event data.
         timeout: Maximum seconds to wait (default 300 = 5 minutes).
         on_timeout: Action on timeout: "error", "retry", or default value.
@@ -116,7 +116,7 @@ class DeferredResult:
     job_id: str = field(default_factory=lambda: generate_id())
     
     # Event-based completion
-    wait_for: str | EventType | None = None
+    wait_for: str | TraceType | None = None
     match: dict[str, Any] = field(default_factory=dict)
     
     # Timeout handling

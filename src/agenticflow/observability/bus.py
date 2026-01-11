@@ -1,5 +1,9 @@
 """
-EventBus - central pub/sub system for event distribution.
+TraceBus - central pub/sub system for observability event distribution.
+
+Note: This was renamed from TraceBus to TraceBus to distinguish from the
+core orchestration TraceBus in agenticflow.events.bus. The old name is
+still available as a deprecated alias.
 """
 
 from __future__ import annotations
@@ -9,19 +13,21 @@ import inspect
 from collections import defaultdict
 from typing import Callable, Awaitable
 
-from agenticflow.observability.event import EventType
-from agenticflow.observability.event import Event
+from agenticflow.observability.trace_record import TraceType
+from agenticflow.observability.trace_record import Trace
 
 
-# Type alias for event handlers
-EventHandler = Callable[[Event], None] | Callable[[Event], Awaitable[None]]
+# Type alias for trace handlers
+TraceHandler = Callable[[Trace], None] | Callable[[Trace], Awaitable[None]]
 
 
-class EventBus:
+class TraceBus:
     """
-    Central event bus with pub/sub pattern.
+    Central observability event bus with pub/sub pattern.
     
-    The EventBus is the backbone of the event-driven architecture.
+    TraceBus handles observability events (tracing, metrics, logging).
+    For core orchestration events, use agenticflow.events.TraceBus instead.
+    
     It supports:
     - Type-specific subscriptions
     - Global subscriptions (for logging, metrics)
@@ -34,23 +40,23 @@ class EventBus:
         
     Example:
         ```python
-        bus = EventBus()
+        bus = TraceBus()
         
         # Subscribe to specific events
-        bus.subscribe(EventType.TASK_COMPLETED, handle_completion)
+        bus.subscribe(TraceType.TASK_COMPLETED, handle_completion)
         
         # Subscribe to all events
         bus.subscribe_all(log_event)
         
         # Publish an event
         await bus.publish(Event(
-            type=EventType.TASK_STARTED,
+            type=TraceType.TASK_STARTED,
             data={"task_id": "123"},
         ))
         
         # Query history
         events = bus.get_history(
-            event_type=EventType.TASK_COMPLETED,
+            event_type=TraceType.TASK_COMPLETED,
             limit=10,
         )
         ```
@@ -58,20 +64,20 @@ class EventBus:
 
     def __init__(self, max_history: int = 10000) -> None:
         """
-        Initialize the EventBus.
+        Initialize the TraceBus.
         
         Args:
             max_history: Maximum number of events to keep in history
         """
-        self._handlers: dict[EventType, list[EventHandler]] = defaultdict(list)
-        self._global_handlers: list[EventHandler] = []
+        self._handlers: dict[TraceType, list[TraceHandler]] = defaultdict(list)
+        self._global_handlers: list[TraceHandler] = []
         self._event_history: list[Event] = []
         self._websocket_clients: set = set()
         self._lock = asyncio.Lock()
         self._max_history = max_history
         self._loop: asyncio.AbstractEventLoop | None = None  # Store loop reference
 
-    def subscribe(self, event_type: EventType, handler: EventHandler) -> None:
+    def subscribe(self, event_type: TraceType, handler: TraceHandler) -> None:
         """
         Subscribe to a specific event type.
         
@@ -84,8 +90,8 @@ class EventBus:
 
     def subscribe_many(
         self,
-        event_types: list[EventType],
-        handler: EventHandler,
+        event_types: list[TraceType],
+        handler: TraceHandler,
     ) -> None:
         """
         Subscribe to multiple event types.
@@ -97,7 +103,7 @@ class EventBus:
         for event_type in event_types:
             self.subscribe(event_type, handler)
 
-    def subscribe_all(self, handler: EventHandler) -> None:
+    def subscribe_all(self, handler: TraceHandler) -> None:
         """
         Subscribe to ALL events.
         
@@ -109,7 +115,7 @@ class EventBus:
         if handler not in self._global_handlers:
             self._global_handlers.append(handler)
 
-    def unsubscribe(self, event_type: EventType, handler: EventHandler) -> None:
+    def unsubscribe(self, event_type: TraceType, handler: TraceHandler) -> None:
         """
         Unsubscribe from an event type.
         
@@ -120,7 +126,7 @@ class EventBus:
         if handler in self._handlers[event_type]:
             self._handlers[event_type].remove(handler)
 
-    def unsubscribe_all(self, handler: EventHandler) -> None:
+    def unsubscribe_all(self, handler: TraceHandler) -> None:
         """
         Unsubscribe a global handler.
         
@@ -156,19 +162,19 @@ class EventBus:
         
         # Handle simple string/dict API
         if isinstance(event, str):
-            from agenticflow.observability.event import EventType
-            from agenticflow.observability.event import Event as EventClass
+            from agenticflow.observability.trace_record import TraceType
+            from agenticflow.observability.trace_record import Trace as EventClass
             
-            # Try to parse as EventType enum, otherwise use custom type
+            # Try to parse as TraceType enum, otherwise use custom type
             try:
-                event_type = EventType(event)
+                event_type = TraceType(event)
             except ValueError:
                 # Custom event type - use a generic type
-                event_type = EventType.CUSTOM
+                event_type = TraceType.CUSTOM
             
             event = EventClass(
                 type=event_type,
-                data={"event_name": event if event_type == EventType.CUSTOM else None, **(data or {})},
+                data={"event_name": event if event_type == TraceType.CUSTOM else None, **(data or {})},
             )
         
         # Add to history
@@ -195,7 +201,7 @@ class EventBus:
         
         This method is designed for use in sync contexts (like tool functions)
         where you need to emit events but can't await. It uses the event loop
-        reference captured during EventBus initialization to schedule events
+        reference captured during TraceBus initialization to schedule events
         from threads.
         
         **Use only when:**
@@ -244,7 +250,7 @@ class EventBus:
         for event in events:
             await self.publish(event)
 
-    async def _call_handler(self, handler: EventHandler, event: Event) -> None:
+    async def _call_handler(self, handler: TraceHandler, event: Event) -> None:
         """
         Call a handler (sync or async).
         
@@ -308,7 +314,7 @@ class EventBus:
 
     def get_history(
         self,
-        event_type: EventType | None = None,
+        event_type: TraceType | None = None,
         correlation_id: str | None = None,
         source: str | None = None,
         limit: int = 100,
@@ -387,30 +393,30 @@ class EventBus:
 
 
 # Global singleton instance (optional)
-_default_bus: EventBus | None = None
+_default_bus: TraceBus | None = None
 
 
-def get_event_bus() -> EventBus:
+def get_trace_bus() -> TraceBus:
     """
-    Get the default global EventBus instance.
+    Get the default global TraceBus instance.
     
     Creates one if it doesn't exist.
     
     Returns:
-        The global EventBus instance
+        The global TraceBus instance
     """
     global _default_bus
     if _default_bus is None:
-        _default_bus = EventBus()
+        _default_bus = TraceBus()
     return _default_bus
 
 
-def set_event_bus(bus: EventBus) -> None:
+def set_trace_bus(bus: TraceBus) -> None:
     """
-    Set the global EventBus instance.
+    Set the global TraceBus instance.
     
     Args:
-        bus: The EventBus to use as global default
+        bus: The TraceBus to use as global default
     """
     global _default_bus
     _default_bus = bus

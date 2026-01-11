@@ -23,7 +23,7 @@ from agenticflow.reactive.core import (
 from agenticflow.reactive.skills import Skill, SkillBuilder
 from agenticflow.events.bus import EventBus as CoreEventBus
 from agenticflow.events.event import Event as CoreEvent
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.observability.observer import Observer
 
 if TYPE_CHECKING:
@@ -335,13 +335,13 @@ class ReactiveFlow(BaseFlow):
 
         # Observe: user input received
         self._observe(
-            EventType.USER_INPUT,
+            TraceType.USER_INPUT,
             {"content": task, "source": "reactive_flow"},
         )
 
         # Observe: flow started
         self._observe(
-            EventType.REACTIVE_FLOW_STARTED,
+            TraceType.REACTIVE_FLOW_STARTED,
             {
                 "task": task[:200],
                 "initial_event": initial_event,
@@ -364,7 +364,7 @@ class ReactiveFlow(BaseFlow):
         await self._bus.publish(initial_event, {"task": task, **(initial_data or {})})
 
         self._observe(
-            EventType.REACTIVE_EVENT_EMITTED,
+            TraceType.REACTIVE_EVENT_EMITTED,
             {"event_name": initial_event, "event_id": initial.id},
         )
 
@@ -377,7 +377,7 @@ class ReactiveFlow(BaseFlow):
                 rounds += 1
 
                 self._observe(
-                    EventType.REACTIVE_ROUND_STARTED,
+                    TraceType.REACTIVE_ROUND_STARTED,
                     {"round": rounds, "pending_events": self._pending_events.qsize()},
                 )
 
@@ -396,7 +396,7 @@ class ReactiveFlow(BaseFlow):
                 event_name = event.name
 
                 self._observe(
-                    EventType.REACTIVE_EVENT_PROCESSED,
+                    TraceType.REACTIVE_EVENT_PROCESSED,
                     {"event_name": event_name, "event_id": event.id, "round": rounds},
                 )
 
@@ -419,7 +419,7 @@ class ReactiveFlow(BaseFlow):
                         last_output = reaction.output
 
                 self._observe(
-                    EventType.REACTIVE_ROUND_COMPLETED,
+                    TraceType.REACTIVE_ROUND_COMPLETED,
                     {
                         "round": rounds,
                         "reactions": len(agent_reactions),
@@ -435,7 +435,7 @@ class ReactiveFlow(BaseFlow):
         except Exception as e:
             error = e
             self._observe(
-                EventType.REACTIVE_FLOW_FAILED,
+                TraceType.REACTIVE_FLOW_FAILED,
                 {"error": str(e), "rounds": rounds, "events_processed": events_processed},
             )
             raise
@@ -449,7 +449,7 @@ class ReactiveFlow(BaseFlow):
         # Observe: flow completed
         if not error:
             self._observe(
-                EventType.REACTIVE_FLOW_COMPLETED,
+                TraceType.REACTIVE_FLOW_COMPLETED,
                 {
                     "output_length": len(last_output),
                     "events_processed": events_processed,
@@ -497,7 +497,7 @@ class ReactiveFlow(BaseFlow):
 
         if not matching:
             self._observe(
-                EventType.REACTIVE_NO_MATCH,
+                TraceType.REACTIVE_NO_MATCH,
                 {"event_name": event.name, "event_id": event.id},
             )
             return reactions
@@ -548,7 +548,7 @@ class ReactiveFlow(BaseFlow):
 
         # Observe: agent triggered
         self._observe(
-            EventType.REACTIVE_AGENT_TRIGGERED,
+            TraceType.REACTIVE_AGENT_TRIGGERED,
             {
                 "agent": agent.name,
                 "trigger_event": event_name,
@@ -575,7 +575,7 @@ class ReactiveFlow(BaseFlow):
             for skill in matching_skills:
                 # Observe: skill activated
                 self._observe(
-                    EventType.SKILL_ACTIVATED,
+                    TraceType.SKILL_ACTIVATED,
                     {
                         "skill": skill.name,
                         "agent": agent.name,
@@ -618,7 +618,7 @@ class ReactiveFlow(BaseFlow):
             
             for skill in matching_skills:
                 self._observe(
-                    EventType.SKILL_DEACTIVATED,
+                    TraceType.SKILL_DEACTIVATED,
                     {"skill": skill.name, "agent": agent.name},
                 )
             
@@ -627,7 +627,7 @@ class ReactiveFlow(BaseFlow):
 
             # Observe: agent completed
             self._observe(
-                EventType.REACTIVE_AGENT_COMPLETED,
+                TraceType.REACTIVE_AGENT_COMPLETED,
                 {
                     "agent": agent.name,
                     "output_length": len(output) if output else 0,
@@ -658,7 +658,7 @@ class ReactiveFlow(BaseFlow):
 
             # Observe: agent failed
             self._observe(
-                EventType.REACTIVE_AGENT_FAILED,
+                TraceType.REACTIVE_AGENT_FAILED,
                 {
                     "agent": agent.name,
                     "error": error,

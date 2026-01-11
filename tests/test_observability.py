@@ -356,17 +356,17 @@ class TestObserver:
     async def test_attach_to_event_bus(self):
         """Test attaching observer to event bus."""
         from agenticflow.observability import Observer, ObservabilityLevel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
-        bus = EventBus()
+        bus = TraceBus()
         obs = Observer(level=ObservabilityLevel.DEBUG)
         
         obs.attach(bus)
         
         # Publish an event
-        event = Event(type=EventType.AGENT_INVOKED, data={"agent_name": "Test"})
+        event = Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"})
         await bus.publish(event)
         
         # Check metrics
@@ -377,9 +377,9 @@ class TestObserver:
     async def test_callbacks(self):
         """Test observer callbacks."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
         agent_calls = []
         tool_calls = []
@@ -391,12 +391,12 @@ class TestObserver:
             on_tool=lambda name, action, data: tool_calls.append(f"{name}:{action}"),
         )
         
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
         # Publish events
-        await bus.publish(Event(type=EventType.AGENT_INVOKED, data={"agent_name": "Test"}))
-        await bus.publish(Event(type=EventType.TOOL_CALLED, data={"tool": "search"}))
+        await bus.publish(Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"}))
+        await bus.publish(Event(type=TraceType.TOOL_CALLED, data={"tool": "search"}))
         
         assert len(agent_calls) == 1
         assert "Test:invoked" in agent_calls[0]
@@ -407,18 +407,18 @@ class TestObserver:
     async def test_events_query(self):
         """Test querying observed events."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
         # Publish multiple events
-        await bus.publish(Event(type=EventType.AGENT_INVOKED, data={"agent_name": "A1"}))
-        await bus.publish(Event(type=EventType.TOOL_CALLED, data={"tool": "search"}))
-        await bus.publish(Event(type=EventType.AGENT_RESPONDED, data={"agent_name": "A1"}))
+        await bus.publish(Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "A1"}))
+        await bus.publish(Event(type=TraceType.TOOL_CALLED, data={"tool": "search"}))
+        await bus.publish(Event(type=TraceType.AGENT_RESPONDED, data={"agent_name": "A1"}))
         
         # Query all
         events = obs.events()
@@ -430,22 +430,22 @@ class TestObserver:
         
         # Query by channel
         agent_events = obs.events(channel=Channel.AGENTS)
-        assert all(e.type in {EventType.AGENT_INVOKED, EventType.AGENT_RESPONDED} for e in agent_events)
+        assert all(e.type in {TraceType.AGENT_INVOKED, TraceType.AGENT_RESPONDED} for e in agent_events)
 
     @pytest.mark.asyncio
     async def test_timeline(self):
         """Test timeline generation."""
         from agenticflow.observability import Observer, ObservabilityLevel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(type=EventType.TASK_STARTED, data={"task": "test"}))
-        await bus.publish(Event(type=EventType.TASK_COMPLETED, data={}))
+        await bus.publish(Event(type=TraceType.TASK_STARTED, data={"task": "test"}))
+        await bus.publish(Event(type=TraceType.TASK_COMPLETED, data={}))
         
         timeline = obs.timeline()
         assert "Timeline:" in timeline
@@ -455,15 +455,15 @@ class TestObserver:
     async def test_summary(self):
         """Test summary generation."""
         from agenticflow.observability import Observer, ObservabilityLevel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(type=EventType.AGENT_INVOKED, data={"agent_name": "Test"}))
+        await bus.publish(Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"}))
         
         summary = obs.summary()
         assert "Execution Summary" in summary
@@ -517,9 +517,9 @@ class TestObserverStreaming:
     async def test_streaming_events_dispatched(self):
         """Test streaming events are dispatched to callback."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
         stream_calls = []
         
@@ -529,24 +529,24 @@ class TestObserverStreaming:
             on_stream=lambda agent, token, data: stream_calls.append((agent, token)),
         )
         
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
         # Publish streaming events
         await bus.publish(Event(
-            type=EventType.STREAM_START,
+            type=TraceType.STREAM_START,
             data={"agent_name": "TestAgent", "model": "gpt-4"}
         ))
         await bus.publish(Event(
-            type=EventType.TOKEN_STREAMED,
+            type=TraceType.TOKEN_STREAMED,
             data={"agent_name": "TestAgent", "token": "Hello"}
         ))
         await bus.publish(Event(
-            type=EventType.TOKEN_STREAMED,
+            type=TraceType.TOKEN_STREAMED,
             data={"agent_name": "TestAgent", "token": " world"}
         ))
         await bus.publish(Event(
-            type=EventType.STREAM_END,
+            type=TraceType.STREAM_END,
             data={"agent_name": "TestAgent"}
         ))
         
@@ -561,17 +561,17 @@ class TestObserverStreaming:
     async def test_streaming_events_in_metrics(self):
         """Test streaming events are counted in metrics."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
         obs = Observer(level=ObservabilityLevel.DEBUG)
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(type=EventType.STREAM_START, data={"agent_name": "Test"}))
-        await bus.publish(Event(type=EventType.TOKEN_STREAMED, data={"agent_name": "Test", "token": "x"}))
-        await bus.publish(Event(type=EventType.STREAM_END, data={"agent_name": "Test"}))
+        await bus.publish(Event(type=TraceType.STREAM_START, data={"agent_name": "Test"}))
+        await bus.publish(Event(type=TraceType.TOKEN_STREAMED, data={"agent_name": "Test", "token": "x"}))
+        await bus.publish(Event(type=TraceType.STREAM_END, data={"agent_name": "Test"}))
         
         metrics = obs.metrics()
         assert metrics.get("events.stream.start", 0) == 1
@@ -582,9 +582,9 @@ class TestObserverStreaming:
     async def test_streaming_events_formatted(self):
         """Test streaming events are properly formatted."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         from io import StringIO
         
         output = StringIO()
@@ -594,15 +594,15 @@ class TestObserverStreaming:
             stream=output,
         )
         
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
         await bus.publish(Event(
-            type=EventType.STREAM_START,
+            type=TraceType.STREAM_START,
             data={"agent_name": "TestAgent", "model": "gpt-4"}
         ))
         await bus.publish(Event(
-            type=EventType.STREAM_END,
+            type=TraceType.STREAM_END,
             data={"agent_name": "TestAgent"}
         ))
         
@@ -615,9 +615,9 @@ class TestObserverStreaming:
     async def test_stream_error_triggers_on_error(self):
         """Test STREAM_ERROR triggers on_error callback."""
         from agenticflow.observability import Observer, ObservabilityLevel, Channel
-        from agenticflow.observability.bus import EventBus
-        from agenticflow.observability.event import Event
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.bus import TraceBus
+        from agenticflow.observability.trace_record import Trace
+        from agenticflow.observability.trace_record import TraceType
         
         errors = []
         
@@ -627,11 +627,11 @@ class TestObserverStreaming:
             on_error=lambda source, err: errors.append((source, err)),
         )
         
-        bus = EventBus()
+        bus = TraceBus()
         obs.attach(bus)
         
         await bus.publish(Event(
-            type=EventType.STREAM_ERROR,
+            type=TraceType.STREAM_ERROR,
             data={"agent_name": "TestAgent", "error": "Connection failed"}
         ))
         

@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.enums import Priority, TaskStatus
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.tasks.task import Task
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
 
 
 class TaskManager:
@@ -28,7 +28,7 @@ class TaskManager:
     - Aggregating subtask results
     
     Attributes:
-        event_bus: EventBus for publishing events
+        event_bus: TraceBus for publishing events
         tasks: Dictionary of all managed tasks
         
     Example:
@@ -50,12 +50,12 @@ class TaskManager:
         ```
     """
 
-    def __init__(self, event_bus: EventBus) -> None:
+    def __init__(self, event_bus: TraceBus) -> None:
         """
         Initialize the TaskManager.
         
         Args:
-            event_bus: EventBus for publishing events
+            event_bus: TraceBus for publishing events
         """
         self.event_bus = event_bus
         self.tasks: dict[str, Task] = {}
@@ -113,7 +113,7 @@ class TaskManager:
                 self.tasks[parent_id].add_subtask(task.id)
 
         # Emit appropriate event
-        event_type = EventType.SUBTASK_SPAWNED if parent_id else EventType.TASK_CREATED
+        event_type = TraceType.SUBTASK_SPAWNED if parent_id else TraceType.TASK_CREATED
         await self.event_bus.publish(
             Event(
                 type=event_type,
@@ -210,12 +210,12 @@ class TaskManager:
 
         # Map status to event type
         event_map = {
-            TaskStatus.SCHEDULED: EventType.TASK_SCHEDULED,
-            TaskStatus.RUNNING: EventType.TASK_STARTED,
-            TaskStatus.BLOCKED: EventType.TASK_BLOCKED,
-            TaskStatus.COMPLETED: EventType.TASK_COMPLETED,
-            TaskStatus.FAILED: EventType.TASK_FAILED,
-            TaskStatus.CANCELLED: EventType.TASK_CANCELLED,
+            TaskStatus.SCHEDULED: TraceType.TASK_SCHEDULED,
+            TaskStatus.RUNNING: TraceType.TASK_STARTED,
+            TaskStatus.BLOCKED: TraceType.TASK_BLOCKED,
+            TaskStatus.COMPLETED: TraceType.TASK_COMPLETED,
+            TaskStatus.FAILED: TraceType.TASK_FAILED,
+            TaskStatus.CANCELLED: TraceType.TASK_CANCELLED,
         }
 
         event_type = event_map.get(status)
@@ -353,7 +353,7 @@ class TaskManager:
 
         await self.event_bus.publish(
             Event(
-                type=EventType.TASK_RETRYING,
+                type=TraceType.TASK_RETRYING,
                 data={
                     "task_id": task_id,
                     "retry_count": task.retry_count,
@@ -416,7 +416,7 @@ class TaskManager:
 
         await self.event_bus.publish(
             Event(
-                type=EventType.SUBTASKS_AGGREGATED,
+                type=TraceType.SUBTASKS_AGGREGATED,
                 data={
                     "parent_id": parent_id,
                     "subtask_count": len(results),

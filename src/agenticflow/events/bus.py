@@ -1,7 +1,7 @@
 """Core EventBus for orchestration.
 
 This is intentionally minimal and does not include observability concerns
-(e.g., websocket broadcast, EventType enums, tracing output formatting).
+(e.g., websocket broadcast, TraceType enums, tracing output formatting).
 """
 
 from __future__ import annotations

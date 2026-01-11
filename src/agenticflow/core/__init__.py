@@ -10,7 +10,7 @@ For models and embeddings, use native AgenticFlow models:
 from agenticflow.core.enums import (
     AgentRole,
     AgentStatus,
-    EventType,
+    TraceType,
     Priority,
     TaskStatus,
 )
@@ -27,7 +27,7 @@ __all__ = [
     # Enums
     "TaskStatus",
     "AgentStatus",
-    "EventType",
+    "TraceType",
     "Priority",
     "AgentRole",
     # Message

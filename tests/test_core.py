@@ -11,7 +11,7 @@ from agenticflow.core.enums import (
     Priority,
     AgentRole,
 )
-from agenticflow.observability.event import EventType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc, truncate_string
 
 
@@ -62,17 +62,17 @@ class TestAgentStatus:
         assert AgentStatus.IDLE.is_working() is False
 
 
-class TestEventType:
-    """Tests for EventType enum."""
+class TestTraceType:
+    """Tests for TraceType enum."""
 
     def test_category_task(self) -> None:
-        assert EventType.TASK_CREATED.category == "task"
+        assert TraceType.TASK_CREATED.category == "task"
 
     def test_category_agent(self) -> None:
-        assert EventType.AGENT_INVOKED.category == "agent"
+        assert TraceType.AGENT_INVOKED.category == "agent"
 
     def test_category_system(self) -> None:
-        assert EventType.SYSTEM_STARTED.category == "system"
+        assert TraceType.SYSTEM_STARTED.category == "system"
 
 
 class TestPriority:

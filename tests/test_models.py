@@ -7,7 +7,7 @@ import pytest
 from datetime import datetime, timezone
 
 from agenticflow.core.enums import Priority, TaskStatus
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.core.message import Message, MessageType
 from agenticflow.tasks.task import Task
 
@@ -16,15 +16,15 @@ class TestEvent:
     """Tests for Event model."""
 
     def test_create_event(self) -> None:
-        event = Event(type=EventType.TASK_CREATED, data={"name": "test"})
-        assert event.type == EventType.TASK_CREATED
+        event = Event(type=TraceType.TASK_CREATED, data={"name": "test"})
+        assert event.type == TraceType.TASK_CREATED
         assert event.data == {"name": "test"}
         assert event.id is not None
         assert event.timestamp is not None
 
     def test_event_to_dict(self) -> None:
         event = Event(
-            type=EventType.TASK_STARTED,
+            type=TraceType.TASK_STARTED,
             data={"task_id": "123"},
             source="test",
         )
@@ -34,7 +34,7 @@ class TestEvent:
         assert result["source"] == "test"
 
     def test_event_to_json(self) -> None:
-        event = Event(type=EventType.SYSTEM_STARTED)
+        event = Event(type=TraceType.SYSTEM_STARTED)
         result = event.to_json()
         parsed = json.loads(result)
         assert parsed["type"] == "system.started"
@@ -49,25 +49,25 @@ class TestEvent:
         }
         event = Event.from_dict(data)
         assert event.id == "abc123"
-        assert event.type == EventType.TASK_COMPLETED
+        assert event.type == TraceType.TASK_COMPLETED
         assert event.data == {"result": "success"}
 
     def test_event_category(self) -> None:
-        event = Event(type=EventType.AGENT_THINKING)
+        event = Event(type=TraceType.AGENT_THINKING)
         assert event.category == "agent"
 
     def test_child_event(self) -> None:
         parent = Event(
-            type=EventType.TASK_STARTED,
+            type=TraceType.TASK_STARTED,
             correlation_id="corr-123",
         )
         child = parent.child_event(
-            EventType.TOOL_CALLED,
+            TraceType.TOOL_CALLED,
             data={"tool": "test"},
         )
         assert child.parent_event_id == parent.id
         assert child.correlation_id == "corr-123"
-        assert child.type == EventType.TOOL_CALLED
+        assert child.type == TraceType.TOOL_CALLED
 
 
 class TestMessage:

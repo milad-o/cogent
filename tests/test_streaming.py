@@ -10,7 +10,7 @@ from datetime import datetime
 from agenticflow.agent.streaming import (
     StreamChunk,
     StreamEvent,
-    StreamEventType,
+    StreamTraceType,
     StreamConfig,
     ToolCallChunk,
     PrintStreamCallback,
@@ -84,16 +84,16 @@ class TestStreamEvent:
     
     def test_stream_event_basic(self):
         """Test basic StreamEvent creation."""
-        event = StreamEvent(type=StreamEventType.TOKEN, content="Hello")
-        assert event.type == StreamEventType.TOKEN
+        event = StreamEvent(type=StreamTraceType.TOKEN, content="Hello")
+        assert event.type == StreamTraceType.TOKEN
         assert event.content == "Hello"
         assert event.accumulated == ""
     
     def test_stream_event_is_final(self):
         """Test is_final property."""
-        token_event = StreamEvent(type=StreamEventType.TOKEN)
-        end_event = StreamEvent(type=StreamEventType.STREAM_END)
-        error_event = StreamEvent(type=StreamEventType.ERROR, error="fail")
+        token_event = StreamEvent(type=StreamTraceType.TOKEN)
+        end_event = StreamEvent(type=StreamTraceType.STREAM_END)
+        error_event = StreamEvent(type=StreamTraceType.ERROR, error="fail")
         
         assert not token_event.is_final
         assert end_event.is_final
@@ -101,19 +101,19 @@ class TestStreamEvent:
     
     def test_stream_event_has_content(self):
         """Test has_content property."""
-        with_content = StreamEvent(type=StreamEventType.TOKEN, content="hi")
-        without_content = StreamEvent(type=StreamEventType.STREAM_START)
+        with_content = StreamEvent(type=StreamTraceType.TOKEN, content="hi")
+        without_content = StreamEvent(type=StreamTraceType.STREAM_START)
         
         assert with_content.has_content
         assert not without_content.has_content
     
     def test_stream_event_is_tool_related(self):
         """Test is_tool_related property."""
-        token = StreamEvent(type=StreamEventType.TOKEN)
-        tool_start = StreamEvent(type=StreamEventType.TOOL_CALL_START)
-        tool_args = StreamEvent(type=StreamEventType.TOOL_CALL_ARGS)
-        tool_end = StreamEvent(type=StreamEventType.TOOL_CALL_END)
-        tool_result = StreamEvent(type=StreamEventType.TOOL_RESULT)
+        token = StreamEvent(type=StreamTraceType.TOKEN)
+        tool_start = StreamEvent(type=StreamTraceType.TOOL_CALL_START)
+        tool_args = StreamEvent(type=StreamTraceType.TOOL_CALL_ARGS)
+        tool_end = StreamEvent(type=StreamTraceType.TOOL_CALL_END)
+        tool_result = StreamEvent(type=StreamTraceType.TOOL_RESULT)
         
         assert not token.is_tool_related
         assert tool_start.is_tool_related
@@ -125,7 +125,7 @@ class TestStreamEvent:
         """Test StreamEvent with tool call info."""
         tc = ToolCallChunk(id="123", name="search", args='{"q": "test"}')
         event = StreamEvent(
-            type=StreamEventType.TOOL_CALL_START,
+            type=StreamTraceType.TOOL_CALL_START,
             tool_call=tc,
             tool_name="search",
         )
@@ -387,26 +387,26 @@ class TestPrintStream:
 
 
 # =============================================================================
-# StreamEventType Tests
+# StreamTraceType Tests
 # =============================================================================
 
-class TestStreamEventType:
-    """Tests for StreamEventType enum."""
+class TestStreamTraceType:
+    """Tests for StreamTraceType enum."""
     
     def test_all_event_types(self):
         """Test all event types exist."""
-        assert StreamEventType.STREAM_START
-        assert StreamEventType.TOKEN
-        assert StreamEventType.TOOL_CALL_START
-        assert StreamEventType.TOOL_CALL_ARGS
-        assert StreamEventType.TOOL_CALL_END
-        assert StreamEventType.TOOL_RESULT
-        assert StreamEventType.STREAM_END
-        assert StreamEventType.ERROR
+        assert StreamTraceType.STREAM_START
+        assert StreamTraceType.TOKEN
+        assert StreamTraceType.TOOL_CALL_START
+        assert StreamTraceType.TOOL_CALL_ARGS
+        assert StreamTraceType.TOOL_CALL_END
+        assert StreamTraceType.TOOL_RESULT
+        assert StreamTraceType.STREAM_END
+        assert StreamTraceType.ERROR
     
     def test_event_type_values(self):
         """Test event type values are strings."""
-        for event_type in StreamEventType:
+        for event_type in StreamTraceType:
             assert isinstance(event_type.value, str)
 
 
@@ -462,7 +462,7 @@ class TestStreamingIntegration:
     @pytest.mark.asyncio
     async def test_stream_events_integration(self):
         """Test stream_events with mock model."""
-        from agenticflow import Agent, StreamEventType
+        from agenticflow import Agent, StreamTraceType
         from agenticflow.models.base import BaseChatModel
         from agenticflow.core.messages import AIMessage
         from dataclasses import dataclass, field
@@ -501,15 +501,15 @@ class TestStreamingIntegration:
         
         # Should have: STREAM_START, TOKEN(s), STREAM_END
         event_types = [e.type for e in events]
-        assert StreamEventType.STREAM_START in event_types
-        assert StreamEventType.TOKEN in event_types
-        assert StreamEventType.STREAM_END in event_types
+        assert StreamTraceType.STREAM_START in event_types
+        assert StreamTraceType.TOKEN in event_types
+        assert StreamTraceType.STREAM_END in event_types
         
         # First event should be start
-        assert events[0].type == StreamEventType.STREAM_START
+        assert events[0].type == StreamTraceType.STREAM_START
         
         # Last event should be end
-        assert events[-1].type == StreamEventType.STREAM_END
+        assert events[-1].type == StreamTraceType.STREAM_END
 
 
 class TestAgentStreamParameter:

@@ -65,7 +65,7 @@ async def run_server(args: argparse.Namespace) -> None:
     """Run the server based on arguments."""
     from agenticflow import EventBus, ConsoleEventHandler
 
-    event_bus = EventBus()
+    event_bus = TraceBus()
     event_bus.subscribe_all(ConsoleEventHandler())
 
     if args.websocket:

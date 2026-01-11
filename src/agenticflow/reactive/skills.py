@@ -143,7 +143,7 @@ def skill(
 
     Args:
         name: Unique skill identifier.
-        on: Event pattern to match (string with optional wildcards, regex, or EventType).
+        on: Event pattern to match (string with optional wildcards, regex, or TraceType).
         prompt: Prompt content injected into agent context when skill activates.
         when: Optional condition function to filter events.
         tools: Optional list of tools available only when skill is active.

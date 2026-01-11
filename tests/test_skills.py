@@ -13,7 +13,7 @@ from agenticflow.reactive import (
     Trigger,
     react_to,
 )
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.trace_record import Trace, TraceType
 
 
 # =============================================================================

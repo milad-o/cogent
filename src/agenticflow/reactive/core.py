@@ -55,7 +55,7 @@ class Trigger:
     Defines when an agent should be activated.
 
     A trigger consists of:
-    - An event pattern to match (EventType, string, or regex)
+    - An event pattern to match (TraceType, string, or regex)
     - Optional condition function for filtering
     - Reaction type (what to do when triggered)
     - Optional event to emit after completion
@@ -63,7 +63,7 @@ class Trigger:
     Example:
         ```python
         # Simple trigger on event type
-        Trigger(on=EventType.TASK_CREATED)
+        Trigger(on=TraceType.TASK_CREATED)
 
         # Trigger with condition
         Trigger(
@@ -80,7 +80,7 @@ class Trigger:
     """
 
     on: EventPattern
-    """Event pattern to match. Can be EventType, string, or regex pattern."""
+    """Event pattern to match. Can be TraceType, string, or regex pattern."""
 
     condition: TriggerCondition | None = None
     """Optional filter function. Returns True if agent should activate."""
@@ -241,7 +241,7 @@ def react_to(pattern: EventPattern) -> TriggerBuilder:
     Example:
         ```python
         # Basic trigger
-        react_to(EventType.TASK_CREATED)
+        react_to(TraceType.TASK_CREATED)
 
         # With condition
         react_to("task.*").when(lambda e: e.data.get("priority") == "high")

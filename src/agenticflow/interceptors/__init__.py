@@ -30,7 +30,7 @@ from agenticflow.interceptors.budget import BudgetGuard
 from agenticflow.interceptors.context import ContextCompressor, TokenLimiter
 from agenticflow.interceptors.security import PIIAction, PIIShield, ContentFilter
 from agenticflow.interceptors.ratelimit import RateLimiter, ThrottleInterceptor
-from agenticflow.interceptors.audit import Auditor, AuditEvent, AuditEventType
+from agenticflow.interceptors.audit import Auditor, AuditEvent, AuditTraceType
 from agenticflow.interceptors.gates import ToolGate, PermissionGate, ConversationGate
 from agenticflow.interceptors.failover import Failover, FailoverTrigger, FailoverState
 from agenticflow.interceptors.guards import ToolGuard, ToolRetryState, CircuitBreaker
@@ -64,7 +64,7 @@ __all__ = [
     # Audit
     "Auditor",
     "AuditEvent",
-    "AuditEventType",
+    "AuditTraceType",
     # Gates (tool filtering)
     "ToolGate",
     "PermissionGate",

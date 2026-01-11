@@ -276,8 +276,8 @@ class NativeExecutor(BaseExecutor):
                 """Log retry attempt via event bus."""
                 event_bus = getattr(self.agent, "event_bus", None)
                 if event_bus:
-                    from agenticflow.observability.event import EventType
-                    await event_bus.publish(EventType.AGENT_THINKING.value, {
+                    from agenticflow.observability.trace_record import TraceType
+                    await event_bus.publish(TraceType.AGENT_THINKING.value, {
                         "agent": self.agent.name or "agent",
                         "agent_name": self.agent.name or "agent",
                         "message": f"⏳ LLM retry {attempt}: {str(error)[:60]}... (waiting {delay:.1f}s)",
@@ -342,7 +342,7 @@ class NativeExecutor(BaseExecutor):
             Otherwise: The final answer string.
         """
         import time
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.trace_record import TraceType
         
         # Normalize context: convert dict to RunContext with metadata
         run_context: RunContext
@@ -370,7 +370,7 @@ class NativeExecutor(BaseExecutor):
         
         # Emit agent invoked event (not USER_INPUT - that's for user-facing input)
         if event_bus:
-            await event_bus.publish(EventType.AGENT_INVOKED.value, {
+            await event_bus.publish(TraceType.AGENT_INVOKED.value, {
                 "agent": agent_name,
                 "agent_name": agent_name,
                 "task": task[:200] + "..." if len(task) > 200 else task,
@@ -423,7 +423,7 @@ class NativeExecutor(BaseExecutor):
             Final answer string (or structured output result if configured).
         """
         import time
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.trace_record import TraceType
 
         # Normalize context
         run_context: RunContext
@@ -454,7 +454,7 @@ class NativeExecutor(BaseExecutor):
         execution_start = time.perf_counter()
 
         if event_bus:
-            await event_bus.publish(EventType.AGENT_INVOKED.value, {
+            await event_bus.publish(TraceType.AGENT_INVOKED.value, {
                 "agent": agent_name,
                 "agent_name": agent_name,
                 "task": task[:200] + "..." if len(task) > 200 else task,
@@ -584,7 +584,7 @@ class NativeExecutor(BaseExecutor):
             StructuredResult if output schema configured, else raw string.
         """
         import time
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.trace_record import TraceType
         
         output_config: ResponseSchema | None = getattr(self.agent, '_output_config', None)
         if output_config is None:
@@ -628,7 +628,7 @@ class NativeExecutor(BaseExecutor):
             except OutputValidationError as e:
                 last_error = str(e)
                 if event_bus:
-                    await event_bus.publish(EventType.AGENT_ERROR.value, {
+                    await event_bus.publish(TraceType.AGENT_ERROR.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
                         "error": f"Structured output validation failed (attempt {attempt}): {last_error}",
@@ -674,7 +674,7 @@ class NativeExecutor(BaseExecutor):
             Raw response content string.
         """
         import time
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.trace_record import TraceType
         
         total_tool_calls = 0
         model_calls = 0
@@ -771,7 +771,7 @@ class NativeExecutor(BaseExecutor):
             
             # Emit thinking event
             if event_bus:
-                await event_bus.publish(EventType.AGENT_THINKING.value, {
+                await event_bus.publish(TraceType.AGENT_THINKING.value, {
                     "agent": agent_name,
                     "agent_name": agent_name,
                     "iteration": iteration + 1,
@@ -779,7 +779,7 @@ class NativeExecutor(BaseExecutor):
             
             # Emit LLM request event (for deep observability)
             if event_bus:
-                await event_bus.publish(EventType.LLM_REQUEST.value, {
+                await event_bus.publish(TraceType.LLM_REQUEST.value, {
                     "agent_name": agent_name,
                     "model": model_identifier(self.agent.model),
                     "messages": [{"role": getattr(m, "role", "unknown"), "content": str(getattr(m, "content", ""))[:500]} for m in messages],
@@ -799,7 +799,7 @@ class NativeExecutor(BaseExecutor):
                 )
                 if not exec_result.success:
                     if event_bus:
-                        await event_bus.publish(EventType.AGENT_ERROR.value, {
+                        await event_bus.publish(TraceType.AGENT_ERROR.value, {
                             "agent": agent_name,
                             "agent_name": agent_name,
                             "error": str(exec_result.error),
@@ -826,7 +826,7 @@ class NativeExecutor(BaseExecutor):
                 if isinstance(tc, dict) and not tc.get("id"):
                     tc["id"] = f"call_{iteration + 1}_{i}"
             if event_bus:
-                await event_bus.publish(EventType.LLM_RESPONSE.value, {
+                await event_bus.publish(TraceType.LLM_RESPONSE.value, {
                     "agent_name": agent_name,
                     "iteration": iteration + 1,
                     "content": (response.content or "")[:500],
@@ -842,7 +842,7 @@ class NativeExecutor(BaseExecutor):
             
             # Emit tool decision event if tools were selected
             if tool_calls and event_bus:
-                await event_bus.publish(EventType.LLM_TOOL_DECISION.value, {
+                await event_bus.publish(TraceType.LLM_TOOL_DECISION.value, {
                     "agent_name": agent_name,
                     "iteration": iteration + 1,
                     "tools_selected": [tc.get("name", "?") for tc in tool_calls],
@@ -874,7 +874,7 @@ class NativeExecutor(BaseExecutor):
                         pass  # Already completing, ignore stop
                 
                 if event_bus:
-                    await event_bus.publish(EventType.AGENT_RESPONDED.value, {
+                    await event_bus.publish(TraceType.AGENT_RESPONDED.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
                         "response": final_output,
@@ -884,7 +884,7 @@ class NativeExecutor(BaseExecutor):
                         "duration_ms": duration_ms,
                         "iteration": iteration + 1,
                     })
-                    await event_bus.publish(EventType.OUTPUT_GENERATED.value, {
+                    await event_bus.publish(TraceType.OUTPUT_GENERATED.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
                         "output": final_output,
@@ -897,7 +897,7 @@ class NativeExecutor(BaseExecutor):
             if event_bus:
                 for tc in response.tool_calls:
                     tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(EventType.TOOL_CALLED.value, {
+                    await event_bus.publish(TraceType.TOOL_CALLED.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
                         "tool": tool_name,
@@ -910,7 +910,7 @@ class NativeExecutor(BaseExecutor):
             if total_tool_calls + num_calls > self._max_tool_calls:
                 limit_output = response.content or "Tool call limit reached"
                 if event_bus:
-                    await event_bus.publish(EventType.OUTPUT_GENERATED.value, {
+                    await event_bus.publish(TraceType.OUTPUT_GENERATED.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
                         "output": limit_output,
@@ -934,7 +934,7 @@ class NativeExecutor(BaseExecutor):
                 for i, result in enumerate(tool_results):
                     tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
                     tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(EventType.TOOL_RESULT.value, {
+                    await event_bus.publish(TraceType.TOOL_RESULT.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
                         "tool": tool_name,
@@ -1076,7 +1076,7 @@ class NativeExecutor(BaseExecutor):
         Returns:
             Dict with reasoning results (thinking_steps, plan, etc).
         """
-        from agenticflow.observability.event import EventType
+        from agenticflow.observability.trace_record import TraceType
         from agenticflow.agent.reasoning import (
             ReasoningConfig,
             build_reasoning_prompt,
@@ -1102,7 +1102,7 @@ class NativeExecutor(BaseExecutor):
         
         # Emit reasoning event (start)
         if event_bus:
-            await event_bus.publish(EventType.AGENT_REASONING.value, {
+            await event_bus.publish(TraceType.AGENT_REASONING.value, {
                 "agent": agent_name,
                 "agent_name": agent_name,
                 "phase": "start",
@@ -1153,7 +1153,7 @@ class NativeExecutor(BaseExecutor):
                 
                 # Emit reasoning event (step)
                 if event_bus:
-                    await event_bus.publish(EventType.AGENT_REASONING.value, {
+                    await event_bus.publish(TraceType.AGENT_REASONING.value, {
                         "agent": agent_name,
                         "agent_name": agent_name,
                         "phase": "thinking",
@@ -1181,7 +1181,7 @@ class NativeExecutor(BaseExecutor):
         
         # Emit reasoning event (complete)
         if event_bus:
-            await event_bus.publish(EventType.AGENT_REASONING.value, {
+            await event_bus.publish(TraceType.AGENT_REASONING.value, {
                 "agent": agent_name,
                 "agent_name": agent_name,
                 "phase": "complete",

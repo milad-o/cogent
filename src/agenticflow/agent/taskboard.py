@@ -53,7 +53,7 @@ from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
     from agenticflow.tools.base import BaseTool
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
 
 
 # ============================================================================
@@ -233,7 +233,7 @@ class TaskBoard:
     def __init__(
         self,
         config: TaskBoardConfig | None = None,
-        event_bus: EventBus | None = None,
+        event_bus: TraceBus | None = None,
     ) -> None:
         """Initialize TaskBoard.
         

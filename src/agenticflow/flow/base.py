@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.observability.bus import EventBus
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.bus import TraceBus
+from agenticflow.observability.trace_record import Trace, TraceType
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -68,7 +68,7 @@ class FlowProtocol(Protocol):
         ...
 
     @property
-    def bus(self) -> EventBus:
+    def bus(self) -> TraceBus:
         """Event bus for internal communication."""
         ...
 
@@ -113,7 +113,7 @@ class BaseFlow:
     def __init__(
         self,
         *,
-        event_bus: EventBus | None = None,
+        event_bus: TraceBus | None = None,
         observer: Observer | None = None,
     ) -> None:
         """
@@ -123,7 +123,7 @@ class BaseFlow:
             event_bus: Shared event bus (creates new one if not provided)
             observer: Optional observer for monitoring
         """
-        self._bus = event_bus or EventBus()
+        self._bus = event_bus or TraceBus()
         self._observer = observer
         self._running = False
 
@@ -132,7 +132,7 @@ class BaseFlow:
             self._observer.attach(self._bus)
 
     @property
-    def bus(self) -> EventBus:
+    def bus(self) -> TraceBus:
         """Event bus for internal communication."""
         return self._bus
 
@@ -173,7 +173,7 @@ class BaseFlow:
 
     def _observe(
         self,
-        event_type: EventType,
+        event_type: TraceType,
         data: dict[str, Any],
     ) -> None:
         """
@@ -184,18 +184,18 @@ class BaseFlow:
             data: Event data
         """
         if self._observer:
-            event = Event(
+            trace = Trace(
                 id=generate_id(),
                 type=event_type,
                 timestamp=now_utc(),
                 data=data,
             )
             # Use internal handler for synchronous handling
-            self._observer._handle_event(event)
+            self._observer._handle_event(trace)
 
     async def _publish(
         self,
-        event_type: EventType,
+        event_type: TraceType,
         data: dict[str, Any],
     ) -> None:
         """

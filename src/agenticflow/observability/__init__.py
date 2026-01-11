@@ -4,17 +4,25 @@ Provides comprehensive monitoring, tracing, metrics, events, and progress output
 for understanding system behavior at runtime.
 
 Includes:
-- EventBus: Central pub/sub for events
-- Event: Immutable event records
-- EventType: All event types in the system
+- TraceBus: Central pub/sub for trace records
+- Trace: Immutable trace records for observability
+- TraceType: All event/trace types in the system
 - Observer: Unified observability for agents, flows, teams
 - Tracer: Distributed tracing
 - Metrics: Counters, gauges, histograms
 - Dashboard: Real-time monitoring UI
+
+Note:
+    For core orchestration events (agent-to-agent routing), use
+    `agenticflow.events.Event` instead of `Trace`.
 """
 
-from agenticflow.observability.event import Event, EventType
-from agenticflow.observability.bus import EventBus, get_event_bus, set_event_bus
+from agenticflow.observability.trace_record import Trace, TraceType
+from agenticflow.observability.bus import (
+    TraceBus,
+    get_trace_bus,
+    set_trace_bus,
+)
 from agenticflow.observability.handlers import (
     ConsoleEventHandler,
     FileEventHandler,
@@ -101,12 +109,12 @@ from agenticflow.observability.progress import (
 )
 
 __all__ = [
-    # Event System
-    "Event",
-    "EventType",
-    "EventBus",
-    "get_event_bus",
-    "set_event_bus",
+    # Trace System (observability)
+    "Trace",
+    "TraceType",
+    "TraceBus",
+    "get_trace_bus",
+    "set_trace_bus",
     # Event Handlers
     "ConsoleEventHandler",
     "FileEventHandler",

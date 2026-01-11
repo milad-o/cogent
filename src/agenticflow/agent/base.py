@@ -50,14 +50,14 @@ from agenticflow.agent.output import (
 )
 from agenticflow.core.enums import AgentRole, AgentStatus
 from agenticflow.core.utils import generate_id, model_identifier, now_utc
-from agenticflow.observability.event import Event, EventType
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.core.message import Message
 from agenticflow.tasks.task import Task
 from agenticflow.agent.spawning import SpawningConfig
 from agenticflow.agent.roles import RoleConfig
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
     from agenticflow.tools.registry import ToolRegistry
     from agenticflow.observability.progress import ProgressTracker
     from agenticflow.observability.observer import Observer
@@ -156,7 +156,7 @@ class Agent:
     def __init__(
         self,
         config: AgentConfig,
-        event_bus: EventBus | None = None,
+        event_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
         memory: bool | AgentMemory | None = None,
         store: Any = None,
@@ -167,7 +167,7 @@ class Agent:
     def __init__(
         self,
         config: AgentConfig | None = None,
-        event_bus: EventBus | None = None,
+        event_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
         memory: bool | AgentMemory | None = None,
         store: Any = None,
@@ -623,8 +623,8 @@ class Agent:
         
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.event_bus is None:
-            from agenticflow.observability import EventBus
-            self.event_bus = EventBus()
+            from agenticflow.observability import TraceBus
+            self.event_bus = TraceBus()
         
         # Map verbose levels to Observer presets
         from agenticflow.observability import Observer
@@ -654,8 +654,8 @@ class Agent:
         """
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.event_bus is None:
-            from agenticflow.observability import EventBus
-            self.event_bus = EventBus()
+            from agenticflow.observability import TraceBus
+            self.event_bus = TraceBus()
         
         self._observer = observer
         self._observer.attach(self.event_bus)
@@ -788,8 +788,8 @@ class Agent:
             
             # Ensure event bus exists
             if self.event_bus is None:
-                from agenticflow.observability.bus import EventBus
-                self.event_bus = EventBus()
+                from agenticflow.observability.bus import TraceBus
+                self.event_bus = TraceBus()
             
             self._deferred_manager = DeferredManager(self.event_bus)
         
@@ -921,7 +921,7 @@ class Agent:
                 
                 # Emit deferred event
                 await self._emit_event(
-                    EventType.TOOL_DEFERRED,
+                    TraceType.TOOL_DEFERRED,
                     {
                         "agent_id": self.id,
                         "agent_name": self.name,
@@ -936,7 +936,7 @@ class Agent:
                 
                 # Emit waiting event
                 await self._emit_event(
-                    EventType.TOOL_DEFERRED_WAITING,
+                    TraceType.TOOL_DEFERRED_WAITING,
                     {
                         "agent_id": self.id,
                         "agent_name": self.name,
@@ -952,7 +952,7 @@ class Agent:
                     
                     # Emit completion event
                     await self._emit_event(
-                        EventType.TOOL_DEFERRED_COMPLETED,
+                        TraceType.TOOL_DEFERRED_COMPLETED,
                         {
                             "agent_id": self.id,
                             "agent_name": self.name,
@@ -967,7 +967,7 @@ class Agent:
                 except TimeoutError as e:
                     # Emit timeout event
                     await self._emit_event(
-                        EventType.TOOL_DEFERRED_TIMEOUT,
+                        TraceType.TOOL_DEFERRED_TIMEOUT,
                         {
                             "agent_id": self.id,
                             "agent_name": self.name,
@@ -1564,7 +1564,7 @@ class Agent:
         if self.event_bus:
             await self.event_bus.publish(
                 Event(
-                    type=EventType.AGENT_STATUS_CHANGED,
+                    type=TraceType.AGENT_STATUS_CHANGED,
                     data={
                         "agent_id": self.id,
                         "agent_name": self.name,
@@ -1578,7 +1578,7 @@ class Agent:
 
     async def _emit_event(
         self,
-        event_type: EventType,
+        event_type: TraceType,
         data: dict,
         correlation_id: str | None = None,
     ) -> None:
@@ -1673,7 +1673,7 @@ class Agent:
         await self._set_status(AgentStatus.THINKING, correlation_id)
 
         await self._emit_event(
-            EventType.AGENT_THINKING,
+            TraceType.AGENT_THINKING,
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -1704,7 +1704,7 @@ class Agent:
 
         # Emit detailed LLM request event (for deep observability)
         await self._emit_event(
-            EventType.LLM_REQUEST,
+            TraceType.LLM_REQUEST,
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -1727,7 +1727,7 @@ class Agent:
 
             # Emit raw LLM response event (before any parsing)
             await self._emit_event(
-                EventType.LLM_RESPONSE,
+                TraceType.LLM_RESPONSE,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1747,7 +1747,7 @@ class Agent:
             
             # Emit response event so observer can show the thought
             await self._emit_event(
-                EventType.AGENT_RESPONDED,
+                TraceType.AGENT_RESPONDED,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1764,7 +1764,7 @@ class Agent:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             await self._emit_event(
-                EventType.AGENT_ERROR,
+                TraceType.AGENT_ERROR,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1892,7 +1892,7 @@ class Agent:
         await self._set_status(AgentStatus.THINKING, correlation_id)
 
         await self._emit_event(
-            EventType.AGENT_THINKING,
+            TraceType.AGENT_THINKING,
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -1933,7 +1933,7 @@ class Agent:
                 # Emit token event
                 if stream_chunk.content:
                     await self._emit_event(
-                        EventType.TOKEN_STREAMED,
+                        TraceType.TOKEN_STREAMED,
                         {
                             "agent_id": self.id,
                             "agent_name": self.name,
@@ -1956,7 +1956,7 @@ class Agent:
             await self._set_status(AgentStatus.IDLE, correlation_id)
 
             await self._emit_event(
-                EventType.AGENT_RESPONDED,
+                TraceType.AGENT_RESPONDED,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1973,7 +1973,7 @@ class Agent:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             await self._emit_event(
-                EventType.AGENT_ERROR,
+                TraceType.AGENT_ERROR,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -2041,15 +2041,15 @@ class Agent:
         Example:
             ```python
             async for event in agent.stream_events("Search for Python tutorials"):
-                if event.type == StreamEventType.TOKEN:
+                if event.type == StreamTraceType.TOKEN:
                     print(event.content, end="", flush=True)
-                elif event.type == StreamEventType.TOOL_CALL_START:
+                elif event.type == StreamTraceType.TOOL_CALL_START:
                     print(f"\\n[Calling {event.tool_name}...]")
             ```
         """
         from agenticflow.agent.streaming import (
             StreamEvent,
-            StreamEventType,
+            StreamTraceType,
             chunk_from_message,
             extract_tool_calls,
             ToolCallChunk,
@@ -2085,7 +2085,7 @@ class Agent:
 
         # Emit start event
         yield StreamEvent(
-            type=StreamEventType.STREAM_START,
+            type=StreamTraceType.STREAM_START,
             metadata={
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2106,7 +2106,7 @@ class Agent:
                 if stream_chunk.content:
                     accumulated_content += stream_chunk.content
                     yield StreamEvent(
-                        type=StreamEventType.TOKEN,
+                        type=StreamTraceType.TOKEN,
                         content=stream_chunk.content,
                         accumulated=accumulated_content,
                         index=index,
@@ -2123,7 +2123,7 @@ class Agent:
                         active_tool_calls[tc_index] = tc
                         if tc.name:
                             yield StreamEvent(
-                                type=StreamEventType.TOOL_CALL_START,
+                                type=StreamTraceType.TOOL_CALL_START,
                                 tool_call=tc,
                                 tool_name=tc.name,
                                 index=index,
@@ -2135,7 +2135,7 @@ class Agent:
                         if tc.args:
                             existing.args += tc.args
                             yield StreamEvent(
-                                type=StreamEventType.TOOL_CALL_ARGS,
+                                type=StreamTraceType.TOOL_CALL_ARGS,
                                 tool_call=existing,
                                 tool_name=existing.name,
                                 index=index,
@@ -2145,7 +2145,7 @@ class Agent:
             # Emit tool call end events
             for tc in active_tool_calls.values():
                 yield StreamEvent(
-                    type=StreamEventType.TOOL_CALL_END,
+                    type=StreamTraceType.TOOL_CALL_END,
                     tool_call=tc,
                     tool_name=tc.name,
                     index=index,
@@ -2164,7 +2164,7 @@ class Agent:
 
             # Emit end event
             yield StreamEvent(
-                type=StreamEventType.STREAM_END,
+                type=StreamTraceType.STREAM_END,
                 accumulated=accumulated_content,
                 metadata={
                     "duration_ms": duration_ms,
@@ -2178,7 +2178,7 @@ class Agent:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             yield StreamEvent(
-                type=StreamEventType.ERROR,
+                type=StreamTraceType.ERROR,
                 error=str(e),
                 accumulated=accumulated_content,
                 index=index,
@@ -2259,7 +2259,7 @@ class Agent:
             self._pending_actions[action_id] = pending
             
             await self._emit_event(
-                EventType.AGENT_INTERRUPTED,
+                TraceType.AGENT_INTERRUPTED,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -2285,7 +2285,7 @@ class Agent:
         await self._set_status(AgentStatus.ACTING, correlation_id)
 
         await self._emit_event(
-            EventType.TOOL_CALLED,
+            TraceType.TOOL_CALLED,
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2326,7 +2326,7 @@ class Agent:
                     # Emit additional info if fallback was used
                     if exec_result.used_fallback:
                         await self._emit_event(
-                            EventType.TOOL_RESULT,
+                            TraceType.TOOL_RESULT,
                             {
                                 "agent_id": self.id,
                                 "tool": tool_name,
@@ -2345,7 +2345,7 @@ class Agent:
                             )
                     else:
                         await self._emit_event(
-                            EventType.TOOL_RESULT,
+                            TraceType.TOOL_RESULT,
                             {
                                 "agent_id": self.id,
                                 "tool": tool_name,
@@ -2364,7 +2364,7 @@ class Agent:
                     error = exec_result.error or RuntimeError(f"Tool {tool_name} failed")
                     
                     await self._emit_event(
-                        EventType.TOOL_ERROR,
+                        TraceType.TOOL_ERROR,
                         {
                             "agent_id": self.id,
                             "tool": tool_name,
@@ -2412,7 +2412,7 @@ class Agent:
                 self.state.record_error(str(e))
                 await self._set_status(AgentStatus.ERROR, correlation_id)
                 await self._emit_event(
-                    EventType.TOOL_ERROR,
+                    TraceType.TOOL_ERROR,
                     {
                         "agent_id": self.id,
                         "tool": tool_name,
@@ -2487,7 +2487,7 @@ class Agent:
         pending = self._pending_actions.pop(action_id)
         
         await self._emit_event(
-            EventType.AGENT_RESUMED,
+            TraceType.AGENT_RESUMED,
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2561,7 +2561,7 @@ class Agent:
         await self._set_status(AgentStatus.ACTING, correlation_id)
         
         await self._emit_event(
-            EventType.TOOL_CALLED,
+            TraceType.TOOL_CALLED,
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2680,7 +2680,7 @@ class Agent:
         await self._set_status(AgentStatus.ACTING, correlation_id)
         
         await self._emit_event(
-            EventType.TOOL_CALLED,
+            TraceType.TOOL_CALLED,
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2758,7 +2758,7 @@ class Agent:
             failures = len(results) - successes
             
             await self._emit_event(
-                EventType.TOOL_RESULT,
+                TraceType.TOOL_RESULT,
                 {
                     "agent_id": self.id,
                     "tools": [tc[0] for tc in tool_calls],
@@ -2785,7 +2785,7 @@ class Agent:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             await self._emit_event(
-                EventType.TOOL_ERROR,
+                TraceType.TOOL_ERROR,
                 {
                     "agent_id": self.id,
                     "tools": [tc[0] for tc in tool_calls],
@@ -2825,7 +2825,7 @@ class Agent:
 
         try:
             await self._emit_event(
-                EventType.AGENT_INVOKED,
+                TraceType.AGENT_INVOKED,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -2852,7 +2852,7 @@ class Agent:
             self.state.finish_task(task.id, success=True)
 
             await self._emit_event(
-                EventType.AGENT_RESPONDED,
+                TraceType.AGENT_RESPONDED,
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -3130,7 +3130,7 @@ class Agent:
             receiver_id=receiver_id,
         )
 
-        event_type = EventType.MESSAGE_BROADCAST if receiver_id is None else EventType.MESSAGE_SENT
+        event_type = TraceType.MESSAGE_BROADCAST if receiver_id is None else TraceType.MESSAGE_SENT
 
         await self._emit_event(
             event_type,
@@ -3156,7 +3156,7 @@ class Agent:
             Response content, if any
         """
         await self._emit_event(
-            EventType.MESSAGE_RECEIVED,
+            TraceType.MESSAGE_RECEIVED,
             {
                 "agent_id": self.id,
                 "message": message.to_dict(),

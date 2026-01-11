@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agenticflow.observability.event import EventType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.tools.deferred import (
     DeferredManager,
     DeferredResult,
@@ -132,13 +132,13 @@ class TestDeferredResult:
         assert not deferred2.is_timed_out
 
     def test_with_event_type(self) -> None:
-        """Test using EventType for wait_for."""
+        """Test using TraceType for wait_for."""
         deferred = DeferredResult(
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             match={"event_name": "my_event"},
         )
         
-        assert deferred.wait_for == EventType.CUSTOM
+        assert deferred.wait_for == TraceType.CUSTOM
 
 
 class TestDeferredRetry:
@@ -320,7 +320,7 @@ class TestDeferredWaiter:
         """Test timeout raises error."""
         deferred = DeferredResult(
             job_id="test-1",
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             timeout=0.1,  # Very short
             on_timeout="error",
         )
@@ -334,7 +334,7 @@ class TestDeferredWaiter:
         """Test timeout returns default value."""
         deferred = DeferredResult(
             job_id="test-2",
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             timeout=0.1,
             on_timeout={"default": True},
         )
@@ -348,7 +348,7 @@ class TestDeferredWaiter:
         """Test timeout returns retry marker."""
         deferred = DeferredResult(
             job_id="test-3",
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             timeout=0.1,
             on_timeout="retry",
         )
@@ -363,7 +363,7 @@ class TestDeferredWaiter:
         """Test event-based completion."""
         deferred = DeferredResult(
             job_id="test-4",
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             match={"job_id": "test-4"},
             timeout=5.0,
         )
@@ -389,7 +389,7 @@ class TestDeferredWaiter:
         """Test event filtering by match criteria."""
         deferred = DeferredResult(
             job_id="test-5",
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             match={"request_id": "abc123", "type": "complete"},
             timeout=5.0,
         )
@@ -454,7 +454,7 @@ class TestDeferredToolIntegration:
         # Create deferred with very short timeout
         deferred = DeferredResult(
             job_id="flow-test",
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             timeout=0.2,
             on_timeout={"status": "timed_out", "default": True},
         )
@@ -475,7 +475,7 @@ class TestDeferredToolIntegration:
         
         deferred = DeferredResult(
             job_id="cancel-test",
-            wait_for=EventType.CUSTOM,
+            wait_for=TraceType.CUSTOM,
             timeout=10.0,  # Long timeout
         )
         
@@ -505,25 +505,25 @@ class TestDeferredToolIntegration:
 # ==============================================================================
 
 
-class TestDeferredEventTypes:
+class TestDeferredTraceTypes:
     """Test that deferred event types are properly defined."""
 
     def test_tool_deferred_exists(self) -> None:
         """Test TOOL_DEFERRED event type exists."""
-        assert hasattr(EventType, "TOOL_DEFERRED")
-        assert EventType.TOOL_DEFERRED.value == "tool.deferred"
+        assert hasattr(TraceType, "TOOL_DEFERRED")
+        assert TraceType.TOOL_DEFERRED.value == "tool.deferred"
 
     def test_tool_deferred_waiting_exists(self) -> None:
         """Test TOOL_DEFERRED_WAITING event type exists."""
-        assert hasattr(EventType, "TOOL_DEFERRED_WAITING")
-        assert EventType.TOOL_DEFERRED_WAITING.value == "tool.deferred.waiting"
+        assert hasattr(TraceType, "TOOL_DEFERRED_WAITING")
+        assert TraceType.TOOL_DEFERRED_WAITING.value == "tool.deferred.waiting"
 
     def test_tool_deferred_completed_exists(self) -> None:
         """Test TOOL_DEFERRED_COMPLETED event type exists."""
-        assert hasattr(EventType, "TOOL_DEFERRED_COMPLETED")
-        assert EventType.TOOL_DEFERRED_COMPLETED.value == "tool.deferred.completed"
+        assert hasattr(TraceType, "TOOL_DEFERRED_COMPLETED")
+        assert TraceType.TOOL_DEFERRED_COMPLETED.value == "tool.deferred.completed"
 
     def test_tool_deferred_timeout_exists(self) -> None:
         """Test TOOL_DEFERRED_TIMEOUT event type exists."""
-        assert hasattr(EventType, "TOOL_DEFERRED_TIMEOUT")
-        assert EventType.TOOL_DEFERRED_TIMEOUT.value == "tool.deferred.timeout"
+        assert hasattr(TraceType, "TOOL_DEFERRED_TIMEOUT")
+        assert TraceType.TOOL_DEFERRED_TIMEOUT.value == "tool.deferred.timeout"

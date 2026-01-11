@@ -16,7 +16,7 @@ from agenticflow.core.enums import TaskStatus, AgentStatus
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
     from agenticflow.tasks import TaskManager
-    from agenticflow.events import EventBus
+    from agenticflow.events import TraceBus
 
 
 @dataclass
@@ -190,7 +190,7 @@ class EventInspector:
         >>> result = inspector.inspect(event_bus)
     """
 
-    def inspect(self, event_bus: "EventBus") -> InspectionResult:
+    def inspect(self, event_bus: "TraceBus") -> InspectionResult:
         """Inspect an event bus.
 
         Args:
@@ -258,7 +258,7 @@ class SystemInspector:
         """Initialize system inspector."""
         self._agents: list["Agent"] = []
         self._task_manager: "TaskManager | None" = None
-        self._event_bus: "EventBus | None" = None
+        self._event_bus: "TraceBus | None" = None
 
         self.agent_inspector = AgentInspector()
         self.task_inspector = TaskInspector()
@@ -280,7 +280,7 @@ class SystemInspector:
         """
         self._task_manager = manager
 
-    def register_event_bus(self, event_bus: "EventBus") -> None:
+    def register_event_bus(self, event_bus: "TraceBus") -> None:
         """Register event bus for inspection.
 
         Args:

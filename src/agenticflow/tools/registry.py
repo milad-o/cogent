@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
 
 
 class ToolRegistry:
@@ -47,7 +47,7 @@ class ToolRegistry:
         ```
     """
 
-    def __init__(self, event_bus: EventBus | None = None) -> None:
+    def __init__(self, event_bus: TraceBus | None = None) -> None:
         """
         Initialize the ToolRegistry.
         

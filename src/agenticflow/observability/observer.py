@@ -81,9 +81,9 @@ from enum import Enum, IntEnum
 from pathlib import Path
 from typing import Any, Callable, TextIO, TYPE_CHECKING
 
-from agenticflow.observability.event import EventType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc, to_local
-from agenticflow.observability.event import Event
+from agenticflow.observability.trace_record import Trace
 from agenticflow.observability.progress import (
     OutputConfig,
     ProgressTracker,
@@ -95,7 +95,7 @@ from agenticflow.observability.progress import (
 )
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
 
 
 # =============================================================================
@@ -222,128 +222,128 @@ class Channel(str, Enum):
 
 
 # Map channels to event types
-CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
+CHANNEL_EVENTS: dict[Channel, set[TraceType]] = {
     Channel.AGENTS: {
-        EventType.AGENT_REGISTERED,
-        EventType.AGENT_UNREGISTERED,
-        EventType.AGENT_INVOKED,
-        EventType.AGENT_THINKING,
-        EventType.AGENT_REASONING,
-        EventType.AGENT_ACTING,
-        EventType.AGENT_RESPONDED,
-        EventType.AGENT_ERROR,
-        EventType.AGENT_STATUS_CHANGED,
+        TraceType.AGENT_REGISTERED,
+        TraceType.AGENT_UNREGISTERED,
+        TraceType.AGENT_INVOKED,
+        TraceType.AGENT_THINKING,
+        TraceType.AGENT_REASONING,
+        TraceType.AGENT_ACTING,
+        TraceType.AGENT_RESPONDED,
+        TraceType.AGENT_ERROR,
+        TraceType.AGENT_STATUS_CHANGED,
         # Spawning events
-        EventType.AGENT_SPAWNED,
-        EventType.AGENT_SPAWN_COMPLETED,
-        EventType.AGENT_SPAWN_FAILED,
-        EventType.AGENT_DESPAWNED,
+        TraceType.AGENT_SPAWNED,
+        TraceType.AGENT_SPAWN_COMPLETED,
+        TraceType.AGENT_SPAWN_FAILED,
+        TraceType.AGENT_DESPAWNED,
         # User/Output events (part of agent interaction)
-        EventType.USER_INPUT,
-        EventType.USER_FEEDBACK,
-        EventType.OUTPUT_GENERATED,
-        EventType.OUTPUT_STREAMED,
+        TraceType.USER_INPUT,
+        TraceType.USER_FEEDBACK,
+        TraceType.OUTPUT_GENERATED,
+        TraceType.OUTPUT_STREAMED,
     },
     Channel.LLM: {
-        EventType.LLM_REQUEST,
-        EventType.LLM_RESPONSE,
-        EventType.LLM_TOOL_DECISION,
+        TraceType.LLM_REQUEST,
+        TraceType.LLM_RESPONSE,
+        TraceType.LLM_TOOL_DECISION,
     },
     Channel.TOOLS: {
-        EventType.TOOL_REGISTERED,
-        EventType.TOOL_CALLED,
-        EventType.TOOL_RESULT,
-        EventType.TOOL_ERROR,
+        TraceType.TOOL_REGISTERED,
+        TraceType.TOOL_CALLED,
+        TraceType.TOOL_RESULT,
+        TraceType.TOOL_ERROR,
     },
     Channel.MESSAGES: {
-        EventType.MESSAGE_SENT,
-        EventType.MESSAGE_RECEIVED,
-        EventType.MESSAGE_BROADCAST,
+        TraceType.MESSAGE_SENT,
+        TraceType.MESSAGE_RECEIVED,
+        TraceType.MESSAGE_BROADCAST,
     },
     Channel.TASKS: {
-        EventType.TASK_CREATED,
-        EventType.TASK_SCHEDULED,
-        EventType.TASK_STARTED,
-        EventType.TASK_BLOCKED,
-        EventType.TASK_UNBLOCKED,
-        EventType.TASK_COMPLETED,
-        EventType.TASK_FAILED,
-        EventType.TASK_CANCELLED,
-        EventType.TASK_RETRYING,
-        EventType.SUBTASK_SPAWNED,
-        EventType.SUBTASK_COMPLETED,
-        EventType.SUBTASKS_AGGREGATED,
+        TraceType.TASK_CREATED,
+        TraceType.TASK_SCHEDULED,
+        TraceType.TASK_STARTED,
+        TraceType.TASK_BLOCKED,
+        TraceType.TASK_UNBLOCKED,
+        TraceType.TASK_COMPLETED,
+        TraceType.TASK_FAILED,
+        TraceType.TASK_CANCELLED,
+        TraceType.TASK_RETRYING,
+        TraceType.SUBTASK_SPAWNED,
+        TraceType.SUBTASK_COMPLETED,
+        TraceType.SUBTASKS_AGGREGATED,
     },
     Channel.SYSTEM: {
-        EventType.SYSTEM_STARTED,
-        EventType.SYSTEM_STOPPED,
-        EventType.SYSTEM_ERROR,
-        EventType.CLIENT_CONNECTED,
-        EventType.CLIENT_DISCONNECTED,
-        EventType.CLIENT_MESSAGE,
+        TraceType.SYSTEM_STARTED,
+        TraceType.SYSTEM_STOPPED,
+        TraceType.SYSTEM_ERROR,
+        TraceType.CLIENT_CONNECTED,
+        TraceType.CLIENT_DISCONNECTED,
+        TraceType.CLIENT_MESSAGE,
     },
     Channel.RESILIENCE: {
-        EventType.TASK_RETRYING,
-        EventType.TOOL_ERROR,
-        EventType.AGENT_ERROR,
+        TraceType.TASK_RETRYING,
+        TraceType.TOOL_ERROR,
+        TraceType.AGENT_ERROR,
     },
     Channel.STREAMING: {
-        EventType.STREAM_START,
-        EventType.TOKEN_STREAMED,
-        EventType.STREAM_TOOL_CALL,
-        EventType.STREAM_END,
-        EventType.STREAM_ERROR,
+        TraceType.STREAM_START,
+        TraceType.TOKEN_STREAMED,
+        TraceType.STREAM_TOOL_CALL,
+        TraceType.STREAM_END,
+        TraceType.STREAM_ERROR,
     },
     Channel.MEMORY: {
-        EventType.MEMORY_READ,
-        EventType.MEMORY_WRITE,
-        EventType.MEMORY_SEARCH,
-        EventType.MEMORY_DELETE,
-        EventType.MEMORY_CLEAR,
-        EventType.THREAD_CREATED,
-        EventType.THREAD_MESSAGE_ADDED,
+        TraceType.MEMORY_READ,
+        TraceType.MEMORY_WRITE,
+        TraceType.MEMORY_SEARCH,
+        TraceType.MEMORY_DELETE,
+        TraceType.MEMORY_CLEAR,
+        TraceType.THREAD_CREATED,
+        TraceType.THREAD_MESSAGE_ADDED,
     },
     Channel.RETRIEVAL: {
-        EventType.RETRIEVAL_START,
-        EventType.RETRIEVAL_COMPLETE,
-        EventType.RETRIEVAL_ERROR,
-        EventType.RERANK_START,
-        EventType.RERANK_COMPLETE,
-        EventType.FUSION_APPLIED,
-        EventType.VECTORSTORE_ADD,
-        EventType.VECTORSTORE_SEARCH,
-        EventType.VECTORSTORE_DELETE,
+        TraceType.RETRIEVAL_START,
+        TraceType.RETRIEVAL_COMPLETE,
+        TraceType.RETRIEVAL_ERROR,
+        TraceType.RERANK_START,
+        TraceType.RERANK_COMPLETE,
+        TraceType.FUSION_APPLIED,
+        TraceType.VECTORSTORE_ADD,
+        TraceType.VECTORSTORE_SEARCH,
+        TraceType.VECTORSTORE_DELETE,
     },
     Channel.DOCUMENTS: {
-        EventType.DOCUMENT_LOADED,
-        EventType.DOCUMENT_SPLIT,
-        EventType.DOCUMENT_ENRICHED,
+        TraceType.DOCUMENT_LOADED,
+        TraceType.DOCUMENT_SPLIT,
+        TraceType.DOCUMENT_ENRICHED,
     },
     Channel.MCP: {
-        EventType.MCP_SERVER_CONNECTING,
-        EventType.MCP_SERVER_CONNECTED,
-        EventType.MCP_SERVER_DISCONNECTED,
-        EventType.MCP_SERVER_ERROR,
-        EventType.MCP_TOOLS_DISCOVERED,
-        EventType.MCP_TOOL_CALLED,
-        EventType.MCP_TOOL_RESULT,
-        EventType.MCP_TOOL_ERROR,
+        TraceType.MCP_SERVER_CONNECTING,
+        TraceType.MCP_SERVER_CONNECTED,
+        TraceType.MCP_SERVER_DISCONNECTED,
+        TraceType.MCP_SERVER_ERROR,
+        TraceType.MCP_TOOLS_DISCOVERED,
+        TraceType.MCP_TOOL_CALLED,
+        TraceType.MCP_TOOL_RESULT,
+        TraceType.MCP_TOOL_ERROR,
     },
     Channel.REACTIVE: {
-        EventType.REACTIVE_FLOW_STARTED,
-        EventType.REACTIVE_FLOW_COMPLETED,
-        EventType.REACTIVE_FLOW_FAILED,
-        EventType.REACTIVE_EVENT_EMITTED,
-        EventType.REACTIVE_EVENT_PROCESSED,
-        EventType.REACTIVE_AGENT_TRIGGERED,
-        EventType.REACTIVE_AGENT_COMPLETED,
-        EventType.REACTIVE_AGENT_FAILED,
-        EventType.REACTIVE_NO_MATCH,
-        EventType.REACTIVE_ROUND_STARTED,
-        EventType.REACTIVE_ROUND_COMPLETED,
+        TraceType.REACTIVE_FLOW_STARTED,
+        TraceType.REACTIVE_FLOW_COMPLETED,
+        TraceType.REACTIVE_FLOW_FAILED,
+        TraceType.REACTIVE_EVENT_EMITTED,
+        TraceType.REACTIVE_EVENT_PROCESSED,
+        TraceType.REACTIVE_AGENT_TRIGGERED,
+        TraceType.REACTIVE_AGENT_COMPLETED,
+        TraceType.REACTIVE_AGENT_FAILED,
+        TraceType.REACTIVE_NO_MATCH,
+        TraceType.REACTIVE_ROUND_STARTED,
+        TraceType.REACTIVE_ROUND_COMPLETED,
         # Skill events
-        EventType.SKILL_ACTIVATED,
-        EventType.SKILL_DEACTIVATED,
+        TraceType.SKILL_ACTIVATED,
+        TraceType.SKILL_DEACTIVATED,
     },
 }
 
@@ -566,7 +566,7 @@ class Observer:
             use_colors=use_colors,
             format=format,
         ))
-        self._attached_bus: EventBus | None = None
+        self._attached_bus: TraceBus | None = None
         
         # === Deep Tracing (integrated - no separate tracer needed!) ===
         self._trace_id = generate_id()
@@ -827,7 +827,7 @@ class Observer:
     
     # ==================== Attach/Detach ====================
     
-    def attach(self, event_bus: EventBus) -> None:
+    def attach(self, event_bus: TraceBus) -> None:
         """
         Attach observer to an event bus.
         
@@ -902,107 +902,107 @@ class Observer:
     def _get_level_for_event(self, event: Event) -> ObservabilityLevel:
         """Get minimum level required to see this event."""
         # Result-level events
-        if event.type in {EventType.TASK_COMPLETED, EventType.TASK_FAILED}:
+        if event.type in {TraceType.TASK_COMPLETED, TraceType.TASK_FAILED}:
             return ObservabilityLevel.RESULT
         
         # Progress-level events - these are the main milestones
         if event.type in {
-            EventType.AGENT_INVOKED,
-            EventType.AGENT_RESPONDED,
-            EventType.AGENT_THINKING,  # Show thinking at progress level
-            EventType.AGENT_REASONING,  # Show reasoning at progress level
-            EventType.TASK_STARTED,
+            TraceType.AGENT_INVOKED,
+            TraceType.AGENT_RESPONDED,
+            TraceType.AGENT_THINKING,  # Show thinking at progress level
+            TraceType.AGENT_REASONING,  # Show reasoning at progress level
+            TraceType.TASK_STARTED,
             # User interaction events at progress level
-            EventType.USER_INPUT,
-            EventType.OUTPUT_GENERATED,
+            TraceType.USER_INPUT,
+            TraceType.OUTPUT_GENERATED,
             # Spawning events at progress - important milestones
-            EventType.AGENT_SPAWNED,
-            EventType.AGENT_SPAWN_COMPLETED,
-            EventType.AGENT_SPAWN_FAILED,
+            TraceType.AGENT_SPAWNED,
+            TraceType.AGENT_SPAWN_COMPLETED,
+            TraceType.AGENT_SPAWN_FAILED,
             # MCP server connection at progress level (important milestones)
-            EventType.MCP_SERVER_CONNECTED,
-            EventType.MCP_TOOLS_DISCOVERED,
+            TraceType.MCP_SERVER_CONNECTED,
+            TraceType.MCP_TOOLS_DISCOVERED,
         }:
             return ObservabilityLevel.PROGRESS
         
         # Detailed-level events
         if event.type in {
-            EventType.TOOL_CALLED,
-            EventType.TOOL_RESULT,
-            EventType.TOOL_ERROR,
-            EventType.AGENT_ACTING,
-            EventType.TASK_RETRYING,
-            EventType.AGENT_DESPAWNED,  # Cleanup at detailed level
+            TraceType.TOOL_CALLED,
+            TraceType.TOOL_RESULT,
+            TraceType.TOOL_ERROR,
+            TraceType.AGENT_ACTING,
+            TraceType.TASK_RETRYING,
+            TraceType.AGENT_DESPAWNED,  # Cleanup at detailed level
             # MCP tool calls at detailed level (same as regular tools)
-            EventType.MCP_TOOL_CALLED,
-            EventType.MCP_TOOL_RESULT,
-            EventType.MCP_TOOL_ERROR,
+            TraceType.MCP_TOOL_CALLED,
+            TraceType.MCP_TOOL_RESULT,
+            TraceType.MCP_TOOL_ERROR,
             # VectorStore operations at detailed level
-            EventType.VECTORSTORE_ADD,
-            EventType.VECTORSTORE_SEARCH,
-            EventType.VECTORSTORE_DELETE,
+            TraceType.VECTORSTORE_ADD,
+            TraceType.VECTORSTORE_SEARCH,
+            TraceType.VECTORSTORE_DELETE,
         }:
             return ObservabilityLevel.DETAILED
         
         # LLM events - opt-in only (requires explicit LLM channel subscription)
         # Show subtle presence at DEBUG, full details at TRACE
         if event.type in {
-            EventType.LLM_REQUEST,
-            EventType.LLM_RESPONSE,
-            EventType.LLM_TOOL_DECISION,
+            TraceType.LLM_REQUEST,
+            TraceType.LLM_RESPONSE,
+            TraceType.LLM_TOOL_DECISION,
         }:
             return ObservabilityLevel.DEBUG
         
         # Debug-level events
         if event.type in {
-            EventType.AGENT_STATUS_CHANGED,
-            EventType.MESSAGE_SENT,
-            EventType.MESSAGE_RECEIVED,
+            TraceType.AGENT_STATUS_CHANGED,
+            TraceType.MESSAGE_SENT,
+            TraceType.MESSAGE_RECEIVED,
             # MCP connecting/disconnecting at debug level
-            EventType.MCP_SERVER_CONNECTING,
-            EventType.MCP_SERVER_DISCONNECTED,
-            EventType.MCP_SERVER_ERROR,
+            TraceType.MCP_SERVER_CONNECTING,
+            TraceType.MCP_SERVER_DISCONNECTED,
+            TraceType.MCP_SERVER_ERROR,
         }:
             return ObservabilityLevel.DEBUG
         
         # Streaming events - DETAILED level (same as tool calls)
         # STREAM_START/END at DETAILED, TOKEN_STREAMED at DEBUG for less noise
         if event.type in {
-            EventType.STREAM_START,
-            EventType.STREAM_END,
-            EventType.STREAM_TOOL_CALL,
-            EventType.STREAM_ERROR,
+            TraceType.STREAM_START,
+            TraceType.STREAM_END,
+            TraceType.STREAM_TOOL_CALL,
+            TraceType.STREAM_ERROR,
         }:
             return ObservabilityLevel.DETAILED
         
-        if event.type == EventType.TOKEN_STREAMED:
+        if event.type == TraceType.TOKEN_STREAMED:
             return ObservabilityLevel.DEBUG  # Individual tokens at debug level
         
         # Reactive flow events - tiered visibility
         # Core milestones at PROGRESS level
         if event.type in {
-            EventType.REACTIVE_FLOW_STARTED,
-            EventType.REACTIVE_FLOW_COMPLETED,
-            EventType.REACTIVE_FLOW_FAILED,
-            EventType.REACTIVE_AGENT_TRIGGERED,
-            EventType.REACTIVE_AGENT_COMPLETED,
-            EventType.REACTIVE_AGENT_FAILED,
-            EventType.SKILL_ACTIVATED,  # Skill activation is a key milestone
+            TraceType.REACTIVE_FLOW_STARTED,
+            TraceType.REACTIVE_FLOW_COMPLETED,
+            TraceType.REACTIVE_FLOW_FAILED,
+            TraceType.REACTIVE_AGENT_TRIGGERED,
+            TraceType.REACTIVE_AGENT_COMPLETED,
+            TraceType.REACTIVE_AGENT_FAILED,
+            TraceType.SKILL_ACTIVATED,  # Skill activation is a key milestone
         }:
             return ObservabilityLevel.PROGRESS
         
         # Detailed reactive events
         if event.type in {
-            EventType.REACTIVE_EVENT_EMITTED,
-            EventType.REACTIVE_EVENT_PROCESSED,
-            EventType.REACTIVE_NO_MATCH,
+            TraceType.REACTIVE_EVENT_EMITTED,
+            TraceType.REACTIVE_EVENT_PROCESSED,
+            TraceType.REACTIVE_NO_MATCH,
         }:
             return ObservabilityLevel.DETAILED
         
         # Round info at DEBUG (verbose)
         if event.type in {
-            EventType.REACTIVE_ROUND_STARTED,
-            EventType.REACTIVE_ROUND_COMPLETED,
+            TraceType.REACTIVE_ROUND_STARTED,
+            TraceType.REACTIVE_ROUND_COMPLETED,
         }:
             return ObservabilityLevel.DEBUG
         
@@ -1079,7 +1079,7 @@ class Observer:
         
         # Error callback
         if self.config.on_error:
-            if event.type in {EventType.AGENT_ERROR, EventType.TOOL_ERROR, EventType.TASK_FAILED, EventType.STREAM_ERROR}:
+            if event.type in {TraceType.AGENT_ERROR, TraceType.TOOL_ERROR, TraceType.TASK_FAILED, TraceType.STREAM_ERROR}:
                 source = event.data.get("agent_name") or event.data.get("tool") or "unknown"
                 error = event.data.get("error") or event.data.get("message", "Unknown error")
                 self.config.on_error(source, error)
@@ -1087,7 +1087,7 @@ class Observer:
         # Streaming callback
         if self.config.on_stream and channel == Channel.STREAMING:
             agent_name = event.data.get("agent_name") or event.data.get("agent", "unknown")
-            if event.type == EventType.TOKEN_STREAMED:
+            if event.type == TraceType.TOKEN_STREAMED:
                 token = event.data.get("token", event.data.get("content", ""))
                 self.config.on_stream(agent_name, token, event.data)
             else:
@@ -1161,14 +1161,14 @@ class Observer:
         #         [Agent] 📤 output (duration)
         # ═══════════════════════════════════════════════════════════
         
-        if event_type == EventType.USER_INPUT:
+        if event_type == TraceType.USER_INPUT:
             content = _normalize_content(data.get("content", data.get("input", "")))
             source = data.get("source", "user")
             content = _truncate_smart(content.replace("\n", " ").strip(), self.config.truncate)
             formatted_name = _format_agent_name("User")
             return f"{prefix}{s.info(formatted_name)} {s.dim('[input]')}: {content}"
         
-        elif event_type == EventType.USER_FEEDBACK:
+        elif event_type == TraceType.USER_FEEDBACK:
             feedback = data.get("feedback", data.get("content", ""))
             decision = data.get("decision", "")
             formatted_name = _format_agent_name("User")
@@ -1177,7 +1177,7 @@ class Observer:
             feedback = _truncate_smart(str(feedback).replace("\n", " ").strip(), self.config.truncate)
             return f"{prefix}{s.info(formatted_name)} {s.dim('[feedback]')}: {feedback}"
         
-        elif event_type == EventType.OUTPUT_GENERATED:
+        elif event_type == TraceType.OUTPUT_GENERATED:
             content = _normalize_content(data.get("content", data.get("output", "")))
             agent_name = data.get("agent_name", "")
             flow_name = data.get("flow_name", "")
@@ -1207,7 +1207,7 @@ class Observer:
             else:
                 return header
         
-        elif event_type == EventType.OUTPUT_STREAMED:
+        elif event_type == TraceType.OUTPUT_STREAMED:
             # Similar to TOKEN_STREAMED but for final user-facing output
             token = data.get("token", data.get("content", ""))
             if self.config.level >= ObservabilityLevel.DEBUG:
@@ -1222,12 +1222,12 @@ class Observer:
         #         content indented consistently
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.AGENT_INVOKED:
+        elif event_type == TraceType.AGENT_INVOKED:
             agent_name = data.get('agent_name', '?')
             formatted_name = _format_agent_name(agent_name)
             return f"{prefix}{s.agent(formatted_name)} {s.dim('[starting]')}"
         
-        elif event_type == EventType.AGENT_THINKING:
+        elif event_type == TraceType.AGENT_THINKING:
             agent_name = data.get('agent_name', '?')
             iteration = data.get('iteration', 1)
             max_iterations = data.get('max_iterations', 0)
@@ -1268,7 +1268,7 @@ class Observer:
                 # Suppress subsequent thinking events - tool calls will show the actual work
                 return None
         
-        elif event_type == EventType.AGENT_REASONING:
+        elif event_type == TraceType.AGENT_REASONING:
             agent_name = data.get('agent_name', '?')
             round_num = data.get('round', 1)
             reasoning_type = data.get('reasoning_type', 'thinking')
@@ -1308,12 +1308,12 @@ class Observer:
             else:
                 return header
         
-        elif event_type == EventType.AGENT_ACTING:
+        elif event_type == TraceType.AGENT_ACTING:
             agent_name = data.get('agent_name', '?')
             formatted_name = _format_agent_name(agent_name)
             return f"{prefix}{s.agent(formatted_name)} {s.dim('[acting]')}"
         
-        elif event_type == EventType.AGENT_RESPONDED:
+        elif event_type == TraceType.AGENT_RESPONDED:
             agent_name = data.get('agent_name', '?')
             result = data.get("response_preview") or data.get("response") or data.get("result_preview", "")
             result = _normalize_content(result)
@@ -1331,7 +1331,7 @@ class Observer:
             formatted_name = _format_agent_name(agent_name)
             return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.success(duration_str)}"
         
-        elif event_type == EventType.AGENT_ERROR:
+        elif event_type == TraceType.AGENT_ERROR:
             agent_name = data.get('agent_name', '?')
             error = data.get('error', 'Unknown error')
             error_str = str(error)
@@ -1373,7 +1373,7 @@ class Observer:
             
             return "\n".join(error_lines)
         
-        elif event_type == EventType.AGENT_STATUS_CHANGED:
+        elif event_type == TraceType.AGENT_STATUS_CHANGED:
             # State change diff visualization
             agent_name = data.get('agent_name', '?')
             entity_id = data.get('entity_id', agent_name)
@@ -1433,7 +1433,7 @@ class Observer:
         #         [Agent]     → result preview
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.TOOL_CALLED:
+        elif event_type == TraceType.TOOL_CALLED:
             agent_name = data.get("agent_name", "")
             tool_name = data.get("tool_name", data.get("tool", "?"))
             args = data.get("args", {})
@@ -1449,7 +1449,7 @@ class Observer:
             
             return f"{prefix}{s.agent(formatted_name)} {s.dim('[tool-call]')} {s.tool(tool_name)}{args_str}"
         
-        elif event_type == EventType.TOOL_RESULT:
+        elif event_type == TraceType.TOOL_RESULT:
             agent_name = data.get("agent_name", "")
             tool_name = data.get("tool_name", data.get("tool", "?"))
             result = data.get("result_preview", str(data.get("result", "")))
@@ -1476,7 +1476,7 @@ class Observer:
             
             return f"{prefix}{s.agent(formatted_name)} {s.success('[tool-result]')} {s.tool(tool_name)}{s.success(duration_str)}{result_part}"
         
-        elif event_type == EventType.TOOL_ERROR:
+        elif event_type == TraceType.TOOL_ERROR:
             agent_name = data.get("agent_name", "")
             tool_name = data.get("tool_name", data.get("tool", "?"))
             error = data.get("error", "Unknown error")
@@ -1508,7 +1508,7 @@ class Observer:
         # Format: [Task] icon status (duration) description
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.TASK_CREATED:
+        elif event_type == TraceType.TASK_CREATED:
             task = data.get("task", data.get("task_name", ""))
             task_truncated = _truncate_smart(task, max_chars=100)
             event_name = data.get("event_name", "")
@@ -1516,12 +1516,12 @@ class Observer:
                 return f"{prefix}{s.success('📋 created')} {task_truncated} {s.dim(f'({event_name})')}"
             return f"{prefix}{s.success('📋 created')} {task_truncated}"
         
-        elif event_type == EventType.TASK_STARTED:
+        elif event_type == TraceType.TASK_STARTED:
             task_name = data.get("task_name", data.get("task", "task"))
             task_truncated = _truncate_smart(task_name, max_chars=100)
             return f"{prefix}{s.success('▶ started')} {task_truncated}"
         
-        elif event_type == EventType.TASK_COMPLETED:
+        elif event_type == TraceType.TASK_COMPLETED:
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
                 duration_str = f" {_format_duration(data['duration_ms'])}"
@@ -1531,12 +1531,12 @@ class Observer:
                 return f"{prefix}{s.success(f'✓ completed{duration_str}')}\n  {s.dim(result_preview)}"
             return f"{prefix}{s.success(f'✓ completed{duration_str}')}"
         
-        elif event_type == EventType.TASK_FAILED:
+        elif event_type == TraceType.TASK_FAILED:
             error = data.get('error', 'unknown')
             error_truncated = _truncate_smart(str(error), max_chars=100)
             return f"{prefix}{s.error(f'✗ failed: {error_truncated}')}"
         
-        elif event_type == EventType.TASK_RETRYING:
+        elif event_type == TraceType.TASK_RETRYING:
             attempt = data.get("attempt", "?")
             max_retries = data.get("max_retries", "?")
             delay_str = ""
@@ -1549,7 +1549,7 @@ class Observer:
         # Format: 📤 Sender → Receiver: "preview"
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.MESSAGE_SENT:
+        elif event_type == TraceType.MESSAGE_SENT:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
             content = _normalize_content(data.get("content", ""))
@@ -1557,7 +1557,7 @@ class Observer:
             content_str = f': "{content_preview}"' if content_preview else ""
             return f"{prefix}{s.dim('📤')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
         
-        elif event_type == EventType.MESSAGE_RECEIVED:
+        elif event_type == TraceType.MESSAGE_RECEIVED:
             receiver = data.get("agent_name", data.get("agent", "?"))
             sender = data.get("from", "?")
             content = _normalize_content(data.get("content", ""))
@@ -1565,7 +1565,7 @@ class Observer:
             content_str = f': "{content_preview}"' if content_preview else ""
             return f"{prefix}{s.dim('📥')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
         
-        elif event_type == EventType.MESSAGE_BROADCAST:
+        elif event_type == TraceType.MESSAGE_BROADCAST:
             sender = data.get("sender_id", "?")
             topic = data.get("topic", "")
             topic_str = f" ({topic})" if topic else ""
@@ -1576,7 +1576,7 @@ class Observer:
         # Format: [Agent] ▸ streaming... → [Agent] ✓ stream complete (duration, tok/s)
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.STREAM_START:
+        elif event_type == TraceType.STREAM_START:
             agent_name = data.get("agent_name", data.get("agent", "?"))
             formatted_name = _format_agent_name(agent_name)
             model = data.get("model", "")
@@ -1589,7 +1589,7 @@ class Observer:
             self._stream_buffer[agent_name] = ""
             return f"{prefix}{s.agent(formatted_name)}  {s.info('▸ streaming...')}{model_str}"
         
-        elif event_type == EventType.TOKEN_STREAMED:
+        elif event_type == TraceType.TOKEN_STREAMED:
             agent_name = data.get("agent_name", data.get("agent", "?"))
             token = _normalize_content(data.get("token", data.get("content", "")))
             # Track token count
@@ -1607,7 +1607,7 @@ class Observer:
                 return ""  # Don't add newline
             return ""  # Don't display individual tokens at lower levels
         
-        elif event_type == EventType.STREAM_TOOL_CALL:
+        elif event_type == TraceType.STREAM_TOOL_CALL:
             agent_name = data.get("agent_name", data.get("agent", "?"))
             formatted_name = _format_agent_name(agent_name)
             tool_name = data.get("tool_name", data.get("tool", "?"))
@@ -1616,7 +1616,7 @@ class Observer:
             args_part = f"\n               {s.dim(args_preview)}" if args_preview else ""
             return f"{prefix}{s.agent(formatted_name)}    {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{args_part}"
         
-        elif event_type == EventType.STREAM_END:
+        elif event_type == TraceType.STREAM_END:
             agent_name = data.get("agent_name", data.get("agent", "?"))
             formatted_name = _format_agent_name(agent_name)
             # Calculate stats
@@ -1653,7 +1653,7 @@ class Observer:
                 return f"{header}\n{wrapped}"
             return header
         
-        elif event_type == EventType.STREAM_ERROR:
+        elif event_type == TraceType.STREAM_ERROR:
             agent_name = data.get("agent_name", data.get("agent", "?"))
             formatted_name = _format_agent_name(agent_name)
             error = data.get("error", "Unknown streaming error")
@@ -1667,7 +1667,7 @@ class Observer:
         # LLM OBSERVABILITY EVENTS - Subtle presence, details opt-in
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.LLM_REQUEST:
+        elif event_type == TraceType.LLM_REQUEST:
             agent_name = data.get("agent_name", "?")
             message_count = data.get("message_count", 0)
             tools_available = data.get("tools_available", [])
@@ -1692,7 +1692,7 @@ class Observer:
                     return "\n".join(lines)
             return header
         
-        elif event_type == EventType.LLM_RESPONSE:
+        elif event_type == TraceType.LLM_RESPONSE:
             agent_name = data.get("agent_name", "?")
             tool_calls = data.get("tool_calls", [])
             duration_ms = data.get("duration_ms", 0)
@@ -1741,7 +1741,7 @@ class Observer:
             
             return header
         
-        elif event_type == EventType.LLM_TOOL_DECISION:
+        elif event_type == TraceType.LLM_TOOL_DECISION:
             agent_name = data.get("agent_name", "?")
             tools_selected = data.get("tools_selected", [])
             formatted_name = _format_agent_name(agent_name)
@@ -1770,7 +1770,7 @@ class Observer:
         # SPAWNING EVENTS - Dynamic agent creation
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.AGENT_SPAWNED:
+        elif event_type == TraceType.AGENT_SPAWNED:
             parent = data.get("parent_agent", "?")
             role = data.get("role", "?")
             task = data.get("task", "")[:80]
@@ -1789,7 +1789,7 @@ class Observer:
             lines.append(f"{prefix}{indent}   {s.dim(f'Active: {active}, Total: {total}, Depth: {depth}')}")
             return "\n".join(lines)
         
-        elif event_type == EventType.AGENT_SPAWN_COMPLETED:
+        elif event_type == TraceType.AGENT_SPAWN_COMPLETED:
             role = data.get("role", "?")
             result = data.get("result_preview", "")
             depth = data.get("depth", 1)
@@ -1809,7 +1809,7 @@ class Observer:
                 return "\n".join(lines)
             return header
         
-        elif event_type == EventType.AGENT_SPAWN_FAILED:
+        elif event_type == TraceType.AGENT_SPAWN_FAILED:
             role = data.get("role", "?")
             error = data.get("error", "Unknown error")
             depth = data.get("depth", 1)
@@ -1818,7 +1818,7 @@ class Observer:
             tree_char = "└─" if depth > 1 else ""
             return f"{prefix}{indent}{tree_char}{s.error('✗')} {s.error(role)} {s.error(f'FAILED: {error[:80]}')}"
         
-        elif event_type == EventType.AGENT_DESPAWNED:
+        elif event_type == TraceType.AGENT_DESPAWNED:
             role = data.get("role", "?")
             depth = data.get("depth", 1)
             indent = "   " * depth
@@ -1828,12 +1828,12 @@ class Observer:
         # VECTORSTORE EVENTS - Document indexing and search
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.VECTORSTORE_ADD:
+        elif event_type == TraceType.VECTORSTORE_ADD:
             count = data.get("count", 0)
             embedded = data.get("embedded", count)
             return f"{prefix}{s.success('📚')} {s.bold('VectorStore')} Added {s.agent(str(count))} documents ({embedded} embedded)"
         
-        elif event_type == EventType.VECTORSTORE_SEARCH:
+        elif event_type == TraceType.VECTORSTORE_SEARCH:
             query = data.get("query", "?")[:50]
             k = data.get("k", "?")
             results = data.get("results", 0)
@@ -1841,7 +1841,7 @@ class Observer:
             score_str = f" (top: {top_score:.2f})" if top_score else ""
             return f"{prefix}{s.info('🔍')} {s.bold('VectorStore')} Search k={k} → {s.agent(str(results))} results{score_str}: {s.dim(query)}"
         
-        elif event_type == EventType.VECTORSTORE_DELETE:
+        elif event_type == TraceType.VECTORSTORE_DELETE:
             count = data.get("count", 0)
             clear = data.get("clear", False)
             if clear:
@@ -1852,27 +1852,27 @@ class Observer:
         # MCP EVENTS - Model Context Protocol server interactions
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.MCP_SERVER_CONNECTING:
+        elif event_type == TraceType.MCP_SERVER_CONNECTING:
             server = data.get("server_name", "?")
             transport = data.get("transport", "?")
             return f"{prefix}{s.info('🔌')} {s.bold('MCP')} Connecting to {s.agent(server)} ({transport})..."
         
-        elif event_type == EventType.MCP_SERVER_CONNECTED:
+        elif event_type == TraceType.MCP_SERVER_CONNECTED:
             server = data.get("server_name", "?")
             transport = data.get("transport", "?")
             return f"{prefix}{s.success('✓')} {s.bold('MCP')} Connected to {s.agent(server)} ({transport})"
         
-        elif event_type == EventType.MCP_SERVER_DISCONNECTED:
+        elif event_type == TraceType.MCP_SERVER_DISCONNECTED:
             count = data.get("server_count", 0)
             tools = data.get("tool_count", 0)
             return f"{prefix}{s.dim('🔌')} {s.bold('MCP')} Disconnected ({count} servers, {tools} tools)"
         
-        elif event_type == EventType.MCP_SERVER_ERROR:
+        elif event_type == TraceType.MCP_SERVER_ERROR:
             server = data.get("server_name", "?")
             error = data.get("error", "Unknown error")[:80]
             return f"{prefix}{s.error('✗')} {s.bold('MCP')} {s.agent(server)} {s.error(f'Error: {error}')}"
         
-        elif event_type == EventType.MCP_TOOLS_DISCOVERED:
+        elif event_type == TraceType.MCP_TOOLS_DISCOVERED:
             server = data.get("server_name", "?")
             tool_names = data.get("tools", [])
             count = len(tool_names)
@@ -1883,20 +1883,20 @@ class Observer:
                 return f"{prefix}{s.info('🔧')} {s.bold('MCP')} {s.agent(server)} discovered {s.tool(f'{count} tools')}: {tools_preview}"
             return f"{prefix}{s.dim('🔧')} {s.bold('MCP')} {s.agent(server)} no tools discovered"
         
-        elif event_type == EventType.MCP_TOOL_CALLED:
+        elif event_type == TraceType.MCP_TOOL_CALLED:
             server = data.get("server_name", "?")
             tool = data.get("tool_name", "?")
             args = data.get("arguments", {})
             args_preview = str(args)[:60] if args else ""
             return f"{prefix}{s.info('▶')} {s.bold('MCP')} {s.tool(tool)} ({server}) {s.dim(args_preview)}"
         
-        elif event_type == EventType.MCP_TOOL_RESULT:
+        elif event_type == TraceType.MCP_TOOL_RESULT:
             server = data.get("server_name", "?")
             tool = data.get("tool_name", "?")
             result = str(data.get("result_preview", ""))[:80]
             return f"{prefix}{s.success('✓')} {s.bold('MCP')} {s.tool(tool)} {s.dim(result)}"
         
-        elif event_type == EventType.MCP_TOOL_ERROR:
+        elif event_type == TraceType.MCP_TOOL_ERROR:
             server = data.get("server_name", "?")
             tool = data.get("tool_name", "?")
             error = data.get("error", "Unknown error")[:80]
@@ -1906,7 +1906,7 @@ class Observer:
         # REACTIVE FLOW EVENTS - Event-driven orchestration
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.REACTIVE_FLOW_STARTED:
+        elif event_type == TraceType.REACTIVE_FLOW_STARTED:
             task = data.get("task", "")[:80]
             agents = data.get("agents", [])
             agent_count = len(agents)
@@ -1921,7 +1921,7 @@ class Observer:
                 lines.append(f"      {s.dim('Agents:')} {s.agent(agents_preview)}")
             return "\n".join(lines)
         
-        elif event_type == EventType.REACTIVE_FLOW_COMPLETED:
+        elif event_type == TraceType.REACTIVE_FLOW_COMPLETED:
             events_processed = data.get("events_processed", 0)
             reactions = data.get("reactions", 0)
             rounds = data.get("rounds", 0)
@@ -1936,16 +1936,16 @@ class Observer:
             
             return f"{prefix}{s.info('[Flow]')} {s.success('[completed]')}{duration_str} {s.dim(f'({reactions} reactions, {rounds} rounds, {events_processed} events)')}"
         
-        elif event_type == EventType.REACTIVE_FLOW_FAILED:
+        elif event_type == TraceType.REACTIVE_FLOW_FAILED:
             error = data.get("error", "Unknown error")[:100]
             rounds = data.get("rounds", 0)
             return f"{prefix}{s.info('[Flow]')} {s.error('[FAILED]')} {s.error(error)} {s.dim(f'(after {rounds} rounds)')}"
         
-        elif event_type == EventType.REACTIVE_EVENT_EMITTED:
+        elif event_type == TraceType.REACTIVE_EVENT_EMITTED:
             event_name = data.get("event_name", "?")
             return f"{prefix}{s.dim('[Event]')} {s.dim('[emitted]')} {s.info(event_name)}"
         
-        elif event_type == EventType.REACTIVE_EVENT_PROCESSED:
+        elif event_type == TraceType.REACTIVE_EVENT_PROCESSED:
             # This can be very chatty. Keep it for DETAILED+ but suppress in
             # PROGRESS/minimal modes to improve signal-to-noise.
             if self.config.level <= ObservabilityLevel.PROGRESS:
@@ -1954,13 +1954,13 @@ class Observer:
             round_num = data.get("round", 0)
             return f"{prefix}{s.dim('[Event]')} {s.dim('[processing]')} {event_name} {s.dim(f'(round {round_num})')}"
         
-        elif event_type == EventType.REACTIVE_AGENT_TRIGGERED:
+        elif event_type == TraceType.REACTIVE_AGENT_TRIGGERED:
             agent = data.get("agent", "?")
             trigger_event = data.get("trigger_event", "?")
             formatted_name = _format_agent_name(agent)
             return f"{prefix}{s.agent(formatted_name)} {s.dim('[triggered]')} {s.dim('by')} {s.info(trigger_event)}"
         
-        elif event_type == EventType.REACTIVE_AGENT_COMPLETED:
+        elif event_type == TraceType.REACTIVE_AGENT_COMPLETED:
             agent = data.get("agent", "?")
             output_length = data.get("output_length", 0)
             trigger_event = data.get("trigger_event", "")
@@ -1969,27 +1969,27 @@ class Observer:
             formatted_name = _format_agent_name(agent)
             return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.dim(output_str)}{by}"
         
-        elif event_type == EventType.REACTIVE_AGENT_FAILED:
+        elif event_type == TraceType.REACTIVE_AGENT_FAILED:
             agent = data.get("agent", "?")
             error = data.get("error", "Unknown error")[:80]
             formatted_name = _format_agent_name(agent)
             return f"{prefix}{s.agent(formatted_name)} {s.error('[FAILED]')} {s.error(error)}"
         
-        elif event_type == EventType.REACTIVE_NO_MATCH:
+        elif event_type == TraceType.REACTIVE_NO_MATCH:
             # Useful for debugging, but noisy for normal runs.
             if self.config.level < ObservabilityLevel.DEBUG:
                 return None
             event_name = data.get("event_name", "?")
             return f"{prefix}{s.dim('[Event]')} {s.dim('[no-match]')} {s.dim(event_name)}"
         
-        elif event_type == EventType.REACTIVE_ROUND_STARTED:
+        elif event_type == TraceType.REACTIVE_ROUND_STARTED:
             if self.config.level <= ObservabilityLevel.PROGRESS:
                 return None
             round_num = data.get("round", 0)
             pending = data.get("pending_events", 0)
             return f"{prefix}[Round] {s.dim(f'{round_num}')} {s.dim(f'({pending} pending)')}"
         
-        elif event_type == EventType.REACTIVE_ROUND_COMPLETED:
+        elif event_type == TraceType.REACTIVE_ROUND_COMPLETED:
             if self.config.level <= ObservabilityLevel.PROGRESS:
                 return None
             round_num = data.get("round", 0)
@@ -2003,7 +2003,7 @@ class Observer:
         # SKILL EVENTS - Event-triggered behavioral specializations
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.SKILL_ACTIVATED:
+        elif event_type == TraceType.SKILL_ACTIVATED:
             skill_name = data.get("skill", "?")
             agent = data.get("agent", "?")
             trigger_event = data.get("trigger_event", "")
@@ -2011,7 +2011,7 @@ class Observer:
             by = f" {s.dim('←')} {s.dim(trigger_event)}" if trigger_event else ""
             return f"{prefix}{formatted_agent} {s.info('[skill:')} {s.info(skill_name)}{s.info(']')}{by}"
         
-        elif event_type == EventType.SKILL_DEACTIVATED:
+        elif event_type == TraceType.SKILL_DEACTIVATED:
             # Only show at DEBUG level to reduce noise
             if self.config.level < ObservabilityLevel.DEBUG:
                 return None
@@ -2024,7 +2024,7 @@ class Observer:
         # CUSTOM EVENTS - User-defined events (often reactive)
         # ═══════════════════════════════════════════════════════════
         
-        elif event_type == EventType.CUSTOM:
+        elif event_type == TraceType.CUSTOM:
             event_name = data.get("event_name", "")
 
             def _kv_preview(keys: list[str]) -> str:
@@ -2185,7 +2185,7 @@ class Observer:
         ts = event.timestamp
         
         # Agent lifecycle tracking - start on INVOKED or THINKING
-        if event_type in (EventType.AGENT_INVOKED, EventType.AGENT_THINKING):
+        if event_type in (TraceType.AGENT_INVOKED, TraceType.AGENT_THINKING):
             agent_name = data.get("agent_name", "unknown")
             
             # Only create node if agent not already tracked
@@ -2214,7 +2214,7 @@ class Observer:
                     last = prev_completed[-1]
                     self._edges.append((last["id"], node_id, "→"))
         
-        elif event_type == EventType.AGENT_RESPONDED:
+        elif event_type == TraceType.AGENT_RESPONDED:
             agent_name = data.get("agent_name", "unknown")
             if agent_name in self._current_agents:
                 node_id = self._current_agents[agent_name]
@@ -2229,7 +2229,7 @@ class Observer:
                 # Remove from current so next invocation creates new node
                 del self._current_agents[agent_name]
         
-        elif event_type == EventType.AGENT_ERROR:
+        elif event_type == TraceType.AGENT_ERROR:
             agent_name = data.get("agent_name", "unknown")
             if agent_name in self._current_agents:
                 node_id = self._current_agents[agent_name]
@@ -2242,7 +2242,7 @@ class Observer:
                 del self._current_agents[agent_name]
         
         # Tool call tracking
-        elif event_type == EventType.TOOL_CALLED:
+        elif event_type == TraceType.TOOL_CALLED:
             tool_name = data.get("tool", "unknown")
             tool_id = f"tool_{tool_name}_{generate_id()[:6]}"
             tool_record = {
@@ -2265,7 +2265,7 @@ class Observer:
                         agent_node["tools_called"].append(tool_id)
                         self._edges.append((agent_node_id, tool_id, "calls"))
         
-        elif event_type == EventType.TOOL_RESULT:
+        elif event_type == TraceType.TOOL_RESULT:
             tool_name = data.get("tool", "unknown")
             if tool_name in self._current_tools:
                 tool_record = self._current_tools[tool_name]
@@ -2276,7 +2276,7 @@ class Observer:
                     delta = (ts - tool_record["start_time"]).total_seconds() * 1000
                     tool_record["duration_ms"] = delta
         
-        elif event_type == EventType.TOOL_ERROR:
+        elif event_type == TraceType.TOOL_ERROR:
             tool_name = data.get("tool", "unknown")
             if tool_name in self._current_tools:
                 tool_record = self._current_tools[tool_name]
@@ -2394,7 +2394,7 @@ class Observer:
     def events(
         self,
         channel: Channel | None = None,
-        event_type: EventType | None = None,
+        event_type: TraceType | None = None,
         limit: int | None = None,
     ) -> list[Event]:
         """

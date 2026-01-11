@@ -21,7 +21,7 @@ from agenticflow.interceptors.base import (
 )
 
 
-class AuditEventType(Enum):
+class AuditTraceType(Enum):
     """Types of audit events."""
     RUN_START = "run_start"
     RUN_END = "run_end"
@@ -46,7 +46,7 @@ class AuditEvent:
         duration_ms: Duration in milliseconds (for response events).
     """
     timestamp: str
-    event_type: AuditEventType
+    event_type: AuditTraceType
     agent_name: str
     task: str
     phase: Phase
@@ -168,7 +168,7 @@ class Auditor(Interceptor):
         
         event = AuditEvent(
             timestamp=self._now_iso(),
-            event_type=AuditEventType.RUN_START,
+            event_type=AuditTraceType.RUN_START,
             agent_name=ctx.agent.name,
             task=self._redact(ctx.task),
             phase=ctx.phase,
@@ -196,7 +196,7 @@ class Auditor(Interceptor):
         
         event = AuditEvent(
             timestamp=self._now_iso(),
-            event_type=AuditEventType.MODEL_REQUEST,
+            event_type=AuditTraceType.MODEL_REQUEST,
             agent_name=ctx.agent.name,
             task=self._redact(ctx.task),
             phase=ctx.phase,
@@ -233,7 +233,7 @@ class Auditor(Interceptor):
         
         event = AuditEvent(
             timestamp=self._now_iso(),
-            event_type=AuditEventType.MODEL_RESPONSE,
+            event_type=AuditTraceType.MODEL_RESPONSE,
             agent_name=ctx.agent.name,
             task=self._redact(ctx.task),
             phase=ctx.phase,
@@ -258,7 +258,7 @@ class Auditor(Interceptor):
         
         event = AuditEvent(
             timestamp=self._now_iso(),
-            event_type=AuditEventType.TOOL_REQUEST,
+            event_type=AuditTraceType.TOOL_REQUEST,
             agent_name=ctx.agent.name,
             task=self._redact(ctx.task),
             phase=ctx.phase,
@@ -284,7 +284,7 @@ class Auditor(Interceptor):
         
         event = AuditEvent(
             timestamp=self._now_iso(),
-            event_type=AuditEventType.TOOL_RESPONSE,
+            event_type=AuditTraceType.TOOL_RESPONSE,
             agent_name=ctx.agent.name,
             task=self._redact(ctx.task),
             phase=ctx.phase,
@@ -302,7 +302,7 @@ class Auditor(Interceptor):
         
         event = AuditEvent(
             timestamp=self._now_iso(),
-            event_type=AuditEventType.RUN_END,
+            event_type=AuditTraceType.RUN_END,
             agent_name=ctx.agent.name,
             task=self._redact(ctx.task),
             phase=ctx.phase,
@@ -319,7 +319,7 @@ class Auditor(Interceptor):
         """Log errors."""
         event = AuditEvent(
             timestamp=self._now_iso(),
-            event_type=AuditEventType.ERROR,
+            event_type=AuditTraceType.ERROR,
             agent_name=ctx.agent.name,
             task=self._redact(ctx.task),
             phase=ctx.phase,
@@ -367,7 +367,7 @@ class Auditor(Interceptor):
 
 
 __all__ = [
-    "AuditEventType",
+    "AuditTraceType",
     "AuditEvent",
     "Auditor",
 ]

@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_chec
 from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
     from agenticflow.vectorstore import Document
 
 
@@ -199,7 +199,7 @@ class BaseRetriever:
     """
     
     _name: str = "base"
-    _event_bus: EventBus | None = None
+    _event_bus: TraceBus | None = None
     
     @property
     def name(self) -> str:
@@ -207,20 +207,20 @@ class BaseRetriever:
         return self._name
     
     @property
-    def event_bus(self) -> EventBus | None:
+    def event_bus(self) -> TraceBus | None:
         """Get the EventBus (if any)."""
         return self._event_bus
     
     @event_bus.setter
-    def event_bus(self, value: EventBus | None) -> None:
+    def event_bus(self, value: TraceBus | None) -> None:
         """Set the EventBus for observability."""
         self._event_bus = value
     
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event if event_bus is configured."""
         if self._event_bus:
-            from agenticflow.observability.event import EventType
-            await self._event_bus.publish(EventType(event_type), {
+            from agenticflow.observability.trace_record import TraceType
+            await self._event_bus.publish(TraceType(event_type), {
                 "retriever": self.name,
                 **data,
             })

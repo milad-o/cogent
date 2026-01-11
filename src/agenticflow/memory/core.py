@@ -43,7 +43,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from agenticflow.core.messages import BaseMessage as Message
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
     from agenticflow.vectorstore import VectorStore
 
 
@@ -131,7 +131,7 @@ class Memory:
         store: Store | None = None,
         vectorstore: VectorStore | None = None,
         namespace: str = "",
-        event_bus: EventBus | None = None,
+        event_bus: TraceBus | None = None,
         *,
         agentic: bool = False,
     ) -> None:
@@ -141,7 +141,7 @@ class Memory:
             store: Persistence store. Defaults to InMemoryStore.
             vectorstore: VectorStore for semantic search. Optional.
             namespace: Key prefix for isolation.
-            event_bus: EventBus for observability. Optional.
+            event_bus: TraceBus for observability. Optional.
             agentic: If True, expose memory tools to agents automatically.
                 When an Agent receives an agentic Memory, tools are auto-added.
         """
@@ -169,7 +169,7 @@ class Memory:
         return self._namespace
     
     @property
-    def event_bus(self) -> EventBus | None:
+    def event_bus(self) -> TraceBus | None:
         """Get the EventBus (if any)."""
         return self._event_bus
     
@@ -213,8 +213,8 @@ class Memory:
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event if event_bus is configured."""
         if self._event_bus:
-            from agenticflow.observability.event import EventType
-            await self._event_bus.publish(EventType(event_type), {
+            from agenticflow.observability.trace_record import TraceType
+            await self._event_bus.publish(TraceType(event_type), {
                 "namespace": self._namespace,
                 **data,
             })

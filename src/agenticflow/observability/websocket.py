@@ -1,7 +1,7 @@
 """
 WebSocket server for real-time event streaming.
 
-Part of the events module - provides real-time streaming of EventBus
+Part of the events module - provides real-time streaming of TraceBus
 events to connected WebSocket clients.
 """
 
@@ -10,12 +10,12 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from agenticflow.observability.event import EventType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.observability.event import Event
+from agenticflow.observability.trace_record import Trace
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import EventBus
+    from agenticflow.observability.bus import TraceBus
 
 # Check for websockets availability
 try:
@@ -35,7 +35,7 @@ class WebSocketServer:
     client commands like history queries.
     
     Attributes:
-        event_bus: EventBus to stream from
+        event_bus: TraceBus to stream from
         host: Server host
         port: Server port
         
@@ -51,7 +51,7 @@ class WebSocketServer:
 
     def __init__(
         self,
-        event_bus: EventBus,
+        event_bus: TraceBus,
         host: str = "localhost",
         port: int = 8765,
     ) -> None:
@@ -59,7 +59,7 @@ class WebSocketServer:
         Initialize the WebSocket server.
         
         Args:
-            event_bus: EventBus to stream events from
+            event_bus: TraceBus to stream events from
             host: Server host address
             port: Server port number
         """
@@ -86,7 +86,7 @@ class WebSocketServer:
         # Emit connection event
         await self.event_bus.publish(
             Event(
-                type=EventType.CLIENT_CONNECTED,
+                type=TraceType.CLIENT_CONNECTED,
                 data={"client_id": client_id},
                 source="websocket_server",
             )
@@ -125,7 +125,7 @@ class WebSocketServer:
             self.event_bus.remove_websocket(websocket)
             await self.event_bus.publish(
                 Event(
-                    type=EventType.CLIENT_DISCONNECTED,
+                    type=TraceType.CLIENT_DISCONNECTED,
                     data={"client_id": client_id},
                     source="websocket_server",
                 )
@@ -146,7 +146,7 @@ class WebSocketServer:
             event_type = None
             if data.get("event_type"):
                 try:
-                    event_type = EventType(data["event_type"])
+                    event_type = TraceType(data["event_type"])
                 except ValueError:
                     pass
 
@@ -227,7 +227,7 @@ class WebSocketServer:
 async def websocket_handler(
     websocket,
     path: str,
-    event_bus: EventBus,
+    event_bus: TraceBus,
 ) -> None:
     """
     Standalone WebSocket handler function.
@@ -237,13 +237,13 @@ async def websocket_handler(
     Args:
         websocket: The WebSocket connection
         path: The request path
-        event_bus: EventBus to stream from
+        event_bus: TraceBus to stream from
     """
     client_id = generate_id()
 
     await event_bus.publish(
         Event(
-            type=EventType.CLIENT_CONNECTED,
+            type=TraceType.CLIENT_CONNECTED,
             data={"client_id": client_id, "path": path},
             source="websocket_handler",
         )
@@ -282,7 +282,7 @@ async def websocket_handler(
         event_bus.remove_websocket(websocket)
         await event_bus.publish(
             Event(
-                type=EventType.CLIENT_DISCONNECTED,
+                type=TraceType.CLIENT_DISCONNECTED,
                 data={"client_id": client_id},
                 source="websocket_handler",
             )
@@ -290,7 +290,7 @@ async def websocket_handler(
 
 
 async def start_websocket_server(
-    event_bus: EventBus,
+    event_bus: TraceBus,
     host: str = "localhost",
     port: int = 8765,
 ) -> WebSocketServer | None:
@@ -300,7 +300,7 @@ async def start_websocket_server(
     Convenience function that creates and starts a WebSocketServer.
     
     Args:
-        event_bus: EventBus to stream from
+        event_bus: TraceBus to stream from
         host: Server host
         port: Server port
         
