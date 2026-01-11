@@ -167,6 +167,10 @@ class EventType(Enum):
     REACTIVE_ROUND_STARTED = "reactive.round.started"  # New processing round
     REACTIVE_ROUND_COMPLETED = "reactive.round.completed"  # Round completed
 
+    # Skill events (event-driven behavioral specializations)
+    SKILL_ACTIVATED = "skill.activated"  # Skill context injected into agent
+    SKILL_DEACTIVATED = "skill.deactivated"  # Skill context removed after execution
+
     CUSTOM = "custom"
 
     @property

@@ -20,6 +20,7 @@ from agenticflow.reactive.core import (
     Trigger,
     TriggerBuilder,
 )
+from agenticflow.reactive.skills import Skill, SkillBuilder
 from agenticflow.events.bus import EventBus as CoreEventBus
 from agenticflow.events.event import Event as CoreEvent
 from agenticflow.observability.event import Event, EventType
@@ -160,6 +161,9 @@ class ReactiveFlow(BaseFlow):
         self._shared_memory: Any | None = None
         self._spawned: set[asyncio.Task[Any]] = set()
 
+        # Skills registry: event-triggered behavioral specializations
+        self._skills_registry: dict[str, Skill] = {}
+
     @property
     def agents(self) -> list[str]:
         """Names of registered agents (BaseFlow interface)."""
@@ -198,6 +202,48 @@ class ReactiveFlow(BaseFlow):
                 setup(memory=self._shared_memory)
 
         self._agents_registry[agent.name] = (agent, trigger_config)
+
+    def register_skill(
+        self,
+        skill: Skill | SkillBuilder,
+    ) -> None:
+        """
+        Register a skill with the flow.
+
+        Skills are event-triggered behavioral specializations. When an event
+        matches a skill's trigger, the skill's prompt and tools are injected
+        into any agent that also triggers on that event.
+
+        Args:
+            skill: The skill to register (or SkillBuilder)
+
+        Example:
+            ```python
+            flow.register_skill(Skill(
+                name="python_expert",
+                trigger=Trigger(on="code.write"),
+                prompt="You are a Python expert...",
+                tools=[run_python],
+            ))
+            ```
+        """
+        if isinstance(skill, SkillBuilder):
+            skill = skill.build()
+        self._skills_registry[skill.name] = skill
+
+    def unregister_skill(self, skill_name: str) -> None:
+        """Remove a skill from the flow."""
+        self._skills_registry.pop(skill_name, None)
+
+    @property
+    def skills(self) -> list[str]:
+        """Names of registered skills."""
+        return list(self._skills_registry.keys())
+
+    def _get_matching_skills(self, event: CoreEvent) -> list[Skill]:
+        """Get all skills that match an event, sorted by priority."""
+        matching = [s for s in self._skills_registry.values() if s.matches(event)]
+        return sorted(matching, key=lambda s: -s.priority)
 
     def with_memory(self, memory: Any | None = None) -> "ReactiveFlow":
         """Configure shared memory for agents registered to this flow.
@@ -520,18 +566,62 @@ class ReactiveFlow(BaseFlow):
                     # Backward compatible: resolver(event) only
                     thread_id = self._thread_id_resolver(event)  # type: ignore[misc]
 
+            # === Skill Injection ===
+            # Find matching skills and prepare context/tools
+            matching_skills = self._get_matching_skills(event)
+            skill_context = dict(context)  # Copy to avoid mutation
+            added_tools: list[str] = []
+            
+            for skill in matching_skills:
+                # Observe: skill activated
+                self._observe(
+                    EventType.SKILL_ACTIVATED,
+                    {
+                        "skill": skill.name,
+                        "agent": agent.name,
+                        "trigger_event": event_name,
+                    },
+                )
+                
+                # Apply context enrichment if configured
+                skill_context = skill.enrich_context(event, skill_context)
+                
+                # Temporarily add skill tools to agent
+                for tool_fn in skill.tools:
+                    tool_name = getattr(tool_fn, "name", None) or tool_fn.__name__
+                    try:
+                        agent.add_tool(tool_fn)
+                        added_tools.append(tool_name)
+                    except Exception:
+                        pass  # Tool may already exist or agent doesn't support add_tool
+
             # Prefer a first-class reactive API when the agent provides it.
             # Important: don't treat arbitrary objects (e.g. MagicMock) as reactive.
             react_fn = getattr(agent, "react", None)
             if react_fn is not None and inspect.iscoroutinefunction(react_fn):
                 try:
-                    result = await agent.react(event, task=task, context=context, thread_id=thread_id)
+                    result = await agent.react(event, task=task, context=skill_context, thread_id=thread_id)
                 except TypeError:
-                    result = await agent.react(event, task=task, context=context)
+                    result = await agent.react(event, task=task, context=skill_context)
             else:
                 # Backward compatible path: build prompt and call run()
-                prompt = self._build_prompt(event, task, context)
-                result = await agent.run(prompt, context=context, thread_id=thread_id)
+                prompt = self._build_prompt(event, task, skill_context, matching_skills)
+                result = await agent.run(prompt, context=skill_context, thread_id=thread_id)
+            
+            # === Skill Cleanup ===
+            # Remove temporarily added skill tools
+            for tool_name in added_tools:
+                try:
+                    agent.remove_tool(tool_name)
+                except Exception:
+                    pass  # Agent may not support remove_tool
+            
+            for skill in matching_skills:
+                self._observe(
+                    EventType.SKILL_DEACTIVATED,
+                    {"skill": skill.name, "agent": agent.name},
+                )
+            
             # Handle both string return and object with .output attribute
             output = result.output if hasattr(result, "output") else str(result)
 
@@ -600,8 +690,19 @@ class ReactiveFlow(BaseFlow):
         event: CoreEvent,
         task: str,
         context: dict[str, Any],
+        skills: list[Skill] | None = None,
     ) -> str:
-        """Build prompt for agent from event context."""
+        """Build prompt for agent from event context.
+        
+        Args:
+            event: The triggering event.
+            task: Original task.
+            context: Shared context.
+            skills: Optional list of active skills to inject.
+        
+        Returns:
+            Constructed prompt string.
+        """
         event_name = event.name
         parts = [f"Task: {task}", f"Event: {event_name}"]
 
@@ -622,6 +723,13 @@ class ReactiveFlow(BaseFlow):
         if context:
             context_str = "\n".join(f"{k}: {v}" for k, v in context.items())
             parts.append(f"\nContext:\n{context_str}")
+
+        # === Inject Skill Prompts ===
+        if skills:
+            skill_prompts = []
+            for skill in skills:
+                skill_prompts.append(f"## Active Skill: {skill.name}\n{skill.prompt}")
+            parts.append("\n" + "\n\n".join(skill_prompts))
 
         return "\n".join(parts)
 

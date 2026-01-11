@@ -102,11 +102,9 @@ if TYPE_CHECKING:
 # Formatting Utilities - Consistent output formatting
 # =============================================================================
 
-def _format_agent_name(name: str, width: int = 12) -> str:
-    """Format agent name with consistent width for column alignment."""
-    if len(name) > width - 2:
-        name = name[:width - 2]
-    return f"[{name}]".ljust(width)
+def _format_agent_name(name: str) -> str:
+    """Format agent name with brackets (no truncation)."""
+    return f"[{name}]"
 
 
 def _format_duration(duration_ms: float) -> str:
@@ -343,6 +341,9 @@ CHANNEL_EVENTS: dict[Channel, set[EventType]] = {
         EventType.REACTIVE_NO_MATCH,
         EventType.REACTIVE_ROUND_STARTED,
         EventType.REACTIVE_ROUND_COMPLETED,
+        # Skill events
+        EventType.SKILL_ACTIVATED,
+        EventType.SKILL_DEACTIVATED,
     },
 }
 
@@ -986,6 +987,7 @@ class Observer:
             EventType.REACTIVE_AGENT_TRIGGERED,
             EventType.REACTIVE_AGENT_COMPLETED,
             EventType.REACTIVE_AGENT_FAILED,
+            EventType.SKILL_ACTIVATED,  # Skill activation is a key milestone
         }:
             return ObservabilityLevel.PROGRESS
         
@@ -1911,7 +1913,7 @@ class Observer:
             agents_preview = ", ".join(agents[:4])
             if agent_count > 4:
                 agents_preview += f" (+{agent_count - 4})"
-            header = f"{prefix}{s.success('🔄')} {s.bold('Reactive Flow Started')}"
+            header = f"{prefix}{s.info('[Flow]')} {s.info('[started]')}"
             lines.append(header)
             if task:
                 lines.append(f"      {s.dim('Task:')} {task}")
@@ -1932,16 +1934,16 @@ class Observer:
             else:
                 duration_str = s.dim(f" in {execution_time_ms:.0f}ms")
             
-            return f"{prefix}{s.success('✅ Reactive Flow Completed')}{duration_str} {s.dim(f'({reactions} reactions, {rounds} rounds, {events_processed} events)')}"
+            return f"{prefix}{s.info('[Flow]')} {s.success('[completed]')}{duration_str} {s.dim(f'({reactions} reactions, {rounds} rounds, {events_processed} events)')}"
         
         elif event_type == EventType.REACTIVE_FLOW_FAILED:
             error = data.get("error", "Unknown error")[:100]
             rounds = data.get("rounds", 0)
-            return f"{prefix}{s.error(f'❌ Reactive Flow FAILED:')} {s.error(error)} {s.dim(f'(after {rounds} rounds)')}"
+            return f"{prefix}{s.info('[Flow]')} {s.error('[FAILED]')} {s.error(error)} {s.dim(f'(after {rounds} rounds)')}"
         
         elif event_type == EventType.REACTIVE_EVENT_EMITTED:
             event_name = data.get("event_name", "?")
-            return f"{prefix}{s.info('📤')} {s.dim('Event emitted:')} {s.info(event_name)}"
+            return f"{prefix}{s.dim('[Event]')} {s.dim('[emitted]')} {s.info(event_name)}"
         
         elif event_type == EventType.REACTIVE_EVENT_PROCESSED:
             # This can be very chatty. Keep it for DETAILED+ but suppress in
@@ -1950,12 +1952,13 @@ class Observer:
                 return None
             event_name = data.get("event_name", "?")
             round_num = data.get("round", 0)
-            return f"{prefix}{s.dim('📥')} {s.dim(f'Processing:')} {event_name} {s.dim(f'(round {round_num})')}"
+            return f"{prefix}{s.dim('[Event]')} {s.dim('[processing]')} {event_name} {s.dim(f'(round {round_num})')}"
         
         elif event_type == EventType.REACTIVE_AGENT_TRIGGERED:
             agent = data.get("agent", "?")
             trigger_event = data.get("trigger_event", "?")
-            return f"{prefix}{s.info('⚡')} {s.agent(f'[{agent}]')} {s.dim('triggered by')} {s.info(trigger_event)}"
+            formatted_name = _format_agent_name(agent)
+            return f"{prefix}{s.agent(formatted_name)} {s.dim('[triggered]')} {s.dim('by')} {s.info(trigger_event)}"
         
         elif event_type == EventType.REACTIVE_AGENT_COMPLETED:
             agent = data.get("agent", "?")
@@ -1963,26 +1966,28 @@ class Observer:
             trigger_event = data.get("trigger_event", "")
             output_str = f" ({output_length} chars)" if output_length else ""
             by = f" {s.dim('←')} {s.dim(trigger_event)}" if trigger_event else ""
-            return f"{prefix}{s.success('✓')} {s.agent(f'[{agent}]')} {s.success('completed')}{s.dim(output_str)}{by}"
+            formatted_name = _format_agent_name(agent)
+            return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.dim(output_str)}{by}"
         
         elif event_type == EventType.REACTIVE_AGENT_FAILED:
             agent = data.get("agent", "?")
             error = data.get("error", "Unknown error")[:80]
-            return f"{prefix}{s.error('✗')} {s.agent(f'[{agent}]')} {s.error(f'FAILED: {error}')}"
+            formatted_name = _format_agent_name(agent)
+            return f"{prefix}{s.agent(formatted_name)} {s.error('[FAILED]')} {s.error(error)}"
         
         elif event_type == EventType.REACTIVE_NO_MATCH:
             # Useful for debugging, but noisy for normal runs.
             if self.config.level < ObservabilityLevel.DEBUG:
                 return None
             event_name = data.get("event_name", "?")
-            return f"{prefix}{s.dim('⊘')} {s.dim(f'No agents matched:')} {s.dim(event_name)}"
+            return f"{prefix}{s.dim('[Event]')} {s.dim('[no-match]')} {s.dim(event_name)}"
         
         elif event_type == EventType.REACTIVE_ROUND_STARTED:
             if self.config.level <= ObservabilityLevel.PROGRESS:
                 return None
             round_num = data.get("round", 0)
             pending = data.get("pending_events", 0)
-            return f"{prefix}{s.dim('─')} {s.dim(f'Round {round_num}')} {s.dim(f'({pending} pending)')}"
+            return f"{prefix}[Round] {s.dim(f'{round_num}')} {s.dim(f'({pending} pending)')}"
         
         elif event_type == EventType.REACTIVE_ROUND_COMPLETED:
             if self.config.level <= ObservabilityLevel.PROGRESS:
@@ -1991,8 +1996,29 @@ class Observer:
             reactions = data.get("reactions", 0)
             total = data.get("total_reactions", 0)
             if reactions > 0:
-                return f"{prefix}{s.dim('─')} {s.dim(f'Round {round_num} done:')} {s.success(f'{reactions} reactions')} {s.dim(f'(total: {total})')}"
+                return f"{prefix}{s.dim('[Round]')} {s.dim(f'{round_num} done:')} {s.success(f'{reactions} reactions')} {s.dim(f'(total: {total})')}"
             return None  # Suppress empty rounds
+        
+        # ═══════════════════════════════════════════════════════════
+        # SKILL EVENTS - Event-triggered behavioral specializations
+        # ═══════════════════════════════════════════════════════════
+        
+        elif event_type == EventType.SKILL_ACTIVATED:
+            skill_name = data.get("skill", "?")
+            agent = data.get("agent", "?")
+            trigger_event = data.get("trigger_event", "")
+            formatted_agent = _format_agent_name(agent)
+            by = f" {s.dim('←')} {s.dim(trigger_event)}" if trigger_event else ""
+            return f"{prefix}{formatted_agent} {s.info('[skill:')} {s.info(skill_name)}{s.info(']')}{by}"
+        
+        elif event_type == EventType.SKILL_DEACTIVATED:
+            # Only show at DEBUG level to reduce noise
+            if self.config.level < ObservabilityLevel.DEBUG:
+                return None
+            skill_name = data.get("skill", "?")
+            agent = data.get("agent", "?")
+            formatted_agent = _format_agent_name(agent)
+            return f"{prefix}{formatted_agent} {s.dim('[skill:')} {s.dim(skill_name)}{s.dim('] done')}"
         
         # ═══════════════════════════════════════════════════════════
         # CUSTOM EVENTS - User-defined events (often reactive)

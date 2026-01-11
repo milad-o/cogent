@@ -74,6 +74,7 @@ from agenticflow.reactive.core import (
     react_to,
     when,
 )
+from agenticflow.reactive.skills import Skill, SkillBuilder, skill
 
 if TYPE_CHECKING:
     # Re-exported from flow package (canonical location). Imported lazily at runtime
@@ -129,6 +130,10 @@ __all__ = [
     "react_to",
     "on",
     "when",
+    # Skills (event-triggered specializations)
+    "Skill",
+    "SkillBuilder",
+    "skill",
     # Flow (new names)
     "ReactiveFlow",
     "ReactiveFlowConfig",

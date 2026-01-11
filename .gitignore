@@ -71,3 +71,7 @@ experiments/
 examples/data/pdf_output/notebook-*.html
 examples/data/pdf_output/notebook_pdf_html_pages/
 examples/data/pdf_output/pdf_vision_showcase/
+
+# Agent
+.agent/
+
