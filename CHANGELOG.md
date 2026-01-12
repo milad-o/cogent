@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Tool Return Type Visibility
+
+- **Return Type Extraction**: The `@tool` decorator now extracts return type information and includes it in tool descriptions
+  - Return type annotations (e.g., `-> dict[str, int]`) are converted to readable strings
+  - Docstring `Returns:` sections are parsed and combined with type info
+  - LLM sees: `"Get weather data. Returns: dict[str, int] - A dictionary with temp and humidity."`
+  - Access via `tool.return_info` property
+  - Helps LLM understand expected output format from each tool
+
 #### External Event Sources & Sinks
 
 - **`FileWatcherSource`**: Monitor directories for file changes, emit events for created/modified/deleted files

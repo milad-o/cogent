@@ -52,6 +52,7 @@ class BaseTool:
     description: str
     func: Callable[..., Any]
     args_schema: dict[str, Any] = field(default_factory=dict)
+    return_info: str = field(default="", repr=False)
     _needs_context: bool = field(default=False, repr=False)
     
     def __post_init__(self) -> None:
@@ -136,6 +137,115 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
     return type_map.get(py_type, {"type": "string"})
 
 
+def _type_to_readable_string(py_type: type) -> str:
+    """Convert Python type hint to a readable string for descriptions."""
+    # Handle None type
+    if py_type is type(None):
+        return "None"
+    
+    # Handle basic types
+    if py_type in (str, int, float, bool, list, dict):
+        return py_type.__name__
+    
+    # Handle generic types like list[str], dict[str, int], Optional[str]
+    origin = getattr(py_type, "__origin__", None)
+    args = getattr(py_type, "__args__", ())
+    
+    if origin is list:
+        if args:
+            return f"list[{_type_to_readable_string(args[0])}]"
+        return "list"
+    
+    if origin is dict:
+        if len(args) >= 2:
+            return f"dict[{_type_to_readable_string(args[0])}, {_type_to_readable_string(args[1])}]"
+        return "dict"
+    
+    # Handle Union (including Optional which is Union[X, None])
+    import types
+    if origin is types.UnionType or (hasattr(origin, "__name__") and origin.__name__ == "Union"):
+        type_strs = [_type_to_readable_string(arg) for arg in args]
+        # Check for Optional pattern (X | None)
+        if len(type_strs) == 2 and "None" in type_strs:
+            non_none = [t for t in type_strs if t != "None"][0]
+            return f"{non_none} | None"
+        return " | ".join(type_strs)
+    
+    # Handle | union syntax (Python 3.10+)
+    if hasattr(py_type, "__class__") and py_type.__class__.__name__ == "UnionType":
+        type_strs = [_type_to_readable_string(arg) for arg in args]
+        return " | ".join(type_strs)
+    
+    # Fallback: try to get name or str representation
+    if hasattr(py_type, "__name__"):
+        return py_type.__name__
+    
+    return str(py_type).replace("typing.", "")
+
+
+def _extract_return_info(func: Callable[..., Any]) -> str:
+    """Extract return type and description from function.
+    
+    Combines the return type annotation with the Returns section
+    from the docstring to create a descriptive string.
+    
+    Returns:
+        A string describing what the function returns, or empty string.
+    """
+    parts: list[str] = []
+    
+    # Get return type from annotations
+    hints = get_type_hints(func) if hasattr(func, "__annotations__") else {}
+    return_type = hints.get("return")
+    
+    if return_type is not None and return_type is not type(None):
+        type_str = _type_to_readable_string(return_type)
+        parts.append(type_str)
+    
+    # Extract Returns section from docstring
+    doc = func.__doc__ or ""
+    returns_desc = ""
+    
+    # Look for Returns: or :returns: section
+    lines = doc.split("\n")
+    in_returns = False
+    returns_lines: list[str] = []
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # Check for start of Returns section
+        if stripped.lower().startswith("returns:") or stripped.lower().startswith(":returns:"):
+            in_returns = True
+            # Get content after "Returns:"
+            after_colon = stripped.split(":", 1)[-1].strip()
+            if after_colon:
+                returns_lines.append(after_colon)
+            continue
+        
+        # Check for end of Returns section (new section starts)
+        if in_returns:
+            if stripped and (stripped.endswith(":") or stripped.startswith("Args:") or 
+                            stripped.startswith("Raises:") or stripped.startswith("Example:") or
+                            stripped.startswith("Note:")):
+                break
+            if stripped:
+                returns_lines.append(stripped)
+    
+    if returns_lines:
+        returns_desc = " ".join(returns_lines)
+    
+    # Combine type and description
+    if parts and returns_desc:
+        return f"{parts[0]} - {returns_desc}"
+    elif parts:
+        return parts[0]
+    elif returns_desc:
+        return returns_desc
+    
+    return ""
+
+
 def _function_needs_context(func: Callable[..., Any]) -> bool:
     """Check if function has a `ctx` parameter for context injection."""
     sig = inspect.signature(func)
@@ -207,14 +317,22 @@ def tool(func: Callable[..., Any] | None = None, *, name: str | None = None, des
     """
     def decorator(fn: Callable[..., Any]) -> BaseTool:
         tool_name = name or fn.__name__
-        tool_desc = description or (fn.__doc__ or "").split("\n")[0].strip() or f"Tool: {tool_name}"
+        base_desc = description or (fn.__doc__ or "").split("\n")[0].strip() or f"Tool: {tool_name}"
         args_schema = _extract_schema_from_function(fn)
+        return_info = _extract_return_info(fn)
+        
+        # Append return info to description for LLM visibility
+        if return_info:
+            tool_desc = f"{base_desc} Returns: {return_info}"
+        else:
+            tool_desc = base_desc
         
         return BaseTool(
             name=tool_name,
             description=tool_desc,
             func=fn,
             args_schema=args_schema,
+            return_info=return_info,
         )
     
     if func is not None:

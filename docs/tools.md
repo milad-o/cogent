@@ -48,7 +48,46 @@ def calculate(expression: str) -> float:
 
 # Docstring becomes tool description
 # Type hints become parameter schema
+# Return type is included in description for LLM visibility
 ```
+
+### Return Type Information
+
+The `@tool` decorator automatically extracts return type information and includes it in the tool description. This helps the LLM understand what output to expect:
+
+```python
+@tool
+def get_weather(city: str) -> dict[str, int]:
+    """Get weather data for a city.
+    
+    Args:
+        city: City name to query.
+    
+    Returns:
+        A dictionary with temp, humidity, and wind_speed.
+    """
+    return {"temp": 75, "humidity": 45, "wind_speed": 10}
+
+# LLM sees this description:
+# "Get weather data for a city. Returns: dict[str, int] - A dictionary with temp, humidity, and wind_speed."
+
+# Access the return info directly:
+print(get_weather.return_info)
+# Output: "dict[str, int] - A dictionary with temp, humidity, and wind_speed."
+```
+
+**What gets extracted:**
+
+| Source | Example | Result |
+|--------|---------|--------|
+| Return type annotation | `-> str` | `"str"` |
+| Generic types | `-> dict[str, int]` | `"dict[str, int]"` |
+| Optional types | `-> str \| None` | `"str \| None"` |
+| Docstring Returns section | `Returns: The result.` | `"The result."` |
+| Both combined | Type + docstring | `"dict[str, int] - A dictionary with..."` |
+
+> [!TIP]
+> Always include a `Returns:` section in your docstrings to give the LLM context about the output format.
 
 ### With Options
 
