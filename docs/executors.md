@@ -232,6 +232,95 @@ class ExecutionStrategy(Enum):
 
 ---
 
+## Execution Limits
+
+All executors have configurable limits to control resource usage and prevent runaway execution.
+
+### Limits Summary
+
+| Executor | Parameter | Default | Description |
+|----------|-----------|---------|-------------|
+| **All** | `max_iterations` | `25` | Max LLM call iterations |
+| **NativeExecutor** | `max_tool_calls` | `20` | Max total tool calls across all iterations |
+| **NativeExecutor** | *parallel per iteration* | Unbounded | All tool calls in one response run concurrently |
+| **TreeSearchExecutor** | `max_iterations` | `25` | MCTS iterations (each involves multiple LLM calls) |
+| **TreeSearchExecutor** | `max_depth` | `5` | Max tree depth |
+| **TreeSearchExecutor** | `num_candidates` | `3` | Actions generated per node expansion |
+| **TreeSearchExecutor** | `exploration_weight` | `1.414` | UCB1 exploration constant |
+| **TreeSearchExecutor** | `value_threshold` | `0.3` | Min value to continue exploring a path |
+| **TreeSearchExecutor** | `max_reflections` | `5` | Max failure reflections to store |
+
+### NativeExecutor Limits
+
+```python
+from agenticflow.executors import NativeExecutor
+
+executor = NativeExecutor(agent, max_tool_calls=50)
+executor.max_iterations = 30
+
+# Parallel tool calls per iteration are UNBOUNDED
+# All tool calls returned by the model execute via asyncio.gather()
+```
+
+When the model returns multiple tool calls in a single response (e.g., "Get weather for NYC, LA, and Chicago"), all execute concurrently with no artificial limit.
+
+### TreeSearchExecutor Limits
+
+```python
+from agenticflow.executors import TreeSearchExecutor
+
+executor = TreeSearchExecutor(agent)
+executor.max_iterations = 10      # MCTS iterations
+executor.max_depth = 5             # Tree depth limit
+executor.num_candidates = 3        # Branching factor per expansion
+executor.exploration_weight = 1.5  # UCB1 constant (higher = more exploration)
+executor.value_threshold = 0.2     # Prune paths below this value
+executor.max_reflections = 5       # Failure reflections to store
+```
+
+> [!NOTE]
+> TreeSearch `max_iterations` refers to MCTS iterations, not LLM calls. Each iteration involves multiple LLM calls: expand (~1), simulate (~N), evaluate (~N), reflect (~0-1). For 10 iterations with 3 candidates, expect ~80 LLM calls.
+
+### Concurrency Limits
+
+For multi-agent scenarios, concurrency is controlled separately:
+
+| Context | Parameter | Default | Description |
+|---------|-----------|---------|-------------|
+| `AgentConfig` | `max_concurrent_tasks` | `5` | Max parallel tasks per agent |
+| `SpawnConfig` | `max_concurrent` | `10` | Max concurrent spawned agents |
+| `ReactiveFlowConfig` | `max_concurrent_agents` | `10` | Max parallel agents in a flow |
+
+```python
+from agenticflow import AgentConfig
+from agenticflow.agent.spawning import SpawnConfig
+
+# Agent-level concurrency
+config = AgentConfig(max_concurrent_tasks=3)
+
+# Spawning concurrency
+spawn_config = SpawnConfig(max_concurrent=5)
+```
+
+### Budget Guards (Interceptors)
+
+For global limits across multiple runs, use `BudgetGuard`:
+
+```python
+from agenticflow.interceptors import BudgetGuard
+
+agent = Agent(
+    interceptors=[
+        BudgetGuard(
+            max_model_calls=100,  # Total LLM calls
+            max_tool_calls=500,    # Total tool executions
+        ),
+    ]
+)
+```
+
+---
+
 ## Factory Function
 
 Create executors by strategy name:
