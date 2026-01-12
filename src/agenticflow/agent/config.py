@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.enums import AgentRole
+from agenticflow.executors.base import ExecutionStrategy
 
 if TYPE_CHECKING:
     from agenticflow.agent.resilience import ResilienceConfig
@@ -138,6 +139,12 @@ class AgentConfig:
     timeout_seconds: float = 300.0  # Deprecated: use resilience_config
     retry_on_error: bool = True  # Deprecated: use resilience_config
     max_retries: int = 3  # Deprecated: use resilience_config
+
+    # Execution Strategy - how the agent processes tasks with tools
+    # - NATIVE: High-performance parallel execution (DEFAULT)
+    # - SEQUENTIAL: Sequential tool execution for ordered tasks
+    # - TREE_SEARCH: LATS-style MCTS with backtracking (BEST ACCURACY)
+    execution_strategy: ExecutionStrategy = ExecutionStrategy.NATIVE
 
     # Resilience Configuration (intelligent retry, circuit breaker, fallback)
     resilience_config: ResilienceConfig | None = None

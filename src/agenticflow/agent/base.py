@@ -2936,7 +2936,7 @@ class Agent:
         max_iterations: int = 25,
     ) -> Any:
         """Internal implementation of non-streaming run()."""
-        from agenticflow.executors import NativeExecutor
+        from agenticflow.executors import create_executor
         
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
@@ -2958,8 +2958,8 @@ class Agent:
             for msg in history:
                 self.state.add_message(msg)
         
-        # Create executor and run
-        executor = NativeExecutor(self)
+        # Create executor based on config.execution_strategy
+        executor = create_executor(self, strategy=self.config.execution_strategy)
         executor.max_iterations = max_iterations
         
         # Execute task
