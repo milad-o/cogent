@@ -173,6 +173,19 @@ class AgentConfig:
             raise ValueError("max_concurrent_tasks must be at least 1")
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
+        
+        # Convert string execution_strategy to enum
+        if isinstance(self.execution_strategy, str):
+            strategy_map = {
+                "native": ExecutionStrategy.NATIVE,
+                "sequential": ExecutionStrategy.SEQUENTIAL,
+                "tree_search": ExecutionStrategy.TREE_SEARCH,
+            }
+            strategy = strategy_map.get(self.execution_strategy.lower())
+            if strategy is None:
+                valid = ", ".join(strategy_map.keys())
+                raise ValueError(f"Invalid execution_strategy: {self.execution_strategy}. Valid: {valid}")
+            object.__setattr__(self, "execution_strategy", strategy)
 
     def with_tools(self, tools: list[str]) -> AgentConfig:
         """
