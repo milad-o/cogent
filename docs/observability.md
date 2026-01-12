@@ -5,7 +5,7 @@ The `agenticflow.observability` module provides comprehensive monitoring, tracin
 ## Overview
 
 The observability module includes:
-- **EventBus** - Central pub/sub for all events
+- **TraceBus** - Central pub/sub for all events
 - **Observer** - Unified observability for agents and flows
 - **Tracer** - Distributed tracing with spans
 - **Metrics** - Counters, gauges, histograms
@@ -140,25 +140,25 @@ This modular design ensures:
 
 ---
 
-## EventBus
+## TraceBus
 
 Central pub/sub system for all framework events:
 
 ```python
-from agenticflow.observability import EventBus, Event
-from agenticflow.core import EventType
+from agenticflow.observability import TraceBus, Event
+from agenticflow.core import TraceType
 
-bus = EventBus()
+bus = TraceBus()
 
 # Subscribe to specific event type
-def on_task_complete(event: Event):
+def on_task_complete(trace: Trace):
     print(f"Task completed: {event.data['task_id']}")
 
-bus.subscribe(EventType.TASK_COMPLETED, on_task_complete)
+bus.subscribe(TraceType.TASK_COMPLETED, on_task_complete)
 
 # Subscribe to multiple types
 bus.subscribe_many(
-    [EventType.TASK_STARTED, EventType.TASK_COMPLETED],
+    [TraceType.TASK_STARTED, TraceType.TASK_COMPLETED],
     log_task_events,
 )
 
@@ -167,7 +167,7 @@ bus.subscribe_all(lambda e: print(e))
 
 # Publish events
 await bus.publish(Event(
-    type=EventType.TASK_STARTED,
+    type=TraceType.TASK_STARTED,
     data={"task_id": "123", "agent": "worker"},
 ))
 
@@ -181,15 +181,15 @@ Both sync and async handlers are supported:
 
 ```python
 # Sync handler
-def sync_handler(event: Event):
+def sync_handler(trace: Trace):
     print(event.data)
 
 # Async handler
-async def async_handler(event: Event):
+async def async_handler(trace: Trace):
     await send_notification(event.data)
 
-bus.subscribe(EventType.TASK_COMPLETED, sync_handler)
-bus.subscribe(EventType.TASK_COMPLETED, async_handler)
+bus.subscribe(TraceType.TASK_COMPLETED, sync_handler)
+bus.subscribe(TraceType.TASK_COMPLETED, async_handler)
 ```
 
 ### Event History
@@ -199,7 +199,7 @@ Query past events:
 ```python
 # Get event history
 events = bus.get_history(
-    event_type=EventType.TASK_COMPLETED,
+    event_type=TraceType.TASK_COMPLETED,
     limit=10,
 )
 
@@ -209,37 +209,37 @@ task_events = bus.get_history(
 )
 ```
 
-### Global EventBus
+### Global TraceBus
 
 ```python
-from agenticflow.observability import get_event_bus, set_event_bus
+from agenticflow.observability import get_trace_bus, set_trace_bus
 
 # Get the global bus
-bus = get_event_bus()
+bus = get_trace_bus()
 
 # Set a custom global bus
-custom_bus = EventBus(max_history=50000)
-set_event_bus(custom_bus)
+custom_bus = TraceBus(max_history=50000)
+set_trace_bus(custom_bus)
 ```
 
 ---
 
-## Event
+## Trace
 
 Immutable event records:
 
 ```python
-from agenticflow.observability import Event
+from agenticflow.observability import Trace
 
 event = Event(
-    type=EventType.TASK_COMPLETED,
+    type=TraceType.TASK_COMPLETED,
     data={"task_id": "123", "result": "success"},
     source="agent:researcher",
     correlation_id="req-456",
 )
 
 print(event.id)          # Unique event ID
-print(event.type)        # EventType enum
+print(event.type)        # TraceType enum
 print(event.data)        # Event payload
 print(event.timestamp)   # When it occurred
 print(event.source)      # What emitted it
@@ -286,7 +286,7 @@ from agenticflow.observability import FilteringEventHandler
 
 handler = FilteringEventHandler(
     wrapped=ConsoleEventHandler(),
-    include_types=[EventType.TASK_COMPLETED, EventType.TASK_FAILED],
+    include_types=[TraceType.TASK_COMPLETED, TraceType.TASK_FAILED],
     exclude_data_keys=["sensitive_field"],
 )
 
@@ -602,7 +602,7 @@ print(agent_inspector.tools())
 | Class | Description |
 |-------|-------------|
 | `Observer` | Unified observability interface |
-| `EventBus` | Central pub/sub system |
+| `TraceBus` | Central pub/sub system |
 | `Event` | Immutable event record |
 | `Tracer` | Distributed tracing |
 | `MetricsCollector` | Metrics collection |
