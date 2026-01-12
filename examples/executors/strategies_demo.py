@@ -22,7 +22,12 @@ Requires:
 """
 
 import asyncio
+import sys
 import time
+from pathlib import Path
+
+# Add examples dir to path for config import
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent, AgentConfig, ExecutionStrategy
 from agenticflow.tools import tool
