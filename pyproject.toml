@@ -40,7 +40,7 @@ azure = [
 # Anthropic Claude support
 anthropic = ["anthropic>=0.40.0"]
 # Google Gemini support
-google = ["google-generativeai>=0.8.5"]
+google = ["google-genai>=1.0.0"]
 # Groq support
 groq = ["groq>=0.15.0"]
 # Cohere support
@@ -86,7 +86,7 @@ all = [
     "azure-identity>=1.25.1",
     "azure-ai-inference>=1.0.0b9",
     "anthropic>=0.40.0",
-    "google-generativeai>=0.8.5",
+    "google-genai>=1.0.0",
     "groq>=0.15.0",
     "cohere>=5.20.0",
     "beautifulsoup4>=4.14.2",

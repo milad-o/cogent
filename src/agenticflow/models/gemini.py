@@ -19,11 +19,11 @@ from typing import Any, AsyncIterator
 from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
 
 
-def _messages_to_gemini(messages: list[dict[str, Any]], protos: Any) -> tuple[str | None, list[Any]]:
-    """Convert messages to Gemini format using proper protos.
+def _messages_to_gemini(messages: list[dict[str, Any]], types: Any) -> tuple[str | None, list[Any]]:
+    """Convert messages to Gemini format using the new google.genai types.
     
     Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
-    Returns proper protos.Content objects for the SDK.
+    Returns proper types.Content objects for the SDK.
     """
     system_instruction = None
     gemini_messages = []
@@ -45,15 +45,15 @@ def _messages_to_gemini(messages: list[dict[str, Any]], protos: Any) -> tuple[st
         if role == "system":
             system_instruction = content
         elif role == "user":
-            gemini_messages.append(protos.Content(
+            gemini_messages.append(types.Content(
                 role="user",
-                parts=[protos.Part(text=content)],
+                parts=[types.Part(text=content)],
             ))
         elif role == "assistant":
             if tool_calls:
                 parts = []
                 if content:
-                    parts.append(protos.Part(text=content))
+                    parts.append(types.Part(text=content))
                 for tc in tool_calls:
                     # Handle tool call dicts or objects
                     if hasattr(tc, "name"):
@@ -71,17 +71,17 @@ def _messages_to_gemini(messages: list[dict[str, Any]], protos: Any) -> tuple[st
                         except json.JSONDecodeError:
                             tc_args = {}
                     
-                    parts.append(protos.Part(
-                        function_call=protos.FunctionCall(
+                    parts.append(types.Part(
+                        function_call=types.FunctionCall(
                             name=tc_name,
                             args=tc_args,
                         )
                     ))
-                gemini_messages.append(protos.Content(role="model", parts=parts))
+                gemini_messages.append(types.Content(role="model", parts=parts))
             else:
-                gemini_messages.append(protos.Content(
+                gemini_messages.append(types.Content(
                     role="model",
-                    parts=[protos.Part(text=content)],
+                    parts=[types.Part(text=content)],
                 ))
         elif role == "tool":
             # Get the function name - try 'name' attribute first, then extract from tool_call_id
@@ -94,10 +94,10 @@ def _messages_to_gemini(messages: list[dict[str, Any]], protos: Any) -> tuple[st
                 else:
                     tool_name = tool_call_id or "unknown_function"
             
-            gemini_messages.append(protos.Content(
+            gemini_messages.append(types.Content(
                 role="user",
-                parts=[protos.Part(
-                    function_response=protos.FunctionResponse(
+                parts=[types.Part(
+                    function_response=types.FunctionResponse(
                         name=tool_name,
                         response={"result": content},
                     )
@@ -107,49 +107,48 @@ def _messages_to_gemini(messages: list[dict[str, Any]], protos: Any) -> tuple[st
     return system_instruction, gemini_messages
 
 
-def _convert_schema_types(schema: dict[str, Any], protos: Any) -> dict[str, Any]:
-    """Convert JSON Schema type strings to Gemini Type enum values recursively.
+def _convert_schema_types(schema: dict[str, Any]) -> dict[str, Any]:
+    """Convert JSON Schema to Gemini Schema format.
     
-    Gemini SDK expects type enum values (e.g., protos.Type.OBJECT) instead of
-    string values (e.g., "object").
+    The new SDK uses string type values like "OBJECT", "STRING", etc.
     """
     if not schema:
         return schema
     
     result = {}
     type_mapping = {
-        "object": protos.Type.OBJECT,
-        "string": protos.Type.STRING,
-        "integer": protos.Type.INTEGER,
-        "number": protos.Type.NUMBER,
-        "boolean": protos.Type.BOOLEAN,
-        "array": protos.Type.ARRAY,
+        "object": "OBJECT",
+        "string": "STRING",
+        "integer": "INTEGER",
+        "number": "NUMBER",
+        "boolean": "BOOLEAN",
+        "array": "ARRAY",
     }
     
     for key, value in schema.items():
         if key == "type" and isinstance(value, str):
-            result["type"] = type_mapping.get(value.lower(), protos.Type.STRING)
+            result["type"] = type_mapping.get(value.lower(), "STRING")
         elif key == "properties" and isinstance(value, dict):
             # Recursively convert properties
             result["properties"] = {
-                k: _convert_schema_types(v, protos) for k, v in value.items()
+                k: _convert_schema_types(v) for k, v in value.items()
             }
         elif key == "items" and isinstance(value, dict):
             # Recursively convert array items
-            result["items"] = _convert_schema_types(value, protos)
+            result["items"] = _convert_schema_types(value)
         else:
             result[key] = value
     
     return result
 
 
-def _tools_to_gemini(tools: list[Any], protos: Any = None) -> list[dict[str, Any]]:
-    """Convert tools to Gemini format.
+def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
+    """Convert tools to Gemini FunctionDeclaration format.
     
-    Gemini expects function declarations as a list of dicts with:
+    Gemini expects function declarations with:
     - name: function name
     - description: what the function does
-    - parameters: Schema object with Type enum values
+    - parameters: Schema object
     """
     function_declarations = []
     for tool in tools:
@@ -157,40 +156,38 @@ def _tools_to_gemini(tools: list[Any], protos: Any = None) -> list[dict[str, Any
             schema = getattr(tool, "args_schema", {}) or {}
             # Build parameters with proper Gemini Schema format
             parameters = {
-                "type": protos.Type.OBJECT if protos else "OBJECT",
+                "type": "OBJECT",
                 "properties": {},
             }
             
             if schema.get("properties"):
-                if protos:
-                    parameters["properties"] = {
-                        k: _convert_schema_types(v, protos) 
-                        for k, v in schema["properties"].items()
-                    }
-                else:
-                    parameters["properties"] = schema["properties"]
+                parameters["properties"] = {
+                    k: _convert_schema_types(v) 
+                    for k, v in schema["properties"].items()
+                }
             
             if schema.get("required"):
                 parameters["required"] = schema["required"]
             
-            function_declarations.append({
-                "name": tool.name,
-                "description": tool.description or "",
-                "parameters": parameters,
-            })
+            function_declarations.append(types.FunctionDeclaration(
+                name=tool.name,
+                description=tool.description or "",
+                parameters=parameters,
+            ))
         elif isinstance(tool, dict):
             if "function" in tool:
                 func = tool["function"]
                 params = func.get("parameters", {})
-                if protos and params:
-                    params = _convert_schema_types(params, protos)
-                function_declarations.append({
-                    "name": func["name"],
-                    "description": func.get("description", ""),
-                    "parameters": params,
-                })
+                if params:
+                    params = _convert_schema_types(params)
+                function_declarations.append(types.FunctionDeclaration(
+                    name=func["name"],
+                    description=func.get("description", ""),
+                    parameters=params or None,
+                ))
             else:
-                function_declarations.append(tool)
+                # Already in correct format
+                function_declarations.append(types.FunctionDeclaration(**tool))
     
     return function_declarations if function_declarations else []
 
@@ -226,10 +223,11 @@ def _parse_response(response: Any) -> AIMessage:
 class GeminiChat(BaseChatModel):
     """Google Gemini chat model.
     
-    High-performance chat model using Google's Generative AI SDK.
+    High-performance chat model using the Google GenAI SDK.
     
     Available models:
-    - gemini-2.0-flash-exp (latest, experimental)
+    - gemini-2.0-flash (latest)
+    - gemini-2.0-flash-exp (experimental)
     - gemini-1.5-pro
     - gemini-1.5-flash
     - gemini-1.5-flash-8b
@@ -238,7 +236,7 @@ class GeminiChat(BaseChatModel):
         from agenticflow.models.gemini import GeminiChat
         
         # Default model
-        llm = GeminiChat()  # Uses gemini-2.0-flash-exp
+        llm = GeminiChat()  # Uses gemini-2.0-flash
         
         # Custom model
         llm = GeminiChat(model="gemini-1.5-pro")
@@ -253,36 +251,27 @@ class GeminiChat(BaseChatModel):
             print(chunk.content, end="")
     """
     
-    model: str = "gemini-2.0-flash-exp"
+    model: str = "gemini-2.0-flash"
+    _tools: list[Any] = field(default_factory=list, repr=False)
+    _parallel_tool_calls: bool = field(default=True, repr=False)
     
     def _init_client(self) -> None:
-        """Initialize Gemini client."""
+        """Initialize Gemini client using the new google.genai SDK."""
         try:
-            import google.generativeai as genai
-            from google.generativeai import protos
+            from google import genai
+            from google.genai import types
         except ImportError:
             raise ImportError(
-                "google-generativeai package required. "
-                "Install with: uv add google-generativeai"
+                "google-genai package required. "
+                "Install with: uv add google-genai"
             )
         
         api_key = self.api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
         
-        generation_config = {
-            "temperature": self.temperature,
-        }
-        if self.max_tokens:
-            generation_config["max_output_tokens"] = self.max_tokens
-        
-        self._client = genai.GenerativeModel(
-            model_name=self.model,
-            generation_config=generation_config,
-        )
-        # Store genai and protos for later use
-        self._genai = genai
-        self._protos = protos
+        # Create the centralized client
+        self._client = genai.Client(api_key=api_key)
+        # Store types module for later use
+        self._types = types
     
     def bind_tools(
         self,
@@ -303,23 +292,29 @@ class GeminiChat(BaseChatModel):
         )
         new_model._tools = tools
         new_model._parallel_tool_calls = parallel_tool_calls
-        new_model._genai = self._genai
-        new_model._protos = self._protos
-        
-        # Recreate client with tools
-        generation_config = {
-            "temperature": self.temperature,
-        }
-        if self.max_tokens:
-            generation_config["max_output_tokens"] = self.max_tokens
-        
-        new_model._client = self._genai.GenerativeModel(
-            model_name=self.model,
-            generation_config=generation_config,
-            tools=_tools_to_gemini(tools, self._protos),
-        )
+        new_model._client = self._client
+        new_model._types = self._types
         new_model._initialized = True
         return new_model
+    
+    def _build_config(self, system_instruction: str | None = None) -> Any:
+        """Build GenerateContentConfig with current settings."""
+        config_kwargs: dict[str, Any] = {
+            "temperature": self.temperature,
+        }
+        
+        if self.max_tokens:
+            config_kwargs["max_output_tokens"] = self.max_tokens
+        
+        if system_instruction:
+            config_kwargs["system_instruction"] = system_instruction
+        
+        if self._tools:
+            config_kwargs["tools"] = _tools_to_gemini(self._tools, self._types)
+            # Disable automatic function calling - we handle it manually
+            config_kwargs["automatic_function_calling"] = {"disable": True}
+        
+        return self._types.GenerateContentConfig(**config_kwargs)
     
     def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke synchronously.
@@ -330,29 +325,15 @@ class GeminiChat(BaseChatModel):
         self._ensure_initialized()
         
         normalized = convert_messages(normalize_input(messages))
-        system, gemini_messages = _messages_to_gemini(normalized, self._protos)
+        system, gemini_messages = _messages_to_gemini(normalized, self._types)
         
-        # Gemini needs a chat session for multi-turn
-        chat = self._client.start_chat(history=gemini_messages[:-1] if len(gemini_messages) > 1 else [])
+        config = self._build_config(system_instruction=system)
         
-        # Get the last message content
-        if gemini_messages:
-            last_msg = gemini_messages[-1]
-            # Extract text from the last message's parts
-            last_content = ""
-            if hasattr(last_msg, 'parts'):
-                for part in last_msg.parts:
-                    if hasattr(part, 'text') and part.text:
-                        last_content = part.text
-                        break
-                    elif hasattr(part, 'function_response'):
-                        # Send function response as-is
-                        last_content = last_msg
-                        break
-        else:
-            last_content = ""
-        
-        response = chat.send_message(last_content)
+        response = self._client.models.generate_content(
+            model=self.model,
+            contents=gemini_messages,
+            config=config,
+        )
         return _parse_response(response)
     
     async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
@@ -364,28 +345,15 @@ class GeminiChat(BaseChatModel):
         self._ensure_initialized()
         
         normalized = convert_messages(normalize_input(messages))
-        system, gemini_messages = _messages_to_gemini(normalized, self._protos)
+        system, gemini_messages = _messages_to_gemini(normalized, self._types)
         
-        chat = self._client.start_chat(history=gemini_messages[:-1] if len(gemini_messages) > 1 else [])
+        config = self._build_config(system_instruction=system)
         
-        # Get the last message content
-        if gemini_messages:
-            last_msg = gemini_messages[-1]
-            # Extract text from the last message's parts
-            last_content = ""
-            if hasattr(last_msg, 'parts'):
-                for part in last_msg.parts:
-                    if hasattr(part, 'text') and part.text:
-                        last_content = part.text
-                        break
-                    elif hasattr(part, 'function_response'):
-                        # Send function response as-is
-                        last_content = last_msg
-                        break
-        else:
-            last_content = ""
-        
-        response = await chat.send_message_async(last_content)
+        response = await self._client.aio.models.generate_content(
+            model=self.model,
+            contents=gemini_messages,
+            config=config,
+        )
         return _parse_response(response)
     
     async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
@@ -397,24 +365,16 @@ class GeminiChat(BaseChatModel):
         self._ensure_initialized()
         
         normalized = convert_messages(normalize_input(messages))
-        system, gemini_messages = _messages_to_gemini(normalized, self._protos)
+        system, gemini_messages = _messages_to_gemini(normalized, self._types)
         
-        chat = self._client.start_chat(history=gemini_messages[:-1] if len(gemini_messages) > 1 else [])
+        config = self._build_config(system_instruction=system)
         
-        # Get the last message content
-        if gemini_messages:
-            last_msg = gemini_messages[-1]
-            last_content = ""
-            if hasattr(last_msg, 'parts'):
-                for part in last_msg.parts:
-                    if hasattr(part, 'text') and part.text:
-                        last_content = part.text
-                        break
-        else:
-            last_content = ""
-        
-        response = await chat.send_message_async(last_content, stream=True)
-        async for chunk in response:
+        stream = await self._client.aio.models.generate_content_stream(
+            model=self.model,
+            contents=gemini_messages,
+            config=config,
+        )
+        async for chunk in stream:
             if chunk.text:
                 yield AIMessage(content=chunk.text)
 
@@ -426,46 +386,52 @@ class GeminiEmbedding(BaseEmbedding):
     Example:
         from agenticflow.models.gemini import GeminiEmbedding
         
-        embedder = GeminiEmbedding()  # Uses text-embedding-004
+        embedder = GeminiEmbedding()  # Uses gemini-embedding-001
         
         vectors = await embedder.aembed(["Hello", "World"])
     """
     
-    model: str = "text-embedding-004"
+    model: str = "gemini-embedding-001"
     
     def _init_client(self) -> None:
-        """Initialize Gemini embedding client."""
+        """Initialize Gemini embedding client using the new google.genai SDK."""
         try:
-            import google.generativeai as genai
+            from google import genai
         except ImportError:
             raise ImportError(
-                "google-generativeai package required. "
-                "Install with: uv add google-generativeai"
+                "google-genai package required. "
+                "Install with: uv add google-genai"
             )
         
         api_key = self.api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
         
-        self._genai = genai
+        # Create the centralized client
+        self._client = genai.Client(api_key=api_key)
     
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed texts synchronously."""
         self._ensure_initialized()
         
-        result = self._genai.embed_content(
-            model=f"models/{self.model}",
-            content=texts,
+        result = self._client.models.embed_content(
+            model=self.model,
+            contents=texts,
         )
-        return result["embedding"] if isinstance(result["embedding"][0], list) else [result["embedding"]]
+        # Handle both single and multiple embeddings
+        embeddings = result.embeddings
+        if embeddings:
+            return [emb.values for emb in embeddings]
+        return []
     
     async def aembed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts asynchronously.
+        """Embed texts asynchronously."""
+        self._ensure_initialized()
         
-        Note: google-generativeai doesn't have native async embed,
-        so we use sync in executor.
-        """
-        import asyncio
-        return await asyncio.get_event_loop().run_in_executor(
-            None, self.embed, texts
+        result = await self._client.aio.models.embed_content(
+            model=self.model,
+            contents=texts,
         )
+        # Handle both single and multiple embeddings
+        embeddings = result.embeddings
+        if embeddings:
+            return [emb.values for emb in embeddings]
+        return []
