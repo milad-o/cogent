@@ -44,7 +44,7 @@ LLMProvider = Literal[
     "cloudflare",
 ]
 EmbeddingProvider = Literal[
-    "openai", "azure", "ollama", "github", "cohere", "cloudflare"
+    "openai", "azure", "ollama", "github", "cohere", "cloudflare", "gemini"
 ]
 
 
@@ -191,6 +191,9 @@ class Settings(BaseSettings):
     )
     cloudflare_embedding_model: str = Field(
         default="@cf/baai/bge-base-en-v1.5", alias="CLOUDFLARE_EMBEDDING_MODEL"
+    )
+    gemini_embedding_model: str = Field(
+        default="gemini-embedding-001", alias="GEMINI_EMBEDDING_MODEL"
     )
 
     # ==========================================================================
@@ -447,6 +450,16 @@ def get_embeddings(provider: EmbeddingProvider | None = None):
             account_id=s.cloudflare_account_id,
         )
 
+    elif provider == "gemini":
+        if not s.gemini_api_key:
+            raise ValueError("EMBEDDING_PROVIDER=gemini requires GEMINI_API_KEY")
+        from agenticflow.models.gemini import GeminiEmbedding
+
+        return GeminiEmbedding(
+            model=s.gemini_embedding_model,
+            api_key=s.gemini_api_key,
+        )
+
     else:
         raise ValueError(f"Unknown EMBEDDING_PROVIDER: {provider}")
 
@@ -603,6 +616,9 @@ def print_config():
         print(f"  Model: {s.cloudflare_embedding_model}")
         print(f"  API Token: {'✓ set' if s.cloudflare_api_token else '✗ missing!'}")
         print(f"  Account ID: {s.cloudflare_account_id or '✗ missing!'}")
+    elif s.embedding_provider == "gemini":
+        print(f"  Model: {s.gemini_embedding_model}")
+        print(f"  API Key: {'✓ set' if s.gemini_api_key else '✗ missing!'}")
 
     print("=" * 50)
 
