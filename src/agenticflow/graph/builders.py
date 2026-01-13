@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.graph.backends import Backend, MermaidBackend, get_default_backend
-from agenticflow.graph.config import GraphConfig, GraphDirection
+from agenticflow.graph.config import GraphConfig
 from agenticflow.graph.primitives import (
     ClassDef,
     Edge,

@@ -70,16 +70,15 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable
-from uuid import uuid4
 
 from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import TraceBus
+    pass
 
 
 class DeferredStatus(Enum):

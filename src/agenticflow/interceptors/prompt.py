@@ -23,7 +23,7 @@ Example:
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Callable
 
 from agenticflow.interceptors.base import (
     Interceptor,

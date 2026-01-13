@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from .core import AgentConfig, BaseTopology, TopologyResult, TopologyType
+from .context import ContextStrategy, SlidingWindowStrategy
 
 if TYPE_CHECKING:
     from ..agent import Agent
@@ -283,7 +284,15 @@ class Mesh(BaseTopology):
     synthesizer: AgentConfig | None = None
     """Optional dedicated agent to synthesize final output."""
 
+    context_strategy: ContextStrategy | None = None
+    """Strategy for managing context between rounds. Defaults to SlidingWindowStrategy."""
+
     topology_type: TopologyType = field(default=TopologyType.MESH, init=False)
+
+    def __post_init__(self) -> None:
+        # Default to sliding window to prevent context explosion
+        if self.context_strategy is None:
+            self.context_strategy = SlidingWindowStrategy(max_rounds=3)
 
     async def run(
         self,
@@ -302,7 +311,7 @@ class Mesh(BaseTopology):
         # Get event bus from first agent if available (must be real EventBus)
         first_agent = self.agents[0].agent if self.agents else None
         event_bus = getattr(first_agent, 'event_bus', None)
-        if event_bus is not None and not isinstance(event_bus, EventBus):
+        if event_bus is not None and not isinstance(event_bus, TraceBus):
             event_bus = None  # Don't use mocked or invalid event bus
 
         for round_num in range(1, self.max_rounds + 1):
@@ -316,14 +325,10 @@ class Mesh(BaseTopology):
                     "agents": [a.name for a in self.agents],
                 })
 
-            # Build context from previous rounds
-            history_context = ""
-            if round_history:
-                history_context = "\n\nPREVIOUS ROUNDS:\n"
-                for i, round_data in enumerate(round_history, 1):
-                    history_context += f"\n--- Round {i} ---\n"
-                    for name, output in round_data.items():
-                        history_context += f"\n{name}:\n{output}\n"
+            # Build context from previous rounds using strategy
+            history_context = await self.context_strategy.build_context(
+                round_history, round_num, task
+            )
 
             # All agents contribute in parallel
             async def get_contribution(
@@ -334,7 +339,7 @@ class Mesh(BaseTopology):
                 name = agent_cfg.name or "agent"
                 agent_event_bus = getattr(agent_cfg.agent, 'event_bus', None)
                 # Only use real EventBus, not mocked
-                if agent_event_bus is not None and not isinstance(agent_event_bus, EventBus):
+                if agent_event_bus is not None and not isinstance(agent_event_bus, TraceBus):
                     agent_event_bus = None
 
                 # Report agent starting this round

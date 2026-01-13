@@ -34,7 +34,7 @@ from agenticflow.interceptors.base import (
 )
 
 if TYPE_CHECKING:
-    from agenticflow.tools.base import BaseTool
+    pass
 
 
 class ToolGate(Interceptor):

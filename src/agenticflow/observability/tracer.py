@@ -13,7 +13,7 @@ from enum import Enum
 from typing import Any, Generator
 from collections.abc import Callable
 
-from agenticflow.core import generate_id, now_utc
+from agenticflow.core import generate_id
 
 
 class SpanKind(Enum):

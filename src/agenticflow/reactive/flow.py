@@ -7,7 +7,6 @@ event-driven multi-agent systems.
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, Self
@@ -23,8 +22,7 @@ from agenticflow.events.bus import EventBus as CoreEventBus
 from agenticflow.events.event import Event as CoreEvent
 from agenticflow.events.sources.base import EventSource
 from agenticflow.events.sinks.base import EventSink
-from agenticflow.observability.bus import TraceBus as ObsEventBus
-from agenticflow.observability.trace_record import Trace, TraceType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.observability.observer import Observer
 
 if TYPE_CHECKING:

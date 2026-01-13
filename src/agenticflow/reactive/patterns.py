@@ -23,12 +23,11 @@ Example:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
-from agenticflow.reactive.core import AgentTriggerConfig, TriggerCondition, react_to
+from agenticflow.reactive.core import TriggerCondition, react_to
 from agenticflow.flow.reactive import ReactiveFlow, ReactiveFlowConfig, ReactiveFlowResult
-from agenticflow.observability.trace_record import Trace
 from agenticflow.observability.observer import Observer
 
 # Backward compatibility aliases

@@ -171,6 +171,13 @@ class TraceType(Enum):
     SKILL_ACTIVATED = "skill.activated"  # Skill context injected into agent
     SKILL_DEACTIVATED = "skill.deactivated"  # Skill context removed after execution
 
+    # Context strategy events (topology context management)
+    CONTEXT_STRATEGY_APPLIED = "context.strategy.applied"  # Strategy built context
+    CONTEXT_SUMMARIZED = "context.summarized"  # Context was summarized by LLM
+    CONTEXT_TRUNCATED = "context.truncated"  # Context was truncated (sliding window)
+    CONTEXT_RETRIEVED = "context.retrieved"  # Context retrieved from vectorstore
+    CONTEXT_STRUCTURED = "context.structured"  # Context extracted as structured data
+
     CUSTOM = "custom"
 
     @property

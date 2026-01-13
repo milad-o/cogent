@@ -18,15 +18,6 @@ from agenticflow.agent.state import AgentState
 from agenticflow.agent.taskboard import TaskBoard, TaskBoardConfig, create_taskboard_tools, TASKBOARD_INSTRUCTIONS
 from agenticflow.agent.reasoning import (
     ReasoningConfig,
-    ReasoningStyle,
-    ReasoningResult,
-    ThinkingStep,
-    build_reasoning_prompt,
-    extract_thinking,
-    estimate_confidence,
-    REASONING_SYSTEM_PROMPT,
-    STYLE_INSTRUCTIONS,
-    SELF_CORRECTION_PROMPT,
 )
 from agenticflow.agent.hitl import (
     should_interrupt,
@@ -40,18 +31,10 @@ from agenticflow.agent.hitl import (
 )
 from agenticflow.agent.output import (
     ResponseSchema,
-    OutputMethod,
-    StructuredResult,
-    OutputValidationError,
-    validate_and_parse,
-    build_structured_prompt,
-    get_best_method,
-    schema_to_json,
 )
 from agenticflow.core.enums import AgentRole, AgentStatus
 from agenticflow.core.utils import generate_id, model_identifier, now_utc
-from agenticflow.observability.trace_record import Trace, TraceType
-from agenticflow.core.message import Message
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.tasks.task import Task
 from agenticflow.agent.spawning import SpawningConfig
 from agenticflow.agent.roles import RoleConfig
@@ -61,9 +44,9 @@ if TYPE_CHECKING:
     from agenticflow.tools.registry import ToolRegistry
     from agenticflow.observability.progress import ProgressTracker
     from agenticflow.observability.observer import Observer
-    from agenticflow.agent.resilience import ToolResilience, FallbackRegistry, ResilienceConfig
+    from agenticflow.agent.resilience import ToolResilience, ResilienceConfig
     from agenticflow.agent.streaming import StreamChunk, StreamEvent
-    from agenticflow.graph import AgentGraph, GraphView
+    from agenticflow.graph import GraphView
     from agenticflow.agent.memory import AgentMemory
 
 
@@ -1260,7 +1243,7 @@ class Agent:
     @property
     def role_behavior(self):
         """Get behavior definition for this agent's role."""
-        from agenticflow.agent.roles import RoleBehavior, get_role_behavior
+        from agenticflow.agent.roles import get_role_behavior
         return get_role_behavior(self.role)
 
     @property
@@ -1877,9 +1860,7 @@ class Agent:
         )
         
         from agenticflow.agent.streaming import (
-            StreamChunk,
             chunk_from_message,
-            extract_tool_calls,
         )
         
         if not self.model:
@@ -3106,73 +3087,6 @@ class Agent:
             stacklevel=2,
         )
         return await self.run(task, context=context)
-
-    async def send_message(
-        self,
-        content: str,
-        receiver_id: str | None = None,
-        correlation_id: str | None = None,
-    ) -> Message:
-        """
-        Send a message to another agent or broadcast.
-        
-        Args:
-            content: Message content
-            receiver_id: ID of receiving agent (None for broadcast)
-            correlation_id: Optional correlation ID for event tracking
-            
-        Returns:
-            The sent Message
-        """
-        message = Message(
-            content=content,
-            sender_id=self.id,
-            receiver_id=receiver_id,
-        )
-
-        event_type = TraceType.MESSAGE_BROADCAST if receiver_id is None else TraceType.MESSAGE_SENT
-
-        await self._emit_event(
-            event_type,
-            message.to_dict(),
-            correlation_id,
-        )
-
-        return message
-
-    async def receive_message(
-        self,
-        message: Message,
-        correlation_id: str | None = None,
-    ) -> str | None:
-        """
-        Receive and process a message.
-        
-        Args:
-            message: The message to process
-            correlation_id: Optional correlation ID for event tracking
-            
-        Returns:
-            Response content, if any
-        """
-        await self._emit_event(
-            TraceType.MESSAGE_RECEIVED,
-            {
-                "agent_id": self.id,
-                "message": message.to_dict(),
-            },
-            correlation_id,
-        )
-
-        # Process the message through thinking
-        if self.model:
-            response = await self.think(
-                f"Message from {message.sender_id}: {message.content}",
-                correlation_id,
-            )
-            return response
-
-        return None
 
     def is_available(self) -> bool:
         """Check if agent can accept new work."""
