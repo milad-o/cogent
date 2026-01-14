@@ -181,7 +181,85 @@ router = route(
 
 ---
 
+## Checkpointing
+
+Enable persistent state for long-running flows with crash recovery support.
+
+### Basic Usage
+
+```python
+from agenticflow.reactive import (
+    ReactiveFlow, ReactiveFlowConfig,
+    MemoryCheckpointer, FileCheckpointer
+)
+
+# In-memory (dev/test)
+checkpointer = MemoryCheckpointer()
+
+# File-based (simple persistence)
+checkpointer = FileCheckpointer("./checkpoints")
+
+# Enable checkpointing every round
+config = ReactiveFlowConfig(checkpoint_every=1)
+flow = ReactiveFlow(config=config, checkpointer=checkpointer)
+```
+
+### Resume from Checkpoint
+
+```python
+# After crash, resume from last checkpoint
+state = await checkpointer.load_latest("flow_abc123")
+if state:
+    result = await flow.resume(state)
+```
+
+### Checkpointer Implementations
+
+| Class | Description |
+|-------|-------------|
+| `MemoryCheckpointer` | In-memory storage (lost on restart) |
+| `FileCheckpointer` | JSON files in a directory |
+
+### Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `flow_id` | `str \| None` | Auto-generated | Fixed flow ID |
+| `checkpoint_every` | `int` | `0` | Checkpoint every N rounds (0 = disabled) |
+
+### FlowState Contents
+
+```python
+@dataclass
+class FlowState:
+    flow_id: str
+    checkpoint_id: str
+    task: str
+    events_processed: int
+    pending_events: list[dict]
+    context: dict
+    last_output: str
+    round: int
+    timestamp: datetime
+```
+
+### Checkpointing vs Memory
+
+It is important to distinguish between **Agent Memory** and **Flow Checkpointing**:
+
+| Feature | Memory | Checkpointing |
+|---------|--------|---------------|
+| **Scope** | Agent-level | Flow-level |
+| **Storage** | Conversation history | Execution state (events, rounds) |
+| **Purpose** | Context retention | Crash recovery & persistence |
+| **Persistence** | Across runs | Single (resumable) run |
+
+**Recommendation**: Use both together. Use `Memory` for agents to remember user details, and `Checkpointer` to ensure the overall workflow can handle restarts.
+
+---
+
 ## ReactiveFlow API
+
 
 ### Constructor
 

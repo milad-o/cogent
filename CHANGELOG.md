@@ -5,7 +5,67 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-01-14
+
+### Added
+
+#### Persistent Checkpointing for ReactiveFlow
+
+- **`FlowState`**: Serializable snapshot of flow execution state for persistence
+  - Captures task, events processed, pending events, context, and output
+  - Serializable to/from dict with `to_dict()` and `from_dict()`
+  - Includes `flow_id`, `checkpoint_id`, and `round` tracking
+
+- **`Checkpointer` Protocol**: Abstract interface for checkpoint storage backends
+  - `save(state)` / `load(checkpoint_id)` / `load_latest(flow_id)`
+  - `list_checkpoints(flow_id)` / `delete(checkpoint_id)`
+
+- **`MemoryCheckpointer`**: In-memory checkpointer for development and testing
+  - Automatic pruning with configurable `max_checkpoints_per_flow`
+
+- **`FileCheckpointer`**: File-based JSON checkpointer for simple persistence
+  - Stores each checkpoint as `{checkpoint_id}.json`
+
+- **`ReactiveFlow.resume(state)`**: Resume a flow from a saved checkpoint
+  - Restores pending events, context, and continues processing
+  - Supports crash recovery for long-running flows
+
+- **`ReactiveFlowConfig` Extensions**:
+  - `flow_id: str | None` — Fixed flow ID (auto-generated if None)
+  - `checkpoint_every: int = 0` — Checkpoint every N rounds (0 = disabled)
+
+- **`ReactiveFlowResult` Extensions**:
+  - `flow_id: str | None` — Flow ID for this execution
+  - `checkpoint_id: str | None` — Last checkpoint ID if checkpointing enabled
+
+### Example
+
+```python
+from agenticflow.reactive import (
+    ReactiveFlow, ReactiveFlowConfig,
+    MemoryCheckpointer, react_to
+)
+
+# Enable checkpointing
+checkpointer = MemoryCheckpointer()
+config = ReactiveFlowConfig(checkpoint_every=1)
+
+flow = ReactiveFlow(config=config, checkpointer=checkpointer)
+flow.register(agent, [react_to("task.created")])
+
+result = await flow.run("Process data")
+print(f"Flow: {result.flow_id}, Checkpoint: {result.checkpoint_id}")
+
+# Resume after crash
+state = await checkpointer.load_latest(result.flow_id)
+if state:
+    result = await flow.resume(state)
+```
+
+---
+
 ## [1.4.0] - 2026-01-11
+
 
 ### Added
 
