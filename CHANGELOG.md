@@ -5,11 +5,13 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.7.0] - 2026-01-15
+## [1.7.0] - 2026-01-14
 
 ### Added
 
 #### Agent Request/Response (A2A) Communication (Phase 2.2)
+
+**Core Infrastructure:**
 
 - **`AgentRequest` and `AgentResponse`**: Dataclasses for structured agent-to-agent communication
   - `AgentRequest(from_agent, to_agent, task, data, correlation_id)` — Request with correlation tracking
@@ -31,41 +33,123 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Success/error status handling
   - Emits `agent.response` events
 
+**Declarative Delegation (Unified Architecture):**
+
+- **`DelegationMixin`**: Single source of truth for delegation configuration
+  - `configure_delegation(agent, can_delegate, can_reply, trigger_config)` — Unified method
+  - Auto-injects `delegate_to` and `reply_with_result` tools based on policy
+  - Auto-enhances agent system prompts with delegation instructions
+  - Policy enforcement — validates delegation targets against allowed list
+  - Works across ALL flow types (reactive flows and topologies)
+
+- **`BaseFlow` and `BaseTopology`**: Now inherit from `DelegationMixin`
+  - All flows automatically support A2A delegation
+  - Single implementation, zero code duplication
+  - DRY architecture — fix bugs once, benefits everywhere
+
+- **Delegation Tools**: Auto-generated based on configuration
+  - `create_delegate_tool(flow, agent_name, specialists)` — Creates `delegate_to` tool
+  - `create_reply_tool(flow, agent_name)` — Creates `reply_with_result` tool
+  - Policy enforcement in tool execution
+  - Event-based communication via AgenticFlow event system
+
+**Reactive Flow Updates:**
+
 - **Simplified Registration API**: Intuitive syntax for common A2A patterns
   - `flow.register(agent, handles=True)` — Agent handles requests for itself (uses `agent.name`)
-  - `flow.register(agent, on="task.created")` — Simple event subscription
-  - `flow.register(agent, on=["event1", "event2"])` — Multiple events
+  - `flow.register(agent, on="task.created", can_delegate=["specialist"])` — Declarative delegation
+  - `flow.register(agent, on="request.*", can_reply=True)` — Enable reply capability
   - Backward compatible with advanced trigger syntax
   - No need to import `react_to()` or `for_agent()` for simple cases
+
+- **ReactiveFlow refactored**: Removed ~70 lines of duplicate code
+  - Now uses inherited `configure_delegation()` from `DelegationMixin`
+  - Specialists auto-discovered from registered handlers
+
+**Topology Updates:**
+
+- **`AgentConfig` enhanced**: Delegation parameters
+  - `can_delegate: list[str] | bool | None` — Who agent can delegate to
+  - `can_reply: bool` — Whether agent handles delegated requests
+  - Backward compatibility with `can_delegate_to` (deprecated)
+  - Legacy support in `__post_init__` for smooth migration
+
+- **All topology patterns support delegation**:
+  - **Supervisor** — Coordinator delegates to workers, hierarchical sub-delegation
+  - **Pipeline** — Stages can delegate to external specialists
+  - **Mesh** — Collaborative agents with specialist delegation
+  - All patterns call `super().__post_init__()` to apply delegation config
+
+- **`BaseTopology`**: Inherits from `DelegationMixin`
+  - `__post_init__()` configures delegation for all agents in topology
+  - Resolves specialists based on topology type (workers vs all agents)
+  - Consistent API across all coordination patterns
+
+**Examples and Tests:**
+
+- **Reactive examples**: 5 patterns in [examples/reactive/a2a_delegation.py](examples/reactive/a2a_delegation.py)
+  - Simple delegation: coordinator → specialist
+  - Multi-specialist team: parallel routing by task type
+  - Chain delegation: PM → Architect → Developer
+  - Parallel delegation: coordinator → multiple specialists
+  - Request-response: bidirectional communication
+
+- **Topology examples**: 5 patterns in [examples/topologies/delegation.py](examples/topologies/delegation.py)
+  - Supervisor with hierarchical delegation
+  - Pipeline with specialist delegation
+  - Mesh with external specialists
+  - Dynamic delegation policies
+  - Cross-topology delegation patterns
 
 - **Tests**: 13/15 passing tests in `tests/test_a2a.py`
   - AgentRequest/AgentResponse creation and serialization
   - ExecutionContext delegation and reply
   - Correlation ID tracking
   - Wait/timeout behavior (2 tests skipped pending mocks)
+  - All topologies verified with delegation working
 
-- **Examples**: 5 comprehensive examples in [examples/reactive/a2a_delegation.py](examples/reactive/a2a_delegation.py)
-  - Simple delegation: coordinator → specialist
-  - Multi-specialist team: parallel routing by task type
-  - Chain delegation: PM → Architect → Developer
-  - Fan-out delegation: coordinator → multiple reviewers in parallel
-  - Request/response pattern with correlation IDs
+**Documentation:**
 
-- **Documentation**: [docs/a2a_syntax_comparison.md](docs/a2a_syntax_comparison.md) — Syntax evolution and migration guide
+- **[docs/a2a.md](docs/a2a.md)**: Complete A2A delegation guide
+  - Registration API (simple and advanced syntax)
+  - Declarative configuration with `can_delegate` and `can_reply`
+  - Delegation patterns (coordinator-specialist, chains, parallel)
+  - ExecutionContext API reference
+  - Request/response tracking
+  - Examples across reactive flows and topologies
+
+- **[docs/topologies.md](docs/topologies.md)**: Updated with A2A delegation
+  - New section on Agent-to-Agent Delegation
+  - Configuration parameters (`can_delegate`, `can_reply`)
+  - Auto-injection and auto-enhancement explanation
+  - Delegation patterns (coordinator, hierarchical, specialist)
+  - Examples for all topology types
+
+- **[README.md](README.md)**: Updated topologies section
+  - Added A2A delegation example in topologies overview
+  - Highlights declarative configuration
+  - References comprehensive documentation
 
 ### Changed
 
-- **`ReactiveFlow.register()`**: Enhanced with shorthand parameters
-  - Added `on` parameter for simple event subscription
-  - Added `handles` parameter for A2A delegation
-  - `triggers` parameter still supported for advanced usage
-  - Simplified API reduces boilerplate for common patterns
+- **`ReactiveFlow.register()`**: Enhanced with delegation parameters
+  - Added `can_delegate` parameter for declarative delegation policy
+  - Added `can_reply` parameter to enable response handling
+  - `on`, `handles`, `when`, `priority`, `emits` parameters for simple syntax
+  - Backward compatible with `triggers` parameter for advanced usage
+  - Removed redundant `initial_event` default (no longer adds "task.created" automatically)
 
 - **Context Consolidation**: Unified ExecutionContext in `flow/context.py`
   - `ExecutionContext` — Unified context for reactive agents (delegate_to, reply)
   - `RunContext` — Dependency injection (unchanged, separate purpose)
   - `ContextStrategy` — Multi-round history for topologies (unchanged, separate purpose)
   - `ReactiveContext` — Backward compatibility alias for ExecutionContext
+
+- **Code Architecture**: DRY principle with DelegationMixin
+  - Created `DelegationMixin` in `flow/delegation.py`
+  - `BaseFlow` and `BaseTopology` both inherit from `DelegationMixin`
+  - Removed ~70 lines of duplicate delegation code from `ReactiveFlow`
+  - Single implementation benefits all flow types
 
 ## [1.6.0] - 2026-01-14
 

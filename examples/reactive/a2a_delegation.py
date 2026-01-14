@@ -55,18 +55,14 @@ async def example_1_simple_delegation():
     coordinator = Agent(
         name="coordinator",
         model=model,
-        system_prompt="""You coordinate projects. When asked to analyze data:
-1. Say you're delegating to the data analyst
-2. Explain what you're asking them to do
-Keep responses under 3 sentences.""",
+        system_prompt="You coordinate projects and delegate work to specialists.",
     )
 
     # Specialist agent that processes delegated tasks
     data_analyst = Agent(
         name="data_analyst",
         model=model,
-        system_prompt="""You are a data analysis specialist. 
-When you receive a task, provide a brief analysis in 2-3 sentences.""",
+        system_prompt="You are a data analysis specialist. Provide brief insights.",
     )
 
     # Create reactive flow with observability
@@ -78,17 +74,12 @@ When you receive a task, provide a brief analysis in 2-3 sentences.""",
         )
     )
 
-    # Coordinator reacts to user requests
-    flow.register(coordinator, on="task.created")
-
-    # Data analyst reacts to agent requests targeted at them
-    flow.register(data_analyst, handles=True)
+    # Register agents with delegation policy - framework auto-injects tools and enhances prompts
+    flow.register(coordinator, on="task.created", can_delegate=["data_analyst"])
+    flow.register(data_analyst, handles=True)  # auto-sets can_reply=True
 
     # Run the flow
-    await flow.run(
-        "Please analyze our sales data from last quarter",
-        initial_event="task.created",
-    )
+    await flow.run("Please analyze our sales data from last quarter")
 
 
 # =============================================================================
@@ -108,32 +99,26 @@ async def example_2_multi_specialist_team():
     coordinator = Agent(
         name="coordinator",
         model=model,
-        system_prompt="""You coordinate a team with different specialists:
-- data_analyst: for data analysis tasks
-- writer: for writing tasks
-- researcher: for research tasks
-
-When you receive a task, identify what type it is and say you're delegating.
-Keep responses very brief (1-2 sentences).""",
+        system_prompt="You coordinate a team of specialists.",
     )
 
     # Specialist agents
     data_analyst = Agent(
         name="data_analyst",
         model=model,
-        system_prompt="You analyze data. Provide brief insights (2-3 sentences).",
+        system_prompt="You analyze data. Provide brief insights.",
     )
 
     writer = Agent(
         name="writer",
         model=model,
-        system_prompt="You write content. Be creative and concise (2-3 sentences).",
+        system_prompt="You write creative content.",
     )
 
     researcher = Agent(
         name="researcher",
         model=model,
-        system_prompt="You research topics. Provide key findings (2-3 sentences).",
+        system_prompt="You research topics thoroughly.",
     )
 
     # Create flow with observability
@@ -145,10 +130,14 @@ Keep responses very brief (1-2 sentences).""",
         )
     )
 
-    # Register coordinator
-    flow.register(coordinator, on="task.created")
-
-    # Register specialists (each reacts to requests for them)
+    # Declarative delegation policy - framework handles tools and prompts
+    flow.register(
+        coordinator,
+        on="task.created",
+        can_delegate=["data_analyst", "writer", "researcher"]
+    )
+    
+    # Register specialists
     for agent in [data_analyst, writer, researcher]:
         flow.register(agent, handles=True)
 
@@ -161,7 +150,7 @@ Keep responses very brief (1-2 sentences).""",
 
     for task in tasks:
         print(f"📋 Task: {task}\n")
-        await flow.run(task, initial_event="task.created")
+        await flow.run(task)
         print()
 
 
@@ -182,30 +171,21 @@ async def example_3_chain_delegation():
     pm = Agent(
         name="project_manager",
         model=model,
-        system_prompt="""You're a project manager. When you receive a task:
-1. Break it down into requirements
-2. Say you're delegating to the architect
-Keep it brief (2 sentences).""",
+        system_prompt="You're a project manager. Break down tasks into requirements.",
     )
 
     # Architect in the middle of the chain
     architect = Agent(
         name="architect",
         model=model,
-        system_prompt="""You're a solution architect. When you receive requirements:
-1. Design the solution
-2. Say you're delegating implementation to the developer
-Keep it brief (2 sentences).""",
+        system_prompt="You're a solution architect. Design systems and delegate implementation.",
     )
 
     # Developer at the end of the chain
     developer = Agent(
         name="developer",
         model=model,
-        system_prompt="""You're a developer. When you receive a design:
-1. Describe the implementation approach
-2. Provide a brief code example
-Keep it very concise (3 sentences max).""",
+        system_prompt="You're a developer. Implement solutions with clean code.",
     )
 
     # Create flow with observability
@@ -217,16 +197,13 @@ Keep it very concise (3 sentences max).""",
         )
     )
 
-    # Each agent reacts to requests targeted at them
-    flow.register(pm, on="task.created")
-    flow.register(architect, handles=True)
+    # Declarative chain: PM → Architect → Developer
+    flow.register(pm, on="task.created", can_delegate=["architect"])
+    flow.register(architect, handles=True, can_delegate=["developer"])
     flow.register(developer, handles=True)
 
     # Run
-    await flow.run(
-        "Build a user authentication system",
-        initial_event="task.created",
-    )
+    await flow.run("Build a user authentication system")
 
 
 # =============================================================================
@@ -246,29 +223,26 @@ async def example_4_parallel_delegation():
     coordinator = Agent(
         name="coordinator",
         model=model,
-        system_prompt="""You coordinate multiple specialists. For code review tasks:
-1. Say you're delegating to security, performance, and style reviewers
-2. List what each will check
-Keep it brief (2-3 sentences).""",
+        system_prompt="You coordinate code reviews across multiple dimensions.",
     )
 
     # Multiple reviewers working in parallel
     security_reviewer = Agent(
         name="security_reviewer",
         model=model,
-        system_prompt="You review code for security issues. Be brief (1-2 sentences).",
+        system_prompt="Review code for security vulnerabilities.",
     )
 
     performance_reviewer = Agent(
         name="performance_reviewer",
         model=model,
-        system_prompt="You review code for performance. Be brief (1-2 sentences).",
+        system_prompt="Review code for performance optimization opportunities.",
     )
 
     style_reviewer = Agent(
         name="style_reviewer",
         model=model,
-        system_prompt="You review code style. Be brief (1-2 sentences).",
+        system_prompt="Review code style and best practices.",
     )
 
     # Create flow with observability
@@ -280,17 +254,18 @@ Keep it brief (2-3 sentences).""",
         )
     )
 
-    flow.register(coordinator, on="task.created")
-
-    # All reviewers react to requests for them
+    # Parallel delegation: coordinator → all reviewers
+    flow.register(
+        coordinator,
+        on="task.created",
+        can_delegate=["security_reviewer", "performance_reviewer", "style_reviewer"]
+    )
+    
     for agent in [security_reviewer, performance_reviewer, style_reviewer]:
         flow.register(agent, handles=True)
 
     # Run
-    await flow.run(
-        "Review this authentication code for production",
-        initial_event="task.created",
-    )
+    await flow.run("Review this authentication code for production")
 
 
 # =============================================================================
@@ -310,25 +285,21 @@ async def example_5_request_response_pattern():
     requester = Agent(
         name="requester",
         model=model,
-        system_prompt="""You request data processing. Say:
-1. What you're requesting
-2. Who you're asking
-Be very brief (1 sentence).""",
+        system_prompt="You request data processing tasks.",
     )
 
     # Processor that sends back responses
     processor = Agent(
         name="processor",
         model=model,
-        system_prompt="""You process data and send results back.
-Provide a brief processing result (1-2 sentences).""",
+        system_prompt="You process data and return results.",
     )
 
     # Agent that listens for responses
     response_handler = Agent(
         name="response_handler",
         model=model,
-        system_prompt="You receive processed results. Acknowledge briefly (1 sentence).",
+        system_prompt="You receive and acknowledge processing results.",
     )
 
     # Create flow with observability
@@ -340,15 +311,13 @@ Provide a brief processing result (1-2 sentences).""",
         )
     )
 
-    flow.register(requester, on="task.created")
+    # Declarative request-response pattern
+    flow.register(requester, on="task.created", can_delegate=["processor"])
     flow.register(processor, handles=True)
     flow.register(response_handler, on="agent.response")
 
     # Run
-    await flow.run(
-        "Process customer data",
-        initial_event="task.created",
-    )
+    await flow.run("Process customer data")
 
 
 # =============================================================================

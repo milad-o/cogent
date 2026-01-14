@@ -267,7 +267,7 @@ result = await executor.execute("Complex multi-step task")
 
 ### `agenticflow.topologies` — Multi-Agent Patterns
 
-Coordination patterns for multi-agent workflows.
+Coordination patterns for multi-agent workflows with built-in **A2A delegation**.
 
 | Pattern | Description | Use Case |
 |---------|-------------|----------|
@@ -276,15 +276,30 @@ Coordination patterns for multi-agent workflows.
 | `Mesh` | All agents collaborate in rounds | Brainstorming, consensus |
 | `Hierarchical` | Tree structure with team leads | Large organizations |
 
-```python
-from agenticflow.topologies import Pipeline, AgentConfig
+**A2A Delegation** — Declaratively configure which agents can delegate to others:
 
-pipeline = Pipeline(stages=[
-    AgentConfig(agent=researcher, role="research"),
-    AgentConfig(agent=writer, role="draft"),
-    AgentConfig(agent=editor, role="polish"),
-])
+```python
+from agenticflow.topologies import Supervisor, AgentConfig
+
+supervisor = Supervisor(
+    coordinator=AgentConfig(
+        agent=manager,
+        role="manager",
+        can_delegate=["researcher", "writer"]  # Enable delegation
+    ),
+    workers=[
+        AgentConfig(agent=researcher, role="researcher", can_reply=True),
+        AgentConfig(agent=writer, role="writer", can_reply=True),
+    ]
+)
+
+# Framework auto-injects:
+# - delegate_to tool for manager
+# - reply_with_result tool for workers
+# - Enhanced prompts with delegation instructions
 ```
+
+**See [docs/topologies.md](docs/topologies.md) for delegation examples across all patterns.**
 
 ### `agenticflow.interceptors` — Middleware
 

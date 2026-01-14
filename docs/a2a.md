@@ -1,6 +1,6 @@
 # Agent-to-Agent (A2A) Communication
 
-The A2A module enables direct agent-to-agent delegation and communication within ReactiveFlow. Agents can delegate tasks to each other, wait for responses, and coordinate complex multi-agent workflows.
+The A2A module enables direct agent-to-agent delegation and communication across **all flow types** — both ReactiveFlow and Topologies. Agents can delegate tasks to each other, wait for responses, and coordinate complex multi-agent workflows.
 
 ## Overview
 
@@ -9,14 +9,22 @@ Agent-to-Agent (A2A) communication allows agents to:
 - **Wait for responses** or fire-and-forget
 - **Track requests** with correlation IDs
 - **Handle replies** with success/error status
+- **Configure declaratively** via `can_delegate` and `can_reply` parameters
 
 This enables powerful patterns like coordinator-specialist, chains of delegation, and parallel fan-out.
+
+**Supported in:**
+- ✅ **ReactiveFlow** — Event-driven orchestration
+- ✅ **Supervisor** — Coordinator delegates to workers
+- ✅ **Pipeline** — Stages delegate to specialists
+- ✅ **Mesh** — Collaborative agents with external specialists
+- ✅ **Hierarchical** — Multi-level delegation (coming in Phase 2.3)
 
 ---
 
 ## Quick Start
 
-### Simple Delegation
+### ReactiveFlow Delegation
 
 ```python
 from agenticflow import Agent
@@ -39,14 +47,154 @@ data_analyst = Agent(
 
 flow = ReactiveFlow()
 
-# Simple registration - agent handles requests for itself
-flow.register(coordinator, on="task.created")
-flow.register(data_analyst, handles=True)  # Responds to agent.request for "data_analyst"
+# Declarative delegation configuration
+flow.register(
+    coordinator,
+    on="task.created",
+    can_delegate=["data_analyst"]  # Enable delegation to analyst
+)
+flow.register(
+    data_analyst,
+    handles=True,  # Responds to agent.request for "data_analyst"
+    can_reply=True  # Can send responses back
+)
+
+# Framework auto-injects:
+# - delegate_to tool for coordinator
+# - reply_with_result tool for data_analyst
 
 result = await flow.run(
     "Analyze our sales data from last quarter",
     initial_event="task.created",
 )
+```
+
+### Topology Delegation
+
+```python
+from agenticflow import Agent
+from agenticflow.topologies import Supervisor, AgentConfig
+
+# Create agents
+manager = Agent(name="manager", model=model)
+researcher = Agent(name="researcher", model=model)
+writer = Agent(name="writer", model=model)
+
+# Configure delegation in topology
+supervisor = Supervisor(
+    coordinator=AgentConfig(
+        agent=manager,
+        role="manager",
+        can_delegate=["researcher", "writer"]  # Manager can delegate
+    ),
+    workers=[
+        AgentConfig(agent=researcher, role="researcher", can_reply=True),
+        AgentConfig(agent=writer, role="writer", can_reply=True),
+    ]
+)
+
+# Framework auto-injects tools and enhances prompts
+result = await supervisor.run("Create a market analysis report")
+```
+
+---
+
+## Declarative Delegation Configuration
+
+The framework provides declarative delegation configuration via `can_delegate` and `can_reply` parameters. This works across **all flow types**.
+
+### Configuration Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `can_delegate` | `list[str] \| bool \| None` | Who this agent can delegate to. `True` = all workers/agents |
+| `can_reply` | `bool` | Whether this agent can respond to delegated requests |
+
+### Auto-Injection and Enhancement
+
+When you configure delegation, the framework **automatically**:
+
+1. **Injects tools** — Adds `delegate_to` and `reply_with_result` tools to agent
+2. **Enhances prompts** — Appends delegation instructions to system prompts
+3. **Enforces policy** — Validates delegation targets against allowed list
+
+### ReactiveFlow Example
+
+```python
+flow = ReactiveFlow()
+
+# Coordinator can delegate to specialists
+flow.register(
+    coordinator,
+    on="task.created",
+    can_delegate=["data_analyst", "writer"]  # Allowed targets
+)
+
+# Specialist handles delegated requests
+flow.register(
+    data_analyst,
+    handles=True,  # Subscribes to agent.request:data_analyst
+    can_reply=True  # Can send responses back
+)
+
+# Tools auto-injected:
+# - coordinator gets: delegate_to(target: "data_analyst" | "writer", task, wait)
+# - data_analyst gets: reply_with_result(request_id, result, success, error)
+```
+
+### Topology Example
+
+```python
+from agenticflow.topologies import Supervisor, AgentConfig
+
+supervisor = Supervisor(
+    coordinator=AgentConfig(
+        agent=manager,
+        role="manager",
+        can_delegate=["researcher", "writer"]  # or True for all workers
+    ),
+    workers=[
+        AgentConfig(
+            agent=researcher,
+            role="researcher",
+            can_reply=True,  # Can respond to delegated tasks
+            can_delegate=["fact_checker"]  # Can sub-delegate
+        ),
+        AgentConfig(agent=writer, role="writer", can_reply=True),
+        AgentConfig(agent=fact_checker, role="fact_checker", can_reply=True),
+    ]
+)
+
+# Delegation hierarchy:
+# manager → researcher → fact_checker
+# manager → writer
+```
+
+### Delegation Patterns
+
+**Specific targets** (recommended for security):
+```python
+can_delegate=["specialist1", "specialist2"]
+```
+
+**All workers** (flexible, less restrictive):
+```python
+can_delegate=True  # In topologies: delegates to all workers
+```
+
+**Sub-delegation** (hierarchical):
+```python
+# Worker can delegate to specialist
+AgentConfig(
+    agent=worker,
+    can_reply=True,  # Handles delegated tasks
+    can_delegate=["specialist"]  # Can request help
+)
+```
+
+**Specialist only** (no delegation, only replies):
+```python
+AgentConfig(agent=specialist, can_reply=True)
 ```
 
 ---
@@ -594,9 +742,155 @@ print(result.output)
 
 ---
 
+## Topology Delegation
+
+A2A delegation works across all topology patterns with the same declarative configuration.
+
+### Supervisor Pattern
+
+```python
+from agenticflow.topologies import Supervisor, AgentConfig
+
+supervisor = Supervisor(
+    coordinator=AgentConfig(
+        agent=manager,
+        role="manager",
+        can_delegate=["researcher", "writer"]  # Manager can delegate
+    ),
+    workers=[
+        AgentConfig(agent=researcher, role="researcher", can_reply=True),
+        AgentConfig(agent=writer, role="writer", can_reply=True),
+    ]
+)
+
+result = await supervisor.run("Create a market analysis report")
+```
+
+**Hierarchical Sub-Delegation:**
+
+```python
+supervisor = Supervisor(
+    coordinator=AgentConfig(
+        agent=manager,
+        role="manager",
+        can_delegate=True  # Can delegate to all workers
+    ),
+    workers=[
+        AgentConfig(
+            agent=team_lead,
+            role="team_lead",
+            can_reply=True,
+            can_delegate=["specialist"]  # Can sub-delegate
+        ),
+        AgentConfig(agent=specialist, role="specialist", can_reply=True),
+    ]
+)
+
+# Delegation hierarchy: manager → team_lead → specialist
+```
+
+### Pipeline Pattern
+
+```python
+from agenticflow.topologies import Pipeline, AgentConfig
+
+pipeline = Pipeline(
+    stages=[
+        AgentConfig(agent=researcher, role="research"),
+        AgentConfig(
+            agent=analyzer,
+            role="analyze",
+            can_delegate=["statistician"]  # Can delegate to specialist
+        ),
+        AgentConfig(agent=writer, role="write"),
+        AgentConfig(agent=statistician, role="statistician", can_reply=True),
+    ]
+)
+
+# Stage 2 (analyzer) can delegate complex stats to specialist
+result = await pipeline.run("Analyze survey data and create report")
+```
+
+### Mesh Pattern
+
+```python
+from agenticflow.topologies import Mesh, AgentConfig
+
+mesh = Mesh(
+    agents=[
+        AgentConfig(
+            agent=business_analyst,
+            role="business",
+            can_delegate=["finance_specialist"]
+        ),
+        AgentConfig(agent=tech_analyst, role="tech"),
+        AgentConfig(agent=ux_analyst, role="ux"),
+        AgentConfig(agent=finance_specialist, role="finance", can_reply=True),
+    ],
+    max_rounds=2
+)
+
+# Business analyst can request financial analysis from specialist
+result = await mesh.run("Evaluate new product viability")
+```
+
+### Cross-Topology Patterns
+
+Same agents can participate in different topologies with different policies:
+
+```python
+# In Pipeline: No delegation (linear flow)
+pipeline = Pipeline(stages=[
+    AgentConfig(agent=researcher, role="research"),
+    AgentConfig(agent=writer, role="write"),
+])
+
+# In Supervisor: Analyst coordinates with delegation
+supervisor = Supervisor(
+    coordinator=AgentConfig(
+        agent=analyst,
+        role="coordinator",
+        can_delegate=["researcher", "writer"]
+    ),
+    workers=[
+        AgentConfig(agent=researcher, role="researcher", can_reply=True),
+        AgentConfig(agent=writer, role="writer", can_reply=True),
+    ]
+)
+
+# Same agents, different delegation policies per topology
+```
+
+### Topology Examples
+
+See [examples/topologies/delegation.py](../examples/topologies/delegation.py) for complete examples:
+- Supervisor with hierarchical delegation
+- Pipeline with specialist delegation
+- Mesh with external specialists
+- Dynamic delegation policies
+- Cross-topology delegation patterns
+
+---
+
+## Best Practices
+
+1. **Use declarative configuration** — `can_delegate` and `can_reply` parameters over manual tool injection
+2. **Prefer specific targets** — `can_delegate=["specialist1", "specialist2"]` over `can_delegate=True` for security
+3. **Use synchronous delegation** — `wait=True` for better error handling
+4. **Set appropriate timeouts** — Consider agent complexity
+5. **Handle timeouts gracefully** — Check for `None` response
+6. **Reply with success status** — Always indicate success/failure
+7. **Use observability** — Track delegation chains with Observer
+8. **Design clear hierarchies** — Avoid circular delegation
+9. **Limit delegation depth** — Prevent runaway delegation chains
+10. **Use topology delegation** — Let framework manage multi-agent patterns
+
+---
+
 ## API Reference
 
 See also:
 - [Reactive Module](reactive.md) — Event-driven orchestration
+- [Topologies Module](topologies.md) — Multi-agent coordination patterns
 - [Flow Module](flow.md) — Flow orchestration patterns
 - [Observability](observability.md) — Monitoring and tracing
