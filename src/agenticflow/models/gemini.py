@@ -13,7 +13,7 @@ Usage:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
 from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
