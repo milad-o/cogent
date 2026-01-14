@@ -103,11 +103,13 @@ class PDFVisionLoader(BaseLoader):
         encoding: str = "utf-8",
         output_format: OutputFormat | str = OutputFormat.MARKDOWN,
         dpi: int = 200,
+        verbose: bool | str = False,
     ) -> None:
         super().__init__(encoding=encoding)
         self.model = model
         self.default_output_format: OutputFormat = _parse_output_format(output_format)
         self.default_dpi = dpi
+        self.verbose = verbose
         self._logger = ObservabilityLogger("pdf_vision_loader")
 
     async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
@@ -246,10 +248,18 @@ class PDFVisionLoader(BaseLoader):
             timing["toc"] = toc_info
 
         documents: list[Document] = []
+        
+        # Log start of extraction
+        if self.verbose:
+            print(f"[PDFVisionLoader] Extracting {len(selected_pages)} pages from {pdf_path.name}...")
 
-        for page_number in selected_pages:
+        for idx, page_number in enumerate(selected_pages, 1):
             page_index = page_number - 1
             page = doc.load_page(page_index)
+            
+            if self.verbose:
+                print(f"  [{idx}/{len(selected_pages)}] Processing page {page_number}...", end="", flush=True)
+            
             t_render = time.monotonic()
             png_bytes = _render_page_png(page, dpi=options.dpi)
             render_ms = (time.monotonic() - t_render) * 1000.0
@@ -263,6 +273,9 @@ class PDFVisionLoader(BaseLoader):
                 options=options,
             )
             model_ms = (time.monotonic() - t_model) * 1000.0
+            
+            if self.verbose:
+                print(f" done ({model_ms:.0f}ms)")
 
             if options.timing:
                 timing["pages"].append(
