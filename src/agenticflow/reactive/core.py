@@ -229,36 +229,68 @@ class TriggerBuilder:
         yield self.build()
 
 
-def react_to(pattern: EventPattern) -> TriggerBuilder:
+def react_to(
+    pattern: EventPattern,
+    condition: TriggerCondition | None = None,
+) -> TriggerBuilder | Trigger:
     """
-    Create a trigger builder for the given event pattern.
+    Create a trigger for the given event pattern.
 
-    This is the primary API for defining triggers fluently.
+    This is the primary API for defining triggers.
     Agents "react to" events - hence the name.
 
     Args:
         pattern: Event type, string pattern, or regex to match
+        condition: Optional filter function that returns True if agent should activate
 
     Returns:
-        TriggerBuilder for fluent configuration
+        Trigger if condition provided, TriggerBuilder otherwise (for fluent API)
 
     Example:
         ```python
         # Basic trigger
-        react_to(TraceType.TASK_CREATED)
+        react_to("task.created")
 
         # With condition
+        react_to("agent.request", for_agent("data_analyst"))
+        
+        # Legacy fluent API (still supported)
         react_to("task.*").when(lambda e: e.data.get("priority") == "high")
-
-        # Full chain
-        react_to("research.requested").emits("research.completed").with_priority(5)
         ```
     """
-    return TriggerBuilder(pattern)
+    builder = TriggerBuilder(pattern)
+    if condition is not None:
+        return builder.when(condition).build()
+    return builder
 
 
 # Backward compatibility alias
 on = react_to
+
+
+def for_agent(name: str):
+    """
+    Create a condition that matches agent requests targeted at a specific agent.
+    
+    This is a common pattern for A2A (agent-to-agent) delegation where agents
+    send requests to specific other agents.
+    
+    Args:
+        name: The target agent name to match
+        
+    Returns:
+        A condition function suitable for use with .when()
+        
+    Example:
+        ```python
+        # Agent reacts only to requests for them
+        flow.register(
+            specialist_agent,
+            [react_to("agent.request").when(for_agent("specialist_agent"))]
+        )
+        ```
+    """
+    return lambda e: e.data.get("to_agent") == name
 
 
 def when(condition: TriggerCondition) -> TriggerCondition:

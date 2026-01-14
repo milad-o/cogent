@@ -72,6 +72,7 @@ from agenticflow.reactive.core import (
     TriggerCondition,
     on,  # Backward compat alias
     react_to,
+    for_agent,
     when,
 )
 from agenticflow.reactive.skills import Skill, SkillBuilder, skill
@@ -122,6 +123,17 @@ if TYPE_CHECKING:
         StreamChunk,  # Backward compat alias
     )
 
+    from agenticflow.reactive.a2a import (  # noqa: TC004
+        AgentRequest,
+        AgentResponse,
+        create_request,
+        create_response,
+    )
+
+    from agenticflow.flow.context import (  # noqa: TC004
+        ReactiveContext,
+    )
+
     from agenticflow.reactive.patterns import (  # noqa: TC004
         Chain,
         ChainPattern,
@@ -152,6 +164,7 @@ __all__ = [
     # Builders
     "react_to",
     "on",
+    "for_agent",
     "when",
     # Skills (event-triggered specializations)
     "Skill",
@@ -193,6 +206,12 @@ __all__ = [
     "Saga",
     # Observability
     "Observer",
+    # Agent-to-Agent (A2A) Communication
+    "AgentRequest",
+    "AgentResponse",
+    "ReactiveContext",
+    "create_request",
+    "create_response",
     # Legacy compatibility
     "ChainPattern",
     "FanInPattern",
@@ -276,6 +295,16 @@ _LAZY_STREAMING_EXPORTS: frozenset[str] = frozenset(
     }
 )
 
+_LAZY_A2A_EXPORTS: frozenset[str] = frozenset(
+    {
+        "AgentRequest",
+        "AgentResponse",
+        "ReactiveContext",
+        "create_request",
+        "create_response",
+    }
+)
+
 
 
 def __getattr__(name: str) -> object:
@@ -293,9 +322,15 @@ def __getattr__(name: str) -> object:
         return getattr(module, name)
     if name in _LAZY_CHECKPOINTER_EXPORTS:
         module = import_module("agenticflow.reactive.checkpointer")
+        return getattr(module, name)
     if name in _LAZY_STREAMING_EXPORTS:
         module = import_module("agenticflow.reactive.streaming")
         return getattr(module, name)
+    if name in _LAZY_A2A_EXPORTS:
+        if name in {"AgentRequest", "AgentResponse", "create_request", "create_response"}:
+            module = import_module("agenticflow.reactive.a2a")
+        else:
+            module = import_module("agenticflow.flow.context")
         return getattr(module, name)
     if name in _LAZY_THREADING_EXPORTS:
         module = import_module("agenticflow.reactive.threading")
@@ -315,6 +350,7 @@ def __dir__() -> list[str]:
             *_LAZY_AGENT_EXPORTS,
             *_LAZY_KIT_EXPORTS,
             *_LAZY_STREAMING_EXPORTS,
+            *_LAZY_A2A_EXPORTS,
             *_LAZY_CHECKPOINTER_EXPORTS,
             *_LAZY_THREADING_EXPORTS,
             *_LAZY_OBSERVABILITY_EXPORTS,

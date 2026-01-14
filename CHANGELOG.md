@@ -5,6 +5,68 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-15
+
+### Added
+
+#### Agent Request/Response (A2A) Communication (Phase 2.2)
+
+- **`AgentRequest` and `AgentResponse`**: Dataclasses for structured agent-to-agent communication
+  - `AgentRequest(from_agent, to_agent, task, data, correlation_id)` — Request with correlation tracking
+  - `AgentResponse(from_agent, to_agent, result, data, correlation_id, success, error)` — Response with success/error handling
+  - Automatic correlation ID generation (`uuid.uuid4().hex[:8]`)
+  - Factory functions: `create_request()` and `create_response()`
+  - `to_event()` methods for emitting as events
+
+- **`ExecutionContext.delegate_to()`**: Direct agent-to-agent delegation
+  - `async delegate_to(agent_name, task, data, wait, timeout_ms)` — Delegate task to another agent
+  - Wait for response or fire-and-forget
+  - Timeout support for synchronous delegation
+  - Event queue management for pending responses
+  - Emits `agent.request` events automatically
+
+- **`ExecutionContext.reply()`**: Send responses back to requesting agents
+  - `reply(result, success, error)` — Reply to agent request
+  - Automatic correlation ID tracking
+  - Success/error status handling
+  - Emits `agent.response` events
+
+- **Simplified Registration API**: Intuitive syntax for common A2A patterns
+  - `flow.register(agent, handles=True)` — Agent handles requests for itself (uses `agent.name`)
+  - `flow.register(agent, on="task.created")` — Simple event subscription
+  - `flow.register(agent, on=["event1", "event2"])` — Multiple events
+  - Backward compatible with advanced trigger syntax
+  - No need to import `react_to()` or `for_agent()` for simple cases
+
+- **Tests**: 13/15 passing tests in `tests/test_a2a.py`
+  - AgentRequest/AgentResponse creation and serialization
+  - ExecutionContext delegation and reply
+  - Correlation ID tracking
+  - Wait/timeout behavior (2 tests skipped pending mocks)
+
+- **Examples**: 5 comprehensive examples in [examples/reactive/a2a_delegation.py](examples/reactive/a2a_delegation.py)
+  - Simple delegation: coordinator → specialist
+  - Multi-specialist team: parallel routing by task type
+  - Chain delegation: PM → Architect → Developer
+  - Fan-out delegation: coordinator → multiple reviewers in parallel
+  - Request/response pattern with correlation IDs
+
+- **Documentation**: [docs/a2a_syntax_comparison.md](docs/a2a_syntax_comparison.md) — Syntax evolution and migration guide
+
+### Changed
+
+- **`ReactiveFlow.register()`**: Enhanced with shorthand parameters
+  - Added `on` parameter for simple event subscription
+  - Added `handles` parameter for A2A delegation
+  - `triggers` parameter still supported for advanced usage
+  - Simplified API reduces boilerplate for common patterns
+
+- **Context Consolidation**: Unified ExecutionContext in `flow/context.py`
+  - `ExecutionContext` — Unified context for reactive agents (delegate_to, reply)
+  - `RunContext` — Dependency injection (unchanged, separate purpose)
+  - `ContextStrategy` — Multi-round history for topologies (unchanged, separate purpose)
+  - `ReactiveContext` — Backward compatibility alias for ExecutionContext
+
 ## [1.6.0] - 2026-01-14
 
 ### Added

@@ -75,10 +75,10 @@ class ReactiveFlowResult(FlowResult):
     reactions: list[Reaction] = field(default_factory=list)
     """All agent reactions that occurred."""
 
-    event_history: list[Event] = field(default_factory=list)
+    event_history: list[CoreEvent] = field(default_factory=list)
     """Full event history if enabled."""
 
-    final_event: Event | None = None
+    final_event: CoreEvent | None = None
     """The event that terminated the flow."""
 
     checkpoint_id: str | None = None
@@ -168,7 +168,7 @@ class ReactiveFlow(BaseFlow):
         self.events = CoreEventBus()
         self._agents_registry: dict[str, tuple[Agent, AgentTriggerConfig]] = {}
         self._pending_events: asyncio.Queue[CoreEvent] = asyncio.Queue()
-        self._stop_event: Event | None = None
+        self._stop_event: CoreEvent | None = None
         self._thread_id_resolver = thread_id_resolver
         self._checkpointer = checkpointer
 
@@ -193,16 +193,81 @@ class ReactiveFlow(BaseFlow):
         self,
         agent: Agent,
         triggers: AgentTriggerConfig | list[Trigger | TriggerBuilder] | None = None,
+        *,
+        on: str | list[str] | None = None,
+        handles: str | None = None,
+        when: Callable[[Any], bool] | None = None,
+        priority: int = 0,
+        emits: str | None = None,
     ) -> None:
         """
         Register an agent with its triggers.
 
         Args:
             agent: The agent to register
-            triggers: Trigger configuration or list of triggers
+            triggers: Trigger configuration or list of triggers (legacy advanced usage)
+            on: Event type(s) to react to. Supports patterns like "task.*"
+            handles: For A2A delegation - agent handles requests for this name.
+                    If True or agent name, listens for agent.request events.
+            when: Condition function - only trigger if this returns True
+            priority: Trigger priority - higher values execute first (default: 0)
+            emits: Event to emit after agent completes
+
+        Examples:
+            # Simple event subscription
+            flow.register(coordinator, on="task.created")
+            
+            # Event pattern with wildcard
+            flow.register(monitor, on="task.*")
+            
+            # With condition
+            flow.register(agent, on="order.placed", when=lambda e: e.data.get("value") > 100)
+            
+            # With priority
+            flow.register(urgent_handler, on="alert.*", priority=10)
+            
+            # With auto-emit
+            flow.register(processor, on="task.created", emits="task.processed")
+            
+            # Combined features
+            flow.register(
+                agent,
+                on="order.placed",
+                when=lambda e: e.data.get("urgent"),
+                priority=10,
+                emits="order.processed",
+            )
+            
+            # A2A delegation - agent handles requests for itself
+            flow.register(data_analyst, handles=True)  # uses agent.name
+            
+            # Multiple events
+            flow.register(monitor, on=["task.created", "task.completed"])
         """
+        from agenticflow.reactive.core import react_to, for_agent, Trigger
+        
+        # Build trigger config
         if triggers is None:
             trigger_config = AgentTriggerConfig()
+            
+            # Simple "on" parameter
+            if on is not None:
+                events = [on] if isinstance(on, str) else on
+                for event_type in events:
+                    # Build trigger with optional parameters
+                    trigger = Trigger(
+                        on=event_type,
+                        condition=when,
+                        priority=priority,
+                        emits=emits,
+                    )
+                    trigger_config.add_trigger(trigger)
+            
+            # A2A delegation shorthand
+            if handles is not None:
+                target_name = agent.name if handles is True else handles
+                trigger_config.add_trigger(react_to("agent.request", for_agent(target_name)))
+                
         elif isinstance(triggers, list):
             trigger_config = AgentTriggerConfig()
             for t in triggers:
