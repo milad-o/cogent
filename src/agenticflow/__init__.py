@@ -98,7 +98,7 @@ Multi-Agent Topology:
     ```
 """
 
-__version__ = "1.1.0"
+__version__ = "1.4.0"
 
 # Core enums and utilities
 # Graph API (unified visualization)
