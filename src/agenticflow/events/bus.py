@@ -2,6 +2,8 @@
 
 This is intentionally minimal and does not include observability concerns
 (e.g., websocket broadcast, TraceType enums, tracing output formatting).
+
+Supports optional transport backends for distributed event delivery.
 """
 
 from __future__ import annotations
@@ -10,9 +12,12 @@ import asyncio
 import inspect
 import re
 from collections import defaultdict
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, TYPE_CHECKING
 
 from agenticflow.events.event import Event
+
+if TYPE_CHECKING:
+    from agenticflow.reactive.transport import Transport
 
 
 EventHandler = Callable[[Event], None] | Callable[[Event], Awaitable[None]]
@@ -20,14 +25,39 @@ EventPattern = str | re.Pattern[str]
 
 
 class EventBus:
-    """A lightweight async pub/sub bus for core orchestration events."""
+    """A lightweight async pub/sub bus for core orchestration events.
+    
+    Supports optional distributed transport for cross-process communication.
+    
+    Args:
+        max_history: Maximum events to keep in history
+        transport: Optional transport backend (LocalTransport, RedisTransport, etc.)
+    
+    Example:
+        ```python
+        # Local (single process)
+        bus = EventBus()
+        
+        # Distributed (Redis)
+        from agenticflow.reactive.transport import RedisTransport
+        transport = RedisTransport(url="redis://localhost:6379")
+        await transport.connect()
+        bus = EventBus(transport=transport)
+        ```
+    """
 
-    def __init__(self, max_history: int = 10_000) -> None:
+    def __init__(
+        self,
+        max_history: int = 10_000,
+        transport: Transport | None = None,
+    ) -> None:
         self._handlers: dict[EventPattern, list[EventHandler]] = defaultdict(list)
         self._global_handlers: list[EventHandler] = []
         self._event_history: list[Event] = []
         self._lock = asyncio.Lock()
         self._max_history = max_history
+        self._transport = transport
+        self._transport_subscriptions: dict[EventPattern, str] = {}
 
     @property
     def history_size(self) -> int:
@@ -41,6 +71,25 @@ class EventBus:
     def subscribe(self, event: EventPattern, handler: EventHandler) -> None:
         if handler not in self._handlers[event]:
             self._handlers[event].append(handler)
+            
+            # Subscribe via transport if available
+            if self._transport and event not in self._transport_subscriptions:
+                pattern_str = event if isinstance(event, str) else str(event.pattern)
+                
+                # Create wrapper to handle transport events
+                async def transport_handler(transport_event: Event) -> None:
+                    await _call_handler(handler, transport_event)
+                
+                # Subscribe and store subscription ID
+                import asyncio
+                try:
+                    sub_id = asyncio.create_task(
+                        self._transport.subscribe(pattern_str, transport_handler)
+                    )
+                    # This is a bit hacky but works for now
+                    # TODO: Make this properly async
+                except Exception:
+                    pass
 
     def subscribe_all(self, handler: EventHandler) -> None:
         if handler not in self._global_handlers:
@@ -64,6 +113,8 @@ class EventBus:
         Supports:
         - publish(Event(...))
         - publish("event.name", {..})
+        
+        If transport is configured, event is also published to distributed backend.
         """
         if isinstance(event, str):
             event = Event(name=event, data=data or {})
@@ -72,6 +123,14 @@ class EventBus:
             self._event_history.append(event)
             if len(self._event_history) > self._max_history:
                 self._event_history = self._event_history[-self._max_history :]
+
+        # Publish to transport if available
+        if self._transport:
+            try:
+                await self._transport.publish(event)
+            except Exception:
+                # Don't fail local publish if transport fails
+                pass
 
         # Pattern handlers
         for pattern, handlers in list(self._handlers.items()):

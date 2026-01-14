@@ -60,6 +60,16 @@ print(result.output)
 
 ---
 
+## Event-Driven Architecture
+
+| Module | Description |
+|--------|-------------|
+| [Events](events.md) | Event types, EventBus, event-driven orchestration |
+| [Reactive Flows](reactive.md) | Event-driven reactive agent flows with triggers and reactions |
+| [Transport](transport.md) | Distributed event transport (LocalTransport, RedisTransport) |
+
+---
+
 ## Observability & State
 
 | Module | Description |
