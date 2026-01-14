@@ -14,7 +14,7 @@ from agenticflow.reactive import (
     EventFlowConfig,
     react_to,
 )
-from agenticflow.reactive.checkpointer import (
+from agenticflow.flow.checkpointer import (
     FlowState,
     MemoryCheckpointer,
     FileCheckpointer,

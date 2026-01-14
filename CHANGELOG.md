@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Flow-Level Checkpointing for Imperative Flows
+
+- **Imperative Flow Checkpointing**: Added crash recovery support for `Flow` (Supervisor, Pipeline, Mesh, Hierarchical)
+  - `FlowConfig.checkpoint_every: int` — Save checkpoint after every N steps
+  - `FlowConfig.flow_id: str | None` — Unique flow identifier for checkpoint tracking
+  - `Flow.resume(checkpoint_id)` — Resume execution from a saved checkpoint
+  - Works with all checkpoint backends: `FileCheckpointer`, `MemoryCheckpointer`, `PostgresCheckpointer`
+  - Example: [examples/flow/checkpointing_demo.py](examples/flow/checkpointing_demo.py)
+
+- **Human-in-the-Loop (HITL) for Reactive Flows**: Integrated existing HITL system into `EventFlow`
+  - `ReactionType.AWAIT_HUMAN` — Pause flow and request human approval
+  - `Trigger.breakpoint: Any` — Attach metadata for approval context
+  - `EventFlow.hitl_handler` — Configure approval handler (console, API, etc.)
+  - Emits `flow.paused` and `flow.resumed` events
+  - Example: [examples/reactive/hitl_approval.py](examples/reactive/hitl_approval.py)
+
 #### Persistent Checkpointing for ReactiveFlow
 
 - **`FlowState`**: Serializable snapshot of flow execution state for persistence
@@ -60,6 +76,25 @@ print(f"Flow: {result.flow_id}, Checkpoint: {result.checkpoint_id}")
 state = await checkpointer.load_latest(result.flow_id)
 if state:
     result = await flow.resume(state)
+```
+
+### Changed
+
+#### Checkpointer Module Reorganization (Non-Breaking)
+
+- **Module Location**: Moved checkpointer from `agenticflow.reactive.checkpointer` to `agenticflow.flow.checkpointer`
+  - Reason: Checkpointing is shared infrastructure used by both imperative (`Flow`) and reactive (`EventFlow`) orchestration
+  - Clearer architecture: Flow-level persistence lives in `flow/`, agent-level memory stays in `agent/`
+  - **Backward compatible**: Old imports from `reactive.checkpointer` still work via re-exports
+
+### Migration
+
+```python
+# Recommended (new location)
+from agenticflow.flow.checkpointer import FileCheckpointer, FlowState
+
+# Still works (re-exported for backward compatibility)
+from agenticflow.reactive.checkpointer import FileCheckpointer, FlowState
 ```
 
 ---

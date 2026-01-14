@@ -165,7 +165,7 @@ async def crash_recovery_simulation() -> None:
     checkpointer = MemoryCheckpointer()
     
     # First, create a checkpoint manually (simulating a previous run)
-    from agenticflow.reactive.checkpointer import FlowState
+    from agenticflow.flow.checkpointer import FlowState
     
     saved_state = FlowState(
         flow_id="data-sync-job",
