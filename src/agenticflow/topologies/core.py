@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from agenticflow.flow.delegation import DelegationMixin
+
 if TYPE_CHECKING:
     from ..agent import Agent
     from ..memory import TeamMemory
@@ -28,17 +30,31 @@ class TopologyType(str, Enum):
 
 @dataclass
 class AgentConfig:
-    """Configuration for an agent in a topology."""
+    """Configuration for an agent in a topology.
+    
+    Args:
+        agent: The agent instance
+        name: Optional custom name (defaults to agent.name)
+        role: Role description for this agent in the topology
+        can_delegate: Delegation policy - list of agent names this agent can delegate to
+        can_reply: Whether agent can reply to delegated requests
+        metadata: Additional metadata
+    """
 
     agent: Agent
     name: str | None = None
     role: str | None = None
-    can_delegate_to: list[str] = field(default_factory=list)
+    can_delegate: list[str] | bool | None = None
+    can_reply: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.name is None:
             self.name = getattr(self.agent, "name", "agent")
+        
+        # Legacy support: can_delegate_to → can_delegate
+        if hasattr(self, 'can_delegate_to') and not self.can_delegate:
+            self.can_delegate = getattr(self, 'can_delegate_to')
 
 
 @dataclass
@@ -80,11 +96,14 @@ class TopologyResult:
         return bool(self.output)
 
 
-class BaseTopology(ABC):
+class BaseTopology(ABC, DelegationMixin):
     """Base class for all coordination patterns.
 
     A topology defines how multiple agents work together to accomplish a task.
     Each topology implements a different coordination strategy.
+    
+    Inherits from DelegationMixin to provide A2A delegation capabilities
+    across all topology types.
 
     Example:
         >>> from agenticflow import Agent, ChatModel
@@ -95,13 +114,32 @@ class BaseTopology(ABC):
         >>> writer = Agent(name="writer", model=model)
         >>>
         >>> topology = Supervisor(
-        ...     coordinator=AgentConfig(agent=researcher, role="coordinator"),
-        ...     workers=[AgentConfig(agent=writer, role="content writer")]
+        ...     coordinator=AgentConfig(
+        ...         agent=researcher,
+        ...         role="coordinator",
+        ...         can_delegate=["writer"]  # Enable delegation
+        ...     ),
+        ...     workers=[AgentConfig(
+        ...         agent=writer,
+        ...         role="content writer",
+        ...         can_reply=True  # Can respond to delegated tasks
+        ...     )]
         ... )
         >>> result = await topology.run("Write a blog post about AI")
     """
 
     topology_type: TopologyType
+    
+    def __post_init__(self) -> None:
+        """Configure delegation for all agents in the topology."""
+        # Apply delegation configuration to all agents
+        for agent_config in self.get_agents():
+            if agent_config.can_delegate or agent_config.can_reply:
+                self.configure_delegation(
+                    agent_config.agent,
+                    can_delegate=agent_config.can_delegate,
+                    can_reply=agent_config.can_reply,
+                )
 
     @abstractmethod
     async def run(

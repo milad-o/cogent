@@ -199,9 +199,11 @@ class ReactiveFlow(BaseFlow):
         when: Callable[[Any], bool] | None = None,
         priority: int = 0,
         emits: str | None = None,
+        can_delegate: list[str] | bool | None = None,
+        can_reply: bool | None = None,
     ) -> None:
         """
-        Register an agent with its triggers.
+        Register an agent with its triggers and delegation policy.
 
         Args:
             agent: The agent to register
@@ -212,10 +214,26 @@ class ReactiveFlow(BaseFlow):
             when: Condition function - only trigger if this returns True
             priority: Trigger priority - higher values execute first (default: 0)
             emits: Event to emit after agent completes
+            can_delegate: Delegation policy - list of agent names this agent can delegate to,
+                         or True to allow delegation to any registered specialist.
+                         Framework auto-injects delegate_to tool and enhances prompt.
+            can_reply: Whether agent can reply to delegated requests. Auto-inferred from
+                      handles parameter if not specified. Framework auto-injects
+                      reply_with_result tool and enhances prompt.
 
         Examples:
             # Simple event subscription
             flow.register(coordinator, on="task.created")
+            
+            # Coordinator with explicit delegation policy
+            flow.register(
+                coordinator,
+                on="task.created",
+                can_delegate=["data_analyst", "writer", "researcher"]
+            )
+            
+            # Specialist that handles delegated work
+            flow.register(data_analyst, handles=True)  # auto-sets can_reply=True
             
             # Event pattern with wildcard
             flow.register(monitor, on="task.*")
@@ -237,9 +255,6 @@ class ReactiveFlow(BaseFlow):
                 priority=10,
                 emits="order.processed",
             )
-            
-            # A2A delegation - agent handles requests for itself
-            flow.register(data_analyst, handles=True)  # uses agent.name
             
             # Multiple events
             flow.register(monitor, on=["task.created", "task.completed"])
@@ -274,6 +289,19 @@ class ReactiveFlow(BaseFlow):
                 trigger_config.add_trigger(t)
         else:
             trigger_config = triggers
+
+        # Auto-infer can_reply from handles parameter
+        if can_reply is None and handles is not None:
+            can_reply = True
+
+        # Auto-inject delegation tools and enhance prompts based on policy
+        # Uses inherited configure_delegation() from DelegationMixin (shared with all flow types)
+        self.configure_delegation(
+            agent,
+            can_delegate=can_delegate,
+            can_reply=can_reply or False,
+            trigger_config=trigger_config,
+        )
 
         # Connect agent to the flow's event bus for shared observability
         # This ensures tool events from agents are visible to the observer
@@ -315,10 +343,6 @@ class ReactiveFlow(BaseFlow):
         if isinstance(skill, SkillBuilder):
             skill = skill.build()
         self._skills_registry[skill.name] = skill
-
-    def unregister_skill(self, skill_name: str) -> None:
-        """Remove a skill from the flow."""
-        self._skills_registry.pop(skill_name, None)
 
     @property
     def skills(self) -> list[str]:

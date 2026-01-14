@@ -10,22 +10,120 @@ Topologies define how agents collaborate:
 - **Mesh** - All agents collaborate in rounds until consensus
 - **Hierarchical** - Tree structure with delegation levels
 
+All topologies support **Agent-to-Agent (A2A) delegation** via declarative configuration.
+
 ```python
 from agenticflow import Agent
-from agenticflow.topologies import Supervisor, Pipeline, Mesh
+from agenticflow.topologies import Supervisor, Pipeline, Mesh, AgentConfig
 
 model = ChatModel(model="gpt-4o")
 researcher = Agent(name="researcher", model=model)
 writer = Agent(name="writer", model=model)
 editor = Agent(name="editor", model=model)
 
-# Supervisor pattern
+# Supervisor pattern with delegation
 topology = Supervisor(
-    coordinator=researcher,
-    workers=[writer, editor],
+    coordinator=AgentConfig(
+        agent=researcher,
+        role="researcher",
+        can_delegate=["writer", "editor"]  # Enable delegation
+    ),
+    workers=[
+        AgentConfig(agent=writer, role="writer", can_reply=True),
+        AgentConfig(agent=editor, role="editor", can_reply=True),
+    ],
 )
 result = await topology.run("Create a blog post about AI")
 ```
+
+---
+
+## Agent-to-Agent (A2A) Delegation
+
+All topologies support declarative delegation configuration through `AgentConfig`:
+
+### Configuration Parameters
+
+- **`can_delegate`**: List of agent roles this agent can delegate to, or `True` for all workers
+- **`can_reply`**: Whether this agent can respond to delegated requests
+
+### Auto-Injection
+
+When you configure delegation, the framework automatically:
+1. **Injects tools** - Adds `delegate_to` and `reply_with_result` tools based on policy
+2. **Enhances prompts** - Appends delegation instructions to agent system prompts
+3. **Enforces policy** - Validates delegation targets against allowed list
+
+### Example
+
+```python
+from agenticflow.topologies import Supervisor, AgentConfig
+
+supervisor = Supervisor(
+    coordinator=AgentConfig(
+        agent=manager,
+        role="manager",
+        can_delegate=["researcher", "writer"]  # Manager can delegate to these
+    ),
+    workers=[
+        AgentConfig(
+            agent=researcher,
+            role="researcher",
+            can_reply=True,  # Can respond to delegated tasks
+            can_delegate=["fact_checker"]  # Can delegate to specialist
+        ),
+        AgentConfig(
+            agent=writer,
+            role="writer",
+            can_reply=True
+        ),
+        AgentConfig(
+            agent=fact_checker,
+            role="fact_checker",
+            can_reply=True  # Specialist handles delegated requests
+        ),
+    ]
+)
+
+# Tools auto-injected:
+# - manager gets: delegate_to(target: "researcher" | "writer")
+# - researcher gets: reply_with_result, delegate_to(target: "fact_checker")
+# - writer gets: reply_with_result
+# - fact_checker gets: reply_with_result
+```
+
+### Delegation Patterns
+
+**Coordinator delegates to workers**:
+```python
+can_delegate=["worker1", "worker2"]  # Specific workers
+can_delegate=True  # All workers
+```
+
+**Worker delegates to specialist**:
+```python
+AgentConfig(
+    agent=worker,
+    can_reply=True,  # Handles delegated tasks
+    can_delegate=["specialist"]  # Can request help
+)
+```
+
+**Hierarchical delegation**:
+```python
+# Manager → Team Lead → Specialist
+coordinator=AgentConfig(agent=manager, can_delegate=["team_lead"]),
+workers=[
+    AgentConfig(
+        agent=team_lead,
+        can_reply=True,
+        can_delegate=["specialist"]  # Sub-delegation
+    ),
+    AgentConfig(agent=specialist, can_reply=True),
+]
+```
+
+See [examples/topologies/delegation.py](../examples/topologies/delegation.py) for complete examples across all topology types.
 
 ---
 

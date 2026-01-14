@@ -29,13 +29,19 @@ class Supervisor(BaseTopology):
     1. Analyzes the task and decides which workers to use
     2. Delegates subtasks to workers (parallel or sequential)
     3. Collects results and synthesizes final output
+    
+    Supports A2A delegation when AgentConfig includes can_delegate/can_reply.
 
     Example:
         >>> supervisor = Supervisor(
-        ...     coordinator=AgentConfig(agent=manager, role="project manager"),
+        ...     coordinator=AgentConfig(
+        ...         agent=manager,
+        ...         role="project manager",
+        ...         can_delegate=["researcher", "writer"]  # Enable delegation
+        ...     ),
         ...     workers=[
-        ...         AgentConfig(agent=researcher, role="research"),
-        ...         AgentConfig(agent=writer, role="writing"),
+        ...         AgentConfig(agent=researcher, role="research", can_reply=True),
+        ...         AgentConfig(agent=writer, role="writing", can_reply=True),
         ...     ]
         ... )
         >>> result = await supervisor.run("Create a market analysis report")
@@ -51,6 +57,10 @@ class Supervisor(BaseTopology):
     """Whether to run workers in parallel (True) or sequential (False)."""
 
     topology_type: TopologyType = field(default=TopologyType.SUPERVISOR, init=False)
+    
+    def __post_init__(self) -> None:
+        """Initialize and configure delegation for all agents."""
+        super().__post_init__()  # Apply delegation configuration
 
     async def run(
         self,
@@ -168,13 +178,15 @@ class Pipeline(BaseTopology):
     - Research → Draft → Edit → Polish
     - Extract → Transform → Load
     - Analyze → Plan → Execute → Review
+    
+    Supports A2A delegation when AgentConfig includes can_delegate/can_reply.
 
     Example:
         >>> pipeline = Pipeline(
         ...     stages=[
         ...         AgentConfig(agent=researcher, role="gather information"),
-        ...         AgentConfig(agent=writer, role="draft content"),
-        ...         AgentConfig(agent=editor, role="polish and refine"),
+        ...         AgentConfig(agent=writer, role="draft content", can_delegate=["editor"]),
+        ...         AgentConfig(agent=editor, role="polish and refine", can_reply=True),
         ...     ]
         ... )
         >>> result = await pipeline.run("Create a technical blog post")
@@ -184,6 +196,10 @@ class Pipeline(BaseTopology):
     """Ordered list of agents to process sequentially."""
 
     topology_type: TopologyType = field(default=TopologyType.PIPELINE, init=False)
+    
+    def __post_init__(self) -> None:
+        """Initialize and configure delegation for all agents."""
+        super().__post_init__()  # Apply delegation configuration
 
     async def run(
         self,
@@ -262,11 +278,13 @@ class Mesh(BaseTopology):
     - Peer review and refinement
     - Collaborative problem-solving
     - Multi-perspective analysis
+    
+    Supports A2A delegation when AgentConfig includes can_delegate/can_reply.
 
     Example:
         >>> mesh = Mesh(
         ...     agents=[
-        ...         AgentConfig(agent=analyst1, role="business perspective"),
+        ...         AgentConfig(agent=analyst1, role="business perspective", can_delegate=["specialist"]),
         ...         AgentConfig(agent=analyst2, role="technical perspective"),
         ...         AgentConfig(agent=analyst3, role="user perspective"),
         ...     ],
@@ -293,6 +311,9 @@ class Mesh(BaseTopology):
         # Default to sliding window to prevent context explosion
         if self.context_strategy is None:
             self.context_strategy = SlidingWindowStrategy(max_rounds=3)
+        
+        # Apply delegation configuration from BaseTopology
+        super().__post_init__()
 
     async def run(
         self,

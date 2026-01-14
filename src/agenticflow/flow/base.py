@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from agenticflow.core.utils import generate_id, now_utc
+from agenticflow.flow.delegation import DelegationMixin
 from agenticflow.observability.bus import TraceBus
 from agenticflow.observability.trace_record import Trace, TraceType
 
@@ -93,7 +94,7 @@ class FlowProtocol(Protocol):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-class BaseFlow:
+class BaseFlow(DelegationMixin):
     """
     Abstract base class for all flow implementations.
 
@@ -102,6 +103,7 @@ class BaseFlow:
     - Observer integration for monitoring
     - Observability event emission
     - Graceful stop mechanism
+    - A2A delegation configuration (via DelegationMixin)
 
     Subclasses must implement:
     - `run()`: Execute the flow
