@@ -24,6 +24,7 @@ class ReactionType(Enum):
     EMIT = "emit"  # Agent emits new events
     DELEGATE = "delegate"  # Delegate to sub-agents
     TRANSFORM = "transform"  # Transform event and re-emit
+    AWAIT_HUMAN = "await_human"  # Pause for human input/approval
 
 
 # Type aliases
@@ -93,6 +94,9 @@ class Trigger:
 
     priority: int = 0
     """Higher priority triggers are evaluated first."""
+
+    breakpoint: Any | None = None
+    """Optional HITL breakpoint for human approval/input."""
 
     def matches(self, event: Event) -> bool:
         """

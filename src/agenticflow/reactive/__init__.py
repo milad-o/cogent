@@ -94,7 +94,8 @@ if TYPE_CHECKING:
         ReactiveAgent,
         build_reactive_system_prompt,
     )
-    from agenticflow.reactive.checkpointer import (  # noqa: TC004
+    # Re-export checkpointer from flow module for backward compatibility
+    from agenticflow.flow.checkpointer import (  # noqa: TC004
         Checkpointer,
         FileCheckpointer,
         FlowState,

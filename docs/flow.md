@@ -145,6 +145,8 @@ config = FlowConfig(
     parallel=True,          # Enable parallel execution
     timeout_seconds=300,    # Overall timeout
     fail_fast=True,         # Stop on first error
+    checkpoint_every=1,     # Checkpoint after every N steps (0 = disabled)
+    flow_id="my-flow-001",  # Unique ID for checkpoint tracking
 )
 
 flow = Flow(
@@ -154,6 +156,169 @@ flow = Flow(
     config=config,
 )
 ```
+
+---
+
+## Checkpointing (Crash Recovery)
+
+Enable automatic checkpointing to resume flows after crashes or interruptions:
+
+```python
+from agenticflow import Flow
+from agenticflow.flow import FlowConfig
+from agenticflow.flow.checkpointer import FileCheckpointer
+
+# Create checkpointer
+checkpointer = FileCheckpointer(checkpoint_dir="./checkpoints")
+
+# Configure flow with checkpointing
+config = FlowConfig(
+    checkpoint_every=1,  # Checkpoint after each step
+    flow_id="pipeline-001",  # Unique flow identifier
+)
+
+flow = Flow(
+    name="content-team",
+    agents=[researcher, writer, editor],
+    topology="pipeline",
+    config=config,
+    checkpointer=checkpointer,
+)
+
+# Run flow - automatically saves checkpoints
+result = await flow.run("Create a blog post about AI")
+```
+
+### Resuming from Checkpoint
+
+If a flow crashes or is interrupted, resume from the last checkpoint:
+
+```python
+# List available checkpoints
+checkpoints = await checkpointer.list_checkpoints(flow_id="pipeline-001")
+for cp in checkpoints:
+    print(f"{cp.checkpoint_id}: step {cp.step} - {cp.status}")
+
+# Resume from latest checkpoint
+result = await flow.resume(checkpoint_id=checkpoints[0].checkpoint_id)
+print(f"Resumed and completed: {result.output}")
+
+# Or resume from specific checkpoint
+result = await flow.resume(checkpoint_id="abc123def456")
+```
+
+### Checkpoint Storage Options
+
+#### FileCheckpointer (Default)
+
+Stores checkpoints as JSON files on disk:
+
+```python
+from agenticflow.flow.checkpointer import FileCheckpointer
+
+checkpointer = FileCheckpointer(
+    checkpoint_dir="./checkpoints",  # Directory for checkpoint files
+)
+```
+
+#### PostgresCheckpointer
+
+Stores checkpoints in PostgreSQL database:
+
+```python
+from agenticflow.flow.checkpointer import PostgresCheckpointer
+
+checkpointer = PostgresCheckpointer(
+    connection_string="postgresql://user:pass@localhost/db",
+)
+```
+
+#### MemoryCheckpointer (Testing Only)
+
+Stores checkpoints in memory (lost on process exit):
+
+```python
+from agenticflow.flow.checkpointer import MemoryCheckpointer
+
+checkpointer = MemoryCheckpointer()  # For testing only
+```
+
+### Checkpoint Configuration
+
+Control checkpoint frequency and behavior:
+
+```python
+config = FlowConfig(
+    checkpoint_every=2,  # Save every 2 steps (0 = disabled)
+    flow_id="my-flow-001",  # Required for checkpointing
+)
+
+# Manual checkpoint frequency
+flow = Flow(
+    name="long-pipeline",
+    agents=[agent1, agent2, agent3, agent4, agent5],
+    topology="pipeline",
+    config=FlowConfig(checkpoint_every=2, flow_id="long-001"),
+    checkpointer=checkpointer,
+)
+
+# Checkpoint every step for critical flows
+flow = Flow(
+    name="critical-flow",
+    agents=[...],
+    topology="supervisor",
+    config=FlowConfig(checkpoint_every=1, flow_id="critical-001"),
+    checkpointer=checkpointer,
+)
+```
+
+### Checkpointing Best Practices
+
+1. **Unique Flow IDs**: Use unique `flow_id` for each flow instance
+2. **Checkpoint Frequency**: Balance between safety and performance
+   - `checkpoint_every=1`: Maximum safety, slower
+   - `checkpoint_every=3`: Good balance for most flows
+   - `checkpoint_every=0`: Disabled (no recovery)
+3. **Storage Choice**:
+   - `FileCheckpointer`: Simple, local development
+   - `PostgresCheckpointer`: Production, distributed systems
+   - `MemoryCheckpointer`: Testing only
+4. **Cleanup**: Periodically delete old checkpoints to save space
+
+### Example: Production Pipeline with Checkpointing
+
+```python
+from agenticflow import Agent, Flow
+from agenticflow.flow import FlowConfig
+from agenticflow.flow.checkpointer import PostgresCheckpointer
+
+# Production checkpointer
+checkpointer = PostgresCheckpointer(
+    connection_string=os.getenv("DATABASE_URL"),
+)
+
+# Long-running pipeline with crash recovery
+flow = Flow(
+    name="data-pipeline",
+    agents=[extractor, transformer, validator, loader],
+    topology="pipeline",
+    config=FlowConfig(
+        checkpoint_every=1,  # Save after each agent
+        flow_id=f"data-pipeline-{datetime.now().isoformat()}",
+        timeout_seconds=3600,  # 1 hour timeout
+    ),
+    checkpointer=checkpointer,
+)
+
+try:
+    result = await flow.run("Process daily data batch")
+except Exception as e:
+    # On crash, can resume later
+    logger.error(f"Flow crashed: {e}")
+    # Resume command: flow.resume(checkpoint_id=latest_checkpoint)
+```
+
+For a complete example, see [examples/flow/checkpointing_demo.py](../../examples/flow/checkpointing_demo.py).
 
 ---
 

@@ -27,7 +27,7 @@ from agenticflow.observability.observer import Observer
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
-    from agenticflow.reactive.checkpointer import Checkpointer, FlowState
+    from agenticflow.flow.checkpointer import Checkpointer, FlowState
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -357,7 +357,7 @@ class ReactiveFlow(BaseFlow):
         """
         import time
 
-        from agenticflow.reactive.checkpointer import generate_checkpoint_id
+        from agenticflow.flow.checkpointer import generate_checkpoint_id
 
         start_time = time.perf_counter()
 
@@ -522,7 +522,7 @@ class ReactiveFlow(BaseFlow):
         if not self._checkpointer or not self._flow_id:
             return
 
-        from agenticflow.reactive.checkpointer import FlowState, generate_checkpoint_id
+        from agenticflow.flow.checkpointer import FlowState, generate_checkpoint_id
 
         checkpoint_id = generate_checkpoint_id()
         self._last_checkpoint_id = checkpoint_id
@@ -582,7 +582,7 @@ class ReactiveFlow(BaseFlow):
         """
         import time
 
-        from agenticflow.reactive.checkpointer import generate_flow_id
+        from agenticflow.flow.checkpointer import generate_flow_id
 
         start_time = time.perf_counter()
 

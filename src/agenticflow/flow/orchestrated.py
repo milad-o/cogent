@@ -103,6 +103,12 @@ class FlowConfig:
     verbose: bool = False
     """Enable verbose logging."""
 
+    checkpoint_every: int = 0
+    """Checkpoint after every N steps (0 = disabled, 1 = every step)."""
+
+    flow_id: str | None = None
+    """Fixed flow ID for checkpointing (auto-generated if None)."""
+
     metadata: dict[str, Any] = field(default_factory=dict)
     """Additional metadata."""
 
@@ -199,6 +205,8 @@ class Flow(BaseFlow):
         structure: dict[str, list[Agent]] | None = None,
         # General options
         config: FlowConfig | None = None,
+        # Checkpointing
+        checkpointer: Any | None = None,
         # Observability - simple API
         verbose: VerbosityLevel = False,
         # Observability - advanced API
@@ -278,6 +286,12 @@ class Flow(BaseFlow):
 
         # Internal infrastructure
         self._tool_registry = ToolRegistry()
+        self._checkpointer = checkpointer
+
+        # Flow execution state
+        self._flow_id = self._config.flow_id or f"flow-{name}-{id(self)}"
+        self._step_counter = 0
+        self._checkpoint_data: dict[str, Any] = {}
 
         # Setup
         self._setup_tools()
@@ -444,8 +458,8 @@ class Flow(BaseFlow):
             "flow_name": self.name,
         })
         
-        # Run the topology
-        result = await self._topology.run(task)
+        # Run the topology with checkpointing
+        result = await self._run_with_checkpointing(task)
         
         # Emit output generated event
         self._observe(TraceType.OUTPUT_GENERATED, {
@@ -455,6 +469,106 @@ class Flow(BaseFlow):
         })
         
         return result
+
+    async def _run_with_checkpointing(self, task: str) -> TopologyResult:
+        """Run topology with optional checkpointing."""
+        # If no checkpointer, just run normally
+        if not self._checkpointer or self._config.checkpoint_every == 0:
+            return await self._topology.run(task)
+        
+        # With checkpointing enabled
+        from agenticflow.flow.checkpointer import FlowState
+        from agenticflow.core.utils import generate_id
+        from datetime import datetime, timezone
+        
+        # Create checkpoint before execution
+        if self._config.checkpoint_every > 0:
+            checkpoint_id = generate_id()
+            state = FlowState(
+                flow_id=self._flow_id,
+                checkpoint_id=checkpoint_id,
+                task=task,
+                events_processed=self._step_counter,
+                context=self._checkpoint_data,
+                metadata={
+                    "topology": self._topology_type.value,
+                    "step": self._step_counter,
+                },
+            )
+            await self._checkpointer.save(state)
+        
+        # Execute topology
+        result = await self._topology.run(task)
+        
+        # Create checkpoint after execution
+        self._step_counter += 1
+        if self._config.checkpoint_every > 0 and self._step_counter % self._config.checkpoint_every == 0:
+            checkpoint_id = generate_id()
+            state = FlowState(
+                flow_id=self._flow_id,
+                checkpoint_id=checkpoint_id,
+                task=task,
+                events_processed=self._step_counter,
+                context={
+                    "result": result.output,
+                    "agent_outputs": result.agent_outputs,
+                    "execution_order": result.execution_order,
+                },
+                last_output=result.output,
+                metadata={
+                    "topology": self._topology_type.value,
+                    "step": self._step_counter,
+                    "completed": True,
+                },
+            )
+            await self._checkpointer.save(state)
+        
+        return result
+    
+    async def resume(self, checkpoint_id: str) -> TopologyResult:
+        """Resume flow from a checkpoint.
+        
+        Args:
+            checkpoint_id: The checkpoint ID to resume from
+            
+        Returns:
+            TopologyResult from resumed execution
+            
+        Raises:
+            ValueError: If no checkpointer configured or checkpoint not found
+            
+        Example:
+            ```python
+            # After crash, resume from last checkpoint
+            state = await checkpointer.load_latest(flow_id=\"my-flow\")
+            if state:
+                result = await flow.resume(state.checkpoint_id)
+            ```
+        """
+        if not self._checkpointer:
+            raise ValueError("No checkpointer configured for this flow")
+        
+        # Load checkpoint
+        state = await self._checkpointer.load(checkpoint_id)
+        if not state:
+            raise ValueError(f"Checkpoint {checkpoint_id} not found")
+        
+        # Restore state
+        self._step_counter = state.events_processed
+        self._checkpoint_data = state.context
+        
+        # If already completed, return cached result
+        if state.metadata.get("completed"):
+            from .base import FlowResult
+            return TopologyResult(
+                output=state.last_output,
+                agent_outputs=state.context.get("agent_outputs", {}),
+                execution_order=state.context.get("execution_order", []),
+                metadata={"resumed_from": checkpoint_id},
+            )
+        
+        # Otherwise re-run from the task
+        return await self.run(state.task)
 
     async def stream(self, task: str):
         """

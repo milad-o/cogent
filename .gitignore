@@ -74,4 +74,5 @@ examples/data/pdf_output/pdf_vision_showcase/
 
 # Agent
 .agent/
-
+task.md
+implementation_plan.md

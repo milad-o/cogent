@@ -24,6 +24,7 @@ from agenticflow.events.sources.base import EventSource
 from agenticflow.events.sinks.base import EventSink
 from agenticflow.observability.trace_record import TraceType
 from agenticflow.observability.observer import Observer
+from agenticflow.observability.bus import TraceBus
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -35,6 +36,7 @@ class EventFlowConfig:
     Configuration for event-driven flow execution.
 
     Attributes:
+        flow_id: Unique identifier for this flow (for checkpointing/HITL)
         max_rounds: Maximum event processing rounds (prevents infinite loops)
         max_concurrent_agents: How many agents can run in parallel
         event_timeout: Timeout for waiting on events (seconds)
@@ -43,6 +45,7 @@ class EventFlowConfig:
         stop_events: Event types that signal flow completion
     """
 
+    flow_id: str | None = None
     max_rounds: int = 100
     max_concurrent_agents: int = 10
     event_timeout: float = 30.0
@@ -130,9 +133,10 @@ class EventFlow:
         self,
         *,
         config: EventFlowConfig | None = None,
-        event_bus: ObsTraceBus | None = None,
+        event_bus: TraceBus | None = None,
         observer: Observer | None = None,
         thread_id_resolver: Callable[[CoreEvent, dict[str, Any]], str | None] | None = None,
+        hitl_handler: Any | None = None,
     ) -> None:
         """
         Initialize the event flow.
@@ -141,6 +145,8 @@ class EventFlow:
             config: Flow configuration
             event_bus: Shared event bus (creates new one if not provided)
             observer: Optional observer for monitoring and tracing
+            thread_id_resolver: Optional function to resolve thread_id from events
+            hitl_handler: Optional human-in-the-loop handler for agent interrupts
         """
         self.config = config or EventFlowConfig()
 
@@ -148,13 +154,14 @@ class EventFlow:
         self.events = CoreEventBus()
 
         # Observability bus is for telemetry/subscribers only.
-        self.bus = event_bus or ObsTraceBus()
+        self.bus = event_bus or TraceBus()
         self.observer = observer
         self._agents: dict[str, tuple[Agent, AgentTriggerConfig]] = {}
         self._pending_events: asyncio.Queue[CoreEvent] = asyncio.Queue()
         self._running = False
         self._stop_event: Event | None = None
         self._thread_id_resolver = thread_id_resolver
+        self.hitl_handler = hitl_handler
 
         # Container-like helpers (optional): shared memory and background tasks.
         self._shared_memory: Any | None = None
@@ -653,6 +660,92 @@ class EventFlow:
                 except TypeError:
                     thread_id = self._thread_id_resolver(event)  # type: ignore[misc]
 
+            # Check if trigger requires human approval
+            from agenticflow.reactive.core import ReactionType
+            
+            if trigger.reaction == ReactionType.AWAIT_HUMAN and self.hitl_handler:
+                # Emit flow.paused event
+                await self._emit_event(
+                    "flow.paused",
+                    {"agent": agent.name, "event_id": event.id, "reason": "await_human"},
+                )
+                
+                self._observe(
+                    TraceType.AGENT_INTERRUPTED,
+                    {
+                        "agent": agent.name,
+                        "event_name": event_name,
+                        "reason": "await_human",
+                        "breakpoint": str(trigger.breakpoint) if trigger.breakpoint else None,
+                    },
+                )
+                
+                # Wait for human approval via HITL handler
+                from agenticflow.agent.hitl import PendingAction, InterruptReason
+                pending_action = PendingAction(
+                    action_id=generate_id(),
+                    tool_name=f"{agent.name}.react",
+                    args={"event": event.name, "task": task},
+                    agent_name=agent.name,
+                    reason=InterruptReason.CONFIRMATION,
+                    context=context,
+                )
+                
+                # Use agent's interrupt handler if available, otherwise use flow's
+                handler = getattr(agent, "_interrupt_handler", None) or self.hitl_handler
+                
+                # For now, we'll use the simple approval pattern
+                approved = True
+                if hasattr(handler, "request_approval"):
+                    # Create a simple request object for approval
+                    class SimpleHITLRequest:
+                        def __init__(self, action, event, agent_name, context):
+                            self.breakpoint = trigger.breakpoint
+                            self.event = event
+                            self.agent_name = agent_name
+                            self.context = context
+                            self.pending_action = action
+                    
+                    request = SimpleHITLRequest(pending_action, event, agent.name, context)
+                    try:
+                        approved = await handler.request_approval(request)
+                    except Exception as e:
+                        error = f"HITL approval failed: {e}"
+                        self._observe(
+                            TraceType.AGENT_FAILED,
+                            {"agent": agent.name, "error": error, "trigger_event": event_name},
+                        )
+                        return Reaction(
+                            agent_name=agent.name,
+                            trigger=trigger,
+                            event=event,
+                            output=None,
+                            emitted_events=[],
+                            error=error,
+                        )
+                
+                # Emit flow.resumed event
+                await self._emit_event(
+                    "flow.resumed",
+                    {"agent": agent.name, "event_id": event.id, "approved": approved},
+                )
+                
+                self._observe(
+                    TraceType.AGENT_RESUMED,
+                    {"agent": agent.name, "event_name": event_name, "approved": approved},
+                )
+                
+                if not approved:
+                    # Human rejected the action
+                    return Reaction(
+                        agent_name=agent.name,
+                        trigger=trigger,
+                        event=event,
+                        output="Action rejected by human",
+                        emitted_events=[],
+                        error="human_rejected",
+                    )
+            
             # Prefer a first-class reactive API when the agent provides it.
             if callable(getattr(agent, "react", None)):
                 try:

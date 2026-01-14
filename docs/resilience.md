@@ -358,6 +358,79 @@ Consider:
 
 ## See Also
 
+- [Flow Checkpointing](./flow.md#checkpointing-crash-recovery) - Flow-level crash recovery
 - [tool_resilience.py](./tool_resilience.py) - Complete working examples
 - [docs/observability.md](../../docs/observability.md) - Monitoring and tracing
 - [docs/tools.md](../../docs/tools.md) - Creating tools
+
+---
+
+## Flow-Level Checkpointing
+
+While this document covers **tool-level** resilience (retries, circuit breakers), AgenticFlow also provides **flow-level** checkpointing for crash recovery in multi-agent orchestration.
+
+### Tool Resilience vs Flow Checkpointing
+
+| Feature | Tool Resilience | Flow Checkpointing |
+|---------|----------------|-------------------|
+| **Scope** | Individual tool calls | Entire flow execution |
+| **Purpose** | Handle transient failures | Crash recovery |
+| **Mechanism** | Retry + backoff | Save/resume state |
+| **Use Case** | Flaky APIs, network errors | Long-running pipelines |
+| **Default** | Enabled (3 retries) | Disabled (opt-in) |
+
+### When to Use Each
+
+**Tool Resilience** (this document):
+- API calls fail intermittently
+- Network timeouts
+- Rate limiting errors
+- Temporary service unavailability
+
+**Flow Checkpointing** ([flow.md](./flow.md#checkpointing-crash-recovery)):
+- Long-running multi-agent pipelines
+- Critical workflows that must complete
+- Distributed systems that may crash
+- Expensive computations to avoid re-running
+
+### Quick Example: Combined Resilience
+
+```python
+from agenticflow import Agent, Flow
+from agenticflow.agent.resilience import ResilienceConfig
+from agenticflow.flow import FlowConfig
+from agenticflow.flow.checkpointer import FileCheckpointer
+
+# Agents with tool-level resilience
+researcher = Agent(
+    name="researcher",
+    model=model,
+    tools=[web_search],
+    resilience=ResilienceConfig.aggressive(),  # Retry flaky searches
+)
+
+writer = Agent(
+    name="writer",
+    model=model,
+    resilience=ResilienceConfig(),  # Default resilience
+)
+
+# Flow with crash recovery
+flow = Flow(
+    name="content-pipeline",
+    agents=[researcher, writer],
+    topology="pipeline",
+    config=FlowConfig(
+        checkpoint_every=1,  # Save after each agent
+        flow_id="content-001",
+    ),
+    checkpointer=FileCheckpointer(),
+)
+
+# Benefits:
+# - Transient API failures auto-retry (tool resilience)
+# - Flow crashes can resume from checkpoint (flow checkpointing)
+result = await flow.run("Create article about AI")
+```
+
+See [Flow Checkpointing](./flow.md#checkpointing-crash-recovery) for full documentation and [examples/flow/checkpointing_demo.py](../../examples/flow/checkpointing_demo.py) for a working example.
