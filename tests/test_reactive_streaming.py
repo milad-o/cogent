@@ -1,21 +1,14 @@
 """Tests for ReactiveFlow streaming support."""
 
-import sys
-from pathlib import Path
+import os
 
 import pytest
-
-# Add examples directory to path for config
-sys.path.insert(0, str(Path(__file__).parent.parent / "examples"))
 
 from agenticflow import Agent
 from agenticflow.reactive import ReactiveFlow, react_to, ReactiveStreamChunk
 
-try:
-    from config import get_model
-    HAS_LLM = True
-except Exception:
-    HAS_LLM = False
+# Check if LLM is configured
+HAS_LLM = bool(os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
 
 
 pytestmark = pytest.mark.asyncio
@@ -26,7 +19,9 @@ def model():
     """Get real LLM model."""
     if not HAS_LLM:
         pytest.skip("No LLM configuration available")
-    return get_model()
+    
+    from agenticflow.models import ChatModel
+    return ChatModel(model="gpt-4o-mini")
 
 
 @pytest.fixture
