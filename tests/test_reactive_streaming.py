@@ -1,26 +1,38 @@
 """Tests for ReactiveFlow streaming support."""
 
 import os
+from pathlib import Path
 
 import pytest
 
-from agenticflow import Agent
+from agenticflow import Agent, ChatModel
 from agenticflow.reactive import ReactiveFlow, react_to, ReactiveStreamChunk
-
-# Check if LLM is configured
-HAS_LLM = bool(os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
 
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def model():
-    """Get real LLM model."""
-    if not HAS_LLM:
-        pytest.skip("No LLM configuration available")
-    
-    from agenticflow.models import ChatModel
+def openai_api_key():
+    """Get OpenAI API key from environment or tests/.env file."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        # Try loading from tests/.env
+        env_file = Path(__file__).parent / ".env"
+        if env_file.exists():
+            content = env_file.read_text().strip()
+            if content.startswith("OPENAI_API_KEY="):
+                api_key = content.split("=", 1)[1].strip()
+                # Set it in environment for the ChatModel to pick up
+                os.environ["OPENAI_API_KEY"] = api_key
+    if not api_key:
+        pytest.skip("OPENAI_API_KEY not set (create tests/.env with your key)")
+    return api_key
+
+
+@pytest.fixture
+def model(openai_api_key):
+    """Create ChatModel with OpenAI."""
     return ChatModel(model="gpt-4o-mini")
 
 
