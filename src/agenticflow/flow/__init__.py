@@ -69,6 +69,12 @@ from agenticflow.flow.reactive import (
     EventFlowResult,
 )
 
+# Execution context (shared by both flow types)
+from agenticflow.flow.context import (
+    ExecutionContext,
+    ReactiveContext,  # Backward compatibility alias
+)
+
 __all__ = [
     # Base
     "BaseFlow",
@@ -85,6 +91,9 @@ __all__ = [
     "ReactiveFlow",
     "ReactiveFlowConfig",
     "ReactiveFlowResult",
+    # Execution Context
+    "ExecutionContext",
+    "ReactiveContext",  # Backward compatibility
     # Backward compatibility
     "EventFlow",
     "EventFlowConfig",

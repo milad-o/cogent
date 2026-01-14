@@ -66,6 +66,7 @@ print(result.output)
 |--------|-------------|
 | [Events](events.md) | Event types, EventBus, event-driven orchestration |
 | [Reactive Flows](reactive.md) | Event-driven reactive agent flows with triggers and reactions |
+| [A2A Communication](a2a.md) | Agent-to-agent delegation and coordination patterns |
 | [Streaming](streaming.md) | Real-time token streaming from ReactiveFlow executions |
 | [Transport](transport.md) | Distributed event transport (LocalTransport, RedisTransport) |
 

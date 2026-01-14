@@ -8,7 +8,7 @@ ReactiveFlow enables agents to respond to events as they happen, forming process
 
 ```python
 from agenticflow import Agent
-from agenticflow.reactive import ReactiveFlow, react_to, skill
+from agenticflow.reactive import ReactiveFlow
 
 model = get_model()
 
@@ -17,8 +17,10 @@ classifier = Agent(name="classifier", model=model)
 analyst = Agent(name="analyst", model=model)
 
 flow = ReactiveFlow()
-flow.register(classifier, [react_to("ticket.created")])
-flow.register(analyst, [react_to("classification.done")])
+
+# Simple registration
+flow.register(classifier, on="ticket.created")
+flow.register(analyst, on="classification.done")
 
 result = await flow.run(
     "Classify and analyze this ticket",
@@ -29,31 +31,103 @@ result = await flow.run(
 
 ---
 
-## Triggers
+## Agent Registration
 
-Agents register with triggers that define when they react:
+### Simple Syntax (Recommended)
+
+The simple syntax supports all features through direct parameters:
+
+```python
+# Basic event subscription
+flow.register(agent, on="order.placed")
+
+# Event patterns with wildcards
+flow.register(monitor, on="task.*")
+
+# Multiple events
+flow.register(monitor, on=["order.placed", "order.shipped", "order.delivered"])
+
+# With condition filter
+flow.register(
+    agent,
+    on="order.placed",
+    when=lambda e: e.data.get("value") > 100,
+)
+
+# With priority (higher executes first)
+flow.register(urgent_handler, on="alert.*", priority=10)
+
+# Auto-emit event after completion
+flow.register(processor, on="order.placed", emits="order.processed")
+
+# Combined features
+flow.register(
+    agent,
+    on="order.placed",
+    when=lambda e: e.data.get("urgent"),
+    priority=10,
+    emits="order.processed",
+)
+
+# A2A: Agent handles requests for itself (see A2A docs)
+flow.register(specialist, handles=True)
+```
+
+### Registration Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `on` | `str \| list[str]` | `None` | Event type(s) to react to. Supports wildcards like `"task.*"` |
+| `handles` | `str \| bool` | `None` | For A2A - if `True`, uses `agent.name`; if string, uses that name |
+| `when` | `Callable[[Event], bool]` | `None` | Condition function - only trigger if returns `True` |
+| `priority` | `int` | `0` | Higher priority triggers execute first |
+| `emits` | `str` | `None` | Event to emit after agent completes |
+
+### Legacy Triggers API
+
+For backward compatibility, the `triggers` parameter still works:
 
 ```python
 from agenticflow.reactive import react_to
 
-# Simple event name
-flow.register(agent, [react_to("order.placed")])
-
-# With condition
-flow.register(agent, [
-    react_to("order.placed").when(lambda e: e.data.get("value") > 100)
-])
-
-# Emit new event after reaction
-flow.register(agent, [
-    react_to("order.placed").emits("order.processed")
-])
-
-# Priority (higher runs first)
-flow.register(agent, [
-    react_to("order.placed").with_priority(10)
+# Legacy fluent API
+flow.register(agent, triggers=[
+    react_to("order.placed")
+        .when(lambda e: e.data.get("value") > 100)
+        .with_priority(10)
+        .emits("order.processed")
 ])
 ```
+
+**Recommendation**: Use the simple parameter-based syntax instead.
+
+---
+
+## Agent-to-Agent (A2A) Communication
+
+Agents can delegate tasks to each other within ReactiveFlow:
+
+```python
+coordinator = Agent(name="coordinator", model=model)
+data_analyst = Agent(name="data_analyst", model=model)
+
+flow = ReactiveFlow()
+flow.register(coordinator, on="task.created")
+flow.register(data_analyst, handles=True)  # Handles agent.request for "data_analyst"
+
+# Coordinator can delegate to data_analyst
+result = await flow.run(
+    "Analyze our sales data",
+    initial_event="task.created",
+)
+```
+
+**See [A2A Documentation](a2a.md) for complete guide on:**
+- Agent delegation patterns
+- Request/Response tracking
+- ExecutionContext API
+- Wait vs fire-and-forget
+- Common coordination patterns
 
 ---
 
@@ -260,13 +334,15 @@ It is important to distinguish between **Agent Memory** and **Flow Checkpointing
 
 ## ReactiveFlow API
 
-
 ### Constructor
 
 ```python
 ReactiveFlow(
-    observer: Observer | None = None,  # Observability
-    max_rounds: int = 10,              # Maximum processing rounds
+    config: ReactiveFlowConfig | None = None,
+    event_bus: Any | None = None,
+    observer: Observer | None = None,
+    thread_id_resolver: Callable | None = None,
+    checkpointer: Checkpointer | None = None,
 )
 ```
 
@@ -274,17 +350,37 @@ ReactiveFlow(
 
 | Method | Description |
 |--------|-------------|
-| `register(agent, triggers)` | Register agent with triggers |
+| `register(agent, on, handles, when, priority, emits, triggers)` | Register agent with triggers |
 | `register_skill(skill)` | Register a skill |
 | `unregister_skill(name)` | Remove a skill |
-| `run(task, initial_event, initial_data)` | Execute reactive flow |
+| `run(task, initial_event, initial_data, context)` | Execute reactive flow |
+| `run_streaming(task, initial_event, initial_data, context)` | Execute with streaming output |
+| `resume(state, context)` | Resume from checkpoint |
+| `emit(event_name, data)` | Manually emit an event |
+
+### Registration Parameters
+
+```python
+flow.register(
+    agent,
+    on=None,              # Event type(s) - str or list[str], supports wildcards
+    handles=None,         # A2A: True or agent name
+    when=None,            # Condition function
+    priority=0,           # Trigger priority (higher first)
+    emits=None,           # Event to emit after completion
+    triggers=None,        # Legacy: list of Trigger objects
+)
+```
 
 ### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `skills` | `list[Skill]` | Registered skills |
-| `agents` | `list[Agent]` | Registered agents |
+| `agents` | `list[str]` | Names of registered agents |
+| `skills` | `list[str]` | Names of registered skills |
+| `flow_id` | `str \| None` | Current flow ID |
+| `last_checkpoint_id` | `str \| None` | Most recent checkpoint |
+| `memory` | `Any \| None` | Shared memory if configured |
 
 ---
 
@@ -311,9 +407,19 @@ escalator = Agent(name="escalator", model=model, instructions="Handle escalation
 # Flow setup
 flow = ReactiveFlow()
 flow.register_skill(urgent_skill)
-flow.register(classifier, [react_to("ticket.created").emits("ticket.classified")])
-flow.register(responder, [react_to("ticket.classified").when(lambda e: not e.data.get("escalate"))])
-flow.register(escalator, [react_to("ticket.classified").when(lambda e: e.data.get("escalate"))])
+
+# Simple registration with parameters
+flow.register(classifier, on="ticket.created")
+flow.register(
+    responder,
+    on="ticket.classified",
+    when=lambda e: not e.data.get("escalate"),
+)
+flow.register(
+    escalator,
+    on="ticket.classified",
+    when=lambda e: e.data.get("escalate"),
+)
 
 # Run
 result = await flow.run(
@@ -322,3 +428,11 @@ result = await flow.run(
     initial_data={"ticket_id": "T-456", "priority": "urgent"},
 )
 ```
+
+---
+
+## Related Documentation
+
+- **[A2A Communication](a2a.md)** — Agent-to-agent delegation and coordination
+- **[Observability](observability.md)** — Monitoring and tracing reactive flows
+- **[Flow Module](flow.md)** — Higher-level flow orchestration patterns
