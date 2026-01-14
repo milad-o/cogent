@@ -108,6 +108,14 @@ if TYPE_CHECKING:
         RetryBudget,
         emit_later,
     )
+    from agenticflow.reactive.transport import (  # noqa: TC004
+        Transport,
+        LocalTransport,
+        RedisTransport,
+        TransportError,
+        ConnectionError,
+        PublishError,
+    )
 
     from agenticflow.reactive.patterns import (  # noqa: TC004
         Chain,

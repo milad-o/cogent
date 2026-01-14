@@ -30,6 +30,7 @@ dependencies = [
     "azure-ai-inference>=1.0.0b9",
     "google-genai>=1.57.0",
     "openai>=1.0.0",
+    "redis>=7.1.0",
 ]
 
 [project.optional-dependencies]
@@ -54,12 +55,16 @@ document = [
 mcp = ["mcp>=1.22.0", "websockets>=15.0.1"]
 web = ["beautifulsoup4>=4.14.2", "ddgs>=9.9.1"]
 
+# --- Distributed & Infrastructure ---
+redis = ["redis>=5.0.0"]
+distributed = ["redis>=5.0.0"]  # Can extend with nats-py in future
+
 # --- Bundles ---
 all-providers = [
     "agenticflow[anthropic,azure,cohere,groq]",
 ]
 all = [
-    "agenticflow[all-providers,analytics,api,browser,document,mcp,web]",
+    "agenticflow[all-providers,analytics,api,browser,document,mcp,web,distributed]",
 ]
 
 # --- Benchmarking (for comparisons, not production) ---
