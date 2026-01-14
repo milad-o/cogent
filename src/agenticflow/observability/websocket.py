@@ -11,20 +11,18 @@ import json
 from typing import TYPE_CHECKING
 
 from agenticflow.observability.trace_record import TraceType
-from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.observability.trace_record import Trace
+from agenticflow.core.utils import generate_id
 
 if TYPE_CHECKING:
     from agenticflow.observability.bus import TraceBus
 
 # Check for websockets availability
-try:
-    import websockets
-    from websockets.asyncio.server import serve
+import importlib.util
 
-    WEBSOCKET_AVAILABLE = True
-except ImportError:
-    WEBSOCKET_AVAILABLE = False
+WEBSOCKET_AVAILABLE = importlib.util.find_spec("websockets") is not None
+
+if WEBSOCKET_AVAILABLE:
+    from websockets.asyncio.server import serve
 
 
 class WebSocketServer:

@@ -21,7 +21,6 @@ from agenticflow.graph.primitives import (
     Graph,
     Node,
     NodeShape,
-    NodeStyle,
     Subgraph,
 )
 

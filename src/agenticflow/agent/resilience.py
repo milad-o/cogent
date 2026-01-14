@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable
 
-from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
     from agenticflow.observability.progress import ProgressTracker

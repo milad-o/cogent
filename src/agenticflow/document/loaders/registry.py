@@ -8,7 +8,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     
     from agenticflow.document.loaders.base import BaseLoader
-    from agenticflow.document.types import Document
 
 
 # Global registry of loaders

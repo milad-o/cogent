@@ -50,7 +50,7 @@ from typing import (
 from agenticflow.core.messages import AIMessage
 
 if TYPE_CHECKING:
-    from agenticflow.agent.base import Agent
+    pass
 
 
 class StreamTraceType(Enum):

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from agenticflow.events.event import Event
 
 if TYPE_CHECKING:
-    from agenticflow.agent.base import Agent
+    pass
 
 
 class ReactionType(Enum):

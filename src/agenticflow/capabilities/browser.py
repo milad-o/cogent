@@ -23,10 +23,8 @@ Example:
 
 from __future__ import annotations
 
-import asyncio
 import base64
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -160,12 +158,8 @@ class Browser(BaseCapability):
         self._page: Any = None
         
         # Check for playwright
-        self._has_playwright = False
-        try:
-            import playwright
-            self._has_playwright = True
-        except ImportError:
-            pass
+        import importlib.util
+        self._has_playwright = importlib.util.find_spec("playwright") is not None
     
     def _require_playwright(self) -> None:
         """Ensure playwright is available."""

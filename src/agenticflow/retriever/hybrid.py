@@ -6,7 +6,7 @@ then by content within matching documents. Can wrap any retriever.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -15,7 +15,6 @@ from agenticflow.vectorstore import Document
 
 if TYPE_CHECKING:
     from agenticflow.retriever.base import Retriever
-    from agenticflow.vectorstore import VectorStore
 
 
 class MetadataMatchMode(Enum):

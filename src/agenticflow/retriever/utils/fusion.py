@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from agenticflow.retriever.base import FusionStrategy, RetrievalResult
 
 if TYPE_CHECKING:
-    from agenticflow.vectorstore import Document
+    pass
 
 
 def fuse_results(

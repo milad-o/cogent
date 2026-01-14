@@ -34,7 +34,7 @@ from agenticflow.interceptors.base import (
 )
 
 if TYPE_CHECKING:
-    from agenticflow.models.base import BaseChatModel
+    pass
 
 
 class FailoverTrigger(Enum):

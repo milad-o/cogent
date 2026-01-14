@@ -182,7 +182,7 @@ class MCP(BaseCapability):
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event through the agent's event bus if available."""
         if self._agent and hasattr(self._agent, "event_bus") and self._agent.event_bus:
-            from agenticflow.observability.trace_record import Trace, TraceType
+            from agenticflow.observability.trace_record import TraceType
             try:
                 agent_id = self._agent.id if hasattr(self._agent, "id") else None
                 event = Event(
@@ -631,7 +631,6 @@ class MCP(BaseCapability):
 
     async def _discover_tools(self, session: ClientSession, server_name: str) -> None:
         """Discover tools from an MCP server."""
-        from mcp import types
 
         tools_response = await session.list_tools()
         discovered_tool_names = []
@@ -768,9 +767,8 @@ class MCP(BaseCapability):
 
     def _build_args_schema(self, tool_name: str, input_schema: dict[str, Any]) -> type | None:
         """Build a Pydantic model for tool arguments from JSON schema."""
-        from typing import Any as TypingAny
 
-        from pydantic import BaseModel, Field, create_model
+        from pydantic import Field, create_model
 
         properties = input_schema.get("properties", {})
         required = set(input_schema.get("required", []))

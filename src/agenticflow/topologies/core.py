@@ -6,7 +6,6 @@ No external dependencies - just pure async Python.
 
 from __future__ import annotations
 
-import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -15,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ..agent import Agent
     from ..memory import TeamMemory
-    from ..graph import GraphView, TopologyGraph
+    from ..graph import GraphView
 
 
 class TopologyType(str, Enum):

@@ -46,8 +46,8 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, auto
-from typing import Any, Callable, Iterator, TextIO
+from enum import Enum
+from typing import Any, Callable, TextIO
 
 from agenticflow.core.utils import generate_id, now_utc
 

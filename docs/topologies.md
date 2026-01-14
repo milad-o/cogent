@@ -239,6 +239,112 @@ topology = mesh(
 
 ---
 
+## Context Strategies
+
+Prevent context explosion in multi-round topologies with pluggable strategies.
+
+**Problem:** With 5 agents × 10 rounds, you'd pass 25,000+ tokens of history!
+
+```python
+from agenticflow.topologies import (
+    Mesh,
+    SlidingWindowStrategy,
+    SummarizationStrategy,
+    StructuredHandoffStrategy,
+    BlackboardStrategy,
+    RetrievalStrategy,
+)
+```
+
+### Strategy Overview
+
+| Strategy | Description | LLM Calls |
+|----------|-------------|-----------|
+| `SlidingWindowStrategy` | Keep only last N rounds | None |
+| `SummarizationStrategy` | LLM-compress older rounds | Yes (cached) |
+| `RetrievalStrategy` | VectorStore + semantic search | None |
+| `StructuredHandoffStrategy` | Extract decisions/findings as JSON | Yes |
+| `BlackboardStrategy` | Read/write specific Memory keys | None |
+
+### SlidingWindowStrategy (Default)
+
+Keep only the last N rounds of history:
+
+```python
+mesh = Mesh(
+    agents=[analyst1, analyst2],
+    max_rounds=10,
+    context_strategy=SlidingWindowStrategy(max_rounds=3),  # Only last 3 rounds
+)
+```
+
+### SummarizationStrategy
+
+Summarize older rounds, keep recent ones in full:
+
+```python
+mesh = Mesh(
+    agents=[analyst1, analyst2],
+    context_strategy=SummarizationStrategy(
+        model=model,
+        keep_full_rounds=2,     # Keep last 2 rounds in full
+        max_summary_tokens=200,  # Summary size
+    ),
+)
+```
+
+### StructuredHandoffStrategy
+
+Extract structured data (decisions, findings) instead of raw text:
+
+```python
+mesh = Mesh(
+    agents=[analyst1, analyst2],
+    context_strategy=StructuredHandoffStrategy(
+        model=model,
+        max_items_per_category=5,
+    ),
+)
+# Passes: {"decisions": [...], "findings": [...], "questions": [...]}
+```
+
+### RetrievalStrategy
+
+Store outputs in VectorStore, retrieve only relevant context:
+
+```python
+from agenticflow.vectorstore import VectorStore
+
+vs = VectorStore()
+mesh = Mesh(
+    agents=[analyst1, analyst2],
+    context_strategy=RetrievalStrategy(vectorstore=vs, k=5),
+)
+```
+
+### BlackboardStrategy
+
+Use shared Memory as a blackboard:
+
+```python
+from agenticflow.memory import Memory
+
+memory = Memory()
+mesh = Mesh(
+    agents=[analyst1, analyst2],
+    context_strategy=BlackboardStrategy(
+        memory=memory,
+        keys=["decisions", "findings"],
+    ),
+)
+```
+
+### Example
+
+See [examples/topologies/context_strategies.py](../examples/topologies/context_strategies.py) for a complete demo.
+
+---
+
 ## Hierarchical
 
 Tree structure with delegation at each level:
@@ -436,3 +542,14 @@ decisions = await team_memory.recall("decisions")
 | `TopologyConfig` | Global topology configuration |
 | `TopologyResult` | Result from topology execution |
 | `TopologyType` | Enum of topology types |
+
+### Context Strategies
+
+| Class | Description |
+|-------|-------------|
+| `SlidingWindowStrategy` | Keep only last N rounds |
+| `SummarizationStrategy` | LLM-compress older rounds |
+| `RetrievalStrategy` | VectorStore + semantic search |
+| `StructuredHandoffStrategy` | Extract decisions/findings as JSON |
+| `BlackboardStrategy` | Read/write specific Memory keys |
+| `CompositeStrategy` | Combine multiple strategies |

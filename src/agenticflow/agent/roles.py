@@ -37,7 +37,7 @@ from typing import TYPE_CHECKING, Any
 from agenticflow.core.enums import AgentRole, get_role_capabilities
 
 if TYPE_CHECKING:
-    from agenticflow.agent.base import Agent
+    pass
 
 
 # =============================================================================

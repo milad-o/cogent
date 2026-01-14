@@ -10,7 +10,6 @@ import time
 import statistics
 from dataclasses import dataclass, field
 from typing import Any
-from collections.abc import Callable
 from contextlib import contextmanager
 from collections import defaultdict
 

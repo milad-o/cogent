@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TextIO
 
 from agenticflow.observability.trace_record import TraceType
-from agenticflow.observability.trace_record import Trace
 
 
 class ConsoleEventHandler:

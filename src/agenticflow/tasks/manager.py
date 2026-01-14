@@ -8,8 +8,8 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.enums import Priority, TaskStatus
-from agenticflow.core.utils import generate_id, now_utc
-from agenticflow.observability.trace_record import Trace, TraceType
+from agenticflow.core.utils import generate_id
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.tasks.task import Task
 
 if TYPE_CHECKING:

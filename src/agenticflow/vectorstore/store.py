@@ -35,7 +35,7 @@ async def _emit_event(event_type: str, data: dict[str, Any]) -> None:
     """Emit an event to the global event bus if available."""
     try:
         from agenticflow.observability.bus import get_event_bus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from agenticflow.observability.trace_record import TraceType
         
         bus = get_event_bus()
         event = Event(

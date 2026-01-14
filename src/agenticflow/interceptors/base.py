@@ -11,7 +11,7 @@ They enable cross-cutting concerns like:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
     from agenticflow.context import RunContext
-    from agenticflow.core.message import Message
 
 
 class Phase(Enum):

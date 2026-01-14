@@ -4,7 +4,7 @@ ToolRegistry - extensible registry for agent tools.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Callable
 
 from agenticflow.tools.base import BaseTool
 

@@ -39,7 +39,6 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from agenticflow.flow.base import BaseFlow
 from agenticflow.observability.bus import TraceBus
-from agenticflow.observability.handlers import ConsoleEventHandler
 from agenticflow.tools.base import BaseTool
 from agenticflow.tools.registry import ToolRegistry
 from agenticflow.topologies import (

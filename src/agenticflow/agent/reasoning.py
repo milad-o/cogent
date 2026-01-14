@@ -60,7 +60,7 @@ from enum import Enum
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from agenticflow.agent.base import Agent
+    pass
 
 
 class ReasoningStyle(str, Enum):

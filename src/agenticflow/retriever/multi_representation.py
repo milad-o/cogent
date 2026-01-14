@@ -12,7 +12,6 @@ Query routing selects the best representation based on query type.
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
