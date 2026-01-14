@@ -10,7 +10,7 @@ import asyncio
 import inspect
 import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable
 
 from agenticflow.flow.base import BaseFlow, FlowResult
 from agenticflow.reactive.core import (
@@ -751,6 +751,292 @@ class ReactiveFlow(BaseFlow):
             flow_id=self._flow_id,
         )
 
+    async def run_streaming(
+        self,
+        task: str,
+        *,
+        initial_event: str = "task.created",
+        initial_data: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> AsyncIterator[Any]:
+        """
+        Execute the event-driven flow with streaming output.
+
+        Similar to run(), but yields ReactiveStreamChunk objects as agents
+        process events, providing real-time token-by-token output.
+
+        Args:
+            task: The task/prompt to execute
+            initial_event: Event type to emit at start
+            initial_data: Additional data for initial event
+            context: Shared context available to all agents
+
+        Yields:
+            ReactiveStreamChunk: Streaming chunks from agent executions
+
+        Example:
+            ```python
+            async for chunk in flow.run_streaming("Research quantum computing"):
+                print(f"[{chunk.agent_name}] {chunk.content}", end="", flush=True)
+                if chunk.is_final:
+                    print()  # Newline after agent completes
+            ```
+        """
+        from agenticflow.reactive.streaming import ReactiveStreamChunk
+
+        # Initialize flow state (same as run())
+        from agenticflow.flow.checkpointer import generate_flow_id
+
+        self._flow_id = self.config.flow_id or generate_flow_id()
+        self._last_checkpoint_id = None
+        self._running = True
+        self._stop_event = None
+
+        context = context or {}
+
+        # Observe flow start
+        self._observe(TraceType.USER_INPUT, {"content": task, "source": "reactive_flow"})
+        self._observe(
+            TraceType.REACTIVE_FLOW_STARTED,
+            {
+                "task": task[:200],
+                "initial_event": initial_event,
+                "agents": list(self._agents_registry.keys()),
+                "streaming": True,
+            },
+        )
+
+        # Emit initial event
+        initial = CoreEvent(
+            name=initial_event,
+            data={"task": task, **(initial_data or {})},
+        )
+        await self._pending_events.put(initial)
+        await self.events.publish(initial)
+        await self._bus.publish(initial_event, {"task": task, **(initial_data or {})})
+
+        self._observe(
+            TraceType.REACTIVE_EVENT_EMITTED,
+            {"event_name": initial_event, "event_id": initial.id},
+        )
+
+        # Process events with streaming
+        rounds = 0
+
+        try:
+            while self._running and rounds < self.config.max_rounds:
+                rounds += 1
+
+                self._observe(
+                    TraceType.REACTIVE_ROUND_STARTED,
+                    {"round": rounds, "pending_events": self._pending_events.qsize()},
+                )
+
+                # Get next event
+                try:
+                    event = await asyncio.wait_for(
+                        self._pending_events.get(),
+                        timeout=self.config.event_timeout,
+                    )
+                except asyncio.TimeoutError:
+                    if self.config.stop_on_idle:
+                        break
+                    continue
+
+                event_name = event.name
+
+                self._observe(
+                    TraceType.REACTIVE_EVENT_PROCESSED,
+                    {"event_name": event_name, "event_id": event.id, "round": rounds},
+                )
+
+                # Check for stop events
+                if event_name in self.config.stop_events:
+                    self._stop_event = event
+                    break
+
+                # Stream agent executions
+                async for chunk in self._process_event_streaming(
+                    event=event,
+                    task=task,
+                    context=context,
+                ):
+                    yield chunk
+
+                self._observe(
+                    TraceType.REACTIVE_ROUND_COMPLETED,
+                    {"round": rounds},
+                )
+
+                # Stop if queue is empty
+                if self._pending_events.empty() and self.config.stop_on_idle:
+                    break
+
+        except Exception as e:
+            self._observe(
+                TraceType.REACTIVE_FLOW_FAILED,
+                {"error": str(e), "rounds": rounds},
+            )
+            raise
+
+        finally:
+            self._running = False
+            await self.cancel_spawned()
+
+        self._observe(
+            TraceType.REACTIVE_FLOW_COMPLETED,
+            {"rounds": rounds, "flow_id": self._flow_id},
+        )
+
+    async def _process_event_streaming(
+        self,
+        event: CoreEvent,
+        task: str,
+        context: dict[str, Any],
+    ) -> AsyncIterator[Any]:
+        """
+        Process event with streaming - yields chunks from agent executions.
+
+        Args:
+            event: The event to process
+            task: Original task
+            context: Shared context
+
+        Yields:
+            ReactiveStreamChunk from triggered agents
+        """
+        from agenticflow.reactive.streaming import ReactiveStreamChunk
+
+        # Find matching agents
+        matching: list[tuple[Agent, Trigger]] = []
+        for agent, trigger_config in self._agents_registry.values():
+            for trigger in trigger_config.get_matching_triggers(event):
+                matching.append((agent, trigger))
+
+        if not matching:
+            self._observe(
+                TraceType.REACTIVE_NO_MATCH,
+                {"event_name": event.name, "event_id": event.id},
+            )
+            return
+
+        # Execute agents with streaming (sequential for now to preserve order)
+        for agent, trigger in matching:
+            async for chunk in self._execute_agent_streaming(
+                agent=agent,
+                trigger=trigger,
+                event=event,
+                task=task,
+                context=context,
+            ):
+                yield chunk
+
+    async def _execute_agent_streaming(
+        self,
+        agent: Agent,
+        trigger: Trigger,
+        event: CoreEvent,
+        task: str,
+        context: dict[str, Any],
+    ) -> AsyncIterator[Any]:
+        """
+        Execute agent with streaming enabled.
+
+        Args:
+            agent: The agent to execute
+            trigger: The trigger that activated it
+            event: The triggering event
+            task: Original task
+            context: Shared context
+
+        Yields:
+            ReactiveStreamChunk with agent output
+        """
+        from agenticflow.reactive.streaming import ReactiveStreamChunk
+
+        event_name = event.name
+
+        self._observe(
+            TraceType.REACTIVE_AGENT_TRIGGERED,
+            {
+                "agent": agent.name,
+                "trigger_event": event_name,
+                "trigger_on": str(trigger.on),
+                "event_id": event.id,
+            },
+        )
+
+        try:
+            thread_id: str | None = None
+            if self._thread_id_resolver is not None:
+                try:
+                    thread_id = self._thread_id_resolver(event, context)
+                except TypeError:
+                    thread_id = self._thread_id_resolver(event)  # type: ignore[misc]
+
+            # Skill injection (same as non-streaming)
+            matching_skills = self._get_matching_skills(event)
+            skill_context = dict(context)
+            added_tools: list[str] = []
+
+            for skill in matching_skills:
+                self._observe(
+                    TraceType.SKILL_ACTIVATED,
+                    {"skill": skill.name, "agent": agent.name, "trigger_event": event_name},
+                )
+                skill_context = skill.enrich_context(event, skill_context)
+                for tool_fn in skill.tools:
+                    tool_name = getattr(tool_fn, "name", None) or tool_fn.__name__
+                    try:
+                        agent.add_tool(tool_fn)
+                        added_tools.append(tool_name)
+                    except Exception:
+                        pass
+
+            # Stream agent execution
+            prompt = self._build_prompt(event, task, skill_context, matching_skills)
+            
+            # Use agent's streaming capability
+            async for agent_chunk in agent.run(prompt, context=skill_context, thread_id=thread_id, stream=True):
+                # Convert agent StreamChunk to ReactiveStreamChunk
+                yield ReactiveStreamChunk.from_agent_chunk(
+                    chunk=agent_chunk,
+                    agent_name=agent.name,
+                    event_id=event.id,
+                    event_name=event_name,
+                    round=None,  # Could add round tracking if needed
+                )
+
+            # Cleanup skill tools
+            for tool_name in added_tools:
+                try:
+                    agent.remove_tool(tool_name)
+                except Exception:
+                    pass
+
+            # Handle emit reaction
+            if trigger.emits:
+                emitted_event = CoreEvent(name=trigger.emits, data={"agent": agent.name})
+                await self._pending_events.put(emitted_event)
+                await self.events.publish(emitted_event)
+                await self._bus.publish(trigger.emits, {"agent": agent.name})
+
+        except Exception as e:
+            self._observe(
+                TraceType.REACTIVE_AGENT_FAILED,
+                {"agent": agent.name, "error": str(e), "event_id": event.id},
+            )
+            # Still yield error as final chunk
+            yield ReactiveStreamChunk(
+                agent_name=agent.name,
+                event_id=event.id,
+                event_name=event_name,
+                content=f"[Error: {str(e)}]",
+                delta=f"[Error: {str(e)}]",
+                is_final=True,
+                finish_reason="error",
+                metadata={"error": str(e)},
+            )
 
     async def _process_event(
         self,

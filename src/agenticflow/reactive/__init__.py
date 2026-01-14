@@ -116,6 +116,11 @@ if TYPE_CHECKING:
         ConnectionError,
         PublishError,
     )
+    
+    from agenticflow.reactive.streaming import (  # noqa: TC004
+        ReactiveStreamChunk,
+        StreamChunk,  # Backward compat alias
+    )
 
     from agenticflow.reactive.patterns import (  # noqa: TC004
         Chain,
@@ -264,6 +269,13 @@ _LAZY_CHECKPOINTER_EXPORTS: frozenset[str] = frozenset(
 
 _LAZY_OBSERVABILITY_EXPORTS: frozenset[str] = frozenset({"Observer"})
 
+_LAZY_STREAMING_EXPORTS: frozenset[str] = frozenset(
+    {
+        "ReactiveStreamChunk",
+        "StreamChunk",
+    }
+)
+
 
 
 def __getattr__(name: str) -> object:
@@ -281,6 +293,9 @@ def __getattr__(name: str) -> object:
         return getattr(module, name)
     if name in _LAZY_CHECKPOINTER_EXPORTS:
         module = import_module("agenticflow.reactive.checkpointer")
+    if name in _LAZY_STREAMING_EXPORTS:
+        module = import_module("agenticflow.reactive.streaming")
+        return getattr(module, name)
         return getattr(module, name)
     if name in _LAZY_THREADING_EXPORTS:
         module = import_module("agenticflow.reactive.threading")
@@ -299,6 +314,7 @@ def __dir__() -> list[str]:
             *_LAZY_PATTERNS_EXPORTS,
             *_LAZY_AGENT_EXPORTS,
             *_LAZY_KIT_EXPORTS,
+            *_LAZY_STREAMING_EXPORTS,
             *_LAZY_CHECKPOINTER_EXPORTS,
             *_LAZY_THREADING_EXPORTS,
             *_LAZY_OBSERVABILITY_EXPORTS,
