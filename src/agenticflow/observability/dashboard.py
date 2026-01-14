@@ -6,15 +6,15 @@ and activity for monitoring and debugging.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 from collections.abc import Callable
 
 from agenticflow.core import now_utc
-from agenticflow.observability.tracer import Tracer, Span
+from agenticflow.observability.tracer import Tracer
 from agenticflow.observability.metrics import MetricsCollector
-from agenticflow.observability.logger import ObservabilityLogger, LogLevel
+from agenticflow.observability.logger import ObservabilityLogger
 
 
 @dataclass

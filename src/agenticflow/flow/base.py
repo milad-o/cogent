@@ -6,7 +6,6 @@ for all flow types (imperative and reactive).
 
 from __future__ import annotations
 
-import asyncio
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
@@ -16,7 +15,6 @@ from agenticflow.observability.bus import TraceBus
 from agenticflow.observability.trace_record import Trace, TraceType
 
 if TYPE_CHECKING:
-    from agenticflow.agent.base import Agent
     from agenticflow.observability.observer import Observer
 
 

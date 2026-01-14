@@ -66,6 +66,16 @@ Convenience Functions:
 
 from .core import AgentConfig, BaseTopology, TopologyConfig, TopologyResult, TopologyType
 from .patterns import Hierarchical, Mesh, Pipeline, Supervisor, mesh, pipeline, supervisor
+from .context import (
+    ContextStrategy,
+    SlidingWindowStrategy,
+    SummarizationStrategy,
+    RetrievalStrategy,
+    StructuredHandoffStrategy,
+    StructuredHandoff,
+    BlackboardStrategy,
+    CompositeStrategy,
+)
 
 __all__ = [
     # Core classes
@@ -83,4 +93,14 @@ __all__ = [
     "supervisor",
     "pipeline",
     "mesh",
+    # Context strategies
+    "ContextStrategy",
+    "SlidingWindowStrategy",
+    "SummarizationStrategy",
+    "RetrievalStrategy",
+    "StructuredHandoffStrategy",
+    "StructuredHandoff",
+    "BlackboardStrategy",
+    "CompositeStrategy",
 ]
+

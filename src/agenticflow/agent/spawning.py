@@ -42,7 +42,6 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
-from uuid import uuid4
 
 from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc

@@ -12,7 +12,6 @@ import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
-from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.flow.base import BaseFlow, FlowResult
 from agenticflow.reactive.core import (
     AgentTriggerConfig,
@@ -23,7 +22,7 @@ from agenticflow.reactive.core import (
 from agenticflow.reactive.skills import Skill, SkillBuilder
 from agenticflow.events.bus import EventBus as CoreEventBus
 from agenticflow.events.event import Event as CoreEvent
-from agenticflow.observability.trace_record import Trace, TraceType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.observability.observer import Observer
 
 if TYPE_CHECKING:

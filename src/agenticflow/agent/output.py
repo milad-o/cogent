@@ -36,7 +36,6 @@ from dataclasses import dataclass, field, is_dataclass, fields as dataclass_fiel
 from enum import Enum
 from typing import (
     Any,
-    Callable,
     Generic,
     TypeVar,
     Union,

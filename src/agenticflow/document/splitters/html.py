@@ -41,11 +41,11 @@ class HTMLSplitter(BaseSplitter):
     
     def split_text(self, text: str) -> list[Document]:
         """Split HTML by tags."""
-        # Try to use BeautifulSoup
-        try:
-            from bs4 import BeautifulSoup
+        # Try to use BeautifulSoup if available
+        import importlib.util
+        if importlib.util.find_spec("bs4") is not None:
             return self._split_with_bs4(text)
-        except ImportError:
+        else:
             return self._split_with_regex(text)
     
     def _split_with_bs4(self, text: str) -> list[Document]:

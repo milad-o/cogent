@@ -175,7 +175,6 @@ from agenticflow.core.enums import (
     TaskStatus,
     get_role_capabilities,
 )
-from agenticflow.core.message import Message, MessageType
 from agenticflow.core.utils import generate_id, now_utc
 
 # Core orchestration events (separate from observability)
@@ -399,6 +398,7 @@ __all__ = [
     # Core enums
     "TaskStatus",
     "AgentStatus",
+    "Trace",
     "TraceType",
     "Priority",
     "AgentRole",
@@ -407,9 +407,6 @@ __all__ = [
     "generate_id",
     "now_utc",
     # Models
-    "Event",
-    "Message",
-    "MessageType",
     "Task",
     # Agents
     "Agent",

@@ -26,7 +26,6 @@ import ast
 import contextlib
 import io
 import signal
-import sys
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

@@ -24,10 +24,7 @@ Example:
 from __future__ import annotations
 
 import csv
-import io
-import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -141,20 +138,9 @@ class Spreadsheet(BaseCapability):
         self.max_file_size_mb = max_file_size_mb
         
         # Check for optional dependencies
-        self._has_openpyxl = False
-        self._has_pandas = False
-        
-        try:
-            import openpyxl
-            self._has_openpyxl = True
-        except ImportError:
-            pass
-        
-        try:
-            import pandas
-            self._has_pandas = True
-        except ImportError:
-            pass
+        import importlib.util
+        self._has_openpyxl = importlib.util.find_spec("openpyxl") is not None
+        self._has_pandas = importlib.util.find_spec("pandas") is not None
     
     def _validate_path(self, path: str | Path) -> Path:
         """Validate that path is within allowed directories."""

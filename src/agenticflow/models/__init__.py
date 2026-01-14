@@ -342,6 +342,7 @@ __all__ = [
     "BaseEmbedding",
     # Utilities
     "convert_messages",
+    "normalize_input",
     "is_native_model",
     # OpenAI models (also aliased as ChatModel/EmbeddingModel)
     "OpenAIChat",

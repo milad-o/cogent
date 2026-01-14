@@ -14,7 +14,6 @@ from agenticflow.interceptors.base import (
     Interceptor,
     InterceptContext,
     InterceptResult,
-    Phase,
 )
 
 

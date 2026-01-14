@@ -83,13 +83,11 @@ from typing import Any, Callable, TextIO, TYPE_CHECKING
 
 from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc, to_local
-from agenticflow.observability.trace_record import Trace
 from agenticflow.observability.progress import (
     OutputConfig,
     ProgressTracker,
     Verbosity,
     OutputFormat,
-    ProgressStyle,
     Styler,
     Colors,
 )
