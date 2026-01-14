@@ -27,6 +27,7 @@ from agenticflow.observability.observer import Observer
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
+    from agenticflow.reactive.checkpointer import Checkpointer, FlowState
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -41,6 +42,8 @@ class ReactiveFlowConfig:
         enable_history: Whether to record all events for debugging
         stop_on_idle: Stop when no more events to process
         stop_events: Event types that signal flow completion
+        flow_id: Optional fixed flow ID (auto-generated if None)
+        checkpoint_every: Checkpoint after every N rounds (0 = disabled)
     """
 
     max_rounds: int = 100
@@ -49,6 +52,9 @@ class ReactiveFlowConfig:
     enable_history: bool = True
     stop_on_idle: bool = True
     stop_events: frozenset[str] = frozenset({"flow.completed", "flow.failed"})
+    flow_id: str | None = None
+    checkpoint_every: int = 0  # 0 = disabled, 1 = every round, etc.
+
 
 
 # Backward compatibility alias
@@ -74,6 +80,13 @@ class ReactiveFlowResult(FlowResult):
 
     final_event: Event | None = None
     """The event that terminated the flow."""
+
+    checkpoint_id: str | None = None
+    """Last checkpoint ID if checkpointing was enabled."""
+
+    flow_id: str | None = None
+    """Flow ID for this execution."""
+
 
 
 # Backward compatibility alias
@@ -135,6 +148,7 @@ class ReactiveFlow(BaseFlow):
         event_bus: Any | None = None,
         observer: Observer | None = None,
         thread_id_resolver: Callable[[CoreEvent, dict[str, Any]], str | None] | None = None,
+        checkpointer: Checkpointer | None = None,
     ) -> None:
         """
         Initialize the reactive flow.
@@ -143,6 +157,7 @@ class ReactiveFlow(BaseFlow):
             config: Flow configuration
             event_bus: Shared event bus (creates new one if not provided)
             observer: Optional observer for monitoring and tracing
+            checkpointer: Optional checkpointer for persistent state
         """
         # Initialize base class
         # BaseFlow bus remains observability-only.
@@ -155,6 +170,7 @@ class ReactiveFlow(BaseFlow):
         self._pending_events: asyncio.Queue[CoreEvent] = asyncio.Queue()
         self._stop_event: Event | None = None
         self._thread_id_resolver = thread_id_resolver
+        self._checkpointer = checkpointer
 
         # Container-like helpers (optional): shared memory and background tasks.
         self._shared_memory: Any | None = None
@@ -162,6 +178,11 @@ class ReactiveFlow(BaseFlow):
 
         # Skills registry: event-triggered behavioral specializations
         self._skills_registry: dict[str, Skill] = {}
+
+        # Current flow execution state (for checkpointing)
+        self._flow_id: str | None = None
+        self._last_checkpoint_id: str | None = None
+
 
     @property
     def agents(self) -> list[str]:
@@ -300,6 +321,245 @@ class ReactiveFlow(BaseFlow):
         """Shared memory configured via `with_memory()` (if any)."""
         return self._shared_memory
 
+    @property
+    def flow_id(self) -> str | None:
+        """Current flow ID (set during run)."""
+        return self._flow_id
+
+    @property
+    def last_checkpoint_id(self) -> str | None:
+        """Most recent checkpoint ID (if checkpointing enabled)."""
+        return self._last_checkpoint_id
+
+    async def resume(
+        self,
+        state: FlowState,
+        *,
+        context: dict[str, Any] | None = None,
+    ) -> ReactiveFlowResult:
+        """
+        Resume a flow from a checkpoint.
+
+        Args:
+            state: The flow state to resume from
+            context: Optional context override (uses checkpoint context if not provided)
+
+        Returns:
+            ReactiveFlowResult with output and execution details
+
+        Example:
+            ```python
+            # After crash, resume from last checkpoint
+            state = await checkpointer.load_latest("my-flow-id")
+            if state:
+                result = await flow.resume(state)
+            ```
+        """
+        import time
+
+        from agenticflow.reactive.checkpointer import generate_checkpoint_id
+
+        start_time = time.perf_counter()
+
+        # Restore flow ID
+        self._flow_id = state.flow_id
+        self._running = True
+        self._stop_event = None
+
+        # Restore state
+        task = state.task
+        rounds = state.round
+        events_processed = state.events_processed
+        last_output = state.last_output
+        context = context if context is not None else dict(state.context)
+
+        # Restore reactions (convert from dicts)
+        reactions: list[Reaction] = []
+        # Note: We don't restore full Reaction objects as they contain
+        # non-serializable Trigger objects. Start fresh from checkpoint.
+
+        # Restore pending events
+        for event_dict in state.pending_events:
+            event = CoreEvent(
+                id=event_dict.get("id", ""),
+                name=event_dict.get("name", ""),
+                data=event_dict.get("data", {}),
+            )
+            await self._pending_events.put(event)
+
+        self._observe(
+            TraceType.REACTIVE_FLOW_STARTED,
+            {
+                "task": task[:200],
+                "resumed_from": state.checkpoint_id,
+                "agents": list(self._agents_registry.keys()),
+                "round": rounds,
+            },
+        )
+
+        error: Exception | None = None
+
+        try:
+            while self._running and rounds < self.config.max_rounds:
+                rounds += 1
+
+                self._observe(
+                    TraceType.REACTIVE_ROUND_STARTED,
+                    {"round": rounds, "pending_events": self._pending_events.qsize()},
+                )
+
+                # Get next event (with timeout)
+                try:
+                    event = await asyncio.wait_for(
+                        self._pending_events.get(),
+                        timeout=self.config.event_timeout,
+                    )
+                except asyncio.TimeoutError:
+                    if self.config.stop_on_idle:
+                        break
+                    continue
+
+                events_processed += 1
+                event_name = event.name
+
+                self._observe(
+                    TraceType.REACTIVE_EVENT_PROCESSED,
+                    {"event_name": event_name, "event_id": event.id, "round": rounds},
+                )
+
+                # Check for stop events
+                if event_name in self.config.stop_events:
+                    self._stop_event = event
+                    break
+
+                # Find and execute matching agents
+                agent_reactions = await self._process_event(
+                    event=event,
+                    task=task,
+                    context=context,
+                )
+                reactions.extend(agent_reactions)
+
+                # Track last successful output
+                for reaction in agent_reactions:
+                    if reaction.output and not reaction.error:
+                        last_output = reaction.output
+
+                # Checkpoint if enabled
+                if self._checkpointer and self.config.checkpoint_every > 0:
+                    if rounds % self.config.checkpoint_every == 0:
+                        await self._save_checkpoint(
+                            task=task,
+                            rounds=rounds,
+                            events_processed=events_processed,
+                            last_output=last_output,
+                            context=context,
+                            reactions=reactions,
+                        )
+
+                self._observe(
+                    TraceType.REACTIVE_ROUND_COMPLETED,
+                    {
+                        "round": rounds,
+                        "reactions": len(agent_reactions),
+                        "total_reactions": len(reactions),
+                    },
+                )
+
+                # If no agents matched and queue is empty, we're done
+                if not agent_reactions and self._pending_events.empty():
+                    if self.config.stop_on_idle:
+                        break
+
+        except Exception as e:
+            error = e
+            self._observe(
+                TraceType.REACTIVE_FLOW_FAILED,
+                {"error": str(e), "rounds": rounds, "events_processed": events_processed},
+            )
+            raise
+
+        finally:
+            self._running = False
+            await self.cancel_spawned()
+
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+        if not error:
+            self._observe(
+                TraceType.REACTIVE_FLOW_COMPLETED,
+                {
+                    "output_length": len(last_output),
+                    "events_processed": events_processed,
+                    "reactions": len(reactions),
+                    "rounds": rounds,
+                    "execution_time_ms": elapsed_ms,
+                },
+            )
+
+        return EventFlowResult(
+            output=last_output,
+            events_processed=events_processed,
+            reactions=reactions,
+            event_history=self._bus._event_history.copy() if self.config.enable_history else [],
+            final_event=self._stop_event,
+            execution_time_ms=elapsed_ms,
+            checkpoint_id=self._last_checkpoint_id,
+            flow_id=self._flow_id,
+        )
+
+    async def _save_checkpoint(
+        self,
+        *,
+        task: str,
+        rounds: int,
+        events_processed: int,
+        last_output: str,
+        context: dict[str, Any],
+        reactions: list[Reaction],
+    ) -> None:
+        """Save current flow state to checkpoint."""
+        if not self._checkpointer or not self._flow_id:
+            return
+
+        from agenticflow.reactive.checkpointer import FlowState, generate_checkpoint_id
+
+        checkpoint_id = generate_checkpoint_id()
+        self._last_checkpoint_id = checkpoint_id
+
+        # Drain pending events to list (and re-queue)
+        pending_list: list[dict[str, Any]] = []
+        temp_events: list[CoreEvent] = []
+        while not self._pending_events.empty():
+            try:
+                ev = self._pending_events.get_nowait()
+                temp_events.append(ev)
+                pending_list.append({"id": ev.id, "name": ev.name, "data": ev.data})
+            except asyncio.QueueEmpty:
+                break
+        # Re-queue
+        for ev in temp_events:
+            await self._pending_events.put(ev)
+
+        state = FlowState(
+            flow_id=self._flow_id,
+            checkpoint_id=checkpoint_id,
+            task=task,
+            events_processed=events_processed,
+            pending_events=pending_list,
+            context=context,
+            reactions=[],  # Don't serialize reactions (contain non-serializable Triggers)
+            last_output=last_output,
+            round=rounds,
+        )
+
+        await self._checkpointer.save(state)
+
+        self._observe(
+            TraceType.REACTIVE_ROUND_STARTED,  # Reuse existing trace type
+            {"checkpoint_saved": checkpoint_id, "round": rounds},
+        )
+
     async def run(
         self,
         task: str,
@@ -322,7 +582,13 @@ class ReactiveFlow(BaseFlow):
         """
         import time
 
+        from agenticflow.reactive.checkpointer import generate_flow_id
+
         start_time = time.perf_counter()
+
+        # Initialize flow ID
+        self._flow_id = self.config.flow_id or generate_flow_id()
+        self._last_checkpoint_id = None
 
         # Initialize state
         self._running = True
@@ -331,6 +597,7 @@ class ReactiveFlow(BaseFlow):
         events_processed = 0
         last_output = ""
         context = context or {}
+
 
         # Observe: user input received
         self._observe(
@@ -417,6 +684,18 @@ class ReactiveFlow(BaseFlow):
                     if reaction.output and not reaction.error:
                         last_output = reaction.output
 
+                # Checkpoint if enabled
+                if self._checkpointer and self.config.checkpoint_every > 0:
+                    if rounds % self.config.checkpoint_every == 0:
+                        await self._save_checkpoint(
+                            task=task,
+                            rounds=rounds,
+                            events_processed=events_processed,
+                            last_output=last_output,
+                            context=context,
+                            reactions=reactions,
+                        )
+
                 self._observe(
                     TraceType.REACTIVE_ROUND_COMPLETED,
                     {
@@ -430,6 +709,7 @@ class ReactiveFlow(BaseFlow):
                 if not agent_reactions and self._pending_events.empty():
                     if self.config.stop_on_idle:
                         break
+
 
         except Exception as e:
             error = e
@@ -467,7 +747,10 @@ class ReactiveFlow(BaseFlow):
             event_history=self._bus._event_history.copy() if self.config.enable_history else [],
             final_event=self._stop_event,
             execution_time_ms=elapsed_ms,
+            checkpoint_id=self._last_checkpoint_id,
+            flow_id=self._flow_id,
         )
+
 
     async def _process_event(
         self,

@@ -94,11 +94,20 @@ if TYPE_CHECKING:
         ReactiveAgent,
         build_reactive_system_prompt,
     )
+    from agenticflow.reactive.checkpointer import (  # noqa: TC004
+        Checkpointer,
+        FileCheckpointer,
+        FlowState,
+        MemoryCheckpointer,
+        generate_checkpoint_id,
+        generate_flow_id,
+    )
     from agenticflow.reactive.kit import (  # noqa: TC004
         IdempotencyGuard,
         RetryBudget,
         emit_later,
     )
+
     from agenticflow.reactive.patterns import (  # noqa: TC004
         Chain,
         ChainPattern,
@@ -142,6 +151,13 @@ __all__ = [
     "EventFlow",
     "EventFlowConfig",
     "EventFlowResult",
+    # Checkpointing
+    "Checkpointer",
+    "FlowState",
+    "MemoryCheckpointer",
+    "FileCheckpointer",
+    "generate_checkpoint_id",
+    "generate_flow_id",
     # Reactive agent helper
     "ReactiveAgent",
     "build_reactive_system_prompt",
@@ -172,6 +188,7 @@ __all__ = [
     "SagaPattern",
     "SagaStep",
 ]
+
 
 
 _LAZY_FLOW_EXPORTS: frozenset[str] = frozenset(
@@ -225,7 +242,19 @@ _LAZY_KIT_EXPORTS: frozenset[str] = frozenset(
     }
 )
 
+_LAZY_CHECKPOINTER_EXPORTS: frozenset[str] = frozenset(
+    {
+        "Checkpointer",
+        "FlowState",
+        "MemoryCheckpointer",
+        "FileCheckpointer",
+        "generate_checkpoint_id",
+        "generate_flow_id",
+    }
+)
+
 _LAZY_OBSERVABILITY_EXPORTS: frozenset[str] = frozenset({"Observer"})
+
 
 
 def __getattr__(name: str) -> object:
@@ -240,6 +269,9 @@ def __getattr__(name: str) -> object:
         return getattr(module, name)
     if name in _LAZY_KIT_EXPORTS:
         module = import_module("agenticflow.reactive.kit")
+        return getattr(module, name)
+    if name in _LAZY_CHECKPOINTER_EXPORTS:
+        module = import_module("agenticflow.reactive.checkpointer")
         return getattr(module, name)
     if name in _LAZY_THREADING_EXPORTS:
         module = import_module("agenticflow.reactive.threading")
@@ -258,6 +290,7 @@ def __dir__() -> list[str]:
             *_LAZY_PATTERNS_EXPORTS,
             *_LAZY_AGENT_EXPORTS,
             *_LAZY_KIT_EXPORTS,
+            *_LAZY_CHECKPOINTER_EXPORTS,
             *_LAZY_THREADING_EXPORTS,
             *_LAZY_OBSERVABILITY_EXPORTS,
         }
