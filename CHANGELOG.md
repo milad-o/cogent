@@ -5,6 +5,60 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### Streaming Reactions for ReactiveFlow (Phase 2.1)
+
+- **`ReactiveFlow.run_streaming()`**: Real-time token-by-token streaming from event-driven flows
+  - Returns `AsyncIterator[ReactiveStreamChunk]` for progressive output display
+  - Leverages existing agent streaming infrastructure (`agent.run(stream=True)`)
+  - Full event context in each chunk: agent name, event ID, event type
+  - Sequential agent execution in streaming mode to preserve order
+  - Example: [examples/reactive/streaming.py](examples/reactive/streaming.py)
+
+- **`ReactiveStreamChunk`**: Streaming chunk with reactive flow context
+  - `agent_name: str` — Which agent is currently streaming
+  - `event_id: str` and `event_name: str` — Event that triggered the agent
+  - `content: str` and `delta: str` — Token content
+  - `is_final: bool` — Whether this is the last chunk from the agent
+  - `finish_reason: str | None` — Why streaming stopped (stop, length, error, etc.)
+  - `metadata: dict[str, Any]` — Additional context (round number, etc.)
+
+- **Multi-Agent Streaming**: Track which agent is speaking in real-time
+  - Agent name changes signal transition to next agent in flow
+  - Enables progress indicators and agent-specific UI styling
+  - Supports conditional routing, fan-out, and chained patterns
+
+- **Tests**: 11 passing tests with real LLM in `tests/test_reactive_streaming.py`
+  - Basic streaming, chunk properties, multi-agent coordination
+  - Event context preservation, conditional triggers
+  - Configuration respect, backward compatibility
+
+#### Distributed Transport (Phase 1.3)
+
+- **Transport Protocol**: Pluggable event transport for cross-process communication
+  - Abstract `Transport` interface: connect, disconnect, publish, subscribe, unsubscribe
+  - Pattern matching with wildcards: `task.*` (single-level), `**` (multi-level)
+  - Multiple subscribers per pattern with subscription management
+
+- **`LocalTransport`**: In-memory asyncio.Queue-based transport (zero dependencies)
+  - Single-process event routing with pattern matching
+  - Ideal for development and testing
+
+- **`RedisTransport`**: Distributed Redis Pub/Sub transport (optional `redis>=5.0.0`)
+  - Cross-process agent communication
+  - Event serialization with `dataclasses.asdict()`
+  - Automatic reconnection and error handling
+
+- **`EventBus` Integration**: Optional transport parameter for distributed routing
+  - `EventBus(transport=RedisTransport(...))` enables distributed events
+  - Backward compatible — defaults to local behavior
+
+- **Tests**: 8 passing LocalTransport tests, 3 skipped Redis integration tests
+- **Example**: [examples/reactive/transport.py](examples/reactive/transport.py) with mock Redis fallback
+
 ## [1.5.0] - 2026-01-14
 
 ### Added
