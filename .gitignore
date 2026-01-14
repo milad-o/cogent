@@ -76,3 +76,4 @@ examples/data/pdf_output/pdf_vision_showcase/
 .agent/
 task.md
 implementation_plan.md
+tests/.env
