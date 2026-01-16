@@ -5,6 +5,60 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-01-16
+
+### Changed
+
+#### Agent API Simplification
+
+**Removed Dual API Pattern:**
+- **Eliminated `config=` parameter** from `Agent.__init__`
+  - Removed `@overload` signatures for `config: AgentConfig` parameter
+  - `AgentConfig` now internal implementation detail only
+  - Simplified public API: `Agent(name, model, tools, ...)`
+  - No breaking changes to direct parameter usage
+
+**Flow Pattern Helpers Enhanced:**
+- **Added `observer` parameter** to pattern helper functions:
+  - `pipeline(stages, observer=None)` — Sequential agent processing
+  - `supervisor(coordinator, workers, observer=None)` — Coordinator delegation pattern
+  - Enables observability without manual Flow construction
+
+**Examples Updated:**
+- Replaced deprecated `Flow(topology=..., agents=...)` API
+- Now use pattern helpers: `pipeline([agents])`, `supervisor(coordinator, workers)`
+- Updated `examples/basics/hello_world.py` and `examples/basics/roles.py`
+
+**Bug Fixes:**
+- Fixed `reactive.py` compatibility module — corrected `Observer` import path
+- Fixed `test_graph.py` — added missing `TraceBus` import
+
+**Files Modified:**
+- `src/agenticflow/agent/base.py` — Simplified constructor, removed dual API
+- `src/agenticflow/flow/patterns/pipeline.py` — Added observer support
+- `src/agenticflow/flow/patterns/supervisor.py` — Added observer support
+- `examples/basics/hello_world.py` — Uses `pipeline()` helper
+- `examples/basics/roles.py` — Uses pattern helpers
+- `src/agenticflow/reactive.py` — Fixed import
+- `tests/test_graph.py` — Fixed import
+
+**Migration Guide:**
+```python
+# Before (no longer supported)
+from agenticflow import Agent, AgentConfig, Flow
+
+config = AgentConfig(name="Worker", model=model)
+agent = Agent(config=config)
+
+flow = Flow(name="basic", agents=[agent], topology="pipeline")
+
+# After (recommended)
+from agenticflow import Agent, pipeline
+
+agent = Agent(name="Worker", model=model)
+flow = pipeline([agent])
+```
+
 ## [1.8.0] - 2026-01-16
 
 ### Changed

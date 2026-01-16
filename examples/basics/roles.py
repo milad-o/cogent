@@ -158,11 +158,12 @@ async def demo_supervisor_flow():
         instructions="Write clear summaries.",
     )
     
-    # Run with supervisor topology
-    flow = Flow(
-        name="team",
-        agents=[supervisor, researcher, writer],
-        topology="supervisor",
+    # Run with supervisor pattern
+    from agenticflow import supervisor as supervisor_pattern
+    
+    flow = supervisor_pattern(
+        supervisor=supervisor,
+        workers=[researcher, writer],
         observer=Observer.normal(),
     )
     
@@ -195,10 +196,10 @@ async def demo_review_flow():
     )
     
     # Pipeline: Writer → Reviewer
-    flow = Flow(
-        name="review",
-        agents=[writer, reviewer],
-        topology="pipeline",
+    from agenticflow import pipeline
+    
+    flow = pipeline(
+        [writer, reviewer],
         observer=Observer.normal(),
     )
     

@@ -31,6 +31,7 @@ from agenticflow.flow.core import Flow
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
+    from agenticflow.observability.observer import Observer
     from agenticflow.reactors.base import Reactor
 
 def supervisor(
@@ -38,6 +39,7 @@ def supervisor(
     workers: list[Agent | Reactor],
     *,
     config: FlowConfig | None = None,
+    observer: Observer | None = None,
     start_event: str = "task.created",
     done_event: str = "flow.done",
     parallel: bool = True,
@@ -60,6 +62,7 @@ def supervisor(
         coordinator: The coordinating agent/reactor
         workers: List of worker agents/reactors
         config: Optional flow configuration
+        observer: Optional observer for monitoring
         start_event: Event that starts the flow
         done_event: Event that signals completion
         parallel: Whether workers can run in parallel
@@ -98,7 +101,7 @@ def supervisor(
         config_dict["stop_events"] = frozenset([*flow_config.stop_events, done_event])
         flow_config = FlowConfig(**config_dict)
 
-    flow = Flow(config=flow_config)
+    flow = Flow(config=flow_config, observer=observer)
 
     coordinator_name = _get_name(coordinator, "coordinator")
 

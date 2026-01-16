@@ -7,6 +7,7 @@ from agenticflow import (
     AgentConfig,
     AgentRole,
     EventBus,
+    TraceBus,
 )
 from agenticflow.graph import (
     GraphView,
