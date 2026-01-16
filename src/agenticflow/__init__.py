@@ -365,29 +365,32 @@ from agenticflow.observability.handlers import (
 from agenticflow.observability.trace_record import Trace, TraceType
 
 # Reactive Flow (event-driven multi-agent orchestration)
-from agenticflow.reactive import (
-    AgentTriggerConfig,
-    # Mid-level API
-    Chain,
-    # Low-level API
+from agenticflow.flow.reactive import (
     EventFlow,
     EventFlowConfig,
     EventFlowResult,
-    FanIn,
-    FanOut,
-    # New names
     ReactiveFlow,
     ReactiveFlowConfig,
     ReactiveFlowResult,
-    Router,
-    Saga,
+)
+from agenticflow.flow.triggers import (
+    AgentTriggerConfig,
     Trigger,
-    # High-level API (recommended)
-    chain,
-    fanout,
     on,  # Backward compat alias
-    route,
+    react_to,
     when,
+)
+from agenticflow.flow.patterns import (
+    # Pipeline
+    chain,
+    pipeline,
+    # Supervisor
+    coordinator,
+    supervisor,
+    # Mesh
+    brainstorm,
+    collaborative,
+    mesh,
 )
 
 # Reactors (event handlers for flows)
@@ -597,28 +600,20 @@ __all__ = [
     "FileEventHandler",
     "FilteringEventHandler",
     "MetricsEventHandler",
-    # Event-Driven Flow (reactive orchestration)
-    # High-level API
-    "chain",
-    "fanout",
-    "route",
-    # Mid-level API
-    "Chain",
-    "FanIn",
-    "FanOut",
-    "Router",
-    "Saga",
-    # Low-level API (new names)
+    # Event-Driven Flow (event orchestration)
+    # Orchestrator
     "ReactiveFlow",
     "ReactiveFlowConfig",
     "ReactiveFlowResult",
-    # Low-level API (legacy aliases)
+    # Legacy aliases
     "EventFlow",
     "EventFlowConfig",
     "EventFlowResult",
+    # Triggers
     "Trigger",
     "AgentTriggerConfig",
     "on",
+    "react_to",
     "when",
     # Tasks
     "TaskManager",

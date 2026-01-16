@@ -6,7 +6,7 @@ semantics, enabling agents to delegate tasks and receive replies.
 Example:
     ```python
     from agenticflow import Agent, ReactiveFlow
-    from agenticflow.reactive import react_to
+    from agenticflow.flow.triggers import react_to
 
     # Delegating agent
     @react_to("user.request")

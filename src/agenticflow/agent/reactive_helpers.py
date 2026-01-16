@@ -21,7 +21,7 @@ from agenticflow.agent.base import Agent
 from agenticflow.core.messages import HumanMessage, SystemMessage
 from agenticflow.executors.native import NativeExecutor
 from agenticflow.models.base import BaseChatModel
-from agenticflow.reactive.core import TriggerBuilder, TriggerCondition, react_to
+from agenticflow.flow.triggers import TriggerBuilder, TriggerCondition, react_to
 from agenticflow.tools.base import BaseTool
 
 

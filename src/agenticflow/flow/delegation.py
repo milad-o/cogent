@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
-    from agenticflow.reactive.core import AgentTriggerConfig
+    from agenticflow.flow.triggers import AgentTriggerConfig
 
 
 class DelegationMixin:
@@ -68,7 +68,7 @@ class DelegationMixin:
                 can_delegate=[w.name for w in workers]
             )
         """
-        from agenticflow.reactive.a2a_tools import (
+        from agenticflow.flow.a2a_tools import (
             create_delegate_tool,
             create_reply_tool,
         )

@@ -8,7 +8,7 @@ Available sinks:
 
 Example:
     ```python
-    from agenticflow.reactive import EventFlow
+    from agenticflow.flow.reactive import EventFlow
     from agenticflow.events.sinks import WebhookSink
 
     flow = EventFlow()

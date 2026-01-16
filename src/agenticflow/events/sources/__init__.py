@@ -10,7 +10,7 @@ Available sources:
 
 Example:
     ```python
-    from agenticflow.reactive import EventFlow
+    from agenticflow.flow.reactive import EventFlow
     from agenticflow.events.sources import WebhookSource, FileWatcherSource
 
     flow = EventFlow()

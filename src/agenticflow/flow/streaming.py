@@ -16,7 +16,8 @@ Benefits:
 Example:
     ```python
     from agenticflow import Agent
-    from agenticflow.reactive import ReactiveFlow, react_to
+    from agenticflow.flow.reactive import ReactiveFlow
+    from agenticflow.flow.triggers import react_to
     from agenticflow.models import ChatModel
 
     # Create agents with streaming-capable models
