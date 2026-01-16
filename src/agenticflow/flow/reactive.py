@@ -398,9 +398,16 @@ class ReactiveFlow(BaseFlow):
         Example:
             flow.thread_by_data("job_id")
         """
-        from agenticflow.flow.threading import thread_id_from_data
+        # Inline thread_id_from_data helper
+        def _thread_id_resolver(event: Any, _context: dict[str, Any]) -> str | None:
+            data = getattr(event, "data", None) or {}
+            value = data.get(key)
+            if value is None:
+                return None
+            thread_id = str(value)
+            return f"{prefix}{thread_id}" if prefix else thread_id
 
-        self._thread_id_resolver = thread_id_from_data(key, prefix=prefix)
+        self._thread_id_resolver = _thread_id_resolver
         return self
 
     def unregister(self, agent_name: str) -> None:

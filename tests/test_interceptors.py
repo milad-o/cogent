@@ -1077,7 +1077,7 @@ from agenticflow.interceptors.prompt import (
     ConversationPrompt,
     LambdaPrompt,
 )
-from agenticflow.context import RunContext, EMPTY_CONTEXT
+from agenticflow.core.context import RunContext, EMPTY_CONTEXT
 
 
 class TestToolGate:

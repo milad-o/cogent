@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
-    from agenticflow.context import RunContext
+    from agenticflow.core.context import RunContext
 
 
 class Phase(Enum):

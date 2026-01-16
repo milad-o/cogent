@@ -167,7 +167,7 @@ from agenticflow.agent.streaming import (
 )
 
 # Context - invocation-scoped data
-from agenticflow.context import EMPTY_CONTEXT, RunContext
+from agenticflow.core.context import EMPTY_CONTEXT, RunContext
 from agenticflow.core.enums import (
     AgentRole,
     AgentStatus,
