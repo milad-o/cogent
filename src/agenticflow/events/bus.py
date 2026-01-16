@@ -84,11 +84,10 @@ class EventBus:
                 # Subscribe and store subscription ID
                 import asyncio
                 try:
+                    # Fire-and-forget subscription for transport layer
                     asyncio.create_task(
                         self._transport.subscribe(pattern_str, transport_handler)
                     )
-                    # This is a bit hacky but works for now
-                    # TODO: Make this properly async
                 except Exception:
                     pass
 

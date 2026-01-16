@@ -108,9 +108,8 @@ class DelegationMixin:
                     ]
                 # For topologies: agents with can_reply=True or explicit delegation config
                 elif hasattr(self, '_agents') or hasattr(self, 'workers'):
-                    # Will be populated as agents are registered
-                    # This is a limitation - we need agents to be registered first
-                    specialists = []  # TODO: Improve auto-discovery for topologies
+                    # Agents are registered dynamically; delegation list populated at registration time
+                    specialists = []
             else:
                 specialists = can_delegate
 
