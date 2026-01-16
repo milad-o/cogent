@@ -12,10 +12,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.tools.base import BaseTool, tool
-
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
+from agenticflow.tools.base import BaseTool, tool
 
 if TYPE_CHECKING:
     from agenticflow.capabilities.knowledge_graph import Entity

@@ -20,7 +20,13 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages, normalize_input
+from agenticflow.models.base import (
+    AIMessage,
+    BaseChatModel,
+    BaseEmbedding,
+    convert_messages,
+    normalize_input,
+)
 
 
 def _schema_to_parameter_definitions(schema: dict[str, Any]) -> dict[str, Any]:
@@ -132,7 +138,7 @@ class CohereChat(BaseChatModel):
         tools: list[Any],
         *,
         parallel_tool_calls: bool = True,
-    ) -> "CohereChat":
+    ) -> CohereChat:
         """Bind tools to the model."""
         self._ensure_initialized()
 
@@ -153,7 +159,7 @@ class CohereChat(BaseChatModel):
 
     def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke synchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
@@ -164,7 +170,7 @@ class CohereChat(BaseChatModel):
 
     async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke asynchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """

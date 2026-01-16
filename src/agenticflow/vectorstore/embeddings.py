@@ -43,10 +43,10 @@ EMBEDDING_DIMENSIONS: dict[str, int] = {
 
 def get_embedding_dimension(model: str) -> int:
     """Get the embedding dimension for a model.
-    
+
     Args:
         model: Model name.
-        
+
     Returns:
         Embedding dimension, or 1536 as default.
     """

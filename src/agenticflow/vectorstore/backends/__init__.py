@@ -3,7 +3,7 @@
 Provides different storage backends:
 - InMemoryBackend: NumPy-based, good for <10k documents (default)
 - FAISSBackend: Large-scale similarity search
-- ChromaBackend: Persistent with metadata filtering  
+- ChromaBackend: Persistent with metadata filtering
 - QdrantBackend: Production vector database
 - PgVectorBackend: PostgreSQL with pgvector
 """

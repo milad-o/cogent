@@ -17,7 +17,7 @@ from agenticflow.core.utils import format_duration_ms, generate_id, now_utc
 class Task:
     """
     A unit of work with full lifecycle tracking.
-    
+
     Tasks support:
     - Hierarchical relationships (parent/child)
     - Dependency management
@@ -25,7 +25,7 @@ class Task:
     - Result and error tracking
     - Priority-based scheduling
     - Retry logic
-    
+
     Attributes:
         name: Human-readable task name
         description: Detailed task description
@@ -47,7 +47,7 @@ class Task:
         duration_ms: Execution duration in milliseconds
         retry_count: Number of retry attempts
         max_retries: Maximum retry attempts allowed
-        
+
     Example:
         ```python
         task = Task(
@@ -97,7 +97,7 @@ class Task:
     def to_dict(self) -> dict:
         """
         Convert to JSON-serializable dictionary.
-        
+
         Returns:
             Dictionary representation of the task
         """
@@ -128,7 +128,7 @@ class Task:
     def to_json(self) -> str:
         """
         Convert to JSON string.
-        
+
         Returns:
             JSON string representation
         """
@@ -138,10 +138,10 @@ class Task:
     def from_dict(cls, data: dict) -> Task:
         """
         Create a Task from a dictionary.
-        
+
         Args:
             data: Dictionary with task data
-            
+
         Returns:
             New Task instance
         """
@@ -230,7 +230,7 @@ class Task:
     def increment_retry(self) -> bool:
         """
         Increment retry count and reset for retry.
-        
+
         Returns:
             True if retry is allowed, False if max retries exceeded
         """
@@ -263,13 +263,13 @@ class Task:
     ) -> Task:
         """
         Create a subtask linked to this task.
-        
+
         Args:
             name: Subtask name
             tool: Tool to execute
             args: Tool arguments
             **kwargs: Additional task attributes
-            
+
         Returns:
             New Task linked as a subtask
         """

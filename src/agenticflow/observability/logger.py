@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, TextIO
-from collections.abc import Callable
 
-from agenticflow.core import now_utc, generate_id
+from agenticflow.core import generate_id, now_utc
 
 
 class LogLevel(IntEnum):
@@ -258,7 +258,7 @@ class ObservabilityLogger:
         self._trace_id = None
         self._span_id = None
 
-    def child(self, name: str) -> "ObservabilityLogger":
+    def child(self, name: str) -> ObservabilityLogger:
         """Create a child logger.
 
         Args:

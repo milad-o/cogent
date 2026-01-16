@@ -70,9 +70,9 @@ from agenticflow.reactive.core import (
     Trigger,
     TriggerBuilder,
     TriggerCondition,
+    for_agent,
     on,  # Backward compat alias
     react_to,
-    for_agent,
     when,
 )
 from agenticflow.reactive.skills import Skill, SkillBuilder, skill
@@ -82,19 +82,6 @@ if TYPE_CHECKING:
     # to avoid circular imports:
     # - flow.reactive imports agenticflow.reactive.core
     # - importing agenticflow.reactive.core executes this __init__.py first
-    from agenticflow.flow.reactive import (  # noqa: TC004
-        EventFlow,
-        EventFlowConfig,
-        EventFlowResult,
-        ReactiveFlow,
-        ReactiveFlowConfig,
-        ReactiveFlowResult,
-    )
-    from agenticflow.observability.observer import Observer  # noqa: TC004
-    from agenticflow.reactive.agent import (  # noqa: TC004
-        ReactiveAgent,
-        build_reactive_system_prompt,
-    )
     # Re-export checkpointer from flow module for backward compatibility
     from agenticflow.flow.checkpointer import (  # noqa: TC004
         Checkpointer,
@@ -104,36 +91,33 @@ if TYPE_CHECKING:
         generate_checkpoint_id,
         generate_flow_id,
     )
-    from agenticflow.reactive.kit import (  # noqa: TC004
-        IdempotencyGuard,
-        RetryBudget,
-        emit_later,
+    from agenticflow.flow.context import (  # noqa: TC004
+        ReactiveContext,
     )
-    from agenticflow.reactive.transport import (  # noqa: TC004
-        Transport,
-        LocalTransport,
-        RedisTransport,
-        TransportError,
-        ConnectionError,
-        PublishError,
+    from agenticflow.flow.reactive import (  # noqa: TC004
+        EventFlow,
+        EventFlowConfig,
+        EventFlowResult,
+        ReactiveFlow,
+        ReactiveFlowConfig,
+        ReactiveFlowResult,
     )
-    
-    from agenticflow.reactive.streaming import (  # noqa: TC004
-        ReactiveStreamChunk,
-        StreamChunk,  # Backward compat alias
-    )
-
+    from agenticflow.observability.observer import Observer  # noqa: TC004
     from agenticflow.reactive.a2a import (  # noqa: TC004
         AgentRequest,
         AgentResponse,
         create_request,
         create_response,
     )
-
-    from agenticflow.flow.context import (  # noqa: TC004
-        ReactiveContext,
+    from agenticflow.reactive.agent import (  # noqa: TC004
+        ReactiveAgent,
+        build_reactive_system_prompt,
     )
-
+    from agenticflow.reactive.kit import (  # noqa: TC004
+        IdempotencyGuard,
+        RetryBudget,
+        emit_later,
+    )
     from agenticflow.reactive.patterns import (  # noqa: TC004
         Chain,
         ChainPattern,
@@ -151,7 +135,19 @@ if TYPE_CHECKING:
         fanout,
         route,
     )
+    from agenticflow.reactive.streaming import (  # noqa: TC004
+        ReactiveStreamChunk,
+        StreamChunk,  # Backward compat alias
+    )
     from agenticflow.reactive.threading import thread_id_from_data  # noqa: TC004
+    from agenticflow.reactive.transport import (  # noqa: TC004
+        ConnectionError,
+        LocalTransport,
+        PublishError,
+        RedisTransport,
+        Transport,
+        TransportError,
+    )
 
 __all__ = [
     # Core
@@ -204,6 +200,16 @@ __all__ = [
     "FanOut",
     "Router",
     "Saga",
+    # Streaming
+    "ReactiveStreamChunk",
+    "StreamChunk",
+    # Transport
+    "ConnectionError",
+    "LocalTransport",
+    "PublishError",
+    "RedisTransport",
+    "Transport",
+    "TransportError",
     # Observability
     "Observer",
     # Agent-to-Agent (A2A) Communication

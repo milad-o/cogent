@@ -9,14 +9,14 @@ Example:
     ...     SlidingWindowStrategy,
     ...     SummarizationStrategy,
     ... )
-    >>> 
+    >>>
     >>> # Simple: keep only last 3 rounds
     >>> mesh = Mesh(
     ...     agents=[...],
     ...     max_rounds=10,
     ...     context_strategy=SlidingWindowStrategy(max_rounds=3),
     ... )
-    >>> 
+    >>>
     >>> # Advanced: summarize older rounds
     >>> mesh = Mesh(
     ...     agents=[...],
@@ -26,24 +26,23 @@ Example:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from agenticflow.models.base import BaseChatModel
-    from agenticflow.vectorstore import VectorStore
     from agenticflow.memory import Memory
+    from agenticflow.models.base import BaseChatModel
     from agenticflow.observability.bus import TraceBus
+    from agenticflow.vectorstore import VectorStore
 
 
 @runtime_checkable
 class ContextStrategy(Protocol):
     """Protocol for context management strategies.
-    
+
     Implement this to create custom context management for topologies.
     """
-    
+
     async def build_context(
         self,
         round_history: list[dict[str, str]],
@@ -51,12 +50,12 @@ class ContextStrategy(Protocol):
         task: str,
     ) -> str:
         """Build context string from round history.
-        
+
         Args:
             round_history: List of dicts mapping agent names to outputs.
             current_round: The current round number (1-indexed).
             task: The original task being worked on.
-            
+
         Returns:
             Formatted context string to include in agent prompts.
         """
@@ -79,22 +78,22 @@ def _format_round(round_num: int, round_data: dict[str, str]) -> str:
 @dataclass
 class SlidingWindowStrategy:
     """Keep only the last N rounds of history.
-    
+
     The simplest strategy - no LLM calls, just truncation.
     Useful when recent context is most relevant.
-    
+
     Args:
         max_rounds: Maximum number of rounds to keep (default: 3).
         trace_bus: Optional TraceBus for emitting observability events.
-        
+
     Example:
         >>> strategy = SlidingWindowStrategy(max_rounds=2)
         >>> mesh = Mesh(agents=[...], context_strategy=strategy)
     """
-    
+
     max_rounds: int = 3
     trace_bus: TraceBus | None = None
-    
+
     async def build_context(
         self,
         round_history: list[dict[str, str]],
@@ -104,19 +103,19 @@ class SlidingWindowStrategy:
         """Build context from last N rounds only."""
         if not round_history:
             return ""
-        
+
         # Keep only the most recent rounds
         total_rounds = len(round_history)
         dropped_rounds = max(0, total_rounds - self.max_rounds)
         recent = round_history[-self.max_rounds:]
-        
+
         # Calculate starting round number
         start_round = max(1, total_rounds - self.max_rounds + 1)
-        
+
         context = "\n\nPREVIOUS ROUNDS:"
         for i, round_data in enumerate(recent):
             context += _format_round(start_round + i, round_data)
-        
+
         # Emit trace event
         if self.trace_bus and dropped_rounds > 0:
             await self.trace_bus.publish("context.truncated", {
@@ -126,7 +125,7 @@ class SlidingWindowStrategy:
                 "dropped_rounds": dropped_rounds,
                 "current_round": current_round,
             })
-        
+
         return context
 
 
@@ -138,28 +137,28 @@ class SlidingWindowStrategy:
 @dataclass
 class SummarizationStrategy:
     """Summarize older rounds, keep recent ones full.
-    
+
     Uses an LLM to compress older rounds into a summary while
     keeping the most recent rounds in full detail.
-    
+
     Args:
         model: Chat model for summarization.
         keep_full_rounds: Number of recent rounds to keep unsummarized.
         max_summary_tokens: Approximate max tokens for summary.
         trace_bus: Optional TraceBus for emitting observability events.
-        
+
     Example:
         >>> strategy = SummarizationStrategy(model=model, keep_full_rounds=2)
         >>> mesh = Mesh(agents=[...], context_strategy=strategy)
     """
-    
+
     model: BaseChatModel
     keep_full_rounds: int = 2
     max_summary_tokens: int = 300
     trace_bus: TraceBus | None = None
     _cached_summary: str = field(default="", init=False)
     _summarized_through: int = field(default=0, init=False)
-    
+
     async def build_context(
         self,
         round_history: list[dict[str, str]],
@@ -169,27 +168,27 @@ class SummarizationStrategy:
         """Build context with summarized older rounds."""
         if not round_history:
             return ""
-        
+
         total_rounds = len(round_history)
-        
+
         # If we have few rounds, just show them all
         if total_rounds <= self.keep_full_rounds:
             context = "\n\nPREVIOUS ROUNDS:"
             for i, round_data in enumerate(round_history, 1):
                 context += _format_round(i, round_data)
             return context
-        
+
         # Split into rounds to summarize and rounds to keep full
         rounds_to_summarize = round_history[:-self.keep_full_rounds]
         rounds_to_keep = round_history[-self.keep_full_rounds:]
-        
+
         # Only re-summarize if we have new rounds to summarize
         if len(rounds_to_summarize) > self._summarized_through:
             self._cached_summary = await self._summarize_rounds(
                 rounds_to_summarize, task
             )
             self._summarized_through = len(rounds_to_summarize)
-            
+
             # Emit trace event
             if self.trace_bus:
                 await self.trace_bus.publish("context.summarized", {
@@ -198,16 +197,16 @@ class SummarizationStrategy:
                     "summary_length": len(self._cached_summary),
                     "current_round": current_round,
                 })
-        
+
         # Build final context
         context = "\n\nSUMMARY OF EARLIER ROUNDS:\n" + self._cached_summary
         context += "\n\nRECENT ROUNDS:"
         start_round = total_rounds - self.keep_full_rounds + 1
         for i, round_data in enumerate(rounds_to_keep):
             context += _format_round(start_round + i, round_data)
-        
+
         return context
-    
+
     async def _summarize_rounds(
         self,
         rounds: list[dict[str, str]],
@@ -218,7 +217,7 @@ class SummarizationStrategy:
         history_text = ""
         for i, round_data in enumerate(rounds, 1):
             history_text += _format_round(i, round_data)
-        
+
         prompt = f"""Summarize the key points from this team collaboration history.
 
 TASK: {task}
@@ -233,7 +232,7 @@ Provide a concise summary (~{self.max_summary_tokens // 4} words) capturing:
 - Open questions
 
 SUMMARY:"""
-        
+
         response = await self.model.ainvoke([{"role": "user", "content": prompt}])
         return response.content
 
@@ -246,27 +245,27 @@ SUMMARY:"""
 @dataclass
 class RetrievalStrategy:
     """Store outputs in vectorstore, retrieve only relevant context.
-    
+
     Uses semantic search to find the most relevant prior contributions
     instead of passing all history.
-    
+
     Args:
         vectorstore: VectorStore instance for storage and retrieval.
         k: Number of relevant chunks to retrieve.
         include_metadata: Whether to include round/agent info.
-        
+
     Example:
         >>> from agenticflow.vectorstore import VectorStore
         >>> vs = VectorStore()
         >>> strategy = RetrievalStrategy(vectorstore=vs, k=5)
         >>> mesh = Mesh(agents=[...], context_strategy=strategy)
     """
-    
+
     vectorstore: VectorStore
     k: int = 5
     include_metadata: bool = True
     _added_rounds: int = field(default=0, init=False)
-    
+
     async def build_context(
         self,
         round_history: list[dict[str, str]],
@@ -276,7 +275,7 @@ class RetrievalStrategy:
         """Build context by retrieving relevant prior contributions."""
         if not round_history:
             return ""
-        
+
         # Add new rounds to vectorstore
         if len(round_history) > self._added_rounds:
             new_rounds = round_history[self._added_rounds:]
@@ -291,13 +290,13 @@ class RetrievalStrategy:
                     })
                 await self.vectorstore.add_texts(texts, metadatas)
             self._added_rounds = len(round_history)
-        
+
         # Retrieve relevant context for current task
         results = await self.vectorstore.search(task, k=self.k)
-        
+
         if not results:
             return ""
-        
+
         context = "\n\nRELEVANT PRIOR CONTRIBUTIONS:"
         for result in results:
             doc = result.document
@@ -307,7 +306,7 @@ class RetrievalStrategy:
                 context += f"\n\n[{agent} - Round {round_num}]:\n{doc.text}"
             else:
                 context += f"\n\n{doc.text}"
-        
+
         return context
 
 
@@ -319,12 +318,12 @@ class RetrievalStrategy:
 @dataclass
 class StructuredHandoff:
     """Structured data extracted from agent contributions."""
-    
+
     decisions: list[str] = field(default_factory=list)
     key_findings: list[str] = field(default_factory=list)
     open_questions: list[str] = field(default_factory=list)
     action_items: list[str] = field(default_factory=list)
-    
+
     def to_context(self) -> str:
         """Format as context string."""
         lines = []
@@ -346,26 +345,26 @@ class StructuredHandoff:
 @dataclass
 class StructuredHandoffStrategy:
     """Extract structured data from contributions instead of raw text.
-    
+
     Uses an LLM to extract key decisions, findings, and questions
     from each round, passing only the structured data forward.
-    
+
     Args:
         model: Chat model for extraction.
         max_items_per_category: Max items to keep per category.
         trace_bus: Optional TraceBus for emitting observability events.
-        
+
     Example:
         >>> strategy = StructuredHandoffStrategy(model=model)
         >>> mesh = Mesh(agents=[...], context_strategy=strategy)
     """
-    
+
     model: BaseChatModel
     max_items_per_category: int = 5
     trace_bus: TraceBus | None = None
     _accumulated: StructuredHandoff = field(default_factory=StructuredHandoff, init=False)
     _processed_rounds: int = field(default=0, init=False)
-    
+
     async def build_context(
         self,
         round_history: list[dict[str, str]],
@@ -375,7 +374,7 @@ class StructuredHandoffStrategy:
         """Build context from structured data only."""
         if not round_history:
             return ""
-        
+
         # Process new rounds
         if len(round_history) > self._processed_rounds:
             new_rounds = round_history[self._processed_rounds:]
@@ -383,7 +382,7 @@ class StructuredHandoffStrategy:
                 extracted = await self._extract_structured(round_data, task)
                 self._merge_handoff(extracted)
             self._processed_rounds = len(round_history)
-            
+
             # Emit trace event
             if self.trace_bus:
                 await self.trace_bus.publish("context.structured", {
@@ -393,10 +392,10 @@ class StructuredHandoffStrategy:
                     "findings_count": len(self._accumulated.key_findings),
                     "current_round": current_round,
                 })
-        
+
         context = self._accumulated.to_context()
         return f"\n\nCOLLABORATION STATE:\n{context}" if context else ""
-    
+
     async def _extract_structured(
         self,
         round_data: dict[str, str],
@@ -406,7 +405,7 @@ class StructuredHandoffStrategy:
         contributions = "\n\n".join(
             f"[{name}]: {output}" for name, output in round_data.items()
         )
-        
+
         prompt = f"""Extract structured information from these team contributions.
 
 TASK: {task}
@@ -425,9 +424,9 @@ Respond in this exact JSON format:
 Only include items that are clearly stated. Keep each item under 20 words.
 
 JSON:"""
-        
+
         response = await self.model.ainvoke([{"role": "user", "content": prompt}])
-        
+
         # Parse JSON response
         import json
         try:
@@ -445,9 +444,9 @@ JSON:"""
                 )
         except (json.JSONDecodeError, KeyError):
             pass
-        
+
         return StructuredHandoff()
-    
+
     def _merge_handoff(self, new: StructuredHandoff) -> None:
         """Merge new handoff into accumulated state."""
         # Add new items, keep most recent up to max
@@ -466,26 +465,26 @@ JSON:"""
 @dataclass
 class BlackboardStrategy:
     """Use shared Memory as a blackboard for context.
-    
+
     Agents read/write to specific keys in shared memory instead
     of accumulating full text history.
-    
+
     Args:
         memory: Memory instance for shared state.
         keys: List of keys to include in context.
-        
+
     Example:
         >>> from agenticflow.memory import Memory
         >>> memory = Memory()
         >>> strategy = BlackboardStrategy(memory=memory)
         >>> mesh = Mesh(agents=[...], context_strategy=strategy)
     """
-    
+
     memory: Memory
     keys: list[str] = field(default_factory=lambda: [
         "decisions", "findings", "questions", "current_focus"
     ])
-    
+
     async def build_context(
         self,
         round_history: list[dict[str, str]],
@@ -494,21 +493,21 @@ class BlackboardStrategy:
     ) -> str:
         """Build context from blackboard keys."""
         context_parts = []
-        
+
         for key in self.keys:
             value = await self.memory.recall(key)
             if value:
                 context_parts.append(f"{key.upper()}:\n{value}")
-        
+
         if not context_parts:
             return ""
-        
+
         return "\n\nSHARED KNOWLEDGE:\n" + "\n\n".join(context_parts)
-    
+
     async def write(self, key: str, value: Any) -> None:
         """Helper to write to the blackboard."""
         await self.memory.remember(key, value)
-    
+
     async def read(self, key: str) -> Any:
         """Helper to read from the blackboard."""
         return await self.memory.recall(key)
@@ -522,17 +521,17 @@ class BlackboardStrategy:
 @dataclass
 class CompositeStrategy:
     """Combine multiple strategies.
-    
+
     Useful for combining approaches, e.g., sliding window + summarization.
-    
+
     Args:
         strategies: List of strategies to apply in order.
         separator: String to separate outputs from each strategy.
     """
-    
+
     strategies: list[ContextStrategy]
     separator: str = "\n\n---\n\n"
-    
+
     async def build_context(
         self,
         round_history: list[dict[str, str]],
@@ -553,7 +552,7 @@ __all__ = [
     "ContextStrategy",
     # Strategies
     "SlidingWindowStrategy",
-    "SummarizationStrategy", 
+    "SummarizationStrategy",
     "RetrievalStrategy",
     "StructuredHandoffStrategy",
     "StructuredHandoff",

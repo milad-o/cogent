@@ -3,15 +3,15 @@ Tools module - ToolRegistry, tool utilities, and deferred execution.
 """
 
 from agenticflow.tools.base import tool
-from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 from agenticflow.tools.deferred import (
-    DeferredResult,
-    DeferredStatus,
     DeferredManager,
-    DeferredWaiter,
+    DeferredResult,
     DeferredRetry,
+    DeferredStatus,
+    DeferredWaiter,
     is_deferred,
 )
+from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 
 __all__ = [
     # Core

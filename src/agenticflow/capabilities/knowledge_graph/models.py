@@ -7,21 +7,21 @@ Contains Entity and Relationship dataclasses.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
 @dataclass
 class Entity:
     """An entity in the knowledge graph."""
-    
+
     id: str
     type: str
     attributes: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     source: str | None = None  # Where this fact came from
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
@@ -36,14 +36,14 @@ class Entity:
 @dataclass
 class Relationship:
     """A relationship between two entities."""
-    
+
     source_id: str
     relation: str
     target_id: str
     attributes: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     source: str | None = None  # Where this fact came from
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "source": self.source_id,

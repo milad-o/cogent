@@ -7,13 +7,14 @@ Uses watchfiles for efficient cross-platform file system watching.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
 from agenticflow.events.event import Event
-from agenticflow.events.sources.base import EventSource, EmitCallback
+from agenticflow.events.sources.base import EmitCallback, EventSource
 
 
 @dataclass
@@ -62,7 +63,7 @@ class FileWatcherSource(EventSource):
             emit: Callback to emit events into the flow.
         """
         try:
-            from watchfiles import awatch, Change
+            from watchfiles import Change, awatch
         except ImportError as e:
             raise ImportError(
                 "FileWatcherSource requires 'watchfiles'. "
@@ -114,10 +115,8 @@ class FileWatcherSource(EventSource):
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
 
     @property
     def name(self) -> str:

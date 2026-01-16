@@ -7,26 +7,25 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from agenticflow.tools.base import BaseTool, tool
-
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
+from agenticflow.capabilities.ssis.classifiers import (
+    classify_component,
+    classify_executable,
+)
 from agenticflow.capabilities.ssis.handlers import (
+    DEFAULT_HANDLERS,
     TaskHandler,
     TaskHandlerRegistry,
-    DEFAULT_HANDLERS,
-)
-from agenticflow.capabilities.ssis.classifiers import (
-    classify_executable,
-    classify_component,
 )
 from agenticflow.capabilities.ssis.helpers import (
-    get_property,
-    get_attribute,
-    extract_tables_from_sql,
-    sanitize_connection_string,
     extract_component_from_path,
+    extract_tables_from_sql,
+    get_attribute,
+    get_property,
+    sanitize_connection_string,
 )
+from agenticflow.tools.base import BaseTool, tool
 
 logger = logging.getLogger(__name__)
 
@@ -853,7 +852,7 @@ class SSISAnalyzer(BaseCapability):
 
         # Build adjacency list from precedence constraints
         adj: dict[str, list[str]] = {name: [] for name in task_names}
-        in_degree: dict[str, int] = {name: 0 for name in task_names}
+        in_degree: dict[str, int] = dict.fromkeys(task_names, 0)
 
         for task_name in task_names:
             rels = self._kg.graph.get_relationships(
@@ -1080,7 +1079,7 @@ class SSISAnalyzer(BaseCapability):
     # Context Manager
     # =========================================================================
 
-    def __enter__(self) -> "SSISAnalyzer":
+    def __enter__(self) -> SSISAnalyzer:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

@@ -8,9 +8,9 @@ This module provides different storage backends for the KnowledgeGraph:
 """
 
 from agenticflow.capabilities.knowledge_graph.backends.base import GraphBackend
+from agenticflow.capabilities.knowledge_graph.backends.json_file import JSONFileGraph
 from agenticflow.capabilities.knowledge_graph.backends.memory import InMemoryGraph
 from agenticflow.capabilities.knowledge_graph.backends.sqlite import SQLiteGraph
-from agenticflow.capabilities.knowledge_graph.backends.json_file import JSONFileGraph
 
 # Neo4j is optional - only import if neo4j package is installed
 try:

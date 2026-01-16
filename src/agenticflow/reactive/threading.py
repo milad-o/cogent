@@ -9,7 +9,8 @@ These helpers keep that wiring explicit, but avoid inline lambdas everywhere.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 def thread_id_from_data(

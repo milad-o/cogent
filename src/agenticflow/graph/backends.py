@@ -582,7 +582,7 @@ class ASCIIBackend(Backend):
         for edge in graph.edges:
             connections.setdefault(edge.source, []).append(edge.target)
 
-        for i, node_id in enumerate(ordered):
+        for _i, node_id in enumerate(ordered):
             node = graph.nodes[node_id]
             label = node.display_label
 
@@ -649,7 +649,7 @@ class ASCIIBackend(Backend):
     def _get_ordered_nodes(self, graph: Graph) -> list[str]:
         """Get nodes in rough topological order."""
         # Simple ordering: nodes with no incoming edges first
-        incoming: dict[str, int] = {n: 0 for n in graph.nodes}
+        incoming: dict[str, int] = dict.fromkeys(graph.nodes, 0)
         for edge in graph.edges:
             if edge.target in incoming:
                 incoming[edge.target] += 1

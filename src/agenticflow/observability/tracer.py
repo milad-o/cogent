@@ -7,11 +7,11 @@ with spans that can be visualized and analyzed.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Generator
-from collections.abc import Callable
+from typing import Any
 
 from agenticflow.core import generate_id
 
@@ -181,7 +181,7 @@ class Tracer:
         kind: SpanKind = SpanKind.INTERNAL,
         parent_context: SpanContext | None = None,
         attributes: dict[str, Any] | None = None,
-    ) -> Generator[Span, None, None]:
+    ) -> Generator[Span]:
         """Create and manage a span context.
 
         Args:

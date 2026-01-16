@@ -7,7 +7,7 @@ Example:
     ```python
     from agenticflow import Agent, ReactiveFlow
     from agenticflow.reactive import react_to
-    
+
     # Delegating agent
     @react_to("user.request")
     async def coordinator(event, context):
@@ -19,7 +19,7 @@ Example:
             wait=True  # Wait for response
         )
         return f"Analysis complete: {result}"
-    
+
     # Specialist agent that handles delegated tasks
     @react_to("agent.request", condition=lambda e: e.data.get("to_agent") == "specialist")
     async def specialist(event, context):
@@ -31,7 +31,6 @@ Example:
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any
 
 from agenticflow.events import Event
@@ -40,7 +39,7 @@ from agenticflow.events import Event
 @dataclass
 class AgentRequest:
     """Request from one agent to another.
-    
+
     Attributes:
         from_agent: Name of the requesting agent
         to_agent: Name of the target agent
@@ -82,7 +81,7 @@ class AgentRequest:
 @dataclass
 class AgentResponse:
     """Response from one agent to another.
-    
+
     Attributes:
         from_agent: Name of the responding agent
         to_agent: Name of the original requester
@@ -126,14 +125,14 @@ def create_request(
     **kwargs: Any,
 ) -> AgentRequest:
     """Create an agent request.
-    
+
     Args:
         from_agent: Name of the requesting agent
         to_agent: Name of the target agent
         task: Description of the task
         data: Additional data for the task
         **kwargs: Additional arguments for AgentRequest
-        
+
     Returns:
         AgentRequest object
     """
@@ -156,7 +155,7 @@ def create_response(
     **kwargs: Any,
 ) -> AgentResponse:
     """Create an agent response.
-    
+
     Args:
         from_agent: Name of the responding agent
         to_agent: Name of the original requester
@@ -165,7 +164,7 @@ def create_response(
         success: Whether task completed successfully
         error: Error message if task failed
         **kwargs: Additional arguments for AgentResponse
-        
+
     Returns:
         AgentResponse object
     """

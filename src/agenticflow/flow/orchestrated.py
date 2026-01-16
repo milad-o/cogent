@@ -13,7 +13,7 @@ Example:
     from agenticflow.models import ChatModel
 
     model = ChatModel(model="gpt-4o")
-    
+
     researcher = Agent(name="researcher", model=model)
     writer = Agent(name="writer", model=model)
     editor = Agent(name="editor", model=model)
@@ -64,15 +64,15 @@ VerbosityLevel = Literal[False, True, "minimal", "verbose", "debug", "trace"]
 
 def _create_observer_from_verbose(verbose: VerbosityLevel) -> Observer:
     """Create a Observer from a simple verbosity level.
-    
+
     Args:
         verbose: Verbosity level setting
-        
+
     Returns:
         Configured Observer instance
     """
     from agenticflow.observability.observer import Observer
-    
+
     if verbose is True or verbose == "minimal":
         # Basic progress - agent start/complete with timing
         return Observer.progress()
@@ -178,14 +178,14 @@ class Flow(BaseFlow):
             max_rounds=2,  # Collaboration rounds
         )
         ```
-    
+
     Observability Levels:
         verbose=False      - No output (silent)
         verbose=True       - Progress updates (agent start/complete with timing)
         verbose="verbose"  - Show agent outputs/thoughts
         verbose="debug"    - Show everything including tool calls
         verbose="trace"    - Maximum detail + execution graph
-        
+
         Or pass a Observer for full customization.
     """
 
@@ -232,18 +232,18 @@ class Flow(BaseFlow):
                 - "debug": Show everything including tool calls
                 - "trace": Maximum detail + execution graph
             observer: Observer for full customization (overrides verbose).
-            
+
         Example:
             ```python
             # Simple - just see progress
             flow = Flow(..., verbose=True)
-            
+
             # See agent thoughts
             flow = Flow(..., verbose="verbose")
-            
+
             # See everything including tools
             flow = Flow(..., verbose="debug")
-            
+
             # Full customization
             from agenticflow import Observer
             observer = Observer(
@@ -451,23 +451,23 @@ class Flow(BaseFlow):
             ```
         """
         from agenticflow.observability.trace_record import TraceType
-        
+
         # Emit user input event
         self._observe(TraceType.USER_INPUT, {
             "content": task,
             "flow_name": self.name,
         })
-        
+
         # Run the topology with checkpointing
         result = await self._run_with_checkpointing(task)
-        
+
         # Emit output generated event
         self._observe(TraceType.OUTPUT_GENERATED, {
             "content": result.output,
             "flow_name": self.name,
             "agent_count": len(result.agent_outputs),
         })
-        
+
         return result
 
     async def _run_with_checkpointing(self, task: str) -> TopologyResult:
@@ -475,12 +475,12 @@ class Flow(BaseFlow):
         # If no checkpointer, just run normally
         if not self._checkpointer or self._config.checkpoint_every == 0:
             return await self._topology.run(task)
-        
+
         # With checkpointing enabled
-        from agenticflow.flow.checkpointer import FlowState
+
         from agenticflow.core.utils import generate_id
-        from datetime import datetime, timezone
-        
+        from agenticflow.flow.checkpointer import FlowState
+
         # Create checkpoint before execution
         if self._config.checkpoint_every > 0:
             checkpoint_id = generate_id()
@@ -496,10 +496,10 @@ class Flow(BaseFlow):
                 },
             )
             await self._checkpointer.save(state)
-        
+
         # Execute topology
         result = await self._topology.run(task)
-        
+
         # Create checkpoint after execution
         self._step_counter += 1
         if self._config.checkpoint_every > 0 and self._step_counter % self._config.checkpoint_every == 0:
@@ -522,21 +522,21 @@ class Flow(BaseFlow):
                 },
             )
             await self._checkpointer.save(state)
-        
+
         return result
-    
+
     async def resume(self, checkpoint_id: str) -> TopologyResult:
         """Resume flow from a checkpoint.
-        
+
         Args:
             checkpoint_id: The checkpoint ID to resume from
-            
+
         Returns:
             TopologyResult from resumed execution
-            
+
         Raises:
             ValueError: If no checkpointer configured or checkpoint not found
-            
+
         Example:
             ```python
             # After crash, resume from last checkpoint
@@ -547,26 +547,25 @@ class Flow(BaseFlow):
         """
         if not self._checkpointer:
             raise ValueError("No checkpointer configured for this flow")
-        
+
         # Load checkpoint
         state = await self._checkpointer.load(checkpoint_id)
         if not state:
             raise ValueError(f"Checkpoint {checkpoint_id} not found")
-        
+
         # Restore state
         self._step_counter = state.events_processed
         self._checkpoint_data = state.context
-        
+
         # If already completed, return cached result
         if state.metadata.get("completed"):
-            from .base import FlowResult
             return TopologyResult(
                 output=state.last_output,
                 agent_outputs=state.context.get("agent_outputs", {}),
                 execution_order=state.context.get("execution_order", []),
                 metadata={"resumed_from": checkpoint_id},
             )
-        
+
         # Otherwise re-run from the task
         return await self.run(state.task)
 

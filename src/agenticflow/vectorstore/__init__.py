@@ -22,6 +22,11 @@ Available backends (optional dependencies):
     - PgVectorBackend: PostgreSQL (pip install psycopg[pool])
 """
 
+# Import backends submodule for lazy access
+from agenticflow.vectorstore import backends
+
+# Import backends submodule for lazy access
+from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
 from agenticflow.vectorstore.base import (
     EmbeddingProvider,
     SearchResult,
@@ -40,12 +45,6 @@ from agenticflow.vectorstore.embeddings import (
     OpenAIEmbeddings,
 )
 from agenticflow.vectorstore.store import VectorStore, create_vectorstore
-
-# Import backends submodule for lazy access
-from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
-
-# Import backends submodule for lazy access
-from agenticflow.vectorstore import backends
 
 __all__ = [
     # Core

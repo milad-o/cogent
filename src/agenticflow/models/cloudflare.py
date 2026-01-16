@@ -11,10 +11,16 @@ Authentication: Bearer token via CLOUDFLARE_API_TOKEN.
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, AsyncIterator
+from typing import Any
 
-from agenticflow.models.base import AIMessage, BaseChatModel, BaseEmbedding, convert_messages
+from agenticflow.models.base import (
+    AIMessage,
+    BaseChatModel,
+    BaseEmbedding,
+    convert_messages,
+)
 
 
 def _parse_response(response: Any) -> AIMessage:
@@ -66,7 +72,7 @@ class CloudflareChat(BaseChatModel):
         tools: list[Any],
         *,
         parallel_tool_calls: bool = True,
-    ) -> "CloudflareChat":
+    ) -> CloudflareChat:
         self._ensure_initialized()
         new_model = CloudflareChat(
             model=self.model,

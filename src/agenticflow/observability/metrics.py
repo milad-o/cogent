@@ -6,12 +6,12 @@ for tracking system performance and behavior.
 
 from __future__ import annotations
 
-import time
 import statistics
+import time
+from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
-from contextlib import contextmanager
-from collections import defaultdict
 
 from agenticflow.core import now_utc
 
@@ -205,7 +205,7 @@ class Histogram:
         self.description = description
         self.buckets = sorted(buckets or [10, 25, 50, 100, 250, 500, 1000])
         self._values: list[float] = []
-        self._bucket_counts: dict[float, int] = {b: 0 for b in self.buckets}
+        self._bucket_counts: dict[float, int] = dict.fromkeys(self.buckets, 0)
         self._bucket_counts[float("inf")] = 0
 
     def observe(self, value: float) -> None:
@@ -278,7 +278,7 @@ class Histogram:
     def reset(self) -> None:
         """Reset histogram."""
         self._values.clear()
-        self._bucket_counts = {b: 0 for b in self.buckets}
+        self._bucket_counts = dict.fromkeys(self.buckets, 0)
         self._bucket_counts[float("inf")] = 0
 
 

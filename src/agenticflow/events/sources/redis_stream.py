@@ -13,7 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from agenticflow.events.event import Event
-from agenticflow.events.sources.base import EventSource, EmitCallback
+from agenticflow.events.sources.base import EmitCallback, EventSource
 
 
 @dataclass
@@ -110,7 +110,7 @@ class RedisStreamSource(EventSource):
                 if not messages:
                     continue
 
-                for stream_name, stream_messages in messages:
+                for _stream_name, stream_messages in messages:
                     for message_id, fields in stream_messages:
                         # Parse message fields
                         event = self._parse_message(message_id, fields)

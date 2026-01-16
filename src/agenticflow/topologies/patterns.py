@@ -13,8 +13,8 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .core import AgentConfig, BaseTopology, TopologyResult, TopologyType
 from .context import ContextStrategy, SlidingWindowStrategy
+from .core import AgentConfig, BaseTopology, TopologyResult, TopologyType
 
 if TYPE_CHECKING:
     from ..agent import Agent
@@ -29,7 +29,7 @@ class Supervisor(BaseTopology):
     1. Analyzes the task and decides which workers to use
     2. Delegates subtasks to workers (parallel or sequential)
     3. Collects results and synthesizes final output
-    
+
     Supports A2A delegation when AgentConfig includes can_delegate/can_reply.
 
     Example:
@@ -57,7 +57,7 @@ class Supervisor(BaseTopology):
     """Whether to run workers in parallel (True) or sequential (False)."""
 
     topology_type: TopologyType = field(default=TopologyType.SUPERVISOR, init=False)
-    
+
     def __post_init__(self) -> None:
         """Initialize and configure delegation for all agents."""
         super().__post_init__()  # Apply delegation configuration
@@ -78,7 +78,7 @@ class Supervisor(BaseTopology):
             await team_memory.report_status(coord_name, "planning")
 
         # Step 1: Coordinator analyzes task and creates delegation plan
-        worker_names = [w.name for w in self.workers]
+        [w.name for w in self.workers]
         worker_list = ", ".join(f"{w.name} ({w.role or 'general'})" for w in self.workers)
         planning_prompt = f"""Task: {task}
 
@@ -100,11 +100,11 @@ Create brief assignments for each. Keep assignments under 50 words each.
         # Step 2: Workers execute their assignments
         async def run_worker(worker: AgentConfig, plan: str) -> tuple[str, str]:
             w_name = worker.name or "worker"
-            
+
             # Report worker starting
             if team_memory:
                 await team_memory.report_status(w_name, "working")
-            
+
             worker_prompt = f"""Task: {task}
 
 Your assignment:
@@ -113,12 +113,12 @@ Your assignment:
 Complete your portion in under 150 words."""
 
             result = await worker.agent.run(worker_prompt)
-            
+
             # Share result and report completion
             if team_memory:
                 await team_memory.share_result(w_name, {"output": result})
                 await team_memory.report_status(w_name, "done")
-            
+
             return w_name, result
 
         if self.parallel:
@@ -178,7 +178,7 @@ class Pipeline(BaseTopology):
     - Research → Draft → Edit → Polish
     - Extract → Transform → Load
     - Analyze → Plan → Execute → Review
-    
+
     Supports A2A delegation when AgentConfig includes can_delegate/can_reply.
 
     Example:
@@ -196,7 +196,7 @@ class Pipeline(BaseTopology):
     """Ordered list of agents to process sequentially."""
 
     topology_type: TopologyType = field(default=TopologyType.PIPELINE, init=False)
-    
+
     def __post_init__(self) -> None:
         """Initialize and configure delegation for all agents."""
         super().__post_init__()  # Apply delegation configuration
@@ -278,7 +278,7 @@ class Mesh(BaseTopology):
     - Peer review and refinement
     - Collaborative problem-solving
     - Multi-perspective analysis
-    
+
     Supports A2A delegation when AgentConfig includes can_delegate/can_reply.
 
     Example:
@@ -311,7 +311,7 @@ class Mesh(BaseTopology):
         # Default to sliding window to prevent context explosion
         if self.context_strategy is None:
             self.context_strategy = SlidingWindowStrategy(max_rounds=3)
-        
+
         # Apply delegation configuration from BaseTopology
         super().__post_init__()
 
@@ -322,13 +322,13 @@ class Mesh(BaseTopology):
         team_memory: TeamMemory | None = None,
     ) -> TopologyResult:
         """Execute mesh collaboration pattern."""
-        from agenticflow.observability.trace_record import TraceType
         from agenticflow.observability.bus import TraceBus
-        
+        from agenticflow.observability.trace_record import TraceType
+
         agent_outputs: dict[str, str] = {}
         execution_order: list[str] = []
         round_history: list[dict[str, str]] = []
-        
+
         # Get event bus from first agent if available (must be real EventBus)
         first_agent = self.agents[0].agent if self.agents else None
         event_bus = getattr(first_agent, 'event_bus', None)
@@ -337,7 +337,7 @@ class Mesh(BaseTopology):
 
         for round_num in range(1, self.max_rounds + 1):
             round_outputs: dict[str, str] = {}
-            
+
             # Emit round start event
             if event_bus:
                 await event_bus.publish(TraceType.TASK_STARTED.value, {
@@ -385,7 +385,7 @@ Provide your initial analysis and contribution."""
                             "from": contributors,
                             "content": ctx.strip() if ctx else f"Context from {len(round_history)} round(s)",
                         })
-                    
+
                     prompt = f"""You are in round {round_n} of team collaboration.
 
 TASK: {task}
@@ -397,7 +397,7 @@ Review your colleagues' contributions and provide your updated analysis.
 Build on good ideas, offer corrections, and add new insights."""
 
                 result = await agent_cfg.agent.run(prompt)
-                
+
                 # Emit message sent event - agent shares their contribution
                 if agent_event_bus:
                     await agent_event_bus.publish(TraceType.MESSAGE_SENT.value, {
@@ -425,7 +425,7 @@ Build on good ideas, offer corrections, and add new insights."""
                 execution_order.append(f"{name}_round{round_num}")
 
             round_history.append(round_outputs)
-            
+
             # Emit round complete event
             if event_bus:
                 await event_bus.publish(TraceType.TASK_COMPLETED.value, {
@@ -445,7 +445,7 @@ Build on good ideas, offer corrections, and add new insights."""
 
         if self.synthesizer:
             synth_name = self.synthesizer.name or "synthesizer"
-            
+
             if team_memory:
                 await team_memory.report_status(synth_name, "synthesizing")
 
@@ -505,7 +505,7 @@ Create a comprehensive final output that represents the team's consensus."""
             agents.append(self.synthesizer)
         return agents
 
-    def get_agents_dict(self) -> dict[str, "Agent"]:
+    def get_agents_dict(self) -> dict[str, Agent]:
         """Get agents as dict for visualization (overrides base property conflict)."""
         return {cfg.name: cfg.agent for cfg in self.get_agents() if cfg.name}
 

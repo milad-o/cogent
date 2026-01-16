@@ -36,11 +36,11 @@ Example:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 from agenticflow.capabilities.knowledge_graph.backends.base import GraphBackend
+from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 
 
 class Neo4jGraph(GraphBackend):
@@ -155,7 +155,7 @@ class Neo4jGraph(GraphBackend):
         source: str | None = None,
     ) -> Entity:
         """Add or update an entity (node) in Neo4j."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         attrs = attributes or {}
 
         # Neo4j node labels can't have spaces, normalize type
@@ -199,7 +199,7 @@ class Neo4jGraph(GraphBackend):
         entities: list[tuple[str, str, dict[str, Any] | None]],
     ) -> int:
         """Bulk insert entities using UNWIND for performance."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Group by type for efficient batch inserts
         by_type: dict[str, list[dict]] = {}
@@ -236,7 +236,7 @@ class Neo4jGraph(GraphBackend):
         relationships: list[tuple[str, str, str]],
     ) -> int:
         """Bulk insert relationships using UNWIND."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Group by relation type
         by_type: dict[str, list[dict]] = {}
@@ -286,8 +286,8 @@ class Neo4jGraph(GraphBackend):
                 id=entity_id,
                 type=labels[0] if labels else "Entity",
                 attributes=props,
-                created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(timezone.utc),
-                updated_at=datetime.fromisoformat(updated_at) if updated_at else datetime.now(timezone.utc),
+                created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
+                updated_at=datetime.fromisoformat(updated_at) if updated_at else datetime.now(UTC),
                 source=source,
             )
 
@@ -300,7 +300,7 @@ class Neo4jGraph(GraphBackend):
         source: str | None = None,
     ) -> Relationship:
         """Add a relationship between entities."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         rel_type = relation.upper().replace(" ", "_")
         attrs = attributes or {}
 
@@ -364,7 +364,7 @@ class Neo4jGraph(GraphBackend):
                         relation=record["rel"].lower().replace("_", " "),
                         target_id=record["target"],
                         attributes=props,
-                        created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(timezone.utc),
+                        created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
                         source=source,
                     ))
 
@@ -389,7 +389,7 @@ class Neo4jGraph(GraphBackend):
                         relation=record["rel"].lower().replace("_", " "),
                         target_id=entity_id,
                         attributes=props,
-                        created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(timezone.utc),
+                        created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
                         source=source,
                     ))
 
@@ -507,8 +507,8 @@ class Neo4jGraph(GraphBackend):
                     id=entity_id,
                     type=labels[0] if labels else "Entity",
                     attributes=props,
-                    created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(timezone.utc),
-                    updated_at=datetime.fromisoformat(updated_at) if updated_at else datetime.now(timezone.utc),
+                    created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
+                    updated_at=datetime.fromisoformat(updated_at) if updated_at else datetime.now(UTC),
                     source=source,
                 ))
 

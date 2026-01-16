@@ -16,97 +16,97 @@ Example:
     # Create role-specific agents
     supervisor = Agent.as_supervisor(name="Manager", model=model, workers=["A", "B"])
     worker = Agent.as_worker(name="Analyst", model=model, tools=[search_tool])
-    
+
     # Or use the generic constructor
     agent = Agent(name="Helper", model=model, role="worker")
-    
+
     # With memory
     from agenticflow.agent.memory import InMemorySaver
-    
+
     agent = Agent(
         name="Assistant",
         model=model,
         memory=InMemorySaver(),  # Enables conversation memory
     )
-    
+
     # Run with thread-based memory
     response = await agent.run("Hi!", thread_id="conv-1")
 """
 
 from agenticflow.agent.base import Agent
 from agenticflow.agent.config import AgentConfig
-from agenticflow.agent.state import AgentState
-from agenticflow.agent.memory import (
-    AgentMemory,
-    MemorySnapshot,
-    MemoryCheckpoint,  # Backward compat alias
-    ThreadConfig,
-    InMemorySaver,
-    InMemoryCheckpointer,  # Backward compat alias
-)
-from agenticflow.agent.roles import (
-    RoleBehavior,
-    DelegationCommand,
-    get_role_prompt,
-    get_role_behavior,
-    parse_delegation,
-    has_final_answer,
-    extract_final_answer,
-    ROLE_PROMPTS,
-    ROLE_BEHAVIORS,
-)
-from agenticflow.agent.resilience import (
-    RetryStrategy,
-    RetryPolicy,
-    CircuitState,
-    CircuitBreaker,
-    RecoveryAction,
-    FallbackRegistry,
-    FallbackConfig,
-    FailureRecord,
-    FailureMemory,
-    ResilienceConfig,
-    ExecutionResult,
-    ToolResilience,
-    ModelResilience,
-    ModelExecutionResult,
-)
 from agenticflow.agent.hitl import (
-    InterruptReason,
-    DecisionType,
-    PendingAction,
-    HumanDecision,
-    InterruptedState,
-    InterruptedException,
-    DecisionRequiredException,
     AbortedException,
+    DecisionRequiredException,
+    DecisionType,
     GuidanceResult,
+    HumanDecision,
     HumanResponse,
+    InterruptedException,
+    InterruptedState,
+    InterruptReason,
+    PendingAction,
     should_interrupt,
 )
-from agenticflow.agent.taskboard import (
-    TaskBoard,
-    TaskBoardConfig,
-    Task,
-    TaskStatus,
+from agenticflow.agent.memory import (
+    AgentMemory,
+    InMemoryCheckpointer,  # Backward compat alias
+    InMemorySaver,
+    MemoryCheckpoint,  # Backward compat alias
+    MemorySnapshot,
+    ThreadConfig,
+)
+from agenticflow.agent.output import (
+    OutputMethod,
+    OutputValidationError,
+    ResponseSchema,
+    StructuredResult,
 )
 from agenticflow.agent.reasoning import (
     ReasoningConfig,
+    ReasoningResult,
     ReasoningStyle,
     ThinkingStep,
-    ReasoningResult,
 )
-from agenticflow.agent.output import (
-    ResponseSchema,
-    OutputMethod,
-    StructuredResult,
-    OutputValidationError,
+from agenticflow.agent.resilience import (
+    CircuitBreaker,
+    CircuitState,
+    ExecutionResult,
+    FailureMemory,
+    FailureRecord,
+    FallbackConfig,
+    FallbackRegistry,
+    ModelExecutionResult,
+    ModelResilience,
+    RecoveryAction,
+    ResilienceConfig,
+    RetryPolicy,
+    RetryStrategy,
+    ToolResilience,
+)
+from agenticflow.agent.roles import (
+    ROLE_BEHAVIORS,
+    ROLE_PROMPTS,
+    DelegationCommand,
+    RoleBehavior,
+    extract_final_answer,
+    get_role_behavior,
+    get_role_prompt,
+    has_final_answer,
+    parse_delegation,
 )
 from agenticflow.agent.spawning import (
     AgentSpec,
-    SpawningConfig,
     SpawnedAgentInfo,
+    SpawningConfig,
     SpawnManager,
+)
+from agenticflow.agent.state import AgentState
+from agenticflow.agent.taskboard import (
+    Task,
+    TaskBoard,
+    TaskBoardConfig,
+    TaskStatus,
 )
 
 __all__ = [

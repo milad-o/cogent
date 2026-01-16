@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 from agenticflow.capabilities.knowledge_graph.backends.base import GraphBackend
+from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 
 
 class InMemoryGraph(GraphBackend):
@@ -34,7 +34,7 @@ class InMemoryGraph(GraphBackend):
         source: str | None = None,
     ) -> Entity:
         """Add or update an entity."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if self._nx:
             existing = self.graph.nodes.get(entity_id, {})
@@ -78,12 +78,12 @@ class InMemoryGraph(GraphBackend):
                     created_at=(
                         datetime.fromisoformat(data["created_at"])
                         if "created_at" in data
-                        else datetime.now(timezone.utc)
+                        else datetime.now(UTC)
                     ),
                     updated_at=(
                         datetime.fromisoformat(data["updated_at"])
                         if "updated_at" in data
-                        else datetime.now(timezone.utc)
+                        else datetime.now(UTC)
                     ),
                     source=data.get("source"),
                 )
@@ -372,7 +372,7 @@ class InMemoryGraph(GraphBackend):
                         "relation": edge_data.get("relation", "related_to"),
                         "attributes": edge_data.get("attributes", {}),
                         "created_at": edge_data.get(
-                            "created_at", datetime.now(timezone.utc).isoformat()
+                            "created_at", datetime.now(UTC).isoformat()
                         ),
                     }
                 )

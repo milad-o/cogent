@@ -39,20 +39,42 @@ Example:
     >>> from agenticflow.retriever import DenseRetriever, HybridRetriever
     >>> from agenticflow.document import DocumentLoader, RecursiveCharacterSplitter
     >>> from agenticflow.vectorstore import VectorStore
-    >>> 
+    >>>
     >>> # Load and split documents
     >>> docs = await DocumentLoader().load_directory("./documents")
     >>> chunks = RecursiveCharacterSplitter(chunk_size=1000).split_documents(docs)
-    >>> 
+    >>>
     >>> # Create vector store and retriever
     >>> vs = VectorStore()
     >>> await vs.add_documents(chunks)
     >>> retriever = DenseRetriever(vs)
-    >>> 
+    >>>
     >>> # Retrieve
     >>> results = await retriever.retrieve("search query", k=5)
 """
 
+# Re-export document types for backward compatibility
+from agenticflow.document import (
+    LOADERS,
+    CharacterSplitter,
+    CodeSplitter,
+    Document,
+    DocumentLoader,
+    HTMLSplitter,
+    MarkdownSplitter,
+    # Splitters
+    RecursiveCharacterSplitter,
+    SemanticSplitter,
+    SentenceSplitter,
+    TextChunk,
+    TokenSplitter,
+    load_documents,
+    load_documents_sync,
+    split_text,
+)
+from agenticflow.document import (
+    BaseSplitter as TextSplitter,
+)
 from agenticflow.retriever.base import (
     BaseRetriever,
     FusionStrategy,
@@ -65,28 +87,21 @@ from agenticflow.retriever.contextual import (
 )
 from agenticflow.retriever.dense import DenseRetriever
 from agenticflow.retriever.ensemble import EnsembleRetriever
-from agenticflow.retriever.hybrid import HybridRetriever, MetadataMatchMode, MetadataWeight
+from agenticflow.retriever.hierarchical import (
+    HierarchicalIndex,
+    HierarchyLevel,
+    HierarchyNode,
+)
+from agenticflow.retriever.hybrid import (
+    HybridRetriever,
+    MetadataMatchMode,
+    MetadataWeight,
+)
 from agenticflow.retriever.hyde import HyDERetriever
-
-# Re-export document types for backward compatibility
-from agenticflow.document import (
-    Document,
-    DocumentLoader,
-    TextChunk,
-    load_documents,
-    load_documents_sync,
-    # Splitters
-    RecursiveCharacterSplitter,
-    CharacterSplitter,
-    SentenceSplitter,
-    MarkdownSplitter,
-    HTMLSplitter,
-    CodeSplitter,
-    SemanticSplitter,
-    TokenSplitter,
-    BaseSplitter as TextSplitter,
-    split_text,
-    LOADERS,
+from agenticflow.retriever.multi_representation import (
+    MultiRepresentationIndex,
+    QueryType,
+    RepresentationType,
 )
 from agenticflow.retriever.rerankers import (
     BaseReranker,
@@ -109,23 +124,26 @@ from agenticflow.retriever.summary import (
     SummaryIndex,
     TreeIndex,
 )
-from agenticflow.retriever.hierarchical import (
-    HierarchicalIndex,
-    HierarchyLevel,
-    HierarchyNode,
-)
 from agenticflow.retriever.temporal import (
     DecayFunction,
     TimeBasedIndex,
     TimeRange,
 )
-from agenticflow.retriever.multi_representation import (
-    MultiRepresentationIndex,
-    QueryType,
-    RepresentationType,
+from agenticflow.retriever.utils import (
+    add_citations,
+    deduplicate_results,
+    filter_by_score,
+    format_citations_reference,
+    format_context,
+    fuse_results,
+    normalize_scores,
+    top_k,
 )
-from agenticflow.retriever.utils import deduplicate_results, fuse_results, normalize_scores, add_citations, format_context, format_citations_reference, filter_by_score, top_k
-from agenticflow.retriever.utils.llm_adapter import ChatModelAdapter, LLMProtocol, adapt_llm
+from agenticflow.retriever.utils.llm_adapter import (
+    ChatModelAdapter,
+    LLMProtocol,
+    adapt_llm,
+)
 
 __all__ = [
     # Document types (re-exported from agenticflow.document)

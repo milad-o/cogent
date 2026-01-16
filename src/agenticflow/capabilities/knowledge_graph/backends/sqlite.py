@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 from agenticflow.capabilities.knowledge_graph.backends.base import GraphBackend
+from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 
 
 class SQLiteGraph(GraphBackend):
@@ -68,7 +68,7 @@ class SQLiteGraph(GraphBackend):
         source: str | None = None,
     ) -> Entity:
         """Add or update an entity."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         attrs_json = json.dumps(attributes or {})
 
         conn = self._conn
@@ -118,7 +118,7 @@ class SQLiteGraph(GraphBackend):
         Returns:
             Number of entities inserted
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._conn
 
         # Use executemany for batch insert
@@ -148,7 +148,7 @@ class SQLiteGraph(GraphBackend):
         Returns:
             Number of relationships inserted
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         conn = self._conn
 
         data = [(src, rel, tgt, "{}", now, None) for src, rel, tgt in relationships]
@@ -188,7 +188,7 @@ class SQLiteGraph(GraphBackend):
         source: str | None = None,
     ) -> Relationship:
         """Add a relationship between entities."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         attrs_json = json.dumps(attributes or {})
 
         conn = self._conn

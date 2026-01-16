@@ -20,27 +20,27 @@ from agenticflow.vectorstore import Document
 @dataclass
 class BM25Index:
     """In-memory BM25 index for sparse retrieval.
-    
+
     Implements the Okapi BM25 ranking function.
-    
+
     Attributes:
         k1: Term frequency saturation parameter (default: 1.5).
         b: Length normalization parameter (default: 0.75).
     """
-    
+
     k1: float = 1.5
     b: float = 0.75
-    
+
     # Internal state
     _documents: list[Document] = field(default_factory=list)
     _doc_tokens: list[list[str]] = field(default_factory=list)
     _doc_freqs: dict[str, int] = field(default_factory=dict)
     _avg_doc_len: float = 0.0
     _idf: dict[str, float] = field(default_factory=dict)
-    
+
     def _tokenize(self, text: str) -> list[str]:
         """Tokenize text into lowercase words.
-        
+
         Simple whitespace tokenization with basic normalization.
         For production, consider using a proper tokenizer.
         """
@@ -48,10 +48,10 @@ class BM25Index:
         text = text.lower()
         tokens = re.findall(r'\b\w+\b', text)
         return tokens
-    
+
     def add_documents(self, documents: list[Document]) -> None:
         """Add documents to the index.
-        
+
         Args:
             documents: Documents to index.
         """
@@ -59,24 +59,24 @@ class BM25Index:
             tokens = self._tokenize(doc.text)
             self._documents.append(doc)
             self._doc_tokens.append(tokens)
-            
+
             # Update document frequencies
             seen = set()
             for token in tokens:
                 if token not in seen:
                     self._doc_freqs[token] = self._doc_freqs.get(token, 0) + 1
                     seen.add(token)
-        
+
         # Recalculate average document length
         total_len = sum(len(tokens) for tokens in self._doc_tokens)
         self._avg_doc_len = total_len / len(self._doc_tokens) if self._doc_tokens else 0
-        
+
         # Recalculate IDF values
         n = len(self._documents)
         for term, df in self._doc_freqs.items():
             # IDF with smoothing to avoid negative values
             self._idf[term] = math.log((n - df + 0.5) / (df + 0.5) + 1)
-    
+
     def search(
         self,
         query: str | None = None,
@@ -85,19 +85,19 @@ class BM25Index:
         keywords: list[str] | None = None,
     ) -> list[tuple[Document, float]]:
         """Search for documents matching the query.
-        
+
         Args:
             query: Search query (will be tokenized). Mutually exclusive with keywords.
             k: Number of results to return.
             filter: Optional metadata filter.
             keywords: Explicit list of keywords to search for. If provided, query is ignored.
-            
+
         Returns:
             List of (document, score) tuples.
         """
         if not self._documents:
             return []
-        
+
         # Use explicit keywords if provided, otherwise tokenize query
         if keywords is not None:
             query_tokens = [kw.lower() for kw in keywords]
@@ -105,12 +105,12 @@ class BM25Index:
             query_tokens = self._tokenize(query)
         else:
             raise ValueError("Either 'query' or 'keywords' must be provided")
-        
+
         scores: list[tuple[int, float]] = []
-        
+
         for idx, doc_tokens in enumerate(self._doc_tokens):
             doc = self._documents[idx]
-            
+
             # Apply metadata filter
             if filter:
                 match = all(
@@ -119,57 +119,57 @@ class BM25Index:
                 )
                 if not match:
                     continue
-            
+
             # Calculate BM25 score
             score = self._score_document(query_tokens, doc_tokens)
             if score > 0:
                 scores.append((idx, score))
-        
+
         # Sort by score descending
         scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Return top k
         results = []
         for idx, score in scores[:k]:
             results.append((self._documents[idx], score))
-        
+
         return results
-    
+
     def _score_document(
         self,
         query_tokens: list[str],
         doc_tokens: list[str],
     ) -> float:
         """Calculate BM25 score for a document.
-        
+
         Args:
             query_tokens: Tokenized query.
             doc_tokens: Tokenized document.
-            
+
         Returns:
             BM25 score.
         """
         doc_len = len(doc_tokens)
         doc_term_freqs = Counter(doc_tokens)
-        
+
         score = 0.0
         for term in query_tokens:
             if term not in self._idf:
                 continue
-            
+
             tf = doc_term_freqs.get(term, 0)
             idf = self._idf[term]
-            
+
             # BM25 formula
             numerator = tf * (self.k1 + 1)
             denominator = tf + self.k1 * (
                 1 - self.b + self.b * (doc_len / self._avg_doc_len)
             )
-            
+
             score += idf * (numerator / denominator)
-        
+
         return score
-    
+
     def clear(self) -> None:
         """Clear the index."""
         self._documents = []
@@ -177,20 +177,20 @@ class BM25Index:
         self._doc_freqs = {}
         self._avg_doc_len = 0.0
         self._idf = {}
-    
+
     def __len__(self) -> int:
         return len(self._documents)
 
 
 class BM25Retriever(BaseRetriever):
     """Sparse retriever using BM25 algorithm.
-    
+
     BM25 is effective for:
     - Keyword-based queries
     - When exact term matching is important
     - Fast retrieval without embeddings
     - Combining with dense retrieval (hybrid)
-    
+
     Example:
         >>> retriever = BM25Retriever()
         >>> retriever.add_documents([
@@ -199,9 +199,9 @@ class BM25Retriever(BaseRetriever):
         ... ])
         >>> docs = await retriever.retrieve("Python programming")
     """
-    
+
     _name: str = "bm25"
-    
+
     def __init__(
         self,
         documents: list[Document] | None = None,
@@ -212,7 +212,7 @@ class BM25Retriever(BaseRetriever):
         score_threshold: float | None = None,
     ) -> None:
         """Create a BM25 retriever.
-        
+
         Args:
             documents: Initial documents to index.
             k1: Term frequency saturation (default: 1.5).
@@ -222,36 +222,36 @@ class BM25Retriever(BaseRetriever):
         """
         self._index = BM25Index(k1=k1, b=b)
         self.score_threshold = score_threshold
-        
+
         if name:
             self._name = name
-        
+
         if documents:
             self._index.add_documents(documents)
-    
+
     def add_documents(self, documents: list[Document]) -> None:
         """Add documents to the index.
-        
+
         Args:
             documents: Documents to add.
         """
         self._index.add_documents(documents)
-    
+
     async def index_documents(self, documents: list[Document]) -> None:
         """Async wrapper for adding documents to the index.
-        
+
         Args:
             documents: Documents to index.
         """
         self._index.add_documents(documents)
-    
+
     def add_texts(
         self,
         texts: list[str],
         metadatas: list[dict[str, Any]] | None = None,
     ) -> None:
         """Add texts to the index.
-        
+
         Args:
             texts: Texts to add.
             metadatas: Optional metadata for each text.
@@ -259,10 +259,10 @@ class BM25Retriever(BaseRetriever):
         metadatas = metadatas or [{}] * len(texts)
         documents = [
             Document(text=text, metadata=meta)
-            for text, meta in zip(texts, metadatas)
+            for text, meta in zip(texts, metadatas, strict=False)
         ]
         self._index.add_documents(documents)
-    
+
     async def retrieve(
         self,
         query: str | None = None,
@@ -274,9 +274,9 @@ class BM25Retriever(BaseRetriever):
         **kwargs: Any,
     ) -> list[Document] | list[RetrievalResult]:
         """Retrieve documents using BM25.
-        
+
         Supports both natural language queries (tokenized) and explicit keywords.
-        
+
         Args:
             query: Search query (will be tokenized). Optional if keywords provided.
             k: Number of documents to retrieve.
@@ -284,7 +284,7 @@ class BM25Retriever(BaseRetriever):
             include_scores: If True, return RetrievalResult with scores.
             keywords: Explicit list of keywords. If provided, query is ignored.
             **kwargs: Additional arguments (ignored).
-            
+
         Returns:
             List of Documents or RetrievalResults.
         """
@@ -294,12 +294,12 @@ class BM25Retriever(BaseRetriever):
             filter=filter,
             keywords=keywords,
         )
-        
+
         if include_scores:
             return results
         else:
             return [r.document for r in results]
-    
+
     async def retrieve_with_scores(
         self,
         query: str | None = None,
@@ -308,31 +308,31 @@ class BM25Retriever(BaseRetriever):
         keywords: list[str] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents using BM25.
-        
+
         Args:
             query: The search query (will be tokenized). Mutually exclusive with keywords.
             k: Number of documents to retrieve.
             filter: Optional metadata filter.
             keywords: Explicit list of keywords to search for. If provided, query is ignored.
-            
+
         Returns:
             List of RetrievalResult ordered by BM25 score.
         """
         search_results = self._index.search(query=query, k=k, filter=filter, keywords=keywords)
-        
+
         # Normalize scores to 0-1 range if we have results
         max_score = max((s for _, s in search_results), default=1.0)
         if max_score == 0:
             max_score = 1.0
-        
+
         results = []
         for doc, score in search_results:
             normalized_score = score / max_score
-            
+
             # Apply threshold
             if self.score_threshold is not None and normalized_score < self.score_threshold:
                 continue
-            
+
             results.append(
                 RetrievalResult(
                     document=doc,
@@ -341,18 +341,18 @@ class BM25Retriever(BaseRetriever):
                     metadata={"search_type": "sparse", "raw_score": score},
                 )
             )
-        
+
         return results
-    
+
     def clear(self) -> None:
         """Clear the index."""
         self._index.clear()
-    
+
     @property
     def document_count(self) -> int:
         """Number of indexed documents."""
         return len(self._index)
-    
+
     def as_tool(
         self,
         *,
@@ -364,7 +364,7 @@ class BM25Retriever(BaseRetriever):
         allow_keywords: bool = True,
     ):
         """Expose this retriever as a tool with BM25-specific parameters.
-        
+
         Args:
             name: Optional tool name.
             description: Optional tool description.
@@ -372,18 +372,18 @@ class BM25Retriever(BaseRetriever):
             include_scores: Include scores in output.
             include_metadata: Include metadata in output.
             allow_keywords: Allow explicit keywords parameter (alternative to query).
-            
+
         Returns:
             BaseTool configured for this retriever.
         """
         from agenticflow.tools.base import BaseTool
-        
+
         tool_name = name or f"{self.name}_retrieve"
         tool_description = description or (
             f"Retrieve documents using {self.name} (BM25 lexical search). "
             "Searches based on keyword matching and term frequency."
         )
-        
+
         args_schema: dict[str, Any] = {
             "query": {
                 "type": "string",
@@ -401,14 +401,14 @@ class BM25Retriever(BaseRetriever):
                 "additionalProperties": True,
             },
         }
-        
+
         if allow_keywords:
             args_schema["keywords"] = {
                 "type": "array",
                 "description": "Explicit list of keywords to search for (alternative to query).",
                 "items": {"type": "string"},
             }
-        
+
         async def _tool(
             query: str | None = None,
             k: int = k_default,
@@ -422,7 +422,7 @@ class BM25Retriever(BaseRetriever):
                 keywords=keywords if allow_keywords else None,
                 include_scores=True,
             )
-            
+
             payload: list[dict[str, Any]] = []
             for r in results:
                 entry: dict[str, Any] = {"text": r.document.text}
@@ -431,9 +431,9 @@ class BM25Retriever(BaseRetriever):
                 if include_scores:
                     entry["score"] = r.score
                 payload.append(entry)
-            
+
             return payload
-        
+
         return BaseTool(
             name=tool_name,
             description=tool_description,
@@ -444,16 +444,16 @@ class BM25Retriever(BaseRetriever):
 
 class TFIDFRetriever(BaseRetriever):
     """Sparse retriever using TF-IDF.
-    
+
     TF-IDF (Term Frequency-Inverse Document Frequency) is a simpler
     alternative to BM25. Uses cosine similarity between TF-IDF vectors.
-    
+
     Note: For most use cases, BM25Retriever is recommended as it
     generally performs better.
     """
-    
+
     _name: str = "tfidf"
-    
+
     def __init__(
         self,
         documents: list[Document] | None = None,
@@ -461,7 +461,7 @@ class TFIDFRetriever(BaseRetriever):
         name: str | None = None,
     ) -> None:
         """Create a TF-IDF retriever.
-        
+
         Args:
             documents: Initial documents to index.
             name: Optional custom name.
@@ -469,50 +469,50 @@ class TFIDFRetriever(BaseRetriever):
         self._documents: list[Document] = []
         self._doc_vectors: list[dict[str, float]] = []
         self._idf: dict[str, float] = {}
-        
+
         if name:
             self._name = name
-        
+
         if documents:
             self.add_documents(documents)
-    
+
     def _tokenize(self, text: str) -> list[str]:
         """Tokenize text."""
         return re.findall(r'\b\w+\b', text.lower())
-    
+
     def add_documents(self, documents: list[Document]) -> None:
         """Add documents to the index."""
         # First pass: count document frequencies
         doc_freqs: dict[str, int] = {}
         all_tokens: list[list[str]] = []
-        
+
         for doc in documents:
             tokens = self._tokenize(doc.text)
             all_tokens.append(tokens)
             seen = set(tokens)
             for token in seen:
                 doc_freqs[token] = doc_freqs.get(token, 0) + 1
-        
+
         # Calculate IDF
         n = len(documents) + len(self._documents)
         for term, df in doc_freqs.items():
             self._idf[term] = math.log(n / (df + 1)) + 1
-        
+
         # Second pass: create TF-IDF vectors
-        for doc, tokens in zip(documents, all_tokens):
+        for doc, tokens in zip(documents, all_tokens, strict=False):
             term_freqs = Counter(tokens)
             doc_len = len(tokens)
-            
+
             # TF-IDF vector
             vector: dict[str, float] = {}
             for term, tf in term_freqs.items():
                 tfidf = (tf / doc_len) * self._idf.get(term, 0)
                 if tfidf > 0:
                     vector[term] = tfidf
-            
+
             self._documents.append(doc)
             self._doc_vectors.append(vector)
-    
+
     async def retrieve_with_scores(
         self,
         query: str,
@@ -522,38 +522,38 @@ class TFIDFRetriever(BaseRetriever):
         """Retrieve using TF-IDF cosine similarity."""
         if not self._documents:
             return []
-        
+
         # Create query vector
         tokens = self._tokenize(query)
         term_freqs = Counter(tokens)
         query_len = len(tokens)
-        
+
         query_vector: dict[str, float] = {}
         for term, tf in term_freqs.items():
             tfidf = (tf / query_len) * self._idf.get(term, 0)
             if tfidf > 0:
                 query_vector[term] = tfidf
-        
+
         # Calculate cosine similarity with each document
         scores: list[tuple[int, float]] = []
-        
+
         for idx, doc_vector in enumerate(self._doc_vectors):
             doc = self._documents[idx]
-            
+
             # Apply filter
             if filter:
                 match = all(doc.metadata.get(k) == v for k, v in filter.items())
                 if not match:
                     continue
-            
+
             # Cosine similarity
             score = self._cosine_similarity(query_vector, doc_vector)
             if score > 0:
                 scores.append((idx, score))
-        
+
         # Sort and return top k
         scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         results = []
         for idx, score in scores[:k]:
             results.append(
@@ -564,9 +564,9 @@ class TFIDFRetriever(BaseRetriever):
                     metadata={"search_type": "tfidf"},
                 )
             )
-        
+
         return results
-    
+
     def _cosine_similarity(
         self,
         vec1: dict[str, float],
@@ -575,12 +575,12 @@ class TFIDFRetriever(BaseRetriever):
         """Calculate cosine similarity between two sparse vectors."""
         # Dot product
         dot = sum(vec1.get(k, 0) * vec2.get(k, 0) for k in vec1)
-        
+
         # Magnitudes
         mag1 = math.sqrt(sum(v * v for v in vec1.values()))
         mag2 = math.sqrt(sum(v * v for v in vec2.values()))
-        
+
         if mag1 == 0 or mag2 == 0:
             return 0.0
-        
+
         return dot / (mag1 * mag2)

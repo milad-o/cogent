@@ -34,11 +34,11 @@ Example:
     ...     RecursiveCharacterSplitter,
     ...     MapReduceSummarizer,
     ... )
-    >>> 
+    >>>
     >>> # Load documents
     >>> loader = DocumentLoader()
     >>> docs = await loader.load_directory("./documents")
-    >>> 
+    >>>
     >>> # Split into chunks
     >>> splitter = RecursiveCharacterSplitter(chunk_size=1000, chunk_overlap=200)
     >>> chunks = splitter.split_documents(docs)
@@ -49,11 +49,11 @@ Example:
 """
 
 # Types
-from agenticflow.document.types import (
-    Document,
-    FileType,
-    SplitterType,
-    TextChunk,
+# Enricher
+from agenticflow.document.enricher import (
+    EnricherConfig,
+    MetadataEnricher,
+    enrich_documents,
 )
 
 # Loaders
@@ -98,12 +98,11 @@ from agenticflow.document.splitters import (
     TokenSplitter,
     split_text,
 )
-
-# Enricher
-from agenticflow.document.enricher import (
-    EnricherConfig,
-    MetadataEnricher,
-    enrich_documents,
+from agenticflow.document.types import (
+    Document,
+    FileType,
+    SplitterType,
+    TextChunk,
 )
 
 __all__ = [

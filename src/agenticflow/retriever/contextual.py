@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 @dataclass
 class DocumentChunk:
     """A chunk with reference to its parent document."""
-    
+
     chunk_id: str
     parent_id: str
     chunk_index: int
@@ -30,13 +30,13 @@ class DocumentChunk:
 
 class ParentDocumentRetriever(BaseRetriever):
     """Retriever that indexes chunks but returns parent documents.
-    
+
     This strategy splits documents into small chunks for precise
     matching, but returns the full parent document for more context.
-    
+
     Use case: When you need precise retrieval (small chunks match well)
     but your downstream task needs more context (full documents).
-    
+
     Example:
         >>> retriever = ParentDocumentRetriever(
         ...     vectorstore=vectorstore,
@@ -47,9 +47,9 @@ class ParentDocumentRetriever(BaseRetriever):
         >>> results = await retriever.retrieve("query", k=3)
         >>> # Results contain full parent documents, not chunks
     """
-    
+
     _name: str = "parent_document"
-    
+
     def __init__(
         self,
         vectorstore: VectorStore,
@@ -60,7 +60,7 @@ class ParentDocumentRetriever(BaseRetriever):
         name: str | None = None,
     ) -> None:
         """Create a parent document retriever.
-        
+
         Args:
             vectorstore: Vector store for chunk storage.
             chunk_size: Size of chunks in characters.
@@ -72,22 +72,22 @@ class ParentDocumentRetriever(BaseRetriever):
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
         self._k = k
-        
+
         # Parent document store (in-memory for now)
         self._parents: dict[str, Document] = {}
-        
+
         if name:
             self._name = name
-    
+
     def _chunk_text(self, text: str) -> list[str]:
         """Split text into overlapping chunks."""
         chunks = []
         start = 0
-        
+
         while start < len(text):
             end = start + self._chunk_size
             chunk = text[start:end]
-            
+
             # Try to break at sentence/word boundary
             if end < len(text):
                 # Look for sentence end
@@ -97,41 +97,41 @@ class ParentDocumentRetriever(BaseRetriever):
                         chunk = chunk[:last_sep + len(sep)]
                         end = start + len(chunk)
                         break
-            
+
             if chunk.strip():
                 chunks.append(chunk.strip())
-            
+
             start = end - self._chunk_overlap
             if start <= 0:
                 start = end
-        
+
         return chunks
-    
+
     async def add_documents(
         self,
         documents: list[Document],
     ) -> None:
         """Add documents by chunking and indexing.
-        
+
         Stores full documents and indexes chunks pointing to them.
-        
+
         Args:
             documents: Documents to add.
         """
         import uuid
-        
+
         chunks_to_add = []
-        
+
         for doc in documents:
             # Generate parent ID
             parent_id = doc.metadata.get("id") or str(uuid.uuid4())
-            
+
             # Store parent
             self._parents[parent_id] = doc
-            
+
             # Create chunks
             text_chunks = self._chunk_text(doc.text)
-            
+
             for i, chunk_text in enumerate(text_chunks):
                 chunk_doc = Document(
                     text=chunk_text,
@@ -143,12 +143,12 @@ class ParentDocumentRetriever(BaseRetriever):
                     },
                 )
                 chunks_to_add.append(chunk_doc)
-        
+
         # Add chunks to vector store
         await self._vectorstore.add_documents(chunks_to_add)
-    
+
     # Note: We don't override retrieve() - base class method uses retrieve_with_scores
-    
+
     async def retrieve_with_scores(
         self,
         query: str,
@@ -156,27 +156,27 @@ class ParentDocumentRetriever(BaseRetriever):
         filter: dict | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve parent documents with aggregated scores.
-        
+
         Args:
             query: Search query.
             k: Number of parents to return.
             filter: Optional metadata filter.
-            
+
         Returns:
             Retrieval results with parent documents.
         """
         k = k or self._k
-        
+
         # Retrieve chunks with scores
         chunk_results = await self._vectorstore.search(
             query=query,
             k=k * 3,
             filter=filter,
         )
-        
+
         # Aggregate scores by parent
         parent_scores: dict[str, list[float]] = {}
-        
+
         for result in chunk_results:
             chunk_doc = result.document
             score = result.score
@@ -185,7 +185,7 @@ class ParentDocumentRetriever(BaseRetriever):
                 if parent_id not in parent_scores:
                     parent_scores[parent_id] = []
                 parent_scores[parent_id].append(score)
-        
+
         # Build results with max score per parent
         results = []
         for parent_id, scores in parent_scores.items():
@@ -203,7 +203,7 @@ class ParentDocumentRetriever(BaseRetriever):
                         },
                     )
                 )
-        
+
         # Sort by score and limit
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:k]
@@ -211,13 +211,13 @@ class ParentDocumentRetriever(BaseRetriever):
 
 class SentenceWindowRetriever(BaseRetriever):
     """Retriever that indexes sentences but returns with context.
-    
+
     Indexes individual sentences for precise matching, then
     returns surrounding context (window) for better understanding.
-    
+
     Use case: When you need precise sentence-level matching
     but want to return paragraphs or larger context.
-    
+
     Example:
         >>> retriever = SentenceWindowRetriever(
         ...     vectorstore=vectorstore,
@@ -227,9 +227,9 @@ class SentenceWindowRetriever(BaseRetriever):
         >>> results = await retriever.retrieve("query")
         >>> # Results contain sentences with surrounding context
     """
-    
+
     _name: str = "sentence_window"
-    
+
     def __init__(
         self,
         vectorstore: VectorStore,
@@ -239,7 +239,7 @@ class SentenceWindowRetriever(BaseRetriever):
         name: str | None = None,
     ) -> None:
         """Create a sentence window retriever.
-        
+
         Args:
             vectorstore: Vector store for sentence storage.
             window_size: Number of sentences before/after to include.
@@ -249,44 +249,44 @@ class SentenceWindowRetriever(BaseRetriever):
         self._vectorstore = vectorstore
         self._window_size = window_size
         self._k = k
-        
+
         # Store sentences by document for window retrieval
         self._doc_sentences: dict[str, list[str]] = {}
-        
+
         if name:
             self._name = name
-    
+
     def _split_sentences(self, text: str) -> list[str]:
         """Split text into sentences."""
         import re
-        
+
         # Simple sentence splitting
         # More sophisticated: use nltk or spacy
         sentences = re.split(r'(?<=[.!?])\s+', text)
         return [s.strip() for s in sentences if s.strip()]
-    
+
     async def add_documents(
         self,
         documents: list[Document],
     ) -> None:
         """Add documents by indexing sentences.
-        
+
         Args:
             documents: Documents to add.
         """
         import uuid
-        
+
         sentences_to_add = []
-        
+
         for doc in documents:
             doc_id = doc.metadata.get("id") or str(uuid.uuid4())
-            
+
             # Split into sentences
             sentences = self._split_sentences(doc.text)
-            
+
             # Store for window retrieval
             self._doc_sentences[doc_id] = sentences
-            
+
             # Create sentence documents
             for i, sentence in enumerate(sentences):
                 sent_doc = Document(
@@ -299,9 +299,9 @@ class SentenceWindowRetriever(BaseRetriever):
                     },
                 )
                 sentences_to_add.append(sent_doc)
-        
+
         await self._vectorstore.add_documents(sentences_to_add)
-    
+
     def _get_window(
         self,
         doc_id: str,
@@ -311,14 +311,14 @@ class SentenceWindowRetriever(BaseRetriever):
         sentences = self._doc_sentences.get(doc_id, [])
         if not sentences:
             return ""
-        
+
         start = max(0, sentence_index - self._window_size)
         end = min(len(sentences), sentence_index + self._window_size + 1)
-        
+
         return " ".join(sentences[start:end])
-    
+
     # Note: We don't override retrieve() - base class method uses retrieve_with_scores
-    
+
     async def retrieve_with_scores(
         self,
         query: str,
@@ -326,32 +326,32 @@ class SentenceWindowRetriever(BaseRetriever):
         filter: dict | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve sentence windows with scores.
-        
+
         Args:
             query: Search query.
             k: Number of results.
             filter: Optional metadata filter.
-            
+
         Returns:
             Retrieval results with windowed text.
         """
         k = k or self._k
-        
+
         results = await self._vectorstore.search(
             query=query,
             k=k,
             filter=filter,
         )
-        
+
         retrieval_results = []
         for result in results:
             sent_doc = result.document
             score = result.score
             doc_id = sent_doc.metadata.get("doc_id")
             sent_idx = sent_doc.metadata.get("sentence_index", 0)
-            
+
             window_text = self._get_window(doc_id, sent_idx)
-            
+
             retrieval_results.append(
                 RetrievalResult(
                     document=Document(
@@ -370,5 +370,5 @@ class SentenceWindowRetriever(BaseRetriever):
                     },
                 )
             )
-        
+
         return retrieval_results

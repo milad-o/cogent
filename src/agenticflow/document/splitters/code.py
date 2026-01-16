@@ -11,19 +11,19 @@ from agenticflow.document.types import Document
 
 class CodeSplitter(BaseSplitter):
     """Split source code respecting language syntax.
-    
+
     Splits at function/class boundaries and preserves code blocks.
-    
+
     Args:
         language: Programming language (python, javascript, java, etc.)
         chunk_size: Target chunk size.
         chunk_overlap: Overlap between chunks.
-        
+
     Example:
         >>> splitter = CodeSplitter(language="python", chunk_size=1500)
         >>> chunks = splitter.split_text(python_code)
     """
-    
+
     # Language-specific split patterns
     LANGUAGE_PATTERNS: dict[str, list[str]] = {
         "python": [
@@ -84,7 +84,7 @@ class CodeSplitter(BaseSplitter):
             r'\n\n',
         ],
     }
-    
+
     def __init__(
         self,
         language: str = "python",
@@ -98,7 +98,7 @@ class CodeSplitter(BaseSplitter):
             self.language,
             [r'\n\n', r'\n']  # Default fallback
         )
-    
+
     def split_text(self, text: str) -> list[Document]:
         """Split code by language-specific patterns."""
         # Try each pattern in order
@@ -110,33 +110,33 @@ class CodeSplitter(BaseSplitter):
                     for chunk in chunks:
                         chunk.metadata["language"] = self.language
                     return chunks
-        
+
         # Fallback to simple line splitting
         lines = text.split("\n")
         chunks = self._merge_splits(lines, "\n")
         for chunk in chunks:
             chunk.metadata["language"] = self.language
         return chunks
-    
+
     def _split_by_pattern(self, text: str, pattern: str) -> list[str]:
         """Split text by regex pattern, keeping the matched delimiter."""
         splits = re.split(f'({pattern})', text)
-        
+
         # Recombine: each split starts with its delimiter
         sections = []
         current = ""
-        
-        for i, part in enumerate(splits):
+
+        for _i, part in enumerate(splits):
             if re.match(pattern, part):
                 if current.strip():
                     sections.append(current)
                 current = part
             else:
                 current += part
-        
+
         if current.strip():
             sections.append(current)
-        
+
         return sections
 
 

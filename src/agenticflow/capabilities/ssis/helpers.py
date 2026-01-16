@@ -9,12 +9,11 @@ import xml.etree.ElementTree as ET
 def get_property(element: ET.Element, prop_name: str) -> str | None:
     """Get a DTS property value from an element."""
     for prop in element.iter():
-        if prop.tag.endswith("Property"):
-            if (
-                prop.get("Name") == prop_name
-                or prop.get("{www.microsoft.com/SqlServer/Dts}Name") == prop_name
-            ):
-                return prop.text
+        if prop.tag.endswith("Property") and (
+            prop.get("Name") == prop_name
+            or prop.get("{www.microsoft.com/SqlServer/Dts}Name") == prop_name
+        ):
+            return prop.text
     return None
 
 

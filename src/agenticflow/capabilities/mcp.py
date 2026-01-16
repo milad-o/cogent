@@ -8,7 +8,7 @@ Example:
     ```python
     from agenticflow import Agent
     from agenticflow.capabilities import MCP
-    
+
     # Connect to a local MCP server (stdio)
     agent = Agent(
         name="Assistant",
@@ -20,16 +20,16 @@ Example:
             ),
         ],
     )
-    
+
     # Connect to a remote MCP server (HTTP/Streamable HTTP)
     agent = Agent(
-        name="Assistant", 
+        name="Assistant",
         model=model,
         capabilities=[
             MCP.http("https://api.example.com/mcp"),
         ],
     )
-    
+
     # Connect via WebSocket
     agent = Agent(
         name="Assistant",
@@ -38,7 +38,7 @@ Example:
             MCP.websocket("ws://localhost:8766"),
         ],
     )
-    
+
     # Connect to multiple servers
     agent = Agent(
         name="Assistant",
@@ -60,9 +60,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.tools.base import BaseTool
-
 from agenticflow.capabilities.base import BaseCapability
+from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
     from mcp import ClientSession
@@ -141,10 +140,10 @@ class MCP(BaseCapability):
         ```python
         # Local server via stdio
         mcp = MCP.stdio(command="uv", args=["run", "my-server"])
-        
+
         # Remote server via HTTP
         mcp = MCP.http("https://api.example.com/mcp")
-        
+
         # Multiple servers
         mcp = MCP(servers=[
             MCPServerConfig(transport=MCPTransport.STDIO, command="npx", args=["server"]),
@@ -182,10 +181,10 @@ class MCP(BaseCapability):
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event through the agent's event bus if available."""
         if self._agent and hasattr(self._agent, "event_bus") and self._agent.event_bus:
-            from agenticflow.observability.trace_record import TraceType
+            from agenticflow.observability.trace_record import Trace, TraceType
             try:
                 agent_id = self._agent.id if hasattr(self._agent, "id") else None
-                event = Event(
+                event = Trace(
                     type=TraceType(event_type),
                     data={"capability": "mcp", "agent_id": agent_id, **data},
                     source=f"capability:mcp:{agent_id or 'unknown'}",
@@ -226,7 +225,7 @@ class MCP(BaseCapability):
             ```python
             # Run a Python MCP server
             mcp = MCP.stdio(command="uv", args=["run", "my-mcp-server"])
-            
+
             # Run an npm MCP server
             mcp = MCP.stdio(command="npx", args=["-y", "@modelcontextprotocol/server-filesystem", "."])
             ```
@@ -270,7 +269,7 @@ class MCP(BaseCapability):
             ```python
             # Public MCP server
             mcp = MCP.http("https://weather-api.example.com/mcp")
-            
+
             # Authenticated server
             mcp = MCP.http(
                 "https://api.example.com/mcp",
@@ -755,14 +754,14 @@ class MCP(BaseCapability):
         """Build args schema dict from JSON schema for native BaseTool."""
         properties = input_schema.get("properties", {})
         args_schema: dict[str, Any] = {}
-        
+
         for prop_name, prop_schema in properties.items():
             args_schema[prop_name] = {
                 "type": prop_schema.get("type", "string"),
             }
             if "description" in prop_schema:
                 args_schema[prop_name]["description"] = prop_schema["description"]
-        
+
         return args_schema
 
     def _build_args_schema(self, tool_name: str, input_schema: dict[str, Any]) -> type | None:

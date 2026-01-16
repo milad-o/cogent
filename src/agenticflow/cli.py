@@ -64,6 +64,7 @@ def main() -> None:
 async def run_server(args: argparse.Namespace) -> None:
     """Run the server based on arguments."""
     from agenticflow import ConsoleEventHandler
+    from agenticflow.observability.bus import TraceBus
 
     event_bus = TraceBus()
     event_bus.subscribe_all(ConsoleEventHandler())

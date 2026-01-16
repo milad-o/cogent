@@ -33,7 +33,7 @@ class EventSink(ABC):
     """
 
     @abstractmethod
-    async def send(self, event: "Event") -> None:
+    async def send(self, event: Event) -> None:
         """Send an event to the external system.
 
         Args:

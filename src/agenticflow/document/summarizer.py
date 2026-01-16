@@ -12,14 +12,14 @@ Example:
     ```python
     from agenticflow.document import MapReduceSummarizer, RefineSummarizer
     from agenticflow.models import ChatModel
-    
+
     # Map-reduce: Fast, parallel-friendly
     summarizer = MapReduceSummarizer(
         model=ChatModel(model="gpt-4o-mini"),
         chunk_size=4000,
     )
     summary = await summarizer.summarize(long_document)
-    
+
     # Refine: Better coherence, sequential
     summarizer = RefineSummarizer(
         model=ChatModel(model="gpt-4o-mini"),
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 class SummarizationStrategy(StrEnum):
     """Available summarization strategies."""
-    
+
     MAP_REDUCE = "map_reduce"
     REFINE = "refine"
     HIERARCHICAL = "hierarchical"
@@ -57,29 +57,29 @@ class SummarizationStrategy(StrEnum):
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SummaryResult:
     """Result of document summarization."""
-    
+
     summary: str
     """The final summary text."""
-    
+
     strategy: SummarizationStrategy
     """Strategy used for summarization."""
-    
+
     chunks_processed: int
     """Number of chunks processed."""
-    
+
     reduction_ratio: float
     """Original length / summary length."""
-    
+
     intermediate_summaries: list[str] = field(default_factory=list)
     """Intermediate summaries (for debugging/analysis)."""
-    
+
     metadata: dict[str, object] = field(default_factory=dict)
     """Additional metadata about the summarization process."""
 
 
 class BaseSummarizer(ABC):
     """Base class for document summarization strategies."""
-    
+
     # Default prompts - can be overridden
     CHUNK_SUMMARY_PROMPT = """Summarize the following text concisely, capturing the main points and key information.
 
@@ -126,7 +126,7 @@ Final Summary:"""
         log_level: LogLevel = LogLevel.WARNING,
     ) -> None:
         """Initialize the summarizer.
-        
+
         Args:
             model: Language model for generating summaries.
             chunk_size: Maximum characters per chunk.
@@ -141,29 +141,29 @@ Final Summary:"""
         self._max_summary_length = max_summary_length
         self._show_progress = show_progress
         self._log = ObservabilityLogger("document.summarizer", level=log_level)
-    
+
     async def _call_model(self, prompt: str) -> str:
         """Call the model with a prompt and return the response text.
-        
+
         Handles the model's message-based interface.
         """
         messages = [{"role": "user", "content": prompt}]
         response = await self._model.ainvoke(messages)
         return response.content
-    
+
     def _chunk_text(self, text: str) -> list[str]:
         """Split text into overlapping chunks.
-        
+
         Attempts to break at natural boundaries (paragraphs, sentences).
         """
         chunks: list[str] = []
         start = 0
         text_len = len(text)
-        
+
         while start < text_len:
             end = min(start + self._chunk_size, text_len)
             chunk = text[start:end]
-            
+
             # Try to break at natural boundaries if not at end
             if end < text_len:
                 # Priority: double newline > sentence end > single newline
@@ -172,11 +172,11 @@ Final Summary:"""
                     if last_sep > self._chunk_size // 2:  # At least half the chunk
                         chunk = chunk[:last_sep + len(separator)]
                         break
-            
+
             stripped = chunk.strip()
             if stripped:
                 chunks.append(stripped)
-            
+
             # Move start, accounting for overlap
             new_start = start + len(chunk) - self._chunk_overlap
             if new_start <= start:
@@ -184,9 +184,9 @@ Final Summary:"""
                 start = end
             else:
                 start = new_start
-        
+
         return chunks
-    
+
     @abstractmethod
     async def summarize(
         self,
@@ -196,12 +196,12 @@ Final Summary:"""
         max_length: int | None = None,
     ) -> SummaryResult:
         """Summarize the given text.
-        
+
         Args:
             text: The text to summarize.
             context: Optional context about the document (e.g., "financial report").
             max_length: Override the default max summary length.
-            
+
         Returns:
             SummaryResult with the summary and metadata.
         """
@@ -210,15 +210,15 @@ Final Summary:"""
 
 class MapReduceSummarizer(BaseSummarizer):
     """Map-Reduce summarization strategy.
-    
+
     1. **Map**: Summarize each chunk independently (parallelizable)
     2. **Reduce**: Combine chunk summaries into final summary
-    
+
     Best for:
     - Large documents where parallelism helps
     - When chunks are relatively independent
     - Speed over perfect coherence
-    
+
     Example:
         ```python
         summarizer = MapReduceSummarizer(
@@ -230,7 +230,7 @@ class MapReduceSummarizer(BaseSummarizer):
         print(result.summary)
         ```
     """
-    
+
     def __init__(
         self,
         model: Model,
@@ -243,7 +243,7 @@ class MapReduceSummarizer(BaseSummarizer):
         log_level: LogLevel = LogLevel.WARNING,
     ) -> None:
         """Initialize MapReduce summarizer.
-        
+
         Args:
             model: Language model for generating summaries.
             chunk_size: Maximum characters per chunk.
@@ -262,21 +262,21 @@ class MapReduceSummarizer(BaseSummarizer):
             log_level=log_level,
         )
         self._max_concurrent = max_concurrent
-    
+
     async def _summarize_chunk(self, chunk: str, index: int) -> str:
         """Summarize a single chunk."""
         prompt = self.CHUNK_SUMMARY_PROMPT.format(text=chunk)
         summary = await self._call_model(prompt)
-        
+
         self._log.debug(
             "Chunk summarized",
             chunk_index=index,
             input_len=len(chunk),
             output_len=len(summary),
         )
-        
+
         return summary
-    
+
     async def _combine_summaries(
         self,
         summaries: list[str],
@@ -286,7 +286,7 @@ class MapReduceSummarizer(BaseSummarizer):
         combined_text = "\n\n---\n\n".join(
             f"[Section {i+1}]\n{s}" for i, s in enumerate(summaries)
         )
-        
+
         # If combined summaries are still too long, recurse
         if len(combined_text) > self._chunk_size * 2:
             self._log.debug(
@@ -300,18 +300,18 @@ class MapReduceSummarizer(BaseSummarizer):
             right = await self._combine_summaries(summaries[mid:], context)
             summaries = [left, right]
             combined_text = "\n\n---\n\n".join(summaries)
-        
+
         context_instruction = ""
         if context:
             context_instruction = f"This is a {context}. "
-        
+
         prompt = self.FINAL_SUMMARY_PROMPT.format(
             context_instruction=context_instruction,
             content=combined_text,
         )
-        
+
         return await self._call_model(prompt)
-    
+
     async def summarize(
         self,
         text: str,
@@ -322,7 +322,7 @@ class MapReduceSummarizer(BaseSummarizer):
         """Summarize using map-reduce strategy."""
         start_time = time.perf_counter()
         original_length = len(text)
-        
+
         # Check if text fits in a single chunk
         if original_length <= self._chunk_size:
             self._log.info("Document fits in single chunk, direct summarization")
@@ -332,7 +332,7 @@ class MapReduceSummarizer(BaseSummarizer):
                 content=text,
             )
             summary = await self._call_model(prompt)
-            
+
             return SummaryResult(
                 summary=summary,
                 strategy=SummarizationStrategy.MAP_REDUCE,
@@ -340,28 +340,28 @@ class MapReduceSummarizer(BaseSummarizer):
                 reduction_ratio=original_length / len(summary) if summary else 1.0,
                 intermediate_summaries=[],
             )
-        
+
         # Chunk the document
         chunks = self._chunk_text(text)
         total_chunks = len(chunks)
         completed = 0
-        
+
         self._log.info(
             "Starting map-reduce summarization",
             total_chunks=total_chunks,
             original_length=original_length,
             max_concurrent=self._max_concurrent,
         )
-        
+
         if self._show_progress:
             print(f"📄 Summarizing document ({original_length:,} chars) in {total_chunks} chunks...")
             print(f"   Strategy: map-reduce | Concurrency: {self._max_concurrent}")
             sys.stdout.flush()
-        
+
         # Map phase: summarize chunks with concurrency limit
         semaphore = asyncio.Semaphore(self._max_concurrent)
         map_start = time.perf_counter()
-        
+
         async def bounded_summarize(chunk: str, index: int) -> str:
             nonlocal completed
             async with semaphore:
@@ -369,7 +369,7 @@ class MapReduceSummarizer(BaseSummarizer):
                 result = await self._summarize_chunk(chunk, index)
                 chunk_time = time.perf_counter() - chunk_start
                 completed += 1
-                
+
                 self._log.debug(
                     "Chunk summarized",
                     chunk=index + 1,
@@ -378,7 +378,7 @@ class MapReduceSummarizer(BaseSummarizer):
                     input_chars=len(chunk),
                     output_chars=len(result),
                 )
-                
+
                 if self._show_progress:
                     elapsed = time.perf_counter() - map_start
                     rate = completed / elapsed if elapsed > 0 else 0
@@ -386,33 +386,33 @@ class MapReduceSummarizer(BaseSummarizer):
                     print(f"  ✓ Chunk {completed}/{total_chunks} ({chunk_time:.1f}s) | Rate: {rate:.1f}/s | ETA: {eta:.0f}s")
                     sys.stdout.flush()
                 return result
-        
+
         tasks = [
-            bounded_summarize(chunk, i) 
+            bounded_summarize(chunk, i)
             for i, chunk in enumerate(chunks)
         ]
         chunk_summaries = await asyncio.gather(*tasks)
         map_time = time.perf_counter() - map_start
-        
+
         self._log.info(
             "Map phase complete",
             chunks_processed=total_chunks,
             map_time_s=round(map_time, 2),
             chunks_per_sec=round(total_chunks / map_time, 2) if map_time > 0 else 0,
         )
-        
+
         if self._show_progress:
             print(f"🔄 Combining {total_chunks} summaries... (map phase: {map_time:.1f}s)")
             sys.stdout.flush()
-        
+
         # Reduce phase: combine summaries
         reduce_start = time.perf_counter()
         final_summary = await self._combine_summaries(list(chunk_summaries), context)
         reduce_time = time.perf_counter() - reduce_start
         total_time = time.perf_counter() - start_time
-        
+
         reduction = original_length / len(final_summary) if final_summary else 1.0
-        
+
         self._log.info(
             "Summarization complete",
             total_time_s=round(total_time, 2),
@@ -421,12 +421,12 @@ class MapReduceSummarizer(BaseSummarizer):
             reduction_ratio=round(reduction, 1),
             chars_per_sec=round(original_length / total_time, 0) if total_time > 0 else 0,
         )
-        
+
         if self._show_progress:
             print(f"✅ Summary complete in {total_time:.1f}s ({len(final_summary):,} chars, {reduction:.1f}x reduction)")
             print(f"   Throughput: {original_length / total_time:,.0f} chars/sec")
             sys.stdout.flush()
-        
+
         return SummaryResult(
             summary=final_summary,
             strategy=SummarizationStrategy.MAP_REDUCE,
@@ -447,16 +447,16 @@ class MapReduceSummarizer(BaseSummarizer):
 
 class RefineSummarizer(BaseSummarizer):
     """Iterative refinement summarization strategy.
-    
+
     1. Summarize first chunk
     2. For each subsequent chunk, refine the summary to include new info
     3. Final polish pass
-    
+
     Best for:
     - Documents with sequential narrative
     - When coherence is more important than speed
     - Smaller documents (sequential processing)
-    
+
     Example:
         ```python
         summarizer = RefineSummarizer(
@@ -470,7 +470,7 @@ class RefineSummarizer(BaseSummarizer):
         print(result.summary)
         ```
     """
-    
+
     async def summarize(
         self,
         text: str,
@@ -480,7 +480,7 @@ class RefineSummarizer(BaseSummarizer):
     ) -> SummaryResult:
         """Summarize using iterative refinement."""
         original_length = len(text)
-        
+
         # Check if text fits in a single chunk
         if original_length <= self._chunk_size:
             self._log.info("Document fits in single chunk, direct summarization")
@@ -490,7 +490,7 @@ class RefineSummarizer(BaseSummarizer):
                 content=text,
             )
             summary = await self._call_model(prompt)
-            
+
             return SummaryResult(
                 summary=summary,
                 strategy=SummarizationStrategy.REFINE,
@@ -498,30 +498,30 @@ class RefineSummarizer(BaseSummarizer):
                 reduction_ratio=original_length / len(summary) if summary else 1.0,
                 intermediate_summaries=[],
             )
-        
+
         # Chunk the document
         chunks = self._chunk_text(text)
         total_chunks = len(chunks)
         intermediate_summaries: list[str] = []
-        
+
         self._log.info(
             "Starting refine summarization",
             total_chunks=total_chunks,
             original_length=original_length,
         )
-        
+
         if self._show_progress:
             print(f"📄 Summarizing document ({original_length:,} chars) with refinement...")
-        
+
         # Initial summary from first chunk
         current_summary = await self._call_model(
             self.CHUNK_SUMMARY_PROMPT.format(text=chunks[0])
         )
         intermediate_summaries.append(current_summary)
-        
+
         if self._show_progress:
             print(f"  ✓ Initial summary from chunk 1/{total_chunks}")
-        
+
         # Refine with each subsequent chunk
         for i, chunk in enumerate(chunks[1:], start=2):
             prompt = self.REFINE_PROMPT.format(
@@ -530,31 +530,31 @@ class RefineSummarizer(BaseSummarizer):
             )
             current_summary = await self._call_model(prompt)
             intermediate_summaries.append(current_summary)
-            
+
             self._log.debug(
                 "Refined summary",
                 chunk_index=i,
                 summary_len=len(current_summary),
             )
-            
+
             if self._show_progress:
                 print(f"  ✓ Refined with chunk {i}/{total_chunks}")
-        
+
         # Final polish
         if self._show_progress:
             print("🔄 Final polish...")
-        
+
         context_instruction = f"This is a {context}. " if context else ""
         final_prompt = self.FINAL_SUMMARY_PROMPT.format(
             context_instruction=context_instruction,
             content=current_summary,
         )
         final_summary = await self._call_model(final_prompt)
-        
+
         if self._show_progress:
             reduction = original_length / len(final_summary) if final_summary else 1.0
             print(f"✅ Summary complete ({len(final_summary):,} chars, {reduction:.1f}x reduction)")
-        
+
         return SummaryResult(
             summary=final_summary,
             strategy=SummarizationStrategy.REFINE,
@@ -570,16 +570,16 @@ class RefineSummarizer(BaseSummarizer):
 
 class HierarchicalSummarizer(BaseSummarizer):
     """Hierarchical tree-based summarization strategy.
-    
+
     1. Split document into chunks (leaves)
     2. Summarize pairs/groups of chunks (internal nodes)
     3. Recursively summarize until single root summary
-    
+
     Best for:
     - Very large documents (books, long reports)
     - When you need multi-level abstraction
     - Balanced parallel + coherence tradeoff
-    
+
     Example:
         ```python
         summarizer = HierarchicalSummarizer(
@@ -588,13 +588,13 @@ class HierarchicalSummarizer(BaseSummarizer):
             branching_factor=4,  # Combine 4 chunks at a time
         )
         result = await summarizer.summarize(book_text)
-        
+
         # Access intermediate levels
         for i, level in enumerate(result.metadata.get("levels", [])):
             print(f"Level {i}: {len(level)} summaries")
         ```
     """
-    
+
     def __init__(
         self,
         model: Model,
@@ -608,7 +608,7 @@ class HierarchicalSummarizer(BaseSummarizer):
         log_level: LogLevel = LogLevel.WARNING,
     ) -> None:
         """Initialize hierarchical summarizer.
-        
+
         Args:
             model: Language model for generating summaries.
             chunk_size: Maximum characters per chunk.
@@ -629,13 +629,13 @@ class HierarchicalSummarizer(BaseSummarizer):
         )
         self._branching_factor = branching_factor
         self._max_concurrent = max_concurrent
-    
+
     async def _summarize_group(self, texts: list[str], level: int) -> str:
         """Summarize a group of texts into one."""
         combined = "\n\n---\n\n".join(texts)
         prompt = self.COMBINE_SUMMARIES_PROMPT.format(summaries=combined)
         return await self._call_model(prompt)
-    
+
     async def summarize(
         self,
         text: str,
@@ -645,7 +645,7 @@ class HierarchicalSummarizer(BaseSummarizer):
     ) -> SummaryResult:
         """Summarize using hierarchical tree strategy."""
         original_length = len(text)
-        
+
         # Check if text fits in a single chunk
         if original_length <= self._chunk_size:
             self._log.info("Document fits in single chunk, direct summarization")
@@ -655,7 +655,7 @@ class HierarchicalSummarizer(BaseSummarizer):
                 content=text,
             )
             summary = await self._call_model(prompt)
-            
+
             return SummaryResult(
                 summary=summary,
                 strategy=SummarizationStrategy.HIERARCHICAL,
@@ -663,80 +663,80 @@ class HierarchicalSummarizer(BaseSummarizer):
                 reduction_ratio=original_length / len(summary) if summary else 1.0,
                 intermediate_summaries=[],
             )
-        
+
         # Chunk the document
         chunks = self._chunk_text(text)
         total_chunks = len(chunks)
-        
+
         # Calculate tree depth
         tree_depth = math.ceil(math.log(total_chunks, self._branching_factor))
-        
+
         self._log.info(
             "Starting hierarchical summarization",
             total_chunks=total_chunks,
             tree_depth=tree_depth,
             branching_factor=self._branching_factor,
         )
-        
+
         if self._show_progress:
             print(f"📄 Summarizing document ({original_length:,} chars)")
             print(f"   {total_chunks} chunks, {tree_depth} levels, branching factor {self._branching_factor}")
-        
+
         levels: list[list[str]] = []
         current_level = chunks
         level_num = 0
-        
+
         semaphore = asyncio.Semaphore(self._max_concurrent)
-        
+
         while len(current_level) > 1:
             level_num += 1
             next_level: list[str] = []
-            
+
             # Group current level into batches
             groups: list[list[str]] = []
             for i in range(0, len(current_level), self._branching_factor):
                 groups.append(current_level[i:i + self._branching_factor])
-            
+
             if self._show_progress:
                 print(f"  Level {level_num}: Combining {len(current_level)} → {len(groups)} summaries")
-            
+
             async def bounded_summarize(group: list[str], idx: int) -> str:
                 async with semaphore:
                     return await self._summarize_group(group, level_num)
-            
+
             tasks = [
                 bounded_summarize(group, i)
                 for i, group in enumerate(groups)
             ]
             next_level = await asyncio.gather(*tasks)
-            
+
             levels.append(list(next_level))
             current_level = list(next_level)
-            
+
             self._log.debug(
                 "Level complete",
                 level=level_num,
                 summaries_count=len(current_level),
             )
-        
+
         # Final polish
         if self._show_progress:
             print("🔄 Final polish...")
-        
+
         context_instruction = f"This is a {context}. " if context else ""
         final_prompt = self.FINAL_SUMMARY_PROMPT.format(
             context_instruction=context_instruction,
             content=current_level[0] if current_level else "",
         )
         final_summary = await self._call_model(final_prompt)
-        
+
         if self._show_progress:
             reduction = original_length / len(final_summary) if final_summary else 1.0
             print(f"✅ Summary complete ({len(final_summary):,} chars, {reduction:.1f}x reduction)")
-        
+
         # Flatten all intermediate summaries
         all_intermediates = [s for level in levels for s in level]
-        
+
         return SummaryResult(
             summary=final_summary,
             strategy=SummarizationStrategy.HIERARCHICAL,
@@ -760,15 +760,15 @@ def create_summarizer(
     **kwargs,
 ) -> BaseSummarizer:
     """Create a summarizer with the specified strategy.
-    
+
     Args:
         strategy: Summarization strategy to use.
         model: Language model for summarization.
         **kwargs: Additional arguments passed to the summarizer.
-        
+
     Returns:
         Configured summarizer instance.
-        
+
     Example:
         ```python
         summarizer = create_summarizer(
@@ -780,7 +780,7 @@ def create_summarizer(
         ```
     """
     strategy = SummarizationStrategy(strategy)
-    
+
     if strategy == SummarizationStrategy.MAP_REDUCE:
         return MapReduceSummarizer(model, **kwargs)
     elif strategy == SummarizationStrategy.REFINE:

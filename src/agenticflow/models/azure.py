@@ -341,7 +341,7 @@ class AzureOpenAIChat(BaseChatModel):
         tools: list[Any],
         *,
         parallel_tool_calls: bool = True,
-    ) -> "AzureOpenAIChat":
+    ) -> AzureOpenAIChat:
         """Bind tools to the model."""
         self._ensure_initialized()
 
@@ -366,7 +366,7 @@ class AzureOpenAIChat(BaseChatModel):
 
     def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke synchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
@@ -804,7 +804,7 @@ class AzureAIFoundryChat(BaseChatModel):
 
     def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke synchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
@@ -814,7 +814,7 @@ class AzureAIFoundryChat(BaseChatModel):
 
     async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke asynchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
@@ -828,7 +828,7 @@ class AzureAIFoundryChat(BaseChatModel):
 
     async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """

@@ -8,23 +8,25 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from agenticflow.core.utils import generate_id, now_utc
+from agenticflow.events.bus import EventBus as CoreEventBus
+from agenticflow.events.event import Event
+from agenticflow.events.event import Event as CoreEvent
+from agenticflow.events.sinks.base import EventSink
+from agenticflow.events.sources.base import EventSource
+from agenticflow.observability.bus import TraceBus
+from agenticflow.observability.observer import Observer
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.reactive.core import (
     AgentTriggerConfig,
     Reaction,
     Trigger,
     TriggerBuilder,
 )
-from agenticflow.events.bus import EventBus as CoreEventBus
-from agenticflow.events.event import Event as CoreEvent
-from agenticflow.events.sources.base import EventSource
-from agenticflow.events.sinks.base import EventSink
-from agenticflow.observability.trace_record import TraceType
-from agenticflow.observability.observer import Observer
-from agenticflow.observability.bus import TraceBus
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -206,7 +208,7 @@ class EventFlow:
 
         self._agents[agent.name] = (agent, trigger_config)
 
-    def with_memory(self, memory: Any | None = None) -> "EventFlow":
+    def with_memory(self, memory: Any | None = None) -> EventFlow:
         """Configure shared memory for agents registered to this flow.
 
         If set, agents without an existing `memory_manager` will receive this
@@ -350,7 +352,7 @@ class EventFlow:
         await asyncio.gather(*self._spawned, return_exceptions=True)
         self._spawned.clear()
 
-    def thread_by_data(self, key: str, *, prefix: str | None = None) -> "EventFlow":
+    def thread_by_data(self, key: str, *, prefix: str | None = None) -> EventFlow:
         """Derive `thread_id` from `event.data[key]`.
 
         This is a mid-level UX helper for per-entity memory without lambdas.
@@ -379,7 +381,7 @@ class EventFlow:
     ) -> None:
         """Emit an observability event if observer is attached."""
         if self.observer:
-            event = Event(
+            event = Trace(
                 id=generate_id(),
                 type=event_type,
                 timestamp=now_utc(),
@@ -480,7 +482,7 @@ class EventFlow:
                         self._pending_events.get(),
                         timeout=self.config.event_timeout,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if self.config.stop_on_idle:
                         break
                     continue
@@ -662,14 +664,14 @@ class EventFlow:
 
             # Check if trigger requires human approval
             from agenticflow.reactive.core import ReactionType
-            
+
             if trigger.reaction == ReactionType.AWAIT_HUMAN and self.hitl_handler:
                 # Emit flow.paused event
                 await self._emit_event(
                     "flow.paused",
                     {"agent": agent.name, "event_id": event.id, "reason": "await_human"},
                 )
-                
+
                 self._observe(
                     TraceType.AGENT_INTERRUPTED,
                     {
@@ -679,9 +681,9 @@ class EventFlow:
                         "breakpoint": str(trigger.breakpoint) if trigger.breakpoint else None,
                     },
                 )
-                
+
                 # Wait for human approval via HITL handler
-                from agenticflow.agent.hitl import PendingAction, InterruptReason
+                from agenticflow.agent.hitl import InterruptReason, PendingAction
                 pending_action = PendingAction(
                     action_id=generate_id(),
                     tool_name=f"{agent.name}.react",
@@ -690,10 +692,10 @@ class EventFlow:
                     reason=InterruptReason.CONFIRMATION,
                     context=context,
                 )
-                
+
                 # Use agent's interrupt handler if available, otherwise use flow's
                 handler = getattr(agent, "_interrupt_handler", None) or self.hitl_handler
-                
+
                 # For now, we'll use the simple approval pattern
                 approved = True
                 if hasattr(handler, "request_approval"):
@@ -705,7 +707,7 @@ class EventFlow:
                             self.agent_name = agent_name
                             self.context = context
                             self.pending_action = action
-                    
+
                     request = SimpleHITLRequest(pending_action, event, agent.name, context)
                     try:
                         approved = await handler.request_approval(request)
@@ -723,18 +725,18 @@ class EventFlow:
                             emitted_events=[],
                             error=error,
                         )
-                
+
                 # Emit flow.resumed event
                 await self._emit_event(
                     "flow.resumed",
                     {"agent": agent.name, "event_id": event.id, "approved": approved},
                 )
-                
+
                 self._observe(
                     TraceType.AGENT_RESUMED,
                     {"agent": agent.name, "event_name": event_name, "approved": approved},
                 )
-                
+
                 if not approved:
                     # Human rejected the action
                     return Reaction(
@@ -745,7 +747,7 @@ class EventFlow:
                         emitted_events=[],
                         error="human_rejected",
                     )
-            
+
             # Prefer a first-class reactive API when the agent provides it.
             if callable(getattr(agent, "react", None)):
                 try:

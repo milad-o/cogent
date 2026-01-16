@@ -12,13 +12,13 @@ Example - Enable reasoning for complex tasks:
     ```python
     from agenticflow import Agent
     from agenticflow.agent.reasoning import ReasoningConfig
-    
+
     agent = Agent(
         name="Analyst",
         model=model,
         reasoning=ReasoningConfig.standard(),  # Enable reasoning
     )
-    
+
     # Agent will think through the problem before acting
     result = await agent.run(
         "Analyze the codebase and suggest architectural improvements"
@@ -29,7 +29,7 @@ Example - Per-call reasoning:
     ```python
     # Simple tasks - no reasoning needed
     result = await agent.run("What time is it?")
-    
+
     # Complex tasks - enable reasoning for this call
     result = await agent.run(
         "Design a database schema for an e-commerce platform",
@@ -40,7 +40,7 @@ Example - Per-call reasoning:
 Example - Custom reasoning configuration:
     ```python
     from agenticflow.agent.reasoning import ReasoningConfig
-    
+
     result = await agent.run(
         "Debug this complex issue",
         reasoning=ReasoningConfig(
@@ -57,7 +57,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     pass
@@ -66,13 +66,13 @@ if TYPE_CHECKING:
 class ReasoningStyle(str, Enum):
     """
     Reasoning styles that guide how the agent thinks.
-    
+
     - ANALYTICAL: Step-by-step logical breakdown
     - EXPLORATORY: Consider multiple approaches
     - CRITICAL: Question assumptions, find flaws
     - CREATIVE: Generate novel solutions
     """
-    
+
     ANALYTICAL = "analytical"
     EXPLORATORY = "exploratory"
     CRITICAL = "critical"
@@ -83,14 +83,14 @@ class ReasoningStyle(str, Enum):
 class ReasoningConfig:
     """
     Configuration for agent reasoning mode.
-    
+
     When reasoning is enabled, the agent will:
     1. Analyze the problem before acting
     2. Break down complex tasks into steps
     3. Consider multiple approaches
     4. Self-correct and refine its plan
     5. Execute with confidence
-    
+
     Attributes:
         enabled: Whether reasoning is enabled (default: True)
         max_thinking_rounds: Maximum rounds of thinking before acting (1-10)
@@ -99,18 +99,18 @@ class ReasoningConfig:
         style: Reasoning style (analytical, exploratory, critical, creative)
         require_confidence: Minimum confidence before acting (0.0-1.0, None = disabled)
         self_correct: Enable self-correction after tool results (default: True)
-        
+
     Example:
         ```python
         # Standard reasoning
         config = ReasoningConfig.standard()
-        
+
         # Deep analysis
         config = ReasoningConfig.deep()
-        
+
         # Quick reasoning
         config = ReasoningConfig.quick()
-        
+
         # Custom
         config = ReasoningConfig(
             max_thinking_rounds=3,
@@ -119,7 +119,7 @@ class ReasoningConfig:
         )
         ```
     """
-    
+
     enabled: bool = True
     max_thinking_rounds: int = 3
     thinking_budget: int | None = None  # Token limit for thinking
@@ -127,7 +127,7 @@ class ReasoningConfig:
     style: ReasoningStyle = ReasoningStyle.ANALYTICAL
     require_confidence: float | None = None  # 0.0-1.0 confidence threshold
     self_correct: bool = True  # Re-evaluate after tool results
-    
+
     def __post_init__(self) -> None:
         """Validate configuration."""
         if self.max_thinking_rounds < 1:
@@ -137,7 +137,7 @@ class ReasoningConfig:
         if self.require_confidence is not None:
             if not 0.0 <= self.require_confidence <= 1.0:
                 raise ValueError("require_confidence must be between 0.0 and 1.0")
-    
+
     @classmethod
     def quick(cls) -> ReasoningConfig:
         """Quick reasoning - minimal overhead, 1 thinking round."""
@@ -147,7 +147,7 @@ class ReasoningConfig:
             show_thinking=False,
             self_correct=False,
         )
-    
+
     @classmethod
     def standard(cls) -> ReasoningConfig:
         """Standard reasoning - balanced speed and depth."""
@@ -157,7 +157,7 @@ class ReasoningConfig:
             show_thinking=False,
             self_correct=True,
         )
-    
+
     @classmethod
     def deep(cls) -> ReasoningConfig:
         """Deep reasoning - thorough analysis for complex problems."""
@@ -168,7 +168,7 @@ class ReasoningConfig:
             self_correct=True,
             require_confidence=0.7,
         )
-    
+
     @classmethod
     def critical(cls) -> ReasoningConfig:
         """Critical reasoning - question assumptions, find flaws."""
@@ -183,12 +183,12 @@ class ReasoningConfig:
 @dataclass
 class ThinkingStep:
     """A single step in the reasoning process."""
-    
+
     round: int
     thought: str
     reasoning_type: str  # "analysis", "plan", "reflection", "correction"
     confidence: float | None = None
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "round": self.round,
@@ -198,15 +198,15 @@ class ThinkingStep:
         }
 
 
-@dataclass 
+@dataclass
 class ReasoningResult:
     """Result of the reasoning process."""
-    
+
     thinking_steps: list[ThinkingStep] = field(default_factory=list)
     final_plan: str | None = None
     total_thinking_tokens: int = 0
     thinking_rounds: int = 0
-    
+
     @property
     def thinking_summary(self) -> str:
         """Get a summary of the thinking process."""
@@ -216,7 +216,7 @@ class ReasoningResult:
             f"[Round {s.round}] {s.reasoning_type}: {s.thought[:100]}..."
             for s in self.thinking_steps
         )
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "thinking_steps": [s.to_dict() for s in self.thinking_steps],
@@ -263,21 +263,21 @@ STYLE_INSTRUCTIONS = {
 - Identify cause and effect relationships
 - Use structured step-by-step reasoning
 - Support conclusions with evidence""",
-    
+
     ReasoningStyle.EXPLORATORY: """
 **Exploratory Style**:
 - Consider multiple possible approaches
 - Weigh pros and cons of each option
 - Think about edge cases and alternatives
 - Be open to unexpected solutions""",
-    
+
     ReasoningStyle.CRITICAL: """
 **Critical Style**:
 - Question assumptions in the problem
 - Look for potential flaws or gaps
 - Consider what could go wrong
 - Validate information before using it""",
-    
+
     ReasoningStyle.CREATIVE: """
 **Creative Style**:
 - Think beyond conventional solutions
@@ -306,92 +306,92 @@ def build_reasoning_prompt(
 ) -> str:
     """
     Build the reasoning-enhanced prompt for a task.
-    
+
     Args:
         config: Reasoning configuration
         task: The task to reason about
         context: Optional context dict
-        
+
     Returns:
         Enhanced prompt with reasoning instructions
     """
     style_instructions = STYLE_INSTRUCTIONS.get(config.style, "")
-    
-    system_context = REASONING_SYSTEM_PROMPT.format(
+
+    REASONING_SYSTEM_PROMPT.format(
         style_instructions=style_instructions
     )
-    
+
     prompt_parts = [
         f"Task: {task}",
     ]
-    
+
     if context:
         context_str = "\n".join(f"- {k}: {v}" for k, v in context.items())
         prompt_parts.append(f"\nContext:\n{context_str}")
-    
+
     prompt_parts.append("\nBefore acting, think through this carefully:")
-    
+
     return "\n".join(prompt_parts)
 
 
 def extract_thinking(response: str) -> tuple[str | None, str]:
     """
     Extract <thinking> blocks from a response.
-    
+
     Args:
         response: The full response text
-        
+
     Returns:
         Tuple of (thinking_content, response_without_thinking)
     """
     import re
-    
+
     thinking_pattern = r"<thinking>(.*?)</thinking>"
     matches = re.findall(thinking_pattern, response, re.DOTALL)
-    
+
     thinking_content = "\n".join(m.strip() for m in matches) if matches else None
-    
+
     # Remove thinking blocks from response
     cleaned_response = re.sub(thinking_pattern, "", response, flags=re.DOTALL).strip()
-    
+
     return thinking_content, cleaned_response
 
 
 def estimate_confidence(thinking: str) -> float:
     """
     Estimate confidence level from thinking content.
-    
+
     This is a heuristic - looks for confidence indicators in the text.
-    
+
     Args:
         thinking: The thinking content
-        
+
     Returns:
         Estimated confidence (0.0-1.0)
     """
     thinking_lower = thinking.lower()
-    
+
     # High confidence indicators
     high_confidence = [
         "i'm confident", "i am confident", "clearly", "definitely",
         "this will work", "straightforward", "simple", "obvious",
     ]
-    
-    # Low confidence indicators  
+
+    # Low confidence indicators
     low_confidence = [
         "not sure", "uncertain", "unclear", "might", "maybe",
         "could be", "need more", "ambiguous", "risky",
     ]
-    
+
     high_count = sum(1 for phrase in high_confidence if phrase in thinking_lower)
     low_count = sum(1 for phrase in low_confidence if phrase in thinking_lower)
-    
+
     # Base confidence
     confidence = 0.6
-    
+
     # Adjust based on indicators
     confidence += high_count * 0.1
     confidence -= low_count * 0.1
-    
+
     # Clamp to valid range
     return max(0.1, min(0.95, confidence))

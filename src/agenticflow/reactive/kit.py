@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 
 class IdempotencyGuard:
@@ -68,7 +69,7 @@ class RetryBudget:
     attempts: dict[str, int]
 
     @classmethod
-    def in_memory(cls, *, max_attempts: int) -> "RetryBudget":
+    def in_memory(cls, *, max_attempts: int) -> RetryBudget:
         return cls(max_attempts=max_attempts, attempts={})
 
     def next_attempt(self, key: str) -> int:

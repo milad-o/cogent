@@ -23,9 +23,9 @@ Example:
 """
 
 from agenticflow.events.sources.base import EventSource
-from agenticflow.events.sources.webhook import WebhookSource
 from agenticflow.events.sources.file_watcher import FileWatcherSource
 from agenticflow.events.sources.redis_stream import RedisStreamSource
+from agenticflow.events.sources.webhook import WebhookSource
 
 __all__ = [
     "EventSource",

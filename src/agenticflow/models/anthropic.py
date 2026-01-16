@@ -3,7 +3,7 @@ Anthropic models for AgenticFlow.
 
 Usage:
     from agenticflow.models.anthropic import AnthropicChat
-    
+
     llm = AnthropicChat(model="claude-sonnet-4-20250514")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
 """
@@ -11,21 +11,27 @@ Usage:
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, AsyncIterator
+from typing import Any
 
-from agenticflow.models.base import AIMessage, BaseChatModel, convert_messages, normalize_input
+from agenticflow.models.base import (
+    AIMessage,
+    BaseChatModel,
+    convert_messages,
+    normalize_input,
+)
 
 
 def _messages_to_anthropic(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
     """Convert messages to Anthropic format, extracting system message."""
     system = None
     anthropic_messages = []
-    
+
     for msg in messages:
         role = msg.get("role", "")
         content = msg.get("content", "")
-        
+
         if role == "system":
             system = content
         elif role == "user":
@@ -56,7 +62,7 @@ def _messages_to_anthropic(messages: list[dict[str, Any]]) -> tuple[str | None, 
                     "content": content,
                 }],
             })
-    
+
     return system, anthropic_messages
 
 
@@ -89,7 +95,7 @@ def _parse_response(response: Any) -> AIMessage:
     """Parse Anthropic response into AIMessage."""
     content = ""
     tool_calls = []
-    
+
     for block in response.content:
         if block.type == "text":
             content += block.text
@@ -99,7 +105,7 @@ def _parse_response(response: Any) -> AIMessage:
                 "name": block.name,
                 "args": block.input,
             })
-    
+
     return AIMessage(
         content=content,
         tool_calls=tool_calls,
@@ -109,31 +115,31 @@ def _parse_response(response: Any) -> AIMessage:
 @dataclass
 class AnthropicChat(BaseChatModel):
     """Anthropic chat model.
-    
+
     High-performance chat model using Anthropic SDK directly.
     Supports Claude 3.5, Claude 3, and other Anthropic models.
-    
+
     Example:
         from agenticflow.models.anthropic import AnthropicChat
-        
+
         # Simple usage
         llm = AnthropicChat()  # Uses claude-sonnet-4-20250514 by default
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
-        
+
         # With custom model
         llm = AnthropicChat(model="claude-3-opus-20240229", temperature=0.7)
-        
+
         # With tools
         llm = AnthropicChat().bind_tools([search_tool, calc_tool])
         response = await llm.ainvoke(messages)
-        
+
         # Streaming
         async for chunk in llm.astream(messages):
             print(chunk.content, end="")
     """
-    
+
     model: str = "claude-sonnet-4-20250514"
-    
+
     def _init_client(self) -> None:
         """Initialize Anthropic clients."""
         try:
@@ -142,28 +148,28 @@ class AnthropicChat(BaseChatModel):
             raise ImportError(
                 "anthropic package required. Install with: uv add anthropic"
             )
-        
+
         api_key = self.api_key or os.environ.get("ANTHROPIC_API_KEY")
-        
+
         kwargs: dict[str, Any] = {
             "timeout": self.timeout,
             "max_retries": self.max_retries,
         }
         if api_key:
             kwargs["api_key"] = api_key
-        
+
         self._client = Anthropic(**kwargs)
         self._async_client = AsyncAnthropic(**kwargs)
-    
+
     def bind_tools(
         self,
         tools: list[Any],
         *,
         parallel_tool_calls: bool = True,
-    ) -> "AnthropicChat":
+    ) -> AnthropicChat:
         """Bind tools to the model."""
         self._ensure_initialized()
-        
+
         new_model = AnthropicChat(
             model=self.model,
             temperature=self.temperature,
@@ -178,47 +184,47 @@ class AnthropicChat(BaseChatModel):
         new_model._async_client = self._async_client
         new_model._initialized = True
         return new_model
-    
+
     def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke synchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
         response = self._client.messages.create(**self._build_request(normalize_input(messages)))
         return _parse_response(response)
-    
+
     async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke asynchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
         response = await self._async_client.messages.create(**self._build_request(normalize_input(messages)))
         return _parse_response(response)
-    
+
     async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously.
-        
+
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
         kwargs = self._build_request(normalize_input(messages))
         kwargs["stream"] = True
-        
+
         async with self._async_client.messages.stream(**kwargs) as stream:
             async for text in stream.text_stream:
                 yield AIMessage(content=text)
-    
+
     def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
         """Build API request."""
         # Convert to standard format first
         formatted = convert_messages(messages)
         system, anthropic_messages = _messages_to_anthropic(formatted)
-        
+
         kwargs: dict[str, Any] = {
             "model": self.model,
             "messages": anthropic_messages,

@@ -23,12 +23,18 @@ Example:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
-from agenticflow.reactive.core import TriggerCondition, react_to
-from agenticflow.flow.reactive import ReactiveFlow, ReactiveFlowConfig, ReactiveFlowResult
+from agenticflow.events.event import Event
+from agenticflow.flow.reactive import (
+    ReactiveFlow,
+    ReactiveFlowConfig,
+    ReactiveFlowResult,
+)
 from agenticflow.observability.observer import Observer
+from agenticflow.reactive.core import TriggerCondition, react_to
 
 # Backward compatibility aliases
 EventFlow = ReactiveFlow
@@ -111,11 +117,11 @@ def route(
                  - `agent` - Fallback (always matches)
                  - `(keywords, agent)` - Match if any keyword in task
                  - `(callable, agent)` - Custom condition function
-                 
+
                  Keywords can be:
                  - String with `|` separator: `"code|math|calculate"`
                  - List of strings: `["code", "math", "calculate"]`
-                 
+
         trigger: Event that triggers routing
         observer: Optional observer for monitoring
 
@@ -131,13 +137,13 @@ def route(
             ("notify|send|alert", communicator),
             general,  # fallback
         ).run("Analyze the sales data")
-        
+
         # With list syntax
         result = await route(
             (["code", "python", "function"], coder),
             (["write", "draft", "compose"], writer),
         ).run("Write a Python function")
-        
+
         # Custom condition (advanced)
         result = await route(
             (lambda t: len(t) > 100, deep_analyzer),
@@ -312,7 +318,7 @@ class Router:
             if isinstance(route_entry, tuple):
                 condition, agent = route_entry
                 condition_fn = self._normalize_condition(condition)
-                
+
                 # Convert task-based condition to event-based
                 def make_event_condition(fn: Callable[[str], bool]) -> TriggerCondition:
                     def cond(event: Event) -> bool:
@@ -325,25 +331,25 @@ class Router:
                 flow.register(route_entry, [react_to(self.trigger)])
 
         return flow
-    
+
     def _normalize_condition(
-        self, 
+        self,
         condition: Callable[[str], bool] | str | list[str],
     ) -> Callable[[str], bool]:
         """Convert keywords or callable to a condition function."""
         if callable(condition):
             return condition
-        
+
         # Convert string or list to keyword matcher
         if isinstance(condition, str):
             keywords = [k.strip().lower() for k in condition.split("|")]
         else:
             keywords = [k.lower() for k in condition]
-        
+
         def keyword_matcher(task: str) -> bool:
             task_lower = task.lower()
             return any(kw in task_lower for kw in keywords)
-        
+
         return keyword_matcher
 
 

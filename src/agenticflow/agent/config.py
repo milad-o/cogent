@@ -173,7 +173,7 @@ class AgentConfig:
             raise ValueError("max_concurrent_tasks must be at least 1")
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
-        
+
         # Convert string execution_strategy to enum
         if isinstance(self.execution_strategy, str):
             strategy_map = {

@@ -14,7 +14,8 @@ We only provide a tiny prompt builder to reduce prompt boilerplate.
 from __future__ import annotations
 
 import json
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from agenticflow.agent.base import Agent
 from agenticflow.core.messages import HumanMessage, SystemMessage
@@ -90,7 +91,7 @@ class ReactiveAgent(Agent):
         condition: TriggerCondition | None = None,
         emits: str | None = None,
         priority: int = 0,
-    ) -> "ReactiveAgent":
+    ) -> ReactiveAgent:
         """Handle an event by making the tool available and adding a trigger.
 
         Args:

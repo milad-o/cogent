@@ -3,7 +3,7 @@
 This module provides simple, native coordination patterns for multi-agent workflows:
 
 - **Supervisor**: One agent coordinates and delegates to workers
-- **Pipeline**: Sequential processing A → B → C  
+- **Pipeline**: Sequential processing A → B → C
 - **Mesh**: All agents collaborate in rounds until consensus
 - **Hierarchical**: Tree structure with delegation levels
 
@@ -26,7 +26,7 @@ Quick Start:
     ... )
     >>> result = await topology.run("Write a blog post about AI")
     >>>
-    >>> # Pipeline pattern  
+    >>> # Pipeline pattern
     >>> topology = Pipeline(stages=[
     ...     AgentConfig(agent=researcher, role="research"),
     ...     AgentConfig(agent=writer, role="draft"),
@@ -46,7 +46,7 @@ Quick Start:
 
 With TeamMemory:
     Share state between agents during execution:
-    
+
     >>> from agenticflow.memory import TeamMemory
     >>> team_memory = TeamMemory(team_id="content-team")
     >>> result = await topology.run("Write article", team_memory=team_memory)
@@ -56,7 +56,7 @@ With TeamMemory:
 
 Convenience Functions:
     For quick setup without AgentConfig boilerplate:
-    
+
     >>> from agenticflow.topologies import supervisor, pipeline, mesh
     >>>
     >>> topology = supervisor(coordinator=researcher, workers=[writer, editor])
@@ -64,17 +64,31 @@ Convenience Functions:
     >>> topology = mesh(agents=[analyst1, analyst2], max_rounds=2)
 """
 
-from .core import AgentConfig, BaseTopology, TopologyConfig, TopologyResult, TopologyType
-from .patterns import Hierarchical, Mesh, Pipeline, Supervisor, mesh, pipeline, supervisor
 from .context import (
-    ContextStrategy,
-    SlidingWindowStrategy,
-    SummarizationStrategy,
-    RetrievalStrategy,
-    StructuredHandoffStrategy,
-    StructuredHandoff,
     BlackboardStrategy,
     CompositeStrategy,
+    ContextStrategy,
+    RetrievalStrategy,
+    SlidingWindowStrategy,
+    StructuredHandoff,
+    StructuredHandoffStrategy,
+    SummarizationStrategy,
+)
+from .core import (
+    AgentConfig,
+    BaseTopology,
+    TopologyConfig,
+    TopologyResult,
+    TopologyType,
+)
+from .patterns import (
+    Hierarchical,
+    Mesh,
+    Pipeline,
+    Supervisor,
+    mesh,
+    pipeline,
+    supervisor,
 )
 
 __all__ = [

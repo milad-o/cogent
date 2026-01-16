@@ -14,18 +14,18 @@ SSIS packages are XML-based and contain:
 """
 
 from agenticflow.capabilities.ssis.capability import SSISAnalyzer
+from agenticflow.capabilities.ssis.classifiers import (
+    classify_component,
+    classify_executable,
+)
 from agenticflow.capabilities.ssis.handlers import (
-    TaskHandler,
-    TaskHandlerRegistry,
+    DEFAULT_HANDLERS,
     ExecuteProcessTaskHandler,
     ScriptTaskHandler,
+    TaskHandler,
+    TaskHandlerRegistry,
     WebServiceTaskHandler,
     XMLTaskHandler,
-    DEFAULT_HANDLERS,
-)
-from agenticflow.capabilities.ssis.classifiers import (
-    classify_executable,
-    classify_component,
 )
 
 __all__ = [

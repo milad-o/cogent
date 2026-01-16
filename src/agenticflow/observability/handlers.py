@@ -5,24 +5,24 @@ Event handlers - built-in handlers for common use cases.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TextIO
 
-from agenticflow.observability.trace_record import TraceType
+from agenticflow.observability.trace_record import Trace, TraceType
 
 
 class ConsoleEventHandler:
     """
     Logs events to console with formatting and icons.
-    
+
     Provides a human-readable view of events for development
     and debugging purposes.
-    
+
     Attributes:
         verbose: Whether to show detailed event data
         show_timestamp: Whether to show timestamps
-        
+
     Example:
         ```python
         handler = ConsoleEventHandler(verbose=True)
@@ -87,7 +87,7 @@ class ConsoleEventHandler:
     ) -> None:
         """
         Initialize the console handler.
-        
+
         Args:
             verbose: Show detailed event data
             show_timestamp: Show timestamps
@@ -97,7 +97,7 @@ class ConsoleEventHandler:
         self.show_timestamp = show_timestamp
         self.show_source = show_source
 
-    def __call__(self, event: Event) -> None:
+    def __call__(self, event: Trace) -> None:
         """Handle an event by logging to console."""
         icon = self.ICONS.get(event.type, "•")
         timestamp = ""
@@ -115,7 +115,7 @@ class ConsoleEventHandler:
         if self.verbose and event.data:
             print(f"      Data: {json.dumps(event.data, default=str)[:200]}")
 
-    def _format_event(self, event: Event) -> str:
+    def _format_event(self, event: Trace) -> str:
         """Format event for display."""
         data = event.data
 
@@ -163,7 +163,7 @@ class ConsoleEventHandler:
             case TraceType.TOOL_CALLED:
                 return f"Calling {data.get('tool', 'unknown')}"
             case TraceType.TOOL_RESULT:
-                return f"Tool result received"
+                return "Tool result received"
             case TraceType.TOOL_ERROR:
                 return f"Tool error: {data.get('error', 'unknown')}"
 
@@ -186,13 +186,13 @@ class ConsoleEventHandler:
 class FileEventHandler:
     """
     Logs events to a file in JSON Lines format.
-    
+
     Each event is written as a single JSON line, making it easy
     to parse and analyze later.
-    
+
     Attributes:
         file_path: Path to the log file
-        
+
     Example:
         ```python
         handler = FileEventHandler("events.jsonl")
@@ -207,7 +207,7 @@ class FileEventHandler:
     ) -> None:
         """
         Initialize the file handler.
-        
+
         Args:
             file_path: Path to the log file
             append: Whether to append to existing file
@@ -223,7 +223,7 @@ class FileEventHandler:
             self._file = open(self.file_path, mode)
         return self._file
 
-    def __call__(self, event: Event) -> None:
+    def __call__(self, event: Trace) -> None:
         """Handle an event by writing to file."""
         f = self._ensure_file()
         f.write(event.to_json() + "\n")
@@ -242,7 +242,7 @@ class FileEventHandler:
 class FilteringEventHandler:
     """
     Wraps another handler with event filtering.
-    
+
     Example:
         ```python
         # Only handle task events
@@ -263,7 +263,7 @@ class FilteringEventHandler:
     ) -> None:
         """
         Initialize the filtering handler.
-        
+
         Args:
             inner_handler: Handler to delegate to
             event_types: Only handle these event types
@@ -275,7 +275,7 @@ class FilteringEventHandler:
         self.categories = set(categories) if categories else None
         self.sources = set(sources) if sources else None
 
-    def __call__(self, event: Event) -> None:
+    def __call__(self, event: Trace) -> None:
         """Handle event if it passes filters."""
         # Check event type filter
         if self.event_types and event.type not in self.event_types:
@@ -296,14 +296,14 @@ class FilteringEventHandler:
 class MetricsEventHandler:
     """
     Collects metrics from events.
-    
+
     Tracks counts, durations, and error rates for analysis.
-    
+
     Example:
         ```python
         metrics = MetricsEventHandler()
         event_bus.subscribe_all(metrics)
-        
+
         # Later...
         print(metrics.get_metrics())
         ```
@@ -314,9 +314,9 @@ class MetricsEventHandler:
         self.event_counts: dict[str, int] = {}
         self.task_durations: list[float] = []
         self.error_count = 0
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
 
-    def __call__(self, event: Event) -> None:
+    def __call__(self, event: Trace) -> None:
         """Collect metrics from event."""
         # Count events by type
         key = event.type.value
@@ -341,7 +341,7 @@ class MetricsEventHandler:
     def get_metrics(self) -> dict:
         """
         Get collected metrics.
-        
+
         Returns:
             Dictionary with metrics
         """
@@ -361,7 +361,7 @@ class MetricsEventHandler:
             "avg_task_duration_ms": avg_duration,
             "min_task_duration_ms": min(self.task_durations) if self.task_durations else 0,
             "max_task_duration_ms": max(self.task_durations) if self.task_durations else 0,
-            "uptime_seconds": (datetime.now(timezone.utc) - self.start_time).total_seconds(),
+            "uptime_seconds": (datetime.now(UTC) - self.start_time).total_seconds(),
         }
 
     def reset(self) -> None:
@@ -369,4 +369,4 @@ class MetricsEventHandler:
         self.event_counts.clear()
         self.task_durations.clear()
         self.error_count = 0
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
