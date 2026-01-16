@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 from agenticflow.capabilities.knowledge_graph.backends.base import GraphBackend
 from agenticflow.capabilities.knowledge_graph.backends.memory import InMemoryGraph
+from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 
 
 class JSONFileGraph(GraphBackend):

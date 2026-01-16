@@ -10,13 +10,14 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id
+from agenticflow.observability.trace_record import Trace, TraceType
 
 if TYPE_CHECKING:
     from agenticflow.observability.bus import TraceBus
 
 # Check for websockets availability
+import contextlib
 import importlib.util
 
 WEBSOCKET_AVAILABLE = importlib.util.find_spec("websockets") is not None
@@ -28,20 +29,20 @@ if WEBSOCKET_AVAILABLE:
 class WebSocketServer:
     """
     WebSocket server for real-time event streaming.
-    
+
     Broadcasts all events to connected clients and handles
     client commands like history queries.
-    
+
     Attributes:
         event_bus: TraceBus to stream from
         host: Server host
         port: Server port
-        
+
     Example:
         ```python
         server = WebSocketServer(event_bus, host="localhost", port=8765)
         await server.start()
-        
+
         # Later...
         await server.stop()
         ```
@@ -55,7 +56,7 @@ class WebSocketServer:
     ) -> None:
         """
         Initialize the WebSocket server.
-        
+
         Args:
             event_bus: TraceBus to stream events from
             host: Server host address
@@ -75,7 +76,7 @@ class WebSocketServer:
     async def _handle_client(self, websocket) -> None:
         """
         Handle a WebSocket client connection.
-        
+
         Args:
             websocket: The WebSocket connection
         """
@@ -83,7 +84,7 @@ class WebSocketServer:
 
         # Emit connection event
         await self.event_bus.publish(
-            Event(
+            Trace(
                 type=TraceType.CLIENT_CONNECTED,
                 data={"client_id": client_id},
                 source="websocket_server",
@@ -122,7 +123,7 @@ class WebSocketServer:
             # Cleanup
             self.event_bus.remove_websocket(websocket)
             await self.event_bus.publish(
-                Event(
+                Trace(
                     type=TraceType.CLIENT_DISCONNECTED,
                     data={"client_id": client_id},
                     source="websocket_server",
@@ -132,7 +133,7 @@ class WebSocketServer:
     async def _handle_command(self, websocket, data: dict) -> None:
         """
         Handle a command from a client.
-        
+
         Args:
             websocket: The WebSocket connection
             data: The command data
@@ -143,10 +144,8 @@ class WebSocketServer:
             # Return event history
             event_type = None
             if data.get("event_type"):
-                try:
+                with contextlib.suppress(ValueError):
                     event_type = TraceType(data["event_type"])
-                except ValueError:
-                    pass
 
             history = self.event_bus.get_history(
                 event_type=event_type,
@@ -229,9 +228,9 @@ async def websocket_handler(
 ) -> None:
     """
     Standalone WebSocket handler function.
-    
+
     Can be used with websockets.serve() directly.
-    
+
     Args:
         websocket: The WebSocket connection
         path: The request path
@@ -240,7 +239,7 @@ async def websocket_handler(
     client_id = generate_id()
 
     await event_bus.publish(
-        Event(
+        Trace(
             type=TraceType.CLIENT_CONNECTED,
             data={"client_id": client_id, "path": path},
             source="websocket_handler",
@@ -279,7 +278,7 @@ async def websocket_handler(
     finally:
         event_bus.remove_websocket(websocket)
         await event_bus.publish(
-            Event(
+            Trace(
                 type=TraceType.CLIENT_DISCONNECTED,
                 data={"client_id": client_id},
                 source="websocket_handler",
@@ -294,14 +293,14 @@ async def start_websocket_server(
 ) -> WebSocketServer | None:
     """
     Start a WebSocket server.
-    
+
     Convenience function that creates and starts a WebSocketServer.
-    
+
     Args:
         event_bus: TraceBus to stream from
         host: Server host
         port: Server port
-        
+
     Returns:
         The started WebSocketServer, or None if websockets not available
     """

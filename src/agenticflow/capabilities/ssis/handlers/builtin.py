@@ -25,7 +25,7 @@ class ExecuteProcessTaskHandler(TaskHandler):
     def handle(
         self,
         exe: ET.Element,
-        analyzer: "SSISAnalyzer",
+        analyzer: SSISAnalyzer,
         package_name: str,
         task_name: str,
     ) -> None:
@@ -76,7 +76,7 @@ class ScriptTaskHandler(TaskHandler):
     def handle(
         self,
         exe: ET.Element,
-        analyzer: "SSISAnalyzer",
+        analyzer: SSISAnalyzer,
         package_name: str,
         task_name: str,
     ) -> None:
@@ -110,7 +110,7 @@ class WebServiceTaskHandler(TaskHandler):
     def handle(
         self,
         exe: ET.Element,
-        analyzer: "SSISAnalyzer",
+        analyzer: SSISAnalyzer,
         package_name: str,
         task_name: str,
     ) -> None:
@@ -155,7 +155,7 @@ class XMLTaskHandler(TaskHandler):
     def handle(
         self,
         exe: ET.Element,
-        analyzer: "SSISAnalyzer",
+        analyzer: SSISAnalyzer,
         package_name: str,
         task_name: str,
     ) -> None:

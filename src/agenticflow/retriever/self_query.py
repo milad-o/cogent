@@ -21,20 +21,20 @@ if TYPE_CHECKING:
 @dataclass
 class AttributeInfo:
     """Description of a filterable document attribute."""
-    
+
     name: str
     description: str
     type: str  # "string", "integer", "float", "boolean", "date"
-    
-    
-@dataclass 
+
+
+@dataclass
 class ParsedQuery:
     """Result of parsing a natural language query."""
-    
+
     semantic_query: str
     filter: dict[str, Any] | None = None
-    
-    
+
+
 DEFAULT_PARSE_PROMPT = '''You are a query parser. Given a user query and available attributes, extract:
 1. A semantic search query (the main topic/content to search for)
 2. Metadata filters based on the attributes
@@ -60,13 +60,13 @@ Rules:
 
 class SelfQueryRetriever(BaseRetriever):
     """Retriever that uses LLM to generate filters from natural language.
-    
+
     Parses natural language queries into structured metadata filters
     and semantic search queries for more precise retrieval.
-    
+
     Example:
         >>> from agenticflow.models import OpenAIModel
-        >>> 
+        >>>
         >>> retriever = SelfQueryRetriever(
         ...     vectorstore=vectorstore,
         ...     llm=OpenAIModel(model="gpt-4o-mini"),
@@ -75,16 +75,16 @@ class SelfQueryRetriever(BaseRetriever):
         ...         AttributeInfo("year", "Publication year", "integer"),
         ...     ],
         ... )
-        >>> 
+        >>>
         >>> # Natural language query with implicit filters
         >>> results = await retriever.retrieve(
         ...     "research papers about AI from 2023"
         ... )
         >>> # LLM extracts: semantic="AI research papers", filter={"year": 2023}
     """
-    
+
     _name: str = "self_query"
-    
+
     def __init__(
         self,
         vectorstore: VectorStore,
@@ -97,7 +97,7 @@ class SelfQueryRetriever(BaseRetriever):
         name: str | None = None,
     ) -> None:
         """Create a self-query retriever.
-        
+
         Args:
             vectorstore: Vector store for search.
             llm: LLM for query parsing.
@@ -114,36 +114,36 @@ class SelfQueryRetriever(BaseRetriever):
         self._prompt_template = prompt_template or DEFAULT_PARSE_PROMPT
         self._k = k
         self._enable_filter = enable_filter
-        
+
         if name:
             self._name = name
-    
+
     def _format_attributes(self) -> str:
         """Format attribute info for prompt."""
         lines = []
         for attr in self._attribute_info:
             lines.append(f"- {attr.name} ({attr.type}): {attr.description}")
         return "\n".join(lines)
-    
+
     async def _parse_query(self, query: str) -> ParsedQuery:
         """Use LLM to parse query into semantic query and filters."""
         prompt = self._prompt_template.format(
             attributes=self._format_attributes(),
             query=query,
         )
-        
+
         response = await self._llm.generate(prompt)
-        
+
         # Parse JSON response
         import json
         import re
-        
+
         # Extract JSON from response
         json_match = re.search(r'\{.*\}', response, re.DOTALL)
         if not json_match:
             # Fallback: use original query, no filter
             return ParsedQuery(semantic_query=query, filter=None)
-        
+
         try:
             parsed = json.loads(json_match.group())
             return ParsedQuery(
@@ -152,9 +152,9 @@ class SelfQueryRetriever(BaseRetriever):
             )
         except json.JSONDecodeError:
             return ParsedQuery(semantic_query=query, filter=None)
-    
+
     # Note: We don't override retrieve() - base class method uses retrieve_with_scores
-    
+
     async def retrieve_with_scores(
         self,
         query: str,
@@ -162,20 +162,20 @@ class SelfQueryRetriever(BaseRetriever):
         filter: dict | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents with scores using LLM-parsed query.
-        
+
         Args:
             query: Natural language query.
             k: Number of results.
             filter: Additional filter to merge with parsed filter.
-            
+
         Returns:
             Retrieval results with scores.
         """
         k = k or self._k
-        
+
         # Parse query
         parsed = await self._parse_query(query)
-        
+
         # Combine filters
         combined_filter = None
         if self._enable_filter:
@@ -187,14 +187,14 @@ class SelfQueryRetriever(BaseRetriever):
                 combined_filter = filter
         elif filter:
             combined_filter = filter
-        
+
         # Search
         results = await self._vectorstore.search(
             query=parsed.semantic_query,
             k=k,
             filter=combined_filter,
         )
-        
+
         return [
             RetrievalResult(
                 document=result.document,
@@ -209,7 +209,7 @@ class SelfQueryRetriever(BaseRetriever):
             )
             for result in results
         ]
-    
+
     async def retrieve_verbose(
         self,
         query: str,
@@ -217,21 +217,21 @@ class SelfQueryRetriever(BaseRetriever):
         filter: dict | None = None,
     ) -> tuple[list[RetrievalResult], ParsedQuery]:
         """Retrieve with full parsing information.
-        
+
         Returns both results and the parsed query for debugging.
-        
+
         Args:
             query: Natural language query.
             k: Number of results.
             filter: Additional filter.
-            
+
         Returns:
             Tuple of (results, parsed_query).
         """
         k = k or self._k
-        
+
         parsed = await self._parse_query(query)
-        
+
         combined_filter = None
         if self._enable_filter:
             if parsed.filter and filter:
@@ -242,13 +242,13 @@ class SelfQueryRetriever(BaseRetriever):
                 combined_filter = filter
         elif filter:
             combined_filter = filter
-        
+
         results = await self._vectorstore.search(
             query=parsed.semantic_query,
             k=k,
             filter=combined_filter,
         )
-        
+
         retrieval_results = [
             RetrievalResult(
                 document=result.document,
@@ -262,5 +262,5 @@ class SelfQueryRetriever(BaseRetriever):
             )
             for result in results
         ]
-        
+
         return retrieval_results, parsed

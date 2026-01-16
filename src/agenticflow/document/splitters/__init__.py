@@ -17,11 +17,11 @@ This module provides text splitting/chunking capabilities for document processin
     ...     RecursiveCharacterSplitter,
     ...     split_text,
     ... )
-    >>> 
+    >>>
     >>> # Using splitter class
     >>> splitter = RecursiveCharacterSplitter(chunk_size=1000, chunk_overlap=200)
     >>> chunks = splitter.split_text(text)
-    >>> 
+    >>>
     >>> # Using convenience function
     >>> chunks = split_text(text, chunk_size=1000, splitter_type="recursive")
 """

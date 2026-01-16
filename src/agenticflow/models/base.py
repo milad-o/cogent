@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator
+from typing import Any
 
 # Import AIMessage from core messages - single source of truth
 from agenticflow.core.messages import AIMessage
@@ -18,10 +19,10 @@ from agenticflow.core.messages import AIMessage
 
 def normalize_input(messages: str | list[Any]) -> list[Any]:
     """Normalize various input types to a list of messages.
-    
+
     Args:
         messages: Can be a string or list of messages.
-        
+
     Returns:
         List of messages (dicts or objects).
     """
@@ -32,7 +33,7 @@ def normalize_input(messages: str | list[Any]) -> list[Any]:
 
 def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
     """Convert messages to dict format for API calls.
-    
+
     Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
     This is a shared utility used by all model providers.
     """
@@ -48,9 +49,7 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
         if isinstance(value, list) and value:
             return all(isinstance(item, dict) and "type" in item for item in value)
         # Some providers may represent a single part as a dict.
-        if isinstance(value, dict) and "type" in value:
-            return True
-        return False
+        return bool(isinstance(value, dict) and "type" in value)
 
     def _normalize_content(value: Any) -> Any:
         """Coerce arbitrary content to a provider-safe representation.
@@ -81,30 +80,30 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
             return str(value)
         except Exception:
             return ""
-    
+
     def _normalize_message_dict(raw: dict[str, Any]) -> dict[str, Any]:
         msg = dict(raw)  # shallow copy
         if "content" in msg:
             msg["content"] = _normalize_content(msg.get("content"))
         return msg
-    
+
     result: list[dict[str, Any]] = []
     for msg in messages:
         # Already a dict
         if isinstance(msg, dict):
             result.append(_normalize_message_dict(msg))
             continue
-        
+
         # Message object with to_dict method
         if hasattr(msg, "to_dict"):
             result.append(_normalize_message_dict(msg.to_dict()))
             continue
-        
+
         # Message object with to_openai method (backward compat)
         if hasattr(msg, "to_openai"):
             result.append(_normalize_message_dict(msg.to_openai()))
             continue
-        
+
         # Message object with role and content attributes
         if hasattr(msg, "role") and hasattr(msg, "content"):
             msg_dict: dict[str, Any] = {
@@ -125,19 +124,19 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
                             ),
                         },
                     }
-                    for i, tc in enumerate(getattr(msg, "tool_calls"))
+                    for i, tc in enumerate(msg.tool_calls)
                 ]
             # Handle tool result messages
-            if hasattr(msg, "tool_call_id") and getattr(msg, "tool_call_id"):
-                msg_dict["tool_call_id"] = getattr(msg, "tool_call_id")
+            if hasattr(msg, "tool_call_id") and msg.tool_call_id:
+                msg_dict["tool_call_id"] = msg.tool_call_id
             if hasattr(msg, "name") and getattr(msg, "name", None):
-                msg_dict["name"] = getattr(msg, "name")
+                msg_dict["name"] = msg.name
             result.append(msg_dict)
             continue
-        
+
         # Fallback: try to convert to string
         result.append({"role": "user", "content": _normalize_content(msg)})
-    
+
     # Provider-facing sanitization:
     # Some APIs (OpenAI/Azure) validate that every `role="tool"` message must be
     # a response to a *preceding* assistant message that contains `tool_calls`,
@@ -223,7 +222,7 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
 
 class ModelProvider(str, Enum):
     """Supported model providers."""
-    
+
     OPENAI = "openai"
     COHERE = "cohere"
     CLOUDFLARE = "cloudflare"
@@ -238,121 +237,121 @@ class ModelProvider(str, Enum):
 @dataclass
 class BaseChatModel(ABC):
     """Abstract base class for all chat models.
-    
+
     All chat model implementations must inherit from this class
     and implement the required methods.
-    
+
     Features:
     - Lazy initialization (no API key needed at construction)
     - Sync and async invocation
     - Tool binding with parallel execution
     - Streaming support
-    
+
     Example:
         class MyChatModel(BaseChatModel):
             model: str = "my-model"
-            
+
             def _init_client(self) -> None:
                 self._client = MyClient(api_key=self.api_key)
-            
+
             def invoke(self, messages):
                 self._ensure_initialized()
                 return self._client.chat(messages)
     """
-    
+
     model: str = ""
     temperature: float = 0.0
     max_tokens: int | None = None
     api_key: str | None = None
     timeout: float = 60.0
     max_retries: int = 2
-    
+
     # Tool binding state
     _tools: list[Any] = field(default_factory=list, repr=False)
     _parallel_tool_calls: bool = field(default=True, repr=False)
-    
+
     # Client state (lazy initialized)
     _client: Any = field(default=None, repr=False)
     _async_client: Any = field(default=None, repr=False)
     _initialized: bool = field(default=False, repr=False)
-    
+
     def _ensure_initialized(self) -> None:
         """Lazily initialize clients on first use."""
         if not self._initialized:
             self._init_client()
             self._initialized = True
-    
+
     @abstractmethod
     def _init_client(self) -> None:
         """Initialize the API client. Must be implemented by subclasses."""
         ...
-    
+
     @abstractmethod
     def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke the model synchronously.
-        
+
         Args:
             messages: Can be:
                 - A string (converted to user message)
                 - List of message dicts with 'role' and 'content'
                 - List of message objects (SystemMessage, HumanMessage, etc.)
                 - Mixed list of dicts and objects
-            
+
         Returns:
             AIMessage with response content and optional tool calls.
         """
         ...
-    
+
     @abstractmethod
     async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
         """Invoke the model asynchronously.
-        
+
         Args:
             messages: Can be:
                 - A string (converted to user message)
                 - List of message dicts with 'role' and 'content'
                 - List of message objects (SystemMessage, HumanMessage, etc.)
                 - Mixed list of dicts and objects
-            
+
         Returns:
             AIMessage with response content and optional tool calls.
         """
         ...
-    
+
     @abstractmethod
     def bind_tools(
         self,
         tools: list[Any],
         *,
         parallel_tool_calls: bool = True,
-    ) -> "BaseChatModel":
+    ) -> BaseChatModel:
         """Bind tools to the model.
-        
+
         Args:
             tools: List of tools to bind.
             parallel_tool_calls: Allow parallel tool execution.
-            
+
         Returns:
             New model instance with tools bound.
         """
         ...
-    
+
     async def astream(
         self,
         messages: str | list[dict[str, Any]] | list[Any],
     ) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously.
-        
+
         Default implementation yields single response.
         Override for true streaming support.
-        
+
         Args:
             messages: Can be:
                 - A string (converted to user message)
                 - List of message dicts with 'role' and 'content'
                 - List of message objects (SystemMessage, HumanMessage, etc.)
                 - Mixed list of dicts and objects
-            
+
         Yields:
             AIMessage chunks with partial content.
         """
@@ -360,107 +359,107 @@ class BaseChatModel(ABC):
         yield response
 
 
-@dataclass  
+@dataclass
 class BaseEmbedding(ABC):
     """Abstract base class for all embedding models.
-    
+
     All embedding implementations must inherit from this class
     and implement the required methods.
-    
+
     Features:
     - Lazy initialization
     - Single and batch embedding
     - Sync and async support
     - Configurable dimensions
     """
-    
+
     model: str = ""
     dimensions: int | None = None
     api_key: str | None = None
     timeout: float = 60.0
     max_retries: int = 2
     batch_size: int = 100
-    
+
     # Client state (lazy initialized)
     _client: Any = field(default=None, repr=False)
     _async_client: Any = field(default=None, repr=False)
     _initialized: bool = field(default=False, repr=False)
-    
+
     def _ensure_initialized(self) -> None:
         """Lazily initialize clients on first use."""
         if not self._initialized:
             self._init_client()
             self._initialized = True
-    
+
     @abstractmethod
     def _init_client(self) -> None:
         """Initialize the API client. Must be implemented by subclasses."""
         ...
-    
+
     @abstractmethod
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple texts synchronously.
-        
+
         Args:
             texts: List of texts to embed.
-            
+
         Returns:
             List of embedding vectors.
         """
         ...
-    
+
     @abstractmethod
     async def aembed(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple texts asynchronously.
-        
+
         Args:
             texts: List of texts to embed.
-            
+
         Returns:
             List of embedding vectors.
         """
         ...
-    
+
     def embed_query(self, text: str) -> list[float]:
         """Embed a single query text.
-        
+
         Args:
             text: Text to embed.
-            
+
         Returns:
             Embedding vector.
         """
         return self.embed([text])[0]
-    
+
     async def aembed_query(self, text: str) -> list[float]:
         """Embed a single query text asynchronously.
-        
+
         Args:
             text: Text to embed.
-            
+
         Returns:
             Embedding vector.
         """
         result = await self.aembed([text])
         return result[0]
-    
+
     # Aliases for common interface compatibility
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Embed texts (alias for embed)."""
         return self.embed(texts)
-    
+
     async def aembed_texts(self, texts: list[str]) -> list[list[float]]:
         """Embed texts async (alias for aembed)."""
         return await self.aembed(texts)
-    
+
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents (alias for embed)."""
         return self.embed(texts)
-    
+
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents async (alias for aembed)."""
         return await self.aembed(texts)
-    
+
     @property
     def dimension(self) -> int:
         """Return the embedding dimension. Override in subclasses."""
@@ -470,7 +469,7 @@ class BaseEmbedding(ABC):
 # Message helper functions for easy message creation
 def system(content: str) -> dict[str, str]:
     """Create a system message.
-    
+
     Example:
         messages = [system("You are helpful"), user("Hello")]
     """
@@ -479,7 +478,7 @@ def system(content: str) -> dict[str, str]:
 
 def user(content: str) -> dict[str, str]:
     """Create a user message.
-    
+
     Example:
         messages = [user("What is 2+2?")]
     """
@@ -488,7 +487,7 @@ def user(content: str) -> dict[str, str]:
 
 def assistant(content: str, tool_calls: list[dict] | None = None) -> dict[str, Any]:
     """Create an assistant message.
-    
+
     Example:
         messages = [assistant("The answer is 4")]
     """
@@ -500,7 +499,7 @@ def assistant(content: str, tool_calls: list[dict] | None = None) -> dict[str, A
 
 def tool_result(content: str, tool_call_id: str) -> dict[str, str]:
     """Create a tool result message.
-    
+
     Example:
         messages = [tool_result("42", "call_123")]
     """

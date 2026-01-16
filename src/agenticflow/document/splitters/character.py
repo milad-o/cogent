@@ -11,20 +11,20 @@ from agenticflow.document.types import Document
 
 class RecursiveCharacterSplitter(BaseSplitter):
     """Split text recursively using a hierarchy of separators.
-    
+
     Tries to split by larger semantic units first (paragraphs),
     then falls back to smaller units (sentences, words, characters).
-    
+
     Args:
         chunk_size: Target chunk size.
         chunk_overlap: Overlap between chunks.
         separators: List of separators to try in order.
-        
+
     Example:
         >>> splitter = RecursiveCharacterSplitter(chunk_size=500, chunk_overlap=50)
         >>> chunks = splitter.split_text(long_text)
     """
-    
+
     DEFAULT_SEPARATORS = [
         "\n\n",      # Paragraphs
         "\n",        # Lines
@@ -36,7 +36,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
         " ",         # Words
         "",          # Characters
     ]
-    
+
     def __init__(
         self,
         chunk_size: int = 1000,
@@ -46,11 +46,11 @@ class RecursiveCharacterSplitter(BaseSplitter):
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.separators = separators or self.DEFAULT_SEPARATORS.copy()
-    
+
     def split_text(self, text: str) -> list[Document]:
         """Split text using recursive separator strategy."""
         return self._split_text(text, self.separators)
-    
+
     def _split_text(
         self,
         text: str,
@@ -60,10 +60,10 @@ class RecursiveCharacterSplitter(BaseSplitter):
         # Base case: no separators left
         if not separators:
             return [Document(text=text, metadata={"chunk_index": 0})]
-        
+
         separator = separators[0]
         remaining_separators = separators[1:]
-        
+
         # Split by current separator
         if separator:
             if self.keep_separator:
@@ -81,15 +81,15 @@ class RecursiveCharacterSplitter(BaseSplitter):
         else:
             # Character-level split
             splits = list(text)
-        
+
         # Process splits
         chunks: list[Document] = []
         current_parts: list[str] = []
         current_length = 0
-        
+
         for split in splits:
             split_length = self.length_function(split)
-            
+
             # If single split is too large, recursively split it
             if split_length > self.chunk_size:
                 # First, save current accumulated parts
@@ -99,7 +99,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
                     )
                     current_parts = []
                     current_length = 0
-                
+
                 # Recursively split the large piece
                 if remaining_separators:
                     sub_chunks = self._split_text(split, remaining_separators)
@@ -111,18 +111,18 @@ class RecursiveCharacterSplitter(BaseSplitter):
                         metadata={"chunk_index": len(chunks)},
                     ))
                 continue
-            
+
             # Check if we need to start a new chunk
             total_length = current_length + split_length
             if current_parts:
                 total_length += self.length_function(separator)
-            
+
             if total_length > self.chunk_size and current_parts:
                 # Create chunk from accumulated parts
                 chunks.extend(
                     self._merge_splits(current_parts, separator if self.keep_separator else "")
                 )
-                
+
                 # Start new chunk with overlap
                 overlap_parts = []
                 overlap_length = 0
@@ -133,39 +133,39 @@ class RecursiveCharacterSplitter(BaseSplitter):
                         overlap_length += part_len
                     else:
                         break
-                
+
                 current_parts = overlap_parts
                 current_length = overlap_length
-            
+
             current_parts.append(split)
             current_length += split_length
-        
+
         # Handle remaining parts
         if current_parts:
             chunks.extend(
                 self._merge_splits(current_parts, separator if self.keep_separator else "")
             )
-        
+
         # Renumber chunk indices
         for i, chunk in enumerate(chunks):
             chunk.metadata["chunk_index"] = i
-        
+
         return chunks
 
 
 class CharacterSplitter(BaseSplitter):
     """Simple character-based splitter using a single separator.
-    
+
     Args:
         separator: The separator to split on.
         chunk_size: Target chunk size.
         chunk_overlap: Overlap between chunks.
-        
+
     Example:
         >>> splitter = CharacterSplitter(separator="\\n\\n", chunk_size=1000)
         >>> chunks = splitter.split_text(text)
     """
-    
+
     def __init__(
         self,
         separator: str = "\n\n",
@@ -175,14 +175,11 @@ class CharacterSplitter(BaseSplitter):
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.separator = separator
-    
+
     def split_text(self, text: str) -> list[Document]:
         """Split text by separator."""
-        if self.separator:
-            splits = text.split(self.separator)
-        else:
-            splits = list(text)
-        
+        splits = text.split(self.separator) if self.separator else list(text)
+
         return self._merge_splits(splits, self.separator if self.keep_separator else " ")
 
 

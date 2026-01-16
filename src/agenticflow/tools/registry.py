@@ -4,7 +4,8 @@ ToolRegistry - extensible registry for agent tools.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from agenticflow.tools.base import BaseTool
 
@@ -15,29 +16,29 @@ if TYPE_CHECKING:
 class ToolRegistry:
     """
     Extensible registry for agent tools.
-    
+
     The ToolRegistry manages available tools that agents can use.
     It supports:
     - Registering native AgenticFlow tools
     - Getting tool by name
     - Generating tool descriptions for LLM prompts
     - Event emission for tool registration
-    
+
     Attributes:
         event_bus: Optional EventBus for registration events
-        
+
     Example:
         ```python
         from agenticflow.tools import tool
-        
+
         @tool
         def search_web(query: str) -> str:
             '''Search the web for information.'''
             return f"Results for: {query}"
-        
+
         registry = ToolRegistry()
         registry.register(search_web)
-        
+
         # Use in agent
         agent = Agent(
             config=config,
@@ -50,7 +51,7 @@ class ToolRegistry:
     def __init__(self, event_bus: TraceBus | None = None) -> None:
         """
         Initialize the ToolRegistry.
-        
+
         Args:
             event_bus: Optional EventBus for registration events
         """
@@ -60,10 +61,10 @@ class ToolRegistry:
     def register(self, tool_instance: BaseTool) -> ToolRegistry:
         """
         Register a tool.
-        
+
         Args:
             tool_instance: The tool to register
-            
+
         Returns:
             Self for method chaining
         """
@@ -73,10 +74,10 @@ class ToolRegistry:
     def register_many(self, tools: list[BaseTool]) -> ToolRegistry:
         """
         Register multiple tools.
-        
+
         Args:
             tools: List of tools to register
-            
+
         Returns:
             Self for method chaining
         """
@@ -87,10 +88,10 @@ class ToolRegistry:
     def unregister(self, name: str) -> bool:
         """
         Unregister a tool by name.
-        
+
         Args:
             name: Name of the tool to unregister
-            
+
         Returns:
             True if tool was removed, False if not found
         """
@@ -102,10 +103,10 @@ class ToolRegistry:
     def get(self, name: str) -> BaseTool | None:
         """
         Get a tool by name.
-        
+
         Args:
             name: Name of the tool
-            
+
         Returns:
             The tool or None if not found
         """
@@ -114,10 +115,10 @@ class ToolRegistry:
     def has(self, name: str) -> bool:
         """
         Check if a tool is registered.
-        
+
         Args:
             name: Name of the tool
-            
+
         Returns:
             True if tool exists
         """
@@ -126,7 +127,7 @@ class ToolRegistry:
     def get_tool_descriptions(self) -> str:
         """
         Get formatted descriptions of all tools for LLM prompts.
-        
+
         Returns:
             Formatted string with tool descriptions
         """
@@ -149,10 +150,10 @@ class ToolRegistry:
     def get_tool_schema(self, name: str) -> dict | None:
         """
         Get the JSON schema for a tool's arguments.
-        
+
         Args:
             name: Name of the tool
-            
+
         Returns:
             JSON schema dict or None if not found
         """
@@ -189,7 +190,7 @@ class ToolRegistry:
     def to_dict(self) -> dict:
         """
         Convert registry info to dictionary.
-        
+
         Returns:
             Dictionary with tool information
         """
@@ -213,24 +214,24 @@ def create_tool_from_function(
 ) -> BaseTool:
     """
     Create a native tool from a function.
-    
+
     This is a convenience wrapper around @tool decorator.
-    
+
     Args:
         func: The function to wrap
         name: Tool name (defaults to function name)
         description: Tool description (defaults to docstring)
-        
+
     Returns:
         A native BaseTool
     """
     from agenticflow.tools.base import tool as tool_decorator
-    
+
     # The tool decorator creates a tool from the function
     # We can override the name by setting __name__ and description via docstring
     if name:
         func.__name__ = name
     if description:
         func.__doc__ = description
-    
+
     return tool_decorator(func)

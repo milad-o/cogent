@@ -13,7 +13,7 @@ Features:
 
 Example:
     >>> from agenticflow.document.loaders.pdf import PDFMarkdownLoader
-    >>> 
+    >>>
     >>> loader = PDFMarkdownLoader(max_workers=4, batch_size=10)
     >>> docs = await loader.load(Path("large_document.pdf"))
     >>> print(f"Loaded {len(docs)} pages as Markdown")
@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING, Any
 
 from agenticflow.document.loaders.base import BaseLoader
 from agenticflow.document.types import Document
-from agenticflow.observability import ObservabilityLogger, LogLevel
+from agenticflow.observability import LogLevel, ObservabilityLogger
 
 if TYPE_CHECKING:
     pass
@@ -201,15 +201,15 @@ class PDFProcessingResult:
         page_break_style: str = "---",
     ) -> str:
         """Convert all pages to a single Markdown string.
-        
+
         Args:
             include_page_breaks: Add separators between pages (default: True).
             include_page_numbers: Add page number headers (default: False).
             page_break_style: Separator style ("---", "***", "===", or custom).
-            
+
         Returns:
             Complete Markdown content as a single string.
-            
+
         Example:
             >>> result = await loader.load("doc.pdf", tracking=True)
             >>> markdown = result.to_markdown(include_page_numbers=True)
@@ -259,7 +259,7 @@ class PDFProcessingResult:
         encoding: str = "utf-8",
     ) -> Path | list[Path]:
         """Save extracted content to file(s).
-        
+
         Args:
             output_path: Output file path (for single mode) or directory (for pages mode).
             mode: Save mode:
@@ -270,29 +270,29 @@ class PDFProcessingResult:
             include_page_numbers: Add page number comments (single mode only).
             page_break_style: Separator style ("---", "***", "===", or custom).
             encoding: Text encoding for output files.
-            
+
         Returns:
             Path to saved file (single/json mode) or list of paths (pages mode).
-            
+
         Example:
             >>> result = await loader.load("doc.pdf", tracking=True)
-            >>> 
+            >>>
             >>> # Save as single Markdown file
             >>> result.save("output.md")
-            >>> 
+            >>>
             >>> # Save each page separately
             >>> result.save("output_dir/", mode="pages")
-            >>> 
+            >>>
             >>> # Save with page numbers in comments
             >>> result.save("output.md", include_page_numbers=True)
-            >>> 
+            >>>
             >>> # Export as JSON
             >>> result.save("output.json", mode="json")
         """
         import json
-        
+
         output_path = Path(output_path)
-        
+
         if mode == "single":
             # Combine all pages into one file
             content = self.to_markdown(
@@ -303,13 +303,13 @@ class PDFProcessingResult:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding=encoding)
             return output_path
-        
+
         elif mode == "pages":
             # Save each page as separate file
             output_path.mkdir(parents=True, exist_ok=True)
             stem = self.file_path.stem
             saved_paths: list[Path] = []
-            
+
             for page_result in self.page_results:
                 if page_result.status != PageStatus.SUCCESS:
                     continue
@@ -330,13 +330,13 @@ class PDFProcessingResult:
                 page_path = output_path / f"{stem}_page_{page_result.page_number:04d}.md"
                 page_path.write_text(page_content, encoding=encoding)
                 saved_paths.append(page_path)
-            
+
             return saved_paths
-        
+
         elif mode == "json":
             # Export as JSON with full metadata
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             export_data = {
                 "source": str(self.file_path),
                 "filename": self.file_path.name,
@@ -360,13 +360,13 @@ class PDFProcessingResult:
                     for pr in self.page_results
                 ],
             }
-            
+
             output_path.write_text(
                 json.dumps(export_data, indent=2, ensure_ascii=False),
                 encoding=encoding,
             )
             return output_path
-        
+
         else:
             msg = f"Invalid mode: {mode}. Use 'single', 'pages', or 'json'."
             raise ValueError(msg)
@@ -650,12 +650,12 @@ class PDFMarkdownLoader(BaseLoader):
         Raises:
             ImportError: If pymupdf4llm is not installed.
             FileNotFoundError: If PDF file doesn't exist.
-        
+
         Example:
             >>> # Simple usage - load and save
             >>> await loader.load("doc.pdf")
             >>> loader.save("output.md")
-            >>> 
+            >>>
             >>> # With tracking - get detailed metrics
             >>> result = await loader.load("doc.pdf", tracking=True)
             >>> print(f"Success: {result.success_rate:.0%}")
@@ -699,10 +699,10 @@ class PDFMarkdownLoader(BaseLoader):
         Example:
             >>> await loader.load("doc.pdf")
             >>> loader.save("output.md")
-            >>> 
+            >>>
             >>> # Save each page separately
             >>> loader.save("pages/", mode="pages")
-            >>> 
+            >>>
             >>> # Save as JSON
             >>> loader.save("output.json", mode="json")
         """
@@ -821,7 +821,7 @@ class PDFMarkdownLoader(BaseLoader):
         # Convert str to Path if needed
         if isinstance(path, str):
             path = Path(path)
-        
+
         if not path.exists():
             raise FileNotFoundError(f"PDF file not found: {path}")
 

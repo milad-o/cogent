@@ -17,11 +17,14 @@ Note:
     `agenticflow.events.Event` instead of `Trace`.
 """
 
-from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.observability.bus import (
     TraceBus,
     get_trace_bus,
     set_trace_bus,
+)
+from agenticflow.observability.dashboard import (
+    Dashboard,
+    DashboardConfig,
 )
 from agenticflow.observability.handlers import (
     ConsoleEventHandler,
@@ -29,83 +32,80 @@ from agenticflow.observability.handlers import (
     FilteringEventHandler,
     MetricsEventHandler,
 )
+from agenticflow.observability.inspector import (
+    AgentInspector,
+    EventInspector,
+    SystemInspector,
+    TaskInspector,
+)
+from agenticflow.observability.logger import (
+    LogEntry,
+    LogLevel,
+    ObservabilityLogger,
+)
+from agenticflow.observability.metrics import (
+    Counter,
+    Gauge,
+    Histogram,
+    MetricsCollector,
+    Timer,
+)
+from agenticflow.observability.observer import (
+    Channel,
+    ObservabilityLevel,
+    Observer,
+)
+from agenticflow.observability.progress import (
+    # Renderers
+    BaseRenderer,
+    Colors,
+    JSONRenderer,
+    MinimalRenderer,
+    # Configuration
+    OutputConfig,
+    OutputFormat,
+    ProgressEvent,
+    ProgressStyle,
+    # Core classes
+    ProgressTracker,
+    RichRenderer,
+    # Styling
+    Styler,
+    Symbols,
+    TextRenderer,
+    Theme,
+    Verbosity,
+    configure_output,
+    create_executor_callback,
+    # Callbacks
+    create_on_step_callback,
+    # Convenience
+    get_tracker,
+    # Visualization
+    render_dag_ascii,
+    set_tracker,
+)
+from agenticflow.observability.trace import (
+    ExecutionSpan,
+    ExecutionTracer,
+    NodeStatus,
+    NodeTrace,
+    NodeType,
+    ToolTrace,
+    TraceLevel,
+    TracingObserver,
+)
+from agenticflow.observability.trace_record import Trace, TraceType
+from agenticflow.observability.tracer import (
+    Span,
+    SpanContext,
+    SpanKind,
+    Tracer,
+)
 from agenticflow.observability.websocket import (
     WebSocketServer,
     start_websocket_server,
     websocket_handler,
-)
-from agenticflow.observability.tracer import (
-    Tracer,
-    Span,
-    SpanContext,
-    SpanKind,
-)
-from agenticflow.observability.metrics import (
-    MetricsCollector,
-    Counter,
-    Gauge,
-    Histogram,
-    Timer,
-)
-from agenticflow.observability.logger import (
-    ObservabilityLogger,
-    LogLevel,
-    LogEntry,
-)
-from agenticflow.observability.dashboard import (
-    Dashboard,
-    DashboardConfig,
-)
-from agenticflow.observability.inspector import (
-    SystemInspector,
-    AgentInspector,
-    TaskInspector,
-    EventInspector,
-)
-from agenticflow.observability.observer import (
-    Observer,
-    ObservabilityLevel,
-    Channel,
-)
-from agenticflow.observability.trace import (
-    ExecutionTracer,
-    TracingObserver,
-    TraceLevel,
-    NodeType,
-    NodeStatus,
-    NodeTrace,
-    ToolTrace,
-    ExecutionSpan,
-)
-from agenticflow.observability.progress import (
-    # Configuration
-    OutputConfig,
-    Verbosity,
-    OutputFormat,
-    ProgressStyle,
-    Theme,
-    # Core classes
-    ProgressTracker,
-    ProgressEvent,
-    # Renderers
-    BaseRenderer,
-    TextRenderer,
-    RichRenderer,
-    JSONRenderer,
-    MinimalRenderer,
-    # Styling
-    Styler,
-    Colors,
-    Symbols,
-    # Callbacks
-    create_on_step_callback,
-    create_executor_callback,
-    # Convenience
-    get_tracker,
-    set_tracker,
-    configure_output,
-    # Visualization
-    render_dag_ascii,
 )
 
 __all__ = [

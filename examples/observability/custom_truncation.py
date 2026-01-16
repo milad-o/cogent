@@ -1,15 +1,33 @@
 """
-Custom Observer Truncation Settings
+Observer Output Truncation Settings
 
-This example demonstrates how to customize truncation limits for different
-types of content in the observer output.
+This example demonstrates the tiered API for controlling output truncation.
 
-## Truncation Parameters
+## API Levels
 
-- `truncate`: General content (default: 500)
-- `truncate_tool_args`: Tool arguments (default: 300)
-- `truncate_tool_results`: Tool results (default: 400)
-- `truncate_messages`: Message content (default: 500)
+### High Level (Presets)
+```python
+observer = Observer.minimal()   # Minimal output
+observer = Observer.verbose()   # Verbose output
+observer = Observer.debug()     # Debug with no truncation
+observer = Observer.trace()     # Full tracing, no truncation
+```
+
+### Mid Level (Simple)
+```python
+observer = Observer(max_output=500)   # Limit ALL content to 500 chars
+observer = Observer(max_output=None)  # No limit (default)
+```
+
+### Low Level (Advanced)
+```python
+observer = Observer(
+    truncate=500,              # General content
+    truncate_tool_args=300,    # Tool arguments
+    truncate_tool_results=400, # Tool results
+    truncate_messages=500,     # Messages
+)
+```
 
 ## Run
 
@@ -29,25 +47,42 @@ from agenticflow.observability import Observer, ObservabilityLevel
 
 
 async def main():
-    """Demonstrate custom truncation settings."""
+    """Demonstrate the tiered truncation API."""
     print("="*80)
-    print("CUSTOM TRUNCATION SETTINGS")
+    print("OBSERVER OUTPUT TRUNCATION - TIERED API")
     print("="*80)
     
-    # Create observer with custom truncation for each content type
+    # =========================================================================
+    # HIGH LEVEL: Use presets (easiest)
+    # =========================================================================
+    # observer = Observer.minimal()   # Minimal output
+    # observer = Observer.verbose()   # Verbose output  
+    # observer = Observer.debug()     # Debug, no truncation
+    # observer = Observer.trace()     # Full trace, no truncation
+    
+    # =========================================================================
+    # MID LEVEL: Single max_output param (simple)
+    # =========================================================================
+    # observer = Observer(max_output=500)   # Limit all content to 500 chars
+    # observer = Observer(max_output=None)  # No limit (default)
+    
+    # =========================================================================
+    # LOW LEVEL: Fine-grained control (advanced)
+    # =========================================================================
     observer = Observer(
         level=ObservabilityLevel.DEBUG,
-        truncate=800,              # General content: 800 chars
-        truncate_tool_args=500,    # Tool arguments: 500 chars (more detail)
-        truncate_tool_results=600, # Tool results: 600 chars (more detail)
-        truncate_messages=400,     # Messages: 400 chars
+        max_output=600,            # Base limit for all content
+        truncate_tool_args=400,    # Override: tool args get less space
+        truncate_messages=800,     # Override: messages get more space
     )
     
-    print("\n✓ Observer configured with custom truncation:")
+    print("\n✓ Observer configured:")
+    print(f"  • Level: {observer.config.level.name}")
     print(f"  • General content: {observer.config.truncate} chars")
     print(f"  • Tool arguments: {observer.config.truncate_tool_args} chars")
     print(f"  • Tool results: {observer.config.truncate_tool_results} chars")
     print(f"  • Messages: {observer.config.truncate_messages} chars")
+    print(f"\n💡 Tip: Use max_output=500 to limit all, or None for no limit")
     
     # Create agent with taskboard
     model = get_model()

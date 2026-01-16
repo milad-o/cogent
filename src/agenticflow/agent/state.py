@@ -19,10 +19,10 @@ if TYPE_CHECKING:
 class AgentState:
     """
     Runtime state of an Agent.
-    
+
     Tracks the agent's current status, active tasks, conversation history,
     and performance metrics. State is mutable and updated during execution.
-    
+
     Attributes:
         status: Current agent status
         current_task_id: ID of the task currently being executed
@@ -34,7 +34,7 @@ class AgentState:
         tasks_failed: Total tasks that failed
         total_thinking_time_ms: Cumulative LLM processing time
         total_acting_time_ms: Cumulative tool execution time
-        
+
     Example:
         ```python
         state = AgentState()
@@ -71,10 +71,10 @@ class AgentState:
     def has_capacity(self, max_concurrent: int) -> bool:
         """
         Check if agent has capacity for more tasks.
-        
+
         Args:
             max_concurrent: Maximum concurrent tasks allowed
-            
+
         Returns:
             True if agent can accept more tasks
         """
@@ -87,7 +87,7 @@ class AgentState:
     def record_error(self, error: str) -> None:
         """
         Record an error occurrence.
-        
+
         Args:
             error: Error message
         """
@@ -117,7 +117,7 @@ class AgentState:
     def start_task(self, task_id: str) -> None:
         """
         Mark a task as started.
-        
+
         Args:
             task_id: ID of the task being started
         """
@@ -129,7 +129,7 @@ class AgentState:
     def finish_task(self, task_id: str, success: bool = True) -> None:
         """
         Mark a task as finished.
-        
+
         Args:
             task_id: ID of the finished task
             success: Whether task completed successfully
@@ -147,7 +147,7 @@ class AgentState:
     def add_message(self, message: BaseMessage) -> None:
         """
         Add a message to history.
-        
+
         Args:
             message: Message to add
         """
@@ -157,10 +157,10 @@ class AgentState:
     def get_recent_history(self, count: int = 10) -> list[BaseMessage]:
         """
         Get recent message history.
-        
+
         Args:
             count: Number of recent messages to return
-            
+
         Returns:
             List of recent messages
         """

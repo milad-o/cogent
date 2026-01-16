@@ -21,7 +21,7 @@ Example:
         KnowledgeGraph, FileSystem, WebSearch, CodeSandbox, MCP,
         Spreadsheet, Browser, Shell, Summarizer,
     )
-    
+
     agent = Agent(
         name="Assistant",
         model=model,
@@ -37,7 +37,7 @@ Example:
             MCP.stdio(command="npx", args=["-y", "@modelcontextprotocol/server-filesystem", "."]),
         ],
     )
-    
+
     # Agent automatically has all capability tools
     await agent.run("Write a function to calculate fibonacci and test it")
     ```
@@ -45,8 +45,8 @@ Example:
 
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.capabilities.browser import Browser
-from agenticflow.capabilities.codebase import CodebaseAnalyzer
 from agenticflow.capabilities.code_sandbox import CodeSandbox
+from agenticflow.capabilities.codebase import CodebaseAnalyzer
 from agenticflow.capabilities.filesystem import FileSystem
 from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPTransport

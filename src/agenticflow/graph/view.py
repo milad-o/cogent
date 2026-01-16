@@ -10,6 +10,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from agenticflow.graph.backends import (
+    ASCIIBackend,
+    GraphvizBackend,
+    MermaidBackend,
+)
 from agenticflow.graph.config import GraphConfig, GraphDirection, GraphTheme
 from agenticflow.graph.primitives import (
     ClassDef,
@@ -20,11 +25,6 @@ from agenticflow.graph.primitives import (
     NodeShape,
     NodeStyle,
     Subgraph,
-)
-from agenticflow.graph.backends import (
-    ASCIIBackend,
-    GraphvizBackend,
-    MermaidBackend,
 )
 
 if TYPE_CHECKING:
@@ -138,11 +138,11 @@ class GraphView:
     @classmethod
     def from_agent(
         cls,
-        agent: "Agent",
+        agent: Agent,
         *,
         show_tools: bool = True,
         show_config: bool = False,
-    ) -> "GraphView":
+    ) -> GraphView:
         """Create a graph from an agent.
 
         Args:
@@ -205,10 +205,10 @@ class GraphView:
     @classmethod
     def from_topology(
         cls,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         *,
         show_tools: bool = True,
-    ) -> "GraphView":
+    ) -> GraphView:
         """Create a graph from a topology.
 
         Args:
@@ -246,8 +246,8 @@ class GraphView:
     @classmethod
     def from_flow(
         cls,
-        flow: "Flow",
-    ) -> "GraphView":
+        flow: Flow,
+    ) -> GraphView:
         """Create a graph from a Flow.
 
         Args:
@@ -409,7 +409,7 @@ class GraphView:
     # Configuration
     # ─────────────────────────────────────────────────────────────────────
 
-    def with_title(self, title: str) -> "GraphView":
+    def with_title(self, title: str) -> GraphView:
         """Set diagram title.
 
         Args:
@@ -421,7 +421,7 @@ class GraphView:
         new_config = self._config.with_title(title)
         return GraphView(self._graph, new_config)
 
-    def with_theme(self, theme: GraphTheme | str) -> "GraphView":
+    def with_theme(self, theme: GraphTheme | str) -> GraphView:
         """Set diagram theme.
 
         Args:
@@ -435,7 +435,7 @@ class GraphView:
         new_config = self._config.with_theme(theme)
         return GraphView(self._graph, new_config)
 
-    def with_direction(self, direction: GraphDirection | str) -> "GraphView":
+    def with_direction(self, direction: GraphDirection | str) -> GraphView:
         """Set diagram layout direction.
 
         Args:
@@ -469,7 +469,7 @@ class GraphView:
     # ─────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _get_topology_type(topology: "BaseTopology") -> str:
+    def _get_topology_type(topology: BaseTopology) -> str:
         """Determine topology type from class name."""
         class_name = type(topology).__name__.lower()
         for t in ("custom", "supervisor", "pipeline", "mesh", "hierarchical"):
@@ -481,7 +481,7 @@ class GraphView:
     def _build_supervisor_graph(
         cls,
         g: Graph,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         show_tools: bool,
     ) -> None:
         """Build graph for supervisor topology."""
@@ -519,7 +519,7 @@ class GraphView:
     def _build_pipeline_graph(
         cls,
         g: Graph,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         show_tools: bool,
     ) -> None:
         """Build graph for pipeline topology."""
@@ -541,7 +541,7 @@ class GraphView:
     def _build_mesh_graph(
         cls,
         g: Graph,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         show_tools: bool,
     ) -> None:
         """Build graph for mesh topology."""
@@ -564,7 +564,7 @@ class GraphView:
     def _build_hierarchical_graph(
         cls,
         g: Graph,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         show_tools: bool,
     ) -> None:
         """Build graph for hierarchical topology."""
@@ -595,7 +595,7 @@ class GraphView:
     def _build_custom_graph(
         cls,
         g: Graph,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         show_tools: bool,
     ) -> None:
         """Build graph for custom topology using explicit edges."""
@@ -621,7 +621,7 @@ class GraphView:
     def _build_generic_graph(
         cls,
         g: Graph,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         show_tools: bool,
     ) -> None:
         """Build graph for unknown topology types."""
@@ -653,7 +653,7 @@ class GraphView:
     def _add_agent_node(
         cls,
         g: Graph,
-        topology: "BaseTopology",
+        topology: BaseTopology,
         name: str,
         show_tools: bool,
     ) -> None:

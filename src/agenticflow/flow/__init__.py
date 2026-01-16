@@ -1,101 +1,111 @@
 """Flow orchestration module.
 
-This module provides the core flow classes for multi-agent orchestration:
+This module provides the unified Flow class for event-driven multi-agent orchestration.
 
-- **Flow**: Imperative/topology-based orchestration (supervisor, pipeline, mesh, hierarchical)
-- **ReactiveFlow**: Event-driven reactive orchestration (chain, fanout, route, saga)
+The Flow is the core orchestration engine that coordinates reactors (event handlers)
+through an event bus. All orchestration patterns (pipeline, supervisor, mesh) are
+implemented as functions that configure a Flow instance.
 
-Both inherit from BaseFlow and implement the FlowProtocol.
-
-Example - Imperative Flow (topology-based):
+Example - Basic Flow:
     ```python
     from agenticflow import Agent, Flow
 
     researcher = Agent(name="researcher", model=model)
     writer = Agent(name="writer", model=model)
 
-    # Pipeline topology: research → write
-    flow = Flow(
-        name="content-team",
-        agents=[researcher, writer],
-        topology="pipeline",
-        verbose=True,
-    )
+    # Event-driven orchestration
+    flow = Flow()
+    flow.register(researcher, on="task.created", emits="research.done")
+    flow.register(writer, on="research.done", emits="flow.done")
 
     result = await flow.run("Create a blog post about AI")
     ```
 
-Example - Reactive Flow (event-driven):
+Example - Using Patterns:
     ```python
-    from agenticflow import Agent, ReactiveFlow, react_to
+    from agenticflow.flow import pipeline, supervisor
 
-    researcher = Agent(name="researcher", model=model)
-    writer = Agent(name="writer", model=model)
-
-    # Event-driven: agents react to events
-    flow = ReactiveFlow(observer=Observer.trace())
-    flow.register(researcher, [react_to("task.created")])
-    flow.register(writer, [react_to("researcher.completed")])
-
+    # Pipeline pattern: sequential processing
+    flow = pipeline([researcher, writer, editor])
     result = await flow.run("Write about quantum computing")
+
+    # Supervisor pattern: one coordinator, many workers
+    flow = supervisor(
+        coordinator=manager,
+        workers=[analyst, writer, reviewer],
+    )
+    result = await flow.run("Complete this task")
     ```
 """
 
+# Core Flow class
 # Base classes and protocols
 from agenticflow.flow.base import (
     BaseFlow,
     FlowProtocol,
-    FlowResult,
+)
+from agenticflow.flow.base import (
+    FlowResult as BaseFlowResult,
 )
 
-# Imperative flow (topology-based)
-from agenticflow.flow.orchestrated import (
-    Flow,
+# Configuration and results
+from agenticflow.flow.config import (
     FlowConfig,
-    create_flow,
-    supervisor_flow,
-    pipeline_flow,
-    mesh_flow,
+    FlowResult,
+    ReactorBinding,
 )
 
-# Reactive flow (event-driven)
-from agenticflow.flow.reactive import (
-    ReactiveFlow,
-    ReactiveFlowConfig,
-    ReactiveFlowResult,
-    # Backward compatibility aliases
-    EventFlow,
-    EventFlowConfig,
-    EventFlowResult,
-)
-
-# Execution context (shared by both flow types)
+# Execution context
 from agenticflow.flow.context import (
+    Context,  # Preferred alias
     ExecutionContext,
+    FlowContext,
     ReactiveContext,  # Backward compatibility alias
+)
+from agenticflow.flow.core import (
+    # Backward compatibility
+    EventFlow,
+    Flow,
+    ReactiveFlow,
+)
+
+# Pattern helpers
+from agenticflow.flow.patterns import (
+    brainstorm,
+    chain,
+    collaborative,
+    coordinator,
+    mesh,
+    pipeline,
+    supervisor,
 )
 
 __all__ = [
+    # Core
+    "Flow",
+    # Configuration
+    "FlowConfig",
+    "FlowResult",
+    "ReactorBinding",
     # Base
     "BaseFlow",
     "FlowProtocol",
-    "FlowResult",
-    # Imperative Flow
-    "Flow",
-    "FlowConfig",
-    "create_flow",
-    "supervisor_flow",
-    "pipeline_flow",
-    "mesh_flow",
-    # Reactive Flow
-    "ReactiveFlow",
-    "ReactiveFlowConfig",
-    "ReactiveFlowResult",
-    # Execution Context
+    # Context
+    "FlowContext",
     "ExecutionContext",
-    "ReactiveContext",  # Backward compatibility
+    "Context",
+    # Patterns
+    "pipeline",
+    "chain",
+    "supervisor",
+    "coordinator",
+    "mesh",
+    "collaborative",
+    "brainstorm",
     # Backward compatibility
     "EventFlow",
-    "EventFlowConfig",
-    "EventFlowResult",
+    "ReactiveFlow",
+    "ReactiveContext",
+    "BaseFlowResult",
 ]
+

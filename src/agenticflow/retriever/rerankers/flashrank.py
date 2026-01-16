@@ -18,26 +18,26 @@ if TYPE_CHECKING:
 
 class FlashRankReranker(BaseReranker):
     """Reranker using FlashRank library.
-    
+
     FlashRank offers fast, lightweight neural reranking models.
     Much smaller and faster than full cross-encoders while
     maintaining good quality.
-    
+
     Requires: `uv add flashrank`
-    
+
     Available models:
     - ms-marco-TinyBERT-L-2-v2 (default, fastest, ~4MB)
     - ms-marco-MiniLM-L-12-v2 (balanced, ~33MB)
     - rank-T5-flan (larger, ~110MB)
     - ms-marco-MultiBERT-L-12 (multilingual)
-    
+
     Example:
         >>> reranker = FlashRankReranker()
         >>> reranked = await reranker.rerank(query, documents, top_n=5)
     """
-    
+
     _name: str = "flashrank"
-    
+
     def __init__(
         self,
         model: str = "ms-marco-TinyBERT-L-2-v2",
@@ -46,7 +46,7 @@ class FlashRankReranker(BaseReranker):
         name: str | None = None,
     ) -> None:
         """Create a FlashRank reranker.
-        
+
         Args:
             model: FlashRank model name.
             cache_dir: Directory to cache models.
@@ -55,10 +55,10 @@ class FlashRankReranker(BaseReranker):
         self._model_name = model
         self._cache_dir = cache_dir
         self._ranker = None  # Lazy loaded
-        
+
         if name:
             self._name = name
-    
+
     def _get_ranker(self):
         """Lazy load the FlashRank ranker."""
         if self._ranker is None:
@@ -69,14 +69,14 @@ class FlashRankReranker(BaseReranker):
                     "FlashRankReranker requires flashrank. "
                     "Install with: uv add flashrank"
                 ) from e
-            
+
             kwargs = {"model_name": self._model_name}
             if self._cache_dir:
                 kwargs["cache_dir"] = self._cache_dir
-            
+
             self._ranker = Ranker(**kwargs)
         return self._ranker
-    
+
     async def rerank(
         self,
         query: str,
@@ -84,18 +84,18 @@ class FlashRankReranker(BaseReranker):
         top_n: int | None = None,
     ) -> list[RetrievalResult]:
         """Rerank documents using FlashRank.
-        
+
         Args:
             query: The search query.
             documents: Documents to rerank.
             top_n: Number of top documents to return.
-            
+
         Returns:
             Reranked results sorted by relevance score.
         """
         if not documents:
             return []
-        
+
         try:
             from flashrank import RerankRequest
         except ImportError as e:
@@ -103,9 +103,9 @@ class FlashRankReranker(BaseReranker):
                 "FlashRankReranker requires flashrank. "
                 "Install with: uv add flashrank"
             ) from e
-        
+
         ranker = self._get_ranker()
-        
+
         # Create passages in FlashRank format
         # FlashRank expects list of dicts with 'id', 'text', and optional 'meta'
         passages = []
@@ -116,32 +116,32 @@ class FlashRankReranker(BaseReranker):
                 "meta": doc.metadata,
             }
             passages.append(passage)
-        
+
         # Create rerank request
         request = RerankRequest(query=query, passages=passages)
-        
+
         # Run reranking in thread pool to not block async
         loop = asyncio.get_event_loop()
         rerank_results = await loop.run_in_executor(
             None,
             lambda: ranker.rerank(request),
         )
-        
+
         # Apply top_n limit
         if top_n:
             rerank_results = rerank_results[:top_n]
-        
+
         # Convert to RetrievalResult
         # FlashRank results have 'text', 'score', 'id', and 'meta'
         results = []
         for result in rerank_results:
             # Find the original document
             doc_idx = next(
-                (i for i, d in enumerate(documents) 
+                (i for i, d in enumerate(documents)
                  if d.text == result["text"]),
                 None
             )
-            
+
             if doc_idx is not None:
                 doc = documents[doc_idx]
             else:
@@ -151,7 +151,7 @@ class FlashRankReranker(BaseReranker):
                     text=result["text"],
                     metadata=result.get("meta", {}),
                 )
-            
+
             results.append(
                 RetrievalResult(
                     document=doc,
@@ -163,23 +163,23 @@ class FlashRankReranker(BaseReranker):
                     },
                 )
             )
-        
+
         return results
 
 
 class FlashRankRerankerLite(BaseReranker):
     """Ultra-lightweight FlashRank reranker for resource-constrained environments.
-    
+
     Uses the smallest FlashRank model with additional optimizations
     for minimum memory footprint and fastest inference.
-    
+
     Example:
         >>> reranker = FlashRankRerankerLite()
         >>> reranked = await reranker.rerank(query, documents, top_n=5)
     """
-    
+
     _name: str = "flashrank_lite"
-    
+
     def __init__(self, name: str | None = None) -> None:
         """Create lightweight FlashRank reranker."""
         # Use the smallest, fastest model
@@ -187,7 +187,7 @@ class FlashRankRerankerLite(BaseReranker):
             model="ms-marco-TinyBERT-L-2-v2",
             name=name or self._name,
         )
-    
+
     async def rerank(
         self,
         query: str,
@@ -196,7 +196,7 @@ class FlashRankRerankerLite(BaseReranker):
     ) -> list[RetrievalResult]:
         """Rerank using lightweight model."""
         return await self._inner.rerank(query, documents, top_n)
-    
+
     @property
     def name(self) -> str:
         """Get reranker name."""

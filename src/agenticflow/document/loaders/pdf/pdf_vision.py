@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import json
 import time
 from dataclasses import dataclass
@@ -248,7 +249,7 @@ class PDFVisionLoader(BaseLoader):
             timing["toc"] = toc_info
 
         documents: list[Document] = []
-        
+
         # Log start of extraction
         if self.verbose:
             print(f"[PDFVisionLoader] Extracting {len(selected_pages)} pages from {pdf_path.name}...")
@@ -256,10 +257,10 @@ class PDFVisionLoader(BaseLoader):
         for idx, page_number in enumerate(selected_pages, 1):
             page_index = page_number - 1
             page = doc.load_page(page_index)
-            
+
             if self.verbose:
                 print(f"  [{idx}/{len(selected_pages)}] Processing page {page_number}...", end="", flush=True)
-            
+
             t_render = time.monotonic()
             png_bytes = _render_page_png(page, dpi=options.dpi)
             render_ms = (time.monotonic() - t_render) * 1000.0
@@ -273,7 +274,7 @@ class PDFVisionLoader(BaseLoader):
                 options=options,
             )
             model_ms = (time.monotonic() - t_model) * 1000.0
-            
+
             if self.verbose:
                 print(f" done ({model_ms:.0f}ms)")
 
@@ -312,10 +313,8 @@ class PDFVisionLoader(BaseLoader):
 
             documents.append(self._create_document(extracted["content"], pdf_path, **page_metadata))
 
-        try:
+        with contextlib.suppress(Exception):
             doc.close()
-        except Exception:
-            pass
 
         return documents
 
@@ -411,7 +410,7 @@ async def _extract_page_with_vision(
             resp = await asyncio.wait_for(model.ainvoke(messages), timeout=float(options.model_timeout_s))
         else:
             resp = await model.ainvoke(messages)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         if options.output_format == OutputFormat.JSON:
             return {
                 "content": json.dumps(
@@ -547,7 +546,7 @@ async def _extract_toc_with_vision(
                 resp = await asyncio.wait_for(model.ainvoke(messages), timeout=float(timeout_s))
             else:
                 resp = await model.ainvoke(messages)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             if timing:
                 attempts.append(
                     {

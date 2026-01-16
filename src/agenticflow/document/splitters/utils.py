@@ -15,17 +15,17 @@ def split_text(
     **kwargs: Any,
 ) -> list[Document]:
     """Split text using specified strategy.
-    
+
     Args:
         text: Text to split.
         chunk_size: Target chunk size.
         chunk_overlap: Overlap between chunks.
         splitter_type: Type of splitter (recursive, sentence, markdown, code, token).
         **kwargs: Additional splitter arguments.
-        
+
     Returns:
         List of Document chunks.
-        
+
     Example:
         >>> chunks = split_text(text, chunk_size=500, splitter_type="recursive")
         >>> chunks = split_text(markdown, splitter_type="markdown")
@@ -40,7 +40,7 @@ def split_text(
     from agenticflow.document.splitters.markdown import MarkdownSplitter
     from agenticflow.document.splitters.sentence import SentenceSplitter
     from agenticflow.document.splitters.token import TokenSplitter
-    
+
     splitters = {
         "recursive": RecursiveCharacterSplitter,
         "character": CharacterSplitter,
@@ -50,20 +50,20 @@ def split_text(
         "code": CodeSplitter,
         "token": TokenSplitter,
     }
-    
+
     splitter_class = splitters.get(splitter_type.lower())
     if not splitter_class:
         raise ValueError(
             f"Unknown splitter type: {splitter_type}. "
             f"Supported: {', '.join(splitters.keys())}"
         )
-    
+
     splitter = splitter_class(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         **kwargs,
     )
-    
+
     return splitter.split_text(text)
 
 

@@ -8,13 +8,13 @@ Example:
     ```python
     from agenticflow import Agent
     from agenticflow.capabilities import WebSearch
-    
+
     agent = Agent(
         name="Researcher",
         model=model,
         capabilities=[WebSearch()],
     )
-    
+
     # Agent can now search and fetch web content
     await agent.run("Search for the latest Python 3.13 features")
     await agent.run("Fetch the content from https://python.org")
@@ -25,25 +25,24 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from agenticflow.tools.base import BaseTool, tool
-
 from agenticflow.capabilities.base import BaseCapability
+from agenticflow.tools.base import BaseTool, tool
 
 
 @dataclass
 class SearchResult:
     """A single search result."""
-    
+
     title: str
     url: str
     snippet: str
     source: str = ""  # Search provider
     position: int = 0
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "title": self.title,
@@ -57,14 +56,14 @@ class SearchResult:
 @dataclass
 class FetchedPage:
     """Content fetched from a URL."""
-    
+
     url: str
     title: str
     content: str
-    fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    fetched_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     content_type: str = "text/html"
     error: str | None = None
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "url": self.url,
@@ -78,18 +77,18 @@ class FetchedPage:
 
 class SearchProvider(ABC):
     """Abstract base for search providers."""
-    
+
     @property
     @abstractmethod
     def name(self) -> str:
         """Provider name."""
         ...
-    
+
     @abstractmethod
     def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
         """Execute a search query."""
         ...
-    
+
     @abstractmethod
     def news(self, query: str, max_results: int = 10) -> list[SearchResult]:
         """Search news articles."""
@@ -98,15 +97,15 @@ class SearchProvider(ABC):
 
 class DuckDuckGoProvider(SearchProvider):
     """DuckDuckGo search provider using ddgs package."""
-    
+
     def __init__(self, timeout: int = 10):
         self._timeout = timeout
         self._ddgs = None
-    
+
     @property
     def name(self) -> str:
         return "duckduckgo"
-    
+
     def _get_client(self):
         """Lazy load DDGS client."""
         if self._ddgs is None:
@@ -118,12 +117,12 @@ class DuckDuckGoProvider(SearchProvider):
                     "ddgs package required. Install with: uv add ddgs"
                 )
         return self._ddgs
-    
+
     def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
         """Search web using DuckDuckGo."""
         ddgs = self._get_client()
         results = []
-        
+
         try:
             for i, r in enumerate(ddgs.text(query, max_results=max_results)):
                 results.append(SearchResult(
@@ -133,17 +132,17 @@ class DuckDuckGoProvider(SearchProvider):
                     source=self.name,
                     position=i + 1,
                 ))
-        except Exception as e:
+        except Exception:
             # Return empty results on error, let caller handle
             pass
-        
+
         return results
-    
+
     def news(self, query: str, max_results: int = 10) -> list[SearchResult]:
         """Search news using DuckDuckGo."""
         ddgs = self._get_client()
         results = []
-        
+
         try:
             for i, r in enumerate(ddgs.news(query, max_results=max_results)):
                 results.append(SearchResult(
@@ -155,7 +154,7 @@ class DuckDuckGoProvider(SearchProvider):
                 ))
         except Exception:
             pass
-        
+
         return results
 
 
@@ -163,7 +162,7 @@ class BraveSearchProvider(SearchProvider):
     """
     Brave Search API provider.
 
-    Brave Search offers an independent index (not Google/Bing), 
+    Brave Search offers an independent index (not Google/Bing),
     privacy-focused search with no user tracking.
 
     Get an API key at: https://api.search.brave.com/
@@ -262,7 +261,7 @@ class TavilyProvider(SearchProvider):
     """
     Tavily AI Search API provider.
 
-    Tavily is specifically designed for AI agents, offering AI-optimized 
+    Tavily is specifically designed for AI agents, offering AI-optimized
     search results with content extraction included.
 
     Get an API key at: https://tavily.com/
@@ -473,13 +472,13 @@ class SerpAPIProvider(SearchProvider):
 class WebSearch(BaseCapability):
     """
     WebSearch capability for searching the web and fetching pages.
-    
+
     Provides tools for:
     - Web search (DuckDuckGo by default, free, no API key needed)
     - News search
     - Page content fetching
     - URL validation
-    
+
     Args:
         provider: Search provider to use (default: DuckDuckGo)
         max_results: Default max search results (default: 10)
@@ -487,12 +486,12 @@ class WebSearch(BaseCapability):
         max_content_length: Max characters to return from fetched pages (default: 50000)
         user_agent: Custom user agent for fetching (optional)
         name: Capability name (default: "web_search")
-    
+
     Example:
         ```python
         # Basic usage with DuckDuckGo (free, no API key)
         ws = WebSearch()
-        
+
         # Custom settings
         ws = WebSearch(
             max_results=5,
@@ -501,7 +500,7 @@ class WebSearch(BaseCapability):
         )
         ```
     """
-    
+
     def __init__(
         self,
         provider: SearchProvider | None = None,
@@ -520,18 +519,18 @@ class WebSearch(BaseCapability):
             "Mozilla/5.0 (compatible; AgenticFlow/1.0; +https://github.com/agenticflow)"
         )
         self._tools_cache: list[BaseTool] | None = None
-        
+
         # Simple in-memory cache for fetched pages
         self._page_cache: dict[str, FetchedPage] = {}
-    
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def description(self) -> str:
         return f"Web search and page fetching using {self._provider.name}"
-    
+
     @property
     def tools(self) -> list[BaseTool]:
         if self._tools_cache is None:
@@ -541,16 +540,16 @@ class WebSearch(BaseCapability):
                 self._fetch_page_tool(),
             ]
         return self._tools_cache
-    
+
     @property
     def provider(self) -> SearchProvider:
         """Get the search provider."""
         return self._provider
-    
+
     # =========================================================================
     # Core Operations
     # =========================================================================
-    
+
     def search(
         self,
         query: str,
@@ -558,11 +557,11 @@ class WebSearch(BaseCapability):
     ) -> list[SearchResult]:
         """
         Search the web.
-        
+
         Args:
             query: Search query
             max_results: Maximum results to return
-            
+
         Returns:
             List of SearchResult objects
         """
@@ -570,7 +569,7 @@ class WebSearch(BaseCapability):
             query,
             max_results=max_results or self._max_results,
         )
-    
+
     def search_news(
         self,
         query: str,
@@ -578,11 +577,11 @@ class WebSearch(BaseCapability):
     ) -> list[SearchResult]:
         """
         Search news articles.
-        
+
         Args:
             query: Search query
             max_results: Maximum results to return
-            
+
         Returns:
             List of SearchResult objects
         """
@@ -590,7 +589,7 @@ class WebSearch(BaseCapability):
             query,
             max_results=max_results or self._max_results,
         )
-    
+
     def fetch(
         self,
         url: str,
@@ -598,11 +597,11 @@ class WebSearch(BaseCapability):
     ) -> FetchedPage:
         """
         Fetch content from a URL.
-        
+
         Args:
             url: URL to fetch
             use_cache: Whether to use cached content
-            
+
         Returns:
             FetchedPage object with content
         """
@@ -614,20 +613,20 @@ class WebSearch(BaseCapability):
                 content="",
                 error=f"Invalid URL: {url}",
             )
-        
+
         # Check cache
         if use_cache and url in self._page_cache:
             return self._page_cache[url]
-        
+
         # Fetch the page
         page = self._fetch_url(url)
-        
+
         # Cache successful fetches
         if page.error is None:
             self._page_cache[url] = page
-        
+
         return page
-    
+
     def _is_valid_url(self, url: str) -> bool:
         """Check if URL is valid."""
         try:
@@ -635,12 +634,12 @@ class WebSearch(BaseCapability):
             return all([result.scheme in ("http", "https"), result.netloc])
         except Exception:
             return False
-    
+
     def _fetch_url(self, url: str) -> FetchedPage:
         """Fetch URL content."""
         try:
             import httpx
-            
+
             with httpx.Client(
                 timeout=self._fetch_timeout,
                 follow_redirects=True,
@@ -648,30 +647,30 @@ class WebSearch(BaseCapability):
             ) as client:
                 response = client.get(url)
                 response.raise_for_status()
-                
+
                 content_type = response.headers.get("content-type", "")
-                
+
                 # Get raw content
                 raw_content = response.text
-                
+
                 # Extract text content
                 if "text/html" in content_type:
                     title, content = self._extract_html_content(raw_content)
                 else:
                     title = ""
                     content = raw_content
-                
+
                 # Truncate if needed
                 if len(content) > self._max_content_length:
                     content = content[:self._max_content_length] + "\n\n[Content truncated...]"
-                
+
                 return FetchedPage(
                     url=url,
                     title=title,
                     content=content,
                     content_type=content_type,
                 )
-                
+
         except ImportError:
             return FetchedPage(
                 url=url,
@@ -686,7 +685,7 @@ class WebSearch(BaseCapability):
                 content="",
                 error=str(e),
             )
-    
+
     def _extract_html_content(self, html: str) -> tuple[str, str]:
         """Extract title and text content from HTML using BeautifulSoup."""
         try:
@@ -717,104 +716,104 @@ class WebSearch(BaseCapability):
         content = "\n".join(lines)
 
         return title, content
-    
+
     def clear_cache(self) -> int:
         """Clear the page cache. Returns number of items cleared."""
         count = len(self._page_cache)
         self._page_cache.clear()
         return count
-    
+
     # =========================================================================
     # Tool Generation
     # =========================================================================
-    
+
     def _search_tool(self) -> BaseTool:
         ws = self
-        
+
         @tool
         def web_search(query: str, max_results: int = 10) -> str:
             """
             Search the web for information.
-            
+
             Args:
                 query: The search query (be specific for better results)
                 max_results: Maximum number of results to return (default: 10)
-            
+
             Returns:
                 Search results with titles, URLs, and snippets
             """
             results = ws.search(query, max_results=max_results)
-            
+
             if not results:
                 return f"No results found for: {query}"
-            
+
             lines = [f"Search results for '{query}' ({len(results)} results):"]
             for r in results:
                 lines.append(f"\n{r.position}. {r.title}")
                 lines.append(f"   URL: {r.url}")
                 lines.append(f"   {r.snippet[:200]}...")
-            
+
             return "\n".join(lines)
-        
+
         return web_search
-    
+
     def _news_search_tool(self) -> BaseTool:
         ws = self
-        
+
         @tool
         def news_search(query: str, max_results: int = 10) -> str:
             """
             Search for recent news articles.
-            
+
             Args:
                 query: The news search query
                 max_results: Maximum number of results to return (default: 10)
-            
+
             Returns:
                 News articles with titles, URLs, and excerpts
             """
             results = ws.search_news(query, max_results=max_results)
-            
+
             if not results:
                 return f"No news found for: {query}"
-            
+
             lines = [f"News results for '{query}' ({len(results)} results):"]
             for r in results:
                 lines.append(f"\n{r.position}. {r.title}")
                 lines.append(f"   URL: {r.url}")
                 lines.append(f"   {r.snippet[:200]}...")
-            
+
             return "\n".join(lines)
-        
+
         return news_search
-    
+
     def _fetch_page_tool(self) -> BaseTool:
         ws = self
-        
+
         @tool
         def fetch_webpage(url: str) -> str:
             """
             Fetch and extract text content from a webpage.
-            
-            Use this to read the full content of a webpage after finding 
+
+            Use this to read the full content of a webpage after finding
             it via search. Works best with article/content pages.
-            
+
             Args:
                 url: The full URL to fetch (must start with http:// or https://)
-            
+
             Returns:
                 The extracted text content from the page
             """
             page = ws.fetch(url)
-            
+
             if page.error:
                 return f"Error fetching {url}: {page.error}"
-            
+
             lines = [f"Fetched: {page.title or url}"]
             lines.append(f"URL: {page.url}")
             lines.append("-" * 40)
             lines.append(page.content)
-            
+
             return "\n".join(lines)
-        
+
         return fetch_webpage

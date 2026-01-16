@@ -6,16 +6,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from agenticflow.tools.base import BaseTool, tool
-
 from agenticflow.capabilities.base import BaseCapability
-from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 from agenticflow.capabilities.knowledge_graph.backends import (
     GraphBackend,
     InMemoryGraph,
-    SQLiteGraph,
     JSONFileGraph,
+    SQLiteGraph,
 )
+from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
+from agenticflow.tools.base import BaseTool, tool
 
 
 class KnowledgeGraph(BaseCapability):
@@ -116,7 +115,7 @@ class KnowledgeGraph(BaseCapability):
         cls,
         path: str | Path,
         name: str | None = None,
-    ) -> "KnowledgeGraph":
+    ) -> KnowledgeGraph:
         """
         Load a KnowledgeGraph from an existing file.
 
@@ -170,7 +169,7 @@ class KnowledgeGraph(BaseCapability):
         password: str = "",
         database: str = "neo4j",
         name: str | None = None,
-    ) -> "KnowledgeGraph":
+    ) -> KnowledgeGraph:
         """
         Create a KnowledgeGraph with Neo4j backend.
 
@@ -211,7 +210,7 @@ class KnowledgeGraph(BaseCapability):
             ```
         """
         from agenticflow.capabilities.knowledge_graph.backends.neo4j import Neo4jGraph
-        
+
         backend = Neo4jGraph(
             uri=uri,
             user=user,
@@ -747,7 +746,7 @@ class KnowledgeGraph(BaseCapability):
         """Close any open connections (for sqlite backend)."""
         self.graph.close()
 
-    def __enter__(self) -> "KnowledgeGraph":
+    def __enter__(self) -> KnowledgeGraph:
         """Context manager entry."""
         return self
 

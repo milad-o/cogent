@@ -14,14 +14,14 @@ from typing import Any
 @dataclass
 class BaseMessage:
     """Base class for all message types."""
-    
+
     content: str
     role: str = "user"
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict format for chat APIs."""
         return {"role": self.role, "content": self.content}
-    
+
     # Alias for backward compatibility
     to_openai = to_dict
 
@@ -29,9 +29,9 @@ class BaseMessage:
 @dataclass
 class SystemMessage(BaseMessage):
     """System message for setting agent behavior."""
-    
+
     role: str = field(default="system", init=False)
-    
+
     def __init__(self, content: str) -> None:
         self.content = content
         self.role = "system"
@@ -40,9 +40,9 @@ class SystemMessage(BaseMessage):
 @dataclass
 class HumanMessage(BaseMessage):
     """User/human message."""
-    
+
     role: str = field(default="user", init=False)
-    
+
     def __init__(self, content: str) -> None:
         self.content = content
         self.role = "user"
@@ -51,10 +51,10 @@ class HumanMessage(BaseMessage):
 @dataclass
 class AIMessage(BaseMessage):
     """Assistant/AI message with optional tool calls."""
-    
+
     role: str = field(default="assistant", init=False)
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
-    
+
     def __init__(
         self,
         content: str = "",
@@ -63,13 +63,13 @@ class AIMessage(BaseMessage):
         self.content = content
         self.role = "assistant"
         self.tool_calls = tool_calls or []
-    
+
     def __str__(self) -> str:
         return self.content
-    
+
     def __bool__(self) -> bool:
         return bool(self.content or self.tool_calls)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict format for chat APIs."""
         msg: dict[str, Any] = {"role": self.role, "content": self.content}
@@ -86,7 +86,7 @@ class AIMessage(BaseMessage):
                 for tc in self.tool_calls
             ]
         return msg
-    
+
     # Alias for backward compatibility
     to_openai = to_dict
 
@@ -94,15 +94,15 @@ class AIMessage(BaseMessage):
 @dataclass
 class ToolMessage(BaseMessage):
     """Tool/function result message."""
-    
+
     role: str = field(default="tool", init=False)
     tool_call_id: str = ""
-    
+
     def __init__(self, content: str, tool_call_id: str = "") -> None:
         self.content = content
         self.role = "tool"
         self.tool_call_id = tool_call_id
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dict format for chat APIs."""
         return {
@@ -110,7 +110,7 @@ class ToolMessage(BaseMessage):
             "content": self.content,
             "tool_call_id": self.tool_call_id,
         }
-    
+
     # Alias for backward compatibility
     to_openai = to_dict
 
@@ -126,19 +126,19 @@ messages_to_openai = messages_to_dict
 
 def parse_openai_response(response: Any) -> AIMessage:
     """Parse OpenAI API response into AIMessage.
-    
+
     Args:
         response: OpenAI ChatCompletion response object.
-        
+
     Returns:
         AIMessage with content and tool_calls.
     """
     choice = response.choices[0]
     message = choice.message
-    
+
     content = message.content or ""
     tool_calls = []
-    
+
     if message.tool_calls:
         for tc in message.tool_calls:
             tool_calls.append({
@@ -146,5 +146,5 @@ def parse_openai_response(response: Any) -> AIMessage:
                 "name": tc.function.name,
                 "args": __import__("json").loads(tc.function.arguments) if tc.function.arguments else {},
             })
-    
+
     return AIMessage(content=content, tool_calls=tool_calls)

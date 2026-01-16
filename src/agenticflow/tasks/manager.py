@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.enums import Priority, TaskStatus
 from agenticflow.core.utils import generate_id
-from agenticflow.observability.trace_record import TraceType
+from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.tasks.task import Task
 
 if TYPE_CHECKING:
@@ -19,32 +19,32 @@ if TYPE_CHECKING:
 class TaskManager:
     """
     Manages tasks with hierarchy and dependency support.
-    
+
     The TaskManager is responsible for:
     - Creating and tracking tasks
     - Managing parent/child relationships
     - Tracking dependencies between tasks
     - Emitting lifecycle events
     - Aggregating subtask results
-    
+
     Attributes:
         event_bus: TraceBus for publishing events
         tasks: Dictionary of all managed tasks
-        
+
     Example:
         ```python
         manager = TaskManager(event_bus)
-        
+
         # Create a task
         task = await manager.create_task(
             name="Analyze data",
             tool="analyze",
             args={"file": "data.csv"},
         )
-        
+
         # Update status
         await manager.update_status(task.id, TaskStatus.RUNNING)
-        
+
         # Get ready tasks
         ready = await manager.get_ready_tasks()
         ```
@@ -53,7 +53,7 @@ class TaskManager:
     def __init__(self, event_bus: TraceBus) -> None:
         """
         Initialize the TaskManager.
-        
+
         Args:
             event_bus: TraceBus for publishing events
         """
@@ -76,7 +76,7 @@ class TaskManager:
     ) -> Task:
         """
         Create a new task and emit event.
-        
+
         Args:
             name: Human-readable task name
             description: Detailed task description
@@ -88,7 +88,7 @@ class TaskManager:
             assigned_agent_id: ID of agent to assign to
             correlation_id: Correlation ID for event tracking
             **kwargs: Additional task attributes
-            
+
         Returns:
             The created Task
         """
@@ -115,7 +115,7 @@ class TaskManager:
         # Emit appropriate event
         event_type = TraceType.SUBTASK_SPAWNED if parent_id else TraceType.TASK_CREATED
         await self.event_bus.publish(
-            Event(
+            Trace(
                 type=event_type,
                 data=task.to_dict(),
                 source="task_manager",
@@ -136,7 +136,7 @@ class TaskManager:
     ) -> Task:
         """
         Create a subtask linked to a parent task.
-        
+
         Args:
             parent_id: ID of the parent task
             name: Subtask name
@@ -144,10 +144,10 @@ class TaskManager:
             args: Tool arguments
             correlation_id: Correlation ID for event tracking
             **kwargs: Additional task attributes
-            
+
         Returns:
             The created subtask
-            
+
         Raises:
             ValueError: If parent task doesn't exist
         """
@@ -173,17 +173,17 @@ class TaskManager:
     ) -> Task:
         """
         Update task status and emit appropriate event.
-        
+
         Args:
             task_id: ID of the task to update
             status: New status
             result: Task result (for completion)
             error: Error message (for failure)
             correlation_id: Correlation ID for event tracking
-            
+
         Returns:
             The updated Task
-            
+
         Raises:
             ValueError: If task doesn't exist
         """
@@ -221,7 +221,7 @@ class TaskManager:
         event_type = event_map.get(status)
         if event_type:
             await self.event_bus.publish(
-                Event(
+                Trace(
                     type=event_type,
                     data={
                         "task": task.to_dict(),
@@ -238,10 +238,10 @@ class TaskManager:
     async def get_task(self, task_id: str) -> Task | None:
         """
         Get a task by ID.
-        
+
         Args:
             task_id: ID of the task
-            
+
         Returns:
             The Task or None if not found
         """
@@ -250,7 +250,7 @@ class TaskManager:
     async def get_ready_tasks(self) -> list[Task]:
         """
         Get tasks ready to execute (dependencies met).
-        
+
         Returns:
             List of tasks sorted by priority (highest first)
         """
@@ -277,10 +277,10 @@ class TaskManager:
     async def get_tasks_by_status(self, status: TaskStatus) -> list[Task]:
         """
         Get all tasks with a specific status.
-        
+
         Args:
             status: The status to filter by
-            
+
         Returns:
             List of matching tasks
         """
@@ -289,10 +289,10 @@ class TaskManager:
     async def get_tasks_by_agent(self, agent_id: str) -> list[Task]:
         """
         Get all tasks assigned to an agent.
-        
+
         Args:
             agent_id: The agent ID
-            
+
         Returns:
             List of tasks assigned to the agent
         """
@@ -306,12 +306,12 @@ class TaskManager:
     ) -> Task:
         """
         Assign a task to an agent.
-        
+
         Args:
             task_id: ID of the task
             agent_id: ID of the agent
             correlation_id: Correlation ID for event tracking
-            
+
         Returns:
             The updated Task
         """
@@ -335,11 +335,11 @@ class TaskManager:
     ) -> bool:
         """
         Retry a failed task.
-        
+
         Args:
             task_id: ID of the task to retry
             correlation_id: Correlation ID for event tracking
-            
+
         Returns:
             True if retry was successful, False if max retries exceeded
         """
@@ -352,7 +352,7 @@ class TaskManager:
                 return False
 
         await self.event_bus.publish(
-            Event(
+            Trace(
                 type=TraceType.TASK_RETRYING,
                 data={
                     "task_id": task_id,
@@ -373,11 +373,11 @@ class TaskManager:
     ) -> Task:
         """
         Cancel a task.
-        
+
         Args:
             task_id: ID of the task to cancel
             correlation_id: Correlation ID for event tracking
-            
+
         Returns:
             The cancelled Task
         """
@@ -394,11 +394,11 @@ class TaskManager:
     ) -> dict[str, Any]:
         """
         Aggregate results from all subtasks of a parent.
-        
+
         Args:
             parent_id: ID of the parent task
             correlation_id: Correlation ID for event tracking
-            
+
         Returns:
             Dictionary mapping subtask names to results
         """
@@ -415,7 +415,7 @@ class TaskManager:
                     results[subtask.name] = subtask.result
 
         await self.event_bus.publish(
-            Event(
+            Trace(
                 type=TraceType.SUBTASKS_AGGREGATED,
                 data={
                     "parent_id": parent_id,
@@ -432,10 +432,10 @@ class TaskManager:
     async def check_subtasks_complete(self, parent_id: str) -> bool:
         """
         Check if all subtasks of a parent are complete.
-        
+
         Args:
             parent_id: ID of the parent task
-            
+
         Returns:
             True if all subtasks are complete
         """
@@ -452,10 +452,10 @@ class TaskManager:
     def get_task_tree(self, task_id: str) -> dict:
         """
         Get a task and all its subtasks as a tree.
-        
+
         Args:
             task_id: ID of the root task
-            
+
         Returns:
             Dictionary with task data and nested subtasks
         """
@@ -472,7 +472,7 @@ class TaskManager:
     def get_stats(self) -> dict:
         """
         Get task statistics.
-        
+
         Returns:
             Dictionary with task counts by status
         """

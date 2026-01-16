@@ -12,7 +12,8 @@ import asyncio
 import inspect
 import re
 from collections import defaultdict
-from typing import Any, Awaitable, Callable, TYPE_CHECKING
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.events.event import Event
 
@@ -26,18 +27,18 @@ EventPattern = str | re.Pattern[str]
 
 class EventBus:
     """A lightweight async pub/sub bus for core orchestration events.
-    
+
     Supports optional distributed transport for cross-process communication.
-    
+
     Args:
         max_history: Maximum events to keep in history
         transport: Optional transport backend (LocalTransport, RedisTransport, etc.)
-    
+
     Example:
         ```python
         # Local (single process)
         bus = EventBus()
-        
+
         # Distributed (Redis)
         from agenticflow.reactive.transport import RedisTransport
         transport = RedisTransport(url="redis://localhost:6379")
@@ -71,19 +72,19 @@ class EventBus:
     def subscribe(self, event: EventPattern, handler: EventHandler) -> None:
         if handler not in self._handlers[event]:
             self._handlers[event].append(handler)
-            
+
             # Subscribe via transport if available
             if self._transport and event not in self._transport_subscriptions:
                 pattern_str = event if isinstance(event, str) else str(event.pattern)
-                
+
                 # Create wrapper to handle transport events
                 async def transport_handler(transport_event: Event) -> None:
                     await _call_handler(handler, transport_event)
-                
+
                 # Subscribe and store subscription ID
                 import asyncio
                 try:
-                    sub_id = asyncio.create_task(
+                    asyncio.create_task(
                         self._transport.subscribe(pattern_str, transport_handler)
                     )
                     # This is a bit hacky but works for now
@@ -113,7 +114,7 @@ class EventBus:
         Supports:
         - publish(Event(...))
         - publish("event.name", {..})
-        
+
         If transport is configured, event is also published to distributed backend.
         """
         if isinstance(event, str):

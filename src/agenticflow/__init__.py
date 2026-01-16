@@ -107,14 +107,6 @@ from agenticflow import graph
 # Agents (THIS IS WHERE WE ADD VALUE)
 from agenticflow.agent.base import Agent
 from agenticflow.agent.config import AgentConfig
-from agenticflow.agent.roles import (
-    AutonomousRole,
-    CustomRole,
-    ReviewerRole,
-    RoleConfig,
-    SupervisorRole,
-    WorkerRole,
-)
 from agenticflow.agent.hitl import (
     AbortedException,
     DecisionRequiredException,
@@ -150,6 +142,14 @@ from agenticflow.agent.resilience import (
     RetryStrategy,
     ToolResilience,
 )
+from agenticflow.agent.roles import (
+    AutonomousRole,
+    CustomRole,
+    ReviewerRole,
+    RoleConfig,
+    SupervisorRole,
+    WorkerRole,
+)
 from agenticflow.agent.state import AgentState
 from agenticflow.agent.streaming import (
     CollectorStreamCallback,
@@ -177,6 +177,18 @@ from agenticflow.core.enums import (
 )
 from agenticflow.core.utils import generate_id, now_utc
 
+# Core Events (event-driven primitives)
+from agenticflow.events import (
+    Event,
+    EventBus,
+    EventMatcher,
+    EventStore,
+    FileEventStore,
+    InMemoryEventStore,
+    create_event_store,
+    matches,
+)
+
 # Core orchestration events (separate from observability)
 # Graphs - Execution strategies
 from agenticflow.executors import (
@@ -194,11 +206,40 @@ from agenticflow.executors import (
 from agenticflow.flow import (
     # Base classes
     BaseFlow,
-    # Imperative Flow
+    ExecutionContext,
+    # Core Flow (unified event-driven orchestration)
     Flow,
     FlowConfig,
+    # Context
+    FlowContext,
     FlowProtocol,
     FlowResult,
+)
+from agenticflow.flow import (
+    brainstorm as flow_brainstorm,
+)
+from agenticflow.flow import (
+    chain as flow_chain,
+)
+from agenticflow.flow import (
+    collaborative as flow_collaborative,
+)
+from agenticflow.flow import (
+    coordinator as flow_coordinator,
+)
+from agenticflow.flow import (
+    mesh as flow_mesh,
+)
+from agenticflow.flow import (
+    # Patterns (imported with aliases to avoid shadowing by legacy topologies)
+    pipeline as flow_pipeline,
+)
+from agenticflow.flow import (
+    supervisor as flow_supervisor,
+)
+
+# Legacy imports for backward compatibility
+from agenticflow.flow.orchestrated import (
     create_flow,
     mesh_flow,
     pipeline_flow,
@@ -214,8 +255,8 @@ from agenticflow.graph import (
 # Interceptors (execution flow control)
 from agenticflow.interceptors import (
     AuditEvent,
-    AuditTraceType,
     Auditor,
+    AuditTraceType,
     BudgetGuard,
     ContentFilter,
     ContextCompressor,
@@ -240,6 +281,24 @@ from agenticflow.interceptors import (
     ToolGate,
     ToolGuard,
     run_interceptors,
+)
+
+# Middleware (cross-cutting concerns)
+from agenticflow.middleware import (
+    AggressiveTimeoutMiddleware,
+    BaseMiddleware,
+    LoggingMiddleware,
+    Middleware,
+    MiddlewareChain,
+    RetryMiddleware,
+    SimpleRetryMiddleware,
+    SimpleTracingMiddleware,
+    TimeoutMiddleware,
+    TracingMiddleware,
+    VerboseMiddleware,
+)
+from agenticflow.middleware import (
+    Span as MiddlewareSpan,  # Renamed to avoid conflict with observability.Span
 )
 
 # LLM & Embedding Models (native)
@@ -295,15 +354,15 @@ from agenticflow.observability import (
 
 # Events (THIS IS WHERE WE ADD VALUE)
 from agenticflow.observability.bus import TraceBus, get_trace_bus, set_trace_bus
-
-# Models
-from agenticflow.observability.trace_record import Trace, TraceType
 from agenticflow.observability.handlers import (
     ConsoleEventHandler,
     FileEventHandler,
     FilteringEventHandler,
     MetricsEventHandler,
 )
+
+# Models
+from agenticflow.observability.trace_record import Trace, TraceType
 
 # Reactive Flow (event-driven multi-agent orchestration)
 from agenticflow.reactive import (
@@ -329,6 +388,33 @@ from agenticflow.reactive import (
     on,  # Backward compat alias
     route,
     when,
+)
+
+# Reactors (event handlers for flows)
+from agenticflow.reactors import (
+    AgentReactor,
+    Aggregator,
+    BaseReactor,
+    CallbackGateway,
+    ConditionalRouter,
+    ErrorPolicy,
+    FanInMode,
+    FirstWins,
+    FunctionReactor,
+    Gateway,
+    HandoverStrategy,
+    HttpGateway,
+    LogGateway,
+    MapTransform,
+    Reactor,
+    ReactorConfig,
+    Transform,
+    WaitAll,
+    function_reactor,
+    wrap_agent,
+)
+from agenticflow.reactors import (
+    Router as EventRouter,  # Renamed to avoid conflict with reactive.Router
 )
 
 # Tasks
@@ -553,10 +639,73 @@ __all__ = [
     "FlowResult",
     "Flow",
     "FlowConfig",
+    "FlowContext",
+    "ExecutionContext",
+    # Flow Patterns (recommended API)
+    "pipeline",
+    "supervisor",
+    "mesh",
+    "chain",
+    "coordinator",
+    "collaborative",
+    "brainstorm",
+    # Flow Patterns (aliased to avoid shadowing)
+    "flow_brainstorm",
+    "flow_chain",
+    "flow_collaborative",
+    "flow_coordinator",
+    "flow_mesh",
+    "flow_pipeline",
+    "flow_supervisor",
+    # Legacy flow helpers
     "create_flow",
     "supervisor_flow",
     "pipeline_flow",
     "mesh_flow",
+    # Core Events
+    "Event",
+    "EventBus",
+    "EventStore",
+    "InMemoryEventStore",
+    "FileEventStore",
+    "create_event_store",
+    "matches",
+    "EventMatcher",
+    # Reactors
+    "Reactor",
+    "ReactorConfig",
+    "BaseReactor",
+    "FunctionReactor",
+    "function_reactor",
+    "Aggregator",
+    "FirstWins",
+    "WaitAll",
+    "EventRouter",
+    "ConditionalRouter",
+    "Transform",
+    "MapTransform",
+    "Gateway",
+    "HttpGateway",
+    "LogGateway",
+    "CallbackGateway",
+    "AgentReactor",
+    "wrap_agent",
+    "FanInMode",
+    "HandoverStrategy",
+    "ErrorPolicy",
+    # Middleware
+    "Middleware",
+    "BaseMiddleware",
+    "MiddlewareChain",
+    "LoggingMiddleware",
+    "VerboseMiddleware",
+    "RetryMiddleware",
+    "SimpleRetryMiddleware",
+    "TimeoutMiddleware",
+    "AggressiveTimeoutMiddleware",
+    "TracingMiddleware",
+    "SimpleTracingMiddleware",
+    "MiddlewareSpan",
     # Topologies (coordination patterns)
     "TopologyAgentConfig",
     "BaseTopology",

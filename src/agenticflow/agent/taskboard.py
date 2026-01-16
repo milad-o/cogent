@@ -22,7 +22,7 @@ Example:
         tools=[search, summarize],
         taskboard=True,  # Adds task management tools + instructions
     )
-    
+
     # Or with configuration
     agent = Agent(
         name="Researcher",
@@ -32,10 +32,10 @@ Example:
             max_tasks=20,          # Limit concurrent tasks
         ),
     )
-    
+
     # Agent now naturally plans, tracks, and verifies work
     result = await agent.run("Research Python async patterns")
-    
+
     # Check what the agent tracked
     print(agent.taskboard.summary())
     ```
@@ -52,8 +52,8 @@ from typing import TYPE_CHECKING, Any
 from agenticflow.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
-    from agenticflow.tools.base import BaseTool
     from agenticflow.observability.bus import TraceBus
+    from agenticflow.tools.base import BaseTool
 
 
 # ============================================================================
@@ -83,28 +83,28 @@ class Task:
     completed_at: datetime | None = None
     result: str | None = None
     error: str | None = None
-    
+
     def start(self) -> None:
         """Mark task as in progress."""
         self.status = TaskStatus.IN_PROGRESS
-    
+
     def complete(self, result: str | None = None) -> None:
         """Mark task as done with optional result."""
         self.status = TaskStatus.DONE
         self.completed_at = now_utc()
         self.result = result
-    
+
     def fail(self, error: str) -> None:
         """Mark task as failed with error."""
         self.status = TaskStatus.FAILED
         self.completed_at = now_utc()
         self.error = error
-    
+
     def skip(self) -> None:
         """Mark task as skipped."""
         self.status = TaskStatus.SKIPPED
         self.completed_at = now_utc()
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
@@ -113,7 +113,7 @@ class Task:
             "result": self.result,
             "error": self.error,
         }
-    
+
     def __str__(self) -> str:
         icons = {
             TaskStatus.PENDING: "○",
@@ -132,7 +132,7 @@ class Note:
     content: str
     category: str = "observation"  # observation, insight, question
     created_at: datetime = field(default_factory=now_utc)
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
@@ -163,7 +163,7 @@ class LearnedPattern:
     last_seen: datetime = field(default_factory=now_utc)
 
 
-@dataclass 
+@dataclass
 class Reflection:
     """A reflection or lesson learned."""
     content: str
@@ -179,7 +179,7 @@ class Reflection:
 @dataclass
 class TaskBoardConfig:
     """Configuration for TaskBoard behavior.
-    
+
     Args:
         auto_verify: Require agent to verify completion before finishing.
         max_tasks: Maximum number of tasks to track.
@@ -203,82 +203,82 @@ class TaskBoardConfig:
 class TaskBoard:
     """
     Task tracking and working memory for an agent.
-    
+
     Provides structured storage for:
     - Tasks with status tracking
     - Notes and observations
     - Error history for self-correction
     - Learned patterns (Reflexion-style memory)
-    
+
     Example:
         ```python
         board = TaskBoard()
-        
+
         # Add tasks
         board.add_task("Search for tutorials")
         board.add_task("Summarize findings")
-        
+
         # Track progress
         board.start_task("Search")
         board.complete_task("Search", result="Found 5 articles")
-        
+
         # Take notes
         board.add_note("Python async is event-loop based")
-        
+
         # Check status
         print(board.summary())
         ```
     """
-    
+
     def __init__(
         self,
         config: TaskBoardConfig | None = None,
         event_bus: TraceBus | None = None,
     ) -> None:
         """Initialize TaskBoard.
-        
+
         Args:
             config: Configuration options.
             event_bus: Optional event bus for observability.
         """
         self.config = config or TaskBoardConfig()
         self._event_bus = event_bus
-        
+
         self._tasks: dict[str, Task] = {}
         self._notes: list[Note] = []
         self._errors: list[ErrorRecord] = []
         self._patterns: dict[str, LearnedPattern] = {}
         self._reflections: list[Reflection] = []
         self._goal: str | None = None
-    
+
     def _emit_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit event if event bus is configured."""
         if self._event_bus and self.config.emit_events:
             self._event_bus.publish_sync(event_type, data)
-    
+
     # ========================================
     # Task Management
     # ========================================
-    
+
     def add_task(self, description: str) -> str:
         """Add a task.
-        
+
         Args:
             description: What needs to be done.
-            
+
         Returns:
             Task ID.
         """
         task_id = generate_id("task")
         self._tasks[task_id] = Task(id=task_id, description=description)
-        
+
         # Emit event
         self._emit_event("taskboard.task_added", {
             "task_id": task_id,
             "description": description,
             "status": TaskStatus.PENDING.value,
         })
-        
+
         # Trim if over limit
         if len(self._tasks) > self.config.max_tasks:
             # Remove oldest completed tasks first
@@ -286,47 +286,47 @@ class TaskBoard:
             if done:
                 oldest = min(done, key=lambda t: t.completed_at or t.created_at)
                 del self._tasks[oldest.id]
-        
+
         return task_id
-    
+
     def add_tasks(self, descriptions: list[str]) -> list[str]:
         """Add multiple tasks.
-        
+
         Args:
             descriptions: List of task descriptions.
-            
+
         Returns:
             List of task IDs.
         """
         return [self.add_task(d) for d in descriptions]
-    
+
     def find_task(self, query: str) -> Task | None:
         """Find a task by ID or description.
-        
+
         Args:
             query: Task ID or partial description match.
-            
+
         Returns:
             Task if found, None otherwise.
         """
         # Exact ID match
         if query in self._tasks:
             return self._tasks[query]
-        
+
         # Partial description match (case-insensitive)
         query_lower = query.lower()
         for task in self._tasks.values():
             if query_lower in task.description.lower():
                 return task
-        
+
         return None
-    
+
     def start_task(self, query: str) -> bool:
         """Mark a task as in progress.
-        
+
         Args:
             query: Task ID or description.
-            
+
         Returns:
             True if found and updated.
         """
@@ -339,14 +339,14 @@ class TaskBoard:
             })
             return True
         return False
-    
+
     def complete_task(self, query: str, result: str | None = None) -> bool:
         """Mark a task as done.
-        
+
         Args:
             query: Task ID or description.
             result: Optional result/output.
-            
+
         Returns:
             True if found and updated.
         """
@@ -360,14 +360,14 @@ class TaskBoard:
             })
             return True
         return False
-    
+
     def fail_task(self, query: str, error: str) -> bool:
         """Mark a task as failed.
-        
+
         Args:
             query: Task ID or description.
             error: Error message.
-            
+
         Returns:
             True if found and updated.
         """
@@ -381,13 +381,13 @@ class TaskBoard:
             })
             return True
         return False
-    
+
     def skip_task(self, query: str) -> bool:
         """Mark a task as skipped.
-        
+
         Args:
             query: Task ID or description.
-            
+
         Returns:
             True if found and updated.
         """
@@ -396,67 +396,67 @@ class TaskBoard:
             task.skip()
             return True
         return False
-    
+
     def get_pending(self) -> list[Task]:
         """Get pending/in-progress tasks."""
         return [
-            t for t in self._tasks.values() 
+            t for t in self._tasks.values()
             if t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS)
         ]
-    
+
     def get_done(self) -> list[Task]:
         """Get completed tasks."""
         return [t for t in self._tasks.values() if t.status == TaskStatus.DONE]
-    
+
     def get_failed(self) -> list[Task]:
         """Get failed tasks."""
         return [t for t in self._tasks.values() if t.status == TaskStatus.FAILED]
-    
+
     def get_all_tasks(self) -> list[Task]:
         """Get all tasks."""
         return list(self._tasks.values())
-    
+
     def clear_tasks(self) -> None:
         """Clear all tasks."""
         self._tasks.clear()
-    
+
     def is_complete(self) -> bool:
         """Check if all tasks are done (none pending)."""
         return len(self.get_pending()) == 0
-    
+
     # ========================================
     # Notes
     # ========================================
-    
+
     def add_note(self, content: str, category: str = "observation") -> str:
         """Add a note.
-        
+
         Args:
             content: Note content.
             category: observation, insight, or question.
-            
+
         Returns:
             Note ID.
         """
         note_id = generate_id("note")
         self._notes.append(Note(id=note_id, content=content, category=category))
-        
+
         # Emit event
         self._emit_event("taskboard.note_added", {
             "note_id": note_id,
             "content": content,
             "category": category,
         })
-        
+
         # Trim if over limit
         if len(self._notes) > self.config.max_notes:
             self._notes = self._notes[-self.config.max_notes:]
-        
+
         return note_id
-    
+
     def get_notes(self, category: str | None = None, limit: int | None = None) -> list[Note]:
         """Get notes.
-        
+
         Args:
             category: Filter by category.
             limit: Maximum to return.
@@ -467,23 +467,23 @@ class TaskBoard:
         if limit:
             notes = notes[-limit:]
         return notes
-    
+
     # ========================================
     # Goal
     # ========================================
-    
+
     def set_goal(self, goal: str) -> None:
         """Set the current goal."""
         self._goal = goal
-    
+
     def get_goal(self) -> str | None:
         """Get the current goal."""
         return self._goal
-    
+
     # ========================================
     # Error Tracking & Learning
     # ========================================
-    
+
     def record_error(
         self,
         tool_name: str,
@@ -491,7 +491,7 @@ class TaskBoard:
         args: dict[str, Any] | None = None,
     ) -> None:
         """Record an error for learning.
-        
+
         Args:
             tool_name: Tool that failed.
             error: The exception.
@@ -499,27 +499,27 @@ class TaskBoard:
         """
         if not self.config.track_errors:
             return
-        
+
         self._errors.append(ErrorRecord(
             tool_name=tool_name,
             error_type=type(error).__name__,
             error_message=str(error),
             args=args or {},
         ))
-        
+
         # Keep recent errors only
         if len(self._errors) > 20:
             self._errors = self._errors[-20:]
-        
+
         # Learn pattern
         self._learn_pattern(tool_name, str(error))
-    
+
     def _learn_pattern(self, tool_name: str, error_message: str) -> None:
         """Learn a failure pattern."""
         # Generalize error message
         pattern = self._generalize_error(error_message)
         key = f"{tool_name}:{pattern}"
-        
+
         if key in self._patterns:
             self._patterns[key].count += 1
             self._patterns[key].last_seen = now_utc()
@@ -528,7 +528,7 @@ class TaskBoard:
                 tool_name=tool_name,
                 pattern=pattern,
             )
-    
+
     def _generalize_error(self, message: str) -> str:
         """Generalize an error message to a pattern."""
         pattern = message
@@ -537,36 +537,36 @@ class TaskBoard:
         pattern = re.sub(r'\b\d+\b', '#', pattern)
         pattern = re.sub(r'/[\w/.-]+', '<path>', pattern)
         return pattern[:100] if len(pattern) > 100 else pattern
-    
+
     def get_known_fix(self, tool_name: str, error_message: str) -> str | None:
         """Check if we have a known fix for this error."""
         pattern = self._generalize_error(error_message)
         key = f"{tool_name}:{pattern}"
-        
+
         if key in self._patterns:
             return self._patterns[key].fix
         return None
-    
+
     def record_fix(self, tool_name: str, error_message: str, fix: str) -> None:
         """Record a successful fix for an error pattern."""
         pattern = self._generalize_error(error_message)
         key = f"{tool_name}:{pattern}"
-        
+
         if key in self._patterns:
             self._patterns[key].fix = fix
-    
+
     # ========================================
     # Reflections
     # ========================================
-    
+
     def add_reflection(
-        self, 
-        content: str, 
+        self,
+        content: str,
         category: str = "insight",
         context: str | None = None,
     ) -> None:
         """Add a reflection or lesson learned.
-        
+
         Args:
             content: The insight or lesson.
             category: success, failure, insight, or strategy.
@@ -577,34 +577,34 @@ class TaskBoard:
             category=category,
             context=context or self._goal,
         ))
-        
+
         # Keep recent reflections
         if len(self._reflections) > 20:
             self._reflections = self._reflections[-20:]
-    
+
     def get_reflections(self, category: str | None = None) -> list[Reflection]:
         """Get reflections."""
         if category:
             return [r for r in self._reflections if r.category == category]
         return self._reflections.copy()
-    
+
     # ========================================
     # Summary & Context
     # ========================================
-    
+
     def summary(self) -> str:
         """Get a summary of the taskboard state.
-        
+
         Returns:
             Formatted summary string.
         """
         lines = []
-        
+
         # Goal
         if self._goal:
             lines.append(f"🎯 Goal: {self._goal}")
             lines.append("")
-        
+
         # Tasks
         tasks = self.get_all_tasks()
         if tasks:
@@ -615,7 +615,7 @@ class TaskBoard:
             for task in tasks:
                 lines.append(f"  {task}")
             lines.append("")
-        
+
         # Notes
         notes = self.get_notes(limit=5)
         if notes:
@@ -623,21 +623,21 @@ class TaskBoard:
             for note in notes:
                 icon = {"observation": "•", "insight": "💡", "question": "❓"}.get(note.category, "•")
                 lines.append(f"  {icon} {note.content}")
-        
+
         return "\n".join(lines) if lines else "Empty taskboard"
-    
+
     def get_context(self) -> str:
         """Get context for LLM prompt.
-        
+
         Returns:
             Formatted context for inclusion in prompts.
         """
         sections = []
-        
+
         # Goal
         if self._goal:
             sections.append(f"**Goal**: {self._goal}")
-        
+
         # Tasks
         pending = self.get_pending()
         done = self.get_done()
@@ -650,7 +650,7 @@ class TaskBoard:
                 icon = "→" if t.status == TaskStatus.IN_PROGRESS else "○"
                 lines.append(f"  {icon} {t.description}")
             sections.append("\n".join(lines))
-        
+
         # Recent notes
         notes = self.get_notes(limit=3)
         if notes:
@@ -658,7 +658,7 @@ class TaskBoard:
             for n in notes:
                 lines.append(f"  - {n.content}")
             sections.append("\n".join(lines))
-        
+
         # Reflections
         reflections = self._reflections[-3:] if self._reflections else []
         if reflections:
@@ -667,32 +667,32 @@ class TaskBoard:
                 icon = {"success": "✓", "failure": "✗", "insight": "💡", "strategy": "📋"}.get(r.category, "•")
                 lines.append(f"  {icon} {r.content}")
             sections.append("\n".join(lines))
-        
+
         return "\n\n".join(sections) if sections else ""
-    
+
     def verify_completion(self) -> dict[str, Any]:
         """Verify that work is complete.
-        
+
         Returns:
             Dict with verification results.
         """
         pending = self.get_pending()
         failed = self.get_failed()
         done = self.get_done()
-        
+
         issues = []
-        
+
         if pending:
             issues.append(f"{len(pending)} task(s) still pending")
-        
+
         if failed:
             issues.append(f"{len(failed)} task(s) failed")
-        
+
         # Check for tasks without results
         no_result = [t for t in done if not t.result]
         if no_result:
             issues.append(f"{len(no_result)} completed task(s) have no result documented")
-        
+
         return {
             "complete": len(pending) == 0 and len(failed) == 0,
             "done_count": len(done),
@@ -700,11 +700,11 @@ class TaskBoard:
             "failed_count": len(failed),
             "issues": issues,
         }
-    
+
     # ========================================
     # Serialization
     # ========================================
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
@@ -713,13 +713,13 @@ class TaskBoard:
             "notes": [n.to_dict() for n in self._notes],
             "reflections": [{"content": r.content, "category": r.category} for r in self._reflections],
         }
-    
+
     def clear(self) -> None:
         """Clear tasks and notes (keep learned patterns)."""
         self._tasks.clear()
         self._notes.clear()
         self._goal = None
-    
+
     def clear_all(self) -> None:
         """Clear everything including learned patterns."""
         self.clear()
@@ -748,20 +748,20 @@ Be thorough - don't rush. Quality over speed.
 """
 
 
-def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
+def create_taskboard_tools(board: TaskBoard) -> list[BaseTool]:
     """Create tools for taskboard interaction.
-    
+
     These tools let the agent manage its own work.
     Uses flexible parameter handling to work with various LLM outputs.
-    
+
     Args:
         board: TaskBoard instance to operate on.
-        
+
     Returns:
         List of tools for task management.
     """
     from agenticflow.tools.base import BaseTool
-    
+
     def _plan_tasks_impl(**kwargs: Any) -> str:
         """Create a task list for multi-step work."""
         # Handle various LLM parameter naming
@@ -773,24 +773,24 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
         )
         if not task_list:
             return "❌ No tasks provided. Pass a list of task descriptions."
-        
+
         goal_text = kwargs.get("goal") or kwargs.get("objective") or kwargs.get("target")
-        
+
         if goal_text:
             board.set_goal(goal_text)
-        
+
         board.clear_tasks()
         board.add_tasks(task_list)
-        
+
         lines = [f"✅ Created {len(task_list)} tasks:"]
         for i, desc in enumerate(task_list, 1):
             lines.append(f"  {i}. {desc}")
-        
+
         if goal_text:
             lines.append(f"\n🎯 Goal: {goal_text}")
-        
+
         return "\n".join(lines)
-    
+
     plan_tasks = BaseTool(
         name="plan_tasks",
         description="Create a task list for multi-step work. Use at the start of complex tasks to break them into steps.",
@@ -800,7 +800,7 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
             "goal": {"type": "string", "description": "Optional overall goal"},
         },
     )
-    
+
     def _update_task_impl(**kwargs: Any) -> str:
         """Mark a task as started, done, or failed."""
         # Extract task identifier from various possible parameter names
@@ -813,10 +813,10 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
             or kwargs.get("task_number")
             or kwargs.get("number")
         )
-        
+
         if task_id is None:
             return "❌ No task specified. Provide task_name (e.g., 'Search for async')."
-        
+
         # Convert numeric task_id to task description by index
         if isinstance(task_id, int | float):
             idx = int(task_id) - 1  # 1-indexed to 0-indexed
@@ -825,7 +825,7 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
                 task_id = all_tasks[idx].description
             else:
                 return f"❌ Task #{int(task_id)} not found. Tasks are numbered 1-{len(all_tasks)}."
-        
+
         # Extract status from various parameter names
         status = (
             kwargs.get("status")
@@ -834,20 +834,20 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
             or kwargs.get("state")
             or "done"  # default to done if not specified
         )
-        
+
         # Extract result
         result = kwargs.get("result") or kwargs.get("message") or kwargs.get("note")
-        
+
         found = board.find_task(str(task_id))
         if not found:
             return f"❌ Task not found: {task_id}"
-        
+
         status_lower = str(status).lower()
-        
+
         if status_lower in ("started", "start", "in_progress", "working", "in-progress"):
             board.start_task(str(task_id))
             return f"→ Started: {found.description}"
-        
+
         elif status_lower in ("done", "complete", "completed", "finished"):
             board.complete_task(str(task_id), result)
             remaining = len(board.get_pending())
@@ -859,18 +859,18 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
             else:
                 msg += "\n  🎉 All tasks complete!"
             return msg
-        
+
         elif status_lower in ("failed", "fail", "error"):
             board.fail_task(str(task_id), result or "Unknown error")
             return f"✗ Failed: {found.description}\n  Error: {result or 'Unknown error'}"
-        
+
         elif status_lower in ("skip", "skipped"):
             board.skip_task(str(task_id))
             return f"○ Skipped: {found.description}"
-        
+
         else:
             return f"❌ Unknown status: {status}. Use: started, done, failed, or skip."
-    
+
     update_task = BaseTool(
         name="update_task",
         description="Mark a task as started, done, or failed. Use task name or number to identify the task.",
@@ -881,7 +881,7 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
             "result": {"type": "string", "description": "Optional result message or error description"},
         },
     )
-    
+
     def _add_note_impl(**kwargs: Any) -> str:
         """Record a note or observation."""
         text = (
@@ -892,13 +892,13 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
         )
         if not text:
             return "❌ No note content provided."
-        
+
         cat = kwargs.get("category") or kwargs.get("type") or "observation"
-        
+
         board.add_note(text, cat)
         icon = {"observation": "📝", "insight": "💡", "question": "❓"}.get(cat, "📝")
         return f"{icon} Noted: {text}"
-    
+
     add_note = BaseTool(
         name="add_note",
         description="Record a note or observation during work.",
@@ -908,53 +908,53 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
             "category": {"type": "string", "description": "Category: observation, insight, or question"},
         },
     )
-    
+
     def _check_progress_impl(**kwargs: Any) -> str:
         """Check current task progress."""
         tasks = board.get_all_tasks()
         if not tasks:
             return "📋 No tasks. Use plan_tasks() to create a task list."
-        
+
         done = board.get_done()
         pending = board.get_pending()
         failed = board.get_failed()
-        
+
         total = len(tasks)
         pct = (len(done) / total * 100) if total > 0 else 0
-        
+
         lines = [
             "📋 **Task Progress**",
             f"Progress: {len(done)}/{total} complete ({pct:.0f}%)",
         ]
-        
+
         if failed:
             lines.append(f"⚠️ {len(failed)} failed")
-        
+
         lines.append("")
-        
+
         for t in tasks:
             lines.append(f"  {t}")
-        
+
         if pending:
             lines.append(f"\n👉 Next: {pending[0].description}")
         elif not failed:
             lines.append("\n🎉 All tasks complete! Use verify_done() to confirm.")
-        
+
         return "\n".join(lines)
-    
+
     check_progress = BaseTool(
         name="check_progress",
         description="Check current task progress and see remaining work.",
         func=_check_progress_impl,
         args_schema={},
     )
-    
+
     def _verify_done_impl(**kwargs: Any) -> str:
         """Verify all work is complete before finishing."""
         result = board.verify_completion()
-        
+
         lines = ["🔍 **Completion Check**", ""]
-        
+
         if result["issues"]:
             lines.append("❌ **Issues Found:**")
             for issue in result["issues"]:
@@ -965,14 +965,14 @@ def create_taskboard_tools(board: TaskBoard) -> list["BaseTool"]:
             lines.append(f"  - {result['done_count']} task(s) completed")
             lines.append("  - All tasks have documented results")
             lines.append("\nYou can now provide the final answer.")
-        
+
         return "\n".join(lines)
-    
+
     verify_done = BaseTool(
         name="verify_done",
         description="Verify all work is complete before finishing. Use this to confirm nothing was missed.",
         func=_verify_done_impl,
         args_schema={},
     )
-    
+
     return [plan_tasks, update_task, add_note, check_progress, verify_done]

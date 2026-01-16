@@ -9,13 +9,12 @@ still available as a deprecated alias.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 from collections import defaultdict
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
-from agenticflow.observability.trace_record import TraceType
-from agenticflow.observability.trace_record import Trace
-
+from agenticflow.observability.trace_record import Trace, TraceType
 
 # Type alias for trace handlers
 TraceHandler = Callable[[Trace], None] | Callable[[Trace], Awaitable[None]]
@@ -24,36 +23,36 @@ TraceHandler = Callable[[Trace], None] | Callable[[Trace], Awaitable[None]]
 class TraceBus:
     """
     Central observability event bus with pub/sub pattern.
-    
+
     TraceBus handles observability events (tracing, metrics, logging).
     For core orchestration events, use agenticflow.events.TraceBus instead.
-    
+
     It supports:
     - Type-specific subscriptions
     - Global subscriptions (for logging, metrics)
     - Sync and async handlers
     - Event history with querying
     - WebSocket client broadcasting
-    
+
     Attributes:
         max_history: Maximum events to keep in history
-        
+
     Example:
         ```python
         bus = TraceBus()
-        
+
         # Subscribe to specific events
         bus.subscribe(TraceType.TASK_COMPLETED, handle_completion)
-        
+
         # Subscribe to all events
         bus.subscribe_all(log_event)
-        
+
         # Publish an event
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.TASK_STARTED,
             data={"task_id": "123"},
         ))
-        
+
         # Query history
         events = bus.get_history(
             event_type=TraceType.TASK_COMPLETED,
@@ -65,13 +64,13 @@ class TraceBus:
     def __init__(self, max_history: int = 10000) -> None:
         """
         Initialize the TraceBus.
-        
+
         Args:
             max_history: Maximum number of events to keep in history
         """
         self._handlers: dict[TraceType, list[TraceHandler]] = defaultdict(list)
         self._global_handlers: list[TraceHandler] = []
-        self._event_history: list[Event] = []
+        self._event_history: list[Trace] = []
         self._websocket_clients: set = set()
         self._lock = asyncio.Lock()
         self._max_history = max_history
@@ -80,7 +79,7 @@ class TraceBus:
     def subscribe(self, event_type: TraceType, handler: TraceHandler) -> None:
         """
         Subscribe to a specific event type.
-        
+
         Args:
             event_type: The type of events to subscribe to
             handler: Callback function (sync or async)
@@ -95,7 +94,7 @@ class TraceBus:
     ) -> None:
         """
         Subscribe to multiple event types.
-        
+
         Args:
             event_types: List of event types to subscribe to
             handler: Callback function (sync or async)
@@ -106,9 +105,9 @@ class TraceBus:
     def subscribe_all(self, handler: TraceHandler) -> None:
         """
         Subscribe to ALL events.
-        
+
         Useful for logging, metrics, debugging, or WebSocket streaming.
-        
+
         Args:
             handler: Callback function (sync or async)
         """
@@ -118,7 +117,7 @@ class TraceBus:
     def unsubscribe(self, event_type: TraceType, handler: TraceHandler) -> None:
         """
         Unsubscribe from an event type.
-        
+
         Args:
             event_type: The event type to unsubscribe from
             handler: The handler to remove
@@ -129,7 +128,7 @@ class TraceBus:
     def unsubscribe_all(self, handler: TraceHandler) -> None:
         """
         Unsubscribe a global handler.
-        
+
         Args:
             handler: The handler to remove
         """
@@ -141,42 +140,40 @@ class TraceBus:
         self._handlers.clear()
         self._global_handlers.clear()
 
-    async def publish(self, event: Event | str, data: dict | None = None) -> None:
+    async def publish(self, event: Trace | str, data: dict | None = None) -> None:
         """
         Publish an event to all subscribers.
-        
+
         Can be called two ways:
         1. publish(event) - with an Event object
         2. publish("event_type", {"key": "value"}) - with string and dict
-        
+
         Args:
             event: The Event object, or event type string
-            data: Event data (only used if event is a string)
+            data: Trace data (only used if event is a string)
         """
         # Capture event loop reference on first publish (for publish_sync to use)
         if self._loop is None:
-            try:
+            with contextlib.suppress(RuntimeError):
                 self._loop = asyncio.get_running_loop()
-            except RuntimeError:
-                pass
-        
+
         # Handle simple string/dict API
         if isinstance(event, str):
-            from agenticflow.observability.trace_record import TraceType
             from agenticflow.observability.trace_record import Trace as EventClass
-            
+            from agenticflow.observability.trace_record import TraceType
+
             # Try to parse as TraceType enum, otherwise use custom type
             try:
                 event_type = TraceType(event)
             except ValueError:
                 # Custom event type - use a generic type
                 event_type = TraceType.CUSTOM
-            
+
             event = EventClass(
                 type=event_type,
                 data={"event_name": event if event_type == TraceType.CUSTOM else None, **(data or {})},
             )
-        
+
         # Add to history
         async with self._lock:
             self._event_history.append(event)
@@ -195,24 +192,24 @@ class TraceBus:
         # Broadcast to WebSocket clients
         await self._broadcast_to_websockets(event)
 
-    def publish_sync(self, event: Event | str, data: dict | None = None) -> None:
+    def publish_sync(self, event: Trace | str, data: dict | None = None) -> None:
         """
         Publish an event synchronously (fire and forget).
-        
+
         This method is designed for use in sync contexts (like tool functions)
         where you need to emit events but can't await. It uses the event loop
         reference captured during TraceBus initialization to schedule events
         from threads.
-        
+
         **Use only when:**
         - Called from sync code that can't be made async
         - There's a running event loop (e.g., within async application)
         - You don't need to wait for event delivery
-        
+
         Args:
             event: The Event object, or event type string
-            data: Event data (only used if event is a string)
-        
+            data: Trace data (only used if event is a string)
+
         Example:
             ```python
             # From a sync tool function:
@@ -230,30 +227,30 @@ class TraceBus:
             return
         except RuntimeError:
             pass
-        
+
         # Second, try using stored loop reference (for thread-safe calls)
         if self._loop is not None and self._loop.is_running():
             asyncio.run_coroutine_threadsafe(self.publish(event, data), self._loop)
             return
-        
+
         # No event loop available - silently skip
         # This can happen in pure sync contexts or during testing
         pass
 
-    async def publish_many(self, events: list[Event]) -> None:
+    async def publish_many(self, events: list[Trace]) -> None:
         """
         Publish multiple events.
-        
+
         Args:
             events: List of events to publish
         """
         for event in events:
             await self.publish(event)
 
-    async def _call_handler(self, handler: TraceHandler, event: Event) -> None:
+    async def _call_handler(self, handler: TraceHandler, event: Trace) -> None:
         """
         Call a handler (sync or async).
-        
+
         Args:
             handler: The handler to call
             event: The event to pass to the handler
@@ -267,10 +264,10 @@ class TraceBus:
             # Log but don't propagate handler errors
             print(f"⚠️ Event handler error: {e}")
 
-    async def _broadcast_to_websockets(self, event: Event) -> None:
+    async def _broadcast_to_websockets(self, event: Trace) -> None:
         """
         Send event to all connected WebSocket clients.
-        
+
         Args:
             event: The event to broadcast
         """
@@ -292,7 +289,7 @@ class TraceBus:
     def add_websocket(self, ws) -> None:
         """
         Register a WebSocket client for event streaming.
-        
+
         Args:
             ws: WebSocket connection
         """
@@ -301,7 +298,7 @@ class TraceBus:
     def remove_websocket(self, ws) -> None:
         """
         Unregister a WebSocket client.
-        
+
         Args:
             ws: WebSocket connection to remove
         """
@@ -318,16 +315,16 @@ class TraceBus:
         correlation_id: str | None = None,
         source: str | None = None,
         limit: int = 100,
-    ) -> list[Event]:
+    ) -> list[Trace]:
         """
         Query event history.
-        
+
         Args:
             event_type: Filter by event type
             correlation_id: Filter by correlation ID
             source: Filter by source
             limit: Maximum events to return
-            
+
         Returns:
             List of matching events (most recent last)
         """
@@ -348,14 +345,14 @@ class TraceBus:
         self,
         category: str,
         limit: int = 100,
-    ) -> list[Event]:
+    ) -> list[Trace]:
         """
         Query event history by category.
-        
+
         Args:
-            category: Event category (e.g., "task", "agent")
+            category: Trace category (e.g., "task", "agent")
             limit: Maximum events to return
-            
+
         Returns:
             List of matching events
         """
@@ -374,7 +371,7 @@ class TraceBus:
     def get_stats(self) -> dict:
         """
         Get event bus statistics.
-        
+
         Returns:
             Dictionary with statistics
         """
@@ -399,9 +396,9 @@ _default_bus: TraceBus | None = None
 def get_trace_bus() -> TraceBus:
     """
     Get the default global TraceBus instance.
-    
+
     Creates one if it doesn't exist.
-    
+
     Returns:
         The global TraceBus instance
     """
@@ -414,7 +411,7 @@ def get_trace_bus() -> TraceBus:
 def set_trace_bus(bus: TraceBus) -> None:
     """
     Set the global TraceBus instance.
-    
+
     Args:
         bus: The TraceBus to use as global default
     """

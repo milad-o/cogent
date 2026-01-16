@@ -133,7 +133,7 @@ class AgentGraph:
         show_tools: bool = True,
         show_config: bool = False,
         config: GraphConfig | None = None,
-    ) -> "AgentGraph":
+    ) -> AgentGraph:
         """Create a graph from an agent.
 
         Args:
@@ -291,7 +291,7 @@ class TopologyGraph:
         *,
         show_tools: bool = True,
         config: GraphConfig | None = None,
-    ) -> "TopologyGraph":
+    ) -> TopologyGraph:
         """Create a graph from a topology.
 
         Args:
@@ -658,7 +658,7 @@ class FlowGraph:
         flow: Flow,
         *,
         config: GraphConfig | None = None,
-    ) -> "FlowGraph":
+    ) -> FlowGraph:
         """Create a graph from a Flow.
 
         Args:

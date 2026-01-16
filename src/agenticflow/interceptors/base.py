@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 class Phase(Enum):
     """Execution phase where interceptor runs.
-    
+
     The agent execution loop has these phases:
-    
+
     1. PRE_RUN: Before agent.run() starts processing
     2. PRE_THINK: Before each model call
     3. POST_THINK: After model responds (before tool execution)
@@ -46,11 +46,11 @@ class Phase(Enum):
 @dataclass
 class InterceptContext:
     """Context passed to interceptors at each phase.
-    
+
     Contains all relevant information about current execution state.
     The `state` dict is mutable and shared across all interceptors,
     allowing them to communicate and track information.
-    
+
     Attributes:
         agent: The agent being executed.
         phase: Current execution phase.
@@ -70,21 +70,21 @@ class InterceptContext:
     messages: list[dict[str, Any]]
     state: dict[str, Any] = field(default_factory=dict)
     run_context: RunContext | None = None
-    
+
     # Phase-specific data
     tool_name: str | None = None
     tool_args: dict[str, Any] | None = None
     tool_result: Any = None
     error: Exception | None = None
     model_response: Any = None
-    
+
     # Execution counters (updated by executor)
     model_calls: int = 0
     tool_calls: int = 0
-    
+
     # Available tools (for ToolGate filtering)
     tools: list[Any] | None = None
-    
+
     def __post_init__(self) -> None:
         """Initialize state if not provided."""
         if self.state is None:
@@ -94,9 +94,9 @@ class InterceptContext:
 @dataclass
 class InterceptResult:
     """Result from an interceptor.
-    
+
     Interceptors return this to indicate what should happen next.
-    
+
     Attributes:
         proceed: Whether to continue execution (False = stop).
         modified_messages: If set, replace messages with these.
@@ -119,42 +119,42 @@ class InterceptResult:
     skip_action: bool = False
     final_response: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     @classmethod
     def ok(cls) -> InterceptResult:
         """Continue execution normally."""
         return cls(proceed=True)
-    
+
     @classmethod
     def stop(cls, response: str | None = None) -> InterceptResult:
         """Stop execution with optional response."""
         return cls(proceed=False, final_response=response)
-    
+
     @classmethod
     def skip(cls) -> InterceptResult:
         """Skip current action but continue execution."""
         return cls(proceed=True, skip_action=True)
-    
+
     @classmethod
     def modify_messages(cls, messages: list[dict[str, Any]]) -> InterceptResult:
         """Continue with modified messages."""
         return cls(proceed=True, modified_messages=messages)
-    
+
     @classmethod
     def modify_args(cls, args: dict[str, Any]) -> InterceptResult:
         """Continue with modified tool arguments."""
         return cls(proceed=True, modified_tool_args=args)
-    
+
     @classmethod
     def modify_tools(cls, tools: list[Any]) -> InterceptResult:
         """Continue with filtered/modified tools."""
         return cls(proceed=True, modified_tools=tools)
-    
+
     @classmethod
     def use_model(cls, model: Any) -> InterceptResult:
         """Use a different model for this call."""
         return cls(proceed=True, modified_model=model)
-    
+
     @classmethod
     def modify_prompt(cls, prompt: str) -> InterceptResult:
         """Continue with modified system prompt."""
@@ -163,16 +163,16 @@ class InterceptResult:
 
 class StopExecution(Exception):
     """Raised by interceptors to halt execution immediately.
-    
+
     Use this when you need to stop execution and return a specific response.
     Preferable to returning InterceptResult.stop() when you need to
     bail out from deep in the execution stack.
-    
+
     Attributes:
         response: The response to return.
         reason: Why execution was stopped.
     """
-    
+
     def __init__(self, response: str, reason: str = ""):
         self.response = response
         self.reason = reason
@@ -181,32 +181,32 @@ class StopExecution(Exception):
 
 class Interceptor(ABC):
     """Base class for all interceptors.
-    
+
     Interceptors can hook into any execution phase by implementing
     the corresponding method. Default implementations return ok().
-    
+
     Example:
         class LoggingInterceptor(Interceptor):
             async def pre_think(self, ctx: InterceptContext) -> InterceptResult:
                 print(f"Model call #{ctx.model_calls + 1}")
                 return InterceptResult.ok()
-                
+
             async def post_act(self, ctx: InterceptContext) -> InterceptResult:
                 print(f"Tool {ctx.tool_name} returned: {ctx.tool_result}")
                 return InterceptResult.ok()
-    
+
     Note:
         Override only the phases you need. Unimplemented phases pass through.
     """
-    
+
     @property
     def name(self) -> str:
         """Interceptor name for logging/debugging."""
         return self.__class__.__name__
-    
+
     async def intercept(self, ctx: InterceptContext) -> InterceptResult:
         """Main dispatch method - routes to phase-specific handlers.
-        
+
         You typically don't override this. Override the phase methods instead.
         """
         match ctx.phase:
@@ -226,33 +226,33 @@ class Interceptor(ABC):
                 return await self.on_error(ctx)
             case _:
                 return InterceptResult.ok()
-    
+
     # Phase handlers - override as needed
-    
+
     async def pre_run(self, ctx: InterceptContext) -> InterceptResult:
         """Called before agent.run() starts."""
         return InterceptResult.ok()
-    
+
     async def pre_think(self, ctx: InterceptContext) -> InterceptResult:
         """Called before each model call."""
         return InterceptResult.ok()
-    
+
     async def post_think(self, ctx: InterceptContext) -> InterceptResult:
         """Called after model responds."""
         return InterceptResult.ok()
-    
+
     async def pre_act(self, ctx: InterceptContext) -> InterceptResult:
         """Called before tool execution."""
         return InterceptResult.ok()
-    
+
     async def post_act(self, ctx: InterceptContext) -> InterceptResult:
         """Called after tool returns."""
         return InterceptResult.ok()
-    
+
     async def post_run(self, ctx: InterceptContext) -> InterceptResult:
         """Called after agent.run() completes."""
         return InterceptResult.ok()
-    
+
     async def on_error(self, ctx: InterceptContext) -> InterceptResult:
         """Called when an error occurs."""
         return InterceptResult.ok()
@@ -263,63 +263,63 @@ async def run_interceptors(
     ctx: InterceptContext,
 ) -> InterceptResult:
     """Run all interceptors for a given phase.
-    
+
     Interceptors run in order. If any returns proceed=False,
     execution stops and that result is returned.
-    
+
     Modifications accumulate:
     - modified_messages from later interceptors override earlier ones
     - modified_tool_args from later interceptors override earlier ones
-    
+
     Args:
         interceptors: List of interceptors to run.
         ctx: The context for this phase.
-        
+
     Returns:
         Combined InterceptResult from all interceptors.
     """
     result = InterceptResult.ok()
-    
+
     for interceptor in interceptors:
         try:
             r = await interceptor.intercept(ctx)
-            
+
             # Stop immediately if told to
             if not r.proceed:
                 return r
-            
+
             # Accumulate modifications
             if r.modified_messages is not None:
                 result.modified_messages = r.modified_messages
                 ctx.messages = r.modified_messages  # Update for next interceptor
-            
+
             if r.modified_task is not None:
                 result.modified_task = r.modified_task
                 ctx.task = r.modified_task
-            
+
             if r.modified_tool_args is not None:
                 result.modified_tool_args = r.modified_tool_args
                 ctx.tool_args = r.modified_tool_args
-            
+
             if r.modified_tools is not None:
                 result.modified_tools = r.modified_tools
                 ctx.tools = r.modified_tools
-            
+
             if r.modified_model is not None:
                 result.modified_model = r.modified_model
-            
+
             if r.modified_prompt is not None:
                 result.modified_prompt = r.modified_prompt
-            
+
             if r.skip_action:
                 result.skip_action = True
-            
+
             # Merge metadata
             result.metadata.update(r.metadata)
-            
+
         except StopExecution as e:
             return InterceptResult.stop(e.response)
-    
+
     return result
 
 

@@ -2,7 +2,7 @@
 
 Provides tools that allow agents to manage long-term memory:
 - remember: Save important facts
-- recall: Get a specific fact  
+- recall: Get a specific fact
 - forget: Remove a fact
 - search_memories: Find relevant memories
 
@@ -23,14 +23,14 @@ def _create_remember_tool(memory: Memory) -> BaseTool:
     """Create a remember tool bound to a Memory instance."""
     async def remember(key: str, value: str) -> str:
         """Save an important fact to long-term memory.
-        
+
         Args:
             key: Short descriptive key (e.g., "name", "preferred_language", "project")
             value: The fact to remember
         """
         await memory.remember(key, value)
         return f"Remembered: {key}"
-    
+
     return BaseTool(
         name="remember",
         description="""Save an important fact to long-term memory.
@@ -61,7 +61,7 @@ def _create_recall_tool(memory: Memory) -> BaseTool:
     """Create a recall tool bound to a Memory instance."""
     async def recall(key: str) -> str:
         """Recall a specific fact from long-term memory.
-        
+
         Args:
             key: The key of the fact to recall
         """
@@ -69,7 +69,7 @@ def _create_recall_tool(memory: Memory) -> BaseTool:
         if value is None:
             return f"No memory found for: {key}"
         return str(value)
-    
+
     return BaseTool(
         name="recall",
         description="""Recall a specific fact from long-term memory.
@@ -92,7 +92,7 @@ def _create_forget_tool(memory: Memory) -> BaseTool:
     """Create a forget tool bound to a Memory instance."""
     async def forget(key: str) -> str:
         """Remove a fact from long-term memory.
-        
+
         Args:
             key: The key of the fact to forget
         """
@@ -100,7 +100,7 @@ def _create_forget_tool(memory: Memory) -> BaseTool:
         if success:
             return f"Forgot: {key}"
         return f"No memory found for: {key}"
-    
+
     return BaseTool(
         name="forget",
         description="""Remove a fact from long-term memory.
@@ -123,7 +123,7 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
     """Create a search_memories tool bound to a Memory instance."""
     async def search_memories(query: str) -> str:
         """Search long-term memory for relevant facts.
-        
+
         Args:
             query: Search term (matches keys and values)
         """
@@ -131,10 +131,10 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
         keys = await memory.keys()
         if not keys:
             return "No memories stored."
-        
+
         query_lower = query.lower()
         matches: list[tuple[str, Any]] = []
-        
+
         for key in keys:
             if key.startswith("_"):  # Skip internal keys like _messages
                 continue
@@ -143,13 +143,13 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
                 # Check if query matches key or value
                 if query_lower in key.lower() or query_lower in str(value).lower():
                     matches.append((key, value))
-        
+
         if not matches:
             return f"No memories found matching: {query}"
-        
+
         lines = [f"- {k}: {v}" for k, v in matches[:5]]
         return "Found:\n" + "\n".join(lines)
-    
+
     return BaseTool(
         name="search_memories",
         description="""Search long-term memory for relevant facts.
@@ -201,7 +201,7 @@ You have long-term memory tools. USE THEM to persist important facts.
 
 **ALWAYS call `remember(key, value)` when user shares:**
 - Their name → remember("name", "Alice")
-- Preferences → remember("favorite_color", "blue")  
+- Preferences → remember("favorite_color", "blue")
 - Personal info → remember("birth_year", "1990")
 - Their work/projects → remember("occupation", "developer")
 

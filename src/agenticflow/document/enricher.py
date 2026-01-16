@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.document.types import Document
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 @dataclass
 class EnricherConfig:
     """Configuration for metadata enrichment.
-    
+
     Attributes:
         extract_keywords: Extract top keywords from text.
         keyword_count: Number of keywords to extract.
@@ -33,7 +34,7 @@ class EnricherConfig:
         compute_reading_time: Estimate reading time in minutes.
         words_per_minute: Reading speed for time estimation.
     """
-    
+
     extract_keywords: bool = True
     keyword_count: int = 10
     count_words: bool = True
@@ -50,7 +51,7 @@ class EnricherConfig:
 STOP_WORDS = frozenset({
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
     "has", "he", "in", "is", "it", "its", "of", "on", "that", "the",
-    "to", "was", "were", "will", "with", "the", "this", "but", "they",
+    "to", "was", "were", "will", "with", "this", "but", "they",
     "have", "had", "what", "when", "where", "who", "which", "why", "how",
     "all", "each", "every", "both", "few", "more", "most", "other",
     "some", "such", "no", "nor", "not", "only", "own", "same", "so",
@@ -58,7 +59,7 @@ STOP_WORDS = frozenset({
     "about", "into", "through", "during", "before", "after", "above",
     "below", "between", "under", "again", "further", "then", "once",
     "here", "there", "any", "because", "been", "being", "could", "did",
-    "do", "does", "doing", "down", "each", "get", "got", "him", "his",
+    "do", "does", "doing", "down", "get", "got", "him", "his",
     "her", "hers", "herself", "himself", "i", "me", "my", "myself",
     "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
 })
@@ -66,36 +67,36 @@ STOP_WORDS = frozenset({
 
 class MetadataEnricher:
     """Enrich documents with automatically extracted metadata.
-    
+
     Extracts keywords, counts, dates, and other useful metadata
     from document text to enable better filtering and hybrid retrieval.
-    
+
     Example:
         >>> from agenticflow.document import MetadataEnricher, Document
-        >>> 
+        >>>
         >>> enricher = MetadataEnricher(
         ...     extract_keywords=True,
         ...     count_words=True,
         ...     compute_reading_time=True,
         ... )
-        >>> 
+        >>>
         >>> docs = [Document(text="Python is a programming language...")]
         >>> enriched = enricher.enrich(docs)
-        >>> 
+        >>>
         >>> print(enriched[0].metadata)
         >>> # {'keywords': ['python', 'programming', 'language'],
         >>> #  'word_count': 42, 'reading_time_minutes': 1}
-    
+
     With custom extractors:
         >>> def extract_version(doc: Document) -> str | None:
         ...     match = re.search(r'v?(\\d+\\.\\d+\\.\\d+)', doc.text)
         ...     return match.group(1) if match else None
-        >>> 
+        >>>
         >>> enricher = MetadataEnricher(
         ...     custom_extractors={"version": extract_version}
         ... )
     """
-    
+
     def __init__(
         self,
         config: EnricherConfig | None = None,
@@ -114,7 +115,7 @@ class MetadataEnricher:
         stop_words: frozenset[str] | None = None,
     ) -> None:
         """Initialize the enricher.
-        
+
         Args:
             config: Configuration object (alternative to individual params).
             extract_keywords: Extract top keywords from text.
@@ -145,10 +146,10 @@ class MetadataEnricher:
                 compute_reading_time=compute_reading_time,
                 words_per_minute=words_per_minute,
             )
-        
+
         self._custom_extractors = custom_extractors or {}
         self._stop_words = stop_words or STOP_WORDS
-    
+
     def enrich(
         self,
         documents: list[Document],
@@ -156,11 +157,11 @@ class MetadataEnricher:
         in_place: bool = True,
     ) -> list[Document]:
         """Enrich documents with extracted metadata.
-        
+
         Args:
             documents: Documents to enrich.
             in_place: If True, modify documents in place. If False, return copies.
-            
+
         Returns:
             Enriched documents.
         """
@@ -173,61 +174,61 @@ class MetadataEnricher:
                 )
                 for doc in documents
             ]
-        
+
         for doc in documents:
             self._enrich_document(doc)
-        
+
         return documents
-    
+
     def enrich_one(self, document: Document, *, in_place: bool = True) -> Document:
         """Enrich a single document.
-        
+
         Args:
             document: Document to enrich.
             in_place: If True, modify in place.
-            
+
         Returns:
             Enriched document.
         """
         return self.enrich([document], in_place=in_place)[0]
-    
+
     def _enrich_document(self, doc: Document) -> None:
         """Enrich a single document in place."""
         text = doc.text
         config = self._config
-        
+
         # Word count (used by multiple features)
         words = text.split()
         word_count = len(words)
-        
+
         if config.count_words:
             doc.metadata["word_count"] = word_count
-        
+
         if config.count_chars:
             doc.metadata["char_count"] = len(text)
-        
+
         if config.compute_reading_time:
             doc.metadata["reading_time_minutes"] = max(
                 1, round(word_count / config.words_per_minute)
             )
-        
+
         if config.extract_keywords:
             doc.metadata["keywords"] = self._extract_keywords(
                 text, config.keyword_count
             )
-        
+
         if config.detect_language:
             doc.metadata["language"] = self._detect_language(text)
-        
+
         if config.extract_dates:
             doc.metadata["dates"] = self._extract_dates(text)
-        
+
         if config.extract_emails:
             doc.metadata["emails"] = self._extract_emails(text)
-        
+
         if config.extract_urls:
             doc.metadata["urls"] = self._extract_urls(text)
-        
+
         # Run custom extractors
         for field_name, extractor in self._custom_extractors.items():
             try:
@@ -237,24 +238,24 @@ class MetadataEnricher:
             except Exception:
                 # Skip failed extractors
                 pass
-    
+
     def _extract_keywords(self, text: str, count: int) -> list[str]:
         """Extract top keywords from text.
-        
+
         Uses simple word frequency after filtering stop words.
         """
         # Tokenize: lowercase, keep only alphanumeric
         words = re.findall(r'\b[a-z]{3,}\b', text.lower())
-        
+
         # Filter stop words and count
         word_counts = Counter(
             word for word in words
             if word not in self._stop_words
         )
-        
+
         # Return top keywords
         return [word for word, _ in word_counts.most_common(count)]
-    
+
     def _detect_language(self, text: str) -> str | None:
         """Detect document language using langdetect."""
         try:
@@ -264,7 +265,7 @@ class MetadataEnricher:
             return None
         except Exception:
             return None
-    
+
     def _extract_dates(self, text: str) -> list[str]:
         """Extract date patterns from text."""
         patterns = [
@@ -279,19 +280,19 @@ class MetadataEnricher:
             r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
             r'\s+\d{1,2},?\s+\d{4}\b',
         ]
-        
+
         dates = []
         for pattern in patterns:
             dates.extend(re.findall(pattern, text, re.IGNORECASE))
-        
+
         return list(set(dates))[:10]  # Dedupe and limit
-    
+
     def _extract_emails(self, text: str) -> list[str]:
         """Extract email addresses from text."""
         pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
         emails = re.findall(pattern, text)
         return list(set(emails))[:10]
-    
+
     def _extract_urls(self, text: str) -> list[str]:
         """Extract URLs from text."""
         pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
@@ -309,7 +310,7 @@ def enrich_documents(
     **kwargs: Any,
 ) -> list[Document]:
     """Convenience function to enrich documents.
-    
+
     Args:
         documents: Documents to enrich.
         extract_keywords: Extract keywords.
@@ -317,13 +318,13 @@ def enrich_documents(
         compute_reading_time: Estimate reading time.
         custom_extractors: Custom extraction functions.
         **kwargs: Additional config options.
-        
+
     Returns:
         Enriched documents (modified in place).
-        
+
     Example:
         >>> from agenticflow.document import enrich_documents
-        >>> 
+        >>>
         >>> docs = loader.load_directory("./docs")
         >>> enrich_documents(docs)
         >>> # Now all docs have keywords, word_count, reading_time_minutes

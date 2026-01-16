@@ -8,15 +8,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.core import now_utc
-from agenticflow.core.enums import TaskStatus, AgentStatus
+from agenticflow.core.enums import AgentStatus, TaskStatus
 
 if TYPE_CHECKING:
     from agenticflow.agent import Agent
-    from agenticflow.tasks import TaskManager
     from agenticflow.events import TraceBus
+    from agenticflow.tasks import TaskManager
 
 
 @dataclass
@@ -57,7 +57,7 @@ class AgentInspector:
         >>> print(result.issues)
     """
 
-    def inspect(self, agent: "Agent") -> InspectionResult:
+    def inspect(self, agent: Agent) -> InspectionResult:
         """Inspect an agent.
 
         Args:
@@ -108,7 +108,7 @@ class AgentInspector:
             recommendations=recommendations,
         )
 
-    def inspect_all(self, agents: list["Agent"]) -> list[InspectionResult]:
+    def inspect_all(self, agents: list[Agent]) -> list[InspectionResult]:
         """Inspect multiple agents.
 
         Args:
@@ -128,7 +128,7 @@ class TaskInspector:
         >>> result = inspector.inspect_manager(task_manager)
     """
 
-    def inspect_manager(self, manager: "TaskManager") -> InspectionResult:
+    def inspect_manager(self, manager: TaskManager) -> InspectionResult:
         """Inspect a task manager.
 
         Args:
@@ -190,7 +190,7 @@ class EventInspector:
         >>> result = inspector.inspect(event_bus)
     """
 
-    def inspect(self, event_bus: "TraceBus") -> InspectionResult:
+    def inspect(self, event_bus: TraceBus) -> InspectionResult:
         """Inspect an event bus.
 
         Args:
@@ -256,15 +256,15 @@ class SystemInspector:
 
     def __init__(self) -> None:
         """Initialize system inspector."""
-        self._agents: list["Agent"] = []
-        self._task_manager: "TaskManager | None" = None
-        self._event_bus: "TraceBus | None" = None
+        self._agents: list[Agent] = []
+        self._task_manager: TaskManager | None = None
+        self._event_bus: TraceBus | None = None
 
         self.agent_inspector = AgentInspector()
         self.task_inspector = TaskInspector()
         self.event_inspector = EventInspector()
 
-    def register_agents(self, agents: list["Agent"]) -> None:
+    def register_agents(self, agents: list[Agent]) -> None:
         """Register agents for inspection.
 
         Args:
@@ -272,7 +272,7 @@ class SystemInspector:
         """
         self._agents = agents
 
-    def register_task_manager(self, manager: "TaskManager") -> None:
+    def register_task_manager(self, manager: TaskManager) -> None:
         """Register task manager for inspection.
 
         Args:
@@ -280,7 +280,7 @@ class SystemInspector:
         """
         self._task_manager = manager
 
-    def register_event_bus(self, event_bus: "TraceBus") -> None:
+    def register_event_bus(self, event_bus: TraceBus) -> None:
         """Register event bus for inspection.
 
         Args:
@@ -318,7 +318,7 @@ class SystemInspector:
                 all_recommendations.append(f"[{result.component}] {rec}")
 
         # Calculate health score
-        total_checks = len(results) * 3  # Rough estimate
+        len(results) * 3  # Rough estimate
         issue_penalty = len(all_issues) * 10
         health_score = max(0, min(100, 100 - issue_penalty))
 

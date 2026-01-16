@@ -7,91 +7,101 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Coroutine, Literal, Sequence, overload
-
-from agenticflow.models.base import BaseChatModel
-from agenticflow.core.messages import AIMessage, HumanMessage, SystemMessage
-from agenticflow.tools.base import BaseTool
+from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    overload,
+)
 
 from agenticflow.agent.config import AgentConfig
-from agenticflow.agent.state import AgentState
-from agenticflow.agent.taskboard import TaskBoard, TaskBoardConfig, create_taskboard_tools, TASKBOARD_INSTRUCTIONS
-from agenticflow.agent.reasoning import (
-    ReasoningConfig,
-)
 from agenticflow.agent.hitl import (
-    should_interrupt,
-    PendingAction,
+    AbortedException,
+    DecisionType,
     HumanDecision,
+    InterruptedException,
     InterruptedState,
     InterruptReason,
-    DecisionType,
-    InterruptedException,
-    AbortedException,
+    PendingAction,
+    should_interrupt,
 )
 from agenticflow.agent.output import (
     ResponseSchema,
 )
-from agenticflow.core.enums import AgentRole, AgentStatus
-from agenticflow.core.utils import generate_id, model_identifier, now_utc
-from agenticflow.observability.trace_record import TraceType
-from agenticflow.tasks.task import Task
-from agenticflow.agent.spawning import SpawningConfig
+from agenticflow.agent.reasoning import (
+    ReasoningConfig,
+)
 from agenticflow.agent.roles import RoleConfig
+from agenticflow.agent.spawning import SpawningConfig
+from agenticflow.agent.state import AgentState
+from agenticflow.agent.taskboard import (
+    TASKBOARD_INSTRUCTIONS,
+    TaskBoard,
+    TaskBoardConfig,
+    create_taskboard_tools,
+)
+from agenticflow.core.enums import AgentRole, AgentStatus
+from agenticflow.core.messages import AIMessage, HumanMessage, SystemMessage
+from agenticflow.core.utils import generate_id, model_identifier, now_utc
+from agenticflow.models.base import BaseChatModel
+from agenticflow.observability.trace_record import Trace, TraceType
+from agenticflow.tasks.task import Task
+from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import TraceBus
-    from agenticflow.tools.registry import ToolRegistry
-    from agenticflow.observability.progress import ProgressTracker
-    from agenticflow.observability.observer import Observer
-    from agenticflow.agent.resilience import ToolResilience, ResilienceConfig
+    from agenticflow.agent.memory import AgentMemory
+    from agenticflow.agent.resilience import ResilienceConfig, ToolResilience
     from agenticflow.agent.streaming import StreamChunk, StreamEvent
     from agenticflow.graph import GraphView
-    from agenticflow.agent.memory import AgentMemory
+    from agenticflow.observability.bus import TraceBus
+    from agenticflow.observability.observer import Observer
+    from agenticflow.observability.progress import ProgressTracker
+    from agenticflow.tools.registry import ToolRegistry
 
 
 class Agent:
     """
     An autonomous entity that can think, act, and communicate.
-    
+
     Agents are the primary actors in the system. Each agent has:
     - A unique identity and role
     - Configuration defining its capabilities
     - Runtime state tracking its activity
     - Access to tools and the event bus
-    
+
     Agents communicate through the event bus and can:
     - Receive and process tasks
     - Use tools to accomplish goals
     - Spawn subtasks for complex work
     - Send messages to other agents
-    
+
     Simplified API (recommended):
         ```python
         from agenticflow.models import ChatModel
         from agenticflow.tools import tool
-        
+
         @tool
         def search(query: str) -> str:
             '''Search for information.'''
             return f"Results for {query}"
-        
+
         model = ChatModel(model="gpt-4o")
-        
+
         agent = Agent(
             name="Researcher",
             model=model,
             tools=[search],  # Pass tool functions directly
             description="Researches topics",
         )
-        
+
         result = await agent.think("What should I research?")
         ```
-    
+
     Advanced API (with AgentConfig):
         ```python
         from agenticflow import Agent, AgentConfig, AgentRole
-        
+
         config = AgentConfig(
             name="Writer",
             role=AgentRole.WORKER,
@@ -99,17 +109,17 @@ class Agent:
             tools=["write_poem", "write_story"],
             resilience_config=ResilienceConfig.aggressive(),
         )
-        
+
         agent = Agent(config=config, event_bus=event_bus)
         ```
-    
+
     When used with Flow (recommended):
         ```python
         from agenticflow import Flow, Agent
-        
+
         # No need to pass event_bus or tool_registry
         agent = Agent(name="Worker", model=model, tools=[my_tool])
-        
+
         # Flow wires everything automatically
         flow = Flow(name="my-flow", agents=[agent], topology="pipeline")
         ```
@@ -191,15 +201,15 @@ class Agent:
     ) -> None:
         """
         Initialize an Agent.
-        
+
         Can be called two ways:
-        
+
         1. Simplified (recommended for use with Flow):
             Agent(name="Worker", model=model, tools=[...], instructions="...")
-        
+
         2. Advanced (for full control):
             Agent(config=AgentConfig(...), event_bus=bus, tool_registry=registry)
-        
+
         Args:
             config: Agent configuration (advanced API)
             event_bus: Event bus for communication (optional, Flow provides this)
@@ -220,7 +230,7 @@ class Agent:
             resilience: ResilienceConfig for retry logic, circuit breakers, and fallback strategies
             interrupt_on: HITL rules for tool approval. Dict mapping tool names to approval rules:
                 - True: Always require approval
-                - False: Never require approval  
+                - False: Never require approval
                 - Callable: Function (tool_name, args) -> bool to decide dynamically
             stream: Enable token-by-token streaming by default for this agent.
                    When True, chat() and think() return async iterators.
@@ -231,7 +241,7 @@ class Agent:
             output: Enforce structured output schema. Accepts:
                 - Pydantic BaseModel class
                 - dataclass class
-                - TypedDict class  
+                - TypedDict class
                 - JSON Schema dict
                 - ResponseSchema for fine-grained control
                 When set, agent.run() returns StructuredResult with validated data.
@@ -256,21 +266,21 @@ class Agent:
             can_finish: Override capability to provide FINAL ANSWER (custom roles)
             can_delegate: Override capability to delegate to other agents (custom roles)
             can_use_tools: Override capability to call tools (custom roles)
-            
+
         Example with memory:
             ```python
             # Simple: just pass True for in-memory
             agent = Agent(name="Assistant", model=model, memory=True)
-            
+
             # Or use InMemorySaver directly
             from agenticflow.agent.memory import InMemorySaver
             agent = Agent(name="Assistant", model=model, memory=InMemorySaver())
-            
+
             # Run with thread-based memory
             response = await agent.run("Hi, I'm Alice", thread_id="conv-1")
             response = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
             ```
-            
+
         Example with verbose (standalone usage):
             ```python
             # See tool calls and agent reasoning
@@ -280,31 +290,31 @@ class Agent:
                 tools=[search, read_url],
                 verbose="debug",  # Shows all tool calls
             )
-            
+
             result = await agent.run("Find info about Python")
             # Output shows: thinking... → tool calls → results → response
             ```
-            
+
         Example with structured output:
             ```python
             from pydantic import BaseModel, Field
-            
+
             class ContactInfo(BaseModel):
                 '''Contact information.'''
                 name: str = Field(description="Full name")
                 email: str = Field(description="Email address")
                 phone: str | None = Field(None, description="Phone number")
-            
+
             agent = Agent(
                 name="Extractor",
                 model=model,
                 output=ContactInfo,  # Enforce schema
             )
-            
+
             result = await agent.run("Extract: John Doe, john@acme.com")
             print(result.data)  # ContactInfo(name="John Doe", email="john@acme.com", phone=None)
             ```
-            
+
         Example with taskboard:
             ```python
             # Enable task tracking - agent gets tools to manage its own work
@@ -314,13 +324,13 @@ class Agent:
                 tools=[search, summarize],
                 taskboard=True,  # Adds task management tools + instructions
             )
-            
+
             result = await agent.run("Research Python async patterns")
-            
+
             # Check what the agent tracked
             print(agent.taskboard.summary())
             ```
-            
+
         Example with role-specific parameters:
             ```python
             # Supervisor with team members
@@ -330,7 +340,7 @@ class Agent:
                 role="supervisor",
                 workers=["Alice", "Bob"],  # Adds to prompt
             )
-            
+
             # Reviewer with criteria
             reviewer = Agent(
                 name="QA",
@@ -338,7 +348,7 @@ class Agent:
                 role="reviewer",
                 criteria=["accuracy", "clarity"],  # Adds to prompt
             )
-            
+
             # Worker with specialty
             worker = Agent(
                 name="Analyst",
@@ -347,7 +357,7 @@ class Agent:
                 specialty="data analysis",  # Adds to prompt
             )
             ```
-            
+
         Example with custom roles (capability overrides):
             ```python
             # Hybrid: Reviewer that can use tools
@@ -358,7 +368,7 @@ class Agent:
                 can_use_tools=True,  # Override!
                 tools=[linter, analyzer],
             )
-            
+
             # Custom orchestrator: Worker that can finish and delegate
             orchestrator = Agent(
                 name="Orchestrator",
@@ -377,11 +387,11 @@ class Agent:
                     "Simplified: Agent(name='Worker', model=model)\n"
                     "Advanced: Agent(config=AgentConfig(...))"
                 )
-            
+
             # Handle role - can be string, enum, or RoleConfig object
             role_config = None
             role_enum = None
-            
+
             if isinstance(role, str):
                 # String role - convert to enum
                 role_enum = AgentRole(role.lower())
@@ -392,11 +402,11 @@ class Agent:
             else:
                 # AgentRole enum directly
                 role_enum = role
-            
+
             # Extract tool names and store tool objects
             tool_names: list[str] = []
             self._direct_tools: list[BaseTool] = []
-            
+
             if tools:
                 for tool in tools:
                     if isinstance(tool, str):
@@ -407,7 +417,7 @@ class Agent:
                     else:
                         # Try to get name attribute
                         tool_names.append(getattr(tool, "name", str(tool)))
-            
+
             # instructions takes priority over system_prompt
             # If neither provided, use role-specific default prompt
             effective_prompt = instructions or system_prompt
@@ -415,7 +425,7 @@ class Agent:
                 from agenticflow.agent.roles import get_role_prompt
                 has_tools = bool(tool_names or self._direct_tools)
                 effective_prompt = get_role_prompt(role_enum, has_tools=has_tools)
-            
+
             # If we have a RoleConfig object, let it enhance the prompt
             if role_config:
                 effective_prompt = role_config.enhance_prompt(effective_prompt)
@@ -424,16 +434,16 @@ class Agent:
                 # (workers, criteria, specialty are ignored if RoleConfig is used)
                 if workers and role_enum == AgentRole.SUPERVISOR:
                     effective_prompt += f"\n\nYour team members: {', '.join(workers)}"
-                
+
                 if criteria and role_enum == AgentRole.REVIEWER:
-                    effective_prompt += f"\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
-                
+                    effective_prompt += "\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
+
                 if specialty and role_enum == AgentRole.WORKER:
                     effective_prompt += f"\n\nYour specialty: {specialty}"
-            
+
             # Store role config for capability lookups
             self._role_config = role_config
-            
+
             # Create config from simplified params
             config = AgentConfig(
                 name=name,
@@ -462,7 +472,7 @@ class Agent:
                         tool_name = getattr(tool, "name", str(tool))
                         if tool_name not in config.tools:
                             config.tools.append(tool_name)
-            
+
             # Apply default role prompt if no system_prompt provided
             if not config.system_prompt:
                 from agenticflow.agent.roles import get_role_prompt
@@ -487,10 +497,10 @@ class Agent:
                     interrupt_on=config.interrupt_on,
                     metadata=config.metadata,
                 )
-            
+
             # No role config in advanced API mode
             self._role_config = None
-        
+
         self.id = generate_id()
         self.config = config
         self.state = AgentState()
@@ -503,7 +513,7 @@ class Agent:
         self._capabilities_initialized: bool = False  # Track if async init done
         self._observer = None  # Observer for standalone usage
         self._setup_resilience()
-        
+
         # Apply capability overrides if provided
         self._capability_overrides: dict[str, bool] = {}
         if can_finish is not None:
@@ -512,44 +522,44 @@ class Agent:
             self._capability_overrides["can_delegate"] = can_delegate
         if can_use_tools is not None:
             self._capability_overrides["can_use_tools"] = can_use_tools
-        
+
         # Setup observer for standalone agent usage
         # observer parameter takes precedence over verbose
         if observer is not None:
             self._setup_observer(observer)
         elif verbose:
             self._setup_verbose_observer(verbose)
-        
+
         # Human-in-the-loop state
         self._pending_actions: dict[str, PendingAction] = {}  # action_id -> pending action
         self._interrupted_state: InterruptedState | None = None
-        
+
         # Deferred tool execution manager (event-driven completion)
         self._deferred_manager: Any | None = None
-        
+
         # Setup capabilities (adds tools from each capability)
         if capabilities:
             self._setup_capabilities(capabilities)
-        
+
         # Setup memory
         self._setup_memory(memory, store)
-        
+
         # Setup taskboard (task tracking and working memory)
         self._setup_taskboard(taskboard)
-        
+
         # Setup reasoning mode
         self._setup_reasoning(reasoning)
-        
+
         # Setup structured output
         self._setup_output(output)
-        
+
         # Setup interceptors
         self._interceptors: list[Any] = list(intercept) if intercept else []
-        
+
         # Spawning support (set externally or via SpawningConfig)
         self._spawn_manager: Any | None = None
         self._setup_spawning(spawning)
-        
+
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
         self._cached_system_prompt: str | None = None
@@ -563,7 +573,7 @@ class Agent:
             ResilienceConfig,
             ToolResilience,
         )
-        
+
         # Use explicit resilience config or create from legacy settings
         if self.config.resilience_config:
             resilience_config = self.config.resilience_config
@@ -579,39 +589,39 @@ class Agent:
             )
         else:
             resilience_config = ResilienceConfig.fast_fail()
-        
+
         # Setup fallback registry
         fallback_registry = FallbackRegistry()
         for primary, fallbacks in self.config.fallback_tools.items():
             fallback_registry.register(primary, fallbacks)
-        
+
         self._resilience = ToolResilience(
             config=resilience_config,
             fallback_registry=fallback_registry,
         )
-    
+
     def _setup_verbose_observer(self, verbose: bool | str) -> None:
         """Setup observer for standalone agent usage.
-        
+
         Args:
             verbose: Verbosity level for observability:
                 - False: No output (silent)
                 - True: Progress (thinking/responding with timing)
-                - "verbose": Show agent outputs/thoughts  
+                - "verbose": Show agent outputs/thoughts
                 - "debug": Show everything including tool calls
                 - "trace": Maximum detail + execution graph
         """
         if not verbose:
             return
-        
+
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.event_bus is None:
             from agenticflow.observability import TraceBus
             self.event_bus = TraceBus()
-        
+
         # Map verbose levels to Observer presets
         from agenticflow.observability import Observer
-        
+
         if verbose is True or verbose == "minimal":
             self._observer = Observer.minimal()
         elif verbose == "verbose":
@@ -625,13 +635,13 @@ class Agent:
                 f"Invalid verbose level: {verbose!r}. "
                 "Use: False, True, 'minimal', 'verbose', 'debug', or 'trace'"
             )
-        
+
         # Connect observer to event bus
         self._observer.attach(self.event_bus)
-    
+
     def _setup_observer(self, observer: Any) -> None:
         """Setup observer instance for standalone agent usage.
-        
+
         Args:
             observer: Observer instance to attach.
         """
@@ -639,27 +649,27 @@ class Agent:
         if self.event_bus is None:
             from agenticflow.observability import TraceBus
             self.event_bus = TraceBus()
-        
+
         self._observer = observer
         self._observer.attach(self.event_bus)
-    
+
     def add_observer(self, observer: Any) -> None:
         """Add an observer for monitoring agent execution.
-        
+
         This allows attaching a Observer to a standalone agent for
         rich observability including event tracking, metrics, and traces.
-        
+
         Args:
             observer: Observer instance to attach.
-        
+
         Example:
             ```python
             from agenticflow import Agent, Observer
-            
+
             observer = Observer.verbose()
             agent = Agent(name="Worker", model=model)
             agent.add_observer(observer)
-            
+
             await agent.run("Do something")
             print(observer.summary())
             ```
@@ -668,7 +678,7 @@ class Agent:
 
     def _setup_reasoning(self, reasoning: bool | ReasoningConfig | None) -> None:
         """Setup reasoning for extended thinking before actions.
-        
+
         Args:
             reasoning: Reasoning configuration:
                 - None/False: Reasoning disabled
@@ -678,15 +688,15 @@ class Agent:
         if reasoning is None or reasoning is False:
             self._reasoning_config = None
             return
-        
+
         if reasoning is True:
             self._reasoning_config = ReasoningConfig()
         else:
             self._reasoning_config = reasoning
-    
+
     def _setup_output(self, output: type | dict | ResponseSchema | None) -> None:
         """Setup structured output for response schema enforcement.
-        
+
         Args:
             output: Structured output configuration:
                 - None: No schema enforcement
@@ -697,92 +707,92 @@ class Agent:
         if output is None:
             self._output_config: ResponseSchema | None = None
             return
-        
+
         if isinstance(output, ResponseSchema):
             self._output_config = output
         else:
             # Wrap schema in default config
             self._output_config = ResponseSchema(schema=output)
-    
+
     @property
     def output_config(self) -> ResponseSchema | None:
         """Get the structured output configuration."""
         return getattr(self, "_output_config", None)
-    
+
     @property
     def has_output_schema(self) -> bool:
         """Whether the agent has a structured output schema configured."""
         return self._output_config is not None
-    
+
     @property
     def interceptors(self) -> list[Any]:
         """Get the list of interceptors for this agent."""
         return getattr(self, "_interceptors", [])
-    
+
     @property
     def has_interceptors(self) -> bool:
         """Whether the agent has interceptors configured."""
         return bool(getattr(self, "_interceptors", None))
-    
+
     def _setup_spawning(self, spawning: Any | None) -> None:
         """Setup spawning capability for dynamic agent creation.
-        
+
         Args:
             spawning: SpawningConfig for enabling agent spawning.
                 When configured, adds spawn_agent tool for LLM to use.
         """
         if spawning is None:
             return
-        
+
         from agenticflow.agent.spawning import (
-            SpawnManager,
             SpawningConfig,
+            SpawnManager,
             create_spawn_tool,
         )
-        
+
         if not isinstance(spawning, SpawningConfig):
             raise TypeError(f"spawning must be SpawningConfig, got {type(spawning)}")
-        
+
         # Create spawn manager
         self._spawn_manager = SpawnManager(self, spawning)
-        
+
         # Create and add spawn_agent tool
         spawn_tool = create_spawn_tool(self._spawn_manager, spawning)
         self._direct_tools.append(spawn_tool)
         if spawn_tool.name not in self.config.tools:
             self.config.tools.append(spawn_tool.name)
-        
+
         # Invalidate caches since we added a tool
         self.invalidate_caches()
-    
+
     @property
     def spawn_manager(self) -> Any | None:
         """Get the spawn manager if spawning is enabled."""
         return self._spawn_manager
-    
+
     @property
     def deferred_manager(self) -> Any:
         """Get the deferred manager for async tool completion.
-        
+
         Lazily initialized on first access.
         """
         if self._deferred_manager is None:
             from agenticflow.tools.deferred import DeferredManager
-            
+
             # Ensure event bus exists
             if self.event_bus is None:
                 from agenticflow.observability.bus import TraceBus
                 self.event_bus = TraceBus()
-            
+
             self._deferred_manager = DeferredManager(self.event_bus)
-        
+
         return self._deferred_manager
-    
+
     @property
     def can_spawn(self) -> bool:
         """Whether this agent can spawn child agents."""
         return self._spawn_manager is not None
-    
+
     async def spawn(
         self,
         role: str,
@@ -792,18 +802,18 @@ class Agent:
     ) -> str:
         """
         Spawn a specialist agent to execute a task.
-        
+
         Convenience method - wraps spawn_manager.spawn().
-        
+
         Args:
             role: Role/type of the specialist.
             task: Task for the spawned agent.
             system_prompt: Optional custom system prompt.
             tools: Optional tool names to enable.
-            
+
         Returns:
             Result from the spawned agent.
-            
+
         Raises:
             RuntimeError: If spawning is not enabled.
         """
@@ -812,7 +822,7 @@ class Agent:
                 "Spawning not enabled. Initialize agent with spawning=SpawningConfig(...)"
             )
         return await self._spawn_manager.spawn(role, task, system_prompt, tools)
-    
+
     async def parallel_map(
         self,
         items: list[Any],
@@ -821,15 +831,15 @@ class Agent:
     ) -> list[str]:
         """
         Map a task template over items in parallel using spawned agents.
-        
+
         Args:
             items: Items to process.
             task_template: Template with {item} placeholder.
             role: Role for spawned workers.
-            
+
         Returns:
             List of results in same order as items.
-            
+
         Example:
             ```python
             results = await agent.parallel_map(
@@ -854,28 +864,28 @@ class Agent:
     ) -> tuple[Any, Exception | None]:
         """
         Execute a tool with support for deferred/async completion.
-        
+
         Handles:
         - Sync tools
-        - Async tools  
+        - Async tools
         - Deferred tools (return DeferredResult for async completion)
         - Tools with func attribute (AgenticFlow BaseTool)
         - Tools with ainvoke/invoke methods (LangChain-style)
-        
+
         Args:
             tool: The tool to execute.
             tool_args: Arguments to pass to the tool.
             tool_id: Unique ID for this tool call.
             correlation_id: Correlation ID for tracing.
-            
+
         Returns:
             Tuple of (result, error). Error is None on success.
         """
         from agenticflow.tools.deferred import DeferredResult, is_deferred
-        
+
         result = None
         error = None
-        
+
         try:
             # Execute the tool - support multiple interfaces
             if hasattr(tool, "func"):
@@ -897,11 +907,11 @@ class Agent:
                     result = await tool(**tool_args)
                 else:
                     result = tool(**tool_args)
-            
+
             # Check if result is deferred (async completion)
             if is_deferred(result):
                 deferred: DeferredResult = result
-                
+
                 # Emit deferred event
                 await self._emit_event(
                     TraceType.TOOL_DEFERRED,
@@ -916,7 +926,7 @@ class Agent:
                     },
                     correlation_id,
                 )
-                
+
                 # Emit waiting event
                 await self._emit_event(
                     TraceType.TOOL_DEFERRED_WAITING,
@@ -928,11 +938,11 @@ class Agent:
                     },
                     correlation_id,
                 )
-                
+
                 try:
                     # Wait for async completion
                     result = await self.deferred_manager.wait_for(deferred)
-                    
+
                     # Emit completion event
                     await self._emit_event(
                         TraceType.TOOL_DEFERRED_COMPLETED,
@@ -946,7 +956,7 @@ class Agent:
                         },
                         correlation_id,
                     )
-                    
+
                 except TimeoutError as e:
                     # Emit timeout event
                     await self._emit_event(
@@ -962,16 +972,16 @@ class Agent:
                     )
                     error = e
                     result = f"Timeout: {e}"
-                    
+
         except Exception as e:
             error = e
             result = f"Error: {e}"
-        
+
         return result, error
 
     def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
         """Setup taskboard for task tracking.
-        
+
         Args:
             taskboard: TaskBoard configuration:
                 - None/False: Create basic taskboard (no tools)
@@ -983,16 +993,13 @@ class Agent:
             self._taskboard = TaskBoard(event_bus=self.event_bus)
             self._taskboard_enabled = False
             return
-        
+
         # Enable taskboard with tools
-        if taskboard is True:
-            config = TaskBoardConfig()
-        else:
-            config = taskboard
-        
+        config = TaskBoardConfig() if taskboard is True else taskboard
+
         self._taskboard = TaskBoard(config, event_bus=self.event_bus)
         self._taskboard_enabled = True
-        
+
         # Add taskboard tools to agent
         taskboard_tools = create_taskboard_tools(self._taskboard)
         for tool in taskboard_tools:
@@ -1000,7 +1007,7 @@ class Agent:
                 self._direct_tools.append(tool)
                 if tool.name not in self.config.tools:
                     self.config.tools.append(tool.name)
-        
+
         # Inject taskboard instructions into system prompt
         if config.include_instructions and self.config.system_prompt:
             self.config = AgentConfig(
@@ -1023,24 +1030,24 @@ class Agent:
                 interrupt_on=self.config.interrupt_on,
                 metadata=self.config.metadata,
             )
-    
+
     def _setup_capabilities(self, capabilities: Sequence[Any]) -> None:
         """Setup capabilities and extract their tools.
-        
+
         Args:
             capabilities: List of BaseCapability instances.
         """
         from agenticflow.capabilities.base import BaseCapability
-        
+
         for cap in capabilities:
             if not isinstance(cap, BaseCapability):
                 raise TypeError(
                     f"Expected BaseCapability, got {type(cap).__name__}. "
                     "Capabilities must extend BaseCapability."
                 )
-            
+
             self._capabilities.append(cap)
-            
+
             # Add capability's tools to agent's direct tools
             for tool in cap.tools:
                 if tool not in self._direct_tools:
@@ -1048,16 +1055,16 @@ class Agent:
                     # Also update config.tools for consistency
                     if tool.name not in self.config.tools:
                         self.config.tools.append(tool.name)
-    
+
     async def initialize_capabilities(self) -> None:
         """Initialize all capabilities asynchronously.
-        
+
         This is called automatically on first agent.run() call.
         You typically don't need to call this manually.
         """
         if self._capabilities_initialized:
             return
-        
+
         tools_added = False
         for cap in self._capabilities:
             await cap.initialize(self)
@@ -1068,34 +1075,34 @@ class Agent:
                     tools_added = True
                     if tool.name not in self.config.tools:
                         self.config.tools.append(tool.name)
-        
+
         # Invalidate caches so bound_model gets refreshed with new tools
         if tools_added:
             self.invalidate_caches()
-        
+
         self._capabilities_initialized = True
-    
+
     async def shutdown_capabilities(self) -> None:
         """Shutdown all capabilities (cleanup resources)."""
         for cap in self._capabilities:
             await cap.shutdown()
         self._capabilities_initialized = False
-    
+
     @property
     def capabilities(self) -> list[Any]:
         """List of capabilities attached to this agent."""
         return self._capabilities.copy()
-    
+
     def get_capability(self, name: str) -> Any | None:
         """Get a capability by name."""
         for cap in self._capabilities:
             if cap.name == name:
                 return cap
         return None
-    
+
     def _setup_memory(self, memory: Any = None, store: Any = None) -> None:
         """Setup memory manager and memory tools.
-        
+
         Args:
             memory: Memory backend - can be:
                 - None: No persistence (in-memory only for session)
@@ -1109,7 +1116,7 @@ class Agent:
         """
         from agenticflow.agent.memory import AgentMemory, InMemorySaver
         from agenticflow.memory import Memory
-        
+
         # New Memory class support
         if isinstance(memory, Memory):
             self._memory_manager = memory
@@ -1118,17 +1125,17 @@ class Agent:
             if memory.agentic:
                 self._add_memory_tools()
             return
-        
+
         if memory is True:
             # Default: use new Memory with agentic=True (backward compatible)
             self._memory_manager = Memory(agentic=True)
             self._memory = AgentMemory(backend=InMemorySaver(), store=store)
             self._add_memory_tools()
             return
-        
+
         # Legacy support for AgentMemory and external savers
         self._memory_manager = None
-        
+
         if isinstance(memory, AgentMemory):
             self._memory = memory
         elif memory is not None and memory is not False:
@@ -1142,47 +1149,47 @@ class Agent:
         """Add memory tools to agent when agentic Memory is configured."""
         if not self._memory_manager:
             return
-        
+
         # Use memory.tools property (only non-empty if agentic=True)
         memory_tools = self._memory_manager.tools
         for tool in memory_tools:
             # Avoid duplicates
             if not any(t.name == tool.name for t in self._direct_tools):
                 self._direct_tools.append(tool)
-        
+
         # Invalidate caches since tools changed
         self._cached_tool_descriptions = None
         self._cached_bound_model = None
         pass
-    
+
     @property
     def memory(self):
         """Access the agent's memory manager.
-        
+
         Returns:
             AgentMemory instance for managing conversation history and long-term memory.
-            
+
         Example:
             ```python
             # Get messages from a thread
             messages = await agent.memory.get_messages(thread_id="conv-1")
-            
+
             # Store long-term memory
             await agent.memory.remember("user_preference", {"theme": "dark"})
-            
+
             # Recall long-term memory
             prefs = await agent.memory.recall("user_preference")
             ```
         """
         return self._memory
-    
+
     @property
     def memory_manager(self):
         """Access the new unified memory manager (if configured).
-        
+
         Returns:
             MemoryManager instance or None if using legacy AgentMemory.
-            
+
         Example:
             ```python
             if agent.memory_manager:
@@ -1192,44 +1199,44 @@ class Agent:
             ```
         """
         return getattr(self, "_memory_manager", None)
-    
+
     @property
     def has_memory(self) -> bool:
         """Whether the agent has a memory persistence backend configured."""
         return self._memory.has_persistence
-    
+
     @property
     def taskboard(self) -> TaskBoard:
         """Access the agent's taskboard for task tracking.
-        
+
         The taskboard provides:
         - Tasks: Track work items with status
         - Notes: Store observations and insights
         - Learning: Remember what worked/didn't (Reflexion-style)
-        
+
         Example:
             ```python
             # Track tasks
             agent.taskboard.add_task("Search for Python tutorials")
             agent.taskboard.complete_task("Search", "Found 5 articles")
-            
+
             # Take notes
             agent.taskboard.add_note("Python is great for data science")
-            
+
             # Check completion
             if agent.taskboard.is_complete():
                 print("All tasks done!")
             ```
         """
         return self._taskboard
-    
+
     @property
     def resilience(self) -> ToolResilience:
         """Access the resilience layer for this agent."""
         if self._resilience is None:
             self._setup_resilience()
         return self._resilience
-    
+
     @property
     def name(self) -> str:
         """Agent's display name."""
@@ -1295,13 +1302,13 @@ class Agent:
     @property
     def all_tools(self) -> list[BaseTool]:
         """Get all available tools (direct + registry).
-        
+
         Returns tools in priority order:
         1. Direct tools (passed to Agent constructor)
         2. Registry tools (if tool_registry is set)
         """
         tools: list[BaseTool] = list(self._direct_tools)
-        
+
         # Add registry tools that aren't already in direct tools
         if self.tool_registry:
             direct_names = {t.name for t in tools}
@@ -1310,15 +1317,15 @@ class Agent:
                     tool = self.tool_registry.get(name)
                     if tool:
                         tools.append(tool)
-        
+
         return tools
 
     def _get_tool(self, tool_name: str) -> BaseTool | None:
         """Get a tool by name from direct tools or registry.
-        
+
         Args:
             tool_name: Name of the tool to retrieve.
-            
+
         Returns:
             The tool object, or None if not found.
         """
@@ -1326,70 +1333,70 @@ class Agent:
         for tool in self._direct_tools:
             if tool.name == tool_name:
                 return tool
-        
+
         # Fall back to registry
         if self.tool_registry:
             return self.tool_registry.get(tool_name)
-        
+
         return None
 
     def get_tool_descriptions(self) -> str:
         """Get formatted descriptions of all available tools (cached).
-        
+
         Returns:
             Formatted string with tool names and descriptions.
         """
         if self._cached_tool_descriptions is not None:
             return self._cached_tool_descriptions
-        
+
         tools = self.all_tools
         if not tools:
             return "No tools available."
-        
+
         descriptions = []
         for tool in tools:
             desc = getattr(tool, "description", "No description")
             descriptions.append(f"- {tool.name}: {desc}")
-        
+
         self._cached_tool_descriptions = "\n".join(descriptions)
         return self._cached_tool_descriptions
-    
+
     def invalidate_caches(self) -> None:
         """Invalidate all performance caches. Call when tools change."""
         self._cached_tool_descriptions = None
         self._cached_system_prompt = None
         self._cached_bound_model = None
-    
+
     @property
     def bound_model(self) -> BaseChatModel:
         """Get model with tools bound (cached for performance).
-        
+
         This is faster than calling model.bind_tools() repeatedly.
         """
         if self._cached_bound_model is not None:
             return self._cached_bound_model
-        
+
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
-        
+
         tools = self.all_tools
         if tools:
             self._cached_bound_model = self.model.bind_tools(tools)
         else:
             self._cached_bound_model = self.model
-        
+
         return self._cached_bound_model
-    
+
     def enable_turbo_mode(self, enabled: bool = True) -> None:
         """Enable turbo mode for maximum speed.
-        
+
         In turbo mode:
         - Events are skipped (no observability overhead)
         - Status updates are skipped
         - Minimal logging
-        
+
         Use when latency is critical and you don't need observability.
-        
+
         Args:
             enabled: Whether to enable turbo mode.
         """
@@ -1397,13 +1404,13 @@ class Agent:
 
     def get_capabilities_description(self) -> str:
         """Get formatted descriptions of all capabilities and their tools.
-        
+
         Returns:
             Formatted string describing each capability and its tools.
         """
         if not self._capabilities:
             return ""
-        
+
         sections = []
         for cap in self._capabilities:
             cap_tools = cap.tools
@@ -1412,19 +1419,19 @@ class Agent:
                 sections.append(f"**{cap.name}** - {cap.description}\n{tool_list}")
             else:
                 sections.append(f"**{cap.name}** - {cap.description}")
-        
+
         return "\n\n".join(sections)
 
     def get_effective_system_prompt(self) -> str | None:
         """Get the system prompt with capabilities and tools automatically injected.
-        
+
         Supports placeholders:
         - {tools}: Replaced with tool descriptions
         - {capabilities}: Replaced with capability descriptions
-        
+
         If no placeholders are present and tools exist, they are appended.
         If no system prompt but tools exist, generates a minimal prompt with tools.
-        
+
         Returns:
             The system prompt with tools/capabilities injected, or None if no prompt and no tools.
         """
@@ -1432,7 +1439,7 @@ class Agent:
         tools = self.all_tools
         tools_desc = self.get_tool_descriptions()
         caps_desc = self.get_capabilities_description()
-        
+
         # If no base prompt but we have tools, generate a minimal prompt
         if not base_prompt:
             if tools or caps_desc:
@@ -1441,45 +1448,45 @@ class Agent:
                 base_prompt = get_role_prompt(self.config.role, has_tools=has_tools)
             else:
                 return None
-        
+
         result = base_prompt
-        
+
         # Replace placeholders if present
         has_tools_placeholder = "{tools}" in result
         has_caps_placeholder = "{capabilities}" in result
-        
+
         if has_tools_placeholder:
             result = result.replace("{tools}", tools_desc)
-        
+
         if has_caps_placeholder:
             result = result.replace("{capabilities}", caps_desc if caps_desc else "No capabilities.")
-        
+
         # Auto-append if no placeholders and we have tools/capabilities
         if not has_tools_placeholder and not has_caps_placeholder:
             appendix_parts = []
-            
+
             if caps_desc:
                 appendix_parts.append(f"## Capabilities\n\n{caps_desc}")
             elif tools:
                 # Only show flat tool list if no capabilities (to avoid duplication)
                 appendix_parts.append(f"## Available Tools\n\n{tools_desc}")
-            
+
             if appendix_parts:
                 result = f"{result}\n\n" + "\n\n".join(appendix_parts)
-        
+
         # Add memory system prompt if Memory is configured
         if self._memory_manager:
             from agenticflow.memory.tools import get_memory_prompt_addition
             memory_prompt = get_memory_prompt_addition(has_tools=True)
             result = f"{result}\n\n{memory_prompt}"
-        
+
         return result
 
     @property
     def instructions(self) -> str | None:
         """Agent's instructions (system prompt)."""
         return self.config.system_prompt
-    
+
     @instructions.setter
     def instructions(self, value: str | None) -> None:
         """Set agent's instructions."""
@@ -1505,15 +1512,15 @@ class Agent:
     @property
     def model(self) -> BaseChatModel | None:
         """Get the LLM model.
-        
+
         Accepts native AgenticFlow models:
         - ChatModel, AzureOpenAIChat, AnthropicChat, GroqChat, etc.
-        
+
         Example:
             ```python
             from agenticflow.models import ChatModel
             config = AgentConfig(name="Agent", model=ChatModel(model="gpt-4o"))
-            
+
             # Or use factory function
             from agenticflow.models import create_chat
             config = AgentConfig(name="Agent", model=create_chat("openai", model="gpt-4o"))
@@ -1546,7 +1553,7 @@ class Agent:
             return
         if self.event_bus:
             await self.event_bus.publish(
-                Event(
+                Trace(
                     type=TraceType.AGENT_STATUS_CHANGED,
                     data={
                         "agent_id": self.id,
@@ -1571,7 +1578,7 @@ class Agent:
             return
         if self.event_bus:
             await self.event_bus.publish(
-                Event(
+                Trace(
                     type=event_type,
                     data=data,
                     source=f"agent:{self.id}",
@@ -1587,13 +1594,13 @@ class Agent:
         stream: bool | None = None,
         include_tools: bool = True,
         system_prompt_override: str | None = None,
-    ) -> "Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]":
+    ) -> Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]:
         """
         Process a prompt through the agent's reasoning.
-        
+
         This is the agent's "thinking" phase where it uses its LLM
         to reason about the input and determine what to do.
-        
+
         Args:
             prompt: The prompt to process
             correlation_id: Optional correlation ID for event tracking
@@ -1601,25 +1608,25 @@ class Agent:
                 If True, returns async iterator. If False, returns awaitable.
             include_tools: Whether to include tools in system prompt (default: True).
             system_prompt_override: If provided, use this instead of agent's system prompt.
-            
+
         Returns:
             If stream=False: Awaitable that yields the response when awaited.
             If stream=True: AsyncIterator[StreamChunk] for direct iteration.
-            
+
         Raises:
             RuntimeError: If no model is configured
-            
+
         Examples:
             # Non-streaming (await required)
             response = await agent.think("What should I do?")
-            
+
             # Streaming (no await - direct iteration)
             async for chunk in agent.think("Write a poem", stream=True):
                 print(chunk.content, end="", flush=True)
         """
         # Determine if streaming based on parameter or agent default
         use_streaming = stream if stream is not None else self.config.stream
-        
+
         if use_streaming:
             # Streaming: return async iterator (no await needed)
             return self.think_stream(
@@ -1628,7 +1635,7 @@ class Agent:
                 include_tools=include_tools,
                 system_prompt_override=system_prompt_override,
             )
-        
+
         # Non-streaming: return coroutine (must be awaited)
         return self._think_impl(
             prompt,
@@ -1636,7 +1643,7 @@ class Agent:
             include_tools=include_tools,
             system_prompt_override=system_prompt_override,
         )
-    
+
     async def _think_impl(
         self,
         prompt: str,
@@ -1727,7 +1734,7 @@ class Agent:
             self.state.add_message(AIMessage(content=result))
 
             await self._set_status(AgentStatus.IDLE, correlation_id)
-            
+
             # Emit response event so observer can show the thought
             await self._emit_event(
                 TraceType.AGENT_RESPONDED,
@@ -1740,7 +1747,7 @@ class Agent:
                 },
                 correlation_id,
             )
-            
+
             return result
 
         except Exception as e:
@@ -1767,17 +1774,17 @@ class Agent:
         stream: bool | None = None,
         correlation_id: str | None = None,
         metadata: dict | None = None,
-    ) -> "Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]":
+    ) -> Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]:
         """
         Chat with the agent, maintaining conversation history per thread.
-        
+
         .. deprecated::
             Use run(task, thread_id=...) instead:
-            
+
             - `await agent.chat("Hi")` → `await agent.run("Hi")`
             - `await agent.chat("Hi", thread_id="t1")` → `await agent.run("Hi", thread_id="t1")`
             - `async for chunk in agent.chat("Hi", stream=True)` → `async for chunk in agent.run("Hi", stream=True)`
-        
+
         Args:
             message: The user's message.
             thread_id: Unique identifier for the conversation thread.
@@ -1785,7 +1792,7 @@ class Agent:
             stream: Enable streaming. If True, returns async iterator. If False, returns awaitable.
             correlation_id: Optional correlation ID for event tracking.
             metadata: Optional metadata to store with the conversation.
-            
+
         Returns:
             If stream=False: Awaitable that yields response when awaited.
             If stream=True: AsyncIterator[StreamChunk] for direct iteration.
@@ -1796,10 +1803,10 @@ class Agent:
             DeprecationWarning,
             stacklevel=2,
         )
-        
+
         # Determine if streaming
         use_streaming = stream if stream is not None else self.config.stream
-        
+
         # Delegate to run()
         return self.run(message, stream=use_streaming, thread_id=thread_id)
 
@@ -1810,20 +1817,20 @@ class Agent:
     ) -> list:
         """
         Get conversation history for a thread.
-        
+
         Args:
             thread_id: Thread identifier.
             limit: Maximum number of messages to return.
-            
+
         Returns:
             List of messages in the thread.
         """
         return await self._memory.get_messages(thread_id, limit=limit)
-    
+
     async def clear_thread(self, thread_id: str) -> None:
         """
         Clear conversation history for a thread.
-        
+
         Args:
             thread_id: Thread identifier to clear.
         """
@@ -1840,16 +1847,16 @@ class Agent:
         *,
         include_tools: bool = True,
         system_prompt_override: str | None = None,
-    ) -> "AsyncIterator[StreamChunk]":
+    ) -> AsyncIterator[StreamChunk]:
         """
         DEPRECATED: Use think(prompt, stream=True) instead.
-        
+
         Stream the agent's thinking response token by token.
         This method is kept for backward compatibility.
-        
+
         .. deprecated::
             Use think(prompt, stream=True) instead:
-            
+
             - `agent.think_stream("prompt")` → `agent.think("prompt", stream=True)`
         """
         import warnings
@@ -1858,11 +1865,11 @@ class Agent:
             DeprecationWarning,
             stacklevel=2,
         )
-        
+
         from agenticflow.agent.streaming import (
             chunk_from_message,
         )
-        
+
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
 
@@ -1910,7 +1917,7 @@ class Agent:
                 stream_chunk = chunk_from_message(chunk, index)
                 accumulated_content += stream_chunk.content
                 index += 1
-                
+
                 # Emit token event
                 if stream_chunk.content:
                     await self._emit_event(
@@ -1923,7 +1930,7 @@ class Agent:
                         },
                         correlation_id,
                     )
-                
+
                 yield stream_chunk
 
             # Track timing
@@ -1973,10 +1980,10 @@ class Agent:
         user_id: str | None = None,
         correlation_id: str | None = None,
         metadata: dict | None = None,
-    ) -> "AsyncIterator[StreamChunk]":
+    ) -> AsyncIterator[StreamChunk]:
         """
         DEPRECATED: Use run(task, stream=True, thread_id=...) instead.
-        
+
         Stream a chat response token by token with conversation history.
         This method is kept for backward compatibility.
         """
@@ -1997,10 +2004,10 @@ class Agent:
         *,
         include_tools: bool = True,
         system_prompt_override: str | None = None,
-    ) -> "AsyncIterator[StreamEvent]":
+    ) -> AsyncIterator[StreamEvent]:
         """
         Stream structured events during agent thinking.
-        
+
         This provides more detailed events than think_stream(), including:
         - STREAM_START: Beginning of stream with metadata
         - TOKEN: Each token as it arrives
@@ -2009,16 +2016,16 @@ class Agent:
         - TOOL_CALL_END: Tool call complete
         - STREAM_END: End of stream with full content
         - ERROR: If an error occurs
-        
+
         Args:
             prompt: The prompt to process.
             correlation_id: Optional correlation ID for event tracking.
             include_tools: Whether to include tools in system prompt.
             system_prompt_override: Optional system prompt override.
-            
+
         Yields:
             StreamEvent objects with structured information.
-            
+
         Example:
             ```python
             async for event in agent.stream_events("Search for Python tutorials"):
@@ -2031,11 +2038,11 @@ class Agent:
         from agenticflow.agent.streaming import (
             StreamEvent,
             StreamTraceType,
+            ToolCallChunk,
             chunk_from_message,
             extract_tool_calls,
-            ToolCallChunk,
         )
-        
+
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
 
@@ -2082,7 +2089,7 @@ class Agent:
         try:
             async for chunk in self.model.astream(dict_messages):
                 stream_chunk = chunk_from_message(chunk, index)
-                
+
                 # Handle text content
                 if stream_chunk.content:
                     accumulated_content += stream_chunk.content
@@ -2093,12 +2100,12 @@ class Agent:
                         index=index,
                     )
                     index += 1
-                
+
                 # Handle tool calls
                 tool_chunks = extract_tool_calls(chunk)
                 for tc in tool_chunks:
                     tc_index = tc.index
-                    
+
                     if tc_index not in active_tool_calls:
                         # New tool call
                         active_tool_calls[tc_index] = tc
@@ -2180,7 +2187,7 @@ class Agent:
     ) -> Any:
         """
         Execute an action using a tool with intelligent retry and recovery.
-        
+
         This is the agent's "acting" phase where it interacts with
         the world through tools. When use_resilience=True (default),
         the agent will:
@@ -2188,27 +2195,27 @@ class Agent:
         - Use circuit breakers to prevent cascading failures
         - Fall back to alternative tools if configured
         - Learn from failures to adapt future behavior
-        
+
         Args:
             tool_name: Name of the tool to use
             args: Arguments for the tool
             correlation_id: Optional correlation ID for event tracking
             tracker: Optional progress tracker for real-time output
             use_resilience: Whether to use intelligent retry/recovery (default: True)
-            
+
         Returns:
             The tool's result
-            
+
         Raises:
             RuntimeError: If no tool registry is configured
             ValueError: If tool is not found
             PermissionError: If agent is not authorized to use the tool
-            
+
         Example:
             ```python
             # With full resilience (retry, circuit breaker, fallback)
             result = await agent.act("web_search", {"query": "Python async"})
-            
+
             # Disable resilience for testing
             result = await agent.act("web_search", {"query": "test"}, use_resilience=False)
             ```
@@ -2222,7 +2229,7 @@ class Agent:
             raise PermissionError(
                 f"Agent {self.name} not authorized to use tool: {tool_name}"
             )
-        
+
         # Check for human-in-the-loop interrupt
         if should_interrupt(tool_name, args, self.config.interrupt_on):
             action_id = str(uuid.uuid4())
@@ -2238,7 +2245,7 @@ class Agent:
                 },
             )
             self._pending_actions[action_id] = pending
-            
+
             await self._emit_event(
                 TraceType.AGENT_INTERRUPTED,
                 {
@@ -2249,10 +2256,10 @@ class Agent:
                 },
                 correlation_id,
             )
-            
+
             if tracker:
                 tracker.update(f"⏸️ Waiting for approval: {pending.describe()}")
-            
+
             # Create interrupted state and raise exception
             interrupted = InterruptedState(
                 thread_id=correlation_id or self.id,
@@ -2275,7 +2282,7 @@ class Agent:
             },
             correlation_id,
         )
-        
+
         # Emit to progress tracker if provided
         if tracker:
             tracker.tool_call(tool_name, args, agent=self.name)
@@ -2291,7 +2298,7 @@ class Agent:
                 def get_fallback_tool(name: str):
                     t = self._get_tool(name)
                     return t.invoke if t else None
-                
+
                 exec_result = await self._resilience.execute(
                     tool_fn=tool_obj.invoke,
                     tool_name=tool_name,
@@ -2299,11 +2306,11 @@ class Agent:
                     fallback_fn=get_fallback_tool,
                     tool_obj=tool_obj,  # Pass tool object for ainvoke support
                 )
-                
+
                 if exec_result.success:
                     result = exec_result.result
                     duration_ms = exec_result.total_time_ms
-                    
+
                     # Emit additional info if fallback was used
                     if exec_result.used_fallback:
                         await self._emit_event(
@@ -2343,7 +2350,7 @@ class Agent:
                 else:
                     # All retries and fallbacks exhausted
                     error = exec_result.error or RuntimeError(f"Tool {tool_name} failed")
-                    
+
                     await self._emit_event(
                         TraceType.TOOL_ERROR,
                         {
@@ -2357,14 +2364,14 @@ class Agent:
                         },
                         correlation_id,
                     )
-                    
+
                     if tracker:
                         tracker.tool_error(
                             tool_name,
                             f"{error} (after {exec_result.attempts} attempts, "
                             f"fallbacks: {exec_result.fallback_chain or 'none'})"
                         )
-                    
+
                     self.state.record_error(str(error))
                     await self._set_status(AgentStatus.ERROR, correlation_id)
                     raise error
@@ -2401,10 +2408,10 @@ class Agent:
                     },
                     correlation_id,
                 )
-                
+
                 if tracker:
                     tracker.tool_error(tool_name, str(e))
-            
+
             raise
 
     async def resume_action(
@@ -2416,42 +2423,42 @@ class Agent:
     ) -> Any:
         """
         Resume a pending action after human decision.
-        
+
         When a tool call is interrupted for human approval, this method
         continues execution based on the human's decision.
-        
+
         Args:
             decision: Human decision (approve, reject, edit, guide, respond, etc.)
             correlation_id: Optional correlation ID for event tracking
             tracker: Optional progress tracker
             use_resilience: Whether to use resilience (default: True)
-            
+
         Returns:
             - Tool result if approved/edited
             - None if rejected/skipped
             - GuidanceResult if human provided guidance
             - HumanResponse if human provided direct response
-            
+
         Raises:
             AbortedException: If human aborts the workflow
             ValueError: If action_id not found in pending actions
-            
+
         Example:
             ```python
             try:
                 result = await agent.act("delete_file", {"path": "/important.txt"})
             except InterruptedException as e:
                 pending = e.state.pending_actions[0]
-                
+
                 # Option 1: Approve
                 decision = HumanDecision.approve(pending.action_id)
-                
+
                 # Option 2: Provide guidance for agent to reconsider
                 decision = HumanDecision.guide(
                     pending.action_id,
                     guidance="Archive the file first, then delete it."
                 )
-                
+
                 result = await agent.resume_action(decision)
                 if isinstance(result, GuidanceResult):
                     # Agent should reconsider with this guidance
@@ -2459,14 +2466,14 @@ class Agent:
             ```
         """
         from agenticflow.agent.hitl import GuidanceResult, HumanResponse
-        
+
         action_id = decision.action_id
-        
+
         if action_id not in self._pending_actions:
             raise ValueError(f"No pending action with id: {action_id}")
-        
+
         pending = self._pending_actions.pop(action_id)
-        
+
         await self._emit_event(
             TraceType.AGENT_RESUMED,
             {
@@ -2480,25 +2487,25 @@ class Agent:
             },
             correlation_id,
         )
-        
+
         if tracker:
             tracker.update(f"▶️ Resumed: {decision.decision.value} - {pending.describe()}")
-        
+
         # Handle decision types
         if decision.decision == DecisionType.ABORT:
             self._interrupted_state = None
             raise AbortedException(decision)
-        
+
         if decision.decision == DecisionType.REJECT:
             if tracker:
                 tracker.update(f"❌ Rejected: {pending.describe()}")
             return None
-        
+
         if decision.decision == DecisionType.SKIP:
             if tracker:
                 tracker.update(f"⏭️ Skipped: {pending.describe()}")
             return None
-        
+
         if decision.decision == DecisionType.GUIDE:
             # Human provided guidance - return it for the agent to reconsider
             if tracker:
@@ -2511,7 +2518,7 @@ class Agent:
                 feedback=decision.feedback,
                 should_retry=True,
             )
-        
+
         if decision.decision == DecisionType.RESPOND:
             # Human provided a direct response
             if tracker:
@@ -2523,24 +2530,23 @@ class Agent:
                 original_action=pending,
                 feedback=decision.feedback,
             )
-        
+
         # APPROVE or EDIT - execute the tool
         args = decision.modified_args if decision.decision == DecisionType.EDIT else pending.args
-        
-        if decision.decision == DecisionType.EDIT:
-            if tracker:
-                tracker.update(f"✏️ Edited args: {args}")
-        
+
+        if decision.decision == DecisionType.EDIT and tracker:
+            tracker.update(f"✏️ Edited args: {args}")
+
         # Clear interrupted state since we're resuming
         self._interrupted_state = None
-        
+
         # Execute the tool (bypass interrupt check since already approved)
         tool_obj = self._get_tool(pending.tool_name)
         if not tool_obj:
             raise ValueError(f"Tool no longer available: {pending.tool_name}")
-        
+
         await self._set_status(AgentStatus.ACTING, correlation_id)
-        
+
         await self._emit_event(
             TraceType.TOOL_CALLED,
             {
@@ -2552,18 +2558,18 @@ class Agent:
             },
             correlation_id,
         )
-        
+
         if tracker:
             tracker.tool_call(pending.tool_name, args, agent=self.name)
-        
+
         start_time = now_utc()
-        
+
         try:
             if use_resilience and self._resilience:
                 def get_fallback_tool(name: str):
                     t = self._get_tool(name)
                     return t.invoke if t else None
-                
+
                 exec_result = await self._resilience.execute(
                     tool_fn=tool_obj.invoke,
                     tool_name=pending.tool_name,
@@ -2571,7 +2577,7 @@ class Agent:
                     fallback_fn=get_fallback_tool,
                     tool_obj=tool_obj,
                 )
-                
+
                 if exec_result.success:
                     result = exec_result.result
                     duration_ms = exec_result.total_time_ms
@@ -2585,36 +2591,36 @@ class Agent:
                     loop = asyncio.get_event_loop()
                     result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
                 duration_ms = (now_utc() - start_time).total_seconds() * 1000
-            
+
             self.state.add_acting_time(duration_ms)
-            
+
             if tracker:
                 tracker.tool_result(pending.tool_name, str(result)[:200], duration_ms=duration_ms)
-            
+
             await self._set_status(AgentStatus.IDLE, correlation_id)
             return result
-            
+
         except Exception as e:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             if tracker:
                 tracker.tool_error(pending.tool_name, str(e))
             raise
-    
+
     @property
     def pending_actions(self) -> list[PendingAction]:
         """Get list of pending actions awaiting human decision."""
         return list(self._pending_actions.values())
-    
+
     @property
     def is_interrupted(self) -> bool:
         """Check if agent has pending actions awaiting human decision."""
         return len(self._pending_actions) > 0
-    
+
     def get_interrupted_state(self) -> InterruptedState | None:
         """Get the current interrupted state, if any."""
         return self._interrupted_state
-    
+
     def clear_pending_actions(self) -> None:
         """Clear all pending actions (e.g., on abort or reset)."""
         self._pending_actions.clear()
@@ -2630,22 +2636,22 @@ class Agent:
     ) -> list[Any]:
         """
         Execute multiple tool calls in parallel with intelligent retry and recovery.
-        
+
         This enables concurrent tool execution when an LLM requests
         multiple tools simultaneously. Results are returned in the
         same order as the input tool_calls. Each tool call uses the
         resilience layer independently for retry and fallback.
-        
+
         Args:
             tool_calls: List of (tool_name, args) tuples
             correlation_id: Optional correlation ID for event tracking
             fail_fast: If True, cancel remaining on first error
             tracker: Optional progress tracker for real-time output
             use_resilience: Whether to use intelligent retry/recovery (default: True)
-            
+
         Returns:
             List of results (or exceptions if fail_fast=False)
-            
+
         Example:
             ```python
             results = await agent.act_many([
@@ -2657,9 +2663,9 @@ class Agent:
         """
         if not tool_calls:
             return []
-        
+
         await self._set_status(AgentStatus.ACTING, correlation_id)
-        
+
         await self._emit_event(
             TraceType.TOOL_CALLED,
             {
@@ -2670,7 +2676,7 @@ class Agent:
             },
             correlation_id,
         )
-        
+
         # Emit to progress tracker
         if tracker:
             tracker.update(f"Executing {len(tool_calls)} tools in parallel")
@@ -2679,26 +2685,26 @@ class Agent:
             # Attach tracker to resilience layer
             if self._resilience:
                 self._resilience.tracker = tracker
-        
+
         start_time = now_utc()
-        
+
         async def execute_single(tool_name: str, args: dict) -> Any:
             """Execute a single tool with resilience (for parallel execution)."""
             tool_obj = self._get_tool(tool_name)
             if not tool_obj:
                 raise ValueError(f"Unknown tool: {tool_name}. Available: {[t.name for t in self.all_tools]}")
-            
+
             if not self.config.can_use_tool(tool_name):
                 raise PermissionError(
                     f"Agent {self.name} not authorized to use tool: {tool_name}"
                 )
-            
+
             if use_resilience and self._resilience:
                 # Use resilience layer
                 def get_fallback_tool(name: str):
                     t = self._get_tool(name)
                     return t.invoke if t else None
-                
+
                 exec_result = await self._resilience.execute(
                     tool_fn=tool_obj.invoke,
                     tool_name=tool_name,
@@ -2706,7 +2712,7 @@ class Agent:
                     fallback_fn=get_fallback_tool,
                     tool_obj=tool_obj,  # Pass tool object for ainvoke support
                 )
-                
+
                 if exec_result.success:
                     return exec_result.result
                 else:
@@ -2718,10 +2724,10 @@ class Agent:
                 else:
                     loop = asyncio.get_event_loop()
                     return await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
-        
+
         # Create tasks for parallel execution
         tasks = [execute_single(name, args) for name, args in tool_calls]
-        
+
         try:
             if fail_fast:
                 # Cancel all on first error
@@ -2729,15 +2735,15 @@ class Agent:
             else:
                 # Return exceptions instead of raising
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             # Track timing
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
             self.state.add_acting_time(duration_ms)
-            
+
             # Count successes/failures
             successes = sum(1 for r in results if not isinstance(r, Exception))
             failures = len(results) - successes
-            
+
             await self._emit_event(
                 TraceType.TOOL_RESULT,
                 {
@@ -2749,19 +2755,19 @@ class Agent:
                 },
                 correlation_id,
             )
-            
+
             # Emit results to progress tracker
             if tracker:
-                for (tool_name, _), result in zip(tool_calls, results):
+                for (tool_name, _), result in zip(tool_calls, results, strict=False):
                     if isinstance(result, Exception):
                         tracker.tool_error(tool_name, str(result))
                     else:
                         tracker.tool_result(tool_name, str(result)[:100])
                 tracker.update(f"Completed {successes}/{len(tool_calls)} tools ({duration_ms:.0f}ms)")
-            
+
             await self._set_status(AgentStatus.IDLE, correlation_id)
             return results
-            
+
         except Exception as e:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
@@ -2774,11 +2780,11 @@ class Agent:
                 },
                 correlation_id,
             )
-            
+
             # Emit error to progress tracker
             if tracker:
                 tracker.tool_error("parallel_execution", str(e))
-            
+
             raise
 
     async def execute_task(
@@ -2788,17 +2794,17 @@ class Agent:
     ) -> Any:
         """
         Execute a task assigned to this agent.
-        
+
         Handles the full task lifecycle:
         1. Mark task as started
         2. Think about the task (if no tool specified)
         3. Act using the specified tool (if any)
         4. Return the result
-        
+
         Args:
             task: The task to execute
             correlation_id: Optional correlation ID for event tracking
-            
+
         Returns:
             The task result
         """
@@ -2845,7 +2851,7 @@ class Agent:
 
             return result
 
-        except Exception as e:
+        except Exception:
             self.state.finish_task(task.id, success=False)
             raise
 
@@ -2857,17 +2863,17 @@ class Agent:
         thread_id: str | None = None,
         stream: bool = False,
         max_iterations: int = 25,
-    ) -> "Coroutine[Any, Any, Any] | AsyncIterator[StreamChunk]":
+    ) -> Coroutine[Any, Any, Any] | AsyncIterator[StreamChunk]:
         """
         Execute a task with full agent capabilities.
-        
+
         This is the PRIMARY method for interacting with agents. It handles:
         - Tool execution (agentic loop)
         - Conversation memory (when thread_id provided)
         - Streaming output (when stream=True)
         - Structured output (when configured)
         - Reasoning/chain-of-thought (when configured)
-        
+
         Args:
             task: The task or message to process.
             context: Optional context dict passed to tools.
@@ -2877,26 +2883,26 @@ class Agent:
                 - Enables multi-turn conversations
             stream: If True, returns async iterator. If False, returns awaitable.
             max_iterations: Maximum LLM call iterations (default: 25).
-            
+
         Returns:
             If stream=False: Awaitable that yields the final result when awaited.
             If stream=True: AsyncIterator[StreamChunk] for direct iteration.
-            
+
         Examples:
             # Simple one-shot task (await required)
             result = await agent.run("What is 2+2?")
-            
+
             # With tools (await required)
             result = await agent.run("Search for Python tutorials")
-            
+
             # Multi-turn conversation
             await agent.run("Hi, I'm Alice", thread_id="conv-1")
             result = await agent.run("What's my name?", thread_id="conv-1")
-            
+
             # Streaming (no await - direct iteration)
             async for chunk in agent.run("Write a poem", stream=True):
                 print(chunk.content, end="", flush=True)
-            
+
             # Streaming with conversation
             async for chunk in agent.run("Tell me more", stream=True, thread_id="conv-1"):
                 print(chunk.content, end="")
@@ -2904,10 +2910,10 @@ class Agent:
         # Streaming: return async iterator directly (no await needed)
         if stream:
             return self._run_stream(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
-        
+
         # Non-streaming: return coroutine (must be awaited)
         return self._run_impl(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
-    
+
     async def _run_impl(
         self,
         task: str,
@@ -2918,17 +2924,17 @@ class Agent:
     ) -> Any:
         """Internal implementation of non-streaming run()."""
         from agenticflow.executors import create_executor
-        
+
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
-        
+
         # Auto-initialize capabilities
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
-        
+
         # Clear previous state to avoid mixing conversations
         self.state.clear_history()
-        
+
         # Load conversation history into agent state if thread_id provided
         if thread_id:
             if self._memory_manager:
@@ -2938,20 +2944,20 @@ class Agent:
             # Add history to agent state so executor can use it
             for msg in history:
                 self.state.add_message(msg)
-        
+
         # Create executor based on config.execution_strategy
         executor = create_executor(self, strategy=self.config.execution_strategy)
         executor.max_iterations = max_iterations
-        
+
         # Execute task
         result = await executor.execute(task, context)
-        
+
         # Save to conversation history if thread_id provided
         if thread_id:
             await self._save_to_thread(thread_id, task, result)
-        
+
         return result
-    
+
     async def _run_stream(
         self,
         task: str,
@@ -2959,25 +2965,25 @@ class Agent:
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
         max_iterations: int = 25,
-    ) -> "AsyncIterator[StreamChunk]":
+    ) -> AsyncIterator[StreamChunk]:
         """Internal streaming implementation of run()."""
         from agenticflow.agent.streaming import StreamChunk
-        
+
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
-        
+
         # Auto-initialize capabilities
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
-        
+
         # Build messages with optional conversation history
         messages = await self._build_run_messages(task, thread_id)
         dict_messages = [msg.to_dict() for msg in messages]
-        
+
         # Get bound model (with tools)
         bound_model = self.bound_model
         accumulated_content = ""
-        
+
         # Streaming agentic loop
         for iteration in range(max_iterations):
             async for chunk in bound_model.astream(dict_messages):
@@ -2985,7 +2991,7 @@ class Agent:
                 if hasattr(chunk, 'content') and chunk.content:
                     accumulated_content += chunk.content
                     yield StreamChunk(content=chunk.content, index=iteration)
-                
+
                 # Check for tool calls at end of stream
                 tool_calls = getattr(chunk, 'tool_calls', None)
                 if tool_calls:
@@ -2998,29 +3004,29 @@ class Agent:
                             for i, tc in enumerate(tool_calls)
                         ] if tool_calls else [],
                     })
-                    
+
                     for tc in tool_calls:
                         tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
                         tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
                         tool_id = tc.get("id", "call_0") if isinstance(tc, dict) else getattr(tc, "id", "call_0")
-                        
+
                         result = await self._execute_tool(tool_name, tool_args)
                         dict_messages.append({
                             "role": "tool",
                             "tool_call_id": tool_id,
                             "content": str(result),
                         })
-                    
+
                     accumulated_content = ""
                     break  # Continue outer loop for next iteration
             else:
                 # No tool calls - we're done
                 break
-        
+
         # Save to conversation history if thread_id provided
         if thread_id and accumulated_content:
             await self._save_to_thread(thread_id, task, accumulated_content)
-    
+
     async def _build_run_messages(
         self,
         task: str,
@@ -3028,12 +3034,12 @@ class Agent:
     ) -> list[Any]:
         """Build messages for run(), optionally including conversation history."""
         messages: list[Any] = []
-        
+
         # System prompt
         effective_prompt = self.get_effective_system_prompt()
         if effective_prompt:
             messages.append(SystemMessage(content=effective_prompt))
-        
+
         # Load conversation history if thread_id provided
         if thread_id:
             if self._memory_manager:
@@ -3041,12 +3047,12 @@ class Agent:
             else:
                 history = await self._memory.get_messages(thread_id)
             messages.extend(history)
-        
+
         # Add user message
         messages.append(HumanMessage(content=task))
-        
+
         return messages
-    
+
     async def _save_to_thread(
         self,
         thread_id: str,
@@ -3077,7 +3083,7 @@ class Agent:
     ) -> Any:
         """
         DEPRECATED: Use run() instead - it's already optimized.
-        
+
         This method is kept for backward compatibility.
         """
         import warnings
@@ -3094,71 +3100,71 @@ class Agent:
             self.state.is_available()
             and self.state.has_capacity(self.config.max_concurrent_tasks)
         )
-    
+
     # --- Resilience Control Methods ---
-    
+
     def get_circuit_status(self, tool_name: str | None = None) -> dict[str, Any]:
         """
         Get circuit breaker status for tools.
-        
+
         Args:
             tool_name: Specific tool name, or None for all tools
-            
+
         Returns:
             Circuit breaker status dict
-            
+
         Example:
             ```python
             # Check specific tool
             status = agent.get_circuit_status("web_search")
             if status["state"] == "open":
                 print(f"web_search circuit is open!")
-            
+
             # Check all tools
             all_status = agent.get_circuit_status()
             ```
         """
         if not self._resilience:
             return {"state": "no_resilience_configured"}
-        
+
         if tool_name:
             return self._resilience.get_circuit_status(tool_name)
         return self._resilience.get_all_circuit_status()
-    
+
     def reset_circuit(self, tool_name: str | None = None) -> None:
         """
         Reset circuit breaker(s) to closed state.
-        
+
         Args:
             tool_name: Specific tool, or None to reset all
-            
+
         Example:
             ```python
             # Reset specific tool
             agent.reset_circuit("web_search")
-            
+
             # Reset all circuits
             agent.reset_circuit()
             ```
         """
         if not self._resilience:
             return
-        
+
         if tool_name:
             self._resilience.reset_circuit(tool_name)
         else:
             self._resilience.reset_all_circuits()
-    
+
     def get_failure_suggestions(self, tool_name: str) -> dict[str, Any] | None:
         """
         Get suggestions for a failing tool based on learned patterns.
-        
+
         Args:
             tool_name: Name of the tool
-            
+
         Returns:
             Suggestions dict with failure_rate, common_errors, recommendations
-            
+
         Example:
             ```python
             suggestions = agent.get_failure_suggestions("web_search")
@@ -3171,7 +3177,7 @@ class Agent:
         if not self._resilience:
             return None
         return self._resilience.get_failure_suggestions(tool_name)
-    
+
     def clear_failure_memory(self) -> None:
         """Clear all learned failure patterns (reset memory)."""
         if self._resilience and self._resilience.failure_memory:
@@ -3201,10 +3207,10 @@ class Agent:
     ) -> str:
         """
         Generate a Mermaid diagram showing this agent and its tools.
-        
+
         .. deprecated::
             Use `agent.graph().mermaid()` instead for the new API.
-        
+
         Args:
             theme: Mermaid theme (default, forest, dark, neutral, base)
             direction: Graph direction (TB, TD, BT, LR, RL)
@@ -3212,25 +3218,25 @@ class Agent:
             show_tools: Whether to show agent tools
             show_roles: Whether to show agent role (unused in new API)
             show_config: Whether to show model configuration
-            
+
         Returns:
             Mermaid diagram code as string
         """
-        from agenticflow.graph import GraphView, GraphTheme, GraphDirection
-        
+        from agenticflow.graph import GraphDirection, GraphTheme, GraphView
+
         view = GraphView.from_agent(
             self,
             show_tools=show_tools,
             show_config=show_config,
         )
-        
+
         if title:
             view = view.with_title(title)
         if theme != "default":
             view = view.with_theme(GraphTheme(theme))
         if direction not in ("TB", "TD"):
             view = view.with_direction(GraphDirection(direction))
-        
+
         return view.mermaid()
 
     def draw_mermaid_png(
@@ -3245,12 +3251,12 @@ class Agent:
     ) -> bytes:
         """
         Generate a PNG image of this agent's Mermaid diagram.
-        
+
         Requires httpx to be installed for mermaid.ink API.
-        
+
         .. deprecated::
             Use `agent.graph().png()` instead for the new API.
-        
+
         Args:
             theme: Mermaid theme (default, forest, dark, neutral, base)
             direction: Graph direction (TB, TD, BT, LR, RL)
@@ -3258,31 +3264,31 @@ class Agent:
             show_tools: Whether to show agent tools
             show_roles: Whether to show agent role (unused in new API)
             show_config: Whether to show model configuration
-            
+
         Returns:
             PNG image as bytes
         """
-        from agenticflow.graph import GraphView, GraphTheme, GraphDirection
-        
+        from agenticflow.graph import GraphDirection, GraphTheme, GraphView
+
         view = GraphView.from_agent(
             self,
             show_tools=show_tools,
             show_config=show_config,
         )
-        
+
         if title:
             view = view.with_title(title)
         if theme != "default":
             view = view.with_theme(GraphTheme(theme))
         if direction not in ("TB", "TD"):
             view = view.with_direction(GraphDirection(direction))
-        
+
         return view.png()
 
     # =========================================================================
     # Factory Methods - Legacy aliases (deprecated, use role= argument)
     # =========================================================================
-    
+
     @classmethod
     def as_planner(
         cls,
@@ -3292,19 +3298,19 @@ class Agent:
         available_agents: list[str] | None = None,
         instructions: str | None = None,
         **kwargs,
-    ) -> "Agent":
+    ) -> Agent:
         """Create a planner agent (autonomous with planning focus).
-        
+
         Planners create execution plans with steps and dependencies.
         They are autonomous agents with planning-focused instructions.
-        
+
         Args:
             name: Agent name
             model: LLM model to use
             available_agents: List of agents that can execute plan steps
             instructions: Additional instructions
             **kwargs: Additional Agent parameters
-            
+
         Returns:
             Agent configured as a planner
         """
@@ -3323,7 +3329,7 @@ When plan is complete: "FINAL ANSWER: [plan summary]"
             base_prompt += f"\n\nAvailable agents for task assignment: {', '.join(available_agents)}"
         if instructions:
             base_prompt += f"\n\n{instructions}"
-        
+
         return cls(
             name=name,
             model=model,
@@ -3331,7 +3337,7 @@ When plan is complete: "FINAL ANSWER: [plan summary]"
             instructions=base_prompt,
             **kwargs,
         )
-    
+
     @classmethod
     def as_researcher(
         cls,
@@ -3342,12 +3348,12 @@ When plan is complete: "FINAL ANSWER: [plan summary]"
         focus_areas: list[str] | None = None,
         instructions: str | None = None,
         **kwargs,
-    ) -> "Agent":
+    ) -> Agent:
         """Create a researcher agent (worker with research focus).
-        
+
         Researchers gather and synthesize information using tools.
         They are workers with research-focused instructions.
-        
+
         Args:
             name: Agent name
             model: LLM model to use
@@ -3355,7 +3361,7 @@ When plan is complete: "FINAL ANSWER: [plan summary]"
             focus_areas: Areas of research focus
             instructions: Additional instructions
             **kwargs: Additional Agent parameters
-            
+
         Returns:
             Agent configured as a researcher
         """
@@ -3371,7 +3377,7 @@ Structure your findings:
             base_prompt += f"\n\nFocus areas: {', '.join(focus_areas)}"
         if instructions:
             base_prompt += f"\n\n{instructions}"
-        
+
         return cls(
             name=name,
             model=model,
@@ -3390,7 +3396,7 @@ Structure your findings:
         *,
         show_tools: bool = True,
         show_config: bool = False,
-    ) -> "GraphView":
+    ) -> GraphView:
         """Get a graph visualization of this agent.
 
         Returns a GraphView that provides a unified interface for

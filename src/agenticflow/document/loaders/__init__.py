@@ -11,12 +11,12 @@ This module provides document loading capabilities for various file formats.
 
 **Usage:**
     >>> from agenticflow.document.loaders import DocumentLoader, load_documents
-    >>> 
+    >>>
     >>> # Using DocumentLoader class
     >>> loader = DocumentLoader()
     >>> docs = await loader.load("document.pdf")
     >>> docs = await loader.load_directory("./docs", glob="**/*.md")
-    >>> 
+    >>>
     >>> # Using convenience function
     >>> docs = await load_documents("./data")
     >>>

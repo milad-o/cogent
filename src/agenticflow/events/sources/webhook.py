@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agenticflow.events.event import Event
-from agenticflow.events.sources.base import EventSource, EmitCallback
+from agenticflow.events.sources.base import EmitCallback, EventSource
 
 
 @dataclass
@@ -69,11 +69,11 @@ class WebhookSource(EventSource):
         self._emit = emit
 
         try:
-            from starlette.applications import Starlette
-            from starlette.routing import Route
-            from starlette.responses import JSONResponse
-            from starlette.requests import Request
             import uvicorn
+            from starlette.applications import Starlette
+            from starlette.requests import Request
+            from starlette.responses import JSONResponse
+            from starlette.routing import Route
         except ImportError as e:
             raise ImportError(
                 "WebhookSource requires 'starlette' and 'uvicorn'. "

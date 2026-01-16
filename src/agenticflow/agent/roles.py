@@ -18,13 +18,13 @@ Role System:
 Usage:
     # Worker does tasks, can't finish
     analyst = Agent(name="Analyst", role="worker", tools=[search])
-    
+
     # Supervisor manages, can finish
     manager = Agent(name="Manager", role="supervisor")
-    
+
     # Autonomous works alone, can finish
     assistant = Agent(name="Assistant", role="autonomous", tools=[search])
-    
+
     # Reviewer approves/rejects, can finish
     qa = Agent(name="QA", role="reviewer")
 """
@@ -47,17 +47,17 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class RoleConfig:
     """Base configuration for agent roles.
-    
+
     Role configurations are immutable, reusable objects that define:
     - Capabilities (what the agent CAN do)
     - Role-specific parameters (workers, criteria, specialty)
     - Enhanced prompts based on configuration
     """
-    
+
     def get_role_type(self) -> AgentRole:
         """Get the AgentRole enum for this configuration."""
         raise NotImplementedError
-    
+
     def get_capabilities(self) -> dict[str, bool]:
         """Get capability flags for this role."""
         caps = get_role_capabilities(self.get_role_type())
@@ -66,7 +66,7 @@ class RoleConfig:
             "can_delegate": caps["can_delegate"],
             "can_use_tools": caps["can_use_tools"],
         }
-    
+
     def enhance_prompt(self, base_prompt: str) -> str:
         """Enhance the base role prompt with configuration-specific details."""
         return base_prompt
@@ -75,21 +75,21 @@ class RoleConfig:
 @dataclass(frozen=True)
 class SupervisorRole(RoleConfig):
     """Supervisor role - coordinates workers and makes final decisions.
-    
+
     Capabilities:
     - can_finish: ✅ (can provide FINAL ANSWER)
     - can_delegate: ✅ (can assign work to others)
     - can_use_tools: ❌ (delegates tool work to workers)
-    
+
     Example:
         supervisor = SupervisorRole(workers=["Alice", "Bob", "Charlie"])
         agent = Agent(name="Manager", model=model, role=supervisor)
     """
     workers: list[str] | None = None
-    
+
     def get_role_type(self) -> AgentRole:
         return AgentRole.SUPERVISOR
-    
+
     def enhance_prompt(self, base_prompt: str) -> str:
         if self.workers:
             return base_prompt + f"\n\nYour team members: {', '.join(self.workers)}"
@@ -99,21 +99,21 @@ class SupervisorRole(RoleConfig):
 @dataclass(frozen=True)
 class WorkerRole(RoleConfig):
     """Worker role - executes tasks using tools.
-    
+
     Capabilities:
     - can_finish: ❌ (cannot conclude workflow)
     - can_delegate: ❌ (executes tasks, doesn't delegate)
     - can_use_tools: ✅ (uses tools to accomplish work)
-    
+
     Example:
         worker = Worker(specialty="data analysis and visualization")
         agent = Agent(name="Analyst", model=model, role=worker, tools=[...])
     """
     specialty: str | None = None
-    
+
     def get_role_type(self) -> AgentRole:
         return AgentRole.WORKER
-    
+
     def enhance_prompt(self, base_prompt: str) -> str:
         if self.specialty:
             return base_prompt + f"\n\nYour specialty: {self.specialty}"
@@ -123,43 +123,43 @@ class WorkerRole(RoleConfig):
 @dataclass(frozen=True)
 class ReviewerRole(RoleConfig):
     """Reviewer role - evaluates work and approves/rejects.
-    
+
     Capabilities:
     - can_finish: ✅ (can approve and conclude)
     - can_delegate: ❌ (reviews, doesn't delegate)
     - can_use_tools: ❌ (focuses on judgment, not execution)
-    
+
     Example:
         reviewer = Reviewer(criteria=["accuracy", "clarity", "completeness"])
         agent = Agent(name="QA", model=model, role=reviewer)
     """
     criteria: list[str] | None = None
-    
+
     def get_role_type(self) -> AgentRole:
         return AgentRole.REVIEWER
-    
+
     def enhance_prompt(self, base_prompt: str) -> str:
         if self.criteria:
-            return base_prompt + f"\n\nEvaluation criteria:\n- " + "\n- ".join(self.criteria)
+            return base_prompt + "\n\nEvaluation criteria:\n- " + "\n- ".join(self.criteria)
         return base_prompt
 
 
 @dataclass(frozen=True)
 class AutonomousRole(RoleConfig):
     """Autonomous role - works independently with full capabilities.
-    
+
     Capabilities:
     - can_finish: ✅ (can conclude workflow)
     - can_delegate: ❌ (works independently)
     - can_use_tools: ✅ (uses tools to accomplish work)
-    
+
     Perfect for single-agent flows or independent tasks.
-    
+
     Example:
         autonomous = Autonomous()
         agent = Agent(name="Assistant", model=model, role=autonomous, tools=[...])
     """
-    
+
     def get_role_type(self) -> AgentRole:
         return AgentRole.AUTONOMOUS
 
@@ -167,16 +167,16 @@ class AutonomousRole(RoleConfig):
 @dataclass(frozen=True)
 class CustomRole(RoleConfig):
     """Custom role - fully configurable capabilities.
-    
+
     Use this to create hybrid roles that don't fit the predefined patterns.
-    
+
     Example:
         # Reviewer that can use tools
         hybrid = Custom(
             base_role=AgentRole.REVIEWER,
             can_use_tools=True,  # Override!
         )
-        
+
         # Worker that can finish (unusual but valid)
         finisher = Custom(
             base_role=AgentRole.WORKER,
@@ -187,10 +187,10 @@ class CustomRole(RoleConfig):
     can_finish: bool | None = None
     can_delegate: bool | None = None
     can_use_tools: bool | None = None
-    
+
     def get_role_type(self) -> AgentRole:
         return self.base_role
-    
+
     def get_capabilities(self) -> dict[str, bool]:
         """Get capabilities with overrides applied."""
         caps = super().get_capabilities()
@@ -222,7 +222,7 @@ AGENTIC_CORE_NO_TOOLS = """
 
 # Tool-specific instructions (only when tools are available)
 TOOL_USAGE_INSTRUCTIONS = """
-3. **Use Tools**: 
+3. **Use Tools**:
    - ALWAYS use tools to get information - do NOT guess or calculate yourself
    - Tools give you real data - your own knowledge may be outdated or incomplete
    - If a tool exists for something, USE IT instead of trying to answer from memory
@@ -326,14 +326,14 @@ When you have fully accomplished the task, respond with:
 @dataclass
 class RoleBehavior:
     """Runtime behavior for a role."""
-    
+
     can_delegate: bool = False
     can_finish: bool = True
     can_use_tools: bool = True
     max_iterations: int | None = None
 
     @classmethod
-    def for_role(cls, role: AgentRole) -> "RoleBehavior":
+    def for_role(cls, role: AgentRole) -> RoleBehavior:
         """Create behavior from role capabilities."""
         caps = get_role_capabilities(role)
         return cls(
@@ -345,22 +345,22 @@ class RoleBehavior:
 
 def get_role_prompt(role: AgentRole, has_tools: bool = True) -> str:
     """Get default prompt for a role.
-    
+
     Args:
         role: The agent role
         has_tools: Whether the agent has tools available. If False and the role
             normally uses tools, returns a version without tool instructions.
-    
+
     Returns:
         Appropriate system prompt for the role
     """
     base_prompt = ROLE_PROMPTS.get(role, ROLE_PROMPTS[AgentRole.AUTONOMOUS])
-    
+
     # If the agent doesn't have tools but the prompt includes tool instructions,
     # swap to the no-tools version
     if not has_tools and AGENTIC_CORE in base_prompt:
         base_prompt = base_prompt.replace(AGENTIC_CORE, AGENTIC_CORE_NO_TOOLS)
-    
+
     return base_prompt
 
 
@@ -382,7 +382,7 @@ ROLE_BEHAVIORS: dict[AgentRole, RoleBehavior] = {
 @dataclass
 class DelegationCommand:
     """A parsed command from agent output."""
-    
+
     action: str  # "delegate", "final_answer", "route"
     target: str | None = None
     task: str = ""
@@ -391,16 +391,16 @@ class DelegationCommand:
 
 def parse_delegation(text: str) -> DelegationCommand | None:
     """Parse delegation commands from output.
-    
+
     Supported formats:
     - DELEGATE TO [agent]: [task]
     - FINAL ANSWER: [answer]
     - ROUTE TO [agent]: [message]
     """
     import re
-    
+
     text = text.strip()
-    
+
     # DELEGATE TO
     match = re.search(
         r"DELEGATE\s+TO\s+\[?(\w+)\]?\s*:\s*(.+)",
@@ -412,7 +412,7 @@ def parse_delegation(text: str) -> DelegationCommand | None:
             target=match.group(1),
             task=match.group(2).strip(),
         )
-    
+
     # FINAL ANSWER
     match = re.search(
         r"FINAL\s+ANSWER\s*:\s*(.+)",
@@ -423,7 +423,7 @@ def parse_delegation(text: str) -> DelegationCommand | None:
             action="final_answer",
             task=match.group(1).strip(),
         )
-    
+
     # ROUTE TO
     match = re.search(
         r"ROUTE\s+TO\s+\[?(\w+)\]?\s*:\s*(.+)",
@@ -435,7 +435,7 @@ def parse_delegation(text: str) -> DelegationCommand | None:
             target=match.group(1),
             task=match.group(2).strip(),
         )
-    
+
     return None
 
 

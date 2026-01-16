@@ -7,9 +7,10 @@ agent orchestration: triggers, conditions, and reactions.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.events.event import Event
 
@@ -36,7 +37,7 @@ def _event_name(event: Any) -> str:
     """Get the effective event name for both core and legacy observability events."""
     # Core events
     if hasattr(event, "name"):
-        return str(getattr(event, "name"))
+        return str(event.name)
 
     # Legacy observability events
     data = getattr(event, "data", None) or {}
@@ -45,7 +46,7 @@ def _event_name(event: Any) -> str:
 
     evt_type = getattr(event, "type", None)
     if evt_type is not None and hasattr(evt_type, "value"):
-        return str(getattr(evt_type, "value"))
+        return str(evt_type.value)
 
     return ""
 
@@ -138,7 +139,7 @@ class Trigger:
 
         # Enum-like patterns (legacy): match by `.value` if present
         if hasattr(self.on, "value"):
-            return event_name == str(getattr(self.on, "value"))
+            return event_name == str(self.on.value)
 
         return False
 
@@ -253,7 +254,7 @@ def react_to(
 
         # With condition
         react_to("agent.request", for_agent("data_analyst"))
-        
+
         # Legacy fluent API (still supported)
         react_to("task.*").when(lambda e: e.data.get("priority") == "high")
         ```
@@ -271,16 +272,16 @@ on = react_to
 def for_agent(name: str):
     """
     Create a condition that matches agent requests targeted at a specific agent.
-    
+
     This is a common pattern for A2A (agent-to-agent) delegation where agents
     send requests to specific other agents.
-    
+
     Args:
         name: The target agent name to match
-        
+
     Returns:
         A condition function suitable for use with .when()
-        
+
     Example:
         ```python
         # Agent reacts only to requests for them

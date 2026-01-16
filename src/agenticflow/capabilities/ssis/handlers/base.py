@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
-import xml.etree.ElementTree as ET
 
 if TYPE_CHECKING:
     from agenticflow.capabilities.ssis.capability import SSISAnalyzer
@@ -42,7 +42,7 @@ class TaskHandler(ABC):
     def handle(
         self,
         exe: ET.Element,
-        analyzer: "SSISAnalyzer",
+        analyzer: SSISAnalyzer,
         package_name: str,
         task_name: str,
     ) -> None:

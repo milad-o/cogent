@@ -2,11 +2,11 @@
 
 from agenticflow.capabilities.ssis.handlers.base import TaskHandler, TaskHandlerRegistry
 from agenticflow.capabilities.ssis.handlers.builtin import (
+    DEFAULT_HANDLERS,
     ExecuteProcessTaskHandler,
     ScriptTaskHandler,
     WebServiceTaskHandler,
     XMLTaskHandler,
-    DEFAULT_HANDLERS,
 )
 
 __all__ = [

@@ -7,12 +7,18 @@ event-driven multi-agent systems where agents react to events.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import json
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable
+from typing import TYPE_CHECKING, Any
 
+from agenticflow.events.bus import EventBus as CoreEventBus
+from agenticflow.events.event import Event as CoreEvent
 from agenticflow.flow.base import BaseFlow, FlowResult
+from agenticflow.observability.observer import Observer
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.reactive.core import (
     AgentTriggerConfig,
     Reaction,
@@ -20,10 +26,6 @@ from agenticflow.reactive.core import (
     TriggerBuilder,
 )
 from agenticflow.reactive.skills import Skill, SkillBuilder
-from agenticflow.events.bus import EventBus as CoreEventBus
-from agenticflow.events.event import Event as CoreEvent
-from agenticflow.observability.trace_record import TraceType
-from agenticflow.observability.observer import Observer
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -162,7 +164,7 @@ class ReactiveFlow(BaseFlow):
         # Initialize base class
         # BaseFlow bus remains observability-only.
         super().__init__(event_bus=event_bus, observer=observer)
-        
+
         self.config = config or ReactiveFlowConfig()
         # Dedicated core bus for orchestration events.
         self.events = CoreEventBus()
@@ -224,29 +226,29 @@ class ReactiveFlow(BaseFlow):
         Examples:
             # Simple event subscription
             flow.register(coordinator, on="task.created")
-            
+
             # Coordinator with explicit delegation policy
             flow.register(
                 coordinator,
                 on="task.created",
                 can_delegate=["data_analyst", "writer", "researcher"]
             )
-            
+
             # Specialist that handles delegated work
             flow.register(data_analyst, handles=True)  # auto-sets can_reply=True
-            
+
             # Event pattern with wildcard
             flow.register(monitor, on="task.*")
-            
+
             # With condition
             flow.register(agent, on="order.placed", when=lambda e: e.data.get("value") > 100)
-            
+
             # With priority
             flow.register(urgent_handler, on="alert.*", priority=10)
-            
+
             # With auto-emit
             flow.register(processor, on="task.created", emits="task.processed")
-            
+
             # Combined features
             flow.register(
                 agent,
@@ -255,16 +257,16 @@ class ReactiveFlow(BaseFlow):
                 priority=10,
                 emits="order.processed",
             )
-            
+
             # Multiple events
             flow.register(monitor, on=["task.created", "task.completed"])
         """
-        from agenticflow.reactive.core import react_to, for_agent, Trigger
-        
+        from agenticflow.reactive.core import Trigger, for_agent, react_to
+
         # Build trigger config
         if triggers is None:
             trigger_config = AgentTriggerConfig()
-            
+
             # Simple "on" parameter
             if on is not None:
                 events = [on] if isinstance(on, str) else on
@@ -277,12 +279,12 @@ class ReactiveFlow(BaseFlow):
                         emits=emits,
                     )
                     trigger_config.add_trigger(trigger)
-            
+
             # A2A delegation shorthand
             if handles is not None:
                 target_name = agent.name if handles is True else handles
                 trigger_config.add_trigger(react_to("agent.request", for_agent(target_name)))
-                
+
         elif isinstance(triggers, list):
             trigger_config = AgentTriggerConfig()
             for t in triggers:
@@ -354,7 +356,7 @@ class ReactiveFlow(BaseFlow):
         matching = [s for s in self._skills_registry.values() if s.matches(event)]
         return sorted(matching, key=lambda s: -s.priority)
 
-    def with_memory(self, memory: Any | None = None) -> "ReactiveFlow":
+    def with_memory(self, memory: Any | None = None) -> ReactiveFlow:
         """Configure shared memory for agents registered to this flow.
 
         If set, agents without an existing `memory_manager` will receive this
@@ -388,7 +390,7 @@ class ReactiveFlow(BaseFlow):
         await asyncio.gather(*self._spawned, return_exceptions=True)
         self._spawned.clear()
 
-    def thread_by_data(self, key: str, *, prefix: str | None = None) -> "ReactiveFlow":
+    def thread_by_data(self, key: str, *, prefix: str | None = None) -> ReactiveFlow:
         """Derive `thread_id` from `event.data[key]`.
 
         This is a mid-level UX helper for per-entity memory without lambdas.
@@ -446,7 +448,6 @@ class ReactiveFlow(BaseFlow):
         """
         import time
 
-        from agenticflow.flow.checkpointer import generate_checkpoint_id
 
         start_time = time.perf_counter()
 
@@ -503,7 +504,7 @@ class ReactiveFlow(BaseFlow):
                         self._pending_events.get(),
                         timeout=self.config.event_timeout,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if self.config.stop_on_idle:
                         break
                     continue
@@ -742,7 +743,7 @@ class ReactiveFlow(BaseFlow):
                         self._pending_events.get(),
                         timeout=self.config.event_timeout,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if self.config.stop_on_idle:
                         break
                     continue
@@ -871,7 +872,6 @@ class ReactiveFlow(BaseFlow):
                     print()  # Newline after agent completes
             ```
         """
-        from agenticflow.reactive.streaming import ReactiveStreamChunk
 
         # Initialize flow state (same as run())
         from agenticflow.flow.checkpointer import generate_flow_id
@@ -927,7 +927,7 @@ class ReactiveFlow(BaseFlow):
                         self._pending_events.get(),
                         timeout=self.config.event_timeout,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     if self.config.stop_on_idle:
                         break
                     continue
@@ -994,7 +994,6 @@ class ReactiveFlow(BaseFlow):
         Yields:
             ReactiveStreamChunk from triggered agents
         """
-        from agenticflow.reactive.streaming import ReactiveStreamChunk
 
         # Find matching agents
         matching: list[tuple[Agent, Trigger]] = []
@@ -1084,7 +1083,7 @@ class ReactiveFlow(BaseFlow):
 
             # Stream agent execution
             prompt = self._build_prompt(event, task, skill_context, matching_skills)
-            
+
             # Use agent's streaming capability
             async for agent_chunk in agent.run(prompt, context=skill_context, thread_id=thread_id, stream=True):
                 # Convert agent StreamChunk to ReactiveStreamChunk
@@ -1098,10 +1097,8 @@ class ReactiveFlow(BaseFlow):
 
             # Cleanup skill tools
             for tool_name in added_tools:
-                try:
+                with contextlib.suppress(Exception):
                     agent.remove_tool(tool_name)
-                except Exception:
-                    pass
 
             # Handle emit reaction
             if trigger.emits:
@@ -1228,7 +1225,7 @@ class ReactiveFlow(BaseFlow):
             matching_skills = self._get_matching_skills(event)
             skill_context = dict(context)  # Copy to avoid mutation
             added_tools: list[str] = []
-            
+
             for skill in matching_skills:
                 # Observe: skill activated
                 self._observe(
@@ -1239,10 +1236,10 @@ class ReactiveFlow(BaseFlow):
                         "trigger_event": event_name,
                     },
                 )
-                
+
                 # Apply context enrichment if configured
                 skill_context = skill.enrich_context(event, skill_context)
-                
+
                 # Temporarily add skill tools to agent
                 for tool_fn in skill.tools:
                     tool_name = getattr(tool_fn, "name", None) or tool_fn.__name__
@@ -1264,7 +1261,7 @@ class ReactiveFlow(BaseFlow):
                 # Backward compatible path: build prompt and call run()
                 prompt = self._build_prompt(event, task, skill_context, matching_skills)
                 result = await agent.run(prompt, context=skill_context, thread_id=thread_id)
-            
+
             # === Skill Cleanup ===
             # Remove temporarily added skill tools
             for tool_name in added_tools:
@@ -1272,13 +1269,13 @@ class ReactiveFlow(BaseFlow):
                     agent.remove_tool(tool_name)
                 except Exception:
                     pass  # Agent may not support remove_tool
-            
+
             for skill in matching_skills:
                 self._observe(
                     TraceType.SKILL_DEACTIVATED,
                     {"skill": skill.name, "agent": agent.name},
                 )
-            
+
             # Handle both string return and object with .output attribute
             output = result.output if hasattr(result, "output") else str(result)
 
@@ -1350,13 +1347,13 @@ class ReactiveFlow(BaseFlow):
         skills: list[Skill] | None = None,
     ) -> str:
         """Build prompt for agent from event context.
-        
+
         Args:
             event: The triggering event.
             task: Original task.
             context: Shared context.
             skills: Optional list of active skills to inject.
-        
+
         Returns:
             Constructed prompt string.
         """

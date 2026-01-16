@@ -23,7 +23,7 @@ class TraceType(Enum):
     # User interaction events
     USER_INPUT = "user.input"  # User provided input/prompt
     USER_FEEDBACK = "user.feedback"  # User provided feedback (HITL)
-    
+
     # Output events
     OUTPUT_GENERATED = "output.generated"  # Final output ready for user
     OUTPUT_STREAMED = "output.streamed"  # Output token streamed to user
@@ -56,13 +56,13 @@ class TraceType(Enum):
     AGENT_STATUS_CHANGED = "agent.status_changed"
     AGENT_INTERRUPTED = "agent.interrupted"  # HITL: agent paused for human input
     AGENT_RESUMED = "agent.resumed"  # HITL: agent resumed after human decision
-    
+
     # Agent spawning events (dynamic agent creation)
     AGENT_SPAWNED = "agent.spawned"  # New agent spawned by parent
     AGENT_SPAWN_COMPLETED = "agent.spawn_completed"  # Spawned agent finished task
     AGENT_SPAWN_FAILED = "agent.spawn_failed"  # Spawned agent failed
     AGENT_DESPAWNED = "agent.despawned"  # Ephemeral agent cleaned up
-    
+
     # LLM Request/Response events (deep observability)
     LLM_REQUEST = "llm.request"  # Full request being sent to LLM
     LLM_RESPONSE = "llm.response"  # Full response from LLM (before parsing)
@@ -80,14 +80,14 @@ class TraceType(Enum):
     TOOL_CALLED = "tool.called"
     TOOL_RESULT = "tool.result"
     TOOL_ERROR = "tool.error"
-    
+
     # Deferred tool events (async/event-driven completion)
     TOOL_DEFERRED = "tool.deferred"  # Tool returned DeferredResult
     TOOL_DEFERRED_WAITING = "tool.deferred.waiting"  # Waiting for completion
     TOOL_DEFERRED_COMPLETED = "tool.deferred.completed"  # Deferred completed
     TOOL_DEFERRED_TIMEOUT = "tool.deferred.timeout"  # Deferred timed out
     TOOL_DEFERRED_CANCELLED = "tool.deferred.cancelled"  # Deferred cancelled
-    
+
     # Webhook/external events
     WEBHOOK_RECEIVED = "webhook.received"  # External webhook callback
 
@@ -190,16 +190,16 @@ class TraceType(Enum):
 class Trace:
     """
     A trace record representing something that happened in the system.
-    
+
     Traces are the foundation of observability. They provide:
     - Full audit trail of system activity
     - Decoupled communication between components
     - Replay capability for debugging and recovery
-    
+
     Note:
         This is for observability/telemetry. For core orchestration events,
         use `agenticflow.events.Event` instead.
-    
+
     Attributes:
         type: The type of trace (from TraceType enum)
         data: Trace-specific payload data
@@ -208,7 +208,7 @@ class Trace:
         source: Identifier of the component that created this trace
         parent_event_id: ID of the trace that triggered this one (if any)
         correlation_id: ID linking related traces across the system
-        
+
     Example:
         ```python
         trace = Trace(
@@ -231,7 +231,7 @@ class Trace:
     def to_dict(self) -> dict:
         """
         Convert to JSON-serializable dictionary.
-        
+
         Returns:
             Dictionary representation of the trace
         """
@@ -248,20 +248,20 @@ class Trace:
     def to_json(self) -> str:
         """
         Convert to JSON string.
-        
+
         Returns:
             JSON string representation
         """
         return json.dumps(self.to_dict(), default=str)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Trace":
+    def from_dict(cls, data: dict) -> Trace:
         """
         Create a Trace from a dictionary.
-        
+
         Args:
             data: Dictionary with trace data
-            
+
         Returns:
             New Trace instance
         """
@@ -276,25 +276,25 @@ class Trace:
         )
 
     @classmethod
-    def from_json(cls, json_str: str) -> "Trace":
+    def from_json(cls, json_str: str) -> Trace:
         """
         Create a Trace from a JSON string.
-        
+
         Args:
             json_str: JSON string representation
-            
+
         Returns:
             New Trace instance
         """
         return cls.from_dict(json.loads(json_str))
 
-    def with_correlation(self, correlation_id: str) -> "Trace":
+    def with_correlation(self, correlation_id: str) -> Trace:
         """
         Create a copy of this trace with a correlation ID.
-        
+
         Args:
             correlation_id: The correlation ID to set
-            
+
         Returns:
             New Trace with the correlation ID
         """
@@ -313,15 +313,15 @@ class Trace:
         event_type: TraceType,
         data: dict | None = None,
         source: str | None = None,
-    ) -> "Trace":
+    ) -> Trace:
         """
         Create a child trace linked to this one.
-        
+
         Args:
             event_type: Type of the child trace
             data: Trace data (default empty)
             source: Trace source (defaults to this trace's source)
-            
+
         Returns:
             New Trace linked to this one
         """

@@ -37,10 +37,11 @@ Example:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from agenticflow.reactive.core import Trigger, TriggerBuilder, EventPattern
+from agenticflow.reactive.core import EventPattern, Trigger, TriggerBuilder
 
 if TYPE_CHECKING:
     from agenticflow.events.event import Event
@@ -89,7 +90,7 @@ class Skill:
 
     context_enricher: Callable[[Event, dict[str, Any]], dict[str, Any]] | None = None
     """Optional function to modify context when skill activates.
-    
+
     Receives the triggering event and current context, returns enriched context.
     """
 
@@ -196,7 +197,7 @@ def skill(
 # Keep SkillBuilder for backward compatibility but mark as legacy
 class SkillBuilder:
     """Fluent builder for creating skills.
-    
+
     Note: The `skill()` function with kwargs is the recommended API.
     This builder is kept for backward compatibility.
     """

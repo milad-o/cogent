@@ -196,7 +196,7 @@ class Graph:
     subgraphs: dict[str, Subgraph] = field(default_factory=dict)
     class_defs: dict[str, ClassDef] = field(default_factory=dict)
 
-    def add_node(self, node: Node) -> "Graph":
+    def add_node(self, node: Node) -> Graph:
         """Add a node to the graph.
 
         Args:
@@ -208,7 +208,7 @@ class Graph:
         self.nodes[node.id] = node
         return self
 
-    def add_edge(self, edge: Edge) -> "Graph":
+    def add_edge(self, edge: Edge) -> Graph:
         """Add an edge to the graph.
 
         Args:
@@ -227,7 +227,7 @@ class Graph:
         self.edges.append(edge)
         return self
 
-    def add_subgraph(self, subgraph: Subgraph) -> "Graph":
+    def add_subgraph(self, subgraph: Subgraph) -> Graph:
         """Add a subgraph to the graph.
 
         Args:
@@ -239,7 +239,7 @@ class Graph:
         self.subgraphs[subgraph.id] = subgraph
         return self
 
-    def add_class_def(self, class_def: ClassDef) -> "Graph":
+    def add_class_def(self, class_def: ClassDef) -> Graph:
         """Add a class definition.
 
         Args:
@@ -259,7 +259,7 @@ class Graph:
         shape: NodeShape = NodeShape.ROUNDED,
         css_class: str | None = None,
         **metadata: Any,
-    ) -> "Graph":
+    ) -> Graph:
         """Fluent method to add a node.
 
         Args:
@@ -290,7 +290,7 @@ class Graph:
         label: str | None = None,
         *,
         edge_type: EdgeType = EdgeType.ARROW,
-    ) -> "Graph":
+    ) -> Graph:
         """Fluent method to add an edge.
 
         Args:

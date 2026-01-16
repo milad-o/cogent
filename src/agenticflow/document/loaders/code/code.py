@@ -8,7 +8,6 @@ from typing import Any
 from agenticflow.document.loaders.base import BaseLoader
 from agenticflow.document.types import Document
 
-
 # Map extensions to language names
 EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".py": "python",
@@ -59,39 +58,39 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
 
 class CodeLoader(BaseLoader):
     """Loader for source code files.
-    
+
     Supports a wide variety of programming languages.
     Adds language metadata for downstream processing.
-    
+
     Example:
         >>> loader = CodeLoader()
         >>> docs = await loader.load(Path("main.py"))
         >>> print(docs[0].metadata["language"])  # "python"
     """
-    
+
     supported_extensions = list(EXTENSION_TO_LANGUAGE.keys())
-    
+
     # Fallback encodings for code files
     FALLBACK_ENCODINGS = ["latin-1", "cp1252"]
-    
+
     async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
         """Load a source code file.
-        
+
         Args:
             path: Path to the code file (str or Path).
             **kwargs: Optional 'encoding' override.
-            
+
         Returns:
             List containing a single Document.
         """
         path = Path(path)
         encoding = kwargs.get("encoding", self.encoding)
         content = self._read_with_fallback(path, encoding)
-        
+
         # Detect language from extension
         ext = path.suffix.lower()
         language = EXTENSION_TO_LANGUAGE.get(ext, "text")
-        
+
         return [
             self._create_document(
                 content,
@@ -100,14 +99,14 @@ class CodeLoader(BaseLoader):
                 line_count=content.count("\n") + 1,
             )
         ]
-    
+
     def _read_with_fallback(self, path: Path, encoding: str) -> str:
         """Read file with encoding fallbacks.
-        
+
         Args:
             path: File path.
             encoding: Primary encoding to try.
-            
+
         Returns:
             File content as string.
         """
@@ -115,13 +114,13 @@ class CodeLoader(BaseLoader):
             return path.read_text(encoding=encoding)
         except UnicodeDecodeError:
             pass
-        
+
         for enc in self.FALLBACK_ENCODINGS:
             try:
                 return path.read_text(encoding=enc)
             except UnicodeDecodeError:
                 continue
-        
+
         return path.read_bytes().decode("utf-8", errors="replace")
 
 

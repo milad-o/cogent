@@ -21,14 +21,14 @@ Example:
     ```
 """
 
-from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 from agenticflow.capabilities.knowledge_graph.backends import (
     GraphBackend,
     InMemoryGraph,
-    SQLiteGraph,
     JSONFileGraph,
+    SQLiteGraph,
 )
 from agenticflow.capabilities.knowledge_graph.capability import KnowledgeGraph
+from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 
 __all__ = [
     # Main capability

@@ -15,8 +15,8 @@ from agenticflow.flow.delegation import DelegationMixin
 
 if TYPE_CHECKING:
     from ..agent import Agent
-    from ..memory import TeamMemory
     from ..graph import GraphView
+    from ..memory import TeamMemory
 
 
 class TopologyType(str, Enum):
@@ -31,7 +31,7 @@ class TopologyType(str, Enum):
 @dataclass
 class AgentConfig:
     """Configuration for an agent in a topology.
-    
+
     Args:
         agent: The agent instance
         name: Optional custom name (defaults to agent.name)
@@ -51,10 +51,10 @@ class AgentConfig:
     def __post_init__(self) -> None:
         if self.name is None:
             self.name = getattr(self.agent, "name", "agent")
-        
+
         # Legacy support: can_delegate_to → can_delegate
         if hasattr(self, 'can_delegate_to') and not self.can_delegate:
-            self.can_delegate = getattr(self, 'can_delegate_to')
+            self.can_delegate = self.can_delegate_to
 
 
 @dataclass
@@ -101,7 +101,7 @@ class BaseTopology(ABC, DelegationMixin):
 
     A topology defines how multiple agents work together to accomplish a task.
     Each topology implements a different coordination strategy.
-    
+
     Inherits from DelegationMixin to provide A2A delegation capabilities
     across all topology types.
 
@@ -129,7 +129,7 @@ class BaseTopology(ABC, DelegationMixin):
     """
 
     topology_type: TopologyType
-    
+
     def __post_init__(self) -> None:
         """Configure delegation for all agents in the topology."""
         # Apply delegation configuration to all agents
@@ -189,9 +189,9 @@ class BaseTopology(ABC, DelegationMixin):
     # Visualization (Graph API)
     # ─────────────────────────────────────────────────────────────────────
 
-    def get_agents_dict(self) -> dict[str, "Agent"]:
+    def get_agents_dict(self) -> dict[str, Agent]:
         """Get agents as a dict by name for visualization.
-        
+
         Used by graph builders to access agents by name.
         Concrete topologies may override if they have specific structure.
         """
@@ -206,7 +206,7 @@ class BaseTopology(ABC, DelegationMixin):
         self,
         *,
         show_tools: bool = True,
-    ) -> "GraphView":
+    ) -> GraphView:
         """Get a graph visualization of this topology.
 
         Returns a GraphView that provides a unified interface for

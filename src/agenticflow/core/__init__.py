@@ -10,9 +10,9 @@ For models and embeddings, use native AgenticFlow models:
 from agenticflow.core.enums import (
     AgentRole,
     AgentStatus,
-    TraceType,
     Priority,
     TaskStatus,
+    TraceType,
 )
 from agenticflow.core.utils import (
     format_timestamp,

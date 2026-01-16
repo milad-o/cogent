@@ -56,7 +56,7 @@ class TraceType(Enum):
     # User interaction events
     USER_INPUT = "user.input"  # User provided input/prompt
     USER_FEEDBACK = "user.feedback"  # User provided feedback (HITL)
-    
+
     # Output events
     OUTPUT_GENERATED = "output.generated"  # Final output ready for user
     OUTPUT_STREAMED = "output.streamed"  # Output token streamed to user
@@ -89,13 +89,13 @@ class TraceType(Enum):
     AGENT_STATUS_CHANGED = "agent.status_changed"
     AGENT_INTERRUPTED = "agent.interrupted"  # HITL: agent paused for human input
     AGENT_RESUMED = "agent.resumed"  # HITL: agent resumed after human decision
-    
+
     # Agent spawning events (dynamic agent creation)
     AGENT_SPAWNED = "agent.spawned"  # New agent spawned by parent
     AGENT_SPAWN_COMPLETED = "agent.spawn_completed"  # Spawned agent finished task
     AGENT_SPAWN_FAILED = "agent.spawn_failed"  # Spawned agent failed
     AGENT_DESPAWNED = "agent.despawned"  # Ephemeral agent cleaned up
-    
+
     # LLM Request/Response events (deep observability)
     LLM_REQUEST = "llm.request"  # Full request being sent to LLM
     LLM_RESPONSE = "llm.response"  # Full response from LLM (before parsing)
@@ -113,14 +113,14 @@ class TraceType(Enum):
     TOOL_CALLED = "tool.called"
     TOOL_RESULT = "tool.result"
     TOOL_ERROR = "tool.error"
-    
+
     # Deferred tool events (async/event-driven completion)
     TOOL_DEFERRED = "tool.deferred"  # Tool returned DeferredResult
     TOOL_DEFERRED_WAITING = "tool.deferred.waiting"  # Waiting for completion
     TOOL_DEFERRED_COMPLETED = "tool.deferred.completed"  # Deferred completed
     TOOL_DEFERRED_TIMEOUT = "tool.deferred.timeout"  # Deferred timed out
     TOOL_DEFERRED_CANCELLED = "tool.deferred.cancelled"  # Deferred cancelled
-    
+
     # Webhook/external events
     WEBHOOK_RECEIVED = "webhook.received"  # External webhook callback
 
@@ -207,12 +207,12 @@ class Priority(Enum):
 class AgentRole(Enum):
     """
     Agent roles define CAPABILITIES, not job titles.
-    
+
     Each role is a combination of three core capabilities:
     - can_finish: Can end the flow with FINAL ANSWER
     - can_delegate: Can assign/route work to other agents
     - can_use_tools: Can call external tools
-    
+
     ┌─────────────┬────────────┬──────────────┬───────────────┐
     │ Role        │ can_finish │ can_delegate │ can_use_tools │
     ├─────────────┼────────────┼──────────────┼───────────────┤
@@ -221,25 +221,25 @@ class AgentRole(Enum):
     │ AUTONOMOUS  │     ✅     │      ❌      │      ✅       │
     │ REVIEWER    │     ✅     │      ❌      │      ❌       │
     └─────────────┴────────────┴──────────────┴───────────────┘
-    
+
     Usage Guide:
     ─────────────
     WORKER: The doer. Executes tasks, uses tools, reports results.
             Cannot finish the flow - must pass work to someone who can.
             Example: Researcher gathering data, Analyst running queries
-    
+
     SUPERVISOR: The manager. Delegates work, reviews results, decides.
                 Can finish the flow. Does NOT use tools directly.
                 Example: Team lead, Project manager, Director
-    
+
     AUTONOMOUS: The solo expert. Works independently, uses tools, decides.
                 Can finish the flow. Perfect for single-agent flows.
                 Example: Assistant, Solo analyst, Independent researcher
-    
+
     REVIEWER: The gatekeeper. Reviews work, approves or rejects.
               Can finish (approve) but doesn't do work or delegate.
               Example: QA reviewer, Editor, Validator
-    
+
     Topology Patterns:
     ──────────────────
     Pipeline:     WORKER → WORKER → REVIEWER

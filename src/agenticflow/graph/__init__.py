@@ -22,8 +22,8 @@ Simple API:
     ```
 """
 
+from agenticflow.graph.config import GraphConfig, GraphDirection, GraphTheme
 from agenticflow.graph.view import GraphView
-from agenticflow.graph.config import GraphConfig, GraphTheme, GraphDirection
 
 __all__ = [
     "GraphView",

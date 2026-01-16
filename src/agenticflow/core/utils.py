@@ -3,17 +3,17 @@ Utility functions for AgenticFlow.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def generate_id(prefix: str | int = "", length: int = 8) -> str:
     """
     Generate a short unique identifier.
-    
+
     Args:
         prefix: Optional prefix string, or length for backwards compatibility
         length: Number of characters (default 8)
-        
+
     Returns:
         A unique ID string, optionally with prefix
     """
@@ -21,7 +21,7 @@ def generate_id(prefix: str | int = "", length: int = 8) -> str:
     if isinstance(prefix, int):
         length = prefix
         prefix = ""
-    
+
     uid = str(uuid.uuid4()).replace("-", "")[:length]
     if prefix:
         return f"{prefix}_{uid}"
@@ -31,47 +31,47 @@ def generate_id(prefix: str | int = "", length: int = 8) -> str:
 def now_utc() -> datetime:
     """
     Get current UTC timestamp (timezone-aware).
-    
+
     Returns:
         Current datetime in UTC timezone
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def now_local() -> datetime:
     """
     Get current local timestamp (timezone-aware).
-    
+
     Returns:
         Current datetime in local timezone
     """
-    return datetime.now(timezone.utc).astimezone()
+    return datetime.now(UTC).astimezone()
 
 
 def to_local(dt: datetime) -> datetime:
     """
     Convert a datetime to local timezone.
-    
+
     Args:
         dt: Datetime to convert (can be naive or timezone-aware)
-        
+
     Returns:
         Datetime in local timezone
     """
     if dt.tzinfo is None:
         # Assume naive datetime is UTC
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.astimezone()
 
 
 def format_timestamp(dt: datetime | None, local: bool = True) -> str | None:
     """
     Format a datetime for display.
-    
+
     Args:
         dt: Datetime to format (can be None)
         local: If True, convert to local timezone first (default: True)
-        
+
     Returns:
         Formatted string or None
     """
@@ -85,11 +85,11 @@ def format_timestamp(dt: datetime | None, local: bool = True) -> str | None:
 def format_duration_ms(start: datetime | None, end: datetime | None) -> float | None:
     """
     Calculate duration in milliseconds between two timestamps.
-    
+
     Args:
         start: Start datetime
         end: End datetime
-        
+
     Returns:
         Duration in milliseconds or None if either is None
     """
@@ -101,12 +101,12 @@ def format_duration_ms(start: datetime | None, end: datetime | None) -> float | 
 def truncate_string(s: str, max_length: int = 200, suffix: str = "...") -> str:
     """
     Truncate a string to a maximum length.
-    
+
     Args:
         s: String to truncate
         max_length: Maximum length (default 200)
         suffix: Suffix to add if truncated (default "...")
-        
+
     Returns:
         Truncated string
     """
@@ -118,10 +118,10 @@ def truncate_string(s: str, max_length: int = 200, suffix: str = "...") -> str:
 def safe_json_value(value: object) -> object:
     """
     Convert a value to a JSON-safe representation.
-    
+
     Args:
         value: Any value
-        
+
     Returns:
         JSON-serializable value
     """
