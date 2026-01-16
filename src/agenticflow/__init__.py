@@ -392,6 +392,11 @@ from agenticflow.flow.patterns import (
     collaborative,
     mesh,
 )
+from agenticflow.flow.skills import (
+    Skill,
+    SkillBuilder,
+    skill,
+)
 
 # Reactors (event handlers for flows)
 from agenticflow.reactors import (
@@ -615,6 +620,10 @@ __all__ = [
     "on",
     "react_to",
     "when",
+    # Skills
+    "Skill",
+    "SkillBuilder",
+    "skill",
     # Tasks
     "TaskManager",
     # Tools
