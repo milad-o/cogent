@@ -480,7 +480,7 @@ async for chunk in flow.run_streaming("task"):
 
 ## See Also
 
-- [Reactive Flow Guide](reactive.md) — Event-driven orchestration
+- [Flow Guide](flow.md) — Event-driven orchestration
 - [Agent Streaming](agent.md#streaming) — Agent-level streaming
 - [Transport](transport.md) — Distributed event transport
 - [Examples](../examples/reactive/) — Complete examples

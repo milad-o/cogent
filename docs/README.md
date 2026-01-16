@@ -33,10 +33,9 @@ print(result.output)
 
 | Module | Description |
 |--------|-------------|
-| [Flow](flow.md) | Main entry point for orchestrating multiple agents |
-| [Topologies](topologies.md) | Coordination patterns (Supervisor, Pipeline, Mesh, Hierarchical) with A2A delegation |
+| [Flow](flow.md) | Event-driven orchestration for building multi-agent systems |
+| [Reactors](reactors.md) | Event handlers and orchestration building blocks |
 | [Tasks](tasks.md) | Hierarchical task tracking with lifecycle management |
-| [Reactive](reactive.md) | Event-driven orchestration with real-time reactions and streaming |
 | [A2A Communication](a2a.md) | **Agent-to-agent delegation across all flow types** 🆕 |
 
 ---
@@ -67,9 +66,10 @@ print(result.output)
 | Module | Description |
 |--------|-------------|
 | [Events](events.md) | Event types, EventBus, event-driven orchestration |
-| [Reactive Flows](reactive.md) | Event-driven reactive agent flows with triggers and reactions |
+| [Flow](flow.md) | Event-driven reactive agent flows with patterns and reactors |
+| [Reactors](reactors.md) | Reactor types and orchestration building blocks |
 | [A2A Communication](a2a.md) | **Agent-to-agent delegation across all flow types** 🆕 |
-| [Streaming](streaming.md) | Real-time token streaming from ReactiveFlow executions |
+| [Streaming](streaming.md) | Real-time token streaming from Flow executions |
 | [Transport](transport.md) | Distributed event transport (LocalTransport, RedisTransport) |
 
 ---

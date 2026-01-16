@@ -465,7 +465,7 @@ class NATSTransport:
 ## Next Steps
 
 - See [examples/reactive/distributed_transport_demo.py](../examples/reactive/distributed_transport_demo.py) for runnable demos
-- Explore [Reactive Flows](./reactive.md) for using transport in event-driven workflows
+- Explore [Flow](./flow.md) for using transport in event-driven workflows
 - Check [EventBus documentation](./events.md) for event routing patterns
 - Consider [Checkpointing](./checkpointer.md) for fault-tolerant distributed flows
 

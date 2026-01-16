@@ -890,7 +890,7 @@ See [examples/topologies/delegation.py](../examples/topologies/delegation.py) fo
 ## API Reference
 
 See also:
-- [Reactive Module](reactive.md) — Event-driven orchestration
+- [Flow Module](flow.md) — Event-driven orchestration
 - [Topologies Module](topologies.md) — Multi-agent coordination patterns
 - [Flow Module](flow.md) — Flow orchestration patterns
 - [Observability](observability.md) — Monitoring and tracing
