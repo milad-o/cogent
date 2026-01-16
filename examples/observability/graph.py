@@ -1,13 +1,11 @@
 """
-Example: Graph API - Visualize Agents and Topologies
+Example: Graph API - Visualize Agents
 
 Demonstrates the unified Graph API for generating visual diagrams
-of agents, topologies, and flows.
+of agents.
 
 Key API:
     view = agent.graph()         # Get GraphView from any entity
-    view = topology.graph()
-    view = flow.graph()
     
     view.mermaid() -> str        # Mermaid diagram code
     view.ascii() -> str          # Terminal-friendly text
@@ -18,11 +16,10 @@ Key API:
     view.save("file.png")        # Save to file (format from extension)
 
 Usage:
-    uv run python examples/observability/04_graph.py
+    uv run python examples/observability/graph.py
 """
 
 from agenticflow import Agent, tool
-from agenticflow.topologies import Supervisor, Pipeline, AgentConfig
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -86,50 +83,6 @@ def demo_agent_graph():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Topology Visualization
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def demo_topology_graph():
-    """Visualize multi-agent topologies."""
-    print("\n" + "=" * 60)
-    print("Topology Graphs")
-    print("=" * 60)
-
-    # Create agents
-    manager = Agent(name="Manager", instructions="Coordinate the team.")
-    researcher = Agent(name="Researcher", tools=[search])
-    writer = Agent(name="Writer", tools=[write])
-    editor = Agent(name="Editor", tools=[review])
-
-    # Supervisor topology
-    print("\n--- Supervisor ---")
-    supervisor = Supervisor(
-        coordinator=AgentConfig(agent=manager, role="coordinator"),
-        workers=[
-            AgentConfig(agent=researcher, role="research"),
-            AgentConfig(agent=writer, role="writing"),
-        ],
-    )
-    print(supervisor.graph().mermaid())
-
-    # Pipeline topology
-    print("\n--- Pipeline ---")
-    pipeline = Pipeline(
-        stages=[
-            AgentConfig(agent=researcher, role="gather"),
-            AgentConfig(agent=writer, role="draft"),
-            AgentConfig(agent=editor, role="polish"),
-        ]
-    )
-    print(pipeline.graph().mermaid())
-
-    # ASCII view
-    print("\n--- Pipeline (ASCII) ---")
-    print(pipeline.graph().ascii())
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Saving Diagrams
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -167,7 +120,6 @@ def main():
     print("=" * 60)
 
     demo_agent_graph()
-    demo_topology_graph()
     demo_save_options()
 
     print("\n" + "=" * 60)
