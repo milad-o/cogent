@@ -25,7 +25,7 @@ from agenticflow.agent.output import (
     validate_and_parse,
 )
 from agenticflow.agent.resilience import ModelResilience, RetryPolicy
-from agenticflow.context import EMPTY_CONTEXT, RunContext
+from agenticflow.core.context import EMPTY_CONTEXT, RunContext
 
 # Native message types
 from agenticflow.core.messages import (

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, get_type_hints
 
 if TYPE_CHECKING:
-    from agenticflow.context import RunContext
+    from agenticflow.core.context import RunContext
 
 
 @dataclass

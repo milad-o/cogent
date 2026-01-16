@@ -435,7 +435,7 @@ Define tools with the `@tool` decorator—automatic schema extraction from type 
 
 ```python
 from agenticflow import tool
-from agenticflow.context import RunContext
+from agenticflow.core.context import RunContext
 
 @tool
 def search(query: str, max_results: int = 10) -> str:
