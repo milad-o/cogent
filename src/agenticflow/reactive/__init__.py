@@ -120,17 +120,10 @@ if TYPE_CHECKING:
     )
     from agenticflow.reactive.patterns import (  # noqa: TC004
         Chain,
-        ChainPattern,
         FanIn,
-        FanInPattern,
         FanOut,
-        FanOutPattern,
-        Route,
         Router,
-        RouterPattern,
         Saga,
-        SagaPattern,
-        SagaStep,
         chain,
         fanout,
         route,
@@ -218,14 +211,6 @@ __all__ = [
     "ReactiveContext",
     "create_request",
     "create_response",
-    # Legacy compatibility
-    "ChainPattern",
-    "FanInPattern",
-    "FanOutPattern",
-    "Route",
-    "RouterPattern",
-    "SagaPattern",
-    "SagaStep",
 ]
 
 
@@ -253,14 +238,6 @@ _LAZY_PATTERNS_EXPORTS: frozenset[str] = frozenset(
         "FanOut",
         "Router",
         "Saga",
-        # Legacy compatibility
-        "ChainPattern",
-        "FanInPattern",
-        "FanOutPattern",
-        "Route",
-        "RouterPattern",
-        "SagaPattern",
-        "SagaStep",
     }
 )
 
