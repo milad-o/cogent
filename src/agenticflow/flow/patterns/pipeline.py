@@ -26,6 +26,7 @@ from agenticflow.flow.core import Flow
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
+    from agenticflow.observability.observer import Observer
     from agenticflow.reactors.base import Reactor
 
 
@@ -33,6 +34,7 @@ def pipeline(
     stages: list[Agent | Reactor],
     *,
     config: FlowConfig | None = None,
+    observer: Observer | None = None,
     start_event: str = "task.created",
     done_event: str = "flow.done",
 ) -> Flow:
@@ -44,6 +46,7 @@ def pipeline(
     Args:
         stages: List of agents/reactors to chain
         config: Optional flow configuration
+        observer: Optional observer for monitoring
         start_event: Event type that starts the pipeline (default: "task.created")
         done_event: Event type emitted when pipeline completes (default: "flow.done")
 
@@ -84,7 +87,7 @@ def pipeline(
         config_dict["stop_events"] = frozenset([*flow_config.stop_events, done_event])
         flow_config = FlowConfig(**config_dict)
 
-    flow = Flow(config=flow_config)
+    flow = Flow(config=flow_config, observer=observer)
 
     # Wire stages in sequence
     for i, stage in enumerate(stages):

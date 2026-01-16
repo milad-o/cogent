@@ -40,15 +40,22 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.8.0 - January 2026)
+## 🎉 Latest Changes (v1.8.1 - January 2026)
 
-**Module Reorganization** — Cleaner separation of concerns
+**API Simplification** — Cleaner, more intuitive Agent creation
+- ✨ **Simplified Agent API** — Removed dual API pattern, now single constructor
+  - Direct parameters only: `Agent(name, model, tools, ...)`
+  - `AgentConfig` removed from public API (internal use only)
+  - No breaking changes to existing direct parameter usage
+- 🔄 **Enhanced Pattern Helpers** — Added `observer` parameter
+  - `pipeline(stages, observer=Observer.debug())`
+  - `supervisor(coordinator, workers, observer=...)`
+- 📝 **Updated Examples** — All examples use modern pattern helpers
+- 🐛 **Bug Fixes** — Fixed import issues in reactive module and tests
+
+**Previous (v1.8.0)** — Module Reorganization
 - 🏗️ **Core Module Cleanup** — Moved generic utilities from `flow/` to `core/`
-  - `RunContext`, `IdempotencyGuard`, `RetryBudget` now in `core/`
-  - Deleted unused `core/models.py` (222 lines)
-  - Consolidated `flow/threading.py` into `flow/reactive.py`
 - 🔄 **Backward Compatibility** — Added `reactive.py` compatibility module
-- 📦 **Architecture** — Clear layering: `core/` = primitives, `flow/` = orchestration
 - ✅ **Zero Breaking Changes** — All 1,333 tests pass
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
@@ -274,27 +281,22 @@ Coordination patterns for multi-agent workflows with built-in **A2A delegation**
 | `Mesh` | All agents collaborate in rounds | Brainstorming, consensus |
 | `Hierarchical` | Tree structure with team leads | Large organizations |
 
-**A2A Delegation** — Declaratively configure which agents can delegate to others:
+**Modern Pattern API:**
 
 ```python
-from agenticflow.topologies import Supervisor, AgentConfig
+from agenticflow import pipeline, supervisor, mesh
 
-supervisor = Supervisor(
-    coordinator=AgentConfig(
-        agent=manager,
-        role="manager",
-        can_delegate=["researcher", "writer"]  # Enable delegation
-    ),
-    workers=[
-        AgentConfig(agent=researcher, role="researcher", can_reply=True),
-        AgentConfig(agent=writer, role="writer", can_reply=True),
-    ]
-)
+# Pipeline: Sequential processing
+flow = pipeline([researcher, writer, editor])
+result = await flow.run("Write a blog post about AI")
 
-# Framework auto-injects:
-# - delegate_to tool for manager
-# - reply_with_result tool for workers
-# - Enhanced prompts with delegation instructions
+# Supervisor: Coordinator delegates to workers  
+flow = supervisor(coordinator=manager, workers=[researcher, writer])
+result = await flow.run("Research and write about quantum computing")
+
+# Mesh: Collaborative multi-agent rounds
+flow = mesh([analyst, strategist, critic])
+result = await flow.run("Develop a go-to-market strategy")
 ```
 
 **See [docs/topologies.md](docs/topologies.md) for delegation examples across all patterns.**

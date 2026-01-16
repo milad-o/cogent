@@ -125,10 +125,10 @@ class Agent:
         ```
     """
 
-    @overload
     def __init__(
         self,
         *,
+        # Core parameters
         name: str,
         model: BaseChatModel | None = None,
         role: AgentRole | Literal["worker", "supervisor", "reviewer", "autonomous"] | RoleConfig = AgentRole.WORKER,
@@ -138,133 +138,76 @@ class Agent:
         capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
-        memory: bool | AgentMemory | None = None,
-        store: Any = None,
-        taskboard: bool | TaskBoardConfig | None = None,
-    ) -> None:
-        """Simplified constructor - create agent with direct parameters."""
-        ...
-
-    @overload
-    def __init__(
-        self,
-        config: AgentConfig,
+        
+        # Advanced parameters (usually provided by Flow)
         event_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
+        
+        # Memory and state
         memory: bool | AgentMemory | None = None,
         store: Any = None,
-    ) -> None:
-        """Advanced constructor - create agent with AgentConfig."""
-        ...
-
-    def __init__(
-        self,
-        config: AgentConfig | None = None,
-        event_bus: TraceBus | None = None,
-        tool_registry: ToolRegistry | None = None,
-        memory: bool | AgentMemory | None = None,
-        store: Any = None,
-        *,
-        # Simplified API parameters
-        name: str | None = None,
-        model: BaseChatModel | None = None,
-        role: AgentRole | Literal["worker", "supervisor", "reviewer", "autonomous"] | RoleConfig = AgentRole.WORKER,
-        description: str = "",
-        instructions: str | None = None,
-        tools: Sequence[BaseTool | str | Callable] | None = None,
-        capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
-        system_prompt: str | None = None,
-        resilience: ResilienceConfig | None = None,
-        interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,  # HITL: tool approval rules
-        stream: bool = False,  # Enable streaming by default for this agent
-        # Reasoning - extended thinking mode
+        
+        # HITL and streaming
+        interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
+        stream: bool = False,
+        
+        # Advanced features
         reasoning: bool | ReasoningConfig = False,
-        # Structured output - enforce response schema
         output: type | dict | ResponseSchema | None = None,
-        # Interceptors - composable execution hooks
         intercept: Sequence[Callable] | None = None,
-        # Spawning - dynamic agent creation
         spawning: SpawningConfig | None = None,
+        
         # Observability
-        verbose: bool | Literal["verbose", "debug", "trace"] = False,  # Simple observability for standalone usage
-        observer: Observer | None = None,  # Observer for rich observability
-        # TaskBoard: Human-like task tracking
+        verbose: bool | Literal["verbose", "debug", "trace"] = False,
+        observer: Observer | None = None,
+        
+        # TaskBoard
         taskboard: bool | TaskBoardConfig | None = None,
+        
         # Role-specific parameters (only used if role is string/enum, ignored if RoleConfig)
-        workers: list[str] | None = None,  # SUPERVISOR: list of worker agent names
-        criteria: list[str] | None = None,  # REVIEWER: evaluation criteria
-        specialty: str | None = None,  # WORKER: description of specialty
-        # Capability overrides (customize role behavior)
-        can_finish: bool | None = None,  # Override: can provide FINAL ANSWER
-        can_delegate: bool | None = None,  # Override: can delegate to other agents
-        can_use_tools: bool | None = None,  # Override: can call tools
+        workers: list[str] | None = None,
+        criteria: list[str] | None = None,
+        specialty: str | None = None,
+        
+        # Capability overrides
+        can_finish: bool | None = None,
+        can_delegate: bool | None = None,
+        can_use_tools: bool | None = None,
     ) -> None:
         """
         Initialize an Agent.
 
-        Can be called two ways:
-
-        1. Simplified (recommended for use with Flow):
-            Agent(name="Worker", model=model, tools=[...], instructions="...")
-
-        2. Advanced (for full control):
-            Agent(config=AgentConfig(...), event_bus=bus, tool_registry=registry)
-
         Args:
-            config: Agent configuration (advanced API)
+            name: Agent name
+            model: Chat model instance
+            role: Agent role - string, AgentRole enum, or RoleConfig object
+            description: Agent description
+            instructions: Instructions for the agent - defines behavior and personality
+            tools: List of tools - BaseTool objects, strings, or callables
+            capabilities: Additional capabilities to enable
+            system_prompt: System prompt (alias for instructions)
+            resilience: ResilienceConfig for retry logic and circuit breakers
             event_bus: Event bus for communication (optional, Flow provides this)
             tool_registry: Registry of available tools (optional, Flow provides this)
-            memory: Memory backend for conversation persistence. Accepts:
-                - True: Use built-in InMemoryCheckpointer (for testing)
-                - AgentMemory instance: For custom configuration
-            store: Store for long-term memory across threads.
-            name: Agent name (simplified API)
-            model: Chat model (simplified API)
-            role: Agent role - accepts string ("worker", "supervisor", "reviewer", "autonomous"),
-                  AgentRole enum, or RoleConfig object (simplified API)
-            description: Agent description (simplified API)
-            instructions: Instructions for the agent - defines behavior and personality
-            tools: List of tools - can be BaseTool objects, strings, or callable functions (simplified API)
-            capabilities: Additional capabilities to enable (tools, document loaders, retrievers, etc.)
-            system_prompt: System prompt (alias for instructions, for compatibility)
-            resilience: ResilienceConfig for retry logic, circuit breakers, and fallback strategies
-            interrupt_on: HITL rules for tool approval. Dict mapping tool names to approval rules:
-                - True: Always require approval
-                - False: Never require approval
-                - Callable: Function (tool_name, args) -> bool to decide dynamically
-            stream: Enable token-by-token streaming by default for this agent.
-                   When True, chat() and think() return async iterators.
-            reasoning: Enable extended thinking/chain-of-thought mode:
-                - True: Use default ReasoningConfig
-                - ReasoningConfig: Custom reasoning configuration
-                - False: Disabled (default)
-            output: Enforce structured output schema. Accepts:
-                - Pydantic BaseModel class
-                - dataclass class
-                - TypedDict class
-                - JSON Schema dict
-                - ResponseSchema for fine-grained control
-                When set, agent.run() returns StructuredResult with validated data.
-            intercept: List of interceptors for execution hooks (BudgetGuard, ContextCompressor, etc.)
-            spawning: SpawningConfig for dynamic agent creation. Enables agents to spawn specialist
-                     child agents for parallel task execution.
-            verbose: Enable observability for standalone agent usage:
-                - False: No output (silent)
-                - True: Progress (thinking/responding with timing)
-                - "verbose": Show agent outputs/thoughts
-                - "debug": Show everything including tool calls
-                - "trace": Maximum detail + execution graph
-            observer: Observer instance for rich observability. Takes precedence over verbose.
-                     Use Observer.debug(), Observer.trace(), etc.
-            taskboard: Enable task tracking with planning/execution tools:
-                - True: Use default TaskBoardConfig
-                - TaskBoardConfig: Custom task management configuration
-                - False/None: Disabled (default)
-            workers: List of worker agent names (for SUPERVISOR role, enhances prompt)
-            criteria: List of evaluation criteria (for REVIEWER role, enhances prompt)
-            specialty: Description of specialty (for WORKER role, enhances prompt)
-            can_finish: Override capability to provide FINAL ANSWER (custom roles)
-            can_delegate: Override capability to delegate to other agents (custom roles)
+            memory: Memory backend for conversation persistence:
+                - True: Use built-in InMemoryCheckpointer
+                - AgentMemory instance: Custom configuration
+            store: Store for long-term memory across threads
+            interrupt_on: HITL rules - dict mapping tool names to approval rules
+            stream: Enable token-by-token streaming by default
+            reasoning: Enable extended thinking/chain-of-thought mode
+            output: Enforce structured output schema
+            intercept: List of interceptors for execution hooks
+            spawning: SpawningConfig for dynamic agent creation
+            verbose: Enable observability - False, True, "verbose", "debug", or "trace"
+            observer: Observer instance for rich observability
+            taskboard: Enable task tracking - True, TaskBoardConfig, or False/None
+            workers: Worker agent names (for SUPERVISOR role)
+            criteria: Evaluation criteria (for REVIEWER role)
+            specialty: Description of specialty (for WORKER role)
+            can_finish: Override capability to provide FINAL ANSWER
+            can_delegate: Override capability to delegate to other agents
+            can_use_tools: Override capability to call tools
             can_use_tools: Override capability to call tools (custom roles)
 
         Example with memory:
@@ -379,61 +322,52 @@ class Agent:
             )
             ```
         """
-        # Handle simplified API
-        if config is None:
-            if name is None:
-                raise ValueError(
-                    "Either provide 'config' (AgentConfig) or 'name' parameter.\n"
-                    "Simplified: Agent(name='Worker', model=model)\n"
-                    "Advanced: Agent(config=AgentConfig(...))"
-                )
+        # Handle role - can be string, enum, or RoleConfig object
+        role_config = None
+        role_enum = None
 
-            # Handle role - can be string, enum, or RoleConfig object
-            role_config = None
-            role_enum = None
+        if isinstance(role, str):
+            # String role - convert to enum
+            role_enum = AgentRole(role.lower())
+        elif hasattr(role, 'get_role_type'):
+            # RoleConfig object
+            role_config = role
+            role_enum = role_config.get_role_type()
+        else:
+            # AgentRole enum directly
+            role_enum = role
 
-            if isinstance(role, str):
-                # String role - convert to enum
-                role_enum = AgentRole(role.lower())
-            elif hasattr(role, 'get_role_type'):
-                # RoleConfig object
-                role_config = role
-                role_enum = role_config.get_role_type()
-            else:
-                # AgentRole enum directly
-                role_enum = role
+        # Extract tool names and store tool objects
+        tool_names: list[str] = []
+        self._direct_tools: list[BaseTool] = []
 
-            # Extract tool names and store tool objects
-            tool_names: list[str] = []
-            self._direct_tools: list[BaseTool] = []
+        if tools:
+            for tool in tools:
+                if isinstance(tool, str):
+                    tool_names.append(tool)
+                elif isinstance(tool, BaseTool):
+                    tool_names.append(tool.name)
+                    self._direct_tools.append(tool)
+                else:
+                    # Try to get name attribute
+                    tool_names.append(getattr(tool, "name", str(tool)))
 
-            if tools:
-                for tool in tools:
-                    if isinstance(tool, str):
-                        tool_names.append(tool)
-                    elif isinstance(tool, BaseTool):
-                        tool_names.append(tool.name)
-                        self._direct_tools.append(tool)
-                    else:
-                        # Try to get name attribute
-                        tool_names.append(getattr(tool, "name", str(tool)))
+        # instructions takes priority over system_prompt
+        # If neither provided, use role-specific default prompt
+        effective_prompt = instructions or system_prompt
+        if not effective_prompt:
+            from agenticflow.agent.roles import get_role_prompt
+            has_tools = bool(tool_names or self._direct_tools)
+            effective_prompt = get_role_prompt(role_enum, has_tools=has_tools)
 
-            # instructions takes priority over system_prompt
-            # If neither provided, use role-specific default prompt
-            effective_prompt = instructions or system_prompt
-            if not effective_prompt:
-                from agenticflow.agent.roles import get_role_prompt
-                has_tools = bool(tool_names or self._direct_tools)
-                effective_prompt = get_role_prompt(role_enum, has_tools=has_tools)
-
-            # If we have a RoleConfig object, let it enhance the prompt
-            if role_config:
-                effective_prompt = role_config.enhance_prompt(effective_prompt)
-            else:
-                # Otherwise, use legacy parameter-based enhancement
-                # (workers, criteria, specialty are ignored if RoleConfig is used)
-                if workers and role_enum == AgentRole.SUPERVISOR:
-                    effective_prompt += f"\n\nYour team members: {', '.join(workers)}"
+        # If we have a RoleConfig object, let it enhance the prompt
+        if role_config:
+            effective_prompt = role_config.enhance_prompt(effective_prompt)
+        else:
+            # Otherwise, use legacy parameter-based enhancement
+            # (workers, criteria, specialty are ignored if RoleConfig is used)
+            if workers and role_enum == AgentRole.SUPERVISOR:
+                effective_prompt += f"\n\nYour team members: {', '.join(workers)}"
 
                 if criteria and role_enum == AgentRole.REVIEWER:
                     effective_prompt += "\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
@@ -441,66 +375,23 @@ class Agent:
                 if specialty and role_enum == AgentRole.WORKER:
                     effective_prompt += f"\n\nYour specialty: {specialty}"
 
-            # Store role config for capability lookups
-            self._role_config = role_config
+        # Store role config for capability lookups
+        self._role_config = role_config
 
-            # Create config from simplified params
-            config = AgentConfig(
-                name=name,
-                role=role_enum,
-                description=description,
-                model=model,
-                system_prompt=effective_prompt,
-                tools=tool_names,
-                resilience_config=resilience,
-                interrupt_on=interrupt_on or {},
-                stream=stream,
-            )
-        else:
-            # Using AgentConfig directly - still need to process tools parameter
-            self._direct_tools = []
-            if tools:
-                for tool in tools:
-                    if isinstance(tool, str):
-                        if tool not in config.tools:
-                            config.tools.append(tool)
-                    elif isinstance(tool, BaseTool):
-                        if tool.name not in config.tools:
-                            config.tools.append(tool.name)
-                        self._direct_tools.append(tool)
-                    else:
-                        tool_name = getattr(tool, "name", str(tool))
-                        if tool_name not in config.tools:
-                            config.tools.append(tool_name)
+        # Create config from parameters (internal use only)
+        config = AgentConfig(
+            name=name,
+            role=role_enum,
+            description=description,
+            model=model,
+            system_prompt=effective_prompt,
+            tools=tool_names,
+            resilience_config=resilience,
+            interrupt_on=interrupt_on or {},
+            stream=stream,
+        )
 
-            # Apply default role prompt if no system_prompt provided
-            if not config.system_prompt:
-                from agenticflow.agent.roles import get_role_prompt
-                has_tools = bool(config.tools or self._direct_tools)
-                config = AgentConfig(
-                    name=config.name,
-                    role=config.role,
-                    description=config.description,
-                    model=config.model,
-                    temperature=config.temperature,
-                    max_tokens=config.max_tokens,
-                    system_prompt=get_role_prompt(config.role, has_tools=has_tools),
-                    model_kwargs=config.model_kwargs,
-                    stream=config.stream,
-                    tools=config.tools,
-                    max_concurrent_tasks=config.max_concurrent_tasks,
-                    timeout_seconds=config.timeout_seconds,
-                    retry_on_error=config.retry_on_error,
-                    max_retries=config.max_retries,
-                    resilience_config=config.resilience_config,
-                    fallback_tools=config.fallback_tools,
-                    interrupt_on=config.interrupt_on,
-                    metadata=config.metadata,
-                )
-
-            # No role config in advanced API mode
-            self._role_config = None
-
+        # Initialize agent state
         self.id = generate_id()
         self.config = config
         self.state = AgentState()

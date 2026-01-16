@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model, settings
 
-from agenticflow import Agent, Flow
+from agenticflow import Agent, Observer, pipeline
 
 
 async def main():
@@ -28,14 +28,9 @@ async def main():
         instructions="You are a helpful assistant. Be concise.",
     )
 
-    # Simple observability with verbose parameter
-    # Options: True (progress), "verbose" (outputs), "debug" (tools), "trace" (all)
-    flow = Flow(
-        name="basic",
-        agents=[assistant],
-        topology="pipeline",
-        verbose=settings.verbose_level,
-    )
+    # Simple flow with pipeline pattern
+    # Pipeline runs agents sequentially
+    flow = pipeline([assistant])
 
     result = await flow.run("What is 2 + 2? Explain briefly.")
     print(f"\nResult: {result.output}")

@@ -23,7 +23,7 @@ from agenticflow.flow.triggers import react_to
 from agenticflow.flow.skills import skill
 
 # Legacy imports for backward compatibility
-from agenticflow.events import Observer
+from agenticflow.observability import Observer
 
 __all__ = [
     # Flow classes
