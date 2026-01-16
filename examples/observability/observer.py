@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model
 
-from agenticflow import Agent, Flow, Observer, Channel, ObservabilityLevel
+from agenticflow import Agent, Observer, Channel, ObservabilityLevel, pipeline
 
 
 async def demo_levels():
@@ -32,22 +32,12 @@ async def demo_levels():
     
     # Verbose - see what agents are thinking
     print("\n--- Level: verbose() - See Agent Thoughts ---")
-    flow = Flow(
-        name="demo",
-        agents=[analyst, writer],
-        topology="pipeline",
-        observer=Observer.verbose(),
-    )
+    flow = pipeline([analyst, writer], observer=Observer.verbose())
     await flow.run("Analyze: What's 2+2? Then summarize.")
     
     # JSON - structured, readable output
     print("\n--- Level: json() - Structured Output ---")
-    flow = Flow(
-        name="demo",
-        agents=[analyst, writer],
-        topology="pipeline",
-        observer=Observer.json(),
-    )
+    flow = pipeline([analyst, writer], observer=Observer.json())
     await flow.run("Explain why the sky is blue.")
 
 
@@ -63,12 +53,7 @@ async def demo_trace():
     print("\n--- Level: trace() - Deep Execution Tracing ---")
     observer = Observer.trace()
     
-    flow = Flow(
-        name="research-pipeline",
-        agents=[researcher, analyst, writer],
-        topology="pipeline",
-        observer=observer,
-    )
+    flow = pipeline([researcher, analyst, writer], observer=observer)
     await flow.run("Research the benefits of exercise, analyze the data, and write a summary.")
     
     # After execution, get insights:
@@ -103,12 +88,7 @@ async def demo_callbacks():
     )
     
     print("\n--- Custom Callbacks (silent collection) ---")
-    flow = Flow(
-        name="demo",
-        agents=[analyst, writer],
-        topology="pipeline",
-        observer=observer,
-    )
+    flow = pipeline([analyst, writer], observer=observer)
     await flow.run("Quick analysis of Python vs JavaScript")
     
     print(f"  Collected {len(events)} events")

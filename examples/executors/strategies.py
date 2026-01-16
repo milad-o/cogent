@@ -3,19 +3,13 @@
 Execution Strategies Demo
 =========================
 
-This example demonstrates the three execution strategies available in AgenticFlow:
+This example demonstrates using different executors in AgenticFlow.
 
-1. NATIVE (default) - High-performance parallel tool execution
-2. SEQUENTIAL - Sequential tool execution for ordered tasks
-3. TREE_SEARCH - LATS-style Monte Carlo tree search with backtracking
-
-Each strategy has different trade-offs:
-- NATIVE: Fastest, executes tools in parallel
-- SEQUENTIAL: More predictable, ordered execution
-- TREE_SEARCH: Best accuracy for complex reasoning, but slower
+The simplified Agent API uses NativeExecutor by default (parallel tool execution).
+For sequential execution or other strategies, use executors directly.
 
 Usage:
-    python examples/executors_demo.py
+    python examples/executors/strategies_demo.py
     
 Requires:
     Configure examples/.env with your preferred LLM_PROVIDER
@@ -29,7 +23,8 @@ from pathlib import Path
 # Add examples dir to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agenticflow import Agent, AgentConfig, ExecutionStrategy
+from agenticflow import Agent
+from agenticflow.executors import NativeExecutor, SequentialExecutor
 from agenticflow.tools import tool
 
 # Import from examples config
@@ -100,21 +95,20 @@ def search_database(query: str) -> str:
 # =============================================================================
 
 async def demo_native():
-    """Demonstrate NATIVE execution strategy (parallel)."""
-    print("\n" + "=" * 60)
-    print("🚀 NATIVE Strategy (Parallel Execution)")
+    """Demonstrate NATIVE execution (default - parallel tool execution)."""
+    print("\\n" + "=" * 60)
+    print("🚀 NATIVE Executor (Parallel - Default)")
     print("=" * 60)
     
     model = get_model()
     
-    config = AgentConfig(
+    # By default, Agent uses NativeExecutor (parallel tool execution)
+    agent = Agent(
         name="NativeAgent",
         model=model,
-        execution_strategy="native",  # String format works!
-        system_prompt="You are a helpful assistant. Use tools when appropriate.",
+        tools=[calculate, get_weather, search_database],
+        instructions="You are a helpful assistant. Use tools when appropriate.",
     )
-    
-    agent = Agent(config=config, tools=[calculate, get_weather, search_database])
     
     task = """
     I need you to:
@@ -129,26 +123,28 @@ async def demo_native():
     result = await agent.run(task)
     elapsed = time.time() - start
     
-    print(f"\n📊 Result:\n{result}")
-    print(f"\n⏱️  Time: {elapsed:.2f}s (tools run in PARALLEL)")
+    print(f"\\n📊 Result:\\n{result}")
+    print(f"\\n⏱️  Time: {elapsed:.2f}s (tools run in PARALLEL)")
 
 
 async def demo_sequential():
-    """Demonstrate SEQUENTIAL execution strategy."""
-    print("\n" + "=" * 60)
-    print("📋 SEQUENTIAL Strategy (Ordered Execution)")
+    """Demonstrate SEQUENTIAL execution using executor directly."""
+    print("\\n" + "=" * 60)
+    print("📋 SEQUENTIAL Executor (Ordered Execution)")
     print("=" * 60)
     
     model = get_model()
     
-    config = AgentConfig(
+    # Create agent
+    agent = Agent(
         name="SequentialAgent",
         model=model,
-        execution_strategy=ExecutionStrategy.SEQUENTIAL,  # Enum format
-        system_prompt="You are a helpful assistant. Use tools when appropriate.",
+        tools=[calculate, get_weather, search_database],
+        instructions="You are a helpful assistant. Use tools when appropriate.",
     )
     
-    agent = Agent(config=config, tools=[calculate, get_weather, search_database])
+    # Use SequentialExecutor directly for ordered execution
+    executor = SequentialExecutor(agent)
     
     task = """
     I need you to:
@@ -160,77 +156,37 @@ async def demo_sequential():
     """
     
     start = time.time()
-    result = await agent.run(task)
+    result = await executor.execute(task)
     elapsed = time.time() - start
     
-    print(f"\n📊 Result:\n{result}")
-    print(f"\n⏱️  Time: {elapsed:.2f}s (tools run SEQUENTIALLY)")
-
-
-async def demo_tree_search():
-    """Demonstrate TREE_SEARCH execution strategy (LATS)."""
-    print("\n" + "=" * 60)
-    print("🌳 TREE_SEARCH Strategy (LATS with Backtracking)")
-    print("=" * 60)
-    
-    model = get_model()
-    
-    config = AgentConfig(
-        name="TreeSearchAgent",
-        model=model,
-        execution_strategy="tree_search",  # String format
-        system_prompt="""You are a precise assistant that thinks step by step.
-        Break down complex problems and verify your work.""",
-    )
-    
-    agent = Agent(config=config, tools=[calculate])
-    
-    # Tree search shines with complex reasoning
-    task = """
-    Solve this step by step:
-    
-    If I have 150 apples and give away 1/3 of them, then buy 20 more,
-    how many apples do I have?
-    
-    Show your calculation steps.
-    """
-    
-    start = time.time()
-    result = await agent.run(task)
-    elapsed = time.time() - start
-    
-    print(f"\n📊 Result:\n{result}")
-    print(f"\n⏱️  Time: {elapsed:.2f}s (explores multiple paths, best ACCURACY)")
+    print(f"\\n📊 Result:\\n{result}")
+    print(f"\\n⏱️  Time: {elapsed:.2f}s (tools run SEQUENTIALLY)")
 
 
 async def main():
     """Run all demos."""
-    print("\n" + "🎯 " * 20)
+    print("\\n" + "🎯 " * 20)
     print("AGENTICFLOW EXECUTION STRATEGIES DEMO")
     print("🎯 " * 20)
     
     # Uses LLM_PROVIDER from examples/.env
     
-    # Run NATIVE and SEQUENTIAL strategies
+    # Run demos
     await demo_native()
     await demo_sequential()
     
-    # NOTE: TREE_SEARCH is experimental and best for complex reasoning tasks
-    # await demo_tree_search()
-    
-    print("\n" + "=" * 60)
+    print("\\n" + "=" * 60)
     print("✅ Demo Complete!")
     print("=" * 60)
     print("""
 Summary:
-- NATIVE: Fastest, parallel tool execution (default)
-- SEQUENTIAL: Ordered execution, predictable
-- TREE_SEARCH: Best accuracy, explores alternatives
+- NATIVE (default): Fastest, parallel tool execution
+- SEQUENTIAL: Ordered execution, tools run one at a time
+- TREE_SEARCH: Available via TreeSearchExecutor for complex reasoning
 
-Choose based on your needs:
-- Speed → NATIVE
-- Order matters → SEQUENTIAL  
-- Complex reasoning → TREE_SEARCH
+For most use cases, the default NATIVE executor is recommended.
+Use SequentialExecutor when order of execution matters.
+See tree_search_demo.py for advanced tree search examples.
 """)
 
 

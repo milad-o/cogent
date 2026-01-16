@@ -1081,6 +1081,7 @@ class NativeExecutor(BaseExecutor):
             build_reasoning_prompt,
             estimate_confidence,
             extract_thinking,
+            extract_ready,
         )
         from agenticflow.observability.trace_record import TraceType
 
@@ -1134,8 +1135,10 @@ class NativeExecutor(BaseExecutor):
 
             content = response.content or ""
 
-            # Extract thinking from response
+            # Extract thinking and ready signal from response
             thinking, cleaned = extract_thinking(content)
+            is_ready = extract_ready(content)
+            
             if thinking:
                 final_thinking = thinking
                 confidence = estimate_confidence(thinking)
@@ -1156,11 +1159,15 @@ class NativeExecutor(BaseExecutor):
                         "phase": "thinking",
                         "reasoning_type": step.reasoning_type,
                         "round": round_num,
-                        "thought_preview": thinking[:200] + "..." if len(thinking) > 200 else thinking,
+                        "thought_preview": thinking,  # Full thought, no truncation
                         "confidence": confidence,
                     })
 
-                # Check if confident enough to stop
+                # Check if AI signaled it's ready to proceed
+                if is_ready:
+                    break
+
+                # Also check confidence threshold if configured
                 if config.require_confidence and confidence >= config.require_confidence:
                     break
 

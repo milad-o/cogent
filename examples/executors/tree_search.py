@@ -33,7 +33,7 @@ from pathlib import Path
 # Add examples dir to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agenticflow import Agent, AgentConfig
+from agenticflow import Agent
 from agenticflow.executors import TreeSearchExecutor
 from agenticflow.tools import tool
 
@@ -91,15 +91,14 @@ async def demo_tree_search():
     model = get_model()
     
     # Create agent without execution_strategy (we'll use executor directly)
-    config = AgentConfig(
+    agent = Agent(
         name="ReasoningAgent",
         model=model,
-        system_prompt="""You are a precise mathematical reasoner.
+        tools=[calculate, lookup_fraction],
+        instructions="""You are a precise mathematical reasoner.
 Break down problems step by step and verify your work.
 Use the calculate tool for arithmetic.""",
     )
-    
-    agent = Agent(config=config, tools=[calculate, lookup_fraction])
     
     # Create tree search executor with custom settings
     executor = TreeSearchExecutor(agent)
@@ -166,13 +165,12 @@ async def demo_comparison():
     
     model = get_model()
     
-    config = AgentConfig(
+    agent = Agent(
         name="ComparisonAgent",
         model=model,
-        system_prompt="You are a helpful math assistant. Use tools when needed.",
+        tools=[calculate],
+        instructions="You are a helpful math assistant. Use tools when needed.",
     )
-    
-    agent = Agent(config=config, tools=[calculate])
     
     task = "What is 25 factorial divided by 24 factorial? (Hint: think about the relationship)"
     

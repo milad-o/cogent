@@ -29,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent, Observer
 from agenticflow.agent import ReasoningConfig, ReasoningStyle
-from agenticflow.observability import ObservabilityLevel
 from agenticflow.tools.base import tool
 
 # Handle both direct execution and module import
@@ -120,11 +119,8 @@ async def example_basic_reasoning():
         model=model,
         tools=[get_company_data, calculate_metrics],
         reasoning=True,  # Enable default reasoning
+        observer=Observer.trace(),  # Show all reasoning events
     )
-    
-    # Attach observer to see reasoning events
-    observer = Observer(level=ObservabilityLevel.TRACE)
-    agent.add_observer(observer)
     
     result = await agent.run(
         "Analyze ACME Corp's financial health and provide a recommendation."
@@ -152,10 +148,8 @@ async def example_reasoning_styles():
         model=model,
         tools=[get_company_data, calculate_metrics, compare_companies],
         reasoning=ReasoningConfig.critical(),
+        observer=Observer.normal(),  # Show progress and reasoning
     )
-    
-    observer = Observer(level=ObservabilityLevel.PROGRESS)
-    agent.add_observer(observer)
     
     result = await agent.run(
         "Compare ACME Corp and TechStart Inc. Which is a better investment?"
@@ -183,10 +177,8 @@ async def example_deep_reasoning():
         model=model,
         tools=[get_company_data, calculate_metrics],
         reasoning=ReasoningConfig.deep(),
+        observer=Observer.normal(),
     )
-    
-    observer = Observer(level=ObservabilityLevel.PROGRESS)
-    agent.add_observer(observer)
     
     result = await agent.run(
         "Given limited data, assess ACME Corp's long-term viability. "
@@ -215,6 +207,7 @@ async def example_quick_reasoning():
         model=model,
         tools=[get_company_data],
         reasoning=ReasoningConfig.quick(),
+        observer=Observer.normal(),
     )
     
     # Agent without reasoning
@@ -223,19 +216,16 @@ async def example_quick_reasoning():
         model=model,
         tools=[get_company_data],
         reasoning=None,  # No reasoning
+        observer=Observer.normal(),
     )
     
     task = "Get ACME Corp's employee count."
     
     print("With quick reasoning:")
-    observer = Observer(level=ObservabilityLevel.PROGRESS)
-    agent_reasoning.add_observer(observer)
     result1 = await agent_reasoning.run(task)
     print(f"Result: {result1[:100]}...")
     
     print("\nWithout reasoning:")
-    observer2 = Observer(level=ObservabilityLevel.PROGRESS)
-    agent_no_reasoning.add_observer(observer2)
     result2 = await agent_no_reasoning.run(task)
     print(f"Result: {result2[:100]}...")
 
@@ -267,10 +257,8 @@ async def example_custom_config():
         model=model,
         tools=[get_company_data, calculate_metrics, compare_companies],
         reasoning=custom_config,
+        observer=Observer.normal(),
     )
-    
-    observer = Observer(level=ObservabilityLevel.PROGRESS)
-    agent.add_observer(observer)
     
     result = await agent.run(
         "Explore different ways to evaluate these two companies: "

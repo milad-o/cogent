@@ -1243,6 +1243,7 @@ class Observer:
 
         elif event_type == TraceType.AGENT_THINKING:
             agent_name = data.get('agent_name', '?')
+            prompt_preview = data.get('prompt_preview', '')
             data.get('iteration', 1)
             data.get('max_iterations', 0)
             current_step = data.get('current_step', 0)
@@ -1263,60 +1264,56 @@ class Observer:
                     "description": step_description
                 }
 
-            # Only show first thinking event per agent - subsequent work shows via tool calls
-            if count == 1:
-                formatted_name = _format_agent_name(agent_name)
+            # Show thinking event with prompt preview
+            formatted_name = _format_agent_name(agent_name)
 
-                # Add progress indicator if enabled and available
-                progress_suffix = ""
-                if self.config.show_progress_steps and agent_name in self._progress_steps:
-                    progress = self._progress_steps[agent_name]
-                    step_text = f" Step {progress['current']}/{progress['total']}"
-                    if progress['description']:
-                        step_text += f": {progress['description']}"
-                    progress_suffix = s.dim(step_text)
+            # Add progress indicator if enabled and available
+            progress_suffix = ""
+            if self.config.show_progress_steps and agent_name in self._progress_steps:
+                progress = self._progress_steps[agent_name]
+                step_text = f" Step {progress['current']}/{progress['total']}"
+                if progress['description']:
+                    step_text += f": {progress['description']}"
+                progress_suffix = s.dim(step_text)
 
-                base_msg = f"{prefix}{s.agent(formatted_name)} {s.dim('[thinking]')}"
-                return base_msg + progress_suffix if progress_suffix else base_msg
-            else:
-                # Suppress subsequent thinking events - tool calls will show the actual work
-                return None
+            base_msg = f"{prefix}{s.agent(formatted_name)} {s.dim('[thinking]')}"
+            
+            # By default, don't show the prompt we send to LLM
+            # The actual AI thoughts are shown in AGENT_REASONING events
+            if prompt_preview and self.config.level >= ObservabilityLevel.DETAILED:
+                preview = prompt_preview.strip()
+                base_msg += f" {s.dim(preview)}"
+            
+            return base_msg + progress_suffix if progress_suffix else base_msg
 
         elif event_type == TraceType.AGENT_REASONING:
             agent_name = data.get('agent_name', '?')
             round_num = data.get('round', 1)
             reasoning_type = data.get('reasoning_type', 'thinking')
             thought_preview = data.get('thought_preview', '')
+            phase = data.get('phase', 'thinking')
 
-            # Type-specific icons
-            type_icons = {
-                'analysis': '🔍',
-                'plan': '📋',
-                'reflection': '🪞',
-                'correction': '🔄',
-            }
-            icon = type_icons.get(reasoning_type, '💭')
-
-            # Style icon separately so it doesn't blend with the preview text
-            icon_styled = {
-                'analysis': s.info(icon),
-                'plan': s.warning(icon),
-                'reflection': s.agent(icon),
-                'correction': s.warning(icon),
-            }.get(reasoning_type, s.agent(icon))
+            # For start phase, just show a simple indicator
+            if phase == 'start':
+                formatted_name = _format_agent_name(agent_name)
+                return f"{prefix}{s.agent(formatted_name)} {s.dim('[reasoning started]')}"
+            
+            # Skip complete phase
+            if phase == 'complete':
+                return None
 
             formatted_name = _format_agent_name(agent_name)
             header = (
-                f"{prefix}{s.agent(formatted_name)} {icon_styled} "
-                f"{s.dim(f'reasoning (round {round_num})...')}"
+                f"{prefix}{s.agent(formatted_name)} "
+                f"{s.dim(f'[reasoning round {round_num}]')}"
             )
 
-            if thought_preview and self.config.level >= ObservabilityLevel.DETAILED:
-                # Show thought preview for detailed level
+            if thought_preview and self.config.level >= ObservabilityLevel.PROGRESS:
+                # Show actual AI thoughts at PROGRESS level - NO truncation
                 lines.append(header)
-                preview = _truncate_smart(str(thought_preview), self.config.truncate)
+                preview = str(thought_preview)
                 indent = " " * (len(formatted_name) + 1)
-                for line in preview.split('\n')[:5]:
+                for line in preview.split('\n'):
                     lines.append(f"{indent}{s.dim(line)}")
                 return "\n".join(lines)
             else:
