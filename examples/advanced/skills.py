@@ -58,11 +58,13 @@ def inspect_vars(var_name: str) -> str:
 # Define skills with the clean kwargs API
 # =============================================================================
 
+from agenticflow.events import has_data
+
 # Python expert skill: activates on code.write events for Python
 python_skill = skill(
     "python_expert",
     on="code.write",
-    when=lambda e: e.data.get("language") == "python",
+    when=has_data("language", "python"),
     prompt="""## Python Expert Mode
 
 You are now operating as a Python expert. Follow these principles:

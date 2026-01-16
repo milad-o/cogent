@@ -190,10 +190,12 @@ flow.register(monitor, on="task.*")
 flow.register(monitor, on=["order.placed", "order.shipped", "order.delivered"])
 
 # With condition filter
+from agenticflow.events import has_data
+
 flow.register(
     agent,
     on="order.placed",
-    when=lambda e: e.data.get("value") > 100,
+    when=has_data("value", 100),  # value == 100
 )
 
 # With priority (higher executes first)
@@ -206,7 +208,7 @@ flow.register(processor, on="order.placed", emits="order.processed")
 flow.register(
     agent,
     on="order.placed",
-    when=lambda e: e.data.get("urgent"),
+    when=has_data("urgent", True),
     priority=10,
     emits="order.processed",
 )
@@ -248,10 +250,12 @@ flow.register(handler, on="worker.*.done") # worker.1.done, worker.2.done, etc.
 flow.register(handler, on=["task.created", "task.updated", "task.deleted"])
 
 # With condition
+from agenticflow.events import has_data
+
 flow.register(
     handler,
     on="task.*",
-    when=lambda e: e.data.get("priority") == "urgent",
+    when=has_data("priority", "urgent"),
 )
 ```
 
@@ -260,16 +264,86 @@ flow.register(
 ## Conditional Registration
 
 ```python
+from agenticflow.events import has_data, from_source, all_of, any_of, after
+
 # Register with condition
 flow.register(
     urgent_handler,
     on="task.created",
-    when=lambda e: e.data.get("priority") == "high",
+    when=has_data("priority", "high"),
 )
 
 # Register with priority (higher executes first)
 flow.register(handler1, on="task", priority=10)
 flow.register(handler2, on="task", priority=0)
+
+# Combine conditions with AND
+flow.register(
+    handler,
+    on="agent.done",
+    when=all_of(
+        from_source("researcher"),
+        has_data("success", True),
+    ),
+)
+
+# Combine conditions with OR
+flow.register(
+    handler,
+    on="agent.done",
+    when=any_of(
+        from_source("researcher"),
+        from_source("analyst"),
+    ),
+)
+
+# Sequential dependency - run after specific source
+flow.register(
+    writer,
+    on="agent.done",
+    when=after("researcher"),  # Only after researcher completes
+)
+```
+
+### Available Condition Helpers
+
+| Helper | Description | Example |
+|--------|-------------|----------|
+| `has_data(key)` | Check if key exists | `has_data("priority")` |
+| `has_data(key, value)` | Check key equals value | `has_data("priority", "high")` |
+| `from_source(source)` | Match event source | `from_source("researcher")` |
+| `after(source)` | Alias for from_source | `after("researcher")` |
+| `all_of(*conditions)` | AND logic | `all_of(cond1, cond2)` |
+| `any_of(*conditions)` | OR logic | `any_of(cond1, cond2)` |
+| `not_(condition)` | Negate condition | `not_(from_source("system"))` |
+
+### Custom Conditions
+
+For complex logic, use a lambda or define a reusable function:
+
+```python
+# Lambda for one-off complex condition
+flow.register(
+    handler,
+    on="data.received",
+    when=lambda e: e.data.get("value", 0) > 100 and e.data.get("verified", False),
+)
+
+# Reusable condition function
+def high_value_and_verified(event: Event) -> bool:
+    return event.data.get("value", 0) > 100 and event.data.get("verified", False)
+
+flow.register(handler, on="data.received", when=high_value_and_verified)
+
+# Combine custom with helpers
+flow.register(
+    handler,
+    on="data.received",
+    when=all_of(
+        from_source("payment_processor"),
+        lambda e: e.data.get("amount", 0) > 1000,
+    ),
+)
 ```
 
 ---
@@ -494,11 +568,12 @@ Skills are event-triggered behavioral specializations that dynamically modify an
 
 ```python
 from agenticflow.skills import skill
+from agenticflow.events import has_data
 
 python_skill = skill(
     "python_expert",
     on="code.write",
-    when=lambda e: e.data.get("language") == "python",
+    when=has_data("language", "python"),
     prompt="""You are a Python expert. Follow these guidelines:
     - Use type hints on all functions
     - Follow PEP 8 conventions
@@ -613,11 +688,11 @@ flow.register(
     on="task.classified",
 )
 
-# Route by condition
+# Route by condition (requires lambda for complex comparisons)
 flow.register(
     ConditionalRouter([
-        (lambda e: e.data.get("value") > 100, "high.value"),
-        (lambda e: e.data.get("value") > 50, "medium.value"),
+        (lambda e: e.data.get("value", 0) > 100, "high.value"),
+        (lambda e: e.data.get("value", 0) > 50, "medium.value"),
     ], default="low.value"),
     on="data.received",
 )
@@ -1037,12 +1112,13 @@ findings = await memory.recall("findings")
 ```python
 from agenticflow import Agent, Flow
 from agenticflow.skills import skill
+from agenticflow.events import has_data
 
 # Skills for specialized handling
 urgent_skill = skill(
     "urgent_handler",
     on="ticket.created",
-    when=lambda e: e.data.get("priority") == "urgent",
+    when=has_data("priority", "urgent"),
     prompt="This is an URGENT ticket. Prioritize speed and escalation.",
     priority=20,
 )
@@ -1061,13 +1137,13 @@ flow.register(classifier, on="ticket.created", emits="ticket.classified")
 flow.register(
     responder,
     on="ticket.classified",
-    when=lambda e: not e.data.get("escalate"),
+    when=has_data("escalate", False),
     emits="flow.done",
 )
 flow.register(
     escalator,
     on="ticket.classified",
-    when=lambda e: e.data.get("escalate"),
+    when=has_data("escalate", True),
     emits="flow.done",
 )
 
