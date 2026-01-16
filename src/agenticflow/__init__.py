@@ -238,13 +238,6 @@ from agenticflow.flow import (
     supervisor as flow_supervisor,
 )
 
-# Legacy imports for backward compatibility
-from agenticflow.flow.orchestrated import (
-    create_flow,
-    mesh_flow,
-    pipeline_flow,
-    supervisor_flow,
-)
 from agenticflow.graph import (
     GraphConfig,
     GraphDirection,
@@ -439,26 +432,6 @@ from agenticflow.tools.deferred import (
 
 # Tools (THIS IS WHERE WE ADD VALUE)
 from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
-
-# Topologies (simple coordination patterns)
-from agenticflow.topologies import (
-    # Core classes
-    AgentConfig as TopologyAgentConfig,
-)
-from agenticflow.topologies import (
-    BaseTopology,
-    Hierarchical,
-    Mesh,
-    Pipeline,
-    # Pattern classes
-    Supervisor,
-    TopologyResult,
-    TopologyType,
-    mesh,
-    pipeline,
-    # Convenience functions
-    supervisor,
-)
 
 # Backwards-compatible aliases for visualization module
 MermaidConfig = GraphConfig
@@ -661,11 +634,6 @@ __all__ = [
     "flow_mesh",
     "flow_pipeline",
     "flow_supervisor",
-    # Legacy flow helpers
-    "create_flow",
-    "supervisor_flow",
-    "pipeline_flow",
-    "mesh_flow",
     # Core Events
     "Event",
     "EventBus",
@@ -710,18 +678,6 @@ __all__ = [
     "TracingMiddleware",
     "SimpleTracingMiddleware",
     "MiddlewareSpan",
-    # Topologies (coordination patterns)
-    "TopologyAgentConfig",
-    "BaseTopology",
-    "TopologyResult",
-    "TopologyType",
-    "Supervisor",
-    "Pipeline",
-    "Mesh",
-    "Hierarchical",
-    "supervisor",
-    "pipeline",
-    "mesh",
     # Observability
     "Tracer",
     "Span",
