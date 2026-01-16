@@ -66,9 +66,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ **1,333 passing tests** — Zero regressions
 - ✅ **No breaking changes** — Backward compatibility maintained
 
+### Migration Guide
+
+**Option 1: No changes required** (recommended)
+```python
+# All imports from main package continue to work
+from agenticflow import RunContext, EMPTY_CONTEXT
+from agenticflow.reactive import ReactiveFlow  # Compatibility module
+```
+
+**Option 2: Update to new locations** (optional)
+```python
+# Old → New
+from agenticflow.context import RunContext  
+# → from agenticflow.core.context import RunContext
+
+from agenticflow.flow.utils import IdempotencyGuard  
+# → from agenticflow.core.utils import IdempotencyGuard
+```
+
+The `reactive.py` compatibility module maintains backward compatibility for all `agenticflow.reactive` imports.
+
 ### Summary
 
-This release focuses on architectural cleanup and proper separation of concerns. Generic utilities and foundational types have been moved from `flow/` to `core/`, while unused deprecated code has been removed. The module structure now clearly reflects the framework's layered architecture.
+This release focuses on architectural cleanup and proper separation of concerns. Generic utilities and foundational types have been moved from `flow/` to `core/`, while unused deprecated code has been removed. The module structure now clearly reflects the framework's layered architecture. **No action required for existing users.**
 
 ---
 
