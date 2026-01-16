@@ -5,6 +5,41 @@ All notable changes to AgenticFlow will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### Flexible Reasoning Parameter
+
+**Per-Call Reasoning Override:**
+- `Agent.run()` now accepts `reasoning` parameter for per-call configuration
+- Accepts `bool | ReasoningConfig | None`:
+  - `reasoning=None` — Use agent's configured reasoning (default)
+  - `reasoning=True` — Enable with default `ReasoningConfig`
+  - `reasoning=False` — Disable for this specific call
+  - `reasoning=ReasoningConfig(...)` — Custom config for this call
+
+**Example:**
+```python
+# Agent without reasoning by default
+agent = Agent(name="Helper", model=model, reasoning=False)
+
+# Enable for complex task only
+result = await agent.run("Complex analysis", reasoning=True)
+
+# Custom config for specific call
+result = await agent.run(
+    "Very complex task",
+    reasoning=ReasoningConfig(max_thinking_rounds=10),
+)
+```
+
+**Documentation:**
+- Updated `docs/agent.md` — Added reasoning examples with flexible API
+- Updated `README.md` — Added reasoning section with per-call examples
+- Updated `examples/README.md` — Documented reasoning features
+- Added Example 6 to `examples/advanced/reasoning.py` — Per-call override demo
+
 ## [1.8.1] - 2026-01-16
 
 ### Changed
