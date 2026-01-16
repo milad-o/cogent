@@ -1,6 +1,6 @@
 # Core Module
 
-The `agenticflow.core` module provides foundational types, enums, and utilities used throughout the framework.
+The `agenticflow.core` module provides foundational types, enums, utilities, and dependency injection used throughout the framework.
 
 ## Overview
 
@@ -8,16 +8,29 @@ The core module defines:
 - Enums for status types, event types, and roles
 - Native message types compatible with all LLM providers
 - Utility functions for IDs, timestamps, etc.
+- **RunContext** for dependency injection (tools and interceptors)
+- **Reactive utilities** for event-driven systems (idempotency, retries, delays)
 
 ```python
 from agenticflow.core import (
+    # Enums
     TaskStatus,
     AgentStatus,
     EventType,
     Priority,
     AgentRole,
+    # Context
+    RunContext,
+    EMPTY_CONTEXT,
+    # Utilities
     generate_id,
     now_utc,
+    # Reactive utilities
+    IdempotencyGuard,
+    RetryBudget,
+    emit_later,
+    jittered_delay,
+    Stopwatch,
 )
 ```
 
@@ -214,6 +227,162 @@ ai_msg = parse_openai_response(openai_response)
 
 ---
 
+## Context (Dependency Injection)
+
+### RunContext
+
+Base class for invocation-scoped context that provides dependency injection for tools and interceptors.
+
+```python
+from dataclasses import dataclass
+from agenticflow import Agent, tool
+from agenticflow.core import RunContext
+
+@dataclass
+class AppContext(RunContext):
+    user_id: str
+    db: Any  # Your database connection
+    api_key: str
+
+@tool
+def get_user_data(ctx: RunContext) -> str:
+    """Get data for the current user."""
+    user = ctx.db.get_user(ctx.user_id)
+    return f"User: {user.name}"
+
+agent = Agent(name="assistant", model=model, tools=[get_user_data])
+
+# Pass context at invocation time
+result = await agent.run(
+    "Get my profile data",
+    context=AppContext(user_id="123", db=db, api_key=key),
+)
+```
+
+**Key Features:**
+- Type-safe context data passed to tools and interceptors
+- No global state — context scoped to single invocation
+- Access via `ctx: RunContext` parameter in tools
+- Available in interceptors via `InterceptContext.run_context`
+
+**Methods:**
+- `get(key, default)` — Get metadata value by key
+- `with_metadata(**kwargs)` — Create new context with additional metadata
+
+---
+
+## Reactive Utilities
+
+Event-driven utilities for building robust reactive systems.
+
+### IdempotencyGuard
+
+In-memory idempotency guard to ensure side-effects execute only once per key:
+
+```python
+from agenticflow.core import IdempotencyGuard
+
+guard = IdempotencyGuard()
+
+async def process_event(event_id: str, data: dict):
+    if not await guard.claim(event_id):
+        return  # Already processed
+    
+    # Process event exactly once
+    await do_work(data)
+```
+
+**Methods:**
+- `claim(key: str) -> bool` — Atomically claim a key (returns True if first time)
+- `run_once(key: str, fn: Callable) -> tuple[bool, Any]` — Run coroutine exactly once per key
+
+**Note:** Process-local memory. For distributed systems, back with Redis/database.
+
+### RetryBudget
+
+Bounded retry tracker for exponential backoff and retry policies:
+
+```python
+from agenticflow.core import RetryBudget
+
+budget = RetryBudget.in_memory(max_attempts=3)
+
+async def handle_with_retries(task_id: str):
+    attempt = budget.next_attempt(task_id)
+    
+    if attempt >= 3:
+        # Escalate to error handler
+        await escalate_error(task_id)
+        return
+    
+    # Try again
+    await retry_task(task_id)
+```
+
+**Methods:**
+- `in_memory(max_attempts: int) -> RetryBudget` — Create in-memory tracker
+- `next_attempt(key: str) -> int` — Increment and return attempt count (0-based)
+- `can_retry(key: str) -> bool` — Check if more retries available
+
+### emit_later
+
+Schedule delayed event emission:
+
+```python
+from agenticflow.core import emit_later
+
+# In a ReactiveFlow
+async def handle_timeout(event, ctx):
+    # Schedule a timeout event
+    ctx.flow.spawn(
+        emit_later(
+            flow=ctx.flow,
+            delay_seconds=30.0,
+            event_name="task.timeout",
+            data={"task_id": event.data["task_id"]},
+        )
+    )
+```
+
+### jittered_delay
+
+Calculate exponential backoff with jitter:
+
+```python
+from agenticflow.core import jittered_delay
+import random
+
+attempt = 2
+base_delay = 2 ** attempt  # 4 seconds
+jitter = random.uniform(-1, 1)
+
+delay = jittered_delay(
+    base_seconds=base_delay,
+    jitter_seconds=jitter,
+    min_seconds=1.0,
+    max_seconds=60.0,
+)
+
+await asyncio.sleep(delay)
+```
+
+### Stopwatch
+
+Performance timing helper:
+
+```python
+from agenticflow.core import Stopwatch
+
+stopwatch = Stopwatch()
+
+await do_work()
+
+elapsed = stopwatch.elapsed_s
+print(f"Work completed in {elapsed:.2f}s")
+```
+
+---
+
 ## Utilities
 
 ### generate_id
@@ -255,12 +424,21 @@ from agenticflow.core import (
     EventType,
     Priority,
     AgentRole,
+    # Context
+    RunContext,
+    EMPTY_CONTEXT,
     # Utilities
     generate_id,
     now_utc,
     now_local,
     to_local,
     format_timestamp,
+    # Reactive utilities
+    IdempotencyGuard,
+    RetryBudget,
+    emit_later,
+    jittered_delay,
+    Stopwatch,
 )
 
 from agenticflow.core.messages import (

@@ -40,18 +40,16 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.4.0 - January 2026)
+## 🎉 Latest Changes (v1.8.0 - January 2026)
 
-**External Event Integration** — Connect reactive agents to real-world event sources
-- 📁 **FileWatcherSource** — Monitor directories for file changes
-- 🌐 **WebhookSource** — Receive HTTP webhooks as events
-- 🔴 **RedisStreamSource** — Consume from Redis Streams with consumer groups
-- 🎯 **EventFlow.source()** & **sink()** — Inject/emit events from external systems
-
-**Observability Improvements** — Clearer naming and token tracking
-- 🔄 Renamed `Event` → `Trace` in observability module (core events unchanged)
-- 📊 Token usage tracking and export (JSONL, JSON, CSV)
-- 🎯 Progress indicators and enhanced error context
+**Module Reorganization** — Cleaner separation of concerns
+- 🏗️ **Core Module Cleanup** — Moved generic utilities from `flow/` to `core/`
+  - `RunContext`, `IdempotencyGuard`, `RetryBudget` now in `core/`
+  - Deleted unused `core/models.py` (222 lines)
+  - Consolidated `flow/threading.py` into `flow/reactive.py`
+- 🔄 **Backward Compatibility** — Added `reactive.py` compatibility module
+- 📦 **Architecture** — Clear layering: `core/` = primitives, `flow/` = orchestration
+- ✅ **Zero Breaking Changes** — All 1,333 tests pass
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
