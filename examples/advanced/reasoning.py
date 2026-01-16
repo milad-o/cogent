@@ -11,6 +11,11 @@ Reasoning modes:
 - CRITICAL: Question assumptions, find flaws
 - CREATIVE: Generate novel solutions
 
+Flexible API:
+- Agent level: reasoning=True/False/ReasoningConfig
+- Per-call: agent.run(..., reasoning=True/False/ReasoningConfig)
+- Override agent config for specific calls
+
 Example output:
     💭 Analyst reasoning (analytical style)...
     💭 [Round 1] Analysis: I need to analyze the company's metrics...
@@ -269,6 +274,59 @@ async def example_custom_config():
 
 
 # =============================================================================
+# Example 6: Per-call reasoning override
+# =============================================================================
+
+
+async def example_per_call_reasoning():
+    """Override reasoning configuration per call."""
+    print("\n" + "=" * 60)
+    print("Example 6: Per-Call Reasoning Override")
+    print("=" * 60)
+    
+    model = get_model()
+    
+    # Agent with NO reasoning by default
+    agent = Agent(
+        name="FlexibleAnalyst",
+        model=model,
+        tools=[get_company_data, calculate_metrics],
+        reasoning=False,  # Disabled by default
+        observer=Observer.normal(),
+    )
+    
+    # Simple question - no reasoning needed
+    print("\n📝 Simple query (no reasoning):")
+    result1 = await agent.run(
+        "What is ACME Corp's revenue?",
+        reasoning=False,  # Explicit: no reasoning
+    )
+    print(f"   Result: {result1}")
+    
+    # Complex task - enable reasoning for this call only
+    print("\n🧠 Complex query (reasoning enabled for this call):")
+    result2 = await agent.run(
+        "Analyze ACME Corp's financial health and recommend actions",
+        reasoning=True,  # Enable reasoning for this call
+    )
+    print(f"   Result: {result2[:200]}...")
+    
+    # Very complex - use custom config for this call
+    print("\n🔬 Very complex query (custom reasoning config):")
+    result3 = await agent.run(
+        "Provide a comprehensive strategic analysis of ACME Corp",
+        reasoning=ReasoningConfig(
+            max_thinking_rounds=5,
+            style=ReasoningStyle.ANALYTICAL,
+            show_thinking=False,
+        ),
+    )
+    print(f"   Result: {result3[:200]}...")
+    
+    print("\n💡 Per-call reasoning allows optimal thinking for each task!")
+
+
+# =============================================================================
 # Main
 # =============================================================================
 
@@ -280,6 +338,7 @@ async def main():
     await example_deep_reasoning()
     await example_quick_reasoning()
     await example_custom_config()
+    await example_per_call_reasoning()
     
     print("\n" + "=" * 60)
     print("All examples complete!")

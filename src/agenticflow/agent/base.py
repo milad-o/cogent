@@ -12,7 +12,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Literal,
-    overload,
 )
 
 from agenticflow.agent.config import AgentConfig
@@ -138,37 +137,37 @@ class Agent:
         capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
-        
+
         # Advanced parameters (usually provided by Flow)
         event_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
-        
+
         # Memory and state
         memory: bool | AgentMemory | None = None,
         store: Any = None,
-        
+
         # HITL and streaming
         interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
         stream: bool = False,
-        
+
         # Advanced features
         reasoning: bool | ReasoningConfig = False,
         output: type | dict | ResponseSchema | None = None,
         intercept: Sequence[Callable] | None = None,
         spawning: SpawningConfig | None = None,
-        
+
         # Observability
         verbose: bool | Literal["verbose", "debug", "trace"] = False,
         observer: Observer | None = None,
-        
+
         # TaskBoard
         taskboard: bool | TaskBoardConfig | None = None,
-        
+
         # Role-specific parameters (only used if role is string/enum, ignored if RoleConfig)
         workers: list[str] | None = None,
         criteria: list[str] | None = None,
         specialty: str | None = None,
-        
+
         # Capability overrides
         can_finish: bool | None = None,
         can_delegate: bool | None = None,
@@ -581,6 +580,22 @@ class Agent:
             return
 
         if reasoning is True:
+            self._reasoning_config = ReasoningConfig()
+        else:
+            self._reasoning_config = reasoning
+
+    def _apply_reasoning_override(self, reasoning: bool | ReasoningConfig) -> None:
+        """Apply reasoning override for a specific run() call.
+
+        Args:
+            reasoning: Reasoning override:
+                - True: Enable with default config
+                - False: Disable reasoning
+                - ReasoningConfig: Enable with custom config
+        """
+        if reasoning is False:
+            self._reasoning_config = None
+        elif reasoning is True:
             self._reasoning_config = ReasoningConfig()
         else:
             self._reasoning_config = reasoning
@@ -2754,6 +2769,7 @@ class Agent:
         thread_id: str | None = None,
         stream: bool = False,
         max_iterations: int = 25,
+        reasoning: bool | ReasoningConfig | None = None,
     ) -> Coroutine[Any, Any, Any] | AsyncIterator[StreamChunk]:
         """
         Execute a task with full agent capabilities.
@@ -2774,6 +2790,11 @@ class Agent:
                 - Enables multi-turn conversations
             stream: If True, returns async iterator. If False, returns awaitable.
             max_iterations: Maximum LLM call iterations (default: 25).
+            reasoning: Override reasoning for this call:
+                - None: Use agent's configured reasoning (default)
+                - True: Enable reasoning with default config
+                - False: Disable reasoning for this call
+                - ReasoningConfig: Enable with custom config
 
         Returns:
             If stream=False: Awaitable that yields the final result when awaited.
@@ -2797,13 +2818,37 @@ class Agent:
             # Streaming with conversation
             async for chunk in agent.run("Tell me more", stream=True, thread_id="conv-1"):
                 print(chunk.content, end="")
+
+            # Enable reasoning for complex task
+            result = await agent.run("Analyze this codebase", reasoning=True)
+
+            # Custom reasoning config for this call
+            result = await agent.run(
+                "Debug this issue",
+                reasoning=ReasoningConfig(max_thinking_rounds=10, show_thinking=True),
+            )
+
+            # Disable reasoning even if agent has it enabled
+            result = await agent.run("What time is it?", reasoning=False)
         """
         # Streaming: return async iterator directly (no await needed)
         if stream:
-            return self._run_stream(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
+            return self._run_stream(
+                task,
+                context=context,
+                thread_id=thread_id,
+                max_iterations=max_iterations,
+                reasoning=reasoning,
+            )
 
         # Non-streaming: return coroutine (must be awaited)
-        return self._run_impl(task, context=context, thread_id=thread_id, max_iterations=max_iterations)
+        return self._run_impl(
+            task,
+            context=context,
+            thread_id=thread_id,
+            max_iterations=max_iterations,
+            reasoning=reasoning,
+        )
 
     async def _run_impl(
         self,
@@ -2812,6 +2857,7 @@ class Agent:
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
         max_iterations: int = 25,
+        reasoning: bool | ReasoningConfig | None = None,
     ) -> Any:
         """Internal implementation of non-streaming run()."""
         from agenticflow.executors import create_executor
@@ -2836,18 +2882,29 @@ class Agent:
             for msg in history:
                 self.state.add_message(msg)
 
-        # Create executor based on config.execution_strategy
-        executor = create_executor(self, strategy=self.config.execution_strategy)
-        executor.max_iterations = max_iterations
+        # Apply reasoning override for this call
+        original_reasoning = self._reasoning_config
+        try:
+            if reasoning is not None:
+                # Override reasoning for this call
+                self._apply_reasoning_override(reasoning)
 
-        # Execute task
-        result = await executor.execute(task, context)
+            # Create executor based on config.execution_strategy
+            executor = create_executor(self, strategy=self.config.execution_strategy)
+            executor.max_iterations = max_iterations
 
-        # Save to conversation history if thread_id provided
-        if thread_id:
-            await self._save_to_thread(thread_id, task, result)
+            # Execute task
+            result = await executor.execute(task, context)
 
-        return result
+            # Save to conversation history if thread_id provided
+            if thread_id:
+                await self._save_to_thread(thread_id, task, result)
+
+            return result
+        finally:
+            # Restore original reasoning config
+            if reasoning is not None:
+                self._reasoning_config = original_reasoning
 
     async def _run_stream(
         self,
@@ -2856,6 +2913,7 @@ class Agent:
         context: dict[str, Any] | None = None,
         thread_id: str | None = None,
         max_iterations: int = 25,
+        reasoning: bool | ReasoningConfig | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Internal streaming implementation of run()."""
         from agenticflow.agent.streaming import StreamChunk
@@ -2867,56 +2925,67 @@ class Agent:
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
 
-        # Build messages with optional conversation history
-        messages = await self._build_run_messages(task, thread_id)
-        dict_messages = [msg.to_dict() for msg in messages]
+        # Apply reasoning override for this call
+        original_reasoning = self._reasoning_config
+        try:
+            if reasoning is not None:
+                # Override reasoning for this call
+                self._apply_reasoning_override(reasoning)
 
-        # Get bound model (with tools)
-        bound_model = self.bound_model
-        accumulated_content = ""
+            # Build messages with optional conversation history
+            messages = await self._build_run_messages(task, thread_id)
+            dict_messages = [msg.to_dict() for msg in messages]
 
-        # Streaming agentic loop
-        for iteration in range(max_iterations):
-            async for chunk in bound_model.astream(dict_messages):
-                # Yield text content
-                if hasattr(chunk, 'content') and chunk.content:
-                    accumulated_content += chunk.content
-                    yield StreamChunk(content=chunk.content, index=iteration)
+            # Get bound model (with tools)
+            bound_model = self.bound_model
+            accumulated_content = ""
 
-                # Check for tool calls at end of stream
-                tool_calls = getattr(chunk, 'tool_calls', None)
-                if tool_calls:
-                    # Execute tools and continue loop
-                    dict_messages.append({
-                        "role": "assistant",
-                        "content": accumulated_content,
-                        "tool_calls": [
-                            {"id": tc.get("id", f"call_{i}"), "name": tc.get("name"), "args": tc.get("args", {})}
-                            for i, tc in enumerate(tool_calls)
-                        ] if tool_calls else [],
-                    })
+            # Streaming agentic loop
+            for iteration in range(max_iterations):
+                async for chunk in bound_model.astream(dict_messages):
+                    # Yield text content
+                    if hasattr(chunk, 'content') and chunk.content:
+                        accumulated_content += chunk.content
+                        yield StreamChunk(content=chunk.content, index=iteration)
 
-                    for tc in tool_calls:
-                        tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
-                        tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
-                        tool_id = tc.get("id", "call_0") if isinstance(tc, dict) else getattr(tc, "id", "call_0")
-
-                        result = await self._execute_tool(tool_name, tool_args)
+                    # Check for tool calls at end of stream
+                    tool_calls = getattr(chunk, 'tool_calls', None)
+                    if tool_calls:
+                        # Execute tools and continue loop
                         dict_messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_id,
-                            "content": str(result),
+                            "role": "assistant",
+                            "content": accumulated_content,
+                            "tool_calls": [
+                                {"id": tc.get("id", f"call_{i}"), "name": tc.get("name"), "args": tc.get("args", {})}
+                                for i, tc in enumerate(tool_calls)
+                            ] if tool_calls else [],
                         })
 
-                    accumulated_content = ""
-                    break  # Continue outer loop for next iteration
-            else:
-                # No tool calls - we're done
-                break
+                        for tc in tool_calls:
+                            tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+                            tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                            tool_id = tc.get("id", "call_0") if isinstance(tc, dict) else getattr(tc, "id", "call_0")
 
-        # Save to conversation history if thread_id provided
-        if thread_id and accumulated_content:
-            await self._save_to_thread(thread_id, task, accumulated_content)
+                            result = await self._execute_tool(tool_name, tool_args)
+                            dict_messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_id,
+                                "content": str(result),
+                            })
+
+                        accumulated_content = ""
+                        break  # Continue outer loop for next iteration
+                else:
+                    # No tool calls - we're done
+                    break
+
+            # Save to conversation history if thread_id provided
+            if thread_id and accumulated_content:
+                await self._save_to_thread(thread_id, task, accumulated_content)
+        finally:
+            # Restore original reasoning config
+            if reasoning is not None:
+                self._reasoning_config = original_reasoning
 
     async def _build_run_messages(
         self,
