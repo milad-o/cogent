@@ -121,7 +121,7 @@ class ReasoningConfig:
     """
 
     enabled: bool = True
-    max_thinking_rounds: int = 3
+    max_thinking_rounds: int = 10  # Safety net - AI decides when ready
     thinking_budget: int | None = None  # Token limit for thinking
     show_thinking: bool = False  # Include <thinking> in output
     style: ReasoningStyle = ReasoningStyle.ANALYTICAL
@@ -132,8 +132,8 @@ class ReasoningConfig:
         """Validate configuration."""
         if self.max_thinking_rounds < 1:
             raise ValueError("max_thinking_rounds must be at least 1")
-        if self.max_thinking_rounds > 10:
-            raise ValueError("max_thinking_rounds cannot exceed 10")
+        if self.max_thinking_rounds > 20:
+            raise ValueError("max_thinking_rounds cannot exceed 20")
         if self.require_confidence is not None:
             if not 0.0 <= self.require_confidence <= 1.0:
                 raise ValueError("require_confidence must be between 0.0 and 1.0")
@@ -150,9 +150,9 @@ class ReasoningConfig:
 
     @classmethod
     def standard(cls) -> ReasoningConfig:
-        """Standard reasoning - balanced speed and depth."""
+        """Standard reasoning - AI decides when ready (up to 10 rounds)."""
         return cls(
-            max_thinking_rounds=3,
+            max_thinking_rounds=10,
             style=ReasoningStyle.ANALYTICAL,
             show_thinking=False,
             self_correct=True,
@@ -162,7 +162,7 @@ class ReasoningConfig:
     def deep(cls) -> ReasoningConfig:
         """Deep reasoning - thorough analysis for complex problems."""
         return cls(
-            max_thinking_rounds=5,
+            max_thinking_rounds=15,
             style=ReasoningStyle.EXPLORATORY,
             show_thinking=True,
             self_correct=True,
@@ -252,6 +252,12 @@ Step 1: First, I need to understand what is being asked...
 Step 2: The key requirements are...
 Step 3: My plan is to...
 </thinking>
+
+When you have thought through the problem sufficiently and are ready to proceed, add:
+<ready>true</ready>
+
+If you need more thinking, add:
+<ready>false</ready>
 
 Then proceed with your response or tool calls."""
 
@@ -356,6 +362,25 @@ def extract_thinking(response: str) -> tuple[str | None, str]:
 
     return thinking_content, cleaned_response
 
+def extract_ready(response: str) -> bool:
+    """Extract <ready> tag to check if AI is ready to proceed.
+
+    Args:
+        response: The full response text
+
+    Returns:
+        True if <ready>true</ready> found, False otherwise
+    """
+    import re
+
+    ready_pattern = r"<ready>(.*?)</ready>"
+    match = re.search(ready_pattern, response, re.IGNORECASE)
+
+    if match:
+        value = match.group(1).strip().lower()
+        return value == "true"
+    
+    return False  # Default to not ready if tag not found
 
 def estimate_confidence(thinking: str) -> float:
     """
