@@ -41,7 +41,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.reactive.core import EventPattern, Trigger, TriggerBuilder
+from agenticflow.flow.triggers import EventPattern, Trigger, TriggerBuilder
 
 if TYPE_CHECKING:
     from agenticflow.events.event import Event
@@ -156,7 +156,7 @@ def skill(
 
     Example:
         ```python
-        from agenticflow.reactive import skill
+        from agenticflow.flow.skills import skill
 
         # Simple skill
         python_skill = skill(
@@ -180,7 +180,7 @@ def skill(
         flow.register_skill(debug_skill)
         ```
     """
-    from agenticflow.reactive.core import Trigger
+    from agenticflow.flow.triggers import Trigger
 
     trigger = Trigger(on=on, condition=when)
 

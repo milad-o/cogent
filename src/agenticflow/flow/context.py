@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 from agenticflow.events import Event
 
 if TYPE_CHECKING:
-    from agenticflow.reactive.a2a import AgentResponse
+    from agenticflow.flow.a2a import AgentResponse
 
 
 @dataclass
@@ -144,7 +144,7 @@ class ExecutionContext:
                 return f"Analysis: {result}"
             ```
         """
-        from agenticflow.reactive.a2a import create_request
+        from agenticflow.flow.a2a import create_request
 
         # Create request
         request = create_request(
@@ -210,7 +210,7 @@ class ExecutionContext:
                 return response.result
             ```
         """
-        from agenticflow.reactive.a2a import create_response
+        from agenticflow.flow.a2a import create_response
 
         # Extract request details from event
         request_data = self.event.data

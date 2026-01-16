@@ -19,13 +19,13 @@ from agenticflow.events.event import Event as CoreEvent
 from agenticflow.flow.base import BaseFlow, FlowResult
 from agenticflow.observability.observer import Observer
 from agenticflow.observability.trace_record import TraceType
-from agenticflow.reactive.core import (
+from agenticflow.flow.triggers import (
     AgentTriggerConfig,
     Reaction,
     Trigger,
     TriggerBuilder,
 )
-from agenticflow.reactive.skills import Skill, SkillBuilder
+from agenticflow.flow.skills import Skill, SkillBuilder
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -261,7 +261,7 @@ class ReactiveFlow(BaseFlow):
             # Multiple events
             flow.register(monitor, on=["task.created", "task.completed"])
         """
-        from agenticflow.reactive.core import Trigger, for_agent, react_to
+        from agenticflow.flow.triggers import Trigger, for_agent, react_to
 
         # Build trigger config
         if triggers is None:
@@ -398,7 +398,7 @@ class ReactiveFlow(BaseFlow):
         Example:
             flow.thread_by_data("job_id")
         """
-        from agenticflow.reactive.threading import thread_id_from_data
+        from agenticflow.flow.threading import thread_id_from_data
 
         self._thread_id_resolver = thread_id_from_data(key, prefix=prefix)
         return self
@@ -1040,7 +1040,7 @@ class ReactiveFlow(BaseFlow):
         Yields:
             ReactiveStreamChunk with agent output
         """
-        from agenticflow.reactive.streaming import ReactiveStreamChunk
+        from agenticflow.flow.streaming import ReactiveStreamChunk
 
         event_name = event.name
 

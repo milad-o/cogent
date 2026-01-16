@@ -45,7 +45,7 @@ def create_delegate_tool(flow: Any, from_agent: str, allowed_specialists: list[s
                 task="Analyze Q4 sales data and identify trends"
             )
         """
-        from agenticflow.reactive.a2a import create_request
+        from agenticflow.flow.a2a import create_request
 
         # Validate delegation policy
         if specialist not in allowed_specialists:
@@ -124,7 +124,7 @@ def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
                 success=True
             )
         """
-        from agenticflow.reactive.a2a import AgentResponse
+        from agenticflow.flow.a2a import AgentResponse
 
         # Create response (correlation_id will be extracted from current event context)
         response = AgentResponse(

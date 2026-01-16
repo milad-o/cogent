@@ -7,7 +7,7 @@ Provides pluggable event transport backends for cross-process communication:
 
 Example:
     ```python
-    from agenticflow.reactive.transport import RedisTransport
+    from agenticflow.events.transport import RedisTransport
     from agenticflow.events import EventBus
 
     # Create distributed event bus

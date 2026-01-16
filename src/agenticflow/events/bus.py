@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from agenticflow.events.event import Event
 
 if TYPE_CHECKING:
-    from agenticflow.reactive.transport import Transport
+    from agenticflow.events.transport import Transport
 
 
 EventHandler = Callable[[Event], None] | Callable[[Event], Awaitable[None]]
@@ -40,7 +40,7 @@ class EventBus:
         bus = EventBus()
 
         # Distributed (Redis)
-        from agenticflow.reactive.transport import RedisTransport
+        from agenticflow.events.transport import RedisTransport
         transport = RedisTransport(url="redis://localhost:6379")
         await transport.connect()
         bus = EventBus(transport=transport)
