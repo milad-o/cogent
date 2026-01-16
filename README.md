@@ -635,13 +635,47 @@ class Analysis(BaseModel):
 agent = Agent(
     name="Analyzer",
     model=model,
-    response_schema=Analysis,
+    output=Analysis,  # Enforce schema
 )
 
 result = await agent.run("Analyze: I love this product!")
-print(result.sentiment)   # "positive"
-print(result.confidence)  # 0.95
+print(result.data.sentiment)   # "positive"
+print(result.data.confidence)  # 0.95
 ```
+
+## Reasoning
+
+Extended thinking for complex problems with AI-controlled rounds:
+
+```python
+from agenticflow import Agent
+from agenticflow.agent.reasoning import ReasoningConfig
+
+# Simple: Enable with defaults
+agent = Agent(
+    name="Analyst",
+    model=model,
+    reasoning=True,  # AI decides when ready (up to 10 rounds)
+)
+
+# Custom config
+agent = Agent(
+    name="DeepThinker",
+    model=model,
+    reasoning=ReasoningConfig(
+        max_thinking_rounds=15,  # Safety limit
+        style=ReasoningStyle.CRITICAL,
+    ),
+)
+
+# Per-call override
+result = await agent.run(
+    "Complex analysis task",
+    reasoning=True,  # Enable for this call only
+)
+```
+
+**Reasoning Styles:** `ANALYTICAL`, `EXPLORATORY`, `CRITICAL`, `CREATIVE`
 
 ## Resilience
 

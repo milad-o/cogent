@@ -301,29 +301,81 @@ except InterruptedException as e:
 
 ## Reasoning
 
-Enable extended thinking for complex problems:
+Enable extended thinking for complex problems with AI-controlled reasoning rounds.
+
+### Basic Usage
 
 ```python
-from agenticflow.agent import ReasoningConfig
+from agenticflow import Agent
+from agenticflow.agent.reasoning import ReasoningConfig
 
+# Simple: Enable with defaults
 agent = Agent(
     name="Analyst",
     model=model,
-    reasoning=ReasoningConfig(
-        style="chain_of_thought",
-        max_thinking_tokens=2000,
-    ),
+    reasoning=True,  # Default config
 )
 
 result = await agent.run("Analyze this complex problem...")
-print(result.thinking_steps)  # Access reasoning trace
+```
+
+### Custom Configuration
+
+```python
+# Full control with ReasoningConfig
+agent = Agent(
+    name="DeepThinker",
+    model=model,
+    reasoning=ReasoningConfig(
+        max_thinking_rounds=15,         # AI decides when ready (up to 15)
+        style=ReasoningStyle.CRITICAL,  # Critical reasoning style
+        show_thinking=True,             # Include thoughts in output
+    ),
+)
+```
+
+### Per-Call Overrides
+
+Enable or customize reasoning for specific calls:
+
+```python
+# Agent without reasoning by default
+agent = Agent(name="Helper", model=model, reasoning=False)
+
+# Simple task - no reasoning
+result = await agent.run("What time is it?")
+
+# Complex task - enable reasoning
+result = await agent.run(
+    "Analyze this codebase architecture",
+    reasoning=True,  # Enable for this call
+)
+
+# Very complex - custom config
+result = await agent.run(
+    "Debug this complex issue",
+    reasoning=ReasoningConfig(
+        max_thinking_rounds=10,
+        style=ReasoningStyle.ANALYTICAL,
+    ),
+)
 ```
 
 ### Reasoning Styles
 
-- `chain_of_thought`: Step-by-step reasoning
-- `tree_of_thought`: Explore multiple paths
-- `self_consistency`: Multiple samples for consensus
+- `ANALYTICAL`: Step-by-step logical breakdown (default)
+- `EXPLORATORY`: Consider multiple approaches
+- `CRITICAL`: Question assumptions, find flaws
+- `CREATIVE`: Generate novel solutions
+
+### AI-Controlled Rounds
+
+The AI signals when reasoning is complete via `<ready>true</ready>` tags. The `max_thinking_rounds` is a safety limit, not a fixed count:
+
+```python
+ReasoningConfig.standard()  # max 10 rounds (safety net)
+ReasoningConfig.deep()      # max 15 rounds (complex problems)
+```
 
 ## Structured Output
 

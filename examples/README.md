@@ -94,9 +94,15 @@ Advanced patterns for production systems.
 |---------|-------------|
 | [human_in_the_loop.py](advanced/human_in_the_loop.py) | Tool approval workflows |
 | [deferred_tools.py](advanced/deferred_tools.py) | Webhook/callback-based tools |
-| [reasoning.py](advanced/reasoning.py) | Extended thinking (chain-of-thought) |
+| [reasoning.py](advanced/reasoning.py) | Extended thinking with AI-controlled rounds |
 | [interceptors.py](advanced/interceptors.py) | BudgetGuard, PII masking, rate limiting |
 | [context_layer.py](advanced/context_layer.py) | RunContext, ToolGate, Failover |
+
+**Reasoning Features:**
+- Basic: `reasoning=True` enables default config
+- Custom: `reasoning=ReasoningConfig(max_thinking_rounds=15, style=...)`
+- Per-call override: `agent.run(..., reasoning=True/False/Config)`
+- AI-controlled: Agent decides when reasoning is complete
 
 ---
 
