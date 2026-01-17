@@ -1008,39 +1008,123 @@ flow = Flow(config=FlowConfig(error_policy="retry"))
 
 ## Observability
 
-### With Observer
+Monitor and debug your event-driven flows using the Observer system. The Flow automatically emits detailed traces for every event, reactor activation, and round of processing.
+
+### Quick Start
 
 ```python
 from agenticflow.observability import Observer
 
-observer = Observer.debug()
-
+# Choose an observer level
+observer = Observer.debug()  # Detailed execution
 flow = Flow(observer=observer)
 
 result = await flow.run("Execute task")
 
-# Access trace
-for trace in observer.traces:
-    print(f"{trace.type}: {trace.data}")
+# Observer shows flow execution automatically
 ```
 
-### Event Bus Integration
+### Observer Levels
+
+| Level | Use Case | Shows |
+|-------|----------|-------|
+| `Observer.silent()` | Production (no output) | Nothing |
+| `Observer.progress()` | Production monitoring | Flow started, rounds, completion |
+| `Observer.verbose()` | Development | Events, reactor activations, outputs |
+| `Observer.debug()` | Debugging | All events, conditions, matching, timing |
+| `Observer.trace()` | Deep troubleshooting | Everything + full history + graphs |
+
+### Example: Debugging Event Flow
 
 ```python
-from agenticflow.observability import EventBus, ConsoleEventHandler
+from agenticflow import Agent, Flow
+from agenticflow.observability import Observer, TraceType
 
-# Custom event bus
-bus = EventBus()
-bus.subscribe_all(ConsoleEventHandler())
+observer = Observer.debug()
+flow = Flow(observer=observer)
 
-flow = Flow(event_bus=bus)
+# Register reactors
+flow.register(researcher, on="task.created", emits="research.done")
+flow.register(writer, on="research.done", emits="flow.done")
 
-# Events will be published to your bus
-result = await flow.run("Task")
+# Run with observability
+result = await flow.run("Write about quantum computing")
 
-# Query event history
-events = bus.get_history(limit=100)
+# Analyze execution
+print("\n=== Events Processed ===")
+events = [
+    observed.event.data["event_type"]
+    for observed in observer.events()
+    if observed.event.type == TraceType.REACTIVE_EVENT_EMITTED
+]
+print(" → ".join(events))
+
+# Find slow reactors
+print("\n=== Performance ===")
+for observed in observer.events():
+    if observed.event.type == TraceType.REACTIVE_AGENT_COMPLETED:
+        agent = observed.event.data["agent"]
+        duration = observed.event.data["duration_ms"]
+        print(f"{agent}: {duration:.0f}ms")
 ```
+
+### Accessing Traces
+
+```python
+# All events
+all_events = observer.events()
+
+# Filter by type
+flow_events = [
+    observed.event for observed in observer.events()
+    if observed.event.type.value.startswith("reactive")
+]
+
+# Find specific events
+no_matches = [
+    observed.event for observed in observer.events()
+    if observed.event.type == TraceType.REACTIVE_NO_MATCH
+]
+
+if no_matches:
+    print("⚠️  Events with no matching reactors detected!")
+```
+
+### Export Traces
+
+```python
+import json
+from pathlib import Path
+
+# Export to JSON
+traces_data = [
+    {
+        "type": observed.event.type.value,
+        "timestamp": observed.event.timestamp.isoformat(),
+        "data": observed.event.data,
+    }
+    for observed in observer.events()
+]
+
+Path("flow_traces.json").write_text(json.dumps(traces_data, indent=2))
+```
+
+### What Flow Emits
+
+The Flow automatically emits these trace events:
+
+- `REACTIVE_FLOW_STARTED/COMPLETED/FAILED` - Flow lifecycle
+- `REACTIVE_EVENT_EMITTED/PROCESSED` - Event tracking
+- `REACTIVE_AGENT_TRIGGERED/COMPLETED/FAILED` - Agent execution
+- `REACTIVE_ROUND_STARTED/COMPLETED` - Processing rounds
+- `REACTIVE_NO_MATCH` - Unmatched events (debugging)
+
+**For comprehensive observability documentation**, see **[Observability Guide](observability.md)** which covers:
+- Dual-bus architecture (EventBus vs TraceBus)
+- All trace types and their data
+- Advanced debugging patterns
+- Performance analysis
+- Event chain visualization
 
 ---
 
