@@ -2534,6 +2534,170 @@ class Observer:
 
         return result
 
+    def event_graph(self, include_timing: bool = False, format: str = "mermaid") -> str:
+        """
+        Generate a visualization of event-driven flow execution.
+
+        Parses REACTIVE_* traces to build an event → reactor → event graph
+        showing how events cascade through the reactive system.
+
+        Args:
+            include_timing: If True, annotate nodes with execution times
+            format: Output format - currently only 'mermaid' supported
+
+        Returns:
+            Graph visualization in requested format (Mermaid flowchart by default)
+
+        Example:
+            ```python
+            observer = Observer.trace()
+            flow = Flow(observer=observer)
+            
+            flow.on("start", handler1, emits="processing")
+            flow.on("processing", handler2, emits="complete")
+            
+            await flow.run("task")
+            
+            # Generate Mermaid diagram
+            print(observer.event_graph())
+            # Output:
+            # graph LR
+            #   start[\"start"/] --> handler1["handler1"]
+            #   handler1 --> processing[\"processing"/]
+            #   processing --> handler2["handler2"]
+            #   handler2 --> complete[\"complete"/]
+            
+            # With timing annotations
+            print(observer.event_graph(include_timing=True))
+            # Output includes execution times on reactor nodes
+            ```
+
+        Use Cases:
+            - **Debugging**: Visualize which reactors triggered and in what order
+            - **Documentation**: Auto-generate flow diagrams from execution traces
+            - **Performance**: Identify slow reactors by enabling timing annotations
+            - **Validation**: Verify expected event chains occurred
+
+        Note:
+            Only processes REACTIVE_* trace events. Standard agent execution
+            traces are not included in the event graph.
+        """
+        if format != "mermaid":
+            raise ValueError(f"Unsupported format: {format}. Only 'mermaid' is currently supported.")
+
+        # Extract reactive events
+        reactive_events = [
+            observed.event
+            for observed in self._events
+            if observed.event.type.value.startswith("reactive")
+        ]
+        
+        # Also collect agent execution traces for timing data
+        agent_traces = [
+            observed.event
+            for observed in self._events
+            if observed.event.type.value.startswith("agent")
+        ]
+
+        if not reactive_events:
+            return "graph LR\n  START[\"No reactive events captured\"]"
+
+        # Build graph structure
+        lines = ["graph LR"]
+        seen_nodes: set[str] = set()
+        edges: list[tuple[str, str, str | None]] = []  # (from, to, label)
+
+        # Track event emissions and reactor triggers
+        event_emissions: dict[str, list[str]] = {}  # event_type -> [source_reactor, ...]
+        reactor_timings: dict[str, float] = {}  # reactor_name -> duration_ms
+        
+        # Collect timing from agent.responded traces (has duration_ms)
+        for trace in agent_traces:
+            if trace.type.value == "agent.responded":
+                agent_name = trace.data.get("agent_name", trace.data.get("agent", "unknown"))
+                duration = trace.data.get("duration_ms", 0)
+                if duration > 0:
+                    reactor_timings[agent_name] = duration
+
+        # First pass: collect all events and reactor timings
+        for trace in reactive_events:
+            trace_type = trace.type
+            data = trace.data
+
+            if trace_type == TraceType.REACTIVE_EVENT_EMITTED:
+                event_type = data.get("event_name", data.get("event_type", "unknown"))
+                source = data.get("source", "system")
+                
+                if event_type not in event_emissions:
+                    event_emissions[event_type] = []
+                if source not in event_emissions[event_type]:
+                    event_emissions[event_type].append(source)
+
+            elif trace_type == TraceType.REACTIVE_AGENT_COMPLETED:
+                agent_name = data.get("agent", "unknown")
+                # Duration might be in reactive trace too (fallback)
+                duration = data.get("duration_ms", 0)
+                if duration > 0 and agent_name not in reactor_timings:
+                    reactor_timings[agent_name] = duration
+
+        # Second pass: build edges from REACTIVE_AGENT_TRIGGERED events
+        for trace in reactive_events:
+            if trace.type == TraceType.REACTIVE_AGENT_TRIGGERED:
+                data = trace.data
+                agent_name = data.get("agent", "unknown")
+                trigger_event = data.get("trigger_event", data.get("event_type", "unknown"))
+
+                # Find what events this agent emits
+                emitted_events = [
+                    evt for evt, sources in event_emissions.items()
+                    if agent_name in sources and evt != trigger_event
+                ]
+
+                # Edge: trigger_event -> agent
+                event_id = f"evt_{trigger_event.replace('.', '_')}"
+                agent_id = f"agent_{agent_name.replace(' ', '_')}"
+
+                if event_id not in seen_nodes:
+                    lines.append(f'  {event_id}[\\"{trigger_event}"/]')
+                    seen_nodes.add(event_id)
+
+                # Create agent node with optional timing
+                if agent_id not in seen_nodes:
+                    if include_timing and agent_name in reactor_timings:
+                        timing = reactor_timings[agent_name]
+                        lines.append(f'  {agent_id}["{agent_name}<br/>({timing:.0f}ms)"]')
+                    else:
+                        lines.append(f'  {agent_id}["{agent_name}"]')
+                    seen_nodes.add(agent_id)
+
+                edges.append((event_id, agent_id, None))
+
+                # Edges: agent -> emitted_events
+                for emitted in emitted_events:
+                    emitted_id = f"evt_{emitted.replace('.', '_')}"
+                    if emitted_id not in seen_nodes:
+                        lines.append(f'  {emitted_id}[\\"{emitted}"/]')
+                        seen_nodes.add(emitted_id)
+                    edges.append((agent_id, emitted_id, None))
+
+        # Add edges
+        for from_node, to_node, label in edges:
+            if label:
+                lines.append(f"  {from_node} -->|{label}| {to_node}")
+            else:
+                lines.append(f"  {from_node} --> {to_node}")
+
+        # Add styling
+        lines.extend([
+            "",
+            "  classDef eventNode fill:#e1f5ff,stroke:#01579b,stroke-width:2px",
+            "  classDef agentNode fill:#fff3e0,stroke:#e65100,stroke-width:2px",
+            "  class " + ",".join([n for n in seen_nodes if n.startswith("evt_")]) + " eventNode" if any(n.startswith("evt_") for n in seen_nodes) else "",
+            "  class " + ",".join([n for n in seen_nodes if n.startswith("agent_")]) + " agentNode" if any(n.startswith("agent_") for n in seen_nodes) else "",
+        ])
+
+        return "\n".join([l for l in lines if l])  # Remove empty lines
+
     def summary(self) -> str:
         """
         Get a human-readable summary of execution.
