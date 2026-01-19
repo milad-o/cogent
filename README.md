@@ -5,6 +5,24 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/milad-o/agenticflow/releases">
+    <img src="https://img.shields.io/badge/version-1.8.3-blue.svg" alt="Version">
+  </a>
+  <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+  </a>
+  <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python">
+  </a>
+  <a href="https://milad-o.github.io/agenticflow">
+    <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
+  </a>
+  <a href="https://github.com/milad-o/agenticflow/actions">
+    <img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build">
+  </a>
+</p>
+
+<p align="center">
   <a href="#installation">Installation</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#core-architecture">Architecture</a> •
@@ -40,18 +58,18 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.8.2 - January 2026)
+## 🎉 Latest Changes (v1.8.3 - January 2026)
 
-**Final Consolidation** — Consolidated `ReactiveFlow` and `EventFlow` into `Flow`
-- ✨ **Unified Flow API** — `Flow` is now the single class for all event-driven orchestration.
-- 🗑️ **Removed Legacy Modules** — Deleted `reactive.py` compatibility module and `flow/reactive` package.
-- ♻️ **Refactored Examples** — Updated all examples to use `Flow` and modern patterns.
-- 🐛 **Bug Fixes** — Fixed streaming, roles, and observability issues.
+**Knowledge Graph Visualization & Tool Improvements**
+- ✨ **KnowledgeGraph Visualization** — Full GraphView integration with entity grouping, custom layouts (LR/TB/BT/RL), color-coded nodes
+- 🛠️ **Better Tool APIs** — Structured parameters for `query_knowledge` (source/relation/target), dict-based `remember`
+- ⚡ **Executor Enhancements** — Per-turn tool limits (50 instead of cumulative 20), semaphore-based concurrency (max 20 concurrent)
+- 🐛 **Bug Fixes** — Agent hallucination, tool call limit architecture, GraphView rendering methods, entity type handling
 
-**Previous (v1.8.1)** — API Simplification
-- 🏗️ **Core Module Cleanup** — Moved generic utilities from `flow/` to `core/`
-- 🔄 **Backward Compatibility** — Added `reactive.py` compatibility module
-- ✅ **Zero Breaking Changes** — All 1,333 tests pass
+**Previous (v1.8.2)** — Unified Flow API
+- ✨ **Consolidated Flow** — `ReactiveFlow` and `EventFlow` merged into single `Flow` class
+- 🗑️ **Removed Legacy** — Deleted compatibility modules, cleaner codebase
+- ♻️ **Refactored Examples** — All examples use modern `Flow` patterns
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 

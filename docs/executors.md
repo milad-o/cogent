@@ -54,9 +54,10 @@ result = await run(
     model="gpt-4o",
     system_prompt="You are a research assistant.",
     max_iterations=20,
-    max_tool_calls=50,
-    resilience=True,  # Auto-retry on rate limits
-    verbose=True,     # Print retry info
+    max_tool_calls_per_turn=50,  # Max tools per LLM response
+    max_concurrent_tools=20,     # Max concurrent executions
+    resilience=True,             # Auto-retry on rate limits
+    verbose=True,                # Print retry info
 )
 ```
 
@@ -241,8 +242,8 @@ All executors have configurable limits to control resource usage and prevent run
 | Executor | Parameter | Default | Description |
 |----------|-----------|---------|-------------|
 | **All** | `max_iterations` | `25` | Max LLM call iterations |
-| **NativeExecutor** | `max_tool_calls` | `20` | Max total tool calls across all iterations |
-| **NativeExecutor** | *parallel per iteration* | Unbounded | All tool calls in one response run concurrently |
+| **NativeExecutor** | `max_tool_calls_per_turn` | `50` | Max tool calls per LLM response |
+| **NativeExecutor** | `max_concurrent_tools` | `20` | Max concurrent tool executions (semaphore-based) |
 | **TreeSearchExecutor** | `max_iterations` | `25` | MCTS iterations (each involves multiple LLM calls) |
 | **TreeSearchExecutor** | `max_depth` | `5` | Max tree depth |
 | **TreeSearchExecutor** | `num_candidates` | `3` | Actions generated per node expansion |
@@ -255,14 +256,15 @@ All executors have configurable limits to control resource usage and prevent run
 ```python
 from agenticflow.executors import NativeExecutor
 
-executor = NativeExecutor(agent, max_tool_calls=50)
+executor = NativeExecutor(
+    agent,
+    max_tool_calls_per_turn=50,  # Per LLM response (not cumulative)
+    max_concurrent_tools=20,     # Semaphore-based concurrency limit
+)
 executor.max_iterations = 30
-
-# Parallel tool calls per iteration are UNBOUNDED
-# All tool calls returned by the model execute via asyncio.gather()
 ```
 
-When the model returns multiple tool calls in a single response (e.g., "Get weather for NYC, LA, and Chicago"), all execute concurrently with no artificial limit.
+**Per-turn limits** prevent the LLM from overwhelming the system with hundreds of tool calls in a single response. **Semaphore-based concurrency** ensures at most 20 tools execute simultaneously, preventing resource exhaustion while maintaining parallelism.
 
 ### TreeSearchExecutor Limits
 
@@ -312,8 +314,9 @@ from agenticflow.interceptors import BudgetGuard
 agent = Agent(
     interceptors=[
         BudgetGuard(
-            max_model_calls=100,  # Total LLM calls
-            max_tool_calls=500,    # Total tool executions
+            max_model_calls=100,           # Total LLM calls
+            max_tool_calls_per_turn=50,    # Per LLM response
+            max_concurrent_tools=20,       # Max concurrent
         ),
     ]
 )
