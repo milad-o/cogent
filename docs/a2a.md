@@ -1,6 +1,6 @@
 # Agent-to-Agent (A2A) Communication
 
-The A2A module enables direct agent-to-agent delegation and communication across **all flow types** — both ReactiveFlow and Topologies. Agents can delegate tasks to each other, wait for responses, and coordinate complex multi-agent workflows.
+The A2A module enables direct agent-to-agent delegation and communication across **all flow types** — both Flow and Topologies. Agents can delegate tasks to each other, wait for responses, and coordinate complex multi-agent workflows.
 
 ## Overview
 
@@ -14,7 +14,7 @@ Agent-to-Agent (A2A) communication allows agents to:
 This enables powerful patterns like coordinator-specialist, chains of delegation, and parallel fan-out.
 
 **Supported in:**
-- ✅ **ReactiveFlow** — Event-driven orchestration
+- ✅ **Flow** — Event-driven orchestration
 - ✅ **Supervisor** — Coordinator delegates to workers
 - ✅ **Pipeline** — Stages delegate to specialists
 - ✅ **Mesh** — Collaborative agents with external specialists
@@ -24,11 +24,10 @@ This enables powerful patterns like coordinator-specialist, chains of delegation
 
 ## Quick Start
 
-### ReactiveFlow Delegation
+### Flow Delegation
 
 ```python
-from agenticflow import Agent
-from agenticflow.reactive import ReactiveFlow
+from agenticflow import Agent, Flow
 
 model = get_model()
 
@@ -45,7 +44,7 @@ data_analyst = Agent(
     system_prompt="You analyze data and provide insights.",
 )
 
-flow = ReactiveFlow()
+flow = Flow()
 
 # Declarative delegation configuration
 flow.register(
@@ -118,10 +117,10 @@ When you configure delegation, the framework **automatically**:
 2. **Enhances prompts** — Appends delegation instructions to system prompts
 3. **Enforces policy** — Validates delegation targets against allowed list
 
-### ReactiveFlow Example
+### Flow Example
 
 ```python
-flow = ReactiveFlow()
+flow = Flow()
 
 # Coordinator can delegate to specialists
 flow.register(
@@ -259,7 +258,7 @@ flow.register(specialist, handles="data_analyst")
 For backward compatibility, the `triggers` parameter still works:
 
 ```python
-from agenticflow.reactive import react_to
+from agenticflow import react_to
 
 # Legacy approach
 flow.register(
@@ -445,7 +444,7 @@ data_analyst = Agent(name="data_analyst", model=model)
 writer = Agent(name="writer", model=model)
 researcher = Agent(name="researcher", model=model)
 
-flow = ReactiveFlow()
+flow = Flow()
 flow.register(coordinator, on="task.created")
 
 # All specialists handle their own requests
@@ -464,7 +463,7 @@ pm = Agent(name="project_manager", model=model)
 architect = Agent(name="architect", model=model)
 developer = Agent(name="developer", model=model)
 
-flow = ReactiveFlow()
+flow = Flow()
 flow.register(pm, on="task.created")
 flow.register(architect, handles=True)
 flow.register(developer, handles=True)
@@ -482,7 +481,7 @@ security = Agent(name="security_reviewer", model=model)
 performance = Agent(name="performance_reviewer", model=model)
 style = Agent(name="style_reviewer", model=model)
 
-flow = ReactiveFlow()
+flow = Flow()
 flow.register(coordinator, on="task.created")
 
 for reviewer in [security, performance, style]:
@@ -500,7 +499,7 @@ requester = Agent(name="requester", model=model)
 processor = Agent(name="processor", model=model)
 response_handler = Agent(name="response_handler", model=model)
 
-flow = ReactiveFlow()
+flow = Flow()
 flow.register(requester, on="task.created")
 flow.register(processor, handles=True)
 flow.register(response_handler, on="agent.response")
@@ -623,7 +622,7 @@ Use `Observer` for detailed tracking:
 ```python
 from agenticflow.observability import Observer, ObservabilityLevel, Channel
 
-flow = ReactiveFlow(
+flow = Flow(
     observer=Observer(
         level=ObservabilityLevel.PROGRESS,
         channels=[Channel.REACTIVE, Channel.AGENTS],
@@ -639,7 +638,8 @@ flow = ReactiveFlow(
 ### Before (Legacy Fluent API)
 
 ```python
-from agenticflow.reactive import react_to, for_agent
+from agenticflow import react_to
+from agenticflow.flow.triggers import for_agent
 
 # Old way - verbose fluent API
 flow.register(
@@ -700,7 +700,7 @@ flow.register(
 
 ```python
 from agenticflow import Agent
-from agenticflow.reactive import ReactiveFlow
+from agenticflow import Flow
 from agenticflow.observability import Observer, ObservabilityLevel, Channel
 
 model = get_model()
@@ -725,7 +725,7 @@ report_generator = Agent(
 )
 
 # Create flow with observability
-flow = ReactiveFlow(
+flow = Flow(
     observer=Observer(
         level=ObservabilityLevel.PROGRESS,
         channels=[Channel.REACTIVE, Channel.AGENTS],
