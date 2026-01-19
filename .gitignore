@@ -59,13 +59,16 @@ Thumbs.db
 
 # Misc
 .archive/
-.github/
 .analysis/
 .plans/
 examples/*.ipynb
 scripts/
 /config.py
 experiments/
+.github/copilot-instructions.md
+
+# MkDocs
+site/
 
 # Notebook-generated artifacts
 examples/data/pdf_output/notebook-*.html
@@ -77,3 +80,4 @@ examples/data/pdf_output/pdf_vision_showcase/
 task.md
 implementation_plan.md
 tests/.env
+

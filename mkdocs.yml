@@ -1,0 +1,103 @@
+site_name: AgenticFlow
+site_description: Production-grade multi-agent framework for building AI agents that actually work
+site_url: https://milad-o.github.io/agenticflow
+repo_url: https://github.com/milad-o/agenticflow
+repo_name: milad-o/agenticflow
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - autorefs
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: README.md
+  - Core Modules:
+      - Agent: agent.md
+      - Core: core.md
+      - Models: models.md
+      - Tools: tools.md
+      - Context: context.md
+      - Executors: executors.md
+  - Multi-Agent:
+      - Flow: flow.md
+      - Reactors: reactors.md
+      - Tasks: tasks.md
+      - A2A Communication: a2a.md
+  - Capabilities:
+      - Overview: capabilities.md
+      - Graph Visualization: graph.md
+  - RAG & Retrieval:
+      - Retrievers: retrievers.md
+      - VectorStore: vectorstore.md
+      - Document Processing: document.md
+      - Memory: memory.md
+  - Advanced:
+      - Events: events.md
+      - Interceptors: interceptors.md
+      - Resilience: resilience.md
+      - Streaming: streaming.md
+      - Transport: transport.md
+      - Observability: observability.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/milad-o/agenticflow
+  version:
+    provider: mike

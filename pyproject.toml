@@ -83,6 +83,8 @@ dev = [
     "aiosqlite>=0.21.0",
     "greenlet>=3.2.4",
     "sqlalchemy>=2.0.44",
+    "mkdocs-material>=9.7.1",
+    "pymdown-extensions>=10.20",
 ]
 
 [project.scripts]
