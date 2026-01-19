@@ -4,7 +4,7 @@ Real-time token-by-token streaming from event-driven ReactiveFlow executions.
 
 ## Overview
 
-Streaming reactions enable ReactiveFlow to yield output progressively as agents generate tokens, rather than waiting for complete responses. This provides:
+Streaming reactions enable Flow to yield output progressively as agents generate tokens, rather than waiting for complete responses. This provides:
 
 - **Real-time feedback** during long-running agent operations
 - **Better UX** with progressive output display
@@ -15,8 +15,7 @@ Streaming reactions enable ReactiveFlow to yield output progressively as agents 
 ## Quick Start
 
 ```python
-from agenticflow import Agent
-from agenticflow.reactive import ReactiveFlow, react_to
+from agenticflow import Agent, Flow, react_to
 from agenticflow.models import ChatModel
 
 # Create agents with streaming-capable models
@@ -32,8 +31,8 @@ writer = Agent(
     system_prompt="You write engaging content.",
 )
 
-# Create reactive flow
-flow = ReactiveFlow()
+# Create flow
+flow = Flow()
 flow.register(researcher, [react_to("task.created").emits("researcher.completed")])
 flow.register(writer, [react_to("researcher.completed")])
 
@@ -47,13 +46,13 @@ async for chunk in flow.run_streaming("Research quantum computing"):
 
 ## Core Concepts
 
-### ReactiveStreamChunk
+### StreamChunk
 
-Each streaming chunk contains full context about the reactive flow execution:
+Each streaming chunk contains full context about the flow execution:
 
 ```python
 @dataclass
-class ReactiveStreamChunk:
+class StreamChunk:
     agent_name: str           # Which agent is streaming
     event_id: str             # Event that triggered this agent
     event_name: str           # Type of triggering event
@@ -74,7 +73,7 @@ class ReactiveStreamChunk:
 
 | Feature | `run()` | `run_streaming()` |
 |---------|---------|-------------------|
-| **Returns** | `ReactiveFlowResult` | `AsyncIterator[ReactiveStreamChunk]` |
+| **Returns** | `ReactiveFlowResult` | `AsyncIterator[StreamChunk]` |
 | **Output** | Complete final output | Progressive tokens |
 | **Latency** | Wait for completion | Immediate feedback |
 | **Use Case** | Batch processing | Interactive UX |
@@ -99,10 +98,10 @@ class ReactiveStreamChunk:
 Simple single-agent streaming:
 
 ```python
-from agenticflow.reactive import ReactiveFlow, react_to
+from agenticflow import Flow, react_to
 
 agent = Agent(name="assistant", model=model)
-flow = ReactiveFlow()
+flow = Flow()
 flow.register(agent, [react_to("task.created")])
 
 # Stream tokens as they arrive
@@ -156,7 +155,7 @@ async for chunk in flow.run_streaming("Build web scraper"):
 Different agents stream based on event data:
 
 ```python
-flow = ReactiveFlow()
+flow = Flow()
 
 # Python expert handles Python questions
 flow.register(

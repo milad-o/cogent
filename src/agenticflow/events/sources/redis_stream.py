@@ -1,6 +1,6 @@
 """Redis Streams event source.
 
-Consumes events from Redis Streams and emits them into EventFlow.
+Consumes events from Redis Streams and emits them into Flow.
 Supports consumer groups for distributed processing.
 """
 

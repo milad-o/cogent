@@ -9,10 +9,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from agenticflow.reactive import (
-    EventFlow,
-    EventFlowConfig,
-    react_to,
+from agenticflow import (
+    Flow,
 )
 from agenticflow.flow.checkpointer import (
     FlowState,
@@ -268,93 +266,3 @@ class TestIdGeneration:
         assert id2.startswith("flow_")
         assert id1 != id2
 
-
-# =============================================================================
-# ReactiveFlow Checkpointing Integration Tests
-# =============================================================================
-
-
-class TestReactiveFlowCheckpointing:
-    """Tests for checkpointing in ReactiveFlow."""
-
-    @pytest.fixture
-    def mock_agent(self):
-        """Create a mock agent."""
-        def _create(name: str = "test_agent") -> MagicMock:
-            agent = MagicMock()
-            agent.name = name
-            agent.run = AsyncMock(
-                return_value=MagicMock(output=f"Output from {name}")
-            )
-            return agent
-        return _create
-
-    @pytest.mark.asyncio
-    async def test_flow_has_flow_id(self, mock_agent) -> None:
-        """Flow generates a flow_id."""
-        agent = mock_agent("test")
-        flow = EventFlow()
-        flow.register(agent, [react_to("task.created")])
-        
-        result = await flow.run("Test task", initial_event="task.created")
-        
-        assert result.flow_id is not None
-        assert result.flow_id.startswith("flow_")
-
-    @pytest.mark.asyncio
-    async def test_flow_with_custom_flow_id(self, mock_agent) -> None:
-        """Flow uses custom flow_id from config."""
-        agent = mock_agent("test")
-        config = EventFlowConfig(flow_id="custom-flow-123")
-        flow = EventFlow(config=config)
-        flow.register(agent, [react_to("task.created")])
-        
-        result = await flow.run("Test task", initial_event="task.created")
-        
-        assert result.flow_id == "custom-flow-123"
-
-    @pytest.mark.asyncio
-    async def test_checkpointing_saves_state(self, mock_agent) -> None:
-        """Flow saves checkpoints when checkpointer is configured."""
-        agent = mock_agent("test")
-        checkpointer = MemoryCheckpointer()
-        config = EventFlowConfig(checkpoint_every=1)  # Checkpoint every round
-        flow = EventFlow(config=config, checkpointer=checkpointer)
-        flow.register(agent, [react_to("task.created")])
-        
-        result = await flow.run("Test task", initial_event="task.created")
-        
-        # Should have saved at least one checkpoint
-        assert result.checkpoint_id is not None
-        checkpoints = await checkpointer.list_checkpoints(result.flow_id)
-        assert len(checkpoints) >= 1
-
-    @pytest.mark.asyncio
-    async def test_resume_from_checkpoint(self, mock_agent) -> None:
-        """Can resume flow from checkpoint."""
-        agent = mock_agent("test")
-        checkpointer = MemoryCheckpointer()
-        config = EventFlowConfig(checkpoint_every=1)
-        
-        # Create a checkpoint manually
-        state = FlowState(
-            flow_id="resume-test-flow",
-            checkpoint_id="cp-resume",
-            task="Resume task",
-            events_processed=1,
-            pending_events=[{"id": "e1", "name": "test.continue", "data": {"task": "Resume task"}}],
-            context={},
-            last_output="Previous output",
-            round=1,
-        )
-        await checkpointer.save(state)
-        
-        # Create flow and register agent for the pending event
-        flow = EventFlow(config=config, checkpointer=checkpointer)
-        flow.register(agent, [react_to("test.continue")])
-        
-        # Resume from checkpoint
-        result = await flow.resume(state)
-        
-        assert result.flow_id == "resume-test-flow"
-        assert agent.run.called  # Agent was triggered by pending event

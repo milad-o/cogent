@@ -40,20 +40,15 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.8.1 - January 2026)
+## 🎉 Latest Changes (v1.8.2 - January 2026)
 
-**API Simplification** — Cleaner, more intuitive Agent creation
-- ✨ **Simplified Agent API** — Removed dual API pattern, now single constructor
-  - Direct parameters only: `Agent(name, model, tools, ...)`
-  - `AgentConfig` removed from public API (internal use only)
-  - No breaking changes to existing direct parameter usage
-- 🔄 **Enhanced Pattern Helpers** — Added `observer` parameter
-  - `pipeline(stages, observer=Observer.debug())`
-  - `supervisor(coordinator, workers, observer=...)`
-- 📝 **Updated Examples** — All examples use modern pattern helpers
-- 🐛 **Bug Fixes** — Fixed import issues in reactive module and tests
+**Final Consolidation** — Consolidated `ReactiveFlow` and `EventFlow` into `Flow`
+- ✨ **Unified Flow API** — `Flow` is now the single class for all event-driven orchestration.
+- 🗑️ **Removed Legacy Modules** — Deleted `reactive.py` compatibility module and `flow/reactive` package.
+- ♻️ **Refactored Examples** — Updated all examples to use `Flow` and modern patterns.
+- 🐛 **Bug Fixes** — Fixed streaming, roles, and observability issues.
 
-**Previous (v1.8.0)** — Module Reorganization
+**Previous (v1.8.1)** — API Simplification
 - 🏗️ **Core Module Cleanup** — Moved generic utilities from `flow/` to `core/`
 - 🔄 **Backward Compatibility** — Added `reactive.py` compatibility module
 - ✅ **Zero Breaking Changes** — All 1,333 tests pass

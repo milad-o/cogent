@@ -1,421 +1,312 @@
 #!/usr/bin/env python3
 """
-Example 19: Streaming LLM Responses
+Streaming Reactions in Flow
 ===================================
 
-This example demonstrates AgenticFlow's streaming capabilities,
-which enable real-time token-by-token output from LLM providers.
+Demonstrates real-time token-by-token streaming from agents in event-driven flows.
 
-Streaming improves user experience by showing output as it's generated
-rather than waiting for the complete response.
+Unlike regular Flow.run() which waits for complete responses,
+run_streaming() yields tokens as they're generated, providing:
+- Real-time feedback during agent processing
+- Better UX with progressive output
+- Lower perceived latency
+- Ability to show which agent is currently active
 
-Key Features Demonstrated:
-1. Simple streaming with stream=True parameter
-2. Agent-level default streaming
-3. Low-level think() with streaming
-4. run() streaming with conversation history
-5. Structured event streaming with stream_events()
-6. Callbacks for handling stream events
+Key Features:
+1. Basic streaming - see tokens as they arrive
+2. Multi-agent streaming - track which agent is speaking
+3. Event-driven chaining with streaming
+4. Stream progress indicators
 
 Prerequisites:
-    - An LLM provider with streaming support (OpenAI, Anthropic, etc.)
-    - Set your API key: export OPENAI_API_KEY=your-key
+    - Streaming-capable model (OpenAI, Anthropic, etc.)
+    - Set API key: export OPENAI_API_KEY=your-key
 
 Run:
-    uv run python examples/basics/streaming.py
+    uv run python examples/reactive/streaming.py
 """
 
 import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import get_model as config_get_model, settings
+from config import get_model
 
 
 # =============================================================================
-# Real model factory (requires env/config to be set)
-def get_model(_: str | None = None):
-    """Get a real model configured via examples/config.py."""
-    return config_get_model()
-
-
-# =============================================================================
-# Demo Functions
+# Demo 1: Basic Streaming
 # =============================================================================
 
-async def demo_basic_streaming():
-    """Demo 1: Simple streaming with stream=True parameter."""
-    print("\n" + "=" * 60)
-    print("Demo 1: Simple Streaming (stream=True)")
-    print("=" * 60)
+async def basic_streaming():
+    """Demo 1: Basic streaming with Flow."""
+    print("\n" + "=" * 70)
+    print("Demo 1: Basic Streaming")
+    print("=" * 70)
     
     from agenticflow import Agent
+    from agenticflow import Flow, react_to
     
-    model = get_model(
-        "Streaming is a powerful feature that allows you to see "
-        "the response as it's being generated, token by token. "
-        "This improves the user experience significantly!"
+    # Create agent with streaming-capable model
+    assistant = Agent(
+        name="assistant",
+        model=get_model(),
+        system_prompt="You are a helpful assistant. Be concise.",
     )
     
-    # Create agent normally (non-streaming by default)
-    agent = Agent(
-        name="StreamingAssistant",
-        model=model,
-        system_prompt="You are a helpful assistant. Keep responses concise.",
-    )
+    # Create reactive flow
+    flow = Flow()
+    flow.register(assistant, [react_to("task.created")])
     
-    print("\n# Using stream=True on run():")
-    print("-" * 40)
+    print("\n📝 Task: Explain streaming in 2 sentences")
+    print("-" * 70)
+    print()
     
-    # Simply add stream=True to enable streaming!
-    async for chunk in agent.run("Explain streaming in 2 sentences.", stream=True):
+    # Stream execution - tokens arrive in real-time
+    async for chunk in flow.run_streaming("Explain streaming in 2 sentences"):
         print(chunk.content, end="", flush=True)
+        
+        if chunk.is_final:
+            print()  # Newline after completion
     
-    print("\n" + "-" * 40)
+    print()
     print("✅ Streaming complete!")
 
 
-async def demo_default_streaming():
-    """Demo 2: Agent-level default streaming."""
-    print("\n" + "=" * 60)
-    print("Demo 2: Agent-Level Default Streaming")
-    print("=" * 60)
+# =============================================================================
+# Demo 2: Multi-Agent Streaming
+# =============================================================================
+
+async def multi_agent_streaming():
+    """Demo 2: Streaming with multiple agents - track who's speaking."""
+    print("\n" + "=" * 70)
+    print("Demo 2: Multi-Agent Streaming")
+    print("=" * 70)
     
     from agenticflow import Agent
+    from agenticflow import Flow, react_to
     
-    model = get_model(
-        "I'm a streaming agent by default! Every response I give "
-        "will stream token by token automatically."
+    # Create multiple agents
+    researcher = Agent(
+        name="researcher",
+        model=get_model(),
+        system_prompt="You research topics. Provide 2-3 key facts.",
     )
     
-    # Create agent with streaming enabled by default
-    agent = Agent(
-        name="StreamingByDefault",
-        model=model,
-        stream=True,  # <-- Enable streaming as default!
+    writer = Agent(
+        name="writer",
+        model=get_model(),
+        system_prompt="You write engaging summaries. Keep it to 2 sentences.",
     )
     
-    print("\n# Agent with stream=True default:")
-    print("-" * 40)
+    # Create flow with chained agents
+    flow = Flow()
+    flow.register(researcher, [react_to("task.created").emits("researcher.completed")])
+    flow.register(writer, [react_to("researcher.completed")])
     
-    # No need to specify stream=True - it's the default!
-    async for chunk in agent.run("Hello! Are you a streaming agent?", stream=True):
+    print("\n📝 Task: Research and summarize quantum computing")
+    print("-" * 70)
+    
+    current_agent = None
+    
+    async for chunk in flow.run_streaming("Research and summarize quantum computing"):
+        # Show agent name when it changes
+        if chunk.agent_name != current_agent:
+            if current_agent is not None:
+                print()  # Newline before new agent
+            print(f"\n🤖 [{chunk.agent_name}]:", end=" ")
+            current_agent = chunk.agent_name
+        
         print(chunk.content, end="", flush=True)
+        
+        if chunk.is_final:
+            print()  # Newline after agent completes
     
-    print("\n" + "-" * 40)
-    
-    print("\n# Override with stream=False:")
-    result = await agent.run("Give me a one-liner.", stream=False)
-    print(result)
-    
-    print("\n✅ Agent-level streaming works!")
-
-
-async def demo_think_stream():
-    """Demo 3: Low-level streaming with think(stream=True)."""
-    print("\n" + "=" * 60)
-    print("Demo 3: Token Streaming with think(stream=True)")
-    print("=" * 60)
-    
-    from agenticflow import Agent
-    
-    model = get_model(
-        "Using think(stream=True) gives you low-level LLM access "
-        "without the agentic loop."
-    )
-    
-    agent = Agent(
-        name="ThinkingAgent",
-        model=model,
-        system_prompt="You are a helpful assistant. Keep responses concise.",
-    )
-    
-    print("\nStreaming with think(stream=True):")
-    print("-" * 40)
-    
-    async for chunk in agent.think("Explain streaming in one sentence.", stream=True):
-        print(chunk.content, end="", flush=True)
-    
-    print("\n" + "-" * 40)
-    print("✅ Streaming complete!")
-
-
-async def demo_conversation_streaming():
-    """Demo 4: Streaming with conversation history using run()."""
-    print("\n" + "=" * 60)
-    print("Demo 4: Chat Streaming with History")
-    print("=" * 60)
-    
-    from agenticflow import Agent
-    
-    model = get_model("Nice to meet you, Alice! How can I help you today?")
-    
-    agent = Agent(
-        name="ChatAssistant",
-        model=model,
-        system_prompt="You are a friendly assistant. Remember user details.",
-    )
-    
-    # First message
-    print("\n[User]: Hi, my name is Alice!")
-    print("[Assistant]: ", end="", flush=True)
-    
-    async for chunk in agent.run("Hi, my name is Alice!", stream=True):
-        print(chunk.content, end="", flush=True)
     print()
-    
-    # Second message - should remember context
-    print("\n[User]: What's my name?")
-    print("[Assistant]: ", end="", flush=True)
-    
-    async for chunk in agent.run("What's my name?", stream=True):
-        print(chunk.content, end="", flush=True)
-    print()
-    
-    print("\n✅ Chat streaming with memory works!")
+    print("✅ Multi-agent streaming complete!")
 
 
-async def demo_event_streaming():
-    """Demo 5: Structured event streaming."""
-    print("\n" + "=" * 60)
-    print("Demo 5: Structured Event Streaming")
-    print("=" * 60)
-    
-    from agenticflow import Agent, StreamEventType
-    
-    model = get_model("Here's what I found: The answer is 42. That's all!")
-    
-    agent = Agent(
-        name="EventStreamer",
-        model=model,
-    )
-    
-    print("\nEvent stream:")
-    print("-" * 40)
-    
-    async for event in agent.stream_events("What is 6 times 7?"):
-        if event.type == StreamEventType.STREAM_START:
-            print(f"🚀 Stream started (agent: {event.metadata.get('agent_name')})")
-        elif event.type == StreamEventType.TOKEN:
-            print(event.content, end="", flush=True)
-        elif event.type == StreamEventType.TOOL_CALL_START:
-            print(f"\n🔧 Tool call: {event.tool_name}")
-        elif event.type == StreamEventType.STREAM_END:
-            print(f"\n✅ Stream ended ({event.metadata.get('token_count')} chunks)")
-        elif event.type == StreamEventType.ERROR:
-            print(f"\n❌ Error: {event.error}")
-    
-    print("-" * 40)
+# =============================================================================
+# Demo 3: Progress Indicators
+# =============================================================================
 
-
-async def demo_callbacks():
-    """Demo 6: Using callbacks for stream handling."""
-    print("\n" + "=" * 60)
-    print("Demo 6: Stream Callbacks")
-    print("=" * 60)
-    
-    from agenticflow import (
-        Agent,
-        PrintStreamCallback,
-        CollectorStreamCallback,
-    )
-    
-    model = get_model("Callbacks let you process tokens without writing a loop!")
-    
-    agent = Agent(
-        name="CallbackDemo",
-        model=model,
-    )
-    
-    # Using PrintStreamCallback for automatic printing
-    print("\n1. Using PrintStreamCallback:")
-    print("-" * 40)
-    
-    callback = PrintStreamCallback(
-        prefix="🤖 ",
-        suffix="\n",
-        end="",
-        flush=True,
-    )
-    
-    async for chunk in agent.think("Say something short.", stream=True):
-        callback.on_token(chunk.content)
-    callback.on_stream_end("")
-    
-    # Using CollectorStreamCallback to collect output
-    print("\n2. Using CollectorStreamCallback:")
-    print("-" * 40)
-    
-    collector = CollectorStreamCallback()
-    
-    async for chunk in agent.think("Give me a brief response.", stream=True):
-        collector.on_token(chunk.content)
-        print(".", end="", flush=True)  # Progress indicator
-    
-    print(f"\n\nCollected: {collector.get_full_response()!r}")
-    print(f"Token count: {len(collector._tokens)}")
-
-
-async def demo_print_stream_helper():
-    """Demo 7: Using the print_stream() helper."""
-    print("\n" + "=" * 60)
-    print("Demo 7: print_stream() Helper")
-    print("=" * 60)
-    
-    from agenticflow import Agent, print_stream
-    
-    model = get_model("The print_stream helper makes it easy to stream and capture!")
-    
-    agent = Agent(
-        name="PrintHelper",
-        model=model,
-    )
-    
-    print("\nUsing print_stream() helper:")
-    print("-" * 40)
-    
-    # print_stream handles both display and collection
-    response = await print_stream(
-        agent.think("Explain print_stream in one sentence.", stream=True),
-        prefix="📝 ",
-        suffix="\n",
-    )
-    
-    print(f"\nFull response captured: {len(response)} characters")
-
-
-async def demo_collect_stream():
-    """Demo 8: Collecting stream without display."""
-    print("\n" + "=" * 60)
-    print("Demo 8: Collecting Stream Silently")
-    print("=" * 60)
-    
-    from agenticflow import Agent, collect_stream
-    
-    model = get_model("This is collected silently without printing anything.")
-    
-    agent = Agent(
-        name="Collector",
-        model=model,
-    )
-    
-    print("\nCollecting stream silently...")
-    
-    # collect_stream gathers all output without printing
-    content, tool_calls = await collect_stream(
-        agent.think("Give me a secret message.", stream=True)
-    )
-    
-    print(f"✅ Collected {len(content)} characters")
-    print(f"📝 Content: {content!r}")
-    print(f"🔧 Tool calls: {len(tool_calls)}")
-
-
-async def demo_custom_processing():
-    """Demo 7: Custom stream processing."""
-    print("\n" + "=" * 60)
-    print("Demo 7: Custom Stream Processing")
-    print("=" * 60)
+async def streaming_with_progress():
+    """Demo 3: Show progress indicators during streaming."""
+    print("\n" + "=" * 70)
+    print("Demo 3: Streaming with Progress Indicators")
+    print("=" * 70)
     
     from agenticflow import Agent
+    from agenticflow import Flow, react_to
     
-    model = get_model(
-        "Custom processing allows you to transform tokens as they arrive. "
-        "You could uppercase them, count words, or do anything else!"
+    # Create agents for a 3-stage pipeline
+    analyzer = Agent(
+        name="analyzer",
+        model=get_model(),
+        system_prompt="Analyze the problem. List 2 key points.",
     )
     
-    agent = Agent(
-        name="CustomProcessor",
-        model=model,
+    planner = Agent(
+        name="planner",
+        model=get_model(),
+        system_prompt="Create a solution plan. 2-3 steps.",
     )
     
-    print("\n1. Uppercase transformation:")
-    print("-" * 40)
+    executor = Agent(
+        name="executor",
+        model=get_model(),
+        system_prompt="Provide final solution. Be concise.",
+    )
     
-    async for chunk in agent.think("Say hello in lowercase.", stream=True):
-        # Transform each chunk as it arrives
-        print(chunk.content.upper(), end="", flush=True)
-    print()
+    # Create pipeline flow
+    flow = Flow()
+    flow.register(analyzer, [react_to("task.created").emits("analyzed")])
+    flow.register(planner, [react_to("analyzed").emits("planned")])
+    flow.register(executor, [react_to("planned")])
     
-    print("\n2. Word counting during stream:")
-    print("-" * 40)
+    print("\n📝 Task: Build a web scraper")
+    print("-" * 70)
     
-    buffer = ""
-    word_count = 0
+    # Track progress
+    agents_completed = 0
+    total_agents = 3
+    current_agent = None
     
-    async for chunk in agent.think("Count to ten with words.", stream=True):
-        buffer += chunk.content
-        # Count complete words
-        while " " in buffer:
-            word, buffer = buffer.split(" ", 1)
-            if word.strip():
-                word_count += 1
+    async for chunk in flow.run_streaming("Build a web scraper"):
+        # Update progress when agent changes
+        if chunk.agent_name != current_agent:
+            if current_agent is not None:
+                agents_completed += 1
+            
+            current_agent = chunk.agent_name
+            progress = f"[{agents_completed + 1}/{total_agents}]"
+            print(f"\n\n{progress} 🤖 {chunk.agent_name}:")
+            print("-" * 70)
+        
         print(chunk.content, end="", flush=True)
     
-    # Count remaining buffer as a word if non-empty
-    if buffer.strip():
-        word_count += 1
-    
-    print(f"\n\n📊 Word count: {word_count}")
+    print("\n")
+    print("=" * 70)
+    print("✅ Pipeline streaming complete!")
 
 
-async def demo_streaming_comparison():
-    """Demo 8: Compare streaming vs non-streaming performance."""
-    print("\n" + "=" * 60)
-    print("Demo 8: Streaming vs Non-Streaming")
-    print("=" * 60)
+# =============================================================================
+# Demo 4: Conditional Streaming
+# =============================================================================
+
+async def conditional_streaming():
+    """Demo 4: Different agents stream based on event data."""
+    print("\n" + "=" * 70)
+    print("Demo 4: Conditional Streaming (Event-Driven Routing)")
+    print("=" * 70)
     
-    import time
     from agenticflow import Agent
+    from agenticflow import Flow, react_to
     
-    response_text = (
-        "This is a longer response to demonstrate the difference "
-        "between streaming and non-streaming. With streaming, you see "
-        "each token as it arrives. Without streaming, you wait for "
-        "the entire response before seeing anything."
-    )
-    model = get_model(response_text)
-    
-    agent = Agent(
-        name="Comparison",
-        model=model,
+    # Create specialized agents
+    python_expert = Agent(
+        name="python_expert",
+        model=get_model(),
+        system_prompt="You are a Python expert. Provide Python advice.",
     )
     
-    prompt = "Write a 3-sentence response about AI."
+    js_expert = Agent(
+        name="js_expert",
+        model=get_model(),
+        system_prompt="You are a JavaScript expert. Provide JS advice.",
+    )
     
-    # Non-streaming
-    print("\n1. Non-streaming (wait for complete response):")
-    print("-" * 40)
+    general_agent = Agent(
+        name="general",
+        model=get_model(),
+        system_prompt="You are a general programming assistant.",
+    )
     
-    start = time.time()
-    response = await agent.think(prompt)
-    non_stream_time = time.time() - start
+    # Create flow with conditional triggers
+    flow = Flow()
+    flow.register(
+        python_expert,
+        [react_to("question.asked").when(lambda e: "python" in str(e.data).lower())],
+    )
+    flow.register(
+        js_expert,
+        [react_to("question.asked").when(lambda e: "javascript" in str(e.data).lower())],
+    )
+    flow.register(
+        general_agent,
+        [react_to("question.asked").when(
+            lambda e: "python" not in str(e.data).lower() 
+            and "javascript" not in str(e.data).lower()
+        )],
+    )
     
-    print(response)
-    print(f"\n⏱️  Time to first character: {non_stream_time:.2f}s")
-    print(f"⏱️  Total time: {non_stream_time:.2f}s")
+    # Test multiple questions
+    questions = [
+        ("How do I use list comprehensions in Python?", {"language": "python"}),
+        ("What are JavaScript promises?", {"language": "javascript"}),
+        ("What is version control?", {"language": "general"}),
+    ]
     
-    # Streaming
-    print("\n2. Streaming (tokens arrive progressively):")
-    print("-" * 40)
+    for question, data in questions:
+        print(f"\n📝 Question: {question}")
+        print("-" * 70)
+        
+        async for chunk in flow.run_streaming(
+            question,
+            initial_event="question.asked",
+            initial_data=data,
+        ):
+            if chunk.content:  # Skip empty chunks
+                print(chunk.content, end="", flush=True)
+        
+        print("\n")
     
-    start = time.time()
-    first_token_time = None
+    print("✅ Conditional streaming complete!")
+
+
+# =============================================================================
+# Demo 5: Error Handling in Streaming
+# =============================================================================
+
+async def streaming_error_handling():
+    """Demo 5: Graceful error handling during streaming."""
+    print("\n" + "=" * 70)
+    print("Demo 5: Error Handling in Streaming")
+    print("=" * 70)
     
-    async for chunk in agent.think(prompt, stream=True):
-        if first_token_time is None:
-            first_token_time = time.time() - start
-        print(chunk.content, end="", flush=True)
+    from agenticflow import Agent
+    from agenticflow import Flow, react_to
     
-    total_time = time.time() - start
+    # Create agent that might fail
+    assistant = Agent(
+        name="assistant",
+        model=get_model(),
+        system_prompt="You are a helpful assistant.",
+    )
     
-    print(f"\n\n⏱️  Time to first character: {first_token_time:.3f}s")
-    print(f"⏱️  Total time: {total_time:.2f}s")
+    flow = Flow()
+    flow.register(assistant, [react_to("task.created")])
     
-    print("\n✅ Streaming provides faster perceived response!")
+    print("\n📝 Task: Streaming with potential errors")
+    print("-" * 70)
+    
+    try:
+        async for chunk in flow.run_streaming("Explain error handling"):
+            print(chunk.content, end="", flush=True)
+            
+            # Check for errors in metadata
+            if chunk.metadata and chunk.metadata.get("error"):
+                print(f"\n⚠️  Error detected: {chunk.metadata['error']}")
+            
+            if chunk.is_final:
+                if chunk.finish_reason == "error":
+                    print("\n❌ Streaming ended with error")
+                else:
+                    print("\n✅ Streaming completed successfully")
+    
+    except Exception as e:
+        print(f"\n❌ Exception during streaming: {e}")
 
 
 # =============================================================================
@@ -424,22 +315,35 @@ async def demo_streaming_comparison():
 
 async def main():
     """Run all streaming demos."""
-    print("=" * 60)
-    print("AgenticFlow Streaming Demonstration")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("Streaming Reactions in Flow")
+    print("=" * 70)
     
-    print("\n🔑 Using configured LLM and embeddings from .env")
+    try:
+        await basic_streaming()
+        await asyncio.sleep(1)
+        
+        await multi_agent_streaming()
+        await asyncio.sleep(1)
+        
+        await streaming_with_progress()
+        await asyncio.sleep(1)
+        
+        await conditional_streaming()
+        await asyncio.sleep(1)
+        
+        await streaming_error_handling()
+        
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Interrupted by user")
+    except Exception as e:
+        print(f"\n\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
     
-    await demo_basic_streaming()      # Demo 1: Simple stream=True
-    await demo_default_streaming()    # Demo 2: Agent-level default
-    await demo_think_stream()              # Demo 3: think(stream=True)
-    await demo_conversation_streaming()    # Demo 4: run() with thread_id
-    await demo_event_streaming()           # Demo 5: Structured events
-    await demo_callbacks()            # Demo 6: Callbacks
-    await demo_print_stream_helper()  # Demo 7: print_stream()
-    await demo_collect_stream()       # Demo 8: collect_stream()
-    
-    print("\n✅ All Streaming demos completed!")
+    print("\n" + "=" * 70)
+    print("All demos complete!")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

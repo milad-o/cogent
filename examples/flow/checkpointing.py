@@ -23,9 +23,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model
 
 from agenticflow import Agent, tool
-from agenticflow.reactive import (
-    ReactiveFlow,
-    ReactiveFlowConfig,
+from agenticflow import (
+    Flow,
+    FlowConfig,
     MemoryCheckpointer,
     FileCheckpointer,
     Observer,
@@ -93,7 +93,7 @@ async def basic_checkpointing() -> None:
     observer = Observer.trace()
     checkpointer = MemoryCheckpointer()
     
-    config = ReactiveFlowConfig(
+    config = FlowConfig(
         checkpoint_every=1,  # Save after every round
         flow_id="etl-pipeline-001",
     )
@@ -128,7 +128,7 @@ async def basic_checkpointing() -> None:
     )
 
     # Create flow with checkpointing
-    flow = ReactiveFlow(config=config, checkpointer=checkpointer, observer=observer)
+    flow = Flow(config=config, checkpointer=checkpointer, observer=observer)
     
     # Register agents with event triggers
     flow.register(extractor, [react_to("task.created")])
@@ -200,8 +200,8 @@ async def crash_recovery_simulation() -> None:
     )
 
     # Create flow and register agents
-    config = ReactiveFlowConfig(checkpoint_every=1)
-    flow = ReactiveFlow(config=config, checkpointer=checkpointer, observer=observer)
+    config = FlowConfig(checkpoint_every=1)
+    flow = Flow(config=config, checkpointer=checkpointer, observer=observer)
     flow.register(sync_agent, [react_to("validation.complete")])
     flow.register(finalizer, [react_to("sync_agent.completed")])
 
@@ -231,7 +231,7 @@ async def file_based_checkpointing() -> None:
         checkpoint_dir = Path(tmpdir)
         checkpointer = FileCheckpointer(checkpoint_dir)
         
-        config = ReactiveFlowConfig(
+        config = FlowConfig(
             checkpoint_every=1,
             flow_id="file-backed-flow",
         )
@@ -250,7 +250,7 @@ async def file_based_checkpointing() -> None:
             tools=[transform_to_report],
         )
 
-        flow = ReactiveFlow(config=config, checkpointer=checkpointer, observer=observer)
+        flow = Flow(config=config, checkpointer=checkpointer, observer=observer)
         flow.register(processor, [react_to("task.created")])
         flow.register(reporter, [react_to("processor.completed")])
 
@@ -288,7 +288,7 @@ async def multi_flow_coordination() -> None:
 
     # Create two independent flows
     async def run_flow(flow_name: str, task: str) -> None:
-        config = ReactiveFlowConfig(
+        config = FlowConfig(
             checkpoint_every=1,
             flow_id=flow_name,
         )
@@ -299,7 +299,7 @@ async def multi_flow_coordination() -> None:
             system_prompt="You process tasks efficiently. Be concise.",
         )
         
-        flow = ReactiveFlow(config=config, checkpointer=checkpointer, observer=observer)
+        flow = Flow(config=config, checkpointer=checkpointer, observer=observer)
         flow.register(agent, [react_to("task.created")])
         
         result = await flow.run(task, initial_event="task.created")

@@ -1,7 +1,7 @@
 """Delegation configuration mixin for all flow types.
 
 This module provides unified A2A delegation configuration that works across
-all flow types (reactive, supervisor, pipeline, mesh, etc.).
+all flow types (event-driven, supervisor, pipeline, mesh, etc.).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ class DelegationMixin:
 
     This provides a unified API for delegation configuration that works
     across imperative topologies (Supervisor, Pipeline, Mesh) and
-    reactive flows.
+    event-driven flows.
 
     Design Philosophy:
     - Declarative: Specify delegation policy, framework handles implementation
@@ -50,7 +50,7 @@ class DelegationMixin:
                          - True: Agent can delegate to any available specialist
                          - None: Agent cannot delegate
             can_reply: Whether agent can reply to delegated requests
-            trigger_config: Optional trigger config (for reactive flows, to find specialists)
+            trigger_config: Optional trigger config (for event-driven flows, to find specialists)
 
         Examples:
             # Coordinator that can delegate to specific specialists
@@ -99,7 +99,7 @@ class DelegationMixin:
 
             if can_delegate is True:
                 # Auto-discover specialists
-                # For reactive flows: agents that handle agent.request
+                # For event-driven flows: agents that handle agent.request
                 if trigger_config and hasattr(self, '_agents_registry'):
                     registry = self._agents_registry
                     specialists = [

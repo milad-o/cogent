@@ -8,7 +8,7 @@ Each agent has specialized tools to accomplish their tasks.
 API Levels:
 - High-level: chain(), fanout(), route() - one-liner patterns
 - Mid-level: Chain, FanOut, Router classes with .run()
-- Low-level: EventFlow with manual trigger registration
+- Low-level: Flow with manual trigger registration
 """
 
 import asyncio
@@ -21,16 +21,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model
 
 from agenticflow import Agent, tool
-from agenticflow.reactive import (
-    Chain,
-    EventFlow,
-    EventFlowConfig,
+from agenticflow import (
+    Flow,
+    FlowConfig,
     Observer,
-    chain,
-    fanout,
-    react_to,
-    route,
 )
+from agenticflow.flow.patterns import pipeline
+from agenticflow.reactors import WaitAll
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -146,7 +143,7 @@ def send_notification(message: str, channel: str = "slack") -> str:
 async def research_and_write() -> None:
     """Chain pattern: Research → Write → Edit with tools."""
     print("\n" + "─" * 50)
-    print("📝 CHAIN: Research → Write → Edit")
+    print("📝 CHAIN: Research → Write → Edit (Pipeline)")
     print("─" * 50)
 
     observer = Observer.trace()
@@ -169,7 +166,8 @@ async def research_and_write() -> None:
         system_prompt="You polish content. Make it shorter and punchier. One paragraph max.",
     )
 
-    result = await chain(researcher, writer, editor, observer=observer).run(
+    # Use pipeline pattern
+    result = await pipeline([researcher, writer, editor], observer=observer).run(
         "Write about renewable energy trends"
     )
 
@@ -177,9 +175,9 @@ async def research_and_write() -> None:
 
 
 async def parallel_search_and_aggregate() -> None:
-    """FanOut pattern: Parallel searches merged by aggregator."""
+    """Parallel/FanOut pattern: Parallel searches merged by aggregator."""
     print("\n" + "─" * 50)
-    print("🔍 FANOUT: Parallel Search → Aggregate")
+    print("🔍 FANOUT: Parallel Search → WaitAll → Aggregate")
     print("─" * 50)
 
     observer = Observer.trace()
@@ -203,19 +201,36 @@ async def parallel_search_and_aggregate() -> None:
         tools=[write_document],
     )
 
-    result = await fanout(
-        web_searcher, db_searcher,
-        then=aggregator,
-        observer=observer,
-    ).run("Find information about AI trends and our customer metrics")
+    # Manual flow construction for FanOut
+    flow = Flow(observer=observer)
+    
+    # Register parallel agents trigger on same event
+    flow.register(web_searcher, on="task.created", emits="search.web.done")
+    flow.register(db_searcher, on="task.created", emits="search.db.done")
+    
+    # Wait for both to finish before triggering aggregator
+    # We use a WaitAll reactor to synchronize
+    waiter = WaitAll(
+        collect=2,
+        emit="all.search.done",
+    )
+    flow.register(waiter, on=["search.web.done", "search.db.done"])
+    
+    # Aggregator triggers when watcher completes
+    flow.register(aggregator, on="all.search.done", emits="flow.done")
+
+    result = await flow.run(
+        "Find information about AI trends and our customer metrics",
+        initial_event="task.created"
+    )
 
     print(f"\n📄 Aggregated Report:\n{result.output[:500]}")
 
 
 async def smart_routing() -> None:
-    """Route pattern: Direct tasks to specialized agents."""
+    """Route pattern: Direct tasks to specialized agents using conditionals."""
     print("\n" + "─" * 50)
-    print("🔀 ROUTE: Smart Task Routing")
+    print("🔀 ROUTE: Smart Task Routing (Conditional)")
     print("─" * 50)
 
     observer = Observer.trace()
@@ -239,11 +254,23 @@ async def smart_routing() -> None:
         tools=[send_notification],
     )
 
-    router = route(
-        ("analyze|data|chart", analyst),
-        ("calculate|math|code", coder),
-        ("notify|send|alert", communicator),
-        observer=observer,
+    flow = Flow(observer=observer)
+    
+    # Register agents with conditional triggers
+    flow.register(
+        analyst, 
+        on="task.created",
+        when=lambda e: any(k in e.data.get("task", "").lower() for k in ["analyze", "data", "chart"])
+    )
+    flow.register(
+        coder, 
+        on="task.created",
+        when=lambda e: any(k in e.data.get("task", "").lower() for k in ["calculate", "math", "code"])
+    )
+    flow.register(
+        communicator, 
+        on="task.created",
+        when=lambda e: any(k in e.data.get("task", "").lower() for k in ["notify", "send", "alert"])
     )
 
     tasks = [
@@ -254,12 +281,14 @@ async def smart_routing() -> None:
 
     for task in tasks:
         print(f"\n📌 Task: {task}")
-        result = await router.run(task)
-        print(f"   Result: {result.output[:150]}...")
+        result = await flow.run(task)
+        # Output might be None if no agent matched or if observer captured it differently
+        # But usually agent output is in result.output
+        print(f"   Result: {str(result.output)[:150]}...")
 
 
 async def event_driven_pipeline() -> None:
-    """EventFlow: Custom event-driven orchestration with tools."""
+    """Flow: Custom event-driven orchestration with tools."""
     print("\n" + "─" * 50)
     print("⚡ EVENT FLOW: Custom Reactive Pipeline")
     print("─" * 50)
@@ -290,12 +319,12 @@ async def event_driven_pipeline() -> None:
         tools=[write_document, send_notification],
     )
 
-    flow = EventFlow(observer=observer)
+    flow = Flow(observer=observer)
     
-    # Register agents with their triggers
-    flow.register(collector, [react_to("task.created")])
-    flow.register(analyzer, [react_to("collector.completed")])
-    flow.register(reporter, [react_to("analyzer.completed")])
+    # Register agents with their triggers and emissions
+    flow.register(collector, on="task.created", emits="collector.completed")
+    flow.register(analyzer, on="collector.completed", emits="analyzer.completed")
+    flow.register(reporter, on="analyzer.completed", emits="flow.done")
 
     result = await flow.run(
         "Analyze our customer data and market trends, then report findings",
@@ -306,9 +335,9 @@ async def event_driven_pipeline() -> None:
 
 
 async def conditional_workflow() -> None:
-    """EventFlow with conditions: Agents trigger based on event data."""
+    """Flow with conditions: Agents trigger based on event data."""
     print("\n" + "─" * 50)
-    print("🎯 CONDITIONAL: Event-Based Agent Selection")
+    print("🎯 CONDITIONAL: Event-Based Agent Selection (Complexity)")
     print("─" * 50)
 
     observer = Observer.trace()
@@ -329,19 +358,21 @@ async def conditional_workflow() -> None:
         tools=[search_web, search_database, analyze_data],
     )
 
-    flow = EventFlow(
-        config=EventFlowConfig(max_rounds=10),
+    flow = Flow(
+        config=FlowConfig(max_rounds=10),
         observer=observer,
     )
 
     # Route based on query complexity
     flow.register(
         quick_responder,
-        [react_to("task.created").when(lambda e: len(e.data.get("task", "")) < 50)],
+        on="task.created",
+        when=lambda e: len(e.data.get("task", "")) < 50
     )
     flow.register(
         deep_researcher,
-        [react_to("task.created").when(lambda e: len(e.data.get("task", "")) >= 50)],
+        on="task.created",
+        when=lambda e: len(e.data.get("task", "")) >= 50
     )
 
     # Short query → quick responder
@@ -355,7 +386,7 @@ async def conditional_workflow() -> None:
         "Research AI trends in the market, analyze our customer database, and identify growth opportunities",
         initial_event="task.created",
     )
-    print(f"   → {result2.output[:200]}...")
+    print(f"   → {str(result2.output)[:200]}...")
 
 
 async def main() -> None:

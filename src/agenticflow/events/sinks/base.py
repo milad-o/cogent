@@ -1,6 +1,6 @@
 """Base class for event sinks.
 
-Event sinks send events from EventFlow to external systems
+Event sinks send events from Flow to external systems
 (webhooks, message queues, databases, etc.).
 """
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class EventSink(ABC):
     """Abstract base class for outbound event sinks.
 
-    Event sinks receive events from EventFlow and deliver them
+    Event sinks receive events from Flow and deliver them
     to external systems.
 
     Example:

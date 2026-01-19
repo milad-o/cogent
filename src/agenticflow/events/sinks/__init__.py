@@ -1,6 +1,6 @@
 """Event sinks for outbound event delivery.
 
-This package provides adapters for sending events from EventFlow
+This package provides adapters for sending events from Flow
 to external systems (webhooks, message queues, etc.).
 
 Available sinks:
@@ -8,10 +8,10 @@ Available sinks:
 
 Example:
     ```python
-    from agenticflow.flow.reactive import EventFlow
+    from agenticflow.flow import Flow
     from agenticflow.events.sinks import WebhookSink
 
-    flow = EventFlow()
+    flow = Flow()
     flow.sink(WebhookSink(url="https://example.com/callback"), pattern="*.completed")
 
     # When any .completed event occurs, it's sent to the webhook

@@ -1,6 +1,6 @@
 """Core eventing (non-observability).
 
-This module is the foundation for orchestration features (e.g., reactive flows).
+This module is the foundation for orchestration features (e.g., event-driven flows).
 It is intentionally separate from `agenticflow.observability`, which is reserved
 for tracing/telemetry and developer-facing instrumentation.
 

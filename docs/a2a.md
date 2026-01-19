@@ -391,7 +391,7 @@ class AgentResponse:
 ### Factory Functions
 
 ```python
-from agenticflow.reactive.a2a import create_request, create_response
+from agenticflow.flow.a2a import create_request, create_response
 
 # Create request
 request = create_request(
@@ -413,6 +413,13 @@ response = create_response(
 
 ## Common Patterns
 
+### Migration Guide
+
+```python
+# Old way - verbose fluent API (Deprecated)
+# flow.register(...) now uses parameters directly
+```
+
 ### Pattern 1: Coordinator → Specialist
 
 One coordinator delegates specialized work.
@@ -421,7 +428,7 @@ One coordinator delegates specialized work.
 coordinator = Agent(name="coordinator", model=model)
 specialist = Agent(name="specialist", model=model)
 
-flow = ReactiveFlow()
+flow = Flow()
 flow.register(coordinator, on="task.created")
 flow.register(specialist, handles=True)
 

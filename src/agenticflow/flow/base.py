@@ -1,7 +1,7 @@
 """Base classes and protocols for flow orchestration.
 
 This module defines the common interface and shared functionality
-for all flow types (imperative and reactive).
+for all flow types (all).
 """
 
 from __future__ import annotations

@@ -22,19 +22,9 @@ from pathlib import Path
 # Add parent directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-try:
-    from config import get_model, settings
-except Exception as e:
-    print(f"\n❌ Configuration error: {e}")
-    print("\n💡 Setup instructions:")
-    print("   1. Copy examples/.env.example to examples/.env")
-    print("   2. Set LLM_PROVIDER (e.g., LLM_PROVIDER=openai)")
-    print("   3. Add your API key (e.g., OPENAI_API_KEY=sk-...)")
-    print("   4. Run again\n")
-    sys.exit(1)
+from config import get_model
 
-from agenticflow import Agent
-from agenticflow.reactive import ReactiveFlow
+from agenticflow import Agent, Flow
 from agenticflow.observability import Observer, ObservabilityLevel, Channel
 
 
@@ -66,10 +56,10 @@ async def example_1_simple_delegation():
     )
 
     # Create reactive flow with observability
-    flow = ReactiveFlow(
+    flow = Flow(
         observer=Observer(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.REACTIVE, Channel.AGENTS],
+            channels=[Channel.FLOW, Channel.AGENTS],
             show_duration=True,
         )
     )
@@ -122,10 +112,10 @@ async def example_2_multi_specialist_team():
     )
 
     # Create flow with observability
-    flow = ReactiveFlow(
+    flow = Flow(
         observer=Observer(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.REACTIVE, Channel.AGENTS],
+            channels=[Channel.FLOW, Channel.AGENTS],
             show_duration=True,
         )
     )
@@ -189,10 +179,10 @@ async def example_3_chain_delegation():
     )
 
     # Create flow with observability
-    flow = ReactiveFlow(
+    flow = Flow(
         observer=Observer(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.REACTIVE, Channel.AGENTS],
+            channels=[Channel.FLOW, Channel.AGENTS],
             show_duration=True,
         )
     )
@@ -246,10 +236,10 @@ async def example_4_parallel_delegation():
     )
 
     # Create flow with observability
-    flow = ReactiveFlow(
+    flow = Flow(
         observer=Observer(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.REACTIVE, Channel.AGENTS],
+            channels=[Channel.FLOW, Channel.AGENTS],
             show_duration=True,
         )
     )
@@ -303,10 +293,10 @@ async def example_5_request_response_pattern():
     )
 
     # Create flow with observability
-    flow = ReactiveFlow(
+    flow = Flow(
         observer=Observer(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.REACTIVE, Channel.AGENTS],
+            channels=[Channel.FLOW, Channel.AGENTS],
             show_duration=True,
         )
     )

@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent
 from agenticflow.reactive.core import ReactionType, Trigger
-from agenticflow.reactive.flow import EventFlow, EventFlowConfig
+from agenticflow.reactive.flow import Flow, FlowConfig
 from config import get_model
 
 
@@ -117,8 +117,8 @@ async def main():
     handler = ConsoleApprovalHandler()
     
     # Create flow with HITL support
-    flow = EventFlow(
-        config=EventFlowConfig(
+    flow = Flow(
+        config=FlowConfig(
             max_rounds=20,
             max_concurrent_agents=2,
         ),

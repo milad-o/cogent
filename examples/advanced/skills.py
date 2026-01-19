@@ -17,8 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model
 
 from agenticflow import Agent, tool
-from agenticflow.reactive import (
-    ReactiveFlow,
+from agenticflow import (
+    Flow,
     Observer,
     react_to,
     skill,
@@ -96,7 +96,7 @@ You are now in systematic debugging mode:
 
 
 # =============================================================================
-# Demo: ReactiveFlow with Skills and Real LLM
+# Demo: Flow with Skills and Real LLM
 # =============================================================================
 
 
@@ -108,7 +108,7 @@ async def main() -> None:
 
     # Create flow with observer
     observer = Observer.progress()
-    flow = ReactiveFlow(observer=observer)
+    flow = Flow(observer=observer)
 
     # Register skills
     flow.register_skill(python_skill)

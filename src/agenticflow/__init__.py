@@ -98,7 +98,7 @@ Multi-Agent Topology:
     ```
 """
 
-__version__ = "1.4.0"
+__version__ = "1.8.2"
 
 # Core enums and utilities
 # Graph API (unified visualization)
@@ -357,15 +357,7 @@ from agenticflow.observability.handlers import (
 # Models
 from agenticflow.observability.trace_record import Trace, TraceType
 
-# Reactive Flow (event-driven multi-agent orchestration)
-from agenticflow.flow.reactive import (
-    EventFlow,
-    EventFlowConfig,
-    EventFlowResult,
-    ReactiveFlow,
-    ReactiveFlowConfig,
-    ReactiveFlowResult,
-)
+# Note: Flow, FlowConfig, FlowResult are already exported from agenticflow.flow
 from agenticflow.flow.triggers import (
     AgentTriggerConfig,
     Trigger,
@@ -415,7 +407,7 @@ from agenticflow.reactors import (
     wrap_agent,
 )
 from agenticflow.reactors import (
-    Router as EventRouter,  # Renamed to avoid conflict with reactive.Router
+    Router as EventRouter,  # Renamed to avoid conflict with flow.Router
 )
 
 # Tasks
@@ -579,14 +571,9 @@ __all__ = [
     "FilteringEventHandler",
     "MetricsEventHandler",
     # Event-Driven Flow (event orchestration)
-    # Orchestrator
-    "ReactiveFlow",
-    "ReactiveFlowConfig",
-    "ReactiveFlowResult",
-    # Legacy aliases
-    "EventFlow",
-    "EventFlowConfig",
-    "EventFlowResult",
+    "Flow",
+    "FlowConfig",
+    "FlowResult",
     # Triggers
     "Trigger",
     "AgentTriggerConfig",

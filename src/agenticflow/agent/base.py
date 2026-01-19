@@ -368,11 +368,11 @@ class Agent:
             if workers and role_enum == AgentRole.SUPERVISOR:
                 effective_prompt += f"\n\nYour team members: {', '.join(workers)}"
 
-                if criteria and role_enum == AgentRole.REVIEWER:
-                    effective_prompt += "\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
+            if criteria and role_enum == AgentRole.REVIEWER:
+                effective_prompt += "\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
 
-                if specialty and role_enum == AgentRole.WORKER:
-                    effective_prompt += f"\n\nYour specialty: {specialty}"
+            if specialty and role_enum == AgentRole.WORKER:
+                effective_prompt += f"\n\nYour specialty: {specialty}"
 
         # Store role config for capability lookups
         self._role_config = role_config

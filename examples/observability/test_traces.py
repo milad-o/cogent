@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model
 
 from agenticflow import Agent
-from agenticflow.flow.reactive import ReactiveFlow
+from agenticflow.flow.reactive import Flow
 from agenticflow.observability import Observer
 
 
@@ -20,7 +20,7 @@ async def main():
     agent2 = Agent(name="Agent2", model=model, system_prompt="Say goodbye")
     
     observer = Observer.trace()
-    flow = ReactiveFlow(observer=observer)
+    flow = Flow(observer=observer)
     
     flow.register(agent1, on="start", emits="step1.done")
     flow.register(agent2, on="step1.done", emits="flow.done")

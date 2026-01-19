@@ -2,7 +2,7 @@
 
 Event sources are adapters that ingest events from external systems
 (webhooks, message queues, file systems, etc.) and emit them into
-the EventFlow for reactive processing.
+the Flow for event-driven processing.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ EmitCallback = Callable[["Event"], Awaitable[None]]
 class EventSource(ABC):
     """Abstract base class for external event sources.
 
-    Event sources connect external systems to EventFlow. They listen for
+    Event sources connect external systems to Flow. They listen for
     external triggers (HTTP requests, file changes, queue messages) and
     emit corresponding events into the flow.
 

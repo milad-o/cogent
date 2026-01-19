@@ -16,7 +16,7 @@ def create_delegate_tool(flow: Any, from_agent: str) -> Any:
     (registered with on="task.created" or similar coordination events).
     
     Args:
-        flow: The ReactiveFlow instance
+        flow: The Flow instance
         from_agent: Name of the coordinating agent
         
     Returns:
@@ -86,7 +86,7 @@ def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
     (registered with handles=True).
     
     Args:
-        flow: The ReactiveFlow instance  
+        flow: The Flow instance  
         specialist_agent: Name of the specialist agent
         
     Returns:

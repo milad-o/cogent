@@ -1,7 +1,7 @@
 """A2A delegation as tools for agents.
 
 This module provides automatic tool injection for A2A delegation based on
-declarative delegation policies in ReactiveFlow.register().
+declarative delegation policies in Flow.register().
 """
 
 from typing import Any
@@ -15,7 +15,7 @@ def create_delegate_tool(flow: Any, from_agent: str, allowed_specialists: list[s
     This tool is automatically injected based on can_delegate configuration.
 
     Args:
-        flow: The ReactiveFlow instance
+        flow: The Flow instance
         from_agent: Name of the coordinating agent
         allowed_specialists: List of specialist names this agent can delegate to
 
@@ -95,7 +95,7 @@ def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
     This tool is automatically injected based on handles/can_reply configuration.
 
     Args:
-        flow: The ReactiveFlow instance
+        flow: The Flow instance
         specialist_agent: Name of the specialist agent
 
     Returns:
