@@ -7,38 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-01-19
+
 ### Added
 
-#### Flexible Reasoning Parameter
+#### Knowledge Graph Visualization
 
-**Per-Call Reasoning Override:**
-- `Agent.run()` now accepts `reasoning` parameter for per-call configuration
-- Accepts `bool | ReasoningConfig | None`:
-  - `reasoning=None` — Use agent's configured reasoning (default)
-  - `reasoning=True` — Enable with default `ReasoningConfig`
-  - `reasoning=False` — Disable for this specific call
-  - `reasoning=ReasoningConfig(...)` — Custom config for this call
+**GraphView Integration:**
+- Added `KnowledgeGraph.visualize()` method for graph visualization
+- Returns `GraphView` instance with full rendering capabilities
+- Supports all GraphView methods: `.mermaid()`, `.ascii()`, `.dot()`, `.url()`, `.html()`, `.png()`, `.svg()`, `.save()`
+- Layout options: direction (LR/TB/BT/RL), grouping by entity type, attribute display
+- Color-coded entity types: Person (blue), Company (green), Location (orange), Event (purple), Generic (gray)
+- Automatic subgraph grouping for organized visualization
 
 **Example:**
 ```python
-# Agent without reasoning by default
-agent = Agent(name="Helper", model=model, reasoning=False)
+from agenticflow.capabilities import KnowledgeGraph
 
-# Enable for complex task only
-result = await agent.run("Complex analysis", reasoning=True)
+kg = KnowledgeGraph()
+# ... add entities and relationships ...
 
-# Custom config for specific call
-result = await agent.run(
-    "Very complex task",
-    reasoning=ReasoningConfig(max_thinking_rounds=10),
-)
+# Visualize with left-right layout and type grouping
+view = kg.visualize(direction="LR", group_by_type=True)
+
+# Generate different formats
+print(view.mermaid())  # Mermaid diagram
+print(view.ascii())    # Terminal-friendly ASCII art
+print(view.url())      # Shareable mermaid.ink URL
+
+# Save to files
+view.save("graph.mmd")   # Mermaid source
+view.save("graph.html")  # Interactive HTML
+view.save("graph.png")   # PNG image
 ```
 
 **Documentation:**
-- Updated `docs/agent.md` — Added reasoning examples with flexible API
-- Updated `README.md` — Added reasoning section with per-call examples
-- Updated `examples/README.md` — Documented reasoning features
-- Added Example 6 to `examples/advanced/reasoning.py` — Per-call override demo
+- Added visualization examples to `examples/capabilities/kg_agent_viz.py`
+- Added layout comparison demo in `examples/capabilities/kg_layout_demo.py`
+
+### Changed
+
+#### Tool API Improvements
+
+**KnowledgeGraph Tool Redesign:**
+- **`query_knowledge`**: Changed from string pattern syntax to structured parameters
+  - Before: `query_knowledge(pattern="? -works_at-> TechCorp")`  
+  - After: `query_knowledge(source=None, relation="works_at", target="TechCorp")`
+  - LLMs now use natural function parameters instead of custom DSL
+  - Improved reliability and reduced errors
+
+- **`remember`**: Changed from JSON string to dict/string hybrid
+  - Before: `remember(entity="Alice", entity_type="Person", facts='{"role": "CEO"}')`
+  - After: `remember(entity="Alice", entity_type="Person", attributes={"role": "CEO"})`
+  - Accepts both dict (preferred) and JSON string (backward compatible)
+  - Eliminates JSON parsing errors
+
+**Rationale:** LLMs are trained on function calls with typed parameters, not custom string formats. Structured APIs dramatically improve success rates.
+
+#### Executor Improvements
+
+**Per-Turn Tool Call Limits:**
+- Changed from cumulative total limit to per-turn limit
+  - Before: Max 20 tool calls across entire conversation (cumulative)
+  - After: Max 50 tool calls per LLM response turn
+  - Prevents agents from hitting artificial limits during productive work
+  - `max_iterations` already prevents infinite loops
+
+**Semaphore-Based Concurrency:**
+- Added `max_concurrent_tools` parameter (default: 20)
+- Parallel tool execution now uses semaphore for concurrency limiting
+- Prevents overwhelming rate limits when LLM requests many tools
+- Better resource utilization - fast tools don't wait for slow ones
+- Smooth execution with constant ~20 concurrent operations
+
+**NativeExecutor Changes:**
+```python
+executor = NativeExecutor(
+    agent,
+    max_tool_calls_per_turn=50,    # Was: max_tool_calls=20 (cumulative)
+    max_concurrent_tools=20,        # NEW: Concurrency limiting
+)
+```
+
+### Fixed
+
+- Fixed tool call limit stopping execution before running batched tool calls
+- Fixed `GraphView` rendering methods (were incomplete stubs)
+- Fixed `KnowledgeGraph` entity type inference in visualization
+- Fixed Observer API usage in examples (`observer.events()` not `observer.get_trace()`)
 
 ## [1.8.2] - 2026-01-18
 

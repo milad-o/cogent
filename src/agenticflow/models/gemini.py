@@ -167,14 +167,22 @@ def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
                 "properties": {},
             }
 
-            if schema.get("properties"):
-                parameters["properties"] = {
-                    k: _convert_schema_types(v)
-                    for k, v in schema["properties"].items()
-                }
-
-            if schema.get("required"):
-                parameters["required"] = schema["required"]
+            # Handle both formats: {"properties": {...}} and flat {param: schema}
+            if isinstance(schema, dict):
+                if "properties" in schema:
+                    # Standard JSON schema format
+                    parameters["properties"] = {
+                        k: _convert_schema_types(v)
+                        for k, v in schema["properties"].items()
+                    }
+                    if schema.get("required"):
+                        parameters["required"] = schema["required"]
+                else:
+                    # Flat format: {param_name: param_schema, ...}
+                    parameters["properties"] = {
+                        k: _convert_schema_types(v)
+                        for k, v in schema.items()
+                    }
 
             function_declarations.append(types.FunctionDeclaration(
                 name=tool.name,
@@ -208,16 +216,27 @@ def _parse_response(response: Any) -> AIMessage:
     candidate = response.candidates[0] if response.candidates else None
     if not candidate:
         return AIMessage(content="")
+    
+    # Gemini can return None for content when blocked or failed
+    if not candidate.content or not hasattr(candidate.content, 'parts'):
+        return AIMessage(content="")
 
     for part in candidate.content.parts:
         if hasattr(part, "text") and part.text:
             content += part.text
         if hasattr(part, "function_call") and part.function_call:
             fc = part.function_call
+            # Extract args properly from Gemini's format
+            args_dict = {}
+            if fc.args:
+                # fc.args is a google.protobuf.Struct, convert to dict
+                for key, value in fc.args.items():
+                    args_dict[key] = value
+            
             tool_calls.append({
                 "id": f"call_{fc.name}",  # Gemini doesn't provide IDs
                 "name": fc.name,
-                "args": dict(fc.args) if fc.args else {},
+                "args": args_dict,
             })
 
     return AIMessage(
@@ -317,9 +336,18 @@ class GeminiChat(BaseChatModel):
             config_kwargs["system_instruction"] = system_instruction
 
         if self._tools:
-            config_kwargs["tools"] = _tools_to_gemini(self._tools, self._types)
-            # Disable automatic function calling - we handle it manually
-            config_kwargs["automatic_function_calling"] = {"disable": True}
+            function_declarations = _tools_to_gemini(self._tools, self._types)
+            if function_declarations:
+                # Wrap function declarations in a Tool object
+                tool = self._types.Tool(function_declarations=function_declarations)
+                config_kwargs["tools"] = [tool]
+                # Use AUTO mode for balanced tool usage
+                from google.genai.types import FunctionCallingConfigMode
+                config_kwargs["tool_config"] = self._types.ToolConfig(
+                    function_calling_config=self._types.FunctionCallingConfig(
+                        mode=FunctionCallingConfigMode.AUTO
+                    )
+                )
 
         return self._types.GenerateContentConfig(**config_kwargs)
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.capabilities.base import BaseCapability
 from agenticflow.capabilities.knowledge_graph.backends import (
@@ -15,6 +15,9 @@ from agenticflow.capabilities.knowledge_graph.backends import (
 )
 from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 from agenticflow.tools.base import BaseTool, tool
+
+if TYPE_CHECKING:
+    from agenticflow.graph import GraphView
 
 
 class KnowledgeGraph(BaseCapability):
@@ -305,7 +308,7 @@ class KnowledgeGraph(BaseCapability):
         def remember(
             entity: str,
             entity_type: str,
-            facts: str,
+            attributes: dict[str, Any] | str | None = None,
         ) -> str:
             """
             Remember an entity and its attributes.
@@ -313,19 +316,30 @@ class KnowledgeGraph(BaseCapability):
             Args:
                 entity: Name/ID of the entity (e.g., "Alice", "Acme Corp")
                 entity_type: Type of entity (e.g., "Person", "Company", "Project")
-                facts: JSON string of facts/attributes (e.g., '{"role": "engineer", "team": "backend"}')
+                attributes: Dictionary of facts/attributes or JSON string
+                    Examples: {"role": "engineer", "team": "backend"}
+                             '{"role": "engineer", "team": "backend"}'
 
             Returns:
                 Confirmation message
-            """
-            try:
-                attributes = json.loads(facts) if facts else {}
-            except json.JSONDecodeError:
-                # Try to parse as simple key-value
-                attributes = {"info": facts}
 
-            graph.add_entity(entity, entity_type, attributes)
-            return f"Remembered: {entity} ({entity_type}) with {len(attributes)} attributes"
+            Examples:
+                remember(entity="Alice", entity_type="Person", attributes={"role": "CEO", "age": 35})
+                remember(entity="TechCorp", entity_type="Company", attributes={"founded": 2015})
+            """
+            # Handle both dict and JSON string for compatibility
+            if isinstance(attributes, str):
+                try:
+                    attrs = json.loads(attributes) if attributes else {}
+                except json.JSONDecodeError:
+                    attrs = {"info": attributes}
+            elif isinstance(attributes, dict):
+                attrs = attributes
+            else:
+                attrs = {}
+                
+            graph.add_entity(entity, entity_type, attrs)
+            return f"Remembered: {entity} ({entity_type}) with {len(attrs)} attributes"
 
         return remember
 
@@ -407,24 +421,40 @@ class KnowledgeGraph(BaseCapability):
         graph = self.graph
 
         @tool
-        def query_knowledge(pattern: str) -> str:
+        def query_knowledge(
+            source: str | None = None,
+            relation: str | None = None,
+            target: str | None = None,
+        ) -> str:
             """
-            Query the knowledge graph for relationships.
+            Query the knowledge graph for relationships matching a pattern.
 
-            The pattern uses arrow syntax: SOURCE -RELATION-> TARGET
-            Use '?' as a wildcard to find unknowns.
+            Use None for wildcards to find unknowns.
 
             Args:
-                pattern: Query pattern. IMPORTANT: Use '?' for what you want to find:
-                    - "? -works_on-> Project X" - Who works on Project X?
-                    - "Alice -works_at-> ?" - Where does Alice work?
-                    - "? -reports_to-> Bob" - Who reports to Bob?
-                    - "Alice -?-> ?" - All relationships FROM Alice
-                    - "Alice" - Get all info about Alice (simple lookup)
+                source: Source entity name (use None to find all sources)
+                relation: Relationship type (use None to find all relations)
+                target: Target entity name (use None to find all targets)
+
+            Examples:
+                - query_knowledge(source=None, relation="works_at", target="TechCorp")
+                  → Who works at TechCorp?
+                - query_knowledge(source="Alice", relation="works_at", target=None)
+                  → Where does Alice work?
+                - query_knowledge(source=None, relation="reports_to", target="Bob")
+                  → Who reports to Bob?
+                - query_knowledge(source="Alice", relation=None, target=None)
+                  → All relationships from Alice
 
             Returns:
                 Query results as JSON
             """
+            # Build pattern string for internal query method
+            s = source or "?"
+            r = relation or "?"
+            t = target or "?"
+            pattern = f"{s} -{r}-> {t}"
+            
             results = graph.query(pattern)
 
             if not results:
@@ -761,3 +791,258 @@ class KnowledgeGraph(BaseCapability):
         base["path"] = str(self._path) if self._path else None
         base["stats"] = self.graph.stats()
         return base
+
+    # === Visualization ===
+
+    def visualize(
+        self,
+        *,
+        layout: str = "hierarchical",
+        direction: str = "LR",
+        show_attributes: bool = False,
+        max_entities: int | None = None,
+        group_by_type: bool = True,
+    ) -> GraphView:
+        """
+        Get a graph visualization of the knowledge graph.
+
+        Returns a GraphView that provides a unified interface for
+        rendering to Mermaid, Graphviz, ASCII, or other formats.
+
+        Args:
+            layout: Layout algorithm - "hierarchical", "circular", "force" (default: "hierarchical")
+            direction: Graph direction - "TB" (top-bottom), "LR" (left-right), "BT", "RL" (default: "LR")
+            show_attributes: Include entity attributes in labels (default: False)
+            max_entities: Maximum number of entities to show (default: all)
+            group_by_type: Group entities by type in subgraphs (default: True)
+
+        Returns:
+            GraphView instance for rendering.
+
+        Example:
+            ```python
+            # Build knowledge graph
+            kg = KnowledgeGraph()
+            kg.remember("Alice", "Person", {"role": "Engineer"})
+            kg.remember("Bob", "Person", {"role": "Manager"})
+            kg.connect("Alice", "reports_to", "Bob")
+
+            # Get visualization
+            view = kg.visualize()
+
+            # Render in different formats
+            print(view.mermaid())    # Mermaid diagram
+            print(view.ascii())      # Terminal-friendly
+            print(view.dot())        # Graphviz DOT
+
+            # Save to file
+            view.save("knowledge.png")
+
+            # Get shareable URL
+            print(view.url())
+            ```
+        """
+        from agenticflow.graph import GraphView
+        from agenticflow.graph.config import GraphConfig, GraphDirection
+        from agenticflow.graph.primitives import (
+            ClassDef,
+            Edge,
+            EdgeType,
+            Graph,
+            Node,
+            NodeShape,
+            NodeStyle,
+            Subgraph,
+        )
+
+        g = Graph()
+
+        # Get entities and relationships
+        stats = self.graph.stats()
+        entities = self.graph.get_all_entities()
+        
+        # Collect all relationships by iterating through entities
+        relationships: list[Relationship] = []
+        seen_rels: set[tuple[str, str, str]] = set()
+        for entity in entities:
+            rels = self.graph.get_relationships(entity.id, direction="outgoing")
+            for rel in rels:
+                rel_key = (rel.source_id, rel.relation, rel.target_id)
+                if rel_key not in seen_rels:
+                    relationships.append(rel)
+                    seen_rels.add(rel_key)
+
+        # Limit entities if specified
+        if max_entities and len(entities) > max_entities:
+            entities = entities[:max_entities]
+
+        # Group entities by type
+        entity_types: dict[str, list[Entity]] = {}
+        for entity in entities:
+            entity_type = entity.type
+            if entity_type not in entity_types:
+                entity_types[entity_type] = []
+            entity_types[entity_type].append(entity)
+
+        # Create nodes for each entity (with optional subgraphs)
+        if group_by_type and len(entity_types) > 1:
+            # Create subgraphs for each entity type
+            for entity_type, type_entities in sorted(entity_types.items()):
+                subgraph_id = f"type_{entity_type.replace(' ', '_')}"
+                subgraph_nodes = []
+                
+                for entity in type_entities:
+                    node_id = entity.id.replace(" ", "_").replace(".", "_")
+                    subgraph_nodes.append(node_id)
+                    
+                    # Build label
+                    if show_attributes and entity.attributes:
+                        attr_str = "\\n".join(
+                            f"{k}: {str(v)[:20]}" for k, v in list(entity.attributes.items())[:3]
+                        )
+                        label = f"{entity.id}\\n<small>{attr_str}</small>"
+                    else:
+                        label = entity.id
+
+                    # Determine shape and class based on type
+                    shape = NodeShape.ROUNDED
+                    if entity.type.lower() in ("person", "user", "agent"):
+                        css_class = "person"
+                    elif entity.type.lower() in ("organization", "company", "org"):
+                        css_class = "org"
+                    elif entity.type.lower() in ("location", "place"):
+                        css_class = "location"
+                    elif entity.type.lower() in ("event", "action"):
+                        css_class = "event"
+                    else:
+                        css_class = "entity"
+
+                    g.add_node(
+                        Node(
+                            id=node_id,
+                            label=label,
+                            shape=shape,
+                            css_class=css_class,
+                        )
+                    )
+                
+                # Add subgraph
+                g.add_subgraph(
+                    Subgraph(
+                        id=subgraph_id,
+                        label=entity_type,
+                        node_ids=subgraph_nodes,
+                    )
+                )
+        else:
+            # Create nodes without subgraphs
+            for entity in entities:
+                node_id = entity.id.replace(" ", "_").replace(".", "_")
+
+                # Build label
+                if show_attributes and entity.attributes:
+                    attr_str = "\\n".join(
+                        f"{k}: {str(v)[:20]}" for k, v in list(entity.attributes.items())[:3]
+                    )
+                    label = f"{entity.id}\\n<small><i>{entity.type}</i></small>\\n<small>{attr_str}</small>"
+                else:
+                    label = f"{entity.id}\\n<small><i>{entity.type}</i></small>"
+
+                # Determine shape and class based on type
+                shape = NodeShape.ROUNDED
+                if entity.type.lower() in ("person", "user", "agent"):
+                    css_class = "person"
+                elif entity.type.lower() in ("organization", "company", "org"):
+                    css_class = "org"
+                elif entity.type.lower() in ("location", "place"):
+                    css_class = "location"
+                elif entity.type.lower() in ("event", "action"):
+                    css_class = "event"
+                else:
+                    css_class = "entity"
+
+                g.add_node(
+                    Node(
+                        id=node_id,
+                        label=label,
+                        shape=shape,
+                        css_class=css_class,
+                    )
+                )
+
+        # Create edges for relationships
+        for rel in relationships:
+            source_id = rel.source_id.replace(" ", "_").replace(".", "_")
+            target_id = rel.target_id.replace(" ", "_").replace(".", "_")
+
+            # Only add edge if both nodes exist
+            if source_id in g.nodes and target_id in g.nodes:
+                edge_label = rel.relation
+
+                # Determine edge type based on relation
+                if "parent" in rel.relation.lower() or "child" in rel.relation.lower():
+                    edge_type = EdgeType.ARROW
+                elif "knows" in rel.relation.lower() or "friend" in rel.relation.lower():
+                    edge_type = EdgeType.BIDIRECTIONAL
+                else:
+                    edge_type = EdgeType.ARROW
+
+                g.add_edge(
+                    Edge(
+                        source=source_id,
+                        target=target_id,
+                        label=edge_label,
+                        edge_type=edge_type,
+                    )
+                )
+
+        # Add class definitions for styling
+        g.add_class_def(
+            ClassDef(
+                name="person",
+                style=NodeStyle(fill="#60a5fa", stroke="#3b82f6", color="#fff"),
+            )
+        )
+        g.add_class_def(
+            ClassDef(
+                name="org",
+                style=NodeStyle(fill="#7eb36a", stroke="#4a7a3d", color="#fff"),
+            )
+        )
+        g.add_class_def(
+            ClassDef(
+                name="location",
+                style=NodeStyle(fill="#f59e0b", stroke="#d97706", color="#fff"),
+            )
+        )
+        g.add_class_def(
+            ClassDef(
+                name="event",
+                style=NodeStyle(fill="#9b59b6", stroke="#7b3a96", color="#fff"),
+            )
+        )
+        g.add_class_def(
+            ClassDef(
+                name="entity",
+                style=NodeStyle(fill="#94a3b8", stroke="#64748b", color="#fff"),
+            )
+        )
+
+        # Create config with stats and direction
+        title = f"Knowledge Graph ({stats['entities']} entities, {stats['relationships']} relationships)"
+        
+        # Map direction string to GraphDirection enum
+        direction_map = {
+            "TB": GraphDirection.TOP_DOWN,
+            "LR": GraphDirection.LEFT_RIGHT,
+            "BT": GraphDirection.BOTTOM_UP,
+            "RL": GraphDirection.RIGHT_LEFT,
+        }
+        graph_direction = direction_map.get(direction.upper(), GraphDirection.TOP_DOWN)
+        
+        config = GraphConfig(
+            title=title,
+            direction=graph_direction,
+        )
+
+        return GraphView(g, config)

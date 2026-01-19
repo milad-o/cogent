@@ -201,6 +201,130 @@ class GraphView:
         config = GraphConfig(title=f"Agent: {agent.name}")
         return cls(g, config)
 
+    # ─────────────────────────────────────────────────────────────────────
+    # Rendering Methods
+    # ─────────────────────────────────────────────────────────────────────
+
+    def mermaid(self) -> str:
+        """Render as Mermaid diagram code.
+
+        Returns:
+            Mermaid diagram code string.
+        """
+        backend = MermaidBackend()
+        return backend.render(self._graph, self._config)
+
+    def ascii(self) -> str:
+        """Render as ASCII art diagram (terminal-friendly).
+
+        Returns:
+            ASCII diagram string.
+        """
+        backend = ASCIIBackend()
+        return backend.render(self._graph, self._config)
+
+    def dot(self) -> str:
+        """Render as Graphviz DOT format.
+
+        Returns:
+            DOT format string.
+        """
+        backend = GraphvizBackend()
+        return backend.render(self._graph, self._config)
+
+    def url(self) -> str:
+        """Get mermaid.ink URL for online viewing.
+
+        Returns:
+            Shareable URL to rendered diagram.
+        """
+        backend = MermaidBackend()
+        return backend.to_url(self._graph, self._config)
+
+    def html(self) -> str:
+        """Generate HTML with embedded diagram.
+
+        Returns:
+            HTML string with embedded Mermaid diagram.
+        """
+        backend = MermaidBackend()
+        return backend.to_html(self._graph, self._config)
+
+    def png(self) -> bytes:
+        """Render as PNG image bytes.
+
+        Returns:
+            PNG image data.
+        """
+        backend = MermaidBackend()
+        return backend.draw_png(self._graph, self._config)
+
+    def svg(self) -> bytes:
+        """Render as SVG image bytes.
+
+        Returns:
+            SVG image data.
+        """
+        backend = MermaidBackend()
+        return backend.draw_svg(self._graph, self._config)
+
+    def save(self, path: str | Path, backend: str | None = None) -> None:
+        """Save diagram to file (format from extension).
+
+        Args:
+            path: Output file path (.png, .svg, .mmd, .dot, etc).
+            backend: Optional backend override ("mermaid", "graphviz", "ascii").
+
+        Example:
+            >>> view.save("diagram.png")  # PNG image
+            >>> view.save("diagram.svg")  # SVG image
+            >>> view.save("diagram.mmd")  # Mermaid code
+            >>> view.save("diagram.dot")  # Graphviz DOT
+        """
+        path = Path(path) if isinstance(path, str) else path
+        suffix = path.suffix.lower()
+
+        # Auto-detect backend from extension if not specified
+        if backend is None:
+            if suffix in (".mmd", ".mermaid"):
+                backend = "mermaid"
+            elif suffix in (".dot", ".gv"):
+                backend = "graphviz"
+            elif suffix in (".txt", ".ascii"):
+                backend = "ascii"
+            elif suffix in (".png", ".svg", ".pdf"):
+                backend = "mermaid"  # Use Mermaid for images
+            else:
+                backend = "mermaid"  # Default
+
+        # Render based on format
+        if suffix == ".png":
+            data = self.png()
+            path.write_bytes(data)
+        elif suffix == ".svg":
+            data = self.svg()
+            path.write_bytes(data)
+        elif suffix in (".mmd", ".mermaid"):
+            content = self.mermaid()
+            path.write_text(content, encoding="utf-8")
+        elif suffix in (".dot", ".gv"):
+            content = self.dot()
+            path.write_text(content, encoding="utf-8")
+        elif suffix in (".txt", ".ascii"):
+            content = self.ascii()
+            path.write_text(content, encoding="utf-8")
+        elif suffix == ".html":
+            content = self.html()
+            path.write_text(content, encoding="utf-8")
+        else:
+            # Default to mermaid text
+            content = self.mermaid()
+            path.write_text(content, encoding="utf-8")
+
+    def _repr_html_(self) -> str:
+        """IPython/Jupyter HTML representation."""
+        return self.html()
+
     @staticmethod
     def _get_step_label(step: Any) -> str:
         """Get label for a flow step."""

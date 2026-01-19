@@ -1,14 +1,18 @@
 """
-Example 15: WebSearch Capability
+Example: WebSearch Capability
 
-Demonstrates the WebSearch capability for searching the web and fetching pages.
+Professional example demonstrating web search and page fetching capabilities.
 Uses DuckDuckGo (free, no API key required).
 
 Features:
-- Web search
-- News search  
+- Web search with DuckDuckGo
+- News search
 - Page content fetching
 - Result caching
+- Agent-based research workflows
+
+Usage:
+    uv run python examples/capabilities/web_search.py
 """
 
 import asyncio
@@ -20,98 +24,68 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model
 
+from agenticflow import Agent, Observer
+from agenticflow.capabilities import WebSearch, KnowledgeGraph, FileSystem
+
 
 # ============================================================
-# Programmatic Demo (no LLM needed)
+# API-Level Usage
 # ============================================================
 
-def programmatic_demo():
-    """Demonstrate WebSearch capability without an agent."""
-    print("=" * 60)
-    print("🔍 WebSearch Programmatic Demo")
+def api_usage_example():
+    """Demonstrate direct WebSearch API usage."""
+    print("\n" + "=" * 60)
+    print("API Usage Example: Direct WebSearch Operations")
     print("=" * 60)
     
-    from agenticflow.capabilities import WebSearch
-    
-    # Initialize WebSearch (uses DuckDuckGo by default - free!)
     ws = WebSearch(max_results=5)
     
-    print(f"\n✓ Created WebSearch capability")
+    print(f"\n✓ WebSearch initialized")
     print(f"  Provider: {ws.provider.name}")
     print(f"  Tools: {[t.name for t in ws.tools]}")
     
     # Web search
-    print("\n" + "-" * 40)
-    print("🔍 Searching for 'Python 3.13 new features'...")
-    
-    results = ws.search("Python 3.13 new features", max_results=5)
+    print(f"\n→ Searching: 'photosynthesis process'")
+    results = ws.search("photosynthesis process", max_results=5)
     
     if results:
-        print(f"\nFound {len(results)} results:")
-        for r in results:
-            print(f"\n  {r.position}. {r.title}")
-            print(f"     URL: {r.url}")
-            print(f"     {r.snippet[:100]}...")
+        print(f"  ✓ Found {len(results)} results")
+        print(f"  Top result: {results[0].title}")
     else:
-        print("  No results found (rate limited or network issue)")
+        print("  ⚠ No results found")
     
     # News search
-    print("\n" + "-" * 40)
-    print("📰 Searching news for 'artificial intelligence'...")
-    
-    news = ws.search_news("artificial intelligence", max_results=3)
-    
-    if news:
-        print(f"\nFound {len(news)} news articles:")
-        for r in news:
-            print(f"\n  {r.position}. {r.title}")
-            print(f"     URL: {r.url}")
-    else:
-        print("  No news found")
+    print(f"\n→ News search: 'renewable energy'")
+    news = ws.search_news("renewable energy", max_results=3)
+    print(f"  ✓ Found {len(news)} news articles")
     
     # Fetch a webpage
-    print("\n" + "-" * 40)
-    print("📄 Fetching content from example.com...")
-    
-    page = ws.fetch("https://example.com")
+    print(f"\n→ Fetching: http://example.com")
+    page = ws.fetch("http://example.com")
     
     if page.error:
-        print(f"  Error: {page.error}")
+        print(f"  ✗ Error: {page.error}")
     else:
-        print(f"  Title: {page.title}")
-        print(f"  Content length: {len(page.content)} chars")
-        print(f"  Preview: {page.content[:200]}...")
+        print(f"  ✓ Title: {page.title}")
+        print(f"  ✓ Content: {len(page.content)} chars")
     
     # Cache demonstration
-    print("\n" + "-" * 40)
-    print("💾 Cache demonstration...")
-    
-    # First fetch (cached)
-    page1 = ws.fetch("https://example.com")
-    print(f"  First fetch: {page1.title}")
-    
-    # Second fetch (from cache)
-    page2 = ws.fetch("https://example.com")
-    print(f"  Second fetch (cached): {page2.title}")
-    
-    # Clear cache
+    print(f"\n→ Testing cache")
+    page1 = ws.fetch("http://example.com")
+    page2 = ws.fetch("http://example.com")  # Should hit cache
     cleared = ws.clear_cache()
-    print(f"  Cleared {cleared} cached pages")
-    
+    print(f"  ✓ Cache cleared: {cleared} pages")
+
+
+# ============================================================
+# Agent-Based Research
+# ============================================================
+
+async def agent_research_example():
+    """Demonstrate agent-based research with WebSearch and KnowledgeGraph."""
     print("\n" + "=" * 60)
-
-
-# ============================================================
-# Agent Demo (requires LLM)
-# ============================================================
-
-async def agent_demo():
-    """Demonstrate WebSearch capability with an agent."""
-    print("🤖 Agent with WebSearch Demo")
+    print("Agent Research Example: AI-Powered Web Research")
     print("=" * 60)
-    
-    from agenticflow import Agent
-    from agenticflow.capabilities import WebSearch, KnowledgeGraph
     
     model = get_model()
     
@@ -119,110 +93,135 @@ async def agent_demo():
     ws = WebSearch(max_results=5)
     kg = KnowledgeGraph()
     
+    # Create agent with verbose observer to see its work
     agent = Agent(
         name="Researcher",
         model=model,
-        instructions=(
-            "You are a research assistant. "
-            "Use web_search to find information, then remember key facts. "
-            "Be concise and cite your sources."
-        ),
+        instructions="Search the web for facts and remember important information using the available tools.",
         capabilities=[ws, kg],
+        verbose="debug",  # Built-in observability
     )
     
-    print(f"\nAgent tools: {[t.name for t in ws.tools + kg.tools]}")
+    print(f"\n✓ Agent '{agent.name}' initialized")
+    print(f"  Tools: {len(ws.tools + kg.tools)} available")
     
     # Research queries
     queries = [
-        "Search for Python 3.13 features and remember the top 3 new features",
-        "What new features did you remember about Python 3.13?",
+        "Search the web for solar system planets and remember the 3 largest ones",
+        "What did you remember about the largest planets?",
     ]
     
     for query in queries:
-        print(f"\n❓ {query}")
-        print("-" * 40)
-        response = await agent.run(query, strategy="dag")
-        answer = response.replace("FINAL ANSWER:", "").strip()
-        print(f"💡 {answer[:600]}")
+        print(f"\n→ Query: {query}")
+        print("-" * 60)
+        response = await agent.run(query)
+        print(f"\n✓ Response received ({len(response)} chars)")
+
 
 
 # ============================================================
-# Combined Capabilities Demo
+# Multi-Capability Research Workflow
 # ============================================================
 
-async def combined_demo():
-    """Show WebSearch combined with other capabilities."""
-    print("\n" + "=" * 60)
-    print("🔗 Combined Capabilities Demo")
-    print("=" * 60)
-    
-    from agenticflow import Agent
-    from agenticflow.capabilities import WebSearch, KnowledgeGraph, FileSystem
+async def multi_capability_example():
+    """Demonstrate multi-capability research workflow."""
     import tempfile
     from pathlib import Path
+    
+    print("\n" + "=" * 60)
+    print("Multi-Capability Example: Web + Memory + Files")
+    print("=" * 60)
     
     model = get_model()
     
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace).resolve()
         
-        # All three capabilities
+        # Initialize three complementary capabilities
         ws = WebSearch(max_results=3)
         kg = KnowledgeGraph()
         fs = FileSystem(allowed_paths=[str(workspace_path)], allow_write=True)
+        
+        # Create observer for detailed execution tracing
+        observer = Observer.trace()
         
         agent = Agent(
             name="ResearchAssistant",
             model=model,
             instructions=(
-                f"You are a research assistant that can search the web, "
-                f"remember facts, and save files. "
-                f"Workspace: {workspace_path}"
+                f"You are a research assistant with access to web search, knowledge storage, and file writing tools. "
+                f"Always complete all parts of user requests. "
+                f"Working directory: {workspace_path}"
             ),
             capabilities=[ws, kg, fs],
+            observer=observer,
         )
         
         all_tools = ws.tools + kg.tools + fs.tools
-        print(f"\nAgent has {len(all_tools)} tools from 3 capabilities:")
-        print(f"  WebSearch: {[t.name for t in ws.tools]}")
-        print(f"  KnowledgeGraph: {[t.name for t in kg.tools]}")
-        print(f"  FileSystem: {[t.name for t in fs.tools]}")
+        print(f"\n✓ Agent '{agent.name}' configured")
+        print(f"  Capabilities: WebSearch ({len(ws.tools)}), KnowledgeGraph ({len(kg.tools)}), FileSystem ({len(fs.tools)})")
+        print(f"  Total tools: {len(all_tools)}")
         
         # Multi-step research task
         query = (
-            "Search for 'DuckDuckGo search API', remember the key facts, "
-            f"and save a brief summary to {workspace_path}/research.txt"
+            "Please do these 3 steps: "
+            "1) Search the web for Egyptian pyramids "
+            "2) Remember 2 key facts "
+            "3) Write a brief summary to research.txt"
         )
         
-        print(f"\n❓ {query}")
-        print("-" * 40)
+        print(f"\n→ Task: Multi-step research and file creation")
+        print("-" * 60)
+        response = await agent.run(query)
         
-        response = await agent.run(query, strategy="dag")
-        answer = response.replace("FINAL ANSWER:", "").strip()
-        print(f"💡 {answer[:500]}")
-        
-        # Check if file was created
+        # Verify results
         research_file = workspace_path / "research.txt"
         if research_file.exists():
-            print(f"\n📄 Created {research_file.name}:")
-            print(research_file.read_text()[:300])
-
-
+            content = research_file.read_text()
+            print(f"\n✓ Research file created: {research_file.name}")
+            print(f"  Size: {len(content)} chars")
+            print(f"\n  Preview:")
+            print(f"  {content[:200]}...")
+        else:
+            print(f"\n⚠ Research file was not created")
+            print(f"  Agent may have failed to execute the write_file tool")
+        
+        # Show execution summary
+        print("\n" + "=" * 60)
+        print("Execution Summary")
+        print("=" * 60)
+        print(observer.summary())
+        
+        # Show execution graph
+        print("\n" + "=" * 60)
+# Main Entry Point
 # ============================================================
-# Main
-# ============================================================
+
+async def main() -> None:
+    """Run all WebSearch capability examples."""
+    print("\n" + "=" * 70)
+    print(" " * 15 + "WEBSEARCH CAPABILITY EXAMPLES")
+    print("=" * 70)
+    
+    # 1. API-level usage (direct interaction)
+    api_usage_example()
+    
+    # 2. Agent-based research
+    await agent_research_example()
+    
+    # 3. Multi-capability workflow
+    await multi_capability_example()
+    
+    print("\n" + "=" * 70)
+    print("Summary")
+    print("=" * 70)
+    print("✓ Provider: DuckDuckGo (free, no API key required)")
+    print("✓ Features: web_search, news_search, fetch_webpage")
+    print("✓ Built-in: page caching, result filtering")
+    print("✓ Integrations: works seamlessly with KnowledgeGraph, FileSystem")
+    print("=" * 70 + "\n")
+
 
 if __name__ == "__main__":
-    programmatic_demo()
-    
-    print("\n")
-    asyncio.run(agent_demo())
-    asyncio.run(combined_demo())
-    
-    print("\n" + "=" * 60)
-    print("✅ Summary:")
-    print("   - WebSearch uses DuckDuckGo (free, no API key)")
-    print("   - Tools: web_search, news_search, fetch_webpage")
-    print("   - Built-in page caching for efficiency")
-    print("   - Combines well with KnowledgeGraph for research")
-    print("=" * 60)
+    asyncio.run(main())
+
