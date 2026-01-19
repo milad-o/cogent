@@ -61,10 +61,15 @@ markdown_extensions:
 
 plugins:
   - search
+  - redirects:
+      redirect_maps:
+        README.md: getting-started.md
+
+exclude_docs: README.md
 
 nav:
   - Home: index.md
-  - Quick Start: README.md
+  - Getting Started: getting-started.md
   - Core Modules:
       - Agent: agent.md
       - Core: core.md
