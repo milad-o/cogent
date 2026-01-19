@@ -45,11 +45,11 @@ pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 
 - **Native Executor** — High-performance parallel tool execution with zero framework overhead
 - **Native Model Support** — OpenAI, Azure, Anthropic, Gemini, Groq, Ollama, Custom endpoints
-- **Multi-Agent Topologies** — Supervisor, Pipeline, Mesh, Hierarchical
+- **Multi-Agent Patterns** — Supervisor, Pipeline, Mesh, Hierarchical
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
 - **Memory & Persistence** — Conversation history, long-term memory with semantic search
-- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents and topologies
+- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents, patterns, and flows
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
 - **Resilience** — Retry policies, circuit breakers, fallbacks

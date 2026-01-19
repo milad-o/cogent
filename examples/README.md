@@ -30,17 +30,16 @@ Core concepts every user should know.
 
 ---
 
-### [topologies/](topologies/) - Multi-Agent Patterns
-Coordinate multiple agents in different configurations.
+### [flow/](flow/) - Event-Driven Patterns
+Modern Flow patterns and event-driven orchestration examples.
 
 | Example | Description |
 |---------|-------------|
-| [pipeline.py](topologies/pipeline.py) | Sequential: A → B → C |
-| [flow.py](topologies/flow.py) | Flow streaming and events |
-| [mesh.py](topologies/mesh.py) | All-to-all communication |
-| [hierarchical.py](topologies/hierarchical.py) | Nested team structures |
-| [supervisor.py](topologies/supervisor.py) | Manager delegates to workers |
-| [spawning.py](topologies/spawning.py) | Dynamic agent creation |
+| [flow_basics.py](flow/flow_basics.py) | Intro to Flow and patterns |
+| [unified_flow.py](flow/unified_flow.py) | Unified Flow orchestration |
+| [event_sources.py](flow/event_sources.py) | External event sources |
+| [checkpointing.py](flow/checkpointing.py) | Checkpointing basics |
+| [checkpointing_demo.py](flow/checkpointing_demo.py) | Checkpointing demo |
 
 ---
 
@@ -142,7 +141,7 @@ The `data/` folder contains sample files used by examples:
 uv run python examples/basics/hello_world.py
 
 # With verbose output
-uv run python examples/topologies/pipeline.py
+uv run python examples/flow/flow_basics.py
 
 # RAG example (needs embeddings)
 uv run python examples/retrieval/retrievers.py
@@ -155,7 +154,7 @@ uv run python examples/retrieval/retrievers.py
 **Beginners:**
 1. `basics/hello_world.py` - Your first agent
 2. `basics/memory.py` - Conversations that remember
-3. `topologies/pipeline.py` - Chain agents together
+3. `flow/flow_basics.py` - Flow patterns and orchestration
 
 **Intermediate:**
 4. `retrieval/retrievers.py` - Add knowledge to agents
@@ -164,5 +163,5 @@ uv run python examples/retrieval/retrievers.py
 
 **Advanced:**
 7. `advanced/interceptors.py` - Production safeguards
-8. `topologies/spawning.py` - Dynamic agent creation
+8. `flow/unified_flow.py` - Unified Flow orchestration
 9. `advanced/context_layer.py` - Runtime configuration

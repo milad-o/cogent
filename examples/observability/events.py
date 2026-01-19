@@ -30,7 +30,8 @@ from collections import defaultdict
 from config import get_model
 
 from agenticflow import tool
-from agenticflow import Agent, Flow, Observer, ObservabilityLevel, EventBus
+from agenticflow import Agent, Observer, ObservabilityLevel, EventBus
+from agenticflow.flow import mesh, pipeline
 from agenticflow.observability.event import EventType
 
 
@@ -114,12 +115,7 @@ async def example_user_output_events():
     planner = Agent(name="Planner", model=model, instructions="Create brief plans.")
     executor = Agent(name="Executor", model=model, instructions="Execute plans briefly.")
     
-    flow = Flow(
-        name="planning",
-        agents=[planner, executor],
-        topology="pipeline",
-        observer=observer,
-    )
+    flow = pipeline([planner, executor], observer=observer)
     
     print("\nRunning pipeline flow...")
     result = await flow.run("Plan a 10-minute workout")
@@ -166,12 +162,7 @@ async def example_agent_lifecycle():
     researcher = Agent(name="Researcher", model=model, instructions="Research topics briefly.")
     writer = Agent(name="Writer", model=model, instructions="Write content briefly.")
     
-    flow = Flow(
-        name="content",
-        agents=[researcher, writer],
-        topology="pipeline",
-        observer=observer,
-    )
+    flow = pipeline([researcher, writer], observer=observer)
     
     print("\nRunning 2-agent pipeline...")
     await flow.run("Write about Python")
@@ -323,18 +314,12 @@ async def example_message_events():
     
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_messages)
     
-    # Mesh topology has agents communicating with each other
+    # Mesh pattern has agents communicating with each other
     agent1 = Agent(name="Alice", model=model, instructions="You are Alice. Collaborate briefly.")
     agent2 = Agent(name="Bob", model=model, instructions="You are Bob. Collaborate briefly.")
     agent3 = Agent(name="Charlie", model=model, instructions="You are Charlie. Synthesize briefly.")
     
-    flow = Flow(
-        name="collaboration",
-        agents=[agent1, agent2, agent3],
-        topology="mesh",
-        max_rounds=1,
-        observer=observer,
-    )
+    flow = mesh([agent1, agent2, agent3], max_rounds=1, observer=observer)
     
     print("\nRunning mesh flow (agents exchange messages)...")
     await flow.run("What is the best programming language?")
@@ -384,12 +369,7 @@ async def example_task_events():
     step2 = Agent(name="Step2", model=model, instructions="Second step. Be brief.")
     step3 = Agent(name="Step3", model=model, instructions="Third step. Be brief.")
     
-    flow = Flow(
-        name="pipeline",
-        agents=[step1, step2, step3],
-        topology="pipeline",
-        observer=observer,
-    )
+    flow = pipeline([step1, step2, step3], observer=observer)
     
     print("\nRunning 3-step pipeline...")
     await flow.run("Process this data")

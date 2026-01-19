@@ -310,7 +310,8 @@ def create_complex_finance_pdf(output_path: Path) -> None:
 
 async def extract_and_query(pdf_path: Path) -> dict[str, tuple[str, bool]]:
     """Extract PDF content and query with RAG-powered agent."""
-    from agenticflow import Agent, Flow
+    from agenticflow import Agent
+    from agenticflow.flow import pipeline
     from agenticflow.document.loaders import PDFMarkdownLoader
     from agenticflow.vectorstore import VectorStore
     from agenticflow.retriever import DenseRetriever
@@ -356,12 +357,7 @@ When answering questions about financial figures:
 """,
     )
 
-    flow = Flow(
-        name="finance_qa",
-        agents=[analyst],
-        topology="pipeline",
-        verbose=settings.verbose_level,
-    )
+    flow = pipeline([analyst])
 
     # Step 5: Ask validation questions with retrieval
     questions = [

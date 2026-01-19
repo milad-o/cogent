@@ -1392,32 +1392,19 @@ Flow(
 
 ### From Legacy Topology-based API
 
-The old topology-based API is still supported for backward compatibility:
+The legacy topology-based API has been removed. Use **patterns** from `agenticflow.flow` instead:
 
 ```python
-# Old (Topology-based) - still works
-from agenticflow import Flow as LegacyFlow
-flow = LegacyFlow(
-    name="team",
-    agents=[a1, a2, a3],
-    topology="pipeline",
-)
-result = await flow.run("task")
+from agenticflow.flow import pipeline, supervisor, mesh
 
-# New (Event-driven) - recommended
-from agenticflow.flow import pipeline
 flow = pipeline([a1, a2, a3])
 result = await flow.run("task")
 ```
 
-### Topology Equivalents
-
-| Old Topology | New Pattern |
-|-------------|-------------|
-| `topology="pipeline"` | `pipeline([a1, a2, a3])` |
-| `topology="supervisor"` | `supervisor(coord, workers=[w1, w2])` |
-| `topology="mesh"` | `mesh([a1, a2, a3], max_rounds=3)` |
-| `topology="hierarchical"` | Custom event-driven flow |
+**Pattern equivalents:**
+- `pipeline([a1, a2, a3])`
+- `supervisor(coord, workers=[w1, w2])`
+- `mesh([a1, a2, a3], max_rounds=3)`
 
 ### Event-Driven Benefits
 

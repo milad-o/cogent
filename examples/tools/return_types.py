@@ -28,7 +28,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model, settings
 
-from agenticflow import Agent, Flow, tool
+from agenticflow import Agent, tool
+from agenticflow.flow import pipeline
 
 
 # =============================================================================
@@ -296,12 +297,7 @@ Chain pattern examples:
 Always show your reasoning about what data you're extracting from each tool's output.""",
     )
 
-    flow = Flow(
-        name="tool-chaining-demo",
-        agents=[assistant],
-        topology="pipeline",
-        verbose=settings.verbose_level,
-    )
+    flow = pipeline([assistant])
 
     # Demo 1: User → Weather → Activity chain
     print("=" * 70)
