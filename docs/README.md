@@ -128,30 +128,25 @@ async def fetch_data(url: str) -> str:
 
 ### Multi-Agent Flow
 
-Coordinate multiple agents with different topologies:
+Coordinate multiple agents with built-in patterns:
 
 ```python
-from agenticflow import Flow
+from agenticflow.flow import pipeline, supervisor, mesh
 
 researcher = Agent(name="Researcher", model=model, instructions="Research thoroughly.")
 writer = Agent(name="Writer", model=model, instructions="Write clearly.")
 editor = Agent(name="Editor", model=model, instructions="Review and polish.")
 
-flow = Flow(
-    name="content-pipeline",
-    agents=[researcher, writer, editor],
-    topology="pipeline",  # supervisor | pipeline | mesh | hierarchical
-    verbose=True,
-)
+# Sequential processing
+flow = pipeline([researcher, writer, editor])
 
 result = await flow.run("Create a blog post about quantum computing")
 ```
 
-**Topologies:**
+**Patterns:**
 - **Pipeline** — Sequential agent execution
 - **Supervisor** — Leader agent delegates to workers
 - **Mesh** — Agents communicate peer-to-peer
-- **Hierarchical** — Nested supervision with routing
 
 ---
 
@@ -323,7 +318,7 @@ agent = Agent(
 |--------|-------------|
 | [Observability](observability.md) | Events, tracing, metrics, progress output, dashboards |
 | [Memory](memory.md) | Persistent memory with scoping and semantic search |
-| [Graph](graph.md) | Visualization for agents, topologies, and flows |
+| [Graph](graph.md) | Visualization for agents, patterns, and flows |
 
 ---
 
@@ -336,7 +331,7 @@ agenticflow/
 ├── core/           # Enums, message types, utilities
 ├── document/       # Document processing
 ├── executors/      # Code execution environments
-├── flow.py         # Multi-agent orchestration
+├── flow/           # Event-driven orchestration + patterns
 ├── context.py      # RunContext for DI
 ├── graph/          # Visualization
 ├── interceptors/   # Middleware (security, budgets, etc.)
@@ -346,7 +341,6 @@ agenticflow/
 ├── retriever/      # Retrieval strategies
 ├── tasks/          # Task management
 ├── tools/          # Tool creation and registry
-├── topologies/     # Coordination patterns
 └── vectorstore/    # Vector storage and search
 ```
 
@@ -392,17 +386,14 @@ result = await agent.run("Find info about AI trends")
 ### Multi-Agent Pipeline
 
 ```python
-from agenticflow import Agent, Flow
+from agenticflow import Agent
+from agenticflow.flow import pipeline
 
 researcher = Agent(name="researcher", model=model)
 writer = Agent(name="writer", model=model)
 editor = Agent(name="editor", model=model)
 
-flow = Flow(
-    name="content-pipeline",
-    agents=[researcher, writer, editor],
-    topology="pipeline",
-)
+flow = pipeline([researcher, writer, editor])
 
 result = await flow.run("Create an article about quantum computing")
 ```
@@ -476,12 +467,7 @@ pip install agenticflow[faiss]      # FAISS vector store
 pip install agenticflow[all]        # All optional deps
 ```
 
----
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
+flow = pipeline([researcher, writer, editor])
 | `OPENAI_API_KEY` | OpenAI API key |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `GROQ_API_KEY` | Groq API key |

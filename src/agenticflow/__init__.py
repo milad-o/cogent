@@ -14,12 +14,12 @@ AgenticFlow - Event-Driven Multi-Agent System Framework
 ========================================================
 
 A lightweight, native multi-agent framework with:
-- Multi-agent topologies (supervisor, mesh, pipeline, hierarchical)
+- Multi-agent patterns (supervisor, mesh, pipeline, hierarchical)
 - Intelligent resilience (retry, circuit breakers, fallbacks)
 - Native model support for OpenAI, Azure, Anthropic, Groq, Gemini, Ollama
 - Full observability (tracing, metrics, progress tracking)
 - Event-driven architecture with pub/sub patterns
-- Mermaid visualization for agents and topologies
+- Mermaid visualization for agents, patterns, and flows
 
 Quick Start (Standalone Execution):
     ```python
@@ -81,24 +81,19 @@ With Agent Class:
     result = await agent.run("Search and analyze data")
     ```
 
-Multi-Agent Topology:
+Multi-Agent Patterns:
     ```python
-    from agenticflow import TopologyFactory, TopologyType
+    from agenticflow.flow import pipeline, supervisor, mesh
 
-    # Create a supervisor topology
-    topology = TopologyFactory.create(
-        TopologyType.SUPERVISOR,
-        "team",
-        agents=[supervisor, researcher, writer],
-        supervisor_name="supervisor",
-    )
+    # Create a pipeline pattern
+    flow = pipeline([researcher, writer, editor])
 
     # Run with progress tracking
-    result = await topology.run("Create a blog post")
+    result = await flow.run("Create a blog post")
     ```
 """
 
-__version__ = "1.8.2"
+__version__ = "1.8.3"
 
 # Core enums and utilities
 # Graph API (unified visualization)
@@ -231,7 +226,7 @@ from agenticflow.flow import (
     mesh as flow_mesh,
 )
 from agenticflow.flow import (
-    # Patterns (imported with aliases to avoid shadowing by legacy topologies)
+    # Patterns (imported with aliases to avoid name collisions)
     pipeline as flow_pipeline,
 )
 from agenticflow.flow import (

@@ -398,7 +398,7 @@ While this document covers **tool-level** resilience (retries, circuit breakers)
 ```python
 from agenticflow import Agent, Flow
 from agenticflow.agent.resilience import ResilienceConfig
-from agenticflow.flow import FlowConfig
+from agenticflow.flow import FlowConfig, pipeline
 from agenticflow.flow.checkpointer import FileCheckpointer
 
 # Agents with tool-level resilience
@@ -416,16 +416,15 @@ writer = Agent(
 )
 
 # Flow with crash recovery
-flow = Flow(
-    name="content-pipeline",
-    agents=[researcher, writer],
-    topology="pipeline",
+flow = pipeline(
+    [researcher, writer],
     config=FlowConfig(
         checkpoint_every=1,  # Save after each agent
         flow_id="content-001",
     ),
-    checkpointer=FileCheckpointer(),
+    observer=None,
 )
+flow.checkpointer = FileCheckpointer()
 
 # Benefits:
 # - Transient API failures auto-retry (tool resilience)

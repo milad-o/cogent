@@ -1,6 +1,6 @@
 # Agent-to-Agent (A2A) Communication
 
-The A2A module enables direct agent-to-agent delegation and communication across **all flow types** — both Flow and Topologies. Agents can delegate tasks to each other, wait for responses, and coordinate complex multi-agent workflows.
+The A2A module enables direct agent-to-agent delegation and communication across **all flow types** — Flow and its patterns. Agents can delegate tasks to each other, wait for responses, and coordinate complex multi-agent workflows.
 
 ## Overview
 
@@ -68,32 +68,25 @@ result = await flow.run(
 )
 ```
 
-### Topology Delegation
+### Pattern Delegation
 
 ```python
 from agenticflow import Agent
-from agenticflow.topologies import Supervisor, AgentConfig
+from agenticflow.flow import supervisor
 
 # Create agents
 manager = Agent(name="manager", model=model)
 researcher = Agent(name="researcher", model=model)
 writer = Agent(name="writer", model=model)
 
-# Configure delegation in topology
-supervisor = Supervisor(
-    coordinator=AgentConfig(
-        agent=manager,
-        role="manager",
-        can_delegate=["researcher", "writer"]  # Manager can delegate
-    ),
-    workers=[
-        AgentConfig(agent=researcher, role="researcher", can_reply=True),
-        AgentConfig(agent=writer, role="writer", can_reply=True),
-    ]
-)
+# Configure delegation with pattern flow
+flow = supervisor(coordinator=manager, workers=[researcher, writer])
+flow.configure_delegation(manager, can_delegate=["researcher", "writer"])
+flow.configure_delegation(researcher, can_reply=True)
+flow.configure_delegation(writer, can_reply=True)
 
 # Framework auto-injects tools and enhances prompts
-result = await supervisor.run("Create a market analysis report")
+result = await flow.run("Create a market analysis report")
 ```
 
 ---
@@ -141,28 +134,17 @@ flow.register(
 # - data_analyst gets: reply_with_result(request_id, result, success, error)
 ```
 
-### Topology Example
+### Pattern Example
 
 ```python
-from agenticflow.topologies import Supervisor, AgentConfig
+from agenticflow.flow import supervisor
 
-supervisor = Supervisor(
-    coordinator=AgentConfig(
-        agent=manager,
-        role="manager",
-        can_delegate=["researcher", "writer"]  # or True for all workers
-    ),
-    workers=[
-        AgentConfig(
-            agent=researcher,
-            role="researcher",
-            can_reply=True,  # Can respond to delegated tasks
-            can_delegate=["fact_checker"]  # Can sub-delegate
-        ),
-        AgentConfig(agent=writer, role="writer", can_reply=True),
-        AgentConfig(agent=fact_checker, role="fact_checker", can_reply=True),
-    ]
-)
+flow = supervisor(coordinator=manager, workers=[researcher, writer, fact_checker])
+
+flow.configure_delegation(manager, can_delegate=["researcher", "writer"])
+flow.configure_delegation(researcher, can_reply=True, can_delegate=["fact_checker"])
+flow.configure_delegation(writer, can_reply=True)
+flow.configure_delegation(fact_checker, can_reply=True)
 
 # Delegation hierarchy:
 # manager → researcher → fact_checker
@@ -178,22 +160,18 @@ can_delegate=["specialist1", "specialist2"]
 
 **All workers** (flexible, less restrictive):
 ```python
-can_delegate=True  # In topologies: delegates to all workers
+can_delegate=True  # In patterns: delegates to all workers
 ```
 
 **Sub-delegation** (hierarchical):
 ```python
 # Worker can delegate to specialist
-AgentConfig(
-    agent=worker,
-    can_reply=True,  # Handles delegated tasks
-    can_delegate=["specialist"]  # Can request help
-)
+flow.configure_delegation(worker, can_reply=True, can_delegate=["specialist"])
 ```
 
 **Specialist only** (no delegation, only replies):
 ```python
-AgentConfig(agent=specialist, can_reply=True)
+flow.configure_delegation(specialist, can_reply=True)
 ```
 
 ---
@@ -749,49 +727,30 @@ print(result.output)
 
 ---
 
-## Topology Delegation
+## Pattern Delegation
 
-A2A delegation works across all topology patterns with the same declarative configuration.
+A2A delegation works across all Flow patterns with the same declarative configuration.
 
 ### Supervisor Pattern
 
 ```python
-from agenticflow.topologies import Supervisor, AgentConfig
+from agenticflow.flow import supervisor
 
-supervisor = Supervisor(
-    coordinator=AgentConfig(
-        agent=manager,
-        role="manager",
-        can_delegate=["researcher", "writer"]  # Manager can delegate
-    ),
-    workers=[
-        AgentConfig(agent=researcher, role="researcher", can_reply=True),
-        AgentConfig(agent=writer, role="writer", can_reply=True),
-    ]
-)
+flow = supervisor(coordinator=manager, workers=[researcher, writer])
+flow.configure_delegation(manager, can_delegate=["researcher", "writer"])
+flow.configure_delegation(researcher, can_reply=True)
+flow.configure_delegation(writer, can_reply=True)
 
-result = await supervisor.run("Create a market analysis report")
+result = await flow.run("Create a market analysis report")
 ```
 
 **Hierarchical Sub-Delegation:**
 
 ```python
-supervisor = Supervisor(
-    coordinator=AgentConfig(
-        agent=manager,
-        role="manager",
-        can_delegate=True  # Can delegate to all workers
-    ),
-    workers=[
-        AgentConfig(
-            agent=team_lead,
-            role="team_lead",
-            can_reply=True,
-            can_delegate=["specialist"]  # Can sub-delegate
-        ),
-        AgentConfig(agent=specialist, role="specialist", can_reply=True),
-    ]
-)
+flow = supervisor(coordinator=manager, workers=[team_lead, specialist])
+flow.configure_delegation(manager, can_delegate=True)
+flow.configure_delegation(team_lead, can_reply=True, can_delegate=["specialist"])
+flow.configure_delegation(specialist, can_reply=True)
 
 # Delegation hierarchy: manager → team_lead → specialist
 ```
@@ -799,83 +758,49 @@ supervisor = Supervisor(
 ### Pipeline Pattern
 
 ```python
-from agenticflow.topologies import Pipeline, AgentConfig
+from agenticflow.flow import pipeline
 
-pipeline = Pipeline(
-    stages=[
-        AgentConfig(agent=researcher, role="research"),
-        AgentConfig(
-            agent=analyzer,
-            role="analyze",
-            can_delegate=["statistician"]  # Can delegate to specialist
-        ),
-        AgentConfig(agent=writer, role="write"),
-        AgentConfig(agent=statistician, role="statistician", can_reply=True),
-    ]
-)
+flow = pipeline([researcher, analyzer, writer, statistician])
+flow.configure_delegation(analyzer, can_delegate=["statistician"])
+flow.configure_delegation(statistician, can_reply=True)
 
 # Stage 2 (analyzer) can delegate complex stats to specialist
-result = await pipeline.run("Analyze survey data and create report")
+result = await flow.run("Analyze survey data and create report")
 ```
 
 ### Mesh Pattern
 
 ```python
-from agenticflow.topologies import Mesh, AgentConfig
+from agenticflow.flow import mesh
 
-mesh = Mesh(
-    agents=[
-        AgentConfig(
-            agent=business_analyst,
-            role="business",
-            can_delegate=["finance_specialist"]
-        ),
-        AgentConfig(agent=tech_analyst, role="tech"),
-        AgentConfig(agent=ux_analyst, role="ux"),
-        AgentConfig(agent=finance_specialist, role="finance", can_reply=True),
-    ],
-    max_rounds=2
-)
+flow = mesh([business_analyst, tech_analyst, ux_analyst, finance_specialist], max_rounds=2)
+flow.configure_delegation(business_analyst, can_delegate=["finance_specialist"])
+flow.configure_delegation(finance_specialist, can_reply=True)
 
 # Business analyst can request financial analysis from specialist
-result = await mesh.run("Evaluate new product viability")
+result = await flow.run("Evaluate new product viability")
 ```
 
-### Cross-Topology Patterns
+### Cross-Pattern Policies
 
-Same agents can participate in different topologies with different policies:
+Same agents can participate in different patterns with different policies:
 
 ```python
 # In Pipeline: No delegation (linear flow)
-pipeline = Pipeline(stages=[
-    AgentConfig(agent=researcher, role="research"),
-    AgentConfig(agent=writer, role="write"),
-])
+pipeline_flow = pipeline([researcher, writer])
 
 # In Supervisor: Analyst coordinates with delegation
-supervisor = Supervisor(
-    coordinator=AgentConfig(
-        agent=analyst,
-        role="coordinator",
-        can_delegate=["researcher", "writer"]
-    ),
-    workers=[
-        AgentConfig(agent=researcher, role="researcher", can_reply=True),
-        AgentConfig(agent=writer, role="writer", can_reply=True),
-    ]
-)
+supervisor_flow = supervisor(coordinator=analyst, workers=[researcher, writer])
+supervisor_flow.configure_delegation(analyst, can_delegate=["researcher", "writer"])
+supervisor_flow.configure_delegation(researcher, can_reply=True)
+supervisor_flow.configure_delegation(writer, can_reply=True)
 
-# Same agents, different delegation policies per topology
+# Same agents, different delegation policies per pattern
 ```
 
-### Topology Examples
+### Pattern Examples
 
-See [examples/topologies/delegation.py](../examples/topologies/delegation.py) for complete examples:
-- Supervisor with hierarchical delegation
-- Pipeline with specialist delegation
-- Mesh with external specialists
-- Dynamic delegation policies
-- Cross-topology delegation patterns
+See [examples/flow/flow_basics.py](../examples/flow/flow_basics.py) and [docs/flow.md](flow.md) for pattern usage examples.
 
 ---
 
@@ -890,7 +815,7 @@ See [examples/topologies/delegation.py](../examples/topologies/delegation.py) fo
 7. **Use observability** — Track delegation chains with Observer
 8. **Design clear hierarchies** — Avoid circular delegation
 9. **Limit delegation depth** — Prevent runaway delegation chains
-10. **Use topology delegation** — Let framework manage multi-agent patterns
+10. **Use pattern delegation** — Let framework manage multi-agent patterns
 
 ---
 
@@ -898,6 +823,5 @@ See [examples/topologies/delegation.py](../examples/topologies/delegation.py) fo
 
 See also:
 - [Flow Module](flow.md) — Event-driven orchestration
-- [Topologies Module](topologies.md) — Multi-agent coordination patterns
 - [Flow Module](flow.md) — Flow orchestration patterns
 - [Observability](observability.md) — Monitoring and tracing

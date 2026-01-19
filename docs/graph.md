@@ -1,6 +1,6 @@
 # Graph Module
 
-The `agenticflow.graph` module provides unified visualization for agents, topologies, and flows.
+The `agenticflow.graph` module provides unified visualization for agents, patterns, and flows.
 
 ## Overview
 
@@ -125,94 +125,62 @@ graph TD
 
 ---
 
-## Topology Graphs
+## Pattern Graphs
 
-Visualize multi-agent coordination:
+Visualize multi-agent patterns using `FlowGraph`:
 
 ### Supervisor
 
 ```python
-from agenticflow.topologies import Supervisor
+from agenticflow.flow import supervisor
+from agenticflow.graph import FlowGraph
 
-topology = Supervisor(
-    coordinator=manager,
-    workers=[analyst, writer, reviewer],
-)
+flow = supervisor(coordinator=manager, workers=[analyst, writer, reviewer])
 
-view = topology.graph()
-print(view.mermaid())
-```
-
-Output:
-```mermaid
-graph TD
-    manager[👔 manager]
-    analyst[🤖 analyst]
-    writer[🤖 writer]
-    reviewer[🤖 reviewer]
-    
-    manager -->|delegates| analyst
-    manager -->|delegates| writer
-    manager -->|delegates| reviewer
+graph = FlowGraph.from_flow(flow)
+print(graph.render())  # Mermaid by default
 ```
 
 ### Pipeline
 
 ```python
-from agenticflow.topologies import Pipeline
+from agenticflow.flow import pipeline
+from agenticflow.graph import FlowGraph
 
-topology = Pipeline(stages=[researcher, writer, editor])
+flow = pipeline([researcher, writer, editor])
 
-view = topology.graph()
-print(view.mermaid())
-```
-
-Output:
-```mermaid
-graph LR
-    researcher[🤖 researcher] --> writer[🤖 writer] --> editor[🤖 editor]
+graph = FlowGraph.from_flow(flow)
+print(graph.render())
 ```
 
 ### Mesh
 
 ```python
-from agenticflow.topologies import Mesh
+from agenticflow.flow import mesh
+from agenticflow.graph import FlowGraph
 
-topology = Mesh(agents=[analyst1, analyst2, analyst3])
+flow = mesh([analyst1, analyst2, analyst3], max_rounds=3)
 
-view = topology.graph()
-print(view.mermaid())
-```
-
-Output:
-```mermaid
-graph TD
-    analyst1[🤖 analyst1]
-    analyst2[🤖 analyst2]
-    analyst3[🤖 analyst3]
-    
-    analyst1 <-->|round 1| analyst2
-    analyst1 <-->|round 1| analyst3
-    analyst2 <-->|round 1| analyst3
+graph = FlowGraph.from_flow(flow)
+print(graph.render())
 ```
 
 ---
 
 ## Flow Graphs
 
-Visualize complex flows:
+Visualize custom event-driven flows:
 
 ```python
-from agenticflow import Flow
+from agenticflow import Flow, react_to
+from agenticflow.graph import FlowGraph
 
-flow = Flow(
-    name="content-pipeline",
-    agents=[researcher, writer, editor],
-    topology="pipeline",
-)
+flow = Flow(name="content-pipeline")
+flow.register(researcher, [react_to("task.created")])
+flow.register(writer, [react_to("researcher.completed")])
 
-view = flow.graph()
-print(view.mermaid())
+graph = FlowGraph.from_flow(flow)
+print(graph.render())
 ```
 
 ---

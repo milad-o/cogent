@@ -1,7 +1,7 @@
 """
-Checkpointing for Imperative Flows Example
+Checkpointing for Flow Patterns Example
 
-Demonstrates how to use checkpointing with imperative Flow (Supervisor, Pipeline, Mesh)
+Demonstrates how to use checkpointing with Flow patterns (Pipeline, Supervisor, Mesh)
 to save/resume execution state for crash recovery and long-running workflows.
 
 Requirements:
@@ -25,8 +25,8 @@ from pathlib import Path
 # Add examples to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agenticflow import Agent, Flow
-from agenticflow.flow.orchestrated import FlowConfig
+from agenticflow import Agent
+from agenticflow.flow import FlowConfig, pipeline
 from agenticflow.flow.checkpointer import FileCheckpointer
 from config import get_model
 
@@ -69,17 +69,14 @@ async def main():
     checkpointer = FileCheckpointer(directory=checkpoint_dir)
     
     # Create flow with checkpointing enabled
-    flow = Flow(
-        name="content-pipeline",
-        agents=[researcher, writer, editor],
-        topology="pipeline",
+    flow = pipeline(
+        [researcher, writer, editor],
         config=FlowConfig(
             flow_id="demo-flow-001",  # Fixed ID for resuming
             checkpoint_every=1,  # Checkpoint after each step
         ),
-        checkpointer=checkpointer,
-        verbose=True,
     )
+    flow.checkpointer = checkpointer
     
     print("="*60)
     print("Running flow with checkpointing enabled...")
@@ -121,13 +118,11 @@ async def main():
         print(f"Resuming from checkpoint: {latest_checkpoint[:16]}...")
         
         # Create new flow instance
-        flow2 = Flow(
-            name="content-pipeline",
-            agents=[researcher, writer, editor],
-            topology="pipeline",
+        flow2 = pipeline(
+            [researcher, writer, editor],
             config=FlowConfig(flow_id="demo-flow-001"),
-            checkpointer=checkpointer,
         )
+        flow2.checkpointer = checkpointer
         
         # Resume from checkpoint
         resumed_result = await flow2.resume(latest_checkpoint)

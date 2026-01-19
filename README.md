@@ -26,7 +26,7 @@
   <a href="#installation">Installation</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#core-architecture">Architecture</a> •
-  <a href="#multi-agent-topologies">Topologies</a> •
+    <a href="#agenticflowflowpatterns--multi-agent-patterns">Patterns</a> •
   <a href="#capabilities">Capabilities</a> •
   <a href="#examples">Examples</a>
 </p>
@@ -79,11 +79,11 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
 - **Native Executor** — High-performance parallel tool execution with zero framework overhead
 - **Native Model Support** — OpenAI, Azure, Anthropic, Gemini, Groq, Ollama, Custom endpoints
-- **Multi-Agent Topologies** — Supervisor, Pipeline, Mesh, Hierarchical
+- **Multi-Agent Patterns** — Supervisor, Pipeline, Mesh, Hierarchical
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
 - **Memory & Persistence** — Conversation history, long-term memory with semantic search
-- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents and topologies
+- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents, patterns, and flows
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
 - **Resilience** — Retry policies, circuit breakers, fallbacks
@@ -283,7 +283,7 @@ executor = TreeSearchExecutor(
 result = await executor.execute("Complex multi-step task")
 ```
 
-### `agenticflow.topologies` — Multi-Agent Patterns
+### `agenticflow.flow.patterns` — Multi-Agent Patterns
 
 Coordination patterns for multi-agent workflows with built-in **A2A delegation**.
 
@@ -312,7 +312,7 @@ flow = mesh([analyst, strategist, critic])
 result = await flow.run("Develop a go-to-market strategy")
 ```
 
-**See [docs/topologies.md](docs/topologies.md) for delegation examples across all patterns.**
+**See [docs/flow.md](docs/flow.md) for pattern usage examples.**
 
 ### `agenticflow.interceptors` — Middleware
 
@@ -367,7 +367,7 @@ async with tracer.trace("my-operation") as span:
 
 ### `agenticflow.graph` — Visualization
 
-Unified visualization API for agents, topologies, and flows.
+Unified visualization API for agents, patterns, and flows.
 
 **Backends:**
 
@@ -526,7 +526,8 @@ asyncio.run(main())
 ### Multi-Agent Pipeline
 
 ```python
-from agenticflow import Agent, Flow
+from agenticflow import Agent
+from agenticflow.flow import pipeline
 from agenticflow.models import ChatModel
 
 model = ChatModel(model="gpt-4o")
@@ -535,13 +536,7 @@ researcher = Agent(name="Researcher", model=model, instructions="Research topics
 writer = Agent(name="Writer", model=model, instructions="Write clear, engaging content.")
 editor = Agent(name="Editor", model=model, instructions="Review and polish the content.")
 
-flow = Flow(
-    name="content-pipeline",
-    agents=[researcher, writer, editor],
-    topology="pipeline",
-    verbose=True,  # Progress output
-)
-
+flow = pipeline([researcher, writer, editor])
 result = await flow.run("Create a blog post about quantum computing")
 ```
 
@@ -739,7 +734,7 @@ See `examples/` for complete examples:
 | Example | Description |
 |---------|-------------|
 | `01_basic_usage.py` | Simple agent with tools |
-| `02_topologies.py` | Multi-agent patterns |
+| `flow/flow_basics.py` | Multi-agent patterns |
 | `03_flow.py` | Flow orchestration |
 | `04_events.py` | Event system |
 | `05_observability.py` | Tracing and metrics |
