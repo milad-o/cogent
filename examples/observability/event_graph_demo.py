@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model
 
 from agenticflow import Agent
-from agenticflow.flow.reactive import ReactiveFlow  # Use ReactiveFlow directly
+from agenticflow.flow.reactive import Flow  # Use Flow directly
 from agenticflow.observability import Observer
 
 
@@ -46,7 +46,7 @@ async def demo_basic_graph() -> None:
     )
 
     observer = Observer.trace()
-    flow = ReactiveFlow(observer=observer)
+    flow = Flow(observer=observer)
     
     flow.register(classifier, on="task.created", emits="task.classified")
     flow.register(processor, on="task.classified", emits="processing.done")
@@ -83,7 +83,7 @@ async def demo_graph_with_timing() -> None:
     )
 
     observer = Observer.trace()
-    flow = ReactiveFlow(observer=observer)
+    flow = Flow(observer=observer)
     
     flow.register(researcher, on="research.start", emits="research.done")
     flow.register(writer, on="research.done", emits="flow.done")
@@ -132,7 +132,7 @@ async def demo_complex_flow() -> None:
     )
 
     observer = Observer.trace()
-    flow = ReactiveFlow(observer=observer)
+    flow = Flow(observer=observer)
     
     # Simple routing flow
     flow.register(router, on="task.created", emits="task.urgent")  # Simplified for demo
@@ -164,7 +164,7 @@ async def demo_export_graph() -> None:
     agent3 = Agent(name="Agent3", model=model, system_prompt="Step 3")
 
     observer = Observer.trace()
-    flow = ReactiveFlow(observer=observer)
+    flow = Flow(observer=observer)
     
     flow.register(agent1, on="start", emits="step1.done")
     flow.register(agent2, on="step1.done", emits="step2.done")

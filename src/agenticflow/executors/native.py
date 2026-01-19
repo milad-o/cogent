@@ -255,7 +255,7 @@ class NativeExecutor(BaseExecutor):
         # Setup model resilience
         if resilience:
             # If the agent has an explicit resilience config, honor it for LLM calls.
-            # This prevents long hangs in reactive/high-concurrency flows by allowing
+            # This prevents long hangs in high-concurrency flows by allowing
             # fast-fail or tighter timeouts.
             agent_resilience_cfg = None
             try:
@@ -409,7 +409,7 @@ class NativeExecutor(BaseExecutor):
     ) -> Any:
         """Execute using a pre-built message list.
 
-        This enables structured/reactive execution without converting event
+        This enables event-driven execution without converting event
         context into a single prompt string. The provided `messages` are used
         as-is (interceptors may still modify them).
 

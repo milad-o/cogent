@@ -6,7 +6,7 @@ context, prompts, and temporarily available tools based on event patterns.
 
 Example:
     ```python
-    from agenticflow.reactive import ReactiveFlow, skill
+    from agenticflow import Flow, skill
 
     # Define skills with the clean kwargs API
     python_skill = skill(
@@ -26,7 +26,7 @@ Example:
     )
 
     # Register skills on the flow
-    flow = ReactiveFlow()
+    flow = Flow()
     flow.register_skill(python_skill)
     flow.register_skill(debug_skill)
 

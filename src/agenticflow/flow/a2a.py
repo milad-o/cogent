@@ -1,11 +1,11 @@
-"""Agent-to-Agent (A2A) communication for ReactiveFlow.
+"""Agent-to-Agent (A2A) communication for Flow.
 
 This module provides direct agent-to-agent communication with request/response
 semantics, enabling agents to delegate tasks and receive replies.
 
 Example:
     ```python
-    from agenticflow import Agent, ReactiveFlow
+    from agenticflow import Agent, Flow
     from agenticflow.flow.triggers import react_to
 
     # Delegating agent

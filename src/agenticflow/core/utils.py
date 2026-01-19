@@ -212,7 +212,7 @@ class RetryBudget:
     """Bounded retry tracker for a key.
 
     This doesn't perform retries itself; it tracks attempt counts so your
-    reactive workflow can decide whether to reschedule/retry/escalate.
+    event-driven workflow can decide whether to reschedule/retry/escalate.
     """
 
     max_attempts: int
@@ -268,7 +268,7 @@ def jittered_delay(
 
 
 class Stopwatch:
-    """Tiny stopwatch helper (useful for timeouts/metrics in reactive demos)."""
+    """Tiny stopwatch helper (useful for timeouts/metrics in demos)."""
 
     def __init__(self) -> None:
         self._t0 = time.perf_counter()

@@ -40,6 +40,25 @@ result = await agent.run(
 - Updated `examples/README.md` — Documented reasoning features
 - Added Example 6 to `examples/advanced/reasoning.py` — Per-call override demo
 
+## [1.8.2] - 2026-01-18
+
+### Changed
+
+#### Consolidated ReactiveFlow/EventFlow into Flow
+
+**Unified Flow API:**
+- **Consolidated Classes**: Merged `ReactiveFlow` and `EventFlow` functionality into `agenticflow.flow.Flow`.
+- **Removed Modules**:
+  - `agenticflow.flow.reactive.py` (Deleted)
+  - `agenticflow.reactive.py` (Deleted compatibility shim)
+  - `agenticflow.agent.flow_helpers.py` (Deleted)
+- **Updated Terminology**: Replaced all "reactive" terminology with "flow" or "event-driven".
+
+**Bug Fixes:**
+- **Streaming**: Patched `Flow.run_streaming` to correctly support event chaining (`binding.emits`) in fallback mode.
+- **Roles**: Fixed indentation bug in `Agent` prompt generation for roles.
+- **Observability**: Fixed `Event` vs `Trace` class usage error in tests.
+
 ## [1.8.1] - 2026-01-16
 
 ### Changed

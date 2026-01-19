@@ -36,7 +36,7 @@ class TestReasoningConfig:
     def test_default_config(self):
         config = ReasoningConfig()
         assert config.enabled is True
-        assert config.max_thinking_rounds == 3
+        assert config.max_thinking_rounds == 10
         assert config.thinking_budget is None
         assert config.show_thinking is False
         assert config.style == ReasoningStyle.ANALYTICAL
@@ -50,13 +50,13 @@ class TestReasoningConfig:
     
     def test_standard_preset(self):
         config = ReasoningConfig.standard()
-        assert config.max_thinking_rounds == 3
+        assert config.max_thinking_rounds == 10
         assert config.style == ReasoningStyle.ANALYTICAL
         assert config.self_correct is True
     
     def test_deep_preset(self):
         config = ReasoningConfig.deep()
-        assert config.max_thinking_rounds == 5
+        assert config.max_thinking_rounds == 15
         assert config.style == ReasoningStyle.EXPLORATORY
         assert config.show_thinking is True
         assert config.require_confidence == 0.7
@@ -72,8 +72,8 @@ class TestReasoningConfig:
             ReasoningConfig(max_thinking_rounds=0)
     
     def test_validation_max_rounds(self):
-        with pytest.raises(ValueError, match="max_thinking_rounds cannot exceed 10"):
-            ReasoningConfig(max_thinking_rounds=11)
+        with pytest.raises(ValueError, match="max_thinking_rounds cannot exceed 20"):
+            ReasoningConfig(max_thinking_rounds=21)
     
     def test_validation_confidence_low(self):
         with pytest.raises(ValueError, match="require_confidence must be between"):

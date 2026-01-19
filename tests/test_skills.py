@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from agenticflow.reactive import (
+from agenticflow import (
     skill,
     Skill,
     SkillBuilder,

@@ -5,7 +5,7 @@ Provides persistent state management for multi-agent flows, enabling:
 - Distributed flow execution
 - Audit and debugging of flow history
 
-Used by both imperative (Flow) and reactive (EventFlow) orchestration.
+Used by both imperative (Flow) and event-driven orchestration.
 """
 
 from __future__ import annotations

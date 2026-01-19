@@ -327,7 +327,7 @@ class TestObserver:
         
         obs = Observer.debug()
         assert obs.config.level == ObservabilityLevel.DEBUG
-        assert Channel.ALL in obs.config.channels
+        assert Channel.AGENTS in obs.config.channels
         
         obs = Observer.trace()
         assert obs.config.level == ObservabilityLevel.TRACE
@@ -366,7 +366,7 @@ class TestObserver:
         obs.attach(bus)
         
         # Publish an event
-        event = Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"})
+        event = Trace(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"})
         await bus.publish(event)
         
         # Check metrics
@@ -395,8 +395,8 @@ class TestObserver:
         obs.attach(bus)
         
         # Publish events
-        await bus.publish(Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"}))
-        await bus.publish(Event(type=TraceType.TOOL_CALLED, data={"tool": "search"}))
+        await bus.publish(Trace(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"}))
+        await bus.publish(Trace(type=TraceType.TOOL_CALLED, data={"tool": "search"}))
         
         assert len(agent_calls) == 1
         assert "Test:invoked" in agent_calls[0]
@@ -416,9 +416,9 @@ class TestObserver:
         obs.attach(bus)
         
         # Publish multiple events
-        await bus.publish(Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "A1"}))
-        await bus.publish(Event(type=TraceType.TOOL_CALLED, data={"tool": "search"}))
-        await bus.publish(Event(type=TraceType.AGENT_RESPONDED, data={"agent_name": "A1"}))
+        await bus.publish(Trace(type=TraceType.AGENT_INVOKED, data={"agent_name": "A1"}))
+        await bus.publish(Trace(type=TraceType.TOOL_CALLED, data={"tool": "search"}))
+        await bus.publish(Trace(type=TraceType.AGENT_RESPONDED, data={"agent_name": "A1"}))
         
         # Query all
         events = obs.events()
@@ -444,8 +444,8 @@ class TestObserver:
         bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(type=TraceType.TASK_STARTED, data={"task": "test"}))
-        await bus.publish(Event(type=TraceType.TASK_COMPLETED, data={}))
+        await bus.publish(Trace(type=TraceType.TASK_STARTED, data={"task": "test"}))
+        await bus.publish(Trace(type=TraceType.TASK_COMPLETED, data={}))
         
         timeline = obs.timeline()
         assert "Timeline:" in timeline
@@ -463,7 +463,7 @@ class TestObserver:
         bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"}))
+        await bus.publish(Trace(type=TraceType.AGENT_INVOKED, data={"agent_name": "Test"}))
         
         summary = obs.summary()
         assert "Execution Summary" in summary
@@ -533,19 +533,19 @@ class TestObserverStreaming:
         obs.attach(bus)
         
         # Publish streaming events
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.STREAM_START,
             data={"agent_name": "TestAgent", "model": "gpt-4"}
         ))
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.TOKEN_STREAMED,
             data={"agent_name": "TestAgent", "token": "Hello"}
         ))
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.TOKEN_STREAMED,
             data={"agent_name": "TestAgent", "token": " world"}
         ))
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.STREAM_END,
             data={"agent_name": "TestAgent"}
         ))
@@ -569,9 +569,9 @@ class TestObserverStreaming:
         bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(type=TraceType.STREAM_START, data={"agent_name": "Test"}))
-        await bus.publish(Event(type=TraceType.TOKEN_STREAMED, data={"agent_name": "Test", "token": "x"}))
-        await bus.publish(Event(type=TraceType.STREAM_END, data={"agent_name": "Test"}))
+        await bus.publish(Trace(type=TraceType.STREAM_START, data={"agent_name": "Test"}))
+        await bus.publish(Trace(type=TraceType.TOKEN_STREAMED, data={"agent_name": "Test", "token": "x"}))
+        await bus.publish(Trace(type=TraceType.STREAM_END, data={"agent_name": "Test"}))
         
         metrics = obs.metrics()
         assert metrics.get("events.stream.start", 0) == 1
@@ -597,11 +597,11 @@ class TestObserverStreaming:
         bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.STREAM_START,
             data={"agent_name": "TestAgent", "model": "gpt-4"}
         ))
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.STREAM_END,
             data={"agent_name": "TestAgent"}
         ))
@@ -630,7 +630,7 @@ class TestObserverStreaming:
         bus = TraceBus()
         obs.attach(bus)
         
-        await bus.publish(Event(
+        await bus.publish(Trace(
             type=TraceType.STREAM_ERROR,
             data={"agent_name": "TestAgent", "error": "Connection failed"}
         ))

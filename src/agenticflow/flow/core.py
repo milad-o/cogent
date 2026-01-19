@@ -2,20 +2,21 @@
 
 This is the core orchestration class that drives event-driven multi-agent
 systems. Flow manages reactors (event handlers) and an event bus to enable
-reactive agent coordination.
+event-driven agent coordination.
 
-The Flow replaces both the old Topology-based and ReactiveFlow approaches
+The Flow replaces both the old Topology-based and Flow approaches
 with a single, unified event-driven model.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import fnmatch
 import uuid
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from agenticflow.events import Event, EventBus
 from agenticflow.flow.config import FlowConfig, FlowResult, ReactorBinding
@@ -23,7 +24,9 @@ from agenticflow.reactors.base import Reactor
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
-    from agenticflow.flow.checkpointer import Checkpointer
+    from agenticflow.flow.checkpointer import Checkpointer, FlowState
+    from agenticflow.flow.skills import Skill, SkillBuilder
+    from agenticflow.flow.streaming import StreamChunk
     from agenticflow.middleware.base import Middleware
     from agenticflow.observability.observer import Observer
 
@@ -134,6 +137,7 @@ class Flow:
         event_bus: EventBus | None = None,
         observer: Observer | None = None,
         checkpointer: Checkpointer | None = None,
+        thread_id_resolver: Callable[[Event, dict[str, Any]], str | None] | None = None,
     ) -> None:
         """Initialize the Flow.
 
@@ -142,11 +146,13 @@ class Flow:
             event_bus: Shared event bus (creates new one if not provided)
             observer: Optional observer for monitoring and tracing
             checkpointer: Optional checkpointer for persistent state
+            thread_id_resolver: Optional function to resolve thread IDs from events
         """
         self.config = config or FlowConfig()
         self.events = event_bus or EventBus()
         self._observer = observer
         self._checkpointer = checkpointer
+        self._thread_id_resolver = thread_id_resolver
 
         # Reactor registry: id -> reactor instance
         self._reactors: dict[str, Reactor] = {}
@@ -162,11 +168,199 @@ class Flow:
         self._event_queue: asyncio.Queue[Event] = asyncio.Queue()
         self._stop_event: Event | None = None
         self._event_history: list[Event] = []
+        self._last_checkpoint_id: str | None = None
+
+        # Skills registry: name -> Skill
+        self._skills_registry: dict[str, Skill] = {}
+
+        # Container-like features
+        self._shared_memory: Any | None = None
+        self._spawned: set[asyncio.Task[Any]] = set()
 
     @property
     def reactors(self) -> list[str]:
         """List of registered reactor IDs."""
         return list(self._reactors.keys())
+
+    @property
+    def skills(self) -> list[str]:
+        """Names of registered skills."""
+        return list(self._skills_registry.keys())
+
+    @property
+    def memory(self) -> Any | None:
+        """Shared memory configured via `with_memory()` (if any)."""
+        return self._shared_memory
+
+    @property
+    def flow_id(self) -> str | None:
+        """Current flow ID (set during run)."""
+        return self._flow_id
+
+    @property
+    def last_checkpoint_id(self) -> str | None:
+        """Most recent checkpoint ID (if checkpointing enabled)."""
+        return self._last_checkpoint_id
+
+    # -------------------------------------------------------------------------
+    # Skills API
+    # -------------------------------------------------------------------------
+
+    def register_skill(self, skill: Skill | SkillBuilder) -> Self:
+        """Register a skill with the flow.
+
+        Skills are event-triggered behavioral specializations. When an event
+        matches a skill's trigger, the skill's prompt and tools are injected
+        into any agent that also triggers on that event.
+
+        Args:
+            skill: The skill to register (or SkillBuilder)
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            ```python
+            from agenticflow.flow.skills import skill
+
+            python_skill = skill(
+                "python_expert",
+                on="code.write",
+                prompt="You are a Python expert...",
+                tools=[run_python],
+            )
+
+            flow.register_skill(python_skill)
+            ```
+        """
+        from agenticflow.flow.skills import Skill, SkillBuilder
+
+        if isinstance(skill, SkillBuilder):
+            skill = skill.build()
+        self._skills_registry[skill.name] = skill
+        return self
+
+    def _get_matching_skills(self, event: Event) -> list[Skill]:
+        """Get all skills that match an event, sorted by priority."""
+        from agenticflow.flow.skills import Skill
+
+        matching = [s for s in self._skills_registry.values() if s.matches(event)]
+        return sorted(matching, key=lambda s: -s.priority)
+
+    # -------------------------------------------------------------------------
+    # Memory API
+    # -------------------------------------------------------------------------
+
+    def with_memory(self, memory: Any | None = None) -> Self:
+        """Configure shared memory for agents registered to this flow.
+
+        If set, agents without an existing `memory_manager` will receive this
+        memory backend at registration time.
+
+        Args:
+            memory: Memory instance (creates new Memory if None)
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            ```python
+            from agenticflow.memory import Memory
+
+            flow = Flow().with_memory(Memory())
+            ```
+        """
+        from agenticflow.memory import Memory
+
+        self._shared_memory = memory or Memory()
+        return self
+
+    # -------------------------------------------------------------------------
+    # Background Tasks API
+    # -------------------------------------------------------------------------
+
+    def spawn(self, coro: Any) -> asyncio.Task[Any]:
+        """Spawn a background task and track it for cleanup.
+
+        Args:
+            coro: Coroutine to run in background
+
+        Returns:
+            The created asyncio.Task
+
+        Example:
+            ```python
+            async def background_job():
+                await asyncio.sleep(10)
+                print("Background job complete")
+
+            flow.spawn(background_job())
+            ```
+        """
+        task = asyncio.create_task(coro)
+        self._spawned.add(task)
+
+        def _done(_t: asyncio.Task[Any]) -> None:
+            self._spawned.discard(_t)
+
+        task.add_done_callback(_done)
+        return task
+
+    async def cancel_spawned(self) -> None:
+        """Cancel any still-running spawned tasks."""
+        if not self._spawned:
+            return
+
+        for task in list(self._spawned):
+            if not task.done():
+                task.cancel()
+
+        await asyncio.gather(*self._spawned, return_exceptions=True)
+        self._spawned.clear()
+
+    # -------------------------------------------------------------------------
+    # Thread ID Resolution
+    # -------------------------------------------------------------------------
+
+    def thread_by_data(self, key: str, *, prefix: str | None = None) -> Self:
+        """Derive `thread_id` from `event.data[key]`.
+
+        This is a mid-level UX helper for per-entity memory without lambdas.
+
+        Args:
+            key: Key in event.data to use as thread ID
+            prefix: Optional prefix to prepend to thread ID
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            ```python
+            flow.thread_by_data("job_id")
+            flow.thread_by_data("user_id", prefix="user_")
+            ```
+        """
+
+        def _thread_id_resolver(event: Event, _context: dict[str, Any]) -> str | None:
+            data = getattr(event, "data", None) or {}
+            value = data.get(key)
+            if value is None:
+                return None
+            thread_id = str(value)
+            return f"{prefix}{thread_id}" if prefix else thread_id
+
+        self._thread_id_resolver = _thread_id_resolver
+        return self
+
+    def unregister(self, reactor_id: str) -> None:
+        """Remove a reactor from the flow.
+
+        Args:
+            reactor_id: ID of the reactor to remove
+        """
+        self._reactors.pop(reactor_id, None)
+        self._bindings = [b for b in self._bindings if b.reactor_id != reactor_id]
+
 
     def register(
         self,
@@ -606,20 +800,282 @@ class Flow:
             config=self.config,
             observer=self._observer,
             checkpointer=self._checkpointer,
+            thread_id_resolver=self._thread_id_resolver,
         )
         new_flow._reactors = dict(self._reactors)
         new_flow._bindings = list(self._bindings)
         new_flow._middleware = list(self._middleware)
+        new_flow._skills_registry = dict(self._skills_registry)
+        new_flow._shared_memory = self._shared_memory
         return new_flow
+
+    # -------------------------------------------------------------------------
+    # Checkpointing API
+    # -------------------------------------------------------------------------
+
+    async def resume(
+        self,
+        state: FlowState,
+        *,
+        context: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """Resume a flow from a checkpoint.
+
+        Args:
+            state: The flow state to resume from
+            context: Optional context override (uses checkpoint context if not provided)
+
+        Returns:
+            FlowResult with output and execution details
+
+        Example:
+            ```python
+            # After crash, resume from last checkpoint
+            state = await checkpointer.load_latest("my-flow-id")
+            if state:
+                result = await flow.resume(state)
+            ```
+        """
+        from agenticflow.flow.checkpointer import FlowState
+
+        # Restore flow ID and state
+        self._flow_id = state.flow_id
+        self._last_checkpoint_id = state.checkpoint_id
+        self._event_queue = asyncio.Queue()
+        self._event_history = []
+        self._stop_event = None
+
+        # Restore pending events
+        for event_dict in state.pending_events:
+            event = Event(
+                name=event_dict.get("name", ""),
+                data=event_dict.get("data", {}),
+            )
+            await self._event_queue.put(event)
+
+        # Use provided context or restore from state
+        run_context = context if context is not None else dict(state.context)
+
+        # Resume from last round
+        rounds = state.round
+        events_processed = state.events_processed
+        final_output: Any = state.last_output
+
+        try:
+            while rounds < self.config.max_rounds:
+                rounds += 1
+
+                try:
+                    event = await asyncio.wait_for(
+                        self._event_queue.get(),
+                        timeout=self.config.event_timeout,
+                    )
+                except TimeoutError:
+                    if self.config.stop_on_idle:
+                        break
+                    continue
+
+                events_processed += 1
+
+                if event.name in self.config.stop_events:
+                    self._stop_event = event
+                    final_output = event.data.get("output", event.data)
+                    break
+
+                bindings = self._find_matching_bindings(event)
+
+                if not bindings and self.config.stop_on_idle:
+                    if self._event_queue.empty():
+                        break
+
+                for binding in bindings:
+                    reactor = self._reactors[binding.reactor_id]
+
+                    try:
+                        result_events = await self._execute_reactor(
+                            reactor, event, binding
+                        )
+
+                        if result_events:
+                            if isinstance(result_events, Event):
+                                await self.emit(result_events)
+                                final_output = result_events.data.get("output", result_events.data)
+                            elif isinstance(result_events, list):
+                                for e in result_events:
+                                    await self.emit(e)
+                                    final_output = e.data.get("output", e.data)
+
+                        if binding.emits and result_events:
+                            out = result_events if isinstance(result_events, Event) else result_events[-1]
+                            emit_event = Event(
+                                name=binding.emits,
+                                source=binding.reactor_id,
+                                data=out.data if isinstance(out, Event) else {"result": out},
+                                correlation_id=event.correlation_id,
+                            )
+                            await self.emit(emit_event)
+
+                    except Exception as e:
+                        if self.config.error_policy == "fail_fast":
+                            return FlowResult(
+                                success=False,
+                                error=str(e),
+                                events_processed=events_processed,
+                                event_history=self._event_history if self.config.enable_history else [],
+                                flow_id=self._flow_id,
+                            )
+
+            return FlowResult(
+                success=True,
+                output=final_output,
+                events_processed=events_processed,
+                event_history=self._event_history if self.config.enable_history else [],
+                final_event=self._stop_event,
+                flow_id=self._flow_id,
+            )
+
+        except Exception as e:
+            return FlowResult(
+                success=False,
+                error=str(e),
+                events_processed=events_processed,
+                event_history=self._event_history if self.config.enable_history else [],
+                flow_id=self._flow_id,
+            )
+        finally:
+            await self.cancel_spawned()
+
+    async def run_streaming(
+        self,
+        task: str,
+        *,
+        initial_event: str = "task.created",
+        initial_data: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> AsyncIterator[StreamChunk]:
+        """Execute the flow with streaming output.
+
+        Similar to run(), but yields StreamChunk objects as agents
+        process events, providing real-time token-by-token output.
+
+        Args:
+            task: The task/prompt to execute
+            initial_event: Event type to emit at start
+            initial_data: Additional data for initial event
+            context: Shared context available to all agents
+
+        Yields:
+            StreamChunk: Streaming chunks from agent executions
+
+        Example:
+            ```python
+            async for chunk in flow.run_streaming("Research quantum computing"):
+                print(f"[{chunk.agent_name}] {chunk.content}", end="", flush=True)
+                if chunk.is_final:
+                    print()  # Newline after agent completes
+            ```
+        """
+        from agenticflow.flow.streaming import StreamChunk
+
+        # Initialize flow state
+        self._flow_id = self.config.flow_id or _generate_id()
+        self._last_checkpoint_id = None
+        self._event_queue = asyncio.Queue()
+        self._event_history = []
+        self._stop_event = None
+
+        run_context = context or {}
+
+        # Build and emit initial event
+        event_data = {"task": task, **(initial_data or {})}
+        initial = Event(name=initial_event, source="flow", data=event_data)
+        await self.emit(initial)
+
+        rounds = 0
+
+        try:
+            while rounds < self.config.max_rounds:
+                rounds += 1
+
+                try:
+                    event = await asyncio.wait_for(
+                        self._event_queue.get(),
+                        timeout=self.config.event_timeout,
+                    )
+                except TimeoutError:
+                    if self.config.stop_on_idle:
+                        break
+                    continue
+
+                if event.name in self.config.stop_events:
+                    self._stop_event = event
+                    break
+
+                bindings = self._find_matching_bindings(event)
+
+                for binding in bindings:
+                    reactor = self._reactors[binding.reactor_id]
+
+                    # Check if reactor supports streaming
+                    if hasattr(reactor, "handle_streaming"):
+                        async for chunk in reactor.handle_streaming(event, run_context):
+                            yield chunk
+                    else:
+                        # Fall back to regular execution
+                        try:
+                            result_events = await self._execute_reactor(
+                                reactor, event, binding
+                            )
+
+                            if result_events:
+                                if isinstance(result_events, Event):
+                                    await self.emit(result_events)
+                                    # Emit a final chunk with the result
+                                    yield StreamChunk(
+                                        agent_name=binding.reactor_id,
+                                        event_id=event.id,
+                                        event_name=event.name,
+                                        content=str(result_events.data.get("output", "")),
+                                        delta=str(result_events.data.get("output", "")),
+                                        is_final=True,
+                                        finish_reason="stop",
+                                    )
+                                elif isinstance(result_events, list):
+                                    for e in result_events:
+                                        await self.emit(e)
+
+                            if binding.emits and result_events:
+                                out = result_events if isinstance(result_events, Event) else result_events[-1]
+                                emit_event = Event(
+                                    name=binding.emits,
+                                    source=binding.reactor_id,
+                                    data=out.data if isinstance(out, Event) else {"result": out},
+                                    correlation_id=event.correlation_id,
+                                )
+                                await self.emit(emit_event)
+
+                        except Exception as e:
+                            yield StreamChunk(
+                                agent_name=binding.reactor_id,
+                                event_id=event.id,
+                                event_name=event.name,
+                                content=f"[Error: {e!s}]",
+                                delta=f"[Error: {e!s}]",
+                                is_final=True,
+                                finish_reason="error",
+                                metadata={"error": str(e)},
+                            )
+
+                if self._event_queue.empty() and self.config.stop_on_idle:
+                    break
+
+        finally:
+            await self.cancel_spawned()
 
     def __repr__(self) -> str:
         return (
             f"Flow(reactors={len(self._reactors)}, "
             f"bindings={len(self._bindings)}, "
+            f"skills={len(self._skills_registry)}, "
             f"config={self.config})"
         )
-
-
-# Backward compatibility aliases
-EventFlow = Flow
-ReactiveFlow = Flow

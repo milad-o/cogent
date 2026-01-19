@@ -331,7 +331,7 @@ Schedule delayed event emission:
 ```python
 from agenticflow.core import emit_later
 
-# In a ReactiveFlow
+# In a Flow
 async def handle_timeout(event, ctx):
     # Schedule a timeout event
     ctx.flow.spawn(

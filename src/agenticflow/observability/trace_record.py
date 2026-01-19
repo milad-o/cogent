@@ -155,17 +155,17 @@ class TraceType(Enum):
     DOCUMENT_ENRICHED = "document.enriched"  # Metadata added to document
 
     # Reactive flow events (event-driven orchestration)
-    REACTIVE_FLOW_STARTED = "reactive.flow.started"  # Reactive flow started
-    REACTIVE_FLOW_COMPLETED = "reactive.flow.completed"  # Reactive flow finished
-    REACTIVE_FLOW_FAILED = "reactive.flow.failed"  # Reactive flow failed
-    REACTIVE_EVENT_EMITTED = "reactive.event.emitted"  # Event emitted in flow
-    REACTIVE_EVENT_PROCESSED = "reactive.event.processed"  # Event processed
-    REACTIVE_AGENT_TRIGGERED = "reactive.agent.triggered"  # Agent triggered by event
-    REACTIVE_AGENT_COMPLETED = "reactive.agent.completed"  # Triggered agent completed
-    REACTIVE_AGENT_FAILED = "reactive.agent.failed"  # Triggered agent failed
-    REACTIVE_NO_MATCH = "reactive.no_match"  # No agents matched event
-    REACTIVE_ROUND_STARTED = "reactive.round.started"  # New processing round
-    REACTIVE_ROUND_COMPLETED = "reactive.round.completed"  # Round completed
+    FLOW__STARTED = "flow.flow.started"  # Reactive flow started
+    FLOW__COMPLETED = "flow.flow.completed"  # Reactive flow finished
+    FLOW__FAILED = "flow.flow.failed"  # Reactive flow failed
+    FLOW_EVENT_EMITTED = "flow.event.emitted"  # Event emitted in flow
+    FLOW_EVENT_PROCESSED = "flow.event.processed"  # Event processed
+    FLOW_AGENT_TRIGGERED = "flow.agent.triggered"  # Agent triggered by event
+    FLOW_AGENT_COMPLETED = "flow.agent.completed"  # Triggered agent completed
+    FLOW_AGENT_FAILED = "flow.agent.failed"  # Triggered agent failed
+    FLOW_NO_MATCH = "flow.no_match"  # No agents matched event
+    FLOW_ROUND_STARTED = "flow.round.started"  # New processing round
+    FLOW_ROUND_COMPLETED = "flow.round.completed"  # Round completed
 
     # Skill events (event-driven behavioral specializations)
     SKILL_ACTIVATED = "skill.activated"  # Skill context injected into agent

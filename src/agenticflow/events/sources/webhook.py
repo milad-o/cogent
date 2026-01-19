@@ -1,6 +1,6 @@
 """HTTP Webhook event source.
 
-Receives events via HTTP POST requests and emits them into EventFlow.
+Receives events via HTTP POST requests and emits them into Flow.
 Uses Starlette for ASGI compatibility.
 """
 

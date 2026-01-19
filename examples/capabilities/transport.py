@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent
 from agenticflow.events import Event, EventBus
-from agenticflow.reactive import EventFlow, EventFlowConfig, react_to
+from agenticflow import Flow, FlowConfig, react_to
 from agenticflow.reactive.transport import LocalTransport, RedisTransport
 from config import get_model
 
@@ -213,8 +213,8 @@ async def agent_coordination():
     await transport.subscribe("**", track_events)
     
     # Create flow
-    flow = EventFlow(
-        config=EventFlowConfig(max_rounds=3),
+    flow = Flow(
+        config=FlowConfig(max_rounds=3),
         event_bus=bus,
     )
     
@@ -376,8 +376,8 @@ async def _run_multi_process(is_mock: bool):
         instructions="You are a task processor. Analyze tasks and provide brief, actionable insights (2-3 sentences max).",
     )
     
-    flow = EventFlow(
-        config=EventFlowConfig(max_rounds=2),
+    flow = Flow(
+        config=FlowConfig(max_rounds=2),
         event_bus=bus,
     )
     

@@ -139,7 +139,7 @@ class TestBaseExecutor:
         """Test creating an executor."""
         executor = NativeExecutor(mock_agent)
         assert executor.agent == mock_agent
-        assert executor.max_iterations == 10
+        assert executor.max_iterations == 25
 
     def test_executor_custom_iterations(self, mock_agent: MagicMock) -> None:
         """Test executor with custom max iterations."""
@@ -171,7 +171,7 @@ class TestNativeExecutor:
         """Test creating NativeExecutor."""
         executor = NativeExecutor(mock_agent)
         assert executor.agent == mock_agent
-        assert executor.max_iterations == 10
+        assert executor.max_iterations == 25
 
 
 class TestSequentialExecutor:
@@ -197,7 +197,7 @@ class TestSequentialExecutor:
         """Test creating SequentialExecutor."""
         executor = SequentialExecutor(mock_agent)
         assert executor.agent == mock_agent
-        assert executor.max_iterations == 10
+        assert executor.max_iterations == 25
 
 
 class TestCreateExecutor:

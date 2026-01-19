@@ -25,8 +25,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_model
 
 from agenticflow import Agent, tool
-from agenticflow.reactive.flow import EventFlow  # Has source/sink methods
-from agenticflow.reactive import react_to, Observer
+from agenticflow.reactive.flow import Flow  # Has source/sink methods
+from agenticflow import react_to, Observer
 from agenticflow.events import EventSink
 
 
@@ -118,7 +118,7 @@ async def demo_file_processing():
     observer = Observer.progress()
 
     # Create event-driven flow
-    flow = EventFlow(observer=observer)
+    flow = Flow(observer=observer)
 
     # Register agents with file-extension-specific triggers
     flow.register(
@@ -228,7 +228,7 @@ async def demo_notification_sink():
 
     # Create flow with observer and notification sink
     observer = Observer.minimal()
-    flow = EventFlow(observer=observer)
+    flow = Flow(observer=observer)
 
     # Register agent
     flow.register(processor, [react_to("order.created")])

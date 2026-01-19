@@ -1,6 +1,6 @@
 """Core event types for orchestration.
 
-These events drive application logic (reactive flows, external triggers, etc.).
+These events drive application logic (event-driven flows, external triggers, etc.).
 They are *not* observability events.
 """
 

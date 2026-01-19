@@ -289,7 +289,7 @@ For multi-agent scenarios, concurrency is controlled separately:
 |---------|-----------|---------|-------------|
 | `AgentConfig` | `max_concurrent_tasks` | `5` | Max parallel tasks per agent |
 | `SpawnConfig` | `max_concurrent` | `10` | Max concurrent spawned agents |
-| `ReactiveFlowConfig` | `max_concurrent_agents` | `10` | Max parallel agents in a flow |
+| `FlowConfig` | `max_concurrent_agents` | `10` | Max parallel agents in a flow |
 
 ```python
 from agenticflow import AgentConfig

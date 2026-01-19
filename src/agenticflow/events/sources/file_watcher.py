@@ -1,6 +1,6 @@
 """File watcher event source.
 
-Watches directories for file changes and emits events into EventFlow.
+Watches directories for file changes and emits events into Flow.
 Uses watchfiles for efficient cross-platform file system watching.
 """
 

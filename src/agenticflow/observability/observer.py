@@ -213,7 +213,7 @@ class Channel(str, Enum):
     RETRIEVAL = "retrieval"
     DOCUMENTS = "documents"
     MCP = "mcp"
-    REACTIVE = "reactive"
+    FLOW = "flow"
     SYSTEM = "system"
     RESILIENCE = "resilience"
     ALL = "all"
@@ -327,18 +327,18 @@ CHANNEL_EVENTS: dict[Channel, set[TraceType]] = {
         TraceType.MCP_TOOL_RESULT,
         TraceType.MCP_TOOL_ERROR,
     },
-    Channel.REACTIVE: {
-        TraceType.REACTIVE_FLOW_STARTED,
-        TraceType.REACTIVE_FLOW_COMPLETED,
-        TraceType.REACTIVE_FLOW_FAILED,
-        TraceType.REACTIVE_EVENT_EMITTED,
-        TraceType.REACTIVE_EVENT_PROCESSED,
-        TraceType.REACTIVE_AGENT_TRIGGERED,
-        TraceType.REACTIVE_AGENT_COMPLETED,
-        TraceType.REACTIVE_AGENT_FAILED,
-        TraceType.REACTIVE_NO_MATCH,
-        TraceType.REACTIVE_ROUND_STARTED,
-        TraceType.REACTIVE_ROUND_COMPLETED,
+    Channel.FLOW: {
+        TraceType.FLOW__STARTED,
+        TraceType.FLOW__COMPLETED,
+        TraceType.FLOW__FAILED,
+        TraceType.FLOW_EVENT_EMITTED,
+        TraceType.FLOW_EVENT_PROCESSED,
+        TraceType.FLOW_AGENT_TRIGGERED,
+        TraceType.FLOW_AGENT_COMPLETED,
+        TraceType.FLOW_AGENT_FAILED,
+        TraceType.FLOW_NO_MATCH,
+        TraceType.FLOW_ROUND_STARTED,
+        TraceType.FLOW_ROUND_COMPLETED,
         # Skill events
         TraceType.SKILL_ACTIVATED,
         TraceType.SKILL_DEACTIVATED,
@@ -665,7 +665,7 @@ class Observer:
         """Create observer showing key milestones (default)."""
         return cls(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.AGENTS, Channel.TASKS, Channel.REACTIVE],
+            channels=[Channel.AGENTS, Channel.TASKS, Channel.FLOW],
         )
 
     @classmethod
@@ -678,7 +678,7 @@ class Observer:
         """Create observer showing agent thoughts with full content."""
         return cls(
             level=ObservabilityLevel.PROGRESS,
-            channels=[Channel.AGENTS, Channel.TASKS, Channel.REACTIVE],
+            channels=[Channel.AGENTS, Channel.TASKS, Channel.FLOW],
             show_duration=True,
             truncate=500,  # Show substantial content
         )
@@ -688,7 +688,7 @@ class Observer:
         """Create observer showing tool calls and timing."""
         return cls(
             level=ObservabilityLevel.DETAILED,
-            channels=[Channel.AGENTS, Channel.TOOLS, Channel.TASKS, Channel.REACTIVE],
+            channels=[Channel.AGENTS, Channel.TOOLS, Channel.TASKS, Channel.FLOW],
             show_timestamps=True,
             show_duration=True,
         )
@@ -710,7 +710,7 @@ class Observer:
                 Channel.AGENTS, Channel.TOOLS, Channel.MESSAGES,
                 Channel.TASKS, Channel.STREAMING, Channel.MEMORY,
                 Channel.RETRIEVAL, Channel.DOCUMENTS, Channel.MCP,
-                Channel.REACTIVE, Channel.SYSTEM, Channel.RESILIENCE,
+                Channel.FLOW, Channel.SYSTEM, Channel.RESILIENCE,
             ],
             show_timestamps=True,
             show_duration=True,
@@ -742,7 +742,7 @@ class Observer:
                 Channel.AGENTS, Channel.TOOLS, Channel.MESSAGES,
                 Channel.TASKS, Channel.STREAMING, Channel.MEMORY,
                 Channel.RETRIEVAL, Channel.DOCUMENTS, Channel.MCP,
-                Channel.REACTIVE, Channel.SYSTEM, Channel.RESILIENCE,
+                Channel.FLOW, Channel.SYSTEM, Channel.RESILIENCE,
             ],
             show_timestamps=True,
             show_duration=True,
@@ -996,28 +996,28 @@ class Observer:
         # Reactive flow events - tiered visibility
         # Core milestones at PROGRESS level
         if event.type in {
-            TraceType.REACTIVE_FLOW_STARTED,
-            TraceType.REACTIVE_FLOW_COMPLETED,
-            TraceType.REACTIVE_FLOW_FAILED,
-            TraceType.REACTIVE_AGENT_TRIGGERED,
-            TraceType.REACTIVE_AGENT_COMPLETED,
-            TraceType.REACTIVE_AGENT_FAILED,
+            TraceType.FLOW__STARTED,
+            TraceType.FLOW__COMPLETED,
+            TraceType.FLOW__FAILED,
+            TraceType.FLOW_AGENT_TRIGGERED,
+            TraceType.FLOW_AGENT_COMPLETED,
+            TraceType.FLOW_AGENT_FAILED,
             TraceType.SKILL_ACTIVATED,  # Skill activation is a key milestone
         }:
             return ObservabilityLevel.PROGRESS
 
-        # Detailed reactive events
+        # Detailed flow events
         if event.type in {
-            TraceType.REACTIVE_EVENT_EMITTED,
-            TraceType.REACTIVE_EVENT_PROCESSED,
-            TraceType.REACTIVE_NO_MATCH,
+            TraceType.FLOW_EVENT_EMITTED,
+            TraceType.FLOW_EVENT_PROCESSED,
+            TraceType.FLOW_NO_MATCH,
         }:
             return ObservabilityLevel.DETAILED
 
         # Round info at DEBUG (verbose)
         if event.type in {
-            TraceType.REACTIVE_ROUND_STARTED,
-            TraceType.REACTIVE_ROUND_COMPLETED,
+            TraceType.FLOW_ROUND_STARTED,
+            TraceType.FLOW_ROUND_COMPLETED,
         }:
             return ObservabilityLevel.DEBUG
 
@@ -1917,7 +1917,7 @@ class Observer:
         # REACTIVE FLOW EVENTS - Event-driven orchestration
         # ═══════════════════════════════════════════════════════════
 
-        elif event_type == TraceType.REACTIVE_FLOW_STARTED:
+        elif event_type == TraceType.FLOW__STARTED:
             task = data.get("task", "")[:80]
             agents = data.get("agents", [])
             agent_count = len(agents)
@@ -1932,7 +1932,7 @@ class Observer:
                 lines.append(f"      {s.dim('Agents:')} {s.agent(agents_preview)}")
             return "\n".join(lines)
 
-        elif event_type == TraceType.REACTIVE_FLOW_COMPLETED:
+        elif event_type == TraceType.FLOW__COMPLETED:
             events_processed = data.get("events_processed", 0)
             reactions = data.get("reactions", 0)
             rounds = data.get("rounds", 0)
@@ -1947,16 +1947,16 @@ class Observer:
 
             return f"{prefix}{s.info('[Flow]')} {s.success('[completed]')}{duration_str} {s.dim(f'({reactions} reactions, {rounds} rounds, {events_processed} events)')}"
 
-        elif event_type == TraceType.REACTIVE_FLOW_FAILED:
+        elif event_type == TraceType.FLOW__FAILED:
             error = data.get("error", "Unknown error")[:100]
             rounds = data.get("rounds", 0)
             return f"{prefix}{s.info('[Flow]')} {s.error('[FAILED]')} {s.error(error)} {s.dim(f'(after {rounds} rounds)')}"
 
-        elif event_type == TraceType.REACTIVE_EVENT_EMITTED:
+        elif event_type == TraceType.FLOW_EVENT_EMITTED:
             event_name = data.get("event_name", "?")
             return f"{prefix}{s.dim('[Trace]')} {s.dim('[emitted]')} {s.info(event_name)}"
 
-        elif event_type == TraceType.REACTIVE_EVENT_PROCESSED:
+        elif event_type == TraceType.FLOW_EVENT_PROCESSED:
             # This can be very chatty. Keep it for DETAILED+ but suppress in
             # PROGRESS/minimal modes to improve signal-to-noise.
             if self.config.level <= ObservabilityLevel.PROGRESS:
@@ -1965,13 +1965,13 @@ class Observer:
             round_num = data.get("round", 0)
             return f"{prefix}{s.dim('[Trace]')} {s.dim('[processing]')} {event_name} {s.dim(f'(round {round_num})')}"
 
-        elif event_type == TraceType.REACTIVE_AGENT_TRIGGERED:
+        elif event_type == TraceType.FLOW_AGENT_TRIGGERED:
             agent = data.get("agent", "?")
             trigger_event = data.get("trigger_event", "?")
             formatted_name = _format_agent_name(agent)
             return f"{prefix}{s.agent(formatted_name)} {s.dim('[triggered]')} {s.dim('by')} {s.info(trigger_event)}"
 
-        elif event_type == TraceType.REACTIVE_AGENT_COMPLETED:
+        elif event_type == TraceType.FLOW_AGENT_COMPLETED:
             agent = data.get("agent", "?")
             output_length = data.get("output_length", 0)
             trigger_event = data.get("trigger_event", "")
@@ -1980,27 +1980,27 @@ class Observer:
             formatted_name = _format_agent_name(agent)
             return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.dim(output_str)}{by}"
 
-        elif event_type == TraceType.REACTIVE_AGENT_FAILED:
+        elif event_type == TraceType.FLOW_AGENT_FAILED:
             agent = data.get("agent", "?")
             error = data.get("error", "Unknown error")[:80]
             formatted_name = _format_agent_name(agent)
             return f"{prefix}{s.agent(formatted_name)} {s.error('[FAILED]')} {s.error(error)}"
 
-        elif event_type == TraceType.REACTIVE_NO_MATCH:
+        elif event_type == TraceType.FLOW_NO_MATCH:
             # Useful for debugging, but noisy for normal runs.
             if self.config.level < ObservabilityLevel.DEBUG:
                 return None
             event_name = data.get("event_name", "?")
             return f"{prefix}{s.dim('[Trace]')} {s.dim('[no-match]')} {s.dim(event_name)}"
 
-        elif event_type == TraceType.REACTIVE_ROUND_STARTED:
+        elif event_type == TraceType.FLOW_ROUND_STARTED:
             if self.config.level <= ObservabilityLevel.PROGRESS:
                 return None
             round_num = data.get("round", 0)
             pending = data.get("pending_events", 0)
             return f"{prefix}[Round] {s.dim(f'{round_num}')} {s.dim(f'({pending} pending)')}"
 
-        elif event_type == TraceType.REACTIVE_ROUND_COMPLETED:
+        elif event_type == TraceType.FLOW_ROUND_COMPLETED:
             if self.config.level <= ObservabilityLevel.PROGRESS:
                 return None
             round_num = data.get("round", 0)
@@ -2032,7 +2032,7 @@ class Observer:
             return f"{prefix}{formatted_agent} {s.dim('[skill:')} {s.dim(skill_name)}{s.dim('] done')}"
 
         # ═══════════════════════════════════════════════════════════
-        # CUSTOM EVENTS - User-defined events (often reactive)
+        # CUSTOM EVENTS - User-defined events (user-defined)
         # ═══════════════════════════════════════════════════════════
 
         elif event_type == TraceType.CUSTOM:
@@ -2055,7 +2055,7 @@ class Observer:
             # Reactive-style custom events (agent completions, etc.)
             if event_name:
                 agent = data.get("agent", "")
-                # Common domain IDs (e.g. case_id/scan_id) for reactive apps
+                # Common domain IDs (e.g. case_id/scan_id) for event-driven apps
                 meta = _kv_preview([
                     "case_id",
                     "job_id",
@@ -2539,7 +2539,7 @@ class Observer:
         Generate a visualization of event-driven flow execution.
 
         Parses REACTIVE_* traces to build an event → reactor → event graph
-        showing how events cascade through the reactive system.
+        showing how events cascade through the event-driven system.
 
         Args:
             include_timing: If True, annotate nodes with execution times
@@ -2585,11 +2585,11 @@ class Observer:
         if format != "mermaid":
             raise ValueError(f"Unsupported format: {format}. Only 'mermaid' is currently supported.")
 
-        # Extract reactive events
-        reactive_events = [
+        # Extract flow events
+        flow_events = [
             observed.event
             for observed in self._events
-            if observed.event.type.value.startswith("reactive")
+            if observed.event.type.value.startswith("flow")
         ]
         
         # Also collect agent execution traces for timing data
@@ -2599,8 +2599,8 @@ class Observer:
             if observed.event.type.value.startswith("agent")
         ]
 
-        if not reactive_events:
-            return "graph LR\n  START[\"No reactive events captured\"]"
+        if not flow_events:
+            return "graph LR\n  START[\"No flow events captured\"]"
 
         # Build graph structure
         lines = ["graph LR"]
@@ -2620,11 +2620,11 @@ class Observer:
                     reactor_timings[agent_name] = duration
 
         # First pass: collect all events and reactor timings
-        for trace in reactive_events:
+        for trace in flow_events:
             trace_type = trace.type
             data = trace.data
 
-            if trace_type == TraceType.REACTIVE_EVENT_EMITTED:
+            if trace_type == TraceType.FLOW_EVENT_EMITTED:
                 event_type = data.get("event_name", data.get("event_type", "unknown"))
                 source = data.get("source", "system")
                 
@@ -2633,16 +2633,16 @@ class Observer:
                 if source not in event_emissions[event_type]:
                     event_emissions[event_type].append(source)
 
-            elif trace_type == TraceType.REACTIVE_AGENT_COMPLETED:
+            elif trace_type == TraceType.FLOW_AGENT_COMPLETED:
                 agent_name = data.get("agent", "unknown")
-                # Duration might be in reactive trace too (fallback)
+                # Duration might be in flow trace too (fallback)
                 duration = data.get("duration_ms", 0)
                 if duration > 0 and agent_name not in reactor_timings:
                     reactor_timings[agent_name] = duration
 
-        # Second pass: build edges from REACTIVE_AGENT_TRIGGERED events
-        for trace in reactive_events:
-            if trace.type == TraceType.REACTIVE_AGENT_TRIGGERED:
+        # Second pass: build edges from FLOW_AGENT_TRIGGERED events
+        for trace in flow_events:
+            if trace.type == TraceType.FLOW_AGENT_TRIGGERED:
                 data = trace.data
                 agent_name = data.get("agent", "unknown")
                 trigger_event = data.get("trigger_event", data.get("event_type", "unknown"))

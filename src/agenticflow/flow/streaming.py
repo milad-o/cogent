@@ -1,11 +1,11 @@
-"""Streaming support for ReactiveFlow.
+"""Streaming support for Flow.
 
-This module extends ReactiveFlow with real-time streaming capabilities,
+This module extends Flow with real-time streaming capabilities,
 allowing agents to yield tokens as they process events rather than
 returning complete responses.
 
 Leverages existing agent streaming infrastructure (agent.run(stream=True))
-and wraps it with reactive flow context (event names, agent names, etc.).
+and wraps it with event-driven flow context (event names, agent names, etc.).
 
 Benefits:
 - Real-time feedback during long-running agent operations
@@ -16,7 +16,7 @@ Benefits:
 Example:
     ```python
     from agenticflow import Agent
-    from agenticflow.flow.reactive import ReactiveFlow
+    from agenticflow.flow import Flow
     from agenticflow.flow.triggers import react_to
     from agenticflow.models import ChatModel
 
@@ -33,8 +33,8 @@ Example:
         system_prompt="You write engaging content.",
     )
 
-    # Create reactive flow
-    flow = ReactiveFlow()
+    # Create event-driven flow
+    flow = Flow()
     flow.register(researcher, [react_to("task.created")])
     flow.register(writer, [react_to("researcher.completed")])
 
@@ -58,11 +58,11 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class ReactiveStreamChunk:
+class FlowStreamChunk:
     """
-    A streaming chunk from a reactive agent execution.
+    A streaming chunk from a event-driven agent execution.
 
-    Extends the agent's StreamChunk with reactive-flow context like
+    Extends the agent's StreamChunk with flow context like
     which agent is streaming, what event triggered it, and whether
     this is the final chunk from this reaction.
 
@@ -109,8 +109,8 @@ class ReactiveStreamChunk:
         event_id: str,
         event_name: str,
         **metadata: Any,
-    ) -> ReactiveStreamChunk:
-        """Create ReactiveStreamChunk from agent's StreamChunk."""
+    ) -> FlowStreamChunk:
+        """Create StreamChunk from agent's StreamChunk."""
         return cls(
             agent_name=agent_name,
             event_id=event_id,
@@ -124,7 +124,7 @@ class ReactiveStreamChunk:
 
 
 # Backward compatibility - some code may expect "StreamChunk"
-StreamChunk = ReactiveStreamChunk
+StreamChunk = FlowStreamChunk
 
 
 async def _stream_agent_execution(
@@ -135,12 +135,12 @@ async def _stream_agent_execution(
     event_id: str,
     event_name: str,
     **context: Any,
-) -> AsyncIterator[ReactiveStreamChunk]:
+) -> AsyncIterator[StreamChunk]:
     """
-    Execute agent with streaming enabled and yield ReactiveStreamChunks.
+    Execute agent with streaming enabled and yield StreamChunks.
 
     This is an internal helper that wraps agent execution, enabling
-    streaming mode and converting agent StreamChunks to ReactiveStreamChunks
+    streaming mode and converting agent StreamChunks to StreamChunks
     with full event context.
 
     Args:
@@ -153,7 +153,7 @@ async def _stream_agent_execution(
         **context: Additional context to pass to agent.
 
     Yields:
-        ReactiveStreamChunk: Streaming chunks with reactive context.
+        StreamChunk: Streaming chunks with flow context.
     """
     # Import here to avoid circular dependency
     from agenticflow.agent.streaming import StreamChunk as AgentStreamChunk
@@ -170,7 +170,7 @@ async def _stream_agent_execution(
     # Stream agent execution
     async for agent_chunk in agent.think(task, stream=True, **full_context):
         if isinstance(agent_chunk, AgentStreamChunk):
-            yield ReactiveStreamChunk.from_agent_chunk(
+            yield StreamChunk.from_agent_chunk(
                 chunk=agent_chunk,
                 agent_name=agent_name,
                 event_id=event_id,
@@ -179,7 +179,7 @@ async def _stream_agent_execution(
         else:
             # Fallback for non-StreamChunk responses (shouldn't happen in stream mode)
             content = str(agent_chunk) if agent_chunk else ""
-            yield ReactiveStreamChunk(
+            yield StreamChunk(
                 agent_name=agent_name,
                 event_id=event_id,
                 event_name=event_name,

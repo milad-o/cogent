@@ -103,14 +103,14 @@ async def demo_trace_filtering():
     events = [
         observed.event.data["event_type"]
         for observed in observer.events()
-        if observed.event.type == TraceType.REACTIVE_EVENT_EMITTED
+        if observed.event.type == TraceType.FLOW_EVENT_EMITTED
     ]
     print("   " + " → ".join(events))
 
     # 2. Agent performance
     print("\n⏱️  Agent Performance:")
     for observed in observer.events():
-        if observed.event.type == TraceType.REACTIVE_AGENT_COMPLETED:
+        if observed.event.type == TraceType.FLOW_AGENT_COMPLETED:
             agent = observed.event.data["agent"]
             duration = observed.event.data.get("duration_ms", 0)
             print(f"   {agent}: {duration:.0f}ms")
@@ -119,13 +119,13 @@ async def demo_trace_filtering():
     print("\n📈 Processing Stats:")
     rounds = [
         observed for observed in observer.events()
-        if observed.event.type == TraceType.REACTIVE_ROUND_COMPLETED
+        if observed.event.type == TraceType.FLOW_ROUND_COMPLETED
     ]
     print(f"   Total rounds: {len(rounds)}")
     
     total_events = len([
         observed for observed in observer.events()
-        if observed.event.type == TraceType.REACTIVE_EVENT_PROCESSED
+        if observed.event.type == TraceType.FLOW_EVENT_PROCESSED
     ])
     print(f"   Events processed: {total_events}")
 
@@ -133,7 +133,7 @@ async def demo_trace_filtering():
     print("\n🔍 Issue Detection:")
     no_matches = [
         observed for observed in observer.events()
-        if observed.event.type == TraceType.REACTIVE_NO_MATCH
+        if observed.event.type == TraceType.FLOW_NO_MATCH
     ]
     if no_matches:
         print(f"   ⚠️  {len(no_matches)} events had no matching reactors")
@@ -183,7 +183,7 @@ async def demo_performance_analysis():
     # Calculate performance metrics
     agent_times = {}
     for observed in observer.events():
-        if observed.event.type == TraceType.REACTIVE_AGENT_COMPLETED:
+        if observed.event.type == TraceType.FLOW_AGENT_COMPLETED:
             agent = observed.event.data["agent"]
             duration = observed.event.data.get("duration_ms", 0)
             agent_times[agent] = duration
@@ -237,7 +237,7 @@ async def demo_debugging_unmatched():
     # Check for unmatched events
     no_matches = [
         observed for observed in observer.events()
-        if observed.event.type == TraceType.REACTIVE_NO_MATCH
+        if observed.event.type == TraceType.FLOW_NO_MATCH
     ]
 
     if no_matches:
@@ -331,7 +331,7 @@ async def main():
     print("  • Use Observer.trace() for troubleshooting")
     print("  • Filter traces by type for specific analysis")
     print("  • Export traces for offline analysis")
-    print("  • Monitor REACTIVE_NO_MATCH to catch misconfigurations")
+    print("  • Monitor FLOW_NO_MATCH to catch misconfigurations")
     print("\n📚 See docs/observability.md for complete guide")
 
 

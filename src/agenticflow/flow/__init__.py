@@ -64,9 +64,9 @@ from agenticflow.flow.context import (
 )
 from agenticflow.flow.core import (
     # Backward compatibility
-    EventFlow,
     Flow,
-    ReactiveFlow,
+    Flow,
+    Flow,
 )
 
 # Pattern helpers
@@ -103,8 +103,8 @@ __all__ = [
     "collaborative",
     "brainstorm",
     # Backward compatibility
-    "EventFlow",
-    "ReactiveFlow",
+    "Flow",
+    "Flow",
     "ReactiveContext",
     "BaseFlowResult",
 ]

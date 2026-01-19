@@ -319,7 +319,7 @@ class AgentTriggerConfig:
     """
     Configuration for an agent's event triggers.
 
-    This is attached to agents to define their reactive behavior.
+    This is attached to agents to define their event-driven behavior.
     """
 
     triggers: list[Trigger] = field(default_factory=list)
