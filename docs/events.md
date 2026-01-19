@@ -37,11 +37,10 @@ Event sources inject events from external systems into your reactive flows.
 Monitor directories for file changes:
 
 ```python
-from agenticflow.reactive.flow import EventFlow
-from agenticflow.reactive import react_to
+from agenticflow import Flow, react_to
 from agenticflow.events import FileWatcherSource
 
-flow = EventFlow()
+flow = Flow()
 
 # Register agents that react to file events
 flow.register(json_processor, [react_to("file.created").when(
@@ -178,17 +177,17 @@ flow.sink(DatabaseSink("postgresql://..."), pattern="*")
 
 ---
 
-## Integration with EventFlow
+## Integration with Flow
 
-Sources and sinks integrate seamlessly with `EventFlow`:
+Sources and sinks integrate seamlessly with `Flow`:
 
 ```python
-from agenticflow.reactive.flow import EventFlow
-from agenticflow.reactive import react_to, Observer
+from agenticflow import Flow, react_to
+from agenticflow.observability import Observer
 from agenticflow.events import FileWatcherSource, WebhookSink
 
 # Create flow with observability
-flow = EventFlow(observer=Observer.progress())
+flow = Flow(observer=Observer.progress())
 
 # External sources → inject events into flow
 flow.source(FileWatcherSource(paths=["./incoming"]))

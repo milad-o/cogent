@@ -1,6 +1,6 @@
 # Streaming Reactions
 
-Real-time token-by-token streaming from event-driven ReactiveFlow executions.
+Real-time token-by-token streaming from event-driven Flow executions.
 
 ## Overview
 
@@ -73,7 +73,7 @@ class StreamChunk:
 
 | Feature | `run()` | `run_streaming()` |
 |---------|---------|-------------------|
-| **Returns** | `ReactiveFlowResult` | `AsyncIterator[StreamChunk]` |
+| **Returns** | `FlowResult` | `AsyncIterator[FlowStreamChunk]` |
 | **Output** | Complete final output | Progressive tokens |
 | **Latency** | Wait for completion | Immediate feedback |
 | **Use Case** | Batch processing | Interactive UX |
@@ -208,13 +208,13 @@ except Exception as e:
 1. **Event Loop**: `run_streaming()` processes events like regular `run()`
 2. **Agent Triggers**: Events trigger matching agents (same matching logic)
 3. **Streaming Execution**: Agents execute with `stream=True` parameter
-4. **Chunk Conversion**: Agent `StreamChunk` → `ReactiveStreamChunk` with event context
+4. **Chunk Conversion**: Agent `StreamChunk` → `FlowStreamChunk` with event context
 5. **Sequential Flow**: Agents execute sequentially to preserve output order
 6. **Yield to Caller**: Each chunk is yielded immediately as it arrives
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ ReactiveFlow.run_streaming("task")                          │
+│ Flow.run_streaming("task")                                  │
 └─────────────────┬───────────────────────────────────────────┘
                   │
                   ▼
@@ -239,7 +239,7 @@ except Exception as e:
                   │
                   ▼
          ┌──────────────────────────────────┐
-         │ Convert to ReactiveStreamChunk   │ Add event context
+         │ Convert to FlowStreamChunk       │ Add event context
          └────────┬─────────────────────────┘
                   │
                   ▼
@@ -250,11 +250,11 @@ except Exception as e:
 
 ### Integration with Agent Streaming
 
-ReactiveFlow streaming leverages the existing agent streaming infrastructure:
+Flow streaming leverages the existing agent streaming infrastructure:
 
 - **Agent.run(stream=True)** — Returns `AsyncIterator[StreamChunk]`
 - **StreamChunk** — Token content from LLM provider
-- **ReactiveStreamChunk** — Wraps StreamChunk with reactive flow context
+- **FlowStreamChunk** — Wraps StreamChunk with flow event context
 
 This means:
 - ✅ No duplicate streaming logic
@@ -297,19 +297,19 @@ For very long outputs, streaming prevents memory buildup.
 
 ### Flow Configuration
 
-Streaming respects `ReactiveFlowConfig` settings:
+Streaming respects `FlowConfig` settings:
 
 ```python
-from agenticflow.reactive import ReactiveFlowConfig
+from agenticflow import FlowConfig
 
-config = ReactiveFlowConfig(
+config = FlowConfig(
     max_rounds=100,          # Maximum event processing rounds
     event_timeout=30.0,      # Timeout for waiting on events
     stop_on_idle=True,       # Stop when no more events
     stop_events=frozenset({"flow.completed"}),  # Events that end flow
 )
 
-flow = ReactiveFlow(config=config)
+flow = Flow(config=config)
 
 # Streaming obeys these limits
 async for chunk in flow.run_streaming("task"):
@@ -332,7 +332,7 @@ agent = Agent(
 
 ## Examples
 
-See [examples/reactive/streaming.py](../examples/reactive/streaming.py) for comprehensive demonstrations:
+See [examples/basics/streaming.py](../examples/basics/streaming.py) for comprehensive demonstrations:
 
 1. **Basic Streaming** — Simple token-by-token display
 2. **Multi-Agent Streaming** — Track agent transitions
@@ -342,34 +342,35 @@ See [examples/reactive/streaming.py](../examples/reactive/streaming.py) for comp
 
 Run:
 ```bash
-uv run python examples/reactive/streaming.py
+uv run python examples/basics/streaming.py
 ```
 
 ## Testing
 
 ```python
 import pytest
-from agenticflow.reactive import ReactiveFlow, ReactiveStreamChunk
+from agenticflow import Flow
+from agenticflow.flow.streaming import FlowStreamChunk
 
 @pytest.mark.asyncio
 async def test_streaming():
-    flow = ReactiveFlow()
+    flow = Flow()
     flow.register(agent, [react_to("task.created")])
     
     chunks = []
     async for chunk in flow.run_streaming("Test"):
-        assert isinstance(chunk, ReactiveStreamChunk)
+        assert isinstance(chunk, FlowStreamChunk)
         assert chunk.agent_name == "agent"
         chunks.append(chunk)
     
     assert len(chunks) > 1  # Multiple chunks received
 ```
 
-See [tests/test_reactive_streaming.py](../tests/test_reactive_streaming.py) for full test suite (11 passing tests).
+See [tests/test_streaming.py](../tests/test_streaming.py) for full test suite.
 
 ## API Reference
 
-### ReactiveFlow.run_streaming()
+### Flow.run_streaming()
 
 ```python
 async def run_streaming(
@@ -379,7 +380,7 @@ async def run_streaming(
     initial_event: str = "task.created",
     initial_data: dict[str, Any] | None = None,
     context: dict[str, Any] | None = None,
-) -> AsyncIterator[ReactiveStreamChunk]:
+) -> AsyncIterator[FlowStreamChunk]:
     """
     Execute event-driven flow with streaming output.
     
@@ -390,7 +391,7 @@ async def run_streaming(
         context: Shared context available to all agents
         
     Yields:
-        ReactiveStreamChunk: Streaming chunks from agent executions
+        FlowStreamChunk: Streaming chunks from agent executions
         
     Example:
         async for chunk in flow.run_streaming("Research topic"):
@@ -398,12 +399,12 @@ async def run_streaming(
     """
 ```
 
-### ReactiveStreamChunk
+### FlowStreamChunk
 
 ```python
 @dataclass
-class ReactiveStreamChunk:
-    """Streaming chunk from reactive agent execution."""
+class FlowStreamChunk:
+    """Streaming chunk from event-driven agent execution."""
     
     agent_name: str
     """Name of the agent generating this chunk."""
@@ -432,15 +433,15 @@ class ReactiveStreamChunk:
 
 ## Comparison with Imperative Flow Streaming
 
-| Feature | ReactiveFlow.run_streaming() | Flow.stream() |
-|---------|------------------------------|---------------|
+| Feature | Flow.run_streaming() | Flow.stream() |
+|---------|----------------------|---------------|
 | **Paradigm** | Event-driven | Imperative/Topology-based |
-| **Chunk Type** | `ReactiveStreamChunk` | Status updates |
+| **Chunk Type** | `FlowStreamChunk` | Status updates |
 | **Agent Coordination** | Event triggers | Topology structure |
 | **Event Context** | Full event metadata | Limited |
 | **Use Case** | Reactive orchestration | Pipeline/Supervisor flows |
 
-Both support real-time streaming, but ReactiveFlow provides richer event context.
+Both support real-time streaming, but `run_streaming()` provides richer event context.
 
 ## Best Practices
 
@@ -482,4 +483,4 @@ async for chunk in flow.run_streaming("task"):
 - [Flow Guide](flow.md) — Event-driven orchestration
 - [Agent Streaming](agent.md#streaming) — Agent-level streaming
 - [Transport](transport.md) — Distributed event transport
-- [Examples](../examples/reactive/) — Complete examples
+- [Examples](../examples/basics/streaming.py) — Streaming example

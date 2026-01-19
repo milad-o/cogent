@@ -22,8 +22,8 @@ The **Transport** system allows agents to communicate across process boundaries 
 For single-process applications or testing:
 
 ```python
-from agenticflow.reactive import LocalTransport, EventBus
-from agenticflow.events import Event
+from agenticflow.events import Event, EventBus
+from agenticflow.events.transport import LocalTransport
 
 # Create local transport
 transport = LocalTransport()
@@ -55,7 +55,7 @@ uv add redis>=5.0.0
 
 **Use RedisTransport**:
 ```python
-from agenticflow.reactive import RedisTransport
+from agenticflow.events.transport import RedisTransport
 
 transport = RedisTransport(redis_url="redis://localhost:6379/0")
 await transport.connect()
@@ -202,7 +202,7 @@ uv add agenticflow[redis]
 Use transport with `EventBus` for automatic event routing:
 
 ```python
-from agenticflow.reactive import RedisTransport
+from agenticflow.events.transport import RedisTransport
 from agenticflow.events import EventBus
 
 # Create transport
@@ -234,7 +234,7 @@ Example: Coordinating agents across 2 processes
 ```python
 # worker.py
 from agenticflow import Agent
-from agenticflow.reactive import RedisTransport, EventFlow
+from agenticflow.events.transport import RedisTransport
 from agenticflow.events import Event
 
 transport = RedisTransport(redis_url="redis://localhost:6379")
@@ -260,7 +260,7 @@ await transport.subscribe("task.created", handle_task)
 **Process 2 (Coordinator)**:
 ```python
 # coordinator.py
-from agenticflow.reactive import RedisTransport
+from agenticflow.events.transport import RedisTransport
 from agenticflow.events import Event
 
 transport = RedisTransport(redis_url="redis://localhost:6379")
@@ -295,7 +295,7 @@ python coordinator.py
 Transports raise specific exceptions:
 
 ```python
-from agenticflow.reactive import (
+from agenticflow.events.transport import (
     TransportError,
     ConnectionError,
     PublishError,
@@ -328,8 +328,8 @@ except TransportError as e:
 
 ```python
 import pytest
-from agenticflow.reactive import LocalTransport
 from agenticflow.events import Event
+from agenticflow.events.transport import LocalTransport
 
 @pytest.mark.asyncio
 async def test_event_delivery():
