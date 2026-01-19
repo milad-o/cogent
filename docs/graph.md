@@ -382,6 +382,75 @@ view.save("diagram.mmd")
 
 ---
 
+## KnowledgeGraph Visualization
+
+Visualize knowledge graphs with entity grouping and custom layouts:
+
+```python
+from agenticflow.capabilities import KnowledgeGraph
+
+kg = KnowledgeGraph()
+
+# Add entities and relationships
+kg.remember("Alice", "Person", {"role": "CEO"})
+kg.remember("TechCorp", "Company", {"founded": 2015})
+kg.connect("Alice", "works_at", "TechCorp")
+
+# Visualize with layout options
+view = kg.visualize(
+    direction="LR",          # Left-to-right (also: TB, BT, RL)
+    group_by_type=True,      # Group entities by type in subgraphs
+    show_attributes=False,   # Hide/show entity attributes
+    max_entities=None,       # Limit number of entities
+)
+
+# Use all GraphView methods
+print(view.mermaid())
+view.save("knowledge_graph.png")
+print(view.url())  # Share with others
+```
+
+**Entity Type Colors:**
+- Person → Blue (#60a5fa)
+- Company/Organization → Green (#7eb36a)
+- Location → Orange (#f59e0b)
+- Event → Purple (#9b59b6)
+- Generic/Unknown → Gray (#94a3b8)
+
+**Layout Options:**
+```python
+# Hierarchical top-down
+view = kg.visualize(direction="TB", group_by_type=True)
+
+# Left-right flow (recommended for knowledge graphs)
+view = kg.visualize(direction="LR", group_by_type=True)
+
+# Bottom-up
+view = kg.visualize(direction="BT", group_by_type=False)
+
+# Right-left
+view = kg.visualize(direction="RL", group_by_type=True)
+```
+
+**Example Output:**
+```mermaid
+flowchart LR
+    subgraph type_Person["Person"]
+        Alice("Alice"):::person
+    end
+
+    subgraph type_Company["Company"]
+        TechCorp("TechCorp"):::org
+    end
+
+    Alice -->|works_at| TechCorp
+
+    classDef person fill:#60a5fa,stroke:#3b82f6,color:#fff
+    classDef org fill:#7eb36a,stroke:#4a7a3d,color:#fff
+```
+
+---
+
 ## API Reference
 
 ### GraphView Methods
@@ -393,7 +462,9 @@ view.save("diagram.mmd")
 | `dot()` | `str` | Graphviz DOT code |
 | `url()` | `str` | mermaid.ink URL |
 | `html()` | `str` | Embeddable HTML |
-| `save(path)` | `None` | Save to file |
+| `png()` | `bytes` | PNG image bytes |
+| `svg()` | `bytes` | SVG vector bytes |
+| `save(path)` | `None` | Save to file (auto-detects format) |
 | `open()` | `None` | Open in browser |
 | `display()` | `None` | Display in notebook |
 
@@ -403,4 +474,6 @@ view.save("diagram.mmd")
 |-------|-------------|
 | `GraphConfig` | Diagram configuration |
 | `GraphTheme` | Color themes |
-| `GraphDirection` | Diagram direction |
+| `GraphDirection` | Diagram direction (TOP_DOWN, LEFT_RIGHT, BOTTOM_UP, RIGHT_LEFT) |
+| `NodeShape` | Node shapes |
+| `EdgeType` | Edge styles |

@@ -56,15 +56,51 @@ agent = Agent(
 **Tools provided:**
 | Tool | Description |
 |------|-------------|
-| `remember` | Store entities and relationships |
+| `remember` | Store entities with attributes (dict or JSON string) |
 | `recall` | Retrieve information about entities |
-| `query` | Multi-hop relationship queries |
-| `forget` | Remove entities or relationships |
+| `connect` | Create relationships between entities |
+| `query_knowledge` | Query relationships (source/relation/target params) |
+| `forget` | Remove entities and their relationships |
+| `list_knowledge` | List all entities, optionally filtered by type |
 
 **Backends:**
 - `InMemoryGraph`: Fast, uses networkx if available
 - `SQLiteGraph`: Persistent, handles large graphs
 - `JSONFileGraph`: Simple persistence with auto-save
+
+**Visualization:**
+```python
+kg = KnowledgeGraph()
+# ... add entities and relationships ...
+
+# Visualize with left-right layout and type grouping
+view = kg.visualize(direction="LR", group_by_type=True)
+
+# Generate different formats
+print(view.mermaid())  # Mermaid diagram
+print(view.ascii())    # Terminal-friendly
+print(view.url())      # Shareable mermaid.ink URL
+
+# Save to files
+view.save("graph.mmd")   # Mermaid source
+view.save("graph.html")  # Interactive HTML
+view.save("graph.png")   # PNG image
+view.save("graph.svg")   # SVG vector
+view.save("graph.dot")   # Graphviz DOT
+```
+
+**Tool API (improved in v1.8.3):**
+```python
+# Query with structured parameters (NEW)
+query_knowledge(source=None, relation="works_at", target="TechCorp")
+# Returns: Who works at TechCorp?
+
+# Remember with dict attributes (NEW - preferred)
+remember(entity="Alice", entity_type="Person", attributes={"role": "CEO", "age": 35})
+
+# Also accepts JSON string for backward compatibility
+remember(entity="Alice", entity_type="Person", attributes='{"role": "CEO"}')
+```
 
 ---
 

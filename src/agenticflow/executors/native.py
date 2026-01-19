@@ -57,7 +57,7 @@ async def run(
     model: str | BaseChatModel = "gpt-4o-mini",
     system_prompt: str | None = None,
     max_iterations: int = 25,
-    max_tool_calls: int = 20,
+    max_tool_calls_per_turn: int = 50,
     resilience: bool = True,
     verbose: bool = False,
 ) -> str:
@@ -72,7 +72,7 @@ async def run(
         model: Model name or any native chat model instance.
         system_prompt: Optional system prompt.
         max_iterations: Maximum LLM call iterations.
-        max_tool_calls: Maximum total tool calls.
+        max_tool_calls_per_turn: Maximum tool calls per LLM response (default: 50).
         resilience: Enable automatic retry for rate limits (default: True).
         verbose: Print retry/error information (default: False).
 
@@ -136,8 +136,6 @@ async def run(
     messages.append(HumanMessage(task))
 
     # Execution loop
-    total_tool_calls = 0
-
     for _ in range(max_iterations):
         # LLM call with resilience
         if model_resilience:
@@ -153,13 +151,20 @@ async def run(
         if not response.tool_calls:
             return response.content or ""
 
-        # Check tool limit
-        if total_tool_calls + len(response.tool_calls) > max_tool_calls:
-            return response.content or "Tool call limit reached"
+        # Check per-turn tool limit
+        num_tool_calls = len(response.tool_calls)
+        if num_tool_calls > max_tool_calls_per_turn:
+            return response.content or f"Tool call limit exceeded: {num_tool_calls} tools requested, max {max_tool_calls_per_turn} per turn"
 
-        # Execute tools in parallel
+        # Execute tools with concurrency limiting
+        semaphore = asyncio.Semaphore(20)  # Max 20 concurrent
+        
+        async def execute_with_limit(tc):
+            async with semaphore:
+                return await _execute_tool_native(tc, tool_map)
+        
         tool_results = await asyncio.gather(
-            *[_execute_tool_native(tc, tool_map) for tc in response.tool_calls],
+            *[execute_with_limit(tc) for tc in response.tool_calls],
             return_exceptions=True,
         )
 
@@ -169,8 +174,6 @@ async def run(
                 messages.append(ToolMessage(f"Error: {result}", tool_call_id=tool_id))
             else:
                 messages.append(result)
-
-        total_tool_calls += len(response.tool_calls)
 
     return "Max iterations reached"
 
@@ -229,23 +232,26 @@ class NativeExecutor(BaseExecutor):
         result = await executor.execute("Research ACME Corp and calculate metrics")
     """
 
-    __slots__ = ("_bound_model", "_tool_map", "_max_tool_calls", "_model_resilience")
+    __slots__ = ("_bound_model", "_tool_map", "_max_tool_calls_per_turn", "_max_concurrent_tools", "_model_resilience")
 
     def __init__(
         self,
         agent: Agent,
-        max_tool_calls: int = 20,
+        max_tool_calls_per_turn: int = 50,
+        max_concurrent_tools: int = 20,
         resilience: bool = True,
     ) -> None:
         """Initialize NativeExecutor.
 
         Args:
             agent: The agent to execute.
-            max_tool_calls: Maximum total tool calls across all iterations.
+            max_tool_calls_per_turn: Maximum tool calls per LLM response (default: 50).
+            max_concurrent_tools: Maximum tools executing concurrently (default: 20).
             resilience: Enable automatic retry for LLM rate limits (default: True).
         """
         super().__init__(agent)
-        self._max_tool_calls = max_tool_calls
+        self._max_tool_calls_per_turn = max_tool_calls_per_turn
+        self._max_concurrent_tools = max_concurrent_tools
 
         # Pre-cache everything at construction time
         self._bound_model = None
@@ -904,10 +910,10 @@ class NativeExecutor(BaseExecutor):
                         "args": tc.get("args", {}),
                     })
 
-            # Check tool call limit
+            # Check per-turn tool call limit
             num_calls = len(response.tool_calls)
-            if total_tool_calls + num_calls > self._max_tool_calls:
-                limit_output = response.content or "Tool call limit reached"
+            if num_calls > self._max_tool_calls_per_turn:
+                limit_output = response.content or f"Tool call limit exceeded: {num_calls} tools in one turn, max {self._max_tool_calls_per_turn} per turn"
                 if event_bus:
                     await event_bus.publish(TraceType.OUTPUT_GENERATED.value, {
                         "agent": agent_name,
@@ -1212,7 +1218,7 @@ class NativeExecutor(BaseExecutor):
         tool_calls: list[dict[str, Any]],
         run_context: RunContext | None = None,
     ) -> list[ToolMessage]:
-        """Execute all tool calls in parallel using asyncio.gather.
+        """Execute all tool calls in parallel using asyncio.gather with concurrency limiting.
 
         Args:
             tool_calls: List of tool call dictionaries from the LLM.
@@ -1221,9 +1227,16 @@ class NativeExecutor(BaseExecutor):
         Returns:
             List of ToolMessage results in the same order.
         """
-        # Execute all tools concurrently
+        # Semaphore to limit concurrent tool execution
+        semaphore = asyncio.Semaphore(self._max_concurrent_tools)
+        
+        async def execute_with_limit(tc):
+            async with semaphore:
+                return await self._run_single_tool(tc, run_context)
+        
+        # Execute all tools with concurrency limiting
         results = await asyncio.gather(
-            *(self._run_single_tool(tc, run_context) for tc in tool_calls),
+            *(execute_with_limit(tc) for tc in tool_calls),
             return_exceptions=True,
         )
 
@@ -1342,11 +1355,12 @@ class SequentialExecutor(NativeExecutor):
             if not response.tool_calls:
                 return response.content or ""
 
+            # Check per-turn limit
+            if len(response.tool_calls) > self._max_tool_calls_per_turn:
+                return response.content or f"Tool call limit exceeded: {len(response.tool_calls)} tools in one turn, max {self._max_tool_calls_per_turn} per turn"
+
             # Execute tools sequentially
             for tc in response.tool_calls:
-                if total_tool_calls >= self._max_tool_calls:
-                    return response.content or "Tool call limit reached"
-
                 result = await self._run_single_tool(tc)
                 messages.append(result)
                 total_tool_calls += 1
