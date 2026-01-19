@@ -60,7 +60,7 @@ pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 
 ## Next Steps
 
-- [Quick Start Guide](README.md) — Get started in 5 minutes
+- [Getting Started](getting-started.md) — Get started in 5 minutes
 - [Agent Documentation](agent.md) — Learn about the core Agent class
 - [Multi-Agent Flow](flow.md) — Build coordinated multi-agent systems
 - [Capabilities](capabilities.md) — Explore built-in capabilities

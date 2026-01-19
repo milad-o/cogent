@@ -85,6 +85,7 @@ dev = [
     "sqlalchemy>=2.0.44",
     "mkdocs-material>=9.7.1",
     "pymdown-extensions>=10.20",
+    "mkdocs-redirects>=1.2.2",
 ]
 
 [project.scripts]
