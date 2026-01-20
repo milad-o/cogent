@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.8.5-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.8.6-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">

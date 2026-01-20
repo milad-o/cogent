@@ -68,13 +68,13 @@ uv add git+https://github.com/milad-o/agenticflow.git
 - [Capabilities](capabilities.md) — Explore built-in capabilities
 - [Examples](https://github.com/milad-o/agenticflow/tree/main/examples) — See working examples
 
-## Latest Release (v1.8.5)
+## Latest Release (v1.8.6)
 
-**Knowledge Graph Backend Switching & Improvements**
+**Knowledge Graph Real-Time Persistence Everywhere**
 
-- 🔄 **Backend Switching** — `kg.set_backend()` to change backends on existing instances with optional migration
-- 🎨 **Custom Backends** — Support for custom `GraphBackend` implementations
-- ✨ **Three-Level Visualization API** — `kg.mermaid()`, `kg.render(format)`, `kg.display()` for easy Jupyter rendering
-- 🧹 **Removed SSIS** — Cleaned up deprecated SSISAnalyzer capability
+- 💾 **Memory Auto-Save** — In-memory backend now supports optional auto-save to file
+- 🔄 **Consistent Behavior** — All backends (memory, SQLite, JSON, Neo4j) now have real-time persistence
+- 📂 **Load Pre-Saved Graphs** — `KnowledgeGraph.from_file()` for easy loading
+- 🔧 **Backend Switching** — `kg.set_backend()` to change backends with optional migration
 
 See [CHANGELOG](https://github.com/milad-o/agenticflow/blob/main/CHANGELOG.md) for full version history.

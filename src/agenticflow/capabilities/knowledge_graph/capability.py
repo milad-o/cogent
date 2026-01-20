@@ -46,6 +46,9 @@ class KnowledgeGraph(BaseCapability):
         # In-memory (default)
         kg = KnowledgeGraph()
 
+        # In-memory with auto-save to file
+        kg = KnowledgeGraph(backend="memory", path="memory.json", auto_save=True)
+
         # SQLite for persistence and large graphs
         kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
 
@@ -92,9 +95,12 @@ class KnowledgeGraph(BaseCapability):
                 - "sqlite": SQLite database for persistence
                 - "json": JSON file with auto-save
                 - Custom GraphBackend instance for your own implementation
-            path: Path to storage file (required for sqlite/json backends)
+            path: Path to storage file (optional for memory, required for sqlite/json backends)
             name: Optional custom name for this capability instance
-            auto_save: For json backend, save after each modification (default: True)
+            auto_save: Auto-save after each modification (default: True)
+                - For memory: saves to path if provided
+                - For json: saves to path
+                - For sqlite/neo4j: always saves (ignored)
         """
         self._backend = backend
         self._path = Path(path) if path else None
@@ -102,7 +108,7 @@ class KnowledgeGraph(BaseCapability):
         self._tools_cache: dict[str, BaseTool] | None = None
 
         if backend == "memory":
-            self.graph: GraphBackend = InMemoryGraph()
+            self.graph: GraphBackend = InMemoryGraph(path=path, auto_save=auto_save)
         elif backend == "sqlite":
             if not path:
                 raise ValueError("Path required for sqlite backend")
@@ -156,7 +162,7 @@ class KnowledgeGraph(BaseCapability):
         new_graph: GraphBackend
         
         if backend == "memory":
-            new_graph = InMemoryGraph()
+            new_graph = InMemoryGraph(path=path, auto_save=auto_save)
         elif backend == "sqlite":
             if not path:
                 raise ValueError("Path required for sqlite backend")

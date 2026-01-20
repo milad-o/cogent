@@ -12,9 +12,19 @@ from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 
 
 class InMemoryGraph(GraphBackend):
-    """Simple in-memory graph storage using networkx (if available)."""
+    """Simple in-memory graph storage using networkx (if available) with optional auto-save."""
 
-    def __init__(self) -> None:
+    def __init__(self, path: str | Path | None = None, auto_save: bool = False) -> None:
+        """
+        Initialize in-memory graph.
+        
+        Args:
+            path: Optional file path for auto-save persistence
+            auto_save: If True and path provided, automatically save after each modification
+        """
+        self._path = Path(path) if path else None
+        self._auto_save = auto_save and path is not None
+        
         try:
             import networkx as nx
 
@@ -25,6 +35,15 @@ class InMemoryGraph(GraphBackend):
             self._nx = None
             self._entities: dict[str, Entity] = {}
             self._relationships: list[Relationship] = []
+        
+        # Load from file if path exists
+        if self._path and self._path.exists():
+            self.load(self._path)
+    
+    def _maybe_save(self) -> None:
+        """Auto-save if enabled."""
+        if self._auto_save and self._path:
+            self.save(self._path)
 
     def add_entity(
         self,
@@ -64,6 +83,7 @@ class InMemoryGraph(GraphBackend):
             )
             self._entities[entity_id] = entity
 
+        self._maybe_save()
         return entity
 
     def get_entity(self, entity_id: str) -> Entity | None:
@@ -124,6 +144,7 @@ class InMemoryGraph(GraphBackend):
             if not existing:
                 self._relationships.append(rel)
 
+        self._maybe_save()
         return rel
 
     def get_relationships(
@@ -313,6 +334,7 @@ class InMemoryGraph(GraphBackend):
         if self._nx:
             if entity_id in self.graph.nodes:
                 self.graph.remove_node(entity_id)
+                self._maybe_save()
                 return True
             return False
         else:
@@ -323,6 +345,7 @@ class InMemoryGraph(GraphBackend):
                     for r in self._relationships
                     if r.source_id != entity_id and r.target_id != entity_id
                 ]
+                self._maybe_save()
                 return True
             return False
 
@@ -346,6 +369,7 @@ class InMemoryGraph(GraphBackend):
         else:
             self._entities.clear()
             self._relationships.clear()
+        self._maybe_save()
 
     def save(self, path: str | Path | None = None) -> None:
         """Save graph to JSON file."""
