@@ -69,25 +69,50 @@ agent = Agent(
 - `JSONFileGraph`: Simple persistence with auto-save
 
 **Visualization:**
+
+KnowledgeGraph provides a **three-level API** for visualization:
+
 ```python
 kg = KnowledgeGraph()
 # ... add entities and relationships ...
 
-# Visualize with left-right layout and type grouping
+# 1. LOW-LEVEL: kg.mermaid() - raw Mermaid code
+code = kg.mermaid(direction="LR")
+print(code)  # Raw Mermaid diagram code
+
+# 2. MEDIUM-LEVEL: kg.render(format) - multiple formats
+ascii_art = kg.render("ascii")     # Terminal-friendly
+html = kg.render("html")           # Interactive HTML
+png_bytes = kg.render("png")       # PNG image bytes
+svg_bytes = kg.render("svg")       # SVG vector bytes
+
+# 3. HIGH-LEVEL: kg.display() - Jupyter inline rendering
+kg.display()  # Renders inline in Jupyter notebook
+kg.display(direction="TB", show_attributes=True)
+
+# GRAPHVIEW: kg.visualize() - full control
 view = kg.visualize(direction="LR", group_by_type=True)
-
-# Generate different formats
-print(view.mermaid())  # Mermaid diagram
-print(view.ascii())    # Terminal-friendly
-print(view.url())      # Shareable mermaid.ink URL
-
-# Save to files
+view.mermaid()   # Mermaid code
+view.ascii()     # ASCII art  
+view.url()       # Shareable mermaid.ink URL
 view.save("graph.mmd")   # Mermaid source
 view.save("graph.html")  # Interactive HTML
 view.save("graph.png")   # PNG image
 view.save("graph.svg")   # SVG vector
 view.save("graph.dot")   # Graphviz DOT
 ```
+
+**Visualization options:**
+- `direction`: Layout direction - `"LR"` (left-right), `"TB"` (top-bottom), `"BT"`, `"RL"`
+- `group_by_type`: Group entities by type in subgraphs (default: True)
+- `show_attributes`: Display entity attributes in labels (default: False)
+
+**Entity colors:**
+- Person: Blue (`#60a5fa`)
+- Company/Organization: Green (`#7eb36a`)
+- Location: Orange (`#f59e0b`)
+- Event: Purple (`#9b59b6`)
+- Generic: Gray (`#94a3b8`)
 
 **Tool API (improved in v1.8.3):**
 ```python

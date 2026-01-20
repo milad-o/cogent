@@ -321,6 +321,75 @@ class GraphView:
             content = self.mermaid()
             path.write_text(content, encoding="utf-8")
 
+    def display(self) -> None:
+        """Display the graph in Jupyter notebook.
+        
+        Uses _repr_markdown_() for native Mermaid rendering in VS Code.
+        
+        Example:
+            >>> view = kg.visualize()
+            >>> view.display()  # Shows inline in Jupyter
+        """
+        try:
+            from IPython.display import display as ipy_display
+            ipy_display(self)
+        except ImportError:
+            print("IPython not available. Use .html() or .mermaid() instead.")
+    
+    def render(self, format: str = "auto") -> str | bytes:
+        """High-level rendering method with auto-detection.
+        
+        Args:
+            format: Output format - "auto", "mermaid", "ascii", "dot", "html", "png", "svg"
+                   "auto" will use HTML in Jupyter, mermaid otherwise.
+        
+        Returns:
+            Rendered content as string or bytes (for images).
+            
+        Example:
+            >>> view.render()           # Auto-detect context
+            >>> view.render("mermaid")  # Get mermaid code
+            >>> view.render("png")      # Get PNG bytes
+        """
+        if format == "auto":
+            # Auto-detect: HTML in Jupyter, mermaid otherwise
+            try:
+                get_ipython()  # type: ignore
+                return self.html()
+            except NameError:
+                return self.mermaid()
+        elif format == "mermaid":
+            return self.mermaid()
+        elif format == "ascii":
+            return self.ascii()
+        elif format == "dot":
+            return self.dot()
+        elif format == "html":
+            return self.html()
+        elif format == "png":
+            return self.png()
+        elif format == "svg":
+            return self.svg()
+        else:
+            raise ValueError(
+                f"Unknown format: {format}. "
+                "Use: 'auto', 'mermaid', 'ascii', 'dot', 'html', 'png', 'svg'"
+            )
+
+    def _repr_markdown_(self) -> str:
+        """IPython/Jupyter Markdown representation.
+        
+        This enables native Mermaid rendering in VS Code notebooks.
+        Just evaluate the GraphView object and it will render as a diagram.
+        """
+        mermaid_code = self.mermaid()
+        title = self._config.title if self._config and self._config.title else ""
+        
+        if title:
+            return f"### {title}\n\n```mermaid\n{mermaid_code}\n```"
+        else:
+            return f"```mermaid\n{mermaid_code}\n```"
+    
     def _repr_html_(self) -> str:
         """IPython/Jupyter HTML representation."""
         return self.html()

@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.4] - 2026-01-20
+
+### Added
+
+#### KnowledgeGraph Three-Level Visualization API
+
+**Convenience Methods:**
+- `kg.mermaid(**kwargs)` — Low-level: returns raw Mermaid code string
+- `kg.render(format, **kwargs)` — Medium-level: renders to mermaid/ascii/html/png/svg formats
+- `kg.display(**kwargs)` — High-level: inline Jupyter notebook rendering
+- `kg.visualize(**kwargs)` — Returns `GraphView` for full control
+
+**Example:**
+```python
+from agenticflow.capabilities import KnowledgeGraph
+
+kg = KnowledgeGraph()
+kg.remember("Alice", "Person", {"role": "Engineer"})
+kg.remember("TechCorp", "Company")
+kg.connect("Alice", "works_at", "TechCorp")
+
+# Low-level: raw code
+code = kg.mermaid(direction="LR")
+
+# Medium-level: multiple formats
+ascii = kg.render("ascii")
+html = kg.render("html")
+
+# High-level: Jupyter inline
+kg.display()  # Renders directly in notebook
+
+# Full control
+view = kg.visualize(direction="LR", group_by_type=True)
+view.save("graph.png")
+```
+
+### Fixed
+
+- **Redundant Title in HTML Output** — Removed duplicate title from HTML wrapper in `MermaidBackend.to_html()`. Title is now only shown via `_repr_markdown_()` in GraphView, eliminating the "Knowledge Graph (N entities, M relationships)" redundancy in Jupyter notebooks.
+
+### Changed
+
+- **Updated Example** — `examples/capabilities/kg_agent_viz.py` now demonstrates all three visualization API levels
+- **Documentation** — Updated `docs/capabilities.md` with comprehensive three-level API documentation
+
 ## [1.8.3] - 2026-01-19
 
 ### Added

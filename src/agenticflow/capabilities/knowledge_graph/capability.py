@@ -254,14 +254,13 @@ class KnowledgeGraph(BaseCapability):
         self, entity: str, entity_type: str, facts: dict[str, Any] | None = None
     ) -> str:
         """Remember an entity with attributes."""
-        facts_str = json.dumps(facts) if facts else "{}"
         if self._tools_cache is None:
             _ = self.tools  # Initialize cache
         return self._tools_cache["remember"].invoke(
             {
                 "entity": entity,
                 "entity_type": entity_type,
-                "facts": facts_str,
+                "attributes": facts,
             }
         )
 
@@ -1028,7 +1027,8 @@ class KnowledgeGraph(BaseCapability):
             )
         )
 
-        # Create config with stats and direction
+        # Create config without title in frontmatter (to avoid redundancy in inline rendering)
+        # Title is added separately in HTML rendering
         title = f"Knowledge Graph ({stats['entities']} entities, {stats['relationships']} relationships)"
         
         # Map direction string to GraphDirection enum
@@ -1046,3 +1046,101 @@ class KnowledgeGraph(BaseCapability):
         )
 
         return GraphView(g, config)
+
+    # =========================================================================
+    # Convenience Visualization APIs (Low, Medium, High Level)
+    # =========================================================================
+
+    def mermaid(self, **kwargs) -> str:
+        """Low-level API: Get Mermaid diagram code.
+        
+        This is the simplest API - just returns the raw Mermaid code string.
+        Use this when you want to copy/paste the diagram or save it to a file.
+        
+        Args:
+            **kwargs: Visualization options (direction, show_attributes, etc.)
+            
+        Returns:
+            Mermaid diagram code as a string.
+            
+        Example:
+            ```python
+            kg = KnowledgeGraph()
+            kg.remember("Alice", "Person")
+            kg.remember("Bob", "Person")
+            kg.connect("Alice", "knows", "Bob")
+            
+            # Get mermaid code
+            code = kg.mermaid()
+            print(code)
+            
+            # Save to file
+            with open("graph.mmd", "w") as f:
+                f.write(kg.mermaid())
+            ```
+        """
+        view = self.visualize(**kwargs)
+        return view.mermaid()
+    
+    def render(self, format: str = "auto", **kwargs) -> str | bytes:
+        """Medium-level API: Render to various formats.
+        
+        Choose from multiple output formats. Good for when you need
+        flexibility but don't want to deal with GraphView directly.
+        
+        Args:
+            format: Output format - "auto", "mermaid", "ascii", "html", "png", "svg"
+            **kwargs: Visualization options (direction, show_attributes, etc.)
+            
+        Returns:
+            Rendered content (string or bytes for images).
+            
+        Example:
+            ```python
+            kg = KnowledgeGraph()
+            # ... add entities ...
+            
+            # Get different formats
+            mermaid_code = kg.render("mermaid")
+            ascii_art = kg.render("ascii")
+            html = kg.render("html")
+            png_bytes = kg.render("png")
+            
+            # Save PNG
+            with open("graph.png", "wb") as f:
+                f.write(kg.render("png"))
+            ```
+        """
+        view = self.visualize(**kwargs)
+        return view.render(format)
+    
+    def display(self, **kwargs) -> None:
+        """High-level API: Display graph in Jupyter notebook.
+        
+        This is the easiest way to visualize in Jupyter - just call display()
+        and the graph will render inline with proper styling.
+        
+        Args:
+            **kwargs: Visualization options (direction, show_attributes, etc.)
+            
+        Example:
+            ```python
+            # In Jupyter notebook:
+            kg = KnowledgeGraph()
+            kg.remember("Alice", "Person", {"role": "Engineer"})
+            kg.remember("TechCorp", "Company")
+            kg.connect("Alice", "works_at", "TechCorp")
+            
+            # Display inline
+            kg.display()
+            
+            # Or with options
+            kg.display(direction="TB", show_attributes=True)
+            
+            # Alternative: just call the object in Jupyter
+            view = kg.visualize()
+            view  # Automatically renders
+            ```
+        """
+        view = self.visualize(**kwargs)
+        view.display()
