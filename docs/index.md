@@ -14,7 +14,7 @@ AgenticFlow is a **production-grade multi-agent framework** designed for perform
 - 🔧 **Simple** — Define tools with `@tool`, create agents in 3 lines, no boilerplate
 - 🏭 **Production-ready** — Built-in resilience, observability, and security interceptors
 - 🤝 **Multi-agent** — Supervisor, Pipeline, Mesh, and Hierarchical coordination patterns
-- 📦 **Batteries included** — File system, web search, code sandbox, browser, PDF, and more
+- 📦 **Batteries included** — File system, web search, code sandbox, browser, PDF, knowledge graphs, and more
 
 ## Quick Example
 
@@ -37,9 +37,11 @@ result = await agent.run("Find the latest news on AI agents")
 # Install from GitHub
 pip install git+https://github.com/milad-o/agenticflow.git
 
-# With optional dependencies
-pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
+# Or with uv (recommended)
+uv add git+https://github.com/milad-o/agenticflow.git
 ```
+
+**[Get Started →](getting-started.md)**
 
 ## Features
 
@@ -66,13 +68,13 @@ pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 - [Capabilities](capabilities.md) — Explore built-in capabilities
 - [Examples](https://github.com/milad-o/agenticflow/tree/main/examples) — See working examples
 
-## Latest Release (v1.8.3)
+## Latest Release (v1.8.4)
 
-**Knowledge Graph Visualization & Tool Improvements**
+**Knowledge Graph Three-Level Visualization API**
 
-- ✨ **KnowledgeGraph Visualization** — Full GraphView integration with entity grouping, custom layouts, color-coded nodes
-- 🛠️ **Better Tool APIs** — Structured parameters for `query_knowledge`, dict-based `remember`
-- ⚡ **Executor Enhancements** — Per-turn tool limits (50), semaphore-based concurrency (max 20)
-- 🐛 **Bug Fixes** — Agent hallucination, tool call limits, GraphView rendering
+- ✨ **Three-Level Visualization API** — `kg.mermaid()`, `kg.render(format)`, `kg.display()` for easy Jupyter rendering
+- 🎨 **Cleaner Output** — Removed redundant title from HTML wrapper in graph visualizations
+- 📚 **Updated Examples** — `kg_agent_viz.py` demonstrates latest visualization APIs
+- 🧹 **Removed SSIS** — Cleaned up deprecated SSISAnalyzer capability from documentation
 
 See [CHANGELOG](https://github.com/milad-o/agenticflow/blob/main/CHANGELOG.md) for full version history.

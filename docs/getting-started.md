@@ -272,12 +272,14 @@ agent = Agent(
 
 ## Next Steps
 
-- [Agent Documentation](agent.md) — Deep dive into agents
-- [Multi-Agent Flow](flow.md) — Build coordinated systems
-- [Capabilities](capabilities.md) — Explore built-in tools
-- [Graph Visualization](graph.md) — Visualize your agents
-- [RAG & Retrieval](retrievers.md) — Build RAG systems
-- [Examples](https://github.com/milad-o/agenticflow/tree/main/examples) — See working examples
+Now that you know the basics, explore:
+
+- **[Agent Documentation](agent.md)** — Deep dive into agents, instructions, and configuration
+- **[Multi-Agent Flow](flow.md)** — Build coordinated multi-agent systems
+- **[Capabilities](capabilities.md)** — Explore built-in tools and capabilities
+- **[Graph Visualization](graph.md)** — Visualize your agents and flows
+- **[RAG & Retrieval](retrievers.md)** — Build retrieval-augmented generation systems
+- **[Examples](https://github.com/milad-o/agenticflow/tree/main/examples)** — See working examples
 
 ---
 
@@ -287,118 +289,3 @@ agent = Agent(
 - **Examples**: https://github.com/milad-o/agenticflow/tree/main/examples
 - **Issues**: https://github.com/milad-o/agenticflow/issues
 
----
-
-## Capabilities & Extensions
-
-| Module | Description |
-|--------|-------------|
-| [Capabilities](capabilities.md) | Plug-in capabilities (RAG, WebSearch, Browser, Filesystem, etc.) |
-| [Interceptors](interceptors.md) | Middleware for security, budgets, PII, rate limiting |
-| [Executors](executors.md) | Code execution environments (Python, Node.js, Shell) |
-
----
-
-## Event-Driven Architecture
-
-| Module | Description |
-|--------|-------------|
-| [Events](events.md) | Event types, EventBus, event-driven orchestration |
-| [Flow](flow.md) | Event-driven reactive agent flows with patterns and reactors |
-| [Reactors](reactors.md) | Reactor types and orchestration building blocks |
-| [A2A Communication](a2a.md) | **Agent-to-agent delegation across all flow types** 🆕 |
-| [Streaming](streaming.md) | Real-time token streaming from Flow executions |
-| [Transport](transport.md) | Distributed event transport (LocalTransport, RedisTransport) |
-
----
-
-## Observability & State
-
-| Module | Description |
-|--------|-------------|
-| [Observability](observability.md) | Events, tracing, metrics, progress output, dashboards |
-| [Memory](memory.md) | Persistent memory with scoping and semantic search |
-| [Graph](graph.md) | Visualization for agents, patterns, and flows |
-
----
-
-## Module Map
-
-```
-agenticflow/
-├── agent/          # Core agent abstraction
-├── capabilities/   # Plug-in capabilities (RAG, WebSearch, etc.)
-├── core/           # Enums, message types, utilities
-├── document/       # Document processing
-├── executors/      # Code execution environments
-├── flow/           # Event-driven orchestration + patterns
-├── graph/          # Visualization
-├── interceptors/   # Middleware (security, budgets, etc.)
-├── memory/         # Persistent memory
-├── models/         # LLM providers
-├── observability/  # Events, tracing, metrics
-├── retriever/      # Retrieval strategies
-├── tasks/          # Task management
-├── tools/          # Tool creation and registry
-└── vectorstore/    # Vector storage and search
-```
-
----
-
-## Use Cases
-
-### Simple Agent
-
-```python
-from agenticflow import Agent
-from agenticflow.models import ChatModel
-
-agent = Agent(
-    name="assistant",
-    model=ChatModel(model="gpt-4o"),
-    instructions="You are a helpful assistant.",
-)
-
-result = await agent.run("What is Python?")
-```
-
-### Agent with Tools
-
-```python
-from agenticflow import Agent, tool
-from agenticflow.models import ChatModel
-
-@tool
-def search(query: str) -> str:
-    """Search the web."""
-    return f"Results for: {query}"
-
-agent = Agent(
-    name="researcher",
-    model=ChatModel(model="gpt-4o"),
-    tools=[search],
-)
-
-result = await agent.run("Find info about AI trends")
-```
-
-### Multi-Agent Pipeline
-
-```python
-from agenticflow import Agent
-from agenticflow.flow import pipeline
-
-researcher = Agent(name="researcher", model=model)
-writer = Agent(name="writer", model=model)
-editor = Agent(name="editor", model=model)
-
-flow = pipeline([researcher, writer, editor])
-
-result = await flow.run("Create a blog post about quantum computing")
-```
-
----
-
-## License
-
-MIT License. See [LICENSE](../LICENSE).

@@ -52,7 +52,6 @@ from agenticflow.capabilities.knowledge_graph import KnowledgeGraph
 from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPTransport
 from agenticflow.capabilities.shell import Shell
 from agenticflow.capabilities.spreadsheet import Spreadsheet
-from agenticflow.capabilities.ssis import SSISAnalyzer
 from agenticflow.capabilities.summarizer import Summarizer, SummarizerConfig
 from agenticflow.capabilities.web_search import WebSearch
 
@@ -68,7 +67,6 @@ __all__ = [
     "MCPTransport",
     "Shell",
     "Spreadsheet",
-    "SSISAnalyzer",
     "Summarizer",
     "SummarizerConfig",
     "WebSearch",
