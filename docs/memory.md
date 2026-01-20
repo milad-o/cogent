@@ -205,14 +205,14 @@ for result in results:
 
 ## Memory Tools
 
-Memory can automatically expose tools to agents when `agentic=True`:
+Memory automatically exposes tools to agents:
 
 ```python
 from agenticflow import Agent
 from agenticflow.memory import Memory
 
-# Agentic memory - tools auto-added to agent
-memory = Memory(agentic=True)
+# Memory is always agentic - tools auto-added
+memory = Memory()
 
 agent = Agent(
     name="assistant",
@@ -220,26 +220,15 @@ agent = Agent(
     memory=memory,  # Tools: remember, recall, forget, search_memories
 )
 
-# Agent can now use memory tools
+# Agent can now use memory tools autonomously
 result = await agent.run("Remember that my name is Alice")
 result = await agent.run("What's my name?")
 ```
 
-**Non-agentic memory** (default) - for programmatic use only:
+**Shorthand** - `memory=True` creates a Memory instance:
 
 ```python
-# Non-agentic - no tools exposed, for code use
-memory = Memory()  # agentic=False by default
-agent = Agent(memory=memory)
-
-# Memory available for your code, not the agent
-await memory.remember("user_id", "12345")
-```
-
-**Shorthand** - `memory=True` creates agentic memory:
-
-```python
-# Shorthand for Memory(agentic=True)
+# Shorthand for Memory()
 agent = Agent(name="assistant", model=model, memory=True)
 ```
 
