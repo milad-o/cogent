@@ -2873,6 +2873,10 @@ class Agent:
 
         # Load conversation history into agent state if thread_id provided
         if thread_id:
+            # Set current thread on memory for tools to access
+            if self._memory_manager and hasattr(self._memory_manager, '_current_thread_id'):
+                self._memory_manager._current_thread_id = thread_id
+            
             if self._memory_manager:
                 history = await self._memory_manager.get_thread_messages(thread_id)
             else:
@@ -3001,6 +3005,10 @@ class Agent:
 
         # Load conversation history if thread_id provided
         if thread_id:
+            # Set current thread on memory for tools to access
+            if self._memory_manager and hasattr(self._memory_manager, '_current_thread_id'):
+                self._memory_manager._current_thread_id = thread_id
+            
             if self._memory_manager:
                 history = await self._memory_manager.get_thread_messages(thread_id)
             else:
@@ -3028,8 +3036,8 @@ class Agent:
                 ],
             )
         else:
-            await self._memory.add_message(thread_id, HumanMessage(content=user_message))
-            await self._memory.add_message(thread_id, AIMessage(content=str(assistant_response)))
+            await self._memory.add_message(HumanMessage(content=user_message), thread_id=thread_id)
+            await self._memory.add_message(AIMessage(content=str(assistant_response)), thread_id=thread_id)
 
     # =========================================================================
     # DEPRECATED METHODS (kept for backward compatibility)

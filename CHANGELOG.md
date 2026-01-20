@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.9] - 2026-01-20
+
+### Fixed
+
+#### Memory: Conversation History Storage Bug
+
+- **Critical Fix**: `search_conversation()` now correctly retrieves conversation history
+  - Fixed inconsistent message key format: standardized to `"thread:{id}:_messages"`
+  - Fixed `_current_thread_id` not being set on Memory instance during agent execution
+  - Agent now correctly sets thread context on `_memory_manager` (not legacy `_memory`)
+  - `add_message()` and `get_messages()` now use matching key patterns
+  - Thread-scoped and non-scoped Memory instances now work correctly together
+  - Verified with comprehensive test coverage
+
+**Impact**: Agents can now successfully search through conversation history in multi-turn dialogs when using `thread_id`. Previously, the tool always returned "No conversation history found" even when messages existed.
+
 ## [1.8.8] - 2026-01-20
 
 ### Added

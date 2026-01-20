@@ -198,8 +198,11 @@ def _create_search_conversation_tool(memory: Memory) -> BaseTool:
             query: What to search for in the conversation history
             max_results: Maximum number of messages to return (default: 5)
         """
+        # Get current thread_id from memory context
+        thread_id = getattr(memory, '_current_thread_id', None)
+        
         # Get conversation messages
-        messages = await memory.get_messages()
+        messages = await memory.get_messages(thread_id=thread_id)
         
         if not messages:
             return "No conversation history found."

@@ -148,6 +148,7 @@ class Memory:
         self._event_bus = event_bus
         self._lock = asyncio.Lock()
         self._tools_cache: list[Any] | None = None
+        self._current_thread_id: str | None = None  # Track active thread for tools
 
     @property
     def store(self) -> Store:
@@ -442,28 +443,45 @@ class Memory:
     # Message History (Conversation)
     # -------------------------------------------------------------------------
 
-    async def add_message(self, message: Message) -> None:
+    async def add_message(self, message: Message, thread_id: str | None = None) -> None:
         """Add a message to conversation history.
 
         Args:
             message: Message to add.
+            thread_id: Optional thread identifier. If provided, stores under thread:{thread_id}:_messages.
+                      If None, stores under _messages (suitable for scoped Memory instances).
         """
-        messages_key = "_messages"
+        # Use thread-specific key if thread_id provided, else default key
+        # NOTE: Use "_messages" (with underscore) consistently
+        if thread_id:
+            messages_key = f"thread:{thread_id}:_messages"
+        else:
+            messages_key = "_messages"
+        
         async with self._lock:
             messages = await self.recall(messages_key, [])
             messages.append(_message_to_dict(message))
             await self.remember(messages_key, messages)
 
-    async def get_messages(self, limit: int | None = None) -> list[Message]:
+    async def get_messages(self, thread_id: str | None = None, limit: int | None = None) -> list[Message]:
         """Get conversation history.
 
         Args:
+            thread_id: Thread identifier for the conversation. If None, uses "_messages" 
+                      (suitable for scoped Memory instances or direct storage).
             limit: Maximum messages to return. None = all.
 
         Returns:
             List of messages, oldest first.
         """
-        messages_key = "_messages"
+        # Use thread-specific key if thread_id provided, else default key
+        # (When Memory is scoped via .thread(), thread_id will be None)
+        # NOTE: Use "_messages" (with underscore) to match what add_message uses
+        if thread_id:
+            messages_key = f"thread:{thread_id}:_messages"
+        else:
+            messages_key = "_messages"
+        
         raw = await self.recall(messages_key, [])
 
         messages = [_dict_to_message(m) for m in raw]
@@ -473,9 +491,16 @@ class Memory:
 
         return messages
 
-    async def clear_messages(self) -> None:
-        """Clear conversation history."""
-        await self.forget("_messages")
+    async def clear_messages(self, thread_id: str | None = None) -> None:
+        """Clear conversation history for a thread.
+        
+        Args:
+            thread_id: Thread identifier for the conversation. If None, clears _messages.
+        """
+        if thread_id:
+            await self.forget(f"thread:{thread_id}:_messages")
+        else:
+            await self.forget("_messages")
 
     # -------------------------------------------------------------------------
     # Thread-Aware Methods (Agent Integration)
