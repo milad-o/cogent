@@ -46,11 +46,35 @@ kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
 # JSON file with auto-save
 kg = KnowledgeGraph(backend="json", path="knowledge.json")
 
+# Custom backend instance
+from agenticflow.capabilities.knowledge_graph.backends import GraphBackend
+custom_backend = MyCustomBackend()  # Your implementation
+kg = KnowledgeGraph(backend=custom_backend)
+
 agent = Agent(
     name="Researcher",
     model=model,
     capabilities=[kg],
 )
+```
+
+**Backend Switching:**
+
+Switch backends dynamically with optional data migration:
+
+```python
+# Start with in-memory
+kg = KnowledgeGraph()
+kg.remember("Alice", "Person", {"role": "Engineer"})
+
+# Switch to SQLite with migration
+kg.set_backend("sqlite", path="knowledge.db", migrate=True)
+
+# All data is now persisted, continue using same instance
+kg.remember("Bob", "Person", {"role": "Manager"})
+
+# Switch to JSON
+kg.set_backend("json", path="knowledge.json", migrate=True)
 ```
 
 **Tools provided:**
@@ -64,9 +88,11 @@ agent = Agent(
 | `list_knowledge` | List all entities, optionally filtered by type |
 
 **Backends:**
-- `InMemoryGraph`: Fast, uses networkx if available
-- `SQLiteGraph`: Persistent, handles large graphs
-- `JSONFileGraph`: Simple persistence with auto-save
+- `memory`: Fast in-memory (uses networkx if available)
+- `sqlite`: Persistent SQLite for large graphs
+- `json`: Simple JSON file with auto-save
+- `neo4j`: Production graph database (requires neo4j package)
+- Custom: Extend `GraphBackend` for your own implementation
 
 **Visualization:**
 
