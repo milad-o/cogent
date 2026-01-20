@@ -1,6 +1,6 @@
 [project]
 name = "agenticflow"
-version = "1.8.8"
+version = "1.8.9"
 description = "A production-grade multi-agent framework for building AI applications"
 readme = "README.md"
 license = { text = "MIT" }
