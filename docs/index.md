@@ -68,13 +68,13 @@ uv add git+https://github.com/milad-o/agenticflow.git
 - [Capabilities](capabilities.md) — Explore built-in capabilities
 - [Examples](https://github.com/milad-o/agenticflow/tree/main/examples) — See working examples
 
-## Latest Release (v1.8.4)
+## Latest Release (v1.8.5)
 
-**Knowledge Graph Three-Level Visualization API**
+**Knowledge Graph Backend Switching & Improvements**
 
+- 🔄 **Backend Switching** — `kg.set_backend()` to change backends on existing instances with optional migration
+- 🎨 **Custom Backends** — Support for custom `GraphBackend` implementations
 - ✨ **Three-Level Visualization API** — `kg.mermaid()`, `kg.render(format)`, `kg.display()` for easy Jupyter rendering
-- 🎨 **Cleaner Output** — Removed redundant title from HTML wrapper in graph visualizations
-- 📚 **Updated Examples** — `kg_agent_viz.py` demonstrates latest visualization APIs
-- 🧹 **Removed SSIS** — Cleaned up deprecated SSISAnalyzer capability from documentation
+- 🧹 **Removed SSIS** — Cleaned up deprecated SSISAnalyzer capability
 
 See [CHANGELOG](https://github.com/milad-o/agenticflow/blob/main/CHANGELOG.md) for full version history.

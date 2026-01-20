@@ -28,6 +28,7 @@ class KnowledgeGraph(BaseCapability):
     - "memory": In-memory graph (default, uses networkx if available)
     - "sqlite": SQLite database for persistence and large graphs
     - "json": JSON file for simple persistence with auto-save
+    - Custom GraphBackend instance for your own implementation
 
     Provides tools for:
     - remember: Store entities and facts
@@ -40,6 +41,7 @@ class KnowledgeGraph(BaseCapability):
         ```python
         from agenticflow import Agent
         from agenticflow.capabilities import KnowledgeGraph
+        from agenticflow.capabilities.knowledge_graph.backends import GraphBackend
 
         # In-memory (default)
         kg = KnowledgeGraph()
@@ -49,6 +51,10 @@ class KnowledgeGraph(BaseCapability):
 
         # JSON file with auto-save
         kg = KnowledgeGraph(backend="json", path="knowledge.json")
+
+        # Custom backend instance
+        custom_backend = MyCustomBackend()  # Your GraphBackend implementation
+        kg = KnowledgeGraph(backend=custom_backend)
 
         agent = Agent(
             name="Assistant",
@@ -72,7 +78,7 @@ class KnowledgeGraph(BaseCapability):
 
     def __init__(
         self,
-        backend: str = "memory",
+        backend: str | GraphBackend = "memory",
         path: str | Path | None = None,
         name: str | None = None,
         auto_save: bool = True,
@@ -85,6 +91,7 @@ class KnowledgeGraph(BaseCapability):
                 - "memory": In-memory graph (uses networkx if available)
                 - "sqlite": SQLite database for persistence
                 - "json": JSON file with auto-save
+                - Custom GraphBackend instance for your own implementation
             path: Path to storage file (required for sqlite/json backends)
             name: Optional custom name for this capability instance
             auto_save: For json backend, save after each modification (default: True)
@@ -112,6 +119,93 @@ class KnowledgeGraph(BaseCapability):
             raise ValueError(
                 f"Unknown backend: {backend}. Supported: 'memory', 'sqlite', 'json', or GraphBackend instance"
             )
+
+    def set_backend(
+        self,
+        backend: str | GraphBackend,
+        path: str | Path | None = None,
+        auto_save: bool = True,
+        migrate: bool = True,
+    ) -> None:
+        """
+        Change the backend of this KnowledgeGraph instance.
+
+        Optionally migrates existing data from the current backend to the new one.
+
+        Args:
+            backend: New storage backend ("memory", "sqlite", "json", or GraphBackend instance)
+            path: Path for sqlite/json backends
+            auto_save: For json backend, save after each modification
+            migrate: If True, copy all entities and relationships to new backend
+
+        Example:
+            ```python
+            # Start with in-memory
+            kg = KnowledgeGraph()
+            kg.remember("Alice", "Person", {"role": "Engineer"})
+            
+            # Switch to SQLite with migration
+            kg.set_backend("sqlite", path="knowledge.db", migrate=True)
+            
+            # Data is now persisted in SQLite
+            # Switch to JSON
+            kg.set_backend("json", path="knowledge.json", migrate=True)
+            ```
+        """
+        # Create new backend
+        new_graph: GraphBackend
+        
+        if backend == "memory":
+            new_graph = InMemoryGraph()
+        elif backend == "sqlite":
+            if not path:
+                raise ValueError("Path required for sqlite backend")
+            new_graph = SQLiteGraph(path)
+        elif backend == "json":
+            if not path:
+                raise ValueError("Path required for json backend")
+            new_graph = JSONFileGraph(path, auto_save=auto_save)
+        elif isinstance(backend, GraphBackend):
+            new_graph = backend
+            backend = "custom"
+        else:
+            raise ValueError(
+                f"Unknown backend: {backend}. Supported: 'memory', 'sqlite', 'json', or GraphBackend instance"
+            )
+
+        # Migrate data if requested
+        if migrate:
+            # Get all entities and relationships from current backend
+            entities = self.graph.get_all_entities()
+            
+            # Copy entities
+            for entity in entities:
+                new_graph.add_entity(
+                    entity.id,
+                    entity.type,
+                    entity.attributes,
+                    entity.source,
+                )
+            
+            # Copy relationships
+            for entity in entities:
+                relationships = self.graph.get_relationships(entity.id, direction="outgoing")
+                for rel in relationships:
+                    new_graph.add_relationship(
+                        rel.source_id,
+                        rel.relation,
+                        rel.target_id,
+                        rel.attributes,
+                        rel.source,
+                    )
+
+        # Switch to new backend
+        self.graph = new_graph
+        self._backend = backend
+        self._path = Path(path) if path else None
+        
+        # Clear tools cache to regenerate with new backend
+        self._tools_cache = None
 
     @classmethod
     def from_file(

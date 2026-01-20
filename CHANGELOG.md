@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.5] - 2026-01-20
+
+### Added
+
+#### KnowledgeGraph Backend Switching
+
+**Dynamic Backend Management:**
+- `kg.set_backend(backend, path, migrate=True)` — Switch backends on existing instances
+- Optional data migration when changing backends
+- Support for custom backend instances via `GraphBackend` type hint
+- Updated documentation with backend switching examples
+
+**Use Cases:**
+- Start with in-memory during development, switch to SQLite for persistence
+- Migrate from JSON to SQLite as data grows
+- Test with memory, deploy with production backends
+
+```python
+kg = KnowledgeGraph()  # Start in-memory
+kg.set_backend("sqlite", path="db.db", migrate=True)  # Switch with migration
+```
+
 ## [1.8.4] - 2026-01-20
 
 ### Added
