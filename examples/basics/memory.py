@@ -33,14 +33,14 @@ async def demo_conversation_memory():
     print("\n--- Conversation Memory (Thread-Based) ---")
     
     model = get_model()
-    memory = Memory(agentic=True)  # agentic=True enables memory tools
+    memory = Memory()  # Memory is always agentic
     
     # Create agent with the new Memory class
     agent = Agent(
         name="Assistant",
         model=model,
         instructions="You are a helpful assistant. Be concise (1-2 sentences max).",
-        memory=memory,  # Tools auto-added when agentic=True!
+        memory=memory,  # Tools auto-added automatically!
     )
     
     # Chat in a thread - agent automatically remembers!
@@ -104,7 +104,7 @@ async def demo_persistent_memory():
         print("\n  [Session 1]")
         store = SQLAlchemyStore(db_url)
         await store.initialize()
-        memory = Memory(store=store, agentic=True)
+        memory = Memory(store=store)
         
         agent = Agent(
             name="PersistentAgent",
@@ -127,7 +127,7 @@ async def demo_persistent_memory():
         print("\n  [Session 2] (simulating app restart)")
         store2 = SQLAlchemyStore(db_url)
         await store2.initialize()
-        memory2 = Memory(store=store2, agentic=True)
+        memory2 = Memory(store=store2)
         
         agent2 = Agent(
             name="PersistentAgent",
@@ -147,13 +147,13 @@ async def demo_persistent_memory():
 
 
 async def demo_memory_tools():
-    """Show agent automatically using memory tools with agentic=True."""
-    print("\n--- Agent with Memory Tools (agentic=True) ---")
+    """Show agent automatically using memory tools."""
+    print("\n--- Agent with Memory Tools ---")
     
     model = get_model()
-    memory = Memory(agentic=True)  # agentic=True enables tools
+    memory = Memory()  # Memory is always agentic
     
-    # Just pass memory - tools are auto-added when agentic=True!
+    # Just pass memory - tools are auto-added!
     agent = Agent(
         name="MemoryAgent",
         model=model,
@@ -195,8 +195,8 @@ async def demo_shared_memory():
     
     model = get_model()
     
-    # Create shared memory with agentic tools
-    shared_memory = Memory(agentic=True)
+    # Create shared memory
+    shared_memory = Memory()
     
     # Research scope for the team
     research = shared_memory.scoped("team:research")

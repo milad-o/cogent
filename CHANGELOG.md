@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.7] - 2026-01-20
+
+### Changed
+
+#### Memory is Always Agentic
+
+**BREAKING:** Removed `agentic` parameter from Memory class
+- Memory is now always agentic - tools are always exposed to agents
+- Removed confusing distinction between agentic and non-agentic modes
+- In a truly agentic framework, memory should always be agentic
+- Memory tools (`remember`, `recall`, `forget`, `search_memories`) are always available
+- Simplifies API and reduces cognitive overhead
+
+**Migration:**
+```python
+# Before (v1.8.6)
+memory = Memory(agentic=True)  # Explicit
+memory = Memory(agentic=False)  # No tools
+
+# After (v1.8.7)
+memory = Memory()  # Always has tools - simpler!
+```
+
+**Rationale:** In fully agentic systems, manually controlling memory defeats the purpose. Agents should autonomously manage their own memory. For programmatic control, use the context parameter instead.
+
 ## [1.8.6] - 2026-01-20
 
 ### Added

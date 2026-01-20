@@ -1027,14 +1027,13 @@ class Agent:
         if isinstance(memory, Memory):
             self._memory_manager = memory
             self._memory = AgentMemory(backend=InMemorySaver(), store=store)
-            # Only add tools if memory is agentic
-            if memory.agentic:
-                self._add_memory_tools()
+            # Memory is always agentic - add tools
+            self._add_memory_tools()
             return
 
         if memory is True:
-            # Default: use new Memory with agentic=True (backward compatible)
-            self._memory_manager = Memory(agentic=True)
+            # Default: use new Memory (always agentic)
+            self._memory_manager = Memory()
             self._memory = AgentMemory(backend=InMemorySaver(), store=store)
             self._add_memory_tools()
             return
@@ -1052,11 +1051,11 @@ class Agent:
             self._memory = AgentMemory(store=store)
 
     def _add_memory_tools(self) -> None:
-        """Add memory tools to agent when agentic Memory is configured."""
+        """Add memory tools to agent."""
         if not self._memory_manager:
             return
 
-        # Use memory.tools property (only non-empty if agentic=True)
+        # Get memory tools (always available)
         memory_tools = self._memory_manager.tools
         for tool in memory_tools:
             # Avoid duplicates
