@@ -37,8 +37,11 @@ Entity/relationship memory with multi-hop reasoning and multiple storage backend
 ```python
 from agenticflow.capabilities import KnowledgeGraph
 
-# In-memory (default)
+# In-memory (default, no persistence)
 kg = KnowledgeGraph()
+
+# In-memory with auto-save to file
+kg = KnowledgeGraph(backend="memory", path="memory.json", auto_save=True)
 
 # SQLite for persistence
 kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
@@ -88,10 +91,10 @@ kg.set_backend("json", path="knowledge.json", migrate=True)
 | `list_knowledge` | List all entities, optionally filtered by type |
 
 **Backends:**
-- `memory`: Fast in-memory (uses networkx if available)
-- `sqlite`: Persistent SQLite for large graphs
-- `json`: Simple JSON file with auto-save
-- `neo4j`: Production graph database (requires neo4j package)
+- `memory`: Fast in-memory (uses networkx if available) - optionally auto-save to file
+- `sqlite`: Persistent SQLite for large graphs - always saves
+- `json`: Simple JSON file with auto-save - always saves
+- `neo4j`: Production graph database (requires neo4j package) - always saves
 - Custom: Extend `GraphBackend` for your own implementation
 
 **Visualization:**

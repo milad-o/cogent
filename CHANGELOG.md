@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.6] - 2026-01-20
+
+### Added
+
+#### KnowledgeGraph Memory Backend Auto-Save
+
+**Consistent Auto-Save Across All Backends:**
+- `InMemoryGraph` now supports optional `path` and `auto_save` parameters
+- Memory backend auto-saves to file after each modification when `auto_save=True`
+- Automatically loads from file on initialization if path exists
+- All backends now have consistent real-time persistence behavior
+
+**Usage:**
+```python
+# Memory with auto-save - best of both worlds
+kg = KnowledgeGraph(backend="memory", path="data.json", auto_save=True)
+kg.remember("Alice", "Person")  # Automatically saved to data.json
+
+# Load pre-saved knowledge graphs
+kg = KnowledgeGraph.from_file("company.db")  # SQLite
+kg = KnowledgeGraph.from_file("knowledge.json")  # JSON
+
+# Pass to agent
+agent = Agent(name="Assistant", model=model, capabilities=[kg])
+```
+
+**Real-time Persistence Summary:**
+- `memory` with auto_save=True: ✅ Saves to file after each change
+- `sqlite`: ✅ Always commits after each change
+- `json` with auto_save=True: ✅ Saves after each change
+- `neo4j`: ✅ Auto-commits on session close
+
 ## [1.8.5] - 2026-01-20
 
 ### Added
