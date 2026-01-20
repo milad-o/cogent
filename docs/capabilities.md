@@ -416,27 +416,6 @@ agent = Agent(name="CodeReviewer", model=model, capabilities=[analyzer])
 
 ---
 
-### SSISAnalyzer
-
-SQL Server Integration Services package analysis.
-
-```python
-from agenticflow.capabilities import SSISAnalyzer
-
-ssis = SSISAnalyzer(project_path="./ssis_packages")
-
-agent = Agent(name="ETLAnalyst", model=model, capabilities=[ssis])
-```
-
-**Tools provided:**
-| Tool | Description |
-|------|-------------|
-| `analyze_package` | Analyze SSIS package |
-| `trace_lineage` | Trace data lineage |
-| `find_dependencies` | Find package dependencies |
-
----
-
 ## Creating Custom Capabilities
 
 Extend `BaseCapability` to create your own:
@@ -492,7 +471,6 @@ from agenticflow.capabilities import (
     PDF,
     Shell,
     Spreadsheet,
-    SSISAnalyzer,
     Summarizer,
     SummarizerConfig,
     WebSearch,

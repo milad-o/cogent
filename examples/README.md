@@ -53,7 +53,6 @@ Pre-built capabilities that give agents superpowers.
 | [filesystem.py](capabilities/filesystem.py) | Read/write files safely |
 | [web_search.py](capabilities/web_search.py) | Search the web |
 | [code_sandbox.py](capabilities/code_sandbox.py) | Execute code safely |
-| [ssis_analyzer.py](capabilities/ssis_analyzer.py) | SSIS package analysis |
 | [mcp.py](capabilities/mcp.py) | Model Context Protocol integration |
 | [browser.py](capabilities/browser.py) | Web browsing with Playwright |
 | [spreadsheet.py](capabilities/spreadsheet.py) | Excel/CSV manipulation |
@@ -129,7 +128,6 @@ The `data/` folder contains sample files used by examples:
 - `the_secret_garden.txt` - Sample text for RAG examples
 - `company_knowledge.txt` - Knowledge base sample
 - `financial_report.pdf` - PDF processing sample
-- `ssis_project/` - SSIS analyzer samples
 - `mcp_server/` - MCP server example
 
 ---
