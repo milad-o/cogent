@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.8] - 2026-01-20
+
+### Added
+
+#### Memory: Conversation History Search
+
+- **New Tool**: `search_conversation(query, max_results=5)` - Search through conversation history for relevant context
+  - Critical for long conversations that exceed context window limits
+  - Enables agents to find information discussed earlier without explicit `remember()` calls
+  - Searches through past messages in the current namespace/thread
+  - Complementary to `search_memories()` which searches long-term facts
+
+**Enhanced `search_memories()`:**
+  - Now uses semantic search when VectorStore is configured
+  - Falls back to keyword search when no VectorStore available
+  - Enables natural language queries over stored facts
+
+**Updated System Prompt:**
+  - Agents now instructed to search conversation history for long conversations
+  - Clear guidance on when to use `search_conversation()` vs `search_memories()`
+  - Agents search before claiming "I don't know"
+
+**Use Cases:**
+```python
+# Long conversation - agent can still find earlier context
+memory = Memory()
+agent = Agent(model=model, memory=memory)
+
+# Many messages later...
+await agent.run("What were the three projects I mentioned earlier?")
+# → Agent calls: search_conversation("three projects")
+
+# Semantic search over facts (requires VectorStore)
+memory = Memory(vectorstore=VectorStore())
+await agent.run("What do you know about my hobbies?")
+# → Agent calls: search_memories("hobbies") with semantic search
+```
+
 ## [1.8.7] - 2026-01-20
 
 ### Changed

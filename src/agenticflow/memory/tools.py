@@ -125,9 +125,24 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
         """Search long-term memory for relevant facts.
 
         Args:
-            query: Search term (matches keys and values)
+            query: Search term (semantic or keyword-based)
         """
-        # Get all keys and search through them
+        # Try semantic search first if vectorstore is available
+        if memory.vectorstore:
+            try:
+                results = await memory.search(query, k=5)
+                if results:
+                    lines = []
+                    for result in results:
+                        content = result.content[:200]  # Truncate long content
+                        score = f"(relevance: {result.score:.2f})" if hasattr(result, 'score') else ""
+                        lines.append(f"- {content} {score}")
+                    return "Found (semantic search):\n" + "\n".join(lines)
+            except Exception as e:
+                # Fall back to keyword search if semantic fails
+                pass
+        
+        # Fallback: keyword search over long-term facts
         keys = await memory.keys()
         if not keys:
             return "No memories stored."
@@ -148,22 +163,95 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
             return f"No memories found matching: {query}"
 
         lines = [f"- {k}: {v}" for k, v in matches[:5]]
-        return "Found:\n" + "\n".join(lines)
+        return "Found (keyword search):\n" + "\n".join(lines)
 
     return BaseTool(
         name="search_memories",
         description="""Search long-term memory for relevant facts.
 
+Uses semantic search when available, falls back to keyword matching.
 Use this when you need to find information but don't know the exact key.
 
 Args:
-    query: Search term (matches keys and values)
+    query: Search term (will find semantically related content)
 
 Returns:
     Matching memories or indication if none found""",
         func=search_memories,
         args_schema={
             "query": {"type": "string", "description": "Search term to find relevant memories"},
+        },
+    )
+
+
+def _create_search_conversation_tool(memory: Memory) -> BaseTool:
+    """Create a tool to search conversation history semantically."""
+    async def search_conversation(query: str, max_results: int = 5) -> str:
+        """Search through past conversation messages for relevant context.
+        
+        Use this for:
+        - Finding what was discussed earlier in long conversations
+        - Retrieving context that may not have been saved as a fact
+        - When conversation exceeds context window limits
+        
+        Args:
+            query: What to search for in the conversation history
+            max_results: Maximum number of messages to return (default: 5)
+        """
+        # Get conversation messages
+        messages = await memory.get_messages()
+        
+        if not messages:
+            return "No conversation history found."
+        
+        # If vectorstore available, use semantic search
+        if memory.vectorstore:
+            try:
+                # Search through message content
+                query_lower = query.lower()
+                relevant_messages = []
+                
+                for msg in messages:
+                    content = msg.content if hasattr(msg, 'content') else str(msg)
+                    # Simple relevance check (could be enhanced with embeddings)
+                    if query_lower in content.lower():
+                        relevant_messages.append(content)
+                
+                if relevant_messages:
+                    results = relevant_messages[:max_results]
+                    return "Relevant messages from conversation:\n" + "\n---\n".join(results)
+                else:
+                    return f"No relevant conversation found for: {query}"
+            except Exception:
+                pass
+        
+        # Fallback: return recent messages
+        recent = messages[-max_results:]
+        lines = []
+        for msg in recent:
+            content = msg.content if hasattr(msg, 'content') else str(msg)
+            role = getattr(msg, 'role', 'unknown')
+            lines.append(f"[{role}] {content[:150]}")
+        
+        return "Recent conversation context:\n" + "\n".join(lines)
+    
+    return BaseTool(
+        name="search_conversation",
+        description="""Search through conversation history for relevant context.
+
+Critical for long conversations that exceed context window limits.
+Use when you need to recall what was discussed earlier.
+
+Args:
+    query: What to search for in past messages
+    max_results: How many results to return (default: 5)
+
+Returns:
+    Relevant messages from the conversation""",
+        func=search_conversation,
+        args_schema={
+            "query": {"type": "string", "description": "What to search for in conversation history"},
+            "max_results": {"type": "integer", "description": "Maximum results (default: 5)", "default": 5},
         },
     )
 
@@ -177,12 +265,14 @@ def create_memory_tools(memory: Memory) -> list[BaseTool]:
     Returns:
         List of memory tools.
     """
-    return [
+    tools = [
         _create_remember_tool(memory),
         _create_recall_tool(memory),
         _create_forget_tool(memory),
         _create_search_memories_tool(memory),
+        _create_search_conversation_tool(memory),  # New: search conversation history
     ]
+    return tools
 
 
 # ============================================================
@@ -190,14 +280,18 @@ def create_memory_tools(memory: Memory) -> list[BaseTool]:
 # ============================================================
 
 MEMORY_SYSTEM_PROMPT = """
-## Long-Term Memory
+## Long-Term Memory & Conversation Search
 
-You have long-term memory tools. USE THEM to persist important facts.
+You have memory tools to persist facts AND search long conversations.
 
-**IMPORTANT WORKFLOW:**
+**CRITICAL WORKFLOWS:**
+
 1. **At start of conversation** - Call `search_memories("user")` to recall what you know
-2. **When user shares info** - IMMEDIATELY call `remember()` to save it
-3. **When asked about user** - Call `recall()` or `search_memories()` first
+2. **When user shares info** - IMMEDIATELY call `remember()` to save it  
+3. **When asked about something** - ALWAYS search first before saying "I don't know":
+   - For facts → `search_memories(query)` or `recall(key)`
+   - For past conversation → `search_conversation(query)`
+4. **In long conversations** - Use `search_conversation()` to find earlier context
 
 **ALWAYS call `remember(key, value)` when user shares:**
 - Their name → remember("name", "Alice")
@@ -206,12 +300,19 @@ You have long-term memory tools. USE THEM to persist important facts.
 - Their work/projects → remember("occupation", "developer")
 
 **Available tools:**
-- `remember(key, value)` - Save a fact (CALL THIS when user shares info!)
+- `remember(key, value)` - Save a fact to long-term memory (CALL THIS when user shares info!)
 - `recall(key)` - Get a specific saved fact
 - `forget(key)` - Remove a fact (only when user asks)
-- `search_memories(query)` - Find relevant memories
+- `search_memories(query)` - Search long-term facts (semantic when available)
+- `search_conversation(query)` - Search conversation history (for long conversations!)
 
-**Critical:** When answering questions about user preferences or info, ALWAYS check memory first with `search_memories()` or `recall()` before saying "I don't know".
+**When to use search_conversation:**
+- Conversation is very long (10+ messages)
+- User asks "what did I say earlier about..."
+- You need context from earlier in the conversation
+- Important details may have been discussed but not saved as facts
+
+**Critical:** NEVER say "I don't know" without searching first!
 """
 
 
