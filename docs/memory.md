@@ -205,7 +205,7 @@ for result in results:
 
 ## Memory Tools
 
-Memory automatically exposes tools to agents:
+Memory automatically exposes tools to agents for autonomous memory management:
 
 ```python
 from agenticflow import Agent
@@ -217,13 +217,71 @@ memory = Memory()
 agent = Agent(
     name="assistant",
     model=model,
-    memory=memory,  # Tools: remember, recall, forget, search_memories
+    memory=memory,
 )
+
+# Agent has 5 memory tools available:
+# 1. remember(key, value) - Save facts to long-term memory
+# 2. recall(key) - Retrieve specific facts
+# 3. forget(key) - Remove facts
+# 4. search_memories(query) - Search long-term facts (semantic when vectorstore available)
+# 5. search_conversation(query) - Search conversation history
 
 # Agent can now use memory tools autonomously
 result = await agent.run("Remember that my name is Alice")
 result = await agent.run("What's my name?")
 ```
+
+### Available Tools
+
+**1. remember(key, value)** - Save important facts
+```python
+# Agent automatically calls when user shares information
+await agent.run("My favorite language is Python")
+# → Agent calls: remember("favorite_language", "Python")
+```
+
+**2. recall(key)** - Retrieve specific saved facts
+```python
+await agent.run("What's my favorite language?")
+# → Agent calls: recall("favorite_language")
+```
+
+**3. forget(key)** - Remove facts (when user requests)
+```python
+await agent.run("Forget my favorite language")
+# → Agent calls: forget("favorite_language")
+```
+
+**4. search_memories(query, k=5)** - Search long-term facts
+```python
+# Semantic search when vectorstore configured
+memory = Memory(vectorstore=VectorStore())
+await agent.run("What do you know about my hobbies?")
+# → Agent calls: search_memories("hobbies")
+
+# Falls back to keyword search without vectorstore
+memory = Memory()  # No vectorstore
+# → Uses keyword matching on keys/values
+```
+
+**5. search_conversation(query, max_results=5)** - Search conversation history
+```python
+# Critical for long conversations exceeding context window
+await agent.run("What were the three projects I mentioned earlier?")
+# → Agent calls: search_conversation("three projects")
+```
+
+### When Tools Are Used
+
+The agent's system prompt instructs it to:
+
+1. **At conversation start** → `search_memories("user")` to recall context
+2. **When user shares info** → `remember(key, value)` immediately
+3. **When asked about something** → Search before saying "I don't know"
+   - For facts → `search_memories(query)` or `recall(key)`
+   - For past conversation → `search_conversation(query)`
+4. **In long conversations** → Use `search_conversation()` to find earlier context
 
 **Shorthand** - `memory=True` creates a Memory instance:
 
