@@ -110,12 +110,19 @@ class MermaidBackend(Backend):
         """Get format name."""
         return "mermaid"
 
-    def render(self, graph: Graph, config: GraphConfig | None = None) -> str:
+    def render(
+        self,
+        graph: Graph,
+        config: GraphConfig | None = None,
+        include_frontmatter: bool = True,
+    ) -> str:
         """Render graph as Mermaid code.
 
         Args:
             graph: Graph to render.
             config: Optional configuration.
+            include_frontmatter: Include YAML frontmatter with title (default: True).
+                Set to False to avoid double titles in inline rendering.
 
         Returns:
             Mermaid flowchart code.
@@ -123,8 +130,8 @@ class MermaidBackend(Backend):
         cfg = config or GraphConfig()
         lines: list[str] = []
 
-        # Add frontmatter if needed
-        if cfg.title or cfg.theme != GraphTheme.DEFAULT:
+        # Add frontmatter if needed and requested
+        if include_frontmatter and (cfg.title or cfg.theme != GraphTheme.DEFAULT):
             lines.append(self._render_frontmatter(cfg))
 
         # Start flowchart
@@ -316,25 +323,86 @@ class MermaidBackend(Backend):
         except httpx.HTTPError as e:
             raise RuntimeError(f"Failed to render diagram: {e}")
 
-    def to_html(self, graph: Graph, config: GraphConfig | None = None) -> str:
-        """Generate HTML with embedded Mermaid.
+    def draw_svg(self, graph: Graph, config: GraphConfig | None = None) -> bytes:
+        """Render as SVG bytes.
 
         Args:
             graph: Graph to render.
             config: Optional configuration.
 
         Returns:
-            HTML string.
-        """
-        code = self.render(graph, config)
-        escaped = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            SVG image bytes.
 
-        return f"""<div class="mermaid">
-{escaped}
+        Raises:
+            ImportError: If httpx not installed.
+            RuntimeError: If rendering fails.
+        """
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError(
+                "httpx required for SVG rendering. Install with: uv add httpx"
+            )
+
+        code = self.render(graph, config)
+        encoded = base64.urlsafe_b64encode(code.encode()).decode()
+        url = f"{self.MERMAID_INK_URL}/svg/{encoded}"
+
+        try:
+            response = httpx.get(url, timeout=30, follow_redirects=True)
+            response.raise_for_status()
+            return response.content
+        except httpx.HTTPError as e:
+            raise RuntimeError(f"Failed to render diagram: {e}")
+
+    def to_html(self, graph: Graph, config: GraphConfig | None = None) -> str:
+        """Generate HTML with embedded Mermaid for Jupyter notebooks.
+
+        Args:
+            graph: Graph to render.
+            config: Optional configuration.
+
+        Returns:
+            HTML string with embedded Mermaid diagram and styling.
+        """
+        cfg = config or GraphConfig()
+        
+        # Render without frontmatter to avoid double title in Jupyter
+        code = self.render(graph, config, include_frontmatter=False)
+        
+        # No title in HTML wrapper - title is handled by _repr_markdown_() in GraphView
+        theme = cfg.theme.value if cfg.theme else "default"
+        
+        # Generate unique ID for this diagram
+        import random
+        diagram_id = f"mermaid-{random.randint(1000, 9999)}"
+        
+        # Use traditional script loading approach for better Jupyter compatibility
+        return f"""<div style="margin: 10px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; border: 1px solid #ddd;">
+<div id="{diagram_id}" style="display: flex; justify-content: center; background: white; padding: 20px; border-radius: 4px;"></div>
 </div>
-<script type="module">
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-mermaid.initialize({{ startOnLoad: true }});
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+(function() {{
+  const diagram = `{code}`;
+  const config = {{
+    startOnLoad: false,
+    theme: '{theme}',
+    flowchart: {{
+      curve: '{cfg.curve}',
+      nodeSpacing: {cfg.node_spacing},
+      rankSpacing: {cfg.rank_spacing},
+      padding: {cfg.padding}
+    }}
+  }};
+  
+  if (typeof mermaid !== 'undefined') {{
+    mermaid.initialize(config);
+    mermaid.render('graph-{diagram_id}', diagram).then(result => {{
+      document.getElementById('{diagram_id}').innerHTML = result.svg;
+    }});
+  }}
+}})();
 </script>"""
 
 

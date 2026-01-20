@@ -2,12 +2,15 @@
 Example: AI Agent Building and Visualizing Knowledge Graph
 
 Demonstrates an AI agent using KnowledgeGraph tools to remember information,
-then visualizing what it learned using the .visualize() API.
+then visualizing what it learned using the visualization APIs.
 
 Shows:
 1. Agent learns from text using knowledge graph tools
 2. Agent recalls and connects information
-3. Visualize the knowledge graph the agent built
+3. Visualize the knowledge graph using three-level API:
+   - Low-level: kg.mermaid() - raw Mermaid code
+   - Medium-level: kg.render(format) - multiple formats
+   - High-level: kg.display() - Jupyter inline rendering
 
 Usage:
     uv run python examples/capabilities/kg_agent_viz.py
@@ -20,10 +23,11 @@ from pathlib import Path
 # Add examples directory to path to import config
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from config import get_model
+
 from agenticflow import Agent
 from agenticflow.capabilities import KnowledgeGraph
 from agenticflow.observability import Observer
-from config import get_model
 
 
 async def main():
@@ -90,10 +94,11 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     print("\n🔧 Tool Usage Trace:")
     print("-" * 70)
     from agenticflow.observability import TraceType
+
     tool_events = observer.events(event_type=TraceType.TOOL_CALLED)
     for event in tool_events:
-        tool_name = event.data.get('tool_name', 'unknown')
-        args_preview = str(event.data.get('args', {}))[:50]
+        tool_name = event.data.get("tool_name", "unknown")
+        args_preview = str(event.data.get("args", {}))[:50]
         print(f"  📌 {tool_name}({args_preview}...)")
     print(f"\nTotal tool calls: {len(tool_events)}")
     print(result)
@@ -109,8 +114,12 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     print("\n📚 Entities stored:")
     entities = kg.get_entities()
     for entity in entities:
-        attrs_preview = ", ".join(f"{k}={v}" for k, v in list(entity.attributes.items())[:2])
-        print(f"  • {entity.id} ({entity.type}){': ' + attrs_preview if attrs_preview else ''}")
+        attrs_preview = ", ".join(
+            f"{k}={v}" for k, v in list(entity.attributes.items())[:2]
+        )
+        print(
+            f"  • {entity.id} ({entity.type}){': ' + attrs_preview if attrs_preview else ''}"
+        )
 
     # Test agent's recall ability
     print("\n🔍 Testing agent's recall ability:")
@@ -121,20 +130,34 @@ When you finish extracting, say "Knowledge extraction complete!" """,
 
     # Visualize and save the knowledge graph
     print("\n📊 Saving Knowledge Graph Visualizations...")
-    
-    view = kg.visualize(direction="LR")
-    
-    # Save diagrams
+
+    # Three-level API demonstration:
+
+    # 1. Low-level: kg.mermaid() - raw Mermaid code
+    mermaid_code = kg.mermaid(direction="LR")
+    print("\n🔹 Low-level API: kg.mermaid()")
+    print(f"   Generated {len(mermaid_code)} chars of Mermaid code")
+
+    # 2. Medium-level: kg.render(format) - multiple formats
+    ascii_art = kg.render("ascii")
+    print("\n🔹 Medium-level API: kg.render('ascii')")
+    print("-" * 70)
+    print(ascii_art)
+    print("-" * 70)
+
+    # 3. High-level: kg.visualize() for GraphView with full control
+    view = kg.visualize(direction="LR", group_by_type=True)
+
+    # Save diagrams using GraphView
     try:
         view.save(output_dir / "company_knowledge.mmd")
         view.save(output_dir / "company_knowledge.html")
         view.save(output_dir / "company_knowledge.dot")
-        print(f"✓ Saved visualizations to {output_dir}")
-        print(f"  • company_knowledge.mmd (Mermaid source)")
-        print(f"  • company_knowledge.html (interactive - open in browser!)")
-        print(f"  • company_knowledge.dot (Graphviz)")
+        print(f"\n✓ Saved visualizations to {output_dir}")
+        print("  • company_knowledge.mmd (Mermaid source)")
+        print("  • company_knowledge.html (interactive - open in browser!)")
+        print("  • company_knowledge.dot (Graphviz)")
 
-        
     except Exception as e:
         print(f"✗ Error saving: {e}")
 
@@ -152,6 +175,11 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     print("  2. Stored them using knowledge graph tools")
     print("  3. Can recall and query the information")
     print("  4. Generated organized visualization with type-based grouping")
+    print("\n📖 Three-Level Visualization API:")
+    print("  • kg.mermaid()      — Low-level: raw Mermaid code")
+    print("  • kg.render(format) — Medium-level: mermaid/ascii/html/png/svg")
+    print("  • kg.display()      — High-level: Jupyter inline rendering")
+    print("  • kg.visualize()    — GraphView for full control")
     print(f"\nCheck the saved files in: {output_dir}")
     print("  • company_knowledge.mmd (Mermaid source)")
     print("  • company_knowledge.html (interactive - open in browser!)")

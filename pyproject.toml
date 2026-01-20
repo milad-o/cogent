@@ -1,6 +1,6 @@
 [project]
 name = "agenticflow"
-version = "1.8.3"
+version = "1.8.4"
 description = "A production-grade multi-agent framework for building AI applications"
 readme = "README.md"
 license = { text = "MIT" }
@@ -86,6 +86,7 @@ dev = [
     "mkdocs-material>=9.7.1",
     "pymdown-extensions>=10.20",
     "mkdocs-redirects>=1.2.2",
+    "ipykernel>=7.1.0",
 ]
 
 [project.scripts]

@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.8.3-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.8.4-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,18 +58,18 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.8.3 - January 2026)
+## 🎉 Latest Changes (v1.8.4 - January 2026)
 
-**Knowledge Graph Visualization & Tool Improvements**
+**KnowledgeGraph Three-Level Visualization API**
+- ✨ **Three-Level API** — Low (`kg.mermaid()`), Medium (`kg.render(format)`), High (`kg.display()`) level APIs
+- 🎯 **Simplified Jupyter Rendering** — `kg.display()` for inline notebook visualization
+- 🐛 **Fixed Redundant Titles** — Removed duplicate title in HTML output for cleaner display
+- 📖 **Updated Examples** — `kg_agent_viz.py` demonstrates all three API levels
+
+**Previous (v1.8.3)** — Knowledge Graph Visualization & Tool Improvements
 - ✨ **KnowledgeGraph Visualization** — Full GraphView integration with entity grouping, custom layouts (LR/TB/BT/RL), color-coded nodes
 - 🛠️ **Better Tool APIs** — Structured parameters for `query_knowledge` (source/relation/target), dict-based `remember`
 - ⚡ **Executor Enhancements** — Per-turn tool limits (50 instead of cumulative 20), semaphore-based concurrency (max 20 concurrent)
-- 🐛 **Bug Fixes** — Agent hallucination, tool call limit architecture, GraphView rendering methods, entity type handling
-
-**Previous (v1.8.2)** — Unified Flow API
-- ✨ **Consolidated Flow** — `ReactiveFlow` and `EventFlow` merged into single `Flow` class
-- 🗑️ **Removed Legacy** — Deleted compatibility modules, cleaner codebase
-- ♻️ **Refactored Examples** — All examples use modern `Flow` patterns
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
