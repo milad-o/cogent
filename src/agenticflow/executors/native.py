@@ -1269,6 +1269,9 @@ class NativeExecutor(BaseExecutor):
         Returns:
             ToolMessage with the result.
         """
+        import time
+        from agenticflow.core import ToolCall
+        
         tool_name = tool_call.get("name", "")
         args = tool_call.get("args", {})
         tool_id = tool_call.get("id", "")
@@ -1279,11 +1282,23 @@ class NativeExecutor(BaseExecutor):
         # Get tool from cache
         tool = self._tool_map.get(tool_name)
         if tool is None:
+            # Track failed tool call in agent state
+            if hasattr(self.agent, 'state'):
+                self.agent.state.tool_calls.append(ToolCall(
+                    tool_name=tool_name,
+                    arguments=args,
+                    result=None,
+                    duration=0.0,
+                    success=False,
+                    error=f"Unknown tool '{tool_name}'",
+                ))
+            
             return ToolMessage(
                 content=f"Error: Unknown tool '{tool_name}'",
                 tool_call_id=tool_id,
             )
 
+        start_time = time.time()
         try:
             # Direct invocation with context support
             if asyncio.iscoroutinefunction(getattr(tool, "func", None)):
@@ -1292,7 +1307,19 @@ class NativeExecutor(BaseExecutor):
                 # Run sync tools in thread pool to not block
                 result = await asyncio.to_thread(tool.invoke, args, run_context)
 
+            duration = time.time() - start_time
             self._track_tool_result(tool_name, result, 0)
+
+            # Track successful tool call in agent state
+            if hasattr(self.agent, 'state'):
+                self.agent.state.tool_calls.append(ToolCall(
+                    tool_name=tool_name,
+                    arguments=args,
+                    result=result,
+                    duration=duration,
+                    success=True,
+                    error=None,
+                ))
 
             return ToolMessage(
                 content=str(result) if result is not None else "",
@@ -1300,7 +1327,20 @@ class NativeExecutor(BaseExecutor):
             )
 
         except Exception as e:
+            duration = time.time() - start_time
             self._track_tool_error(tool_name, str(e))
+            
+            # Track failed tool call in agent state
+            if hasattr(self.agent, 'state'):
+                self.agent.state.tool_calls.append(ToolCall(
+                    tool_name=tool_name,
+                    arguments=args,
+                    result=None,
+                    duration=duration,
+                    success=False,
+                    error=str(e),
+                ))
+            
             return ToolMessage(
                 content=f"Error: {e}",
                 tool_call_id=tool_id,

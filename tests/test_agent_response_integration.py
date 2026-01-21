@@ -5,6 +5,7 @@ import pytest
 from agenticflow.agent import Agent
 from agenticflow.core import Response
 from agenticflow.models.mock import MockChatModel
+from agenticflow.tools import tool
 
 
 class TestAgentResponseIntegration:
