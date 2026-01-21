@@ -6,13 +6,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.enums import AgentStatus
 from agenticflow.core.utils import now_utc
 
 if TYPE_CHECKING:
     from agenticflow.core.messages import BaseMessage
+    from agenticflow.core import ToolCall
 
 
 @dataclass
@@ -48,6 +49,10 @@ class AgentState:
     active_task_ids: list[str] = field(default_factory=list)
     message_history: list[BaseMessage] = field(default_factory=list)
     last_activity: datetime = field(default_factory=now_utc)
+
+    # Tool call tracking (Phase 6)
+    tool_calls: list[ToolCall] = field(default_factory=list)
+    emitted_events: list[Any] = field(default_factory=list)
 
     # Error tracking
     error_count: int = 0
@@ -169,6 +174,11 @@ class AgentState:
     def clear_history(self) -> None:
         """Clear message history."""
         self.message_history.clear()
+
+    def clear_tool_calls(self) -> None:
+        """Clear tool call history (Phase 6)."""
+        self.tool_calls.clear()
+        self.emitted_events.clear()
 
     def reset(self) -> None:
         """Reset state to initial values (except metrics)."""

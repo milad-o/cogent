@@ -42,6 +42,12 @@ from agenticflow.agent.taskboard import (
 )
 from agenticflow.core.enums import AgentRole, AgentStatus
 from agenticflow.core.messages import AIMessage, HumanMessage, SystemMessage
+from agenticflow.core.response import (
+    ErrorInfo,
+    Response,
+    ResponseMetadata,
+    TokenUsage,
+)
 from agenticflow.core.utils import generate_id, model_identifier, now_utc
 from agenticflow.models.base import BaseChatModel
 from agenticflow.observability.trace_record import Trace, TraceType
@@ -599,6 +605,45 @@ class Agent:
             self._reasoning_config = ReasoningConfig()
         else:
             self._reasoning_config = reasoning
+
+    def _extract_token_usage(self, result: Any) -> TokenUsage | None:
+        """Extract token usage from model result (Phase 6).
+
+        Args:
+            result: Result from model.ainvoke() or similar
+
+        Returns:
+            TokenUsage if available, None otherwise
+        """
+        # Check for usage attribute (common pattern)
+        if hasattr(result, "usage"):
+            usage = result.usage
+            # Handle dict-like usage
+            if isinstance(usage, dict):
+                return TokenUsage(
+                    prompt_tokens=usage.get("prompt_tokens", 0),
+                    completion_tokens=usage.get("completion_tokens", 0),
+                    total_tokens=usage.get("total_tokens", 0),
+                )
+            # Handle object with attributes
+            if hasattr(usage, "prompt_tokens"):
+                return TokenUsage(
+                    prompt_tokens=getattr(usage, "prompt_tokens", 0),
+                    completion_tokens=getattr(usage, "completion_tokens", 0),
+                    total_tokens=getattr(usage, "total_tokens", 0),
+                )
+        
+        # Check for usage_metadata (Anthropic/some providers)
+        if hasattr(result, "usage_metadata"):
+            metadata = result.usage_metadata
+            if isinstance(metadata, dict):
+                return TokenUsage(
+                    prompt_tokens=metadata.get("input_tokens", 0),
+                    completion_tokens=metadata.get("output_tokens", 0),
+                    total_tokens=metadata.get("input_tokens", 0) + metadata.get("output_tokens", 0),
+                )
+        
+        return None
 
     def _setup_output(self, output: type | dict | ResponseSchema | None) -> None:
         """Setup structured output for response schema enforcement.
@@ -1499,7 +1544,7 @@ class Agent:
         stream: bool | None = None,
         include_tools: bool = True,
         system_prompt_override: str | None = None,
-    ) -> Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]:
+    ) -> Coroutine[Any, Any, Response[str]] | AsyncIterator[StreamChunk]:
         """
         Process a prompt through the agent's reasoning.
 
@@ -1556,8 +1601,10 @@ class Agent:
         *,
         include_tools: bool = True,
         system_prompt_override: str | None = None,
-    ) -> str:
+    ) -> Response[str]:
         """Internal implementation of non-streaming think."""
+        import traceback as tb
+        
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
 
@@ -1653,7 +1700,22 @@ class Agent:
                 correlation_id,
             )
 
-            return result
+            # Build Response object
+            metadata = ResponseMetadata(
+                agent=self.name,
+                model=model_identifier(self.model),
+                tokens=self._extract_token_usage(response),
+                duration=duration_ms / 1000,  # Convert to seconds
+                correlation_id=correlation_id,
+            )
+
+            return Response(
+                content=result,
+                metadata=metadata,
+                tool_calls=[],
+                events=[],
+                error=None,
+            )
 
         except Exception as e:
             self.state.record_error(str(e))
@@ -1668,7 +1730,27 @@ class Agent:
                 },
                 correlation_id,
             )
-            raise
+            
+            # Return Response with error instead of raising
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            metadata = ResponseMetadata(
+                agent=self.name,
+                model=model_identifier(self.model) if self.model else None,
+                duration=duration_ms / 1000,
+                correlation_id=correlation_id,
+            )
+
+            return Response(
+                content="",
+                metadata=metadata,
+                tool_calls=[],
+                events=[],
+                error=ErrorInfo(
+                    message=str(e),
+                    type=type(e).__name__,
+                    traceback=tb.format_exc(),
+                ),
+            )
 
     def chat(
         self,
@@ -2769,7 +2851,7 @@ class Agent:
         stream: bool = False,
         max_iterations: int = 25,
         reasoning: bool | ReasoningConfig | None = None,
-    ) -> Coroutine[Any, Any, Any] | AsyncIterator[StreamChunk]:
+    ) -> Coroutine[Any, Any, Response[Any]] | AsyncIterator[StreamChunk]:
         """
         Execute a task with full agent capabilities.
 
@@ -2857,8 +2939,9 @@ class Agent:
         thread_id: str | None = None,
         max_iterations: int = 25,
         reasoning: bool | ReasoningConfig | None = None,
-    ) -> Any:
+    ) -> Response[Any]:
         """Internal implementation of non-streaming run()."""
+        import traceback as tb
         from agenticflow.executors import create_executor
 
         if not self.model:
@@ -2870,6 +2953,7 @@ class Agent:
 
         # Clear previous state to avoid mixing conversations
         self.state.clear_history()
+        self.state.clear_tool_calls()
 
         # Load conversation history into agent state if thread_id provided
         if thread_id:
@@ -2887,6 +2971,8 @@ class Agent:
 
         # Apply reasoning override for this call
         original_reasoning = self._reasoning_config
+        start_time = now_utc()
+        
         try:
             if reasoning is not None:
                 # Override reasoning for this call
@@ -2903,7 +2989,45 @@ class Agent:
             if thread_id:
                 await self._save_to_thread(thread_id, task, result)
 
-            return result
+            # Build Response object
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            metadata = ResponseMetadata(
+                agent=self.name,
+                model=model_identifier(self.model),
+                tokens=None,  # Executors may aggregate tokens differently
+                duration=duration_ms / 1000,
+                correlation_id=None,
+            )
+
+            return Response(
+                content=result,
+                metadata=metadata,
+                tool_calls=list(self.state.tool_calls),
+                events=list(self.state.emitted_events),
+                error=None,
+            )
+            
+        except Exception as e:
+            # Build Response with error
+            duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            metadata = ResponseMetadata(
+                agent=self.name,
+                model=model_identifier(self.model) if self.model else None,
+                duration=duration_ms / 1000,
+                correlation_id=None,
+            )
+
+            return Response(
+                content=None,
+                metadata=metadata,
+                tool_calls=list(self.state.tool_calls),
+                events=list(self.state.emitted_events),
+                error=ErrorInfo(
+                    message=str(e),
+                    type=type(e).__name__,
+                    traceback=tb.format_exc(),
+                ),
+            )
         finally:
             # Restore original reasoning config
             if reasoning is not None:
