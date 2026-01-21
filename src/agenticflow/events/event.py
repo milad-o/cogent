@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.utils import generate_id, now_utc
+
+if TYPE_CHECKING:
+    from agenticflow.core.response import Response
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -137,6 +140,77 @@ class Event:
             source=source,
             data={"task": task, **extra_data},
             correlation_id=correlation_id,
+        )
+
+    @classmethod
+    def from_response(
+        cls,
+        response: Response[Any],
+        name: str,
+        source: str,
+        *,
+        include_metadata: bool = True,
+    ) -> Event:
+        """Create an event from a Response object.
+
+        This bridges the Response protocol with the event system, allowing
+        responses to be converted to events for flow orchestration.
+
+        Args:
+            response: The Response object to convert
+            name: Event name (e.g., 'agent.done', 'task.completed')
+            source: Event source (typically agent name)
+            include_metadata: Whether to include response metadata in event metadata
+
+        Returns:
+            Event with response data and optional metadata
+
+        Example:
+            ```python
+            response = await agent.think("Analyze data")
+            event = Event.from_response(
+                response,
+                name="analysis.done",
+                source="analyst"
+            )
+            ```
+        """
+        # Build event data from response
+        event_data: dict[str, Any] = {
+            "content": response.content,
+            "success": response.success,
+        }
+
+        # Add error info if present
+        if response.error:
+            event_data["error"] = {
+                "type": response.error.type,
+                "message": response.error.message,
+            }
+
+        # Build event metadata from response metadata
+        event_metadata: dict[str, Any] = {}
+        if include_metadata and response.metadata:
+            event_metadata["response_metadata"] = {
+                "model": response.metadata.model,
+                "duration": response.metadata.duration,
+                "timestamp": response.metadata.timestamp,
+            }
+            if response.metadata.tokens:
+                event_metadata["tokens"] = {
+                    "prompt": response.metadata.tokens.prompt_tokens,
+                    "completion": response.metadata.tokens.completion_tokens,
+                    "total": response.metadata.tokens.total_tokens,
+                }
+            if response.tool_calls:
+                event_metadata["tool_calls_count"] = len(response.tool_calls)
+
+        return cls(
+            name=name,
+            source=source,
+            data=event_data,
+            correlation_id=response.metadata.correlation_id if response.metadata else None,
+            metadata=event_metadata,
         )
 
     # -------------------------------------------------------------------------
