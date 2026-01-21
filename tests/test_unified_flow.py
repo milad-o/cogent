@@ -6,6 +6,7 @@ from datetime import datetime
 from agenticflow.events import Event
 from agenticflow.flow.core import Flow
 from agenticflow.flow.config import FlowConfig, FlowResult
+from agenticflow.core.response import Response, ResponseMetadata, TokenUsage
 
 
 class TestEvent:
@@ -44,6 +45,82 @@ class TestEvent:
         assert event.name == "task.created"
         assert event.data["task"] == "Do something"
         assert event.source == "user"
+
+    def test_event_from_response_success(self) -> None:
+        """Test Event.from_response() with successful response."""
+        response = Response(
+            content="Analysis complete",
+            metadata=ResponseMetadata(
+                agent="analyst",
+                model="gpt-4",
+                duration=1.5,
+                correlation_id="corr-123",
+                tokens=TokenUsage(prompt_tokens=100, completion_tokens=50, total_tokens=150),
+            ),
+            messages=[],
+        )
+
+        event = Event.from_response(
+            response,
+            name="analysis.done",
+            source="analyst",
+        )
+
+        assert event.name == "analysis.done"
+        assert event.source == "analyst"
+        assert event.data["content"] == "Analysis complete"
+        assert event.data["success"] is True
+        assert event.correlation_id == "corr-123"
+        assert "response_metadata" in event.metadata
+        assert event.metadata["response_metadata"]["model"] == "gpt-4"
+        assert event.metadata["response_metadata"]["duration"] == 1.5
+        assert "tokens" in event.metadata
+        assert event.metadata["tokens"]["total"] == 150
+
+    def test_event_from_response_error(self) -> None:
+        """Test Event.from_response() with error response."""
+        from agenticflow.core.response import ErrorInfo
+
+        response = Response(
+            content=None,
+            metadata=ResponseMetadata(agent="worker", model="gpt-4", duration=0.5),
+            error=ErrorInfo(
+                type="ValidationError",
+                message="Invalid input",
+            ),
+            messages=[],
+        )
+
+        event = Event.from_response(
+            response,
+            name="task.failed",
+            source="worker",
+        )
+
+        assert event.name == "task.failed"
+        assert event.data["success"] is False
+        assert "error" in event.data
+        assert event.data["error"]["type"] == "ValidationError"
+        assert event.data["error"]["message"] == "Invalid input"
+
+    def test_event_from_response_without_metadata(self) -> None:
+        """Test Event.from_response() with include_metadata=False."""
+        response = Response(
+            content="Done",
+            metadata=ResponseMetadata(agent="worker", model="gpt-4", duration=1.0),
+            messages=[],
+        )
+
+        event = Event.from_response(
+            response,
+            name="task.done",
+            source="worker",
+            include_metadata=False,
+        )
+
+        assert event.name == "task.done"
+        assert event.data["content"] == "Done"
+        assert event.metadata == {}
 
     def test_event_serialization(self) -> None:
         """Test event to_dict/from_dict."""
