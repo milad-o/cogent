@@ -383,10 +383,33 @@ class KnowledgeGraph(BaseCapability):
         )
 
     def query(self, pattern: str) -> str:
-        """Query the knowledge graph with a pattern."""
+        """Query the knowledge graph with a pattern.
+        
+        Args:
+            pattern: Pattern string like "Alice -works_at-> ?" or "? -reports_to-> Bob"
+                     Use ? for wildcards to find unknowns.
+        """
         if self._tools_cache is None:
             _ = self.tools
-        return self._tools_cache["query"].invoke({"pattern": pattern})
+        
+        # Parse pattern: "source -relation-> target"
+        import re
+        match = re.match(r'(.+?)\s*-(.+?)->\s*(.+)', pattern)
+        if not match:
+            return f"Invalid pattern format: {pattern}. Expected: 'source -relation-> target'"
+        
+        source_str, relation_str, target_str = match.groups()
+        
+        # Convert ? to None for wildcards
+        source = None if source_str.strip() == "?" else source_str.strip()
+        relation = None if relation_str.strip() == "?" else relation_str.strip()
+        target = None if target_str.strip() == "?" else target_str.strip()
+        
+        return self._tools_cache["query"].invoke({
+            "source": source,
+            "relation": relation,
+            "target": target
+        })
 
     def forget(self, entity: str) -> str:
         """Remove an entity from the graph."""

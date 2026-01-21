@@ -16,9 +16,7 @@ from agenticflow.flow.state import CoordinationManager, CoordinationState
 
 def test_all_sources_waits_for_all_sources():
     """Coordination requires all sources before triggering."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b", "c"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+    filter_obj = all_sources(["a", "b", "c"])
     
     # Emit from only 2 sources - should not trigger
     assert filter_obj(Event(name="task.done", source="a")) is False
@@ -29,10 +27,8 @@ def test_all_sources_waits_for_all_sources():
 
 
 def test_all_sources_triggers_only_once():
-    """Coordination doesn't retrigger within same cycle."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+    """Coordination triggers then auto-resets for next cycle."""
+    filter_obj = all_sources(["a", "b"])
     
     # Emit from both sources
     assert filter_obj(Event(name="task.done", source="a")) is False
@@ -45,9 +41,7 @@ def test_all_sources_triggers_only_once():
 
 def test_all_sources_ignores_duplicate_events():
     """Same source emitting twice counts only once."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+    filter_obj = all_sources(["a", "b"])
     
     # Emit from 'a' twice
     assert filter_obj(Event(name="task.done", source="a")) is False
@@ -57,29 +51,19 @@ def test_all_sources_ignores_duplicate_events():
     assert filter_obj(Event(name="task.done", source="b")) is True
 
 
-def test_all_sources_ignores_wrong_event_type():
-    """Base SourceFilter handles event pattern matching."""
-    # This is tested at the StatefulSourceFilter level
-    # The coordination logic only checks sources, not event names
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+def test_all_sources_accepts_any_event_type():
+    """Coordination accepts any event type (pattern matching at Flow level)."""
+    filter_obj = all_sources(["a", "b"])
     
-    # All events contribute to coordination regardless of name
-    # (pattern matching happens at higher level in Flow)
+    # Different event names all count
     assert filter_obj(Event(name="task.created", source="a")) is False
-    assert filter_obj(Event(name="other.event", source="b")) is True
+    assert filter_obj(Event(name="workflow.complete", source="b")) is True
 
 
 def test_multiple_independent_coordinations():
     """Multiple coordinations work independently."""
-    manager = CoordinationManager()
-    
-    filter1 = all_sources(["a", "b"], reset_after=True)
-    filter1.initialize(manager, "binding_1")
-    
-    filter2 = all_sources(["x", "y", "z"], reset_after=True)
-    filter2.initialize(manager, "binding_2")
+    filter1 = all_sources(["a", "b"])
+    filter2 = all_sources(["x", "y", "z"])
     
     # Complete first coordination
     assert filter1(Event(name="task.done", source="a")) is False
@@ -93,9 +77,7 @@ def test_multiple_independent_coordinations():
 
 def test_all_sources_ignores_unknown_sources():
     """Sources not in coordination list are ignored."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+    filter_obj = all_sources(["a", "b"])
     
     # Emit from unknown sources
     assert filter_obj(Event(name="task.done", source="x")) is False
@@ -108,16 +90,14 @@ def test_all_sources_ignores_unknown_sources():
 
 def test_coordination_with_single_source():
     """Coordination with single source triggers immediately."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+    filter_obj = all_sources(["a"])
     
     # Should trigger immediately when 'a' emits
     assert filter_obj(Event(name="task.done", source="a")) is True
 
 
-def test_coordination_with_empty_sources():
-    """Empty sources list raises ValueError."""
+def test_empty_sources_raises_error():
+    """Empty source list raises ValueError."""
     with pytest.raises(ValueError, match="at least one source"):
         all_sources([])
 
@@ -129,31 +109,27 @@ def test_coordination_with_empty_sources():
 
 def test_coordination_auto_resets_by_default():
     """Default behavior: coordination resets after triggering."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+    filter_obj = all_sources(["a", "b"])
     
     # First cycle
     assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is True
     
-    # Second cycle - should work again
+    # Second cycle - should work again (auto-reset)
     assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is True
 
 
 def test_coordination_multiple_cycles_with_auto_reset():
     """Multiple cycles work with auto-reset."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b", "c"], reset_after=True)
-    filter_obj.initialize(manager, "binding_1")
+    filter_obj = all_sources(["a", "b", "c"])
     
     # Cycle 1
     filter_obj(Event(name="task.done", source="a"))
     filter_obj(Event(name="task.done", source="b"))
     assert filter_obj(Event(name="task.done", source="c")) is True
     
-    # Cycle 2
+    # Cycle 2 (auto-reset after trigger)
     filter_obj(Event(name="task.done", source="a"))
     filter_obj(Event(name="task.done", source="b"))
     assert filter_obj(Event(name="task.done", source="c")) is True
@@ -164,45 +140,32 @@ def test_coordination_multiple_cycles_with_auto_reset():
     assert filter_obj(Event(name="task.done", source="c")) is True
 
 
-def test_coordination_no_auto_reset_when_disabled():
-    """reset_after=False prevents automatic reset."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b"], reset_after=False)
-    filter_obj.initialize(manager, "binding_1")
+def test_one_time_gate_with_once():
+    """.once() creates one-time gate that never resets."""
+    filter_obj = all_sources(["a", "b"]).once()
     
     # First completion
     assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is True
     
-    # Should NOT trigger again
+    # Should NOT trigger again (one-time gate)
     assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is False
 
 
-def test_manual_reset_via_flow_method():
-    """Manual reset via flow.reset_coordination()."""
-    flow = Flow()
-    filter_obj = all_sources(["a", "b"], reset_after=False)
-    
-    # Register returns binding_id
-    binding_id = flow.register(
-        lambda e: None,
-        on="task.done",
-        when=filter_obj,
-    )
-    
-    # Initialize happens during register
-    manager = flow._coordination
+def test_manual_reset_method():
+    """Manual reset via filter.reset()."""
+    filter_obj = all_sources(["a", "b"]).once()  # One-time gate
     
     # Complete coordination
     assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is True
     
-    # Should NOT trigger again
+    # Should NOT trigger again (one-time)
     assert filter_obj(Event(name="task.done", source="a")) is False
     
     # Manual reset
-    flow.reset_coordination(binding_id)
+    filter_obj.reset()
     
     # Should work again
     assert filter_obj(Event(name="task.done", source="a")) is False
@@ -225,69 +188,59 @@ def test_reset_clears_seen_sources():
 
 def test_reset_allows_retrigger():
     """After reset, coordination can trigger again."""
-    manager = CoordinationManager()
-    filter_obj = all_sources(["a", "b"], reset_after=False)
-    filter_obj.initialize(manager, "binding_1")
+    filter_obj = all_sources(["a", "b"]).once()
     
     # First completion
     filter_obj(Event(name="task.done", source="a"))
     assert filter_obj(Event(name="task.done", source="b")) is True
     
-    # Should not trigger again
+    # Should not trigger again (one-time)
     assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is False
     
     # Manual reset
-    manager.reset_coordination("binding_1")
+    filter_obj.reset()
     
-    # Should trigger again
-    filter_obj(Event(name="task.done", source="a"))
+    # Should work again
+    assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is True
 
 
 # -------------------------------------------------------------------------
-# Composability Tests
+# Composition Tests
 # -------------------------------------------------------------------------
 
 
-def test_all_sources_and_lambda_filter():
+def test_all_sources_with_and():
     """all_sources can be combined with & operator."""
-    manager = CoordinationManager()
-    sf = all_sources(["a", "b"], reset_after=True)
-    sf.initialize(manager, "binding_1")
+    sf = all_sources(["a", "b"])
     filter_obj = sf & (lambda e: e.data.get("priority") == "high")
     
     # Both conditions must be true
     assert filter_obj(Event(name="task.done", source="a", data={"priority": "high"})) is False
     assert filter_obj(Event(name="task.done", source="b", data={"priority": "low"})) is False
     
-    # Reset and try with both matching
-    manager.reset_coordination("binding_1")
+    # Reset and try with both matching (auto-reset happened)
     assert filter_obj(Event(name="task.done", source="a", data={"priority": "high"})) is False
     assert filter_obj(Event(name="task.done", source="b", data={"priority": "high"})) is True
 
 
-def test_all_sources_or_other_condition():
+def test_all_sources_with_or():
     """all_sources can be combined with | operator."""
-    manager = CoordinationManager()
-    sf = all_sources(["a", "b"], reset_after=True)
-    sf.initialize(manager, "binding_1")
+    sf = all_sources(["a", "b"])
     filter_obj = sf | (lambda e: e.data.get("urgent") is True)
     
     # Urgent event triggers immediately
     assert filter_obj(Event(name="task.done", source="x", data={"urgent": True})) is True
     
-    # Or all sources
-    manager.reset_coordination("binding_1")
+    # Or all sources (after auto-reset)
     assert filter_obj(Event(name="task.done", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is True
 
 
 def test_all_sources_with_not():
     """all_sources can be negated with ~ operator."""
-    manager = CoordinationManager()
-    sf = all_sources(["a", "b"], reset_after=True)
-    sf.initialize(manager, "binding_1")
+    sf = all_sources(["a", "b"])
     filter_obj = ~sf
     
     # Returns opposite
@@ -300,29 +253,21 @@ def test_all_sources_with_not():
 # -------------------------------------------------------------------------
 
 
-def test_uninitialized_filter_raises_error():
-    """Using filter before initialization raises RuntimeError."""
+def test_thread_safe_coordination():
+    """Coordination is thread-safe."""
     filter_obj = all_sources(["a", "b"])
-    event = Event(name="test", source="a")
-    
-    with pytest.raises(RuntimeError, match="must be initialized"):
-        filter_obj(event)
-
-
-def test_coordination_thread_safety():
-    """CoordinationManager is thread-safe."""
-    manager = CoordinationManager()
-    manager.register_coordination("binding_1", frozenset(["a"]))
-    
     results = []
     
-    def worker():
-        for _ in range(100):
-            is_complete = manager.check_coordination("binding_1", "a")
-            if is_complete:
-                results.append(True)
+    def emit_event(source):
+        result = filter_obj(Event(name="task.done", source=source))
+        results.append(result)
     
-    threads = [threading.Thread(target=worker) for _ in range(10)]
+    # Emit concurrently
+    threads = [
+        threading.Thread(target=emit_event, args=("a",)),
+        threading.Thread(target=emit_event, args=("b",)),
+    ]
+    
     for t in threads:
         t.start()
     for t in threads:
@@ -332,15 +277,10 @@ def test_coordination_thread_safety():
     assert len([r for r in results if r]) == 1
 
 
-def test_coordination_state_isolation():
-    """Each binding has isolated coordination state."""
-    manager = CoordinationManager()
-    
-    filter1 = all_sources(["a", "b"], reset_after=True)
-    filter1.initialize(manager, "binding_1")
-    
-    filter2 = all_sources(["a", "b"], reset_after=True)
-    filter2.initialize(manager, "binding_2")
+def test_coordination_filter_instance_isolation():
+    """Each filter instance has isolated coordination state."""
+    filter1 = all_sources(["a", "b"])
+    filter2 = all_sources(["a", "b"])
     
     # Progress filter1
     assert filter1(Event(name="task.done", source="a")) is False
@@ -353,16 +293,19 @@ def test_coordination_state_isolation():
     assert filter1(Event(name="task.done", source="b")) is True
 
 
-def test_coordination_with_wildcard_event_pattern():
-    """Coordination works with wildcard patterns in Flow."""
+def test_flow_register_accepts_all_sources():
+    """Flow.register() accepts all_sources filter as when parameter."""
     flow = Flow()
-    manager = flow._coordination
+    filter_obj = all_sources(["a", "b"])
     
-    filter_obj = all_sources(["a", "b"], reset_after=True)
-    flow.register(lambda e: None, on="task.*", when=filter_obj)
+    def test_reactor(event):
+        pass
     
-    # Filter initialized during register
-    # Both task.created and task.done contribute
+    # Should not raise - register accepts coordination filter
+    binding_id = flow.register(test_reactor, on="*", when=filter_obj)
+    assert binding_id is not None
+    
+    # Verify the filter object still works independently
     assert filter_obj(Event(name="task.created", source="a")) is False
     assert filter_obj(Event(name="task.done", source="b")) is True
 

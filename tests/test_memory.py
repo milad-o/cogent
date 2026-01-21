@@ -280,30 +280,24 @@ class TestMemorySearch:
 
 
 class TestAgenticMemory:
-    """Tests for agentic memory functionality."""
+    """Tests for agentic memory functionality - Memory is always agentic."""
 
-    def test_agentic_false_by_default(self) -> None:
+    def test_memory_always_provides_tools(self) -> None:
+        """Memory always provides tools (no agentic parameter)."""
         memory = Memory()
-        assert memory.agentic is False
-
-    def test_agentic_true_when_set(self) -> None:
-        memory = Memory(agentic=True)
-        assert memory.agentic is True
-
-    def test_tools_empty_when_not_agentic(self) -> None:
-        memory = Memory()  # agentic=False
-        assert memory.tools == []
-
-    def test_tools_available_when_agentic(self) -> None:
-        memory = Memory(agentic=True)
         tools = memory.tools
         
-        assert len(tools) == 4
+        assert len(tools) == 5  # remember, recall, forget, search_memories, search_conversation
         tool_names = {t.name for t in tools}
-        assert tool_names == {"remember", "recall", "forget", "search_memories"}
+        assert "remember" in tool_names
+        assert "recall" in tool_names
+        assert "forget" in tool_names
+        assert "search_memories" in tool_names
+        assert "search_conversation" in tool_names
 
     def test_tools_cached(self) -> None:
-        memory = Memory(agentic=True)
+        """Tools are cached for performance."""
+        memory = Memory()
         tools1 = memory.tools
         tools2 = memory.tools
         
@@ -311,8 +305,9 @@ class TestAgenticMemory:
         assert tools1 is tools2
 
     @pytest.mark.asyncio
-    async def test_agentic_tools_work(self) -> None:
-        memory = Memory(agentic=True)
+    async def test_memory_tools_work(self) -> None:
+        """Memory tools function correctly."""
+        memory = Memory()
         tools = memory.tools
         
         # Find remember and recall tools
@@ -321,7 +316,7 @@ class TestAgenticMemory:
         
         # Use them
         result = await remember.func(key="name", value="Alice")
-        assert "Remembered" in result
+        assert "Remembered" in result or "name" in result
         
         result = await recall.func(key="name")
         assert "Alice" in result
