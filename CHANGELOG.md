@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-01-20
+
+### Added
+
+#### Flow: Source-Based Reactor Filtering
+
+**Multi-level API for filtering events by source** — Control which reactors respond to events based on who emitted them.
+
+**Level 1: Beginner - `after` parameter:**
+- Simple, beginner-friendly syntax: `flow.register(reactor, on="event", after="source")`
+- List support for OR logic: `after=["source1", "source2"]`
+- Wildcard patterns: `after="agent_*"` matches agent_1, agent_2, etc.
+- Question mark for single char: `after="worker_?"` matches worker_1 through worker_9
+
+**Level 2: Intermediate - Helper functions:**
+- `from_source(source)` — Match specific source(s) with wildcard support
+- `not_from_source(source)` — Exclude specific source(s)
+- `any_source(sources)` — Convenience for matching multiple sources
+- `matching_sources(pattern)` — Alias for wildcard pattern matching
+
+**Level 3: Advanced - Filter composition:**
+- Boolean operators: `&` (AND), `|` (OR), `~` (NOT)
+- Combine source and data filters: `when=from_source("api") & (lambda e: e.data["priority"] == "high")`
+- Complex expressions: `(from_source("a") | from_source("b")) & ~from_source("qa")`
+
+**Use Cases:**
+- Reviewer only reviews specific researcher's work
+- Aggregate results from multiple analysts
+- Exclude internal/system events from logging
+- Route high-priority alerts from specific API
+
+**Examples:**
+```python
+# Beginner: Simple after parameter
+flow.register(reviewer, on="research.done", after="researcher")
+
+# Intermediate: Helper functions
+flow.register(logger, on="*", when=not_from_source("system"))
+
+# Advanced: Composition
+flow.register(
+    handler,
+    on="alert",
+    when=from_source("api") & (lambda e: e.data.get("priority") == "high")
+)
+```
+
+**Files Changed:**
+- `src/agenticflow/events/patterns.py`: Added `SourceFilter` class and helper functions
+- `src/agenticflow/flow/core.py`: Added `after` parameter to `Flow.register()`
+- `src/agenticflow/events/__init__.py`: Exported new filtering functions
+- `examples/flow/source_filtering.py`: Comprehensive examples for all levels
+- `docs/reactors.md`: Complete documentation with real-world scenarios
+- `tests/test_source_filters.py`: Full test coverage (37 tests, all passing)
+- `tests/test_flow_after_parameter.py`: Flow integration tests
+
 ## [1.8.9] - 2026-01-20
 
 ### Fixed

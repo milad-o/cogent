@@ -553,7 +553,7 @@ flow.register(reactor, config)
 |--------|------|---------|-------------|
 | `on` | `str \| list[str]` | Required | Event pattern(s) to react to |
 | `when` | `Callable` | `None` | Condition filter function |
-| `after` | `str` | `None` | React after events from specific source |
+| `after` | `str \| list[str]` | `None` | Filter by event source (beginner-friendly) |
 | `priority` | `int` | `0` | Higher priority executes first |
 | `emits` | `str` | `None` | Override emitted event name |
 | `collect` | `int` | `None` | Events to collect (for Aggregator) |
@@ -605,6 +605,218 @@ config = ReactorConfig(on="task", handover=HandoverStrategy.STRUCTURED)
 # Accumulate into growing context
 config = ReactorConfig(on="task", handover=HandoverStrategy.ACCUMULATED)
 ```
+
+---
+
+## Source-Based Filtering
+
+Filter events by who emitted them, enabling precise control over reactor-to-reactor communication. AgenticFlow provides a multi-level API from beginner-friendly to advanced.
+
+### Level 1: Beginner - `after` Parameter
+
+The simplest way to filter by source:
+
+```python
+from agenticflow import Flow, Agent
+
+flow = Flow()
+
+researcher = Agent(name="researcher", model=model)
+reviewer = Agent(name="reviewer", model=model)
+
+# Researcher produces research
+flow.register(researcher, on="task.created", emits="research.done")
+
+# Reviewer ONLY reacts to research from the researcher
+flow.register(reviewer, on="research.done", after="researcher")
+```
+
+**Multiple Sources (OR logic):**
+```python
+# React to events from ANY listed source
+flow.register(
+    aggregator,
+    on="analysis.done",
+    after=["analyst1", "analyst2", "analyst3"]  # analyst1 OR analyst2 OR analyst3
+)
+```
+
+**Wildcard Patterns:**
+```python
+# Match all sources matching pattern
+flow.register(
+    supervisor,
+    on="worker.done",
+    after="worker_*"  # Matches worker_1, worker_2, worker_X, etc.
+)
+
+# Question mark matches single character
+flow.register(handler, on="event", after="agent_?")  # agent_1, agent_2, ... agent_9
+```
+
+### Level 2: Intermediate - Helper Functions
+
+For more control, use helper functions with `when`:
+
+```python
+from agenticflow.events import from_source, not_from_source, any_source
+
+# Explicit source matching
+flow.register(handler, on="event", when=from_source("researcher"))
+
+# Exclude specific source(s)
+flow.register(
+    logger,
+    on="*",  # All events
+    when=not_from_source("system")  # Except from system
+)
+
+# Any of multiple sources (same as after=["a", "b"])
+flow.register(
+    handler,
+    on="event",
+    when=any_source(["source1", "source2", "source3"])
+)
+```
+
+### Level 3: Advanced - Filter Composition
+
+Combine filters with boolean operators (`&`, `|`, `~`):
+
+```python
+from agenticflow.events import from_source, not_from_source
+
+# AND - Both conditions must be true
+flow.register(
+    handler,
+    on="event",
+    when=from_source("api") & (lambda e: e.data.get("priority") == "high")
+)
+
+# OR - Either condition can be true
+flow.register(
+    handler,
+    on="event",
+    when=from_source("analyst_a") | from_source("analyst_b")
+)
+
+# NOT - Invert condition
+flow.register(
+    handler,
+    on="event",
+    when=~from_source("internal")  # NOT from internal
+)
+
+# Complex composition
+flow.register(
+    handler,
+    on="report.done",
+    when=(from_source("analyst_a") | from_source("analyst_b")) & ~from_source("qa")
+    # (From A OR from B) AND NOT from QA
+)
+```
+
+### Real-World Examples
+
+**Research Workflow with Specialized Reviewers:**
+```python
+flow = Flow()
+
+# 1. Researcher produces initial draft
+flow.register(researcher, on="task.created", emits="research.draft")
+
+# 2. Technical reviewer reviews researcher's work
+flow.register(
+    technical_reviewer,
+    on="research.draft",
+    after="researcher",  # Only review researcher's drafts
+    emits="review.technical"
+)
+
+# 3. Style reviewer also reviews researcher's work
+flow.register(
+    style_reviewer,
+    on="research.draft",
+    after="researcher",
+    emits="review.style"
+)
+
+# 4. Editor combines both reviews
+flow.register(
+    editor,
+    on="review.*",  # All review events
+    after=["technical_reviewer", "style_reviewer"],  # Only from reviewers
+    emits="final.done"
+)
+```
+
+**High-Priority Alerts from API:**
+```python
+from agenticflow.events import from_source
+
+# Only process high-priority alerts from API gateway
+flow.register(
+    alert_handler,
+    on="alert.created",
+    when=from_source("api_gateway") & (lambda e: e.data.get("priority") == "high")
+)
+```
+
+**Exclude Internal Events from Logging:**
+```python
+from agenticflow.events import not_from_source
+
+# Log all events except internal system events
+flow.register(
+    event_logger,
+    on="*",  # All events
+    when=not_from_source(["system", "internal", "health_check"])
+)
+```
+
+**Aggregate from Multiple Analysts:**
+```python
+# Collect reports from any analyst matching pattern
+flow.register(
+    aggregator,
+    on="analysis.done",
+    after="analyst_*",  # Wildcard: analyst_1, analyst_2, etc.
+)
+```
+
+### API Reference
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `from_source(source)` | Match specific source(s) | `from_source("researcher")` |
+|  | Supports wildcards (*, ?) | `from_source("agent_*")` |
+|  | Accepts lists (OR logic) | `from_source(["a", "b"])` |
+| `not_from_source(source)` | Exclude source(s) | `not_from_source("system")` |
+| `any_source(sources)` | Match any listed source | `any_source(["a", "b", "c"])` |
+| `matching_sources(pattern)` | Alias for wildcard matching | `matching_sources("worker_*")` |
+
+**Operators:**
+- `&` — AND (both conditions true)
+- `|` — OR (either condition true)  
+- `~` — NOT (invert condition)
+
+### When to Use Source Filtering
+
+| Use Case | Approach |
+|----------|----------|
+| Reviewer only reviews researcher | `after="researcher"` |
+| Aggregate from multiple workers | `after=["worker1", "worker2"]` |
+| Aggregate from any worker | `after="worker_*"` |
+| Exclude internal events | `when=not_from_source("internal")` |
+| Complex multi-condition | `when=from_source("api") & (lambda e: ...)` |
+
+### Best Practices
+
+1. **Use `after` for simplicity** — Prefer `after="source"` over `when=from_source("source")`
+2. **Wildcards for scalability** — Use `after="worker_*"` instead of listing all workers
+3. **Combine with data filters** — `when=from_source("api") & (lambda e: e.data["priority"] == "high")`
+4. **Document source expectations** — Make clear which reactors expect events from which sources
+5. **Never use both `after` and `when`** — They conflict; use `when=from_source(...)` for composition
 
 ---
 

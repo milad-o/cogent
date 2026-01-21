@@ -93,7 +93,7 @@ Multi-Agent Patterns:
     ```
 """
 
-__version__ = "1.8.3"
+__version__ = "1.9.0"
 
 # Core enums and utilities
 # Graph API (unified visualization)

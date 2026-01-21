@@ -203,3 +203,188 @@ def not_(condition: EventCondition) -> EventCondition:
         ```
     """
     return lambda e: not condition(e)
+
+
+# -------------------------------------------------------------------------
+# Source-Based Filtering
+# -------------------------------------------------------------------------
+
+
+class SourceFilter:
+    """Composable event source filter with boolean operators.
+    
+    Supports composition via `&` (AND), `|` (OR), and `~` (NOT) operators.
+    
+    Example:
+        ```python
+        # Combine filters
+        filter1 = from_source("agent1")
+        filter2 = from_source("agent2")
+        combined = filter1 | filter2  # Match either
+        
+        # Negate
+        not_system = ~from_source("system")
+        
+        # Complex conditions
+        high_priority_from_api = (
+            from_source("api") & 
+            (lambda e: e.data.get("priority") == "high")
+        )
+        ```
+    """
+    
+    def __init__(self, predicate: Callable[[Event], bool]) -> None:
+        """Initialize source filter.
+        
+        Args:
+            predicate: Function that takes Event and returns bool.
+        """
+        self._predicate = predicate
+    
+    def __call__(self, event: Event) -> bool:
+        """Evaluate filter on event.
+        
+        Args:
+            event: Event to test.
+            
+        Returns:
+            True if event passes filter, False otherwise.
+        """
+        return self._predicate(event)
+    
+    def __and__(self, other: Callable[[Event], bool]) -> SourceFilter:
+        """Combine filters with AND logic.
+        
+        Args:
+            other: Another filter or callable.
+            
+        Returns:
+            New filter that passes only if both filters pass.
+        """
+        return SourceFilter(lambda e: self(e) and other(e))
+    
+    def __or__(self, other: Callable[[Event], bool]) -> SourceFilter:
+        """Combine filters with OR logic.
+        
+        Args:
+            other: Another filter or callable.
+            
+        Returns:
+            New filter that passes if either filter passes.
+        """
+        return SourceFilter(lambda e: self(e) or other(e))
+    
+    def __invert__(self) -> SourceFilter:
+        """Negate the filter (NOT logic).
+        
+        Returns:
+            New filter that passes when this filter fails.
+        """
+        return SourceFilter(lambda e: not self(e))
+    
+    def __repr__(self) -> str:
+        return f"SourceFilter({self._predicate!r})"
+
+
+def from_source(source: str | list[str]) -> SourceFilter:
+    """Filter events from specific source(s).
+    
+    Supports exact matches, lists (OR logic), and wildcard patterns.
+    
+    Args:
+        source: Source name(s) to match. Can be:
+            - Single string: Exact match or wildcard pattern
+            - List of strings: Match any (OR logic)
+    
+    Returns:
+        SourceFilter that matches the specified source(s).
+    
+    Examples:
+        ```python
+        # Exact match
+        from_source("researcher")
+        
+        # Multiple sources (OR)
+        from_source(["agent1", "agent2", "agent3"])
+        
+        # Wildcard patterns
+        from_source("agent*")  # agent1, agent2, agentX, etc.
+        from_source("api_*")   # api_webhook, api_rest, etc.
+        from_source("*_dev")   # test_dev, staging_dev, etc.
+        ```
+    """
+    from fnmatch import fnmatch
+    
+    if isinstance(source, str):
+        # Wildcard pattern
+        if "*" in source or "?" in source:
+            return SourceFilter(lambda e: fnmatch(e.source, source))
+        # Exact match
+        return SourceFilter(lambda e: e.source == source)
+    else:
+        # List - OR logic
+        sources_set = set(source)
+        return SourceFilter(lambda e: e.source in sources_set)
+
+
+def not_from_source(source: str | list[str]) -> SourceFilter:
+    """Exclude events from specific source(s).
+    
+    Args:
+        source: Source name(s) to exclude.
+    
+    Returns:
+        SourceFilter that rejects the specified source(s).
+    
+    Examples:
+        ```python
+        # Exclude system events
+        not_from_source("system")
+        
+        # Exclude multiple sources
+        not_from_source(["test", "debug", "dev"])
+        
+        # Exclude with wildcards
+        not_from_source("*_internal")
+        ```
+    """
+    return ~from_source(source)
+
+
+def any_source(sources: list[str]) -> SourceFilter:
+    """Match any of the given sources (OR logic).
+    
+    Convenience alias for `from_source(list)`.
+    
+    Args:
+        sources: List of source names to match.
+    
+    Returns:
+        SourceFilter that matches any of the sources.
+    
+    Example:
+        ```python
+        any_source(["agent1", "agent2", "agent3"])
+        ```
+    """
+    return from_source(sources)
+
+
+def matching_sources(pattern: str) -> SourceFilter:
+    """Match sources using wildcard pattern.
+    
+    Convenience alias for `from_source(pattern)` with explicit pattern intent.
+    
+    Args:
+        pattern: Wildcard pattern (*, ?).
+    
+    Returns:
+        SourceFilter that matches the pattern.
+    
+    Example:
+        ```python
+        matching_sources("agent*")
+        matching_sources("api_*_prod")
+        ```
+    """
+    return from_source(pattern)
