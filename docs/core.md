@@ -414,6 +414,186 @@ formatted = format_timestamp(utc_now)  # "2024-12-04 10:30:45 UTC"
 
 ---
 
+## Response Protocol
+
+**New in v1.13.0** — Unified response protocol for all agent operations with consistent metadata, observability, and error handling.
+
+### Response[T]
+
+Generic container for agent responses with full metadata:
+
+```python
+from agenticflow import Agent
+from agenticflow.core.response import Response
+
+agent = Agent(name="analyst", model=model)
+
+# Agent.run() and Agent.think() return Response[T]
+response = await agent.think("Analyze sales data")
+
+# Access response data
+result: str = response.content
+success: bool = response.success
+
+# Access metadata
+tokens = response.metadata.tokens.total_tokens
+duration = response.metadata.duration
+model = response.metadata.model
+correlation_id = response.metadata.correlation_id
+
+# Access tool calls with timing
+for tool_call in response.tool_calls:
+    print(f"{tool_call.tool_name}: {tool_call.duration}s")
+
+# Access conversation history
+for message in response.messages:
+    print(f"{message.role}: {message.content}")
+
+# Unwrap or handle errors
+try:
+    result = response.unwrap()  # Returns content or raises
+except ResponseError as e:
+    print(f"Error: {e.response.error.message}")
+```
+
+### Response Types
+
+#### TokenUsage
+
+Token consumption tracking:
+
+```python
+from agenticflow.core.response import TokenUsage
+
+tokens = response.metadata.tokens
+print(f"Prompt: {tokens.prompt_tokens}")
+print(f"Completion: {tokens.completion_tokens}")
+print(f"Total: {tokens.total_tokens}")
+```
+
+#### ToolCall
+
+Tool invocation tracking with timing:
+
+```python
+from agenticflow.core.response import ToolCall
+
+for call in response.tool_calls:
+    print(f"Tool: {call.tool_name}")
+    print(f"Duration: {call.duration}s")
+    print(f"Success: {call.success}")
+    if call.error:
+        print(f"Error: {call.error}")
+```
+
+#### ResponseMetadata
+
+Consistent metadata across all responses:
+
+```python
+from agenticflow.core.response import ResponseMetadata
+
+metadata = response.metadata
+# agent: Agent that generated response
+# model: Model used (e.g., "gpt-4")
+# tokens: Token usage (if available)
+# duration: Execution time in seconds
+# timestamp: Unix timestamp
+# correlation_id: For distributed tracing
+# trace_id: Trace identifier
+```
+
+#### ErrorInfo
+
+Structured error information:
+
+```python
+from agenticflow.core.response import ErrorInfo
+
+if not response.success:
+    error = response.error
+    print(f"Type: {error.type}")
+    print(f"Message: {error.message}")
+    if error.traceback:
+        print(f"Traceback: {error.traceback}")
+```
+
+### Response Features
+
+#### Serialization
+
+```python
+# Convert to dictionary
+data = response.to_dict()
+# {
+#     "content": "...",
+#     "success": true,
+#     "metadata": {...},
+#     "tool_calls": [...],
+#     "messages": [...],
+#     ...
+# }
+```
+
+#### Event Conversion
+
+```python
+from agenticflow.events import Event
+
+# Convert response to event for flow orchestration
+event = Event.from_response(
+    response,
+    name="analysis.done",
+    source="analyst",
+)
+
+# Event includes response metadata
+assert event.data["content"] == response.content
+assert event.metadata["tokens"]["total"] == response.metadata.tokens.total_tokens
+```
+
+#### A2A Integration
+
+```python
+from agenticflow.flow.a2a import AgentResponse
+
+# Create A2A response from agent Response
+a2a_response = AgentResponse.from_response(
+    response,
+    from_agent="analyst",
+    to_agent="coordinator",
+)
+
+# Access underlying Response
+core_response = a2a_response.unwrap()
+```
+
+### Benefits
+
+**Observability:**
+- Full conversation history with `response.messages`
+- Token usage tracking across all operations
+- Tool call timing and success/failure tracking
+- Correlation IDs for distributed tracing
+
+**Debugging:**
+- Inspect exact prompts sent to LLM
+- See all tool invocations with results
+- Track execution timing per operation
+- Access full error context with tracebacks
+
+**Consistency:**
+- Same response format for `Agent.run()`, `Agent.think()`, and A2A
+- Predictable error handling across all agent operations
+- Unified metadata structure
+
+**Integration:**
+- Seamless conversion to Events for flow orchestration
+- Compatible with A2A communication protocol
+- Works with all executor types (Native, ReAct, ChainOfThought)
+
+---
+
 ## Exports
 
 ```python
@@ -449,5 +629,14 @@ from agenticflow.core.messages import (
     ToolMessage,
     messages_to_dict,
     parse_openai_response,
+)
+
+from agenticflow.core.response import (
+    Response,
+    ResponseMetadata,
+    TokenUsage,
+    ToolCall,
+    ErrorInfo,
+    ResponseError,
 )
 ```

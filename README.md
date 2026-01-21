@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.12.0-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.13.0-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,24 +58,40 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.12.0 - January 2026)
+## 🎉 Latest Changes (v1.13.0 - January 2026)
 
-**Coordination Patterns**
+**Response Protocol** 🎯
+- 📦 **Unified Response[T]** — Consistent responses across all agent operations with full metadata
+- 🔍 **Full Observability** — Access conversation history, token usage, and tool call timing
+- 🔗 **Event Integration** — Convert responses to events with `Event.from_response()`
+- 🤝 **A2A Integration** — AgentResponse wraps Response[T] for unified protocol
+- ✅ **Backward Compatible** — Existing code continues to work unchanged
+
+```python
+# Agent operations return Response[T]
+response = await agent.think("Analyze sales data")
+
+# Access full metadata
+tokens = response.metadata.tokens.total_tokens
+duration = response.metadata.duration
+
+# Debug with conversation history
+for message in response.messages:
+    print(f"{message.role}: {message.content}")
+
+# Track tool calls
+for tool_call in response.tool_calls:
+    print(f"{tool_call.tool_name}: {tool_call.duration}s")
+```
+
+**Previous (v1.12.0)** — Coordination Patterns
 - 🎯 **Stateful Coordination** — `all_sources(["w1", "w2", "w3"])` waits for ALL sources to complete
 - 🔄 **Auto-Reset** — Coordination state resets automatically after triggering
 - 🎫 **One-Time Gates** — `.once()` method for single-trigger coordination
-- 🧩 **Composable** — Works with filter composition (`&`, `|`) and source groups
-- 🔍 **Fully Observable** — Complete observability integration with TraceBus
-- 📖 **Examples & Docs** — 5 real-world patterns (Map-Reduce, Multi-Stage, Batch, Gates, Composition)
 
-**Previous (v1.11.0)** — Source Groups for Multi-Source Filtering
+**v1.11.0** — Source Groups for Multi-Source Filtering
 - 🏷️ **Named Groups** — `flow.add_source_group("analysts", ["a1", "a2", "a3"])`
 - 🔗 **:group Syntax** — Reference groups with `after=":analysts"` or `on="*.done@:analysts"`
-- 🤖 **Built-in :agents** — Auto-populated group tracking all registered agents
-
-**v1.10.0** — Pattern Syntax for Event@Source Filtering
-- ✨ Concise `event@source` syntax with wildcard support
-- 🔀 Multiple patterns with OR logic
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
