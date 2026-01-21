@@ -40,6 +40,8 @@ Modern Flow patterns and event-driven orchestration examples.
 | [event_sources.py](flow/event_sources.py) | External event sources |
 | [checkpointing.py](flow/checkpointing.py) | Checkpointing basics |
 | [checkpointing_demo.py](flow/checkpointing_demo.py) | Checkpointing demo |
+| [source_filtering.py](flow/source_filtering.py) | Source-based filtering (10 demos) |
+| [pattern_syntax.py](flow/pattern_syntax.py) | Pattern syntax event@source (6 demos) |
 
 ---
 

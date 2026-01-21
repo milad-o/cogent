@@ -9,6 +9,7 @@ Includes:
 - EventBus: Core pub/sub for orchestration events
 - EventStore: Persistent event storage for sourcing and replay
 - Pattern matching: Utilities for event filtering
+- Pattern parsing: Parse event@source syntax
 - Sources: External event sources (webhooks, file watchers, queues)
 - Sinks: Outbound event sinks (webhooks, queues)
 """
@@ -49,6 +50,7 @@ from agenticflow.events.store import (
     InMemoryEventStore,
     create_event_store,
 )
+from agenticflow.flow.parser import ParsedPattern, parse_pattern
 
 __all__ = [
     # Core
@@ -76,6 +78,9 @@ __all__ = [
     "all_of",
     "any_of",
     "not_",
+    # Pattern parsing
+    "parse_pattern",
+    "ParsedPattern",
     # Sources
     "EventSource",
     "WebhookSource",

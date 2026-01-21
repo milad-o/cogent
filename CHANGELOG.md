@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-01-21
+
+### Added
+
+#### Flow: Pattern Syntax for Source Filtering
+
+**Event@Source pattern syntax** — Embed source filters directly in event patterns for more concise, readable code using the `@` separator:
+
+**Syntax:**
+- `@` separator: `flow.register(handler, on="agent.done@researcher")`
+- Alternative to `after` parameter: `on="event@source"` vs `on="event", after="source"`
+
+**Wildcard support:**
+- Event wildcards: `on="*.done@agent1"` — All .done events from agent1
+- Source wildcards: `on="task.done@agent*"` — task.done from any agent
+- Both: `on="*.error@agent*"` — All .error events from any agent
+- Single char: `on="task@worker_?"` — worker_1, worker_2, etc.
+
+**Multiple patterns:**
+```python
+# OR logic across patterns
+flow.register(
+    aggregator,
+    on=["analysis.done@analyst1", "analysis.done@analyst2"]
+)
+```
+
+**Why use pattern syntax:**
+- More concise: `on="agent.done@researcher"` vs `on="agent.done", after="researcher"`
+- Visual clarity: See event-source relationship at a glance
+- Still supports all `after` features: wildcards, lists, complex filters
+- **Note:** `:` and `->` separators reserved for future features
+
+**New exports:**
+- `parse_pattern(pattern)` — Parse event@source syntax manually
+- `ParsedPattern` — Result dataclass with event, source, separator fields
+
+**Examples:**
+```python
+# Concise pipeline
+flow.register(researcher, on="task.created")
+flow.register(reviewer, on="agent.done@researcher")
+flow.register(editor, on="agent.done@reviewer")
+
+# Monitor all completions from workers
+flow.register(monitor, on="*.done@worker*")
+
+# Central error handling
+flow.register(error_handler, on="*.error@agent*")
+```
+
+---
+
 ## [1.9.0] - 2026-01-20
 
 ### Added

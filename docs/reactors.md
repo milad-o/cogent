@@ -820,6 +820,163 @@ flow.register(
 
 ---
 
+## Pattern Syntax - Event@Source Filtering
+
+**New in v1.10.0** — An even more concise syntax for source filtering: embed the source filter directly in the event pattern using the `@` separator.
+
+### Basic Syntax
+
+Instead of separating event and source:
+```python
+# Old way (still works)
+flow.register(reviewer, on="agent.done", after="researcher")
+
+# New pattern syntax ✨
+flow.register(reviewer, on="agent.done@researcher")
+```
+
+The pattern syntax combines event pattern and source filter in one string, making the flow more readable.
+
+**Note:** The `:` and `->` separators are reserved for future features. Only `@` is supported for source filtering.
+
+### Wildcards in Pattern Syntax
+
+Wildcards work in both event and source parts:
+
+```python
+# Wildcard in event (all .done events from agent1)
+flow.register(monitor, on="*.done@agent1")
+
+# Wildcard in source (task.done from any agent)
+flow.register(aggregator, on="task.done@agent*")
+
+# Wildcards in both (all .error events from any agent)
+flow.register(error_handler, on="*.error@agent*")
+
+# Question mark wildcard (single character)
+flow.register(handler, on="task.done@worker_?")  # worker_1, worker_2, etc.
+```
+
+### Multiple Patterns
+
+List multiple patterns for OR logic:
+
+```python
+# Process outputs from multiple specific sources
+flow.register(
+    aggregator,
+    on=["analysis.done@analyst1", "analysis.done@analyst2"]
+)
+
+# Different events from different sources
+flow.register(
+    handler,
+    on=["task.done@worker_a", "job.done@worker_b"]
+)
+
+# Combine pattern syntax with wildcards
+flow.register(
+    monitor,
+    on=["*.done@agent1", "*.done@agent2"]
+)
+```
+
+### Pattern Syntax vs After Parameter
+
+Both approaches are equivalent — choose based on preference:
+
+| Approach | Code | Use When |
+|----------|------|----------|
+| **Pattern syntax** | `on="agent.done@researcher"` | Single line, concise, visual flow |
+| **After parameter** | `on="agent.done", after="researcher"` | Explicit separation, familiar |
+
+**Pattern syntax advantages:**
+- More concise
+- Visual representation of flow
+- Combines naturally with event patterns
+
+**After parameter advantages:**
+- More explicit
+- Easier to compose programmatically
+- Clear separation of concerns
+
+### Conflicts
+
+Pattern syntax and `after` cannot be used together:
+
+```python
+# ❌ ERROR: Cannot use both
+flow.register(handler, on="event@source", after="other")
+
+# ✅ Choose one approach
+flow.register(handler, on="event@source")
+flow.register(handler, on="event", after="source")
+```
+
+Similarly, pattern syntax and `when` cannot both specify source filters:
+
+```python
+# ❌ ERROR: Conflicting source filters
+flow.register(handler, on="event@source", when=from_source("other"))
+
+# ✅ Use pattern for source, when for other conditions
+flow.register(
+    handler,
+    on="event@source",
+    when=lambda e: e.data.get("priority") == "high"
+)
+```
+
+### Examples
+
+**Research workflow with pattern syntax:**
+```python
+# Concise pipeline using pattern syntax
+flow.register(researcher, on="task.created")
+flow.register(reviewer, on="agent.done@researcher")
+flow.register(editor, on="agent.done@reviewer")
+flow.register(publisher, on="agent.done@editor")
+```
+
+**Monitor all completions from workers:**
+```python
+# Any .done event from any worker
+flow.register(monitor, on="*.done@worker*")
+```
+
+**Error handling for agent fleet:**
+```python
+# Central error handler for all agents
+flow.register(error_handler, on="*.error@agent*")
+```
+
+**API-specific processing:**
+```python
+# Process requests only from API gateway
+flow.register(processor, on="request.received->api_gateway")
+```
+
+### Pattern Parsing API
+
+For advanced use cases, you can parse patterns manually:
+
+```python
+from agenticflow.events import parse_pattern, ParsedPattern
+
+# Parse pattern
+parsed = parse_pattern("agent.done@researcher")
+print(parsed.event)      # "agent.done"
+print(parsed.source)     # "researcher"
+print(parsed.separator)  # "@"
+
+# Patterns without source
+parsed = parse_pattern("task.created")
+print(parsed.event)   # "task.created"
+print(parsed.source)  # None
+```
+
+---
+
 ## Pattern Matching
 
 Reactors can subscribe to events using flexible patterns:
