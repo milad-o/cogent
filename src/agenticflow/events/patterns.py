@@ -286,18 +286,22 @@ class SourceFilter:
         return f"SourceFilter({self._predicate!r})"
 
 
-def from_source(source: str | list[str]) -> SourceFilter:
+def from_source(source: str | list[str], flow: Any = None) -> SourceFilter:
     """Filter events from specific source(s).
     
-    Supports exact matches, lists (OR logic), and wildcard patterns.
+    Supports exact matches, lists (OR logic), wildcard patterns, and group references.
     
     Args:
         source: Source name(s) to match. Can be:
-            - Single string: Exact match or wildcard pattern
+            - Single string: Exact match, wildcard pattern, or :group reference
             - List of strings: Match any (OR logic)
+        flow: Flow instance (required for :group references)
     
     Returns:
         SourceFilter that matches the specified source(s).
+    
+    Raises:
+        ValueError: If :group syntax used without flow parameter
     
     Examples:
         ```python
@@ -311,9 +315,28 @@ def from_source(source: str | list[str]) -> SourceFilter:
         from_source("agent*")  # agent1, agent2, agentX, etc.
         from_source("api_*")   # api_webhook, api_rest, etc.
         from_source("*_dev")   # test_dev, staging_dev, etc.
+        
+        # Group reference (requires flow)
+        from_source(":analysts", flow=flow)  # Uses flow.get_source_group("analysts")
+        from_source(":agents", flow=flow)    # Built-in :agents group
         ```
     """
     from fnmatch import fnmatch
+    
+    # Handle group reference
+    if isinstance(source, str) and source.startswith(":"):
+        if flow is None:
+            raise ValueError(
+                f"Flow instance required for group reference '{source}'. "
+                "Group references can only be used with 'after' parameter or pattern syntax."
+            )
+        group_name = source[1:]  # Remove : prefix
+        sources = flow.get_source_group(group_name)
+        if not sources:
+            # Empty group or nonexistent group - match nothing
+            return SourceFilter(lambda e: False)
+        # Convert to OR filter for all sources in group
+        return SourceFilter(lambda e: e.source in sources)
     
     if isinstance(source, str):
         # Wildcard pattern

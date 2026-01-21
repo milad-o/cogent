@@ -977,6 +977,273 @@ print(parsed.source)  # None
 
 ---
 
+## Source Groups - Named Multi-Source Filtering
+
+Source groups allow you to define reusable sets of sources for cleaner multi-source filtering. Instead of listing sources repeatedly, define a group once and reference it using `:group` syntax.
+
+### Why Use Source Groups?
+
+**Before (repetitive):**
+```python
+flow.register(aggregator1, on="task.done", after=["analyst1", "analyst2", "analyst3"])
+flow.register(aggregator2, on="review.done", after=["analyst1", "analyst2", "analyst3"])
+flow.register(monitor, on="*.error", after=["analyst1", "analyst2", "analyst3"])
+```
+
+**After (with groups):**
+```python
+flow.add_source_group("analysts", ["analyst1", "analyst2", "analyst3"])
+
+flow.register(aggregator1, on="task.done", after=":analysts")
+flow.register(aggregator2, on="review.done", after=":analysts")
+flow.register(monitor, on="*.error@:analysts")
+```
+
+### Defining Source Groups
+
+Use `add_source_group()` to define named groups:
+
+```python
+from agenticflow import Flow
+
+flow = Flow()
+
+# Define a group of analyst agents
+flow.add_source_group("analysts", ["agent1", "agent2", "agent3"])
+
+# Define a group of writer agents
+flow.add_source_group("writers", ["writer1", "writer2"])
+
+# Method chaining supported
+flow.add_source_group("reviewers", ["r1", "r2"]) \
+    .add_source_group("approvers", ["a1"])
+```
+
+**Group names:**
+- Cannot be empty
+- Cannot start with `:` (colon is only for references)
+- Are case-sensitive: `"Team"` and `"team"` are different
+
+### Using Groups with `after` Parameter
+
+Reference groups using `:group` syntax in the `after` parameter:
+
+```python
+# Wait for all analysts
+flow.register(
+    aggregator,
+    on="analysis.done",
+    after=":analysts"  # Reference group with : prefix
+)
+
+# Only process from writers
+flow.register(
+    reviewer,
+    on="draft.ready",
+    after=":writers"
+)
+```
+
+### Using Groups with Pattern Syntax
+
+Reference groups in `event@source` patterns:
+
+```python
+# Monitor all errors from analysts
+flow.register(
+    error_handler,
+    on="*.error@:analysts"
+)
+
+# Process completions from writers
+flow.register(
+    aggregator,
+    on="task.done@:writers"
+)
+
+# Wildcard event with group source
+flow.register(
+    monitor,
+    on="*.done@:reviewers"
+)
+```
+
+### Built-in Groups
+
+AgenticFlow provides two built-in source groups:
+
+#### `:agents` Group (Auto-Populated)
+
+Automatically tracks all registered agents:
+
+```python
+from agenticflow import Agent, Flow
+from agenticflow.models import ChatModel
+
+flow = Flow()
+model = ChatModel()
+
+# Register agents (automatically added to :agents group)
+agent1 = Agent(name="researcher", model=model)
+agent2 = Agent(name="writer", model=model)
+
+flow.register(agent1, on="task.created")
+flow.register(agent2, on="research.done")
+
+# Monitor all agent completions
+flow.register(
+    lambda e: print(f"Agent {e.source} completed"),
+    on="*.done@:agents"  # Matches researcher and writer
+)
+
+# Check what's in the group
+print(flow.get_source_group("agents"))  # {'researcher', 'writer'}
+```
+
+#### `:system` Group (Predefined)
+
+Contains built-in system sources:
+
+```python
+flow = Flow()
+
+# Get system sources
+print(flow.get_source_group("system"))  # {'flow', 'router', 'aggregator'}
+
+# Monitor system events
+flow.register(
+    system_monitor,
+    on="*",
+    after=":system"
+)
+```
+
+### Retrieving Group Contents
+
+Use `get_source_group()` to inspect group membership:
+
+```python
+flow.add_source_group("team", ["alice", "bob", "charlie"])
+
+# Get sources in group (returns a copy)
+sources = flow.get_source_group("team")
+print(sources)  # {'alice', 'bob', 'charlie'}
+
+# Nonexistent groups return empty set
+sources = flow.get_source_group("missing")
+print(sources)  # set()
+```
+
+**Note:** `get_source_group()` returns a **copy** of the group set, so modifying it won't affect the original group.
+
+### Updating Groups
+
+To update a group, simply add it again:
+
+```python
+flow.add_source_group("team", ["alice", "bob"])
+print(flow.get_source_group("team"))  # {'alice', 'bob'}
+
+# Replace the group
+flow.add_source_group("team", ["charlie", "dave"])
+print(flow.get_source_group("team"))  # {'charlie', 'dave'}
+```
+
+### Group Reference Behavior
+
+**Empty or nonexistent groups:**
+- Match **no events**
+- Don't raise errors (fail-safe)
+
+```python
+# Group doesn't exist
+flow.register(handler, on="event", after=":missing")  # Matches nothing
+
+# Empty group
+flow.add_source_group("empty", [])
+flow.register(handler, on="event", after=":empty")  # Matches nothing
+```
+
+**Without `:` prefix:**
+- Treated as literal source name (not a group reference)
+
+```python
+flow.add_source_group("analysts", ["a1", "a2"])
+
+# With : - references group
+flow.register(h1, on="event", after=":analysts")  # Matches a1, a2
+
+# Without : - literal source name
+flow.register(h2, on="event", after="analysts")  # Matches only "analysts"
+```
+
+### Complete Example
+
+```python
+from agenticflow import Agent, Flow
+from agenticflow.models import ChatModel
+from agenticflow.reactors import Aggregator
+
+flow = Flow()
+model = ChatModel()
+
+# Define groups
+flow.add_source_group("analysts", ["analyst1", "analyst2", "analyst3"]) \
+    .add_source_group("writers", ["writer1", "writer2"]) \
+    .add_source_group("reviewers", ["reviewer1"])
+
+# Create agents
+analyst1 = Agent(name="analyst1", model=model)
+analyst2 = Agent(name="analyst2", model=model)
+analyst3 = Agent(name="analyst3", model=model)
+writer1 = Agent(name="writer1", model=model)
+reviewer1 = Agent(name="reviewer1", model=model)
+
+# Register analysts
+flow.register(analyst1, on="task.created", emits="analysis.done")
+flow.register(analyst2, on="task.created", emits="analysis.done")
+flow.register(analyst3, on="task.created", emits="analysis.done")
+
+# Aggregate analysis from :analysts group
+flow.register(
+    Aggregator(collect=3, emit="all_analysis.done"),
+    on="analysis.done@:analysts"
+)
+
+# Writer processes aggregated analysis
+flow.register(writer1, on="all_analysis.done", emits="draft.done")
+
+# Reviewer reviews drafts from :writers
+flow.register(reviewer1, on="draft.done@:writers", emits="flow.done")
+
+# Monitor all agent errors
+flow.register(
+    lambda e: print(f"Error from {e.source}: {e.data}"),
+    on="*.error@:agents"
+)
+
+result = await flow.run("Analyze and write about AI")
+```
+
+### API Reference
+
+**`Flow.add_source_group(name: str, sources: list[str]) -> Self`**
+- Define or update a named source group
+- Returns `self` for method chaining
+- Raises `ValueError` if name is empty or starts with `:`
+
+**`Flow.get_source_group(name: str) -> set[str]`**
+- Get sources in a group
+- Returns empty set if group doesn't exist
+- Returns a **copy** (modifications don't affect original)
+
+**`:group` syntax:**
+- Use in `after` parameter: `after=":analysts"`
+- Use in pattern syntax: `on="event@:analysts"`
+- Built-in groups: `:agents` (auto), `:system` (predefined)
+
+---
+
 ## Pattern Matching
 
 Reactors can subscribe to events using flexible patterns:
