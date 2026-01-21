@@ -1338,9 +1338,33 @@ class Observer:
             if self.config.show_duration and "duration_ms" in data:
                 duration_str = " " + _format_duration(data['duration_ms'])
 
-            # Format: [Agent] [completed] (Xs) - just status, no content duplication
+            # Response metadata formatting (from Response[T] protocol)
+            metadata_parts = []
+            
+            # Token usage
+            if "tokens" in data:
+                tokens = data["tokens"]
+                if isinstance(tokens, dict) and "total" in tokens:
+                    total = tokens["total"]
+                    metadata_parts.append(s.dim(f"{total} tokens"))
+            
+            # Tool calls count
+            if "tool_calls_count" in data:
+                count = data["tool_calls_count"]
+                if count > 0:
+                    metadata_parts.append(s.dim(f"{count} tool{'s' if count > 1 else ''}"))
+            
+            # Success/error indicator
+            if "success" in data and not data["success"]:
+                metadata_parts.append(s.error("failed"))
+            
+            metadata_str = ""
+            if metadata_parts:
+                metadata_str = " • " + " • ".join(metadata_parts)
+
+            # Format: [Agent] [completed] (Xs) • metadata
             formatted_name = _format_agent_name(agent_name)
-            return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.success(duration_str)}"
+            return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.success(duration_str)}{metadata_str}"
 
         elif event_type == TraceType.AGENT_ERROR:
             agent_name = data.get('agent_name', '?')

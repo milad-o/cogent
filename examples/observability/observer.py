@@ -3,12 +3,19 @@ Demo: Observer - Unified Observability System
 
 Observer is your single entry point for ALL observability needs:
 - Live console output (see agent thoughts in real-time)
+- Response metadata (tokens, tool calls, duration) - NEW in v1.13.0
 - Deep execution tracing (graph, timeline, spans)
 - Metrics and statistics
 - Export to JSON, Mermaid
 
+The Observer automatically displays Response[T] metadata:
+  [AgentName] [completed] (Xs) • N tokens • M tools
+
 Usage:
     uv run python examples/observability/observer.py
+    
+See also:
+    examples/observability/response_metadata.py - Detailed Response metadata demo
 """
 
 import asyncio

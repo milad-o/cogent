@@ -1536,6 +1536,48 @@ class Agent:
                 )
             )
 
+    def _extract_response_metadata(self, response: Response[Any]) -> dict[str, Any]:
+        """Extract Response metadata for observability events.
+        
+        Returns dictionary with response metadata suitable for event data.
+        """
+        metadata: dict[str, Any] = {}
+        
+        # Add token usage if available
+        if response.metadata and response.metadata.tokens:
+            metadata["tokens"] = {
+                "prompt": response.metadata.tokens.prompt_tokens,
+                "completion": response.metadata.tokens.completion_tokens,
+                "total": response.metadata.tokens.total_tokens,
+            }
+        
+        # Add duration
+        if response.metadata:
+            metadata["duration"] = response.metadata.duration
+            metadata["model"] = response.metadata.model
+            if response.metadata.correlation_id:
+                metadata["correlation_id"] = response.metadata.correlation_id
+        
+        # Add tool call count
+        if response.tool_calls:
+            metadata["tool_calls_count"] = len(response.tool_calls)
+            metadata["tool_calls"] = [
+                {
+                    "tool": tc.tool_name,
+                    "duration": tc.duration,
+                    "success": tc.success,
+                }
+                for tc in response.tool_calls
+            ]
+        
+        # Add success/error info
+        metadata["success"] = response.success
+        if response.error:
+            metadata["error"] = response.error.message
+            metadata["error_type"] = response.error.type
+        
+        return metadata
+
     def think(
         self,
         prompt: str,
@@ -1687,19 +1729,6 @@ class Agent:
 
             await self._set_status(AgentStatus.IDLE, correlation_id)
 
-            # Emit response event so observer can show the thought
-            await self._emit_event(
-                TraceType.AGENT_RESPONDED,
-                {
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "response": result,
-                    "response_preview": result[:500] if result else "",
-                    "duration_ms": duration_ms,
-                },
-                correlation_id,
-            )
-
             # Build Response object
             metadata = ResponseMetadata(
                 agent=self.name,
@@ -1709,7 +1738,7 @@ class Agent:
                 correlation_id=correlation_id,
             )
 
-            return Response(
+            response_obj = Response(
                 content=result,
                 metadata=metadata,
                 tool_calls=[],
@@ -1717,6 +1746,23 @@ class Agent:
                 messages=messages + [AIMessage(content=result)],  # Include full conversation
                 error=None,
             )
+
+            # Emit response event with Response metadata
+            event_data = {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "response": result,
+                "response_preview": result[:500] if result else "",
+                "duration_ms": duration_ms,
+            }
+            event_data.update(self._extract_response_metadata(response_obj))
+            await self._emit_event(
+                TraceType.AGENT_RESPONDED,
+                event_data,
+                correlation_id,
+            )
+
+            return response_obj
 
         except Exception as e:
             self.state.record_error(str(e))
@@ -3001,7 +3047,7 @@ class Agent:
                 correlation_id=None,
             )
 
-            return Response(
+            response_obj = Response(
                 content=result,
                 metadata=metadata,
                 tool_calls=list(self.state.tool_calls),
@@ -3009,6 +3055,23 @@ class Agent:
                 events=list(self.state.emitted_events),
                 error=None,
             )
+
+            # Emit AGENT_RESPONDED event with Response metadata
+            event_data = {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "response": result,
+                "response_preview": str(result)[:500] if result else "",
+                "duration_ms": duration_ms,
+            }
+            event_data.update(self._extract_response_metadata(response_obj))
+            await self._emit_event(
+                TraceType.AGENT_RESPONDED,
+                event_data,
+                None,
+            )
+
+            return response_obj
             
         except Exception as e:
             # Build Response with error
