@@ -820,6 +820,486 @@ flow.register(
 
 ---
 
+## Coordination Patterns
+
+**New in v1.12.0** — Advanced stateful coordination filters for multi-agent orchestration. Coordinate when ALL specified sources complete before triggering downstream reactors.
+
+### Overview
+
+Coordination patterns solve a common multi-agent challenge: **"Wait for all workers to finish before proceeding."** Instead of manually tracking completion state, use built-in coordination filters that automatically manage state and reset after triggering.
+
+**Common Use Cases:**
+- **Map-Reduce** — Multiple workers process chunks, coordinator aggregates results
+- **Multi-Stage Pipelines** — Stage 2 waits for all Stage 1 agents to complete
+- **Deployment Gates** — Deploy only when all checks pass
+- **Batch Processing** — Process batches with auto-reset between each
+
+### Quick Start
+
+```python
+from agenticflow import Flow, Agent
+from agenticflow.events.patterns import all_sources
+from agenticflow.models import ChatModel
+
+flow = Flow()
+model = ChatModel()
+
+# Three workers process data independently
+worker1 = Agent(name="worker_1", model=model)
+worker2 = Agent(name="worker_2", model=model)
+worker3 = Agent(name="worker_3", model=model)
+
+flow.register(worker1, on="task.created", emits="worker.done")
+flow.register(worker2, on="task.created", emits="worker.done")
+flow.register(worker3, on="task.created", emits="worker.done")
+
+# Coordinator waits for ALL three workers to complete
+coordinator = Agent(name="coordinator", model=model)
+flow.register(
+    coordinator,
+    on="worker.done",
+    when=all_sources(["worker_1", "worker_2", "worker_3"])
+)
+
+# Run: workers execute in parallel, coordinator triggers ONLY when all 3 done
+result = await flow.run("Process this data")
+```
+
+**How it works:**
+1. `task.created` triggers all 3 workers simultaneously
+2. Each worker emits `worker.done` when complete
+3. Coordinator's filter tracks completion: `worker_1` ✓, `worker_2` ✓, `worker_3` ✓
+4. When ALL are done, filter passes → coordinator executes
+5. Filter auto-resets for next run
+
+### Core API
+
+#### `all_sources(sources: list[str])`
+
+Creates a coordination filter that passes ONLY when all listed sources have completed.
+
+```python
+from agenticflow.events.patterns import all_sources
+
+# Wait for 3 specific workers
+flow.register(
+    coordinator,
+    on="worker.done",
+    when=all_sources(["worker_1", "worker_2", "worker_3"])
+)
+
+# Wait for reviewers
+flow.register(
+    approver,
+    on="review.done",
+    when=all_sources(["tech_review", "security_review"])
+)
+```
+
+**Parameters:**
+- `sources: list[str]` — List of source names that must all complete
+
+**Returns:**
+- `StatefulSourceFilter` — Self-contained filter with automatic reset
+
+**Behavior:**
+- Tracks which sources have emitted events
+- Returns `True` only when ALL sources in list have completed
+- Auto-resets after passing (enables reuse for batches)
+- Thread-safe and stateful
+
+#### `StatefulSourceFilter`
+
+The underlying filter implementation. Normally created via `all_sources()`, but can be instantiated directly for advanced use cases.
+
+```python
+from agenticflow.events.patterns import StatefulSourceFilter
+
+# Direct instantiation
+filter = StatefulSourceFilter(
+    required_sources={"analyst1", "analyst2", "analyst3"}
+)
+
+# Use in Flow
+flow.register(aggregator, on="analysis.done", when=filter)
+```
+
+**Properties:**
+- `required_sources: set[str]` — Sources that must complete
+- `completed_sources: set[str]` — Sources that have completed (read-only)
+- `is_complete: bool` — True if all sources completed (read-only)
+
+**Methods:**
+- `__call__(event: Event) -> bool` — Check if event completes coordination
+- `once() -> StatefulSourceFilter` — Create one-time version (see below)
+- `reset() -> None` — Manual reset (rarely needed)
+
+#### `.once()` - One-Time Gates
+
+Create coordination gates that trigger once and never again, even after reset. Perfect for deployment gates and one-time milestones.
+
+```python
+from agenticflow.events.patterns import all_sources
+
+# Deployment gate: trigger once when all checks pass
+flow.register(
+    deploy_agent,
+    on="check.done",
+    when=all_sources(["build_check", "test_check", "security_check"]).once()
+)
+
+# First time all checks pass → deployment triggers
+# Subsequent events → filter blocks (no re-deployment)
+```
+
+**Behavior:**
+- First trigger: Works normally (passes when all sources complete)
+- After trigger: **Permanently blocks** all future events
+- Auto-reset has no effect on one-time filters
+- Useful for irreversible actions (deployment, publishing, notifications)
+
+### Real-World Patterns
+
+#### 1. Map-Reduce
+
+Wait for all workers, then aggregate results:
+
+```python
+from agenticflow import Flow, Agent
+from agenticflow.events.patterns import all_sources
+from agenticflow.models import ChatModel
+
+flow = Flow()
+model = ChatModel()
+
+# Map: Multiple workers process chunks
+workers = [Agent(name=f"worker_{i}", model=model) for i in range(1, 4)]
+for worker in workers:
+    flow.register(worker, on="task.created", emits="worker.done")
+
+# Reduce: Coordinator aggregates when ALL workers complete
+coordinator = Agent(name="coordinator", model=model)
+flow.register(
+    coordinator,
+    on="worker.done",
+    when=all_sources(["worker_1", "worker_2", "worker_3"])
+)
+
+result = await flow.run("Process data chunks")
+```
+
+**Execution Flow:**
+```
+task.created → worker_1, worker_2, worker_3 (parallel)
+  worker_1 → worker.done ✓
+  worker_2 → worker.done ✓
+  worker_3 → worker.done ✓
+    → coordinator (all done!)
+```
+
+#### 2. Multi-Stage Review
+
+Stage 2 waits for all Stage 1 reviewers:
+
+```python
+flow = Flow()
+model = ChatModel()
+
+# Stage 1: Technical + Security review (parallel)
+tech_reviewer = Agent(name="tech_review", model=model)
+security_reviewer = Agent(name="security_review", model=model)
+
+flow.register(tech_reviewer, on="document.submitted", emits="review.done")
+flow.register(security_reviewer, on="document.submitted", emits="review.done")
+
+# Stage 2: Business review (after Stage 1 complete)
+business_reviewer = Agent(name="business_review", model=model)
+flow.register(
+    business_reviewer,
+    on="review.done",
+    when=all_sources(["tech_review", "security_review"])
+)
+
+result = await flow.run("Review document")
+```
+
+**Execution Flow:**
+```
+document.submitted → tech_review, security_review (parallel)
+  tech_review → review.done ✓
+  security_review → review.done ✓
+    → business_review (Stage 2!)
+```
+
+#### 3. Batch Processing with Auto-Reset
+
+Process multiple batches with same coordination filter:
+
+```python
+flow = Flow()
+model = ChatModel()
+
+worker_a = Agent(name="worker_a", model=model)
+worker_b = Agent(name="worker_b", model=model)
+
+# Single filter instance, reused for all batches
+coordination = all_sources(["worker_a", "worker_b"])
+
+flow.register(worker_a, on="batch.created", emits="batch.done")
+flow.register(worker_b, on="batch.created", emits="batch.done")
+flow.register(
+    lambda e: print(f"Batch {e.data['batch_id']} complete!"),
+    on="batch.done",
+    when=coordination  # Reused for each batch
+)
+
+# Process 3 batches - filter auto-resets after each
+for batch_id in range(1, 4):
+    await flow.emit("batch.created", {"batch_id": batch_id})
+```
+
+**Execution Flow:**
+```
+Batch 1:
+  batch.created → worker_a, worker_b
+    worker_a → batch.done ✓
+    worker_b → batch.done ✓
+      → "Batch 1 complete!" (filter auto-resets)
+
+Batch 2:
+  batch.created → worker_a, worker_b
+    worker_a → batch.done ✓
+    worker_b → batch.done ✓
+      → "Batch 2 complete!" (filter auto-resets)
+
+Batch 3: (same pattern)
+```
+
+#### 4. Deployment Gate (One-Time)
+
+Deploy only when all checks pass, never re-deploy:
+
+```python
+flow = Flow()
+model = ChatModel()
+
+# Check agents
+build_check = Agent(name="build_check", model=model)
+test_check = Agent(name="test_check", model=model)
+security_check = Agent(name="security_check", model=model)
+
+flow.register(build_check, on="deploy.requested", emits="check.done")
+flow.register(test_check, on="deploy.requested", emits="check.done")
+flow.register(security_check, on="deploy.requested", emits="check.done")
+
+# Deployment agent with one-time gate
+deploy_agent = Agent(name="deployment", model=model)
+flow.register(
+    deploy_agent,
+    on="check.done",
+    when=all_sources(["build_check", "test_check", "security_check"]).once()
+)
+
+# First request: checks pass → deployment
+await flow.emit("deploy.requested", {"version": "1.0"})
+
+# Second request: checks pass → NO deployment (gate already triggered)
+await flow.emit("deploy.requested", {"version": "1.0"})
+```
+
+#### 5. Composition with Other Filters
+
+Combine coordination with data filters:
+
+```python
+from agenticflow.events.patterns import all_sources
+
+# Only escalate when ALL supervisors flag AND priority is high
+flow.register(
+    escalation_handler,
+    on="supervisor.review",
+    when=all_sources(["super_1", "super_2", "super_3"]) & 
+         (lambda e: e.data.get("priority") == "high")
+)
+
+# Coordinator for analysts, but skip if already processed
+flow.register(
+    coordinator,
+    on="analysis.done",
+    when=all_sources(["a1", "a2"]) & 
+         (lambda e: not e.data.get("processed", False))
+)
+```
+
+**Operators:**
+- `&` — AND (coordination AND data condition)
+- `|` — OR (coordination OR fallback)
+- `~` — NOT (invert condition)
+
+### Integration with Source Groups
+
+Coordination patterns work seamlessly with source groups:
+
+```python
+from agenticflow.events.patterns import all_sources
+
+flow = Flow()
+
+# Define analyst group
+flow.add_source_group("analysts", ["analyst1", "analyst2", "analyst3"])
+
+# Coordination with group reference
+flow.register(
+    aggregator,
+    on="analysis.done",
+    when=all_sources(flow.get_source_group("analysts"))  # Pass group sources
+)
+
+# Or expand inline
+flow.register(
+    coordinator,
+    on="task.done",
+    when=all_sources(list(flow.get_source_group("analysts")))
+)
+```
+
+**Note:** Coordination filters expect explicit source lists. Convert groups to lists before passing.
+
+### Advanced Usage
+
+#### Manual Reset
+
+Normally unnecessary (auto-reset), but available for custom control:
+
+```python
+coordination = all_sources(["w1", "w2", "w3"])
+
+# Auto-reset happens after passing
+# But you can manually reset if needed:
+coordination.reset()
+```
+
+#### State Inspection
+
+Check coordination state for debugging or monitoring:
+
+```python
+coordination = all_sources(["w1", "w2", "w3"])
+
+# Check completion state
+print(coordination.completed_sources)  # set()
+print(coordination.is_complete)        # False
+
+# After events
+# ... worker_1 emits, worker_2 emits
+print(coordination.completed_sources)  # {'worker_1', 'worker_2'}
+print(coordination.is_complete)        # False (still waiting for worker_3)
+```
+
+#### Custom Source Sets
+
+Pass any iterable of source names:
+
+```python
+# From config
+sources_from_config = ["agent_a", "agent_b", "agent_c"]
+filter = all_sources(sources_from_config)
+
+# Dynamically generated
+worker_names = [f"worker_{i}" for i in range(1, 6)]
+filter = all_sources(worker_names)
+
+# From source group
+analyst_sources = list(flow.get_source_group("analysts"))
+filter = all_sources(analyst_sources)
+```
+
+### Best Practices
+
+1. **Use `all_sources()` helper** — Simpler than direct `StatefulSourceFilter` instantiation
+2. **Auto-reset is default** — No manual reset needed for batch processing
+3. **`.once()` for gates** — Deployment, publishing, or any irreversible action
+4. **Combine with filters** — Use `&` to add data conditions alongside coordination
+5. **Source groups for maintainability** — Define groups, then pass to `all_sources()`
+6. **Observable coordination** — Use `Observer.trace()` to see coordination flow in action
+
+### Common Mistakes
+
+**❌ Forgetting source names must match exactly:**
+```python
+# Worker registered with name="worker_1"
+flow.register(Agent(name="worker_1", model=model), on="task")
+
+# Coordination expects "worker_1" (must match!)
+flow.register(coordinator, on="done", when=all_sources(["worker_1"]))  # ✓
+flow.register(coordinator, on="done", when=all_sources(["worker1"]))   # ✗ (no match)
+```
+
+**❌ Using coordination without event emission:**
+```python
+# Worker doesn't emit events
+flow.register(worker, on="task")  # Missing emits=
+
+# Coordinator never triggers (no events to coordinate)
+flow.register(coordinator, on="worker.done", when=all_sources(["worker"]))  # ✗
+```
+
+**✅ Correct:**
+```python
+flow.register(worker, on="task", emits="worker.done")  # ✓ Emits events
+flow.register(coordinator, on="worker.done", when=all_sources(["worker"]))  # ✓
+```
+
+**❌ Reusing one-time gates:**
+```python
+gate = all_sources(["a", "b"]).once()
+
+# First use: works
+flow.register(handler1, on="event", when=gate)
+
+# Second use: permanently blocked!
+flow.register(handler2, on="event", when=gate)  # ✗ Never triggers
+```
+
+**✅ Create separate gates:**
+```python
+flow.register(handler1, on="event", when=all_sources(["a", "b"]).once())  # ✓
+flow.register(handler2, on="event", when=all_sources(["a", "b"]).once())  # ✓
+```
+
+### API Reference
+
+**`all_sources(sources: list[str]) -> StatefulSourceFilter`**
+- Creates coordination filter for listed sources
+- Auto-resets after passing
+- Thread-safe
+
+**`StatefulSourceFilter`**
+- Properties:
+  - `required_sources: set[str]` — Required source set
+  - `completed_sources: set[str]` — Completed so far (read-only)
+  - `is_complete: bool` — All completed? (read-only)
+- Methods:
+  - `__call__(event: Event) -> bool` — Check coordination
+  - `once() -> StatefulSourceFilter` — Create one-time version
+  - `reset() -> None` — Manual reset (rarely needed)
+
+**Composition:**
+- `&` — AND with other filters
+- `|` — OR with other filters
+- `~` — NOT (invert)
+
+### Examples
+
+See comprehensive examples in [`examples/flow/coordination_patterns.py`](../examples/flow/coordination_patterns.py):
+- Map-Reduce Pattern
+- Multi-Stage Review
+- Batch Processing with Auto-Reset
+- One-Time Deployment Gates
+- Filter Composition
+
+---
+
 ## Pattern Syntax - Event@Source Filtering
 
 **New in v1.10.0** — An even more concise syntax for source filtering: embed the source filter directly in the event pattern using the `@` separator.

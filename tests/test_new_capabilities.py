@@ -344,10 +344,17 @@ class TestShellCapability:
     @pytest.mark.asyncio
     async def test_run_command_timeout(self) -> None:
         """Test command timeout."""
+        import sys
         from agenticflow.capabilities import Shell
         
-        shell = Shell(allowed_commands=["sleep"])
-        result = await shell._run_command("sleep 10", timeout=1)
+        # Use platform-specific sleep command
+        if sys.platform == "win32":
+            # PowerShell sleep command (timeout doesn't pause on Windows, so use Start-Sleep)
+            shell = Shell(allowed_commands=["powershell"])
+            result = await shell._run_command("powershell -Command Start-Sleep -Seconds 10", timeout=1)
+        else:
+            shell = Shell(allowed_commands=["sleep"])
+            result = await shell._run_command("sleep 10", timeout=1)
         
         assert not result.success
         assert result.timed_out

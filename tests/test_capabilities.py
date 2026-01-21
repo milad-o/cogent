@@ -181,7 +181,7 @@ class TestKnowledgeGraphCapability:
         result = remember.invoke({
             "entity": "Alice",
             "entity_type": "Person",
-            "facts": '{"role": "engineer"}'
+            "attributes": '{"role": "engineer"}'
         })
         
         assert "Remembered" in result
@@ -234,7 +234,7 @@ class TestKnowledgeGraphCapability:
         kg.graph.add_relationship("Alice", "works_at", "Acme")
         
         query = next(t for t in kg.tools if t.name == "query_knowledge")
-        result = query.invoke({"pattern": "Alice -works_at-> ?"})
+        result = query.invoke({"source": "Alice", "relation": "works_at", "target": None})
         
         assert "Acme" in result
     

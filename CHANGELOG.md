@@ -7,6 +7,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-01-21
+
+### Added
+
+#### Flow: Coordination Patterns
+
+**Stateful coordination filters** — Advanced patterns for coordinating multiple agents based on completion state:
+
+**Core API:**
+- `all_sources(["w1", "w2", "w3"])` — Filter that passes ONLY when ALL listed sources have completed
+- `StatefulSourceFilter` — Self-contained filter with automatic reset capability
+- `.once()` method — Create one-time coordination gates (trigger once, then block)
+
+**Real-World Patterns:**
+```python
+# Map-Reduce: Wait for all workers before coordinator
+flow.register(coordinator, on="worker.done", when=all_sources(["w1", "w2", "w3"]))
+
+# Multi-Stage: Technical + Security review → Business review
+flow.register(business, on="review.done", when=all_sources(["tech", "security"]))
+
+# Deployment Gate: One-time trigger when all checks pass
+flow.register(deploy, on="check.done", when=all_sources(["build", "test", "security"]).once())
+```
+
+**Auto-Reset:**
+- Coordination state resets automatically after triggering
+- Enables batch processing with same filter
+- No manual reset needed
+
+**Features:**
+- Self-contained: No external coordination manager
+- Composable: Works with other filters via `&` (AND), `|` (OR)
+- Type-safe: Full type hints and validation
+- Observable: Integrates with Flow's observability system
+
+**Examples:**
+- 5 comprehensive examples in `examples/flow/coordination_patterns.py`
+- Map-Reduce, Multi-Stage Review, Batch Processing, One-Time Gates, Filter Composition
+- Full observability integration showing coordination flow
+
+**Documentation:**
+- Complete coordination patterns section in `docs/reactors.md`
+- Event taxonomy: `events/standards.py` (TaskEvents, AgentEvents, FlowEvents, etc.)
+
+**Tests:**
+- 31 comprehensive tests (100% passing)
+- State management, reset logic, one-time gates, composition
+- Integration with Flow, source groups, and pattern syntax
+
+### Fixed
+
+#### Observability: TraceBus Integration
+
+**Complete observability integration** — Fixed architectural disconnect between Flow, Agent, and Executors:
+
+**Terminology Clarification:**
+- `trace_bus` — TraceBus for observability/telemetry (Observer subscribes)
+- `event_bus` — EventBus for reactive event-driven system (Flow events)
+- Clear separation prevents confusion
+
+**Integration Fixes:**
+- Flow creates TraceBus in `__init__`, attaches Observer immediately
+- Agent renamed `event_bus` → `trace_bus` for clarity
+- Executors fixed to publish to `agent.trace_bus` (was looking for `event_bus`)
+- Flow passes `trace_bus` to agents when wrapping reactors
+
+**Result:**
+- Full trace visibility for all Flow executions
+- Agent lifecycle events (starting, thinking, completed)
+- Output events with timing and duration
+- Coordination patterns fully observable
+
+**Before:**
+```python
+# Observability broken - no events received
+flow = Flow(observer=Observer.trace())
+# Output: (silence)
+```
+
+**After:**
+```python
+# Full observability working
+flow = Flow(observer=Observer.trace())
+# Output:
+# [15:06:13.448] [agent1] [starting]
+# [15:06:13.449] [agent1] [thinking]
+# [15:06:17.317] [agent1] [completed] (3.9s)
+# [15:06:17.318] [agent1] [output]
+#   Agent output here...
+```
+
 ## [1.11.0] - 2026-01-21
 
 ### Added
