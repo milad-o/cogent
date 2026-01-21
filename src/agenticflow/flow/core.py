@@ -370,6 +370,7 @@ class Flow:
         name: str | None = None,
         priority: int = 0,
         when: Callable[[Event], bool] | None = None,
+        after: str | list[str] | None = None,
         emits: str | None = None,
     ) -> str:
         """Register a reactor to respond to events.
@@ -380,6 +381,11 @@ class Flow:
             name: Optional name/ID for the reactor (auto-generated if None)
             priority: Execution priority (higher values execute first)
             when: Optional condition function for filtering events
+            after: Filter to events from specific source(s). Supports:
+                - Exact match: after="researcher"
+                - Multiple sources: after=["agent1", "agent2"]
+                - Wildcard patterns: after="agent*"
+                Cannot be used together with `when` parameter.
             emits: Event type to emit after reactor completes
 
         Returns:
@@ -400,6 +406,13 @@ class Flow:
                 when=lambda e: e.data.get("priority") == "high",
             )
 
+            # Register with source filter
+            flow.register(
+                reviewer,
+                on="agent.done",
+                after="researcher"  # Only from researcher
+            )
+
             # Register a function
             flow.register(
                 lambda event: event.data["value"] * 2,
@@ -407,6 +420,18 @@ class Flow:
             )
             ```
         """
+        # Validate conflicting parameters
+        if after is not None and when is not None:
+            raise ValueError(
+                "Cannot specify both 'after' and 'when' parameters. "
+                "Use 'after' for source filtering or 'when' for custom conditions."
+            )
+        
+        # Convert 'after' to 'when' condition
+        if after is not None:
+            from agenticflow.events.patterns import from_source
+            when = from_source(after)
+        
         # Wrap non-reactor types
         wrapped_reactor = self._wrap_reactor(reactor)
 
