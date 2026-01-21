@@ -15,6 +15,14 @@ from agenticflow.core.enums import (
     TaskStatus,
     TraceType,
 )
+from agenticflow.core.response import (
+    ErrorInfo,
+    Response,
+    ResponseError,
+    ResponseMetadata,
+    TokenUsage,
+    ToolCall,
+)
 from agenticflow.core.utils import (
     IdempotencyGuard,
     RetryBudget,
@@ -38,6 +46,13 @@ __all__ = [
     # Context
     "RunContext",
     "EMPTY_CONTEXT",
+    # Response Protocol
+    "Response",
+    "ResponseMetadata",
+    "TokenUsage",
+    "ToolCall",
+    "ErrorInfo",
+    "ResponseError",
     # Utilities
     "generate_id",
     "now_utc",
