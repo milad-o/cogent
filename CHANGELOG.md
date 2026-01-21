@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.13.0] - 2026-01-21
+
 ### Added
 
-#### Response Protocol (v1.13.0)
+#### Response Protocol
 
 **Unified response protocol** — Consistent responses across all agent operations with full metadata, observability, and error handling.
 
@@ -87,10 +91,24 @@ tokens = core_response.metadata.tokens.total_tokens
 - 15 A2A integration tests
 - All backward compatibility tests passing
 
+**Observability Integration:**
+- Enhanced Observer to display Response metadata automatically
+- Observer shows: `[Agent] [completed] (Xs) • N tokens • M tools`
+- Added `_extract_response_metadata()` to Agent for rich event data
+- Updated AGENT_RESPONDED event handler with metadata display
+- Token usage, tool call counts, and error status in real-time output
+- Maintains backward compatibility with existing event structure
+
+**Examples:**
+- `examples/basics/response.py` — Response[T] usage patterns
+- `examples/observability/response_metadata.py` — Observer integration
+- Updated examples README with v1.13.0 section
+
 **Documentation:**
 - Complete Response protocol section in `docs/core.md`
 - Updated A2A documentation in `docs/a2a.md`
 - Response-Event integration examples
+- Observer metadata display documentation
 
 ---
 
