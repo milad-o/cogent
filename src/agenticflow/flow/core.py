@@ -20,7 +20,9 @@ from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from agenticflow.events import Event, EventBus
 from agenticflow.flow.config import FlowConfig, FlowResult, ReactorBinding
+from agenticflow.flow.state import CoordinationManager
 from agenticflow.reactors.base import Reactor
+from agenticflow.observability.bus import TraceBus
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -145,6 +147,13 @@ class Flow:
         self._checkpointer = checkpointer
         self._thread_id_resolver = thread_id_resolver
 
+        # Create TraceBus for observability events
+        self._trace_bus = TraceBus()
+        
+        # Attach observer to trace bus if provided
+        if self._observer:
+            self._observer.attach(self._trace_bus)
+
         # Reactor registry: id -> reactor instance
         self._reactors: dict[str, Reactor] = {}
 
@@ -167,6 +176,9 @@ class Flow:
         # Source groups: name -> set of sources
         self._source_groups: dict[str, set[str]] = {}
         self._init_builtin_groups()
+
+        # Coordination manager for stateful patterns
+        self._coordination = CoordinationManager()
 
         # Container-like features
         self._shared_memory: Any | None = None
@@ -315,6 +327,38 @@ class Flow:
             ```
         """
         return self._source_groups.get(name, set()).copy()
+    
+    def reset_coordination(self, binding_id: str) -> Self:
+        """Manually reset a coordination point for a specific reactor binding.
+        
+        Use this to reset coordinations that have reset_after=False, allowing
+        them to trigger again when all sources emit in the next cycle.
+        
+        Args:
+            binding_id: Unique identifier for the reactor binding (from register())
+        
+        Returns:
+            Self for method chaining
+        
+        Example:
+            ```python
+            # Register one-time coordination
+            binding_id = flow.register(
+                handler,
+                on="task.done",
+                when=all_sources(["a", "b", "c"], reset_after=False)
+            )
+            
+            # Later, manually reset to allow triggering again
+            flow.reset_coordination(binding_id)
+            ```
+        
+        Note:
+            For coordinations with reset_after=True (default), this method
+            is not needed as they auto-reset after each completion.
+        """
+        self._coordination.reset_coordination(binding_id)
+        return self
 
     # -------------------------------------------------------------------------
     # Memory API
@@ -608,6 +652,9 @@ class Flow:
         # Generate ID if not provided
         reactor_id = name or getattr(reactor, "name", None) or _generate_id()
 
+        # No initialization needed - StatefulSourceFilter is self-contained!
+        # Filters now manage their own state internally.
+        
         # Store reactor
         self._reactors[reactor_id] = wrapped_reactor
 
@@ -632,9 +679,14 @@ class Flow:
         if hasattr(reactor, "handle") and callable(reactor.handle):
             return reactor  # type: ignore
 
-        # Agent -> AgentReactor
+        # Agent -> AgentReactor (pass trace_bus for observability)
         if hasattr(reactor, "run") and hasattr(reactor, "name"):
             from agenticflow.agent.reactor import AgentReactor
+            
+            # Connect agent to Flow's trace bus for unified observability
+            if hasattr(reactor, "trace_bus") and reactor.trace_bus is None:
+                reactor.trace_bus = self._trace_bus
+            
             return AgentReactor(reactor)  # type: ignore
 
         # Callable -> FunctionReactor

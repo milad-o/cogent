@@ -11,8 +11,10 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any, TYPE_CHECKING
 
 from agenticflow.events.event import Event
+from agenticflow.flow.state import CoordinationState
 
 # Type aliases
 EventPattern = str | re.Pattern[str]
@@ -411,3 +413,281 @@ def matching_sources(pattern: str) -> SourceFilter:
         ```
     """
     return from_source(pattern)
+
+
+# -------------------------------------------------------------------------
+# Stateful Coordination Patterns
+# -------------------------------------------------------------------------
+
+
+class StatefulSourceFilter(SourceFilter):
+    """Source filter that tracks state across multiple events (coordination pattern).
+    
+    Unlike regular SourceFilter which is stateless, this filter maintains internal state
+    to implement coordination patterns like "wait for ALL sources to emit".
+    
+    Each instance has its own independent CoordinationState that tracks which sources
+    have emitted. No external manager or initialization required.
+    
+    Example:
+        ```python
+        # Simple and clean - just create and use
+        coordination = all_sources(["worker_0", "worker_1", "worker_2"])
+        
+        # Use directly as event filter
+        if coordination(event):
+            print("All workers complete!")
+        
+        # Or with Flow.register()
+        flow.register(reducer, on="task.done", when=coordination)
+        ```
+    """
+    
+    def __init__(
+        self,
+        sources: frozenset[str],
+        timeout: float | None = None
+    ) -> None:
+        """Initialize stateful source filter with internal state.
+        
+        Args:
+            sources: Set of source names to coordinate.
+            timeout: Optional timeout in seconds (future feature).
+        """
+        self._sources = sources
+        self._timeout = timeout
+        
+        # Create internal coordination state
+        self._state = CoordinationState(
+            required_sources=sources,
+            timeout_at=None  # Timeout support is future work
+        )
+        
+        # Predicate that checks coordination completion
+        super().__init__(self._check_coordination)
+    
+    def _check_coordination(self, event: Event) -> bool:
+        """Check if this event completes the coordination.
+        
+        Args:
+            event: Event to check.
+        
+        Returns:
+            True if event completes coordination (all sources seen), False otherwise.
+        
+        Note:
+            Automatically resets after completion to allow repeated coordination cycles.
+        """
+        # Add source and check if coordination complete
+        completed = self._state.add_source(event.source)
+        
+        # Always auto-reset after completion
+        if completed:
+            self._state.reset()
+        
+        return completed
+    
+    def reset(self) -> None:
+        """Manually reset coordination state.
+        
+        Use this when reset_after=False to manually reset the coordination
+        and allow it to trigger again.
+        
+        Example:
+            ```python
+            coordination = all_sources(["a", "b"], reset_after=False)
+            # ... coordination triggers once ...
+            coordination.reset()  # Allow it to trigger again
+            ```
+        """
+        self._state.reset()
+    
+    @property
+    def completed(self) -> bool:
+        """Check if coordination is currently completed."""
+        return self._state.completed
+    
+    @property
+    def seen_sources(self) -> set[str]:
+        """Get set of sources that have emitted so far."""
+        return self._state.seen_sources.copy()
+    
+    @property
+    def remaining_sources(self) -> set[str]:
+        """Get set of sources that haven't emitted yet."""
+        return set(self._state.required_sources - self._state.seen_sources)
+    
+    def once(self) -> SourceFilter:
+        """Return a one-time version of this filter.
+        
+        The returned filter will only trigger once, then always return False.
+        Perfect for deployment gates or one-time coordination events.
+        
+        Returns:
+            OneTimeFilter that wraps this coordination filter.
+        
+        Example:
+            ```python
+            # Repeated coordination (default)
+            batch_coord = all_sources(["w1", "w2"])
+            # Triggers every time all workers complete
+            
+            # One-time coordination
+            deploy_gate = all_sources(["build", "test", "security"]).once()
+            # Triggers once when all checks pass, then never again
+            ```
+        """
+        return OneTimeFilter(self)
+    
+    def __repr__(self) -> str:
+        sources_str = ", ".join(sorted(self._sources))
+        return f"StatefulSourceFilter(sources=[{sources_str}])"
+
+
+class OneTimeFilter(SourceFilter):
+    """Wrapper that makes any filter trigger only once.
+    
+    After the wrapped filter returns True once, this filter will always
+    return False, regardless of subsequent events.
+    
+    Example:
+        ```python
+        # One-time coordination
+        gate = all_sources(["a", "b", "c"]).once()
+        
+        # First time all sources emit: True
+        # All subsequent times: False (even if coordination completes again)
+        ```
+    """
+    
+    def __init__(self, wrapped: SourceFilter) -> None:
+        """Initialize one-time filter.
+        
+        Args:
+            wrapped: The filter to wrap (typically a StatefulSourceFilter).
+        """
+        self._wrapped = wrapped
+        self._triggered = False
+        super().__init__(self._check_once)
+    
+    def _check_once(self, event: Event) -> bool:
+        """Check wrapped filter, but only trigger once.
+        
+        Args:
+            event: Event to check.
+        
+        Returns:
+            True only the first time wrapped filter returns True.
+        """
+        if self._triggered:
+            return False
+        
+        if self._wrapped(event):
+            self._triggered = True
+            return True
+        
+        return False
+    
+    def reset(self) -> None:
+        """Reset to allow triggering again.
+        
+        This also resets the wrapped filter if it has a reset() method.
+        """
+        self._triggered = False
+        if hasattr(self._wrapped, 'reset'):
+            self._wrapped.reset()
+    
+    @property
+    def triggered(self) -> bool:
+        """Check if this filter has already triggered."""
+        return self._triggered
+    
+    def __repr__(self) -> str:
+        return f"OneTimeFilter({self._wrapped!r})"
+
+
+def all_sources(
+    sources: list[str],
+    *,
+    timeout: float | None = None
+) -> StatefulSourceFilter:
+    """Create a coordination point that waits for ALL specified sources.
+    
+    This is a stateful filter that tracks which sources have emitted events
+    and only triggers when ALL required sources have emitted at least once.
+    
+    **Automatically resets** after each completion, allowing repeated coordination
+    cycles. For one-time gates, use simple application logic (boolean flag).
+    
+    Each filter instance maintains its own independent state - no external
+    manager or initialization required. Just create and use!
+    
+    Common use cases:
+    - Map-reduce: Wait for all workers to complete before aggregating
+    - Fan-in: Wait for all parallel tasks to finish before proceeding
+    - Multi-reviewer approval: Wait for all reviewers to approve
+    - Checkpoint: Wait for all services to reach a checkpoint
+    
+    Args:
+        sources: List of source names to wait for (e.g., ["worker_0", "worker_1"]).
+        timeout: Optional timeout in seconds (future feature, currently ignored).
+    
+    Returns:
+        StatefulSourceFilter that auto-resets after each completion.
+    
+    Examples:
+        ```python
+        # Simple - just create and use
+        coordination = all_sources(["worker_0", "worker_1", "worker_2"])
+        
+        # Use directly as event filter
+        event = Event(name="task.done", source="worker_0")
+        if coordination(event):
+            print("All workers complete!")
+        
+        # Batch processing (auto-resets every cycle)
+        batch_coord = all_sources(["w1", "w2"])
+        for batch in batches:
+            if batch_coord(event):
+                process_batch()  # Happens every cycle
+        
+        # One-time gate (deployment, approval, etc.)
+        deploy_gate = all_sources(["build", "test", "security"]).once()
+        if deploy_gate(event):
+            deploy()  # Only happens once, automatically
+        
+        # With Flow.register()
+        flow.register(
+            reducer,
+            on="task.done",
+            when=all_sources(["worker_0", "worker_1", "worker_2"])
+        )
+        
+        # Combine with other filters
+        coordination = all_sources(["w1", "w2"]) & (lambda e: e.data.get("success"))
+        
+        # Check state (introspection)
+        print(f"Completed: {coordination.completed}")
+        print(f"Seen: {coordination.seen_sources}")
+        print(f"Remaining: {coordination.remaining_sources}")
+        ```
+    
+    Notes:
+        - Each instance has its own independent state.
+        - Automatically resets after completion for repeated cycles.
+        - Duplicate events from same source are ignored (counted only once).
+        - Events from sources not in the list are ignored.
+    
+    See Also:
+        - `from_source()`: Stateless filtering by source
+        - `StatefulSourceFilter.once()`: One-time coordination gate
+        - `StatefulSourceFilter.reset()`: Manual reset (rarely needed)
+    """
+    if not sources:
+        raise ValueError("all_sources() requires at least one source")
+    
+    return StatefulSourceFilter(
+        sources=frozenset(sources),
+        timeout=timeout
+    )
+

@@ -10,6 +10,7 @@ Includes:
 - EventStore: Persistent event storage for sourcing and replay
 - Pattern matching: Utilities for event filtering
 - Pattern parsing: Parse event@source syntax
+- Standards: Semantic event name conventions
 - Sources: External event sources (webhooks, file watchers, queues)
 - Sinks: Outbound event sinks (webhooks, queues)
 """
@@ -32,6 +33,15 @@ from agenticflow.events.patterns import (
     matches_event,
     not_,
     not_from_source,
+)
+from agenticflow.events.standards import (
+    AgentEvents,
+    BatchEvents,
+    DeploymentEvents,
+    FlowEvents,
+    IncidentEvents,
+    ReviewEvents,
+    TaskEvents,
 )
 from agenticflow.events.sinks import (
     EventSink,

@@ -139,7 +139,7 @@ class Agent:
         resilience: ResilienceConfig | None = None,
 
         # Advanced parameters (usually provided by Flow)
-        event_bus: TraceBus | None = None,
+        trace_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
 
         # Memory and state
@@ -394,7 +394,7 @@ class Agent:
         self.id = generate_id()
         self.config = config
         self.state = AgentState()
-        self.event_bus = event_bus
+        self.trace_bus = trace_bus
         self.tool_registry = tool_registry
         self._model = None
         self._lock = asyncio.Lock()
@@ -505,9 +505,9 @@ class Agent:
             return
 
         # Create an event bus if agent doesn't have one (standalone usage)
-        if self.event_bus is None:
+        if self.trace_bus is None:
             from agenticflow.observability import TraceBus
-            self.event_bus = TraceBus()
+            self.trace_bus = TraceBus()
 
         # Map verbose levels to Observer presets
         from agenticflow.observability import Observer
@@ -527,7 +527,7 @@ class Agent:
             )
 
         # Connect observer to event bus
-        self._observer.attach(self.event_bus)
+        self._observer.attach(self.trace_bus)
 
     def _setup_observer(self, observer: Any) -> None:
         """Setup observer instance for standalone agent usage.
@@ -536,12 +536,12 @@ class Agent:
             observer: Observer instance to attach.
         """
         # Create an event bus if agent doesn't have one (standalone usage)
-        if self.event_bus is None:
+        if self.trace_bus is None:
             from agenticflow.observability import TraceBus
-            self.event_bus = TraceBus()
+            self.trace_bus = TraceBus()
 
         self._observer = observer
-        self._observer.attach(self.event_bus)
+        self._observer.attach(self.trace_bus)
 
     def add_observer(self, observer: Any) -> None:
         """Add an observer for monitoring agent execution.
@@ -686,11 +686,11 @@ class Agent:
             from agenticflow.tools.deferred import DeferredManager
 
             # Ensure event bus exists
-            if self.event_bus is None:
+            if self.trace_bus is None:
                 from agenticflow.observability.bus import TraceBus
-                self.event_bus = TraceBus()
+                self.trace_bus = TraceBus()
 
-            self._deferred_manager = DeferredManager(self.event_bus)
+            self._deferred_manager = DeferredManager(self.trace_bus)
 
         return self._deferred_manager
 
@@ -896,14 +896,14 @@ class Agent:
         """
         # Always create a taskboard for internal use
         if taskboard is None or taskboard is False:
-            self._taskboard = TaskBoard(event_bus=self.event_bus)
+            self._taskboard = TaskBoard(event_bus=self.trace_bus)
             self._taskboard_enabled = False
             return
 
         # Enable taskboard with tools
         config = TaskBoardConfig() if taskboard is True else taskboard
 
-        self._taskboard = TaskBoard(config, event_bus=self.event_bus)
+        self._taskboard = TaskBoard(config, event_bus=self.trace_bus)
         self._taskboard_enabled = True
 
         # Add taskboard tools to agent
@@ -1456,8 +1456,8 @@ class Agent:
         # Skip event in turbo mode
         if self._turbo_mode:
             return
-        if self.event_bus:
-            await self.event_bus.publish(
+        if self.trace_bus:
+            await self.trace_bus.publish(
                 Trace(
                     type=TraceType.AGENT_STATUS_CHANGED,
                     data={
@@ -1481,8 +1481,8 @@ class Agent:
         # Skip events in turbo mode for max speed
         if self._turbo_mode:
             return
-        if self.event_bus:
-            await self.event_bus.publish(
+        if self.trace_bus:
+            await self.trace_bus.publish(
                 Trace(
                     type=event_type,
                     data=data,
