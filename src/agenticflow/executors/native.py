@@ -363,7 +363,7 @@ class NativeExecutor(BaseExecutor):
             context_dict = context
 
         # Get observability components
-        event_bus = getattr(self.agent, 'event_bus', None)
+        event_bus = getattr(self.agent, 'trace_bus', None)
         agent_name = self.agent.name or "agent"
 
         # Update resilience tracker if we have one
@@ -451,7 +451,7 @@ class NativeExecutor(BaseExecutor):
         if sys_prompt and not isinstance(messages[0], SystemMessage):
             messages = [SystemMessage(content=sys_prompt), *messages]
 
-        event_bus = getattr(self.agent, 'event_bus', None)
+        event_bus = getattr(self.agent, 'trace_bus', None)
         agent_name = self.agent.name or "agent"
 
         if self._model_resilience and hasattr(self, "tracker"):

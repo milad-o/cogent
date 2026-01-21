@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.11.0-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.12.0-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,27 +58,24 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.11.0 - January 2026)
+## 🎉 Latest Changes (v1.12.0 - January 2026)
 
-**Source Groups for Multi-Source Filtering**
+**Coordination Patterns**
+- 🎯 **Stateful Coordination** — `all_sources(["w1", "w2", "w3"])` waits for ALL sources to complete
+- 🔄 **Auto-Reset** — Coordination state resets automatically after triggering
+- 🎫 **One-Time Gates** — `.once()` method for single-trigger coordination
+- 🧩 **Composable** — Works with filter composition (`&`, `|`) and source groups
+- 🔍 **Fully Observable** — Complete observability integration with TraceBus
+- 📖 **Examples & Docs** — 5 real-world patterns (Map-Reduce, Multi-Stage, Batch, Gates, Composition)
+
+**Previous (v1.11.0)** — Source Groups for Multi-Source Filtering
 - 🏷️ **Named Groups** — `flow.add_source_group("analysts", ["a1", "a2", "a3"])`
 - 🔗 **:group Syntax** — Reference groups with `after=":analysts"` or `on="*.done@:analysts"`
 - 🤖 **Built-in :agents** — Auto-populated group tracking all registered agents
-- ⚙️ **Built-in :system** — Predefined group for system sources (flow, router, aggregator)
-- 🔄 **Method Chaining** — Chain multiple group definitions
-- 📖 **Examples & Docs** — 5 interactive examples, comprehensive documentation
 
-**Previous (v1.10.0)** — Pattern Syntax for Event@Source Filtering
+**v1.10.0** — Pattern Syntax for Event@Source Filtering
 - ✨ Concise `event@source` syntax with wildcard support
 - 🔀 Multiple patterns with OR logic
-- 📦 New exports: `parse_pattern()` and `ParsedPattern`
-
-**v1.9.0** — Source-Based Reactor Filtering
-- ✨ **Multi-Level API** — Beginner (`after="source"`), Intermediate (helper functions), Advanced (composition)
-- 🎯 **Helper Functions** — `from_source()`, `not_from_source()`, `any_source()`, `matching_sources()`
-- 🔀 **Boolean Composition** — Combine filters with `&` (AND), `|` (OR), `~` (NOT)
-- 🌟 **Wildcard Patterns** — `after="agent*"` matches agent_1, agent_2, etc.
-- 📖 **Examples & Docs** — 10 interactive demos, comprehensive reactors.md section
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
