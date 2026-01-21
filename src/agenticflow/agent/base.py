@@ -1714,6 +1714,7 @@ class Agent:
                 metadata=metadata,
                 tool_calls=[],
                 events=[],
+                messages=messages + [AIMessage(content=result)],  # Include full conversation
                 error=None,
             )
 
@@ -1745,6 +1746,7 @@ class Agent:
                 metadata=metadata,
                 tool_calls=[],
                 events=[],
+                messages=messages,  # Include messages even on error
                 error=ErrorInfo(
                     message=str(e),
                     type=type(e).__name__,
@@ -3003,6 +3005,7 @@ class Agent:
                 content=result,
                 metadata=metadata,
                 tool_calls=list(self.state.tool_calls),
+                messages=list(self.state.message_history),  # Include full conversation
                 events=list(self.state.emitted_events),
                 error=None,
             )
@@ -3021,6 +3024,7 @@ class Agent:
                 content=None,
                 metadata=metadata,
                 tool_calls=list(self.state.tool_calls),
+                messages=list(self.state.message_history),  # Include messages even on error
                 events=list(self.state.emitted_events),
                 error=ErrorInfo(
                     message=str(e),

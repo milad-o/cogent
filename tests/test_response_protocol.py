@@ -226,6 +226,7 @@ class TestResponse:
             metadata=metadata,
             tool_calls=[tool_call],
             events=[],
+            messages=[],
             error=None,
         )
 
@@ -234,6 +235,7 @@ class TestResponse:
         assert len(response.tool_calls) == 1
         assert response.tool_calls[0] == tool_call
         assert response.events == []
+        assert response.messages == []
         assert response.error is None
 
     def test_response_success_property_true(self):
@@ -289,6 +291,7 @@ class TestResponse:
             metadata=metadata,
             tool_calls=[tool_call],
             events=[],
+            messages=[],
             error=None,
         )
 
@@ -300,6 +303,7 @@ class TestResponse:
         assert len(result["tool_calls"]) == 1
         assert result["tool_calls"][0]["tool_name"] == "calc"
         assert result["events"] == []
+        assert result["messages"] == []
         assert result["error"] is None
         assert result["success"] is True
 
