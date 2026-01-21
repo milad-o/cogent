@@ -7,6 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Response Protocol (v1.13.0)
+
+**Unified response protocol** — Consistent responses across all agent operations with full metadata, observability, and error handling.
+
+**Core Types:**
+- `Response[T]` — Generic container for agent responses with metadata
+- `ResponseMetadata` — Consistent metadata (agent, model, tokens, duration, correlation_id, trace_id)
+- `TokenUsage` — Token consumption tracking (prompt, completion, total)
+- `ToolCall` — Tool invocation tracking with duration and success/failure
+- `ErrorInfo` — Structured error information (type, message, traceback)
+- `ResponseError` — Exception wrapping failed responses
+
+**Agent Integration:**
+```python
+# Agent.run() and Agent.think() now return Response[T]
+response = await agent.think("Analyze sales data")
+
+# Access response data and metadata
+result: str = response.content
+tokens: int = response.metadata.tokens.total_tokens
+duration: float = response.metadata.duration
+
+# Access full conversation
+for message in response.messages:
+    print(f"{message.role}: {message.content}")
+
+# Track tool calls with timing
+for tool_call in response.tool_calls:
+    print(f"{tool_call.tool_name}: {tool_call.duration}s")
+```
+
+**Event Integration:**
+```python
+# Convert responses to events for flow orchestration
+event = Event.from_response(
+    response,
+    name="analysis.done",
+    source="analyst",
+)
+# Event includes response metadata automatically
+```
+
+**A2A Integration:**
+```python
+# AgentResponse now wraps Response[T] internally
+a2a_response = AgentResponse.from_response(
+    response,
+    from_agent="analyst",
+    to_agent="coordinator",
+)
+
+# Access underlying Response
+core_response = a2a_response.unwrap()
+tokens = core_response.metadata.tokens.total_tokens
+```
+
+**Features:**
+- **Full Observability** — Conversation history, token tracking, tool call timing
+- **Consistent API** — Same response format for direct calls, events, and A2A
+- **Error Handling** — Structured errors with type, message, and traceback
+- **Serialization** — Convert to dict for logging and storage
+- **Type Safety** — Generic Response[T] preserves content type
+- **Backward Compatible** — Existing code continues to work
+
+**Benefits:**
+- Debug by inspecting exact LLM prompts via `response.messages`
+- Track costs with per-operation token usage
+- Monitor performance with tool call timing
+- Correlate across distributed systems with correlation_id
+- Unified error handling across all agent operations
+
+**Tests:**
+- 24 new Response protocol tests
+- 10 Agent-Response integration tests  
+- 10 Event integration tests
+- 15 A2A integration tests
+- All backward compatibility tests passing
+
+**Documentation:**
+- Complete Response protocol section in `docs/core.md`
+- Updated A2A documentation in `docs/a2a.md`
+- Response-Event integration examples
+
+---
+
 ## [1.12.0] - 2026-01-21
 
 ### Added

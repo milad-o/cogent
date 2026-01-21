@@ -351,19 +351,56 @@ class AgentRequest:
 
 ### AgentResponse
 
-Response to an agent request.
+**Updated in v1.13.0** — Now wraps the unified `Response[T]` protocol internally.
+
+Response to an agent request:
 
 ```python
 @dataclass
 class AgentResponse:
-    from_agent: str         # Responding agent name
-    to_agent: str          # Original requester
-    result: str | None     # Response data
-    data: dict | None      # Optional structured data
-    correlation_id: str    # Matches request ID
-    success: bool          # Success status
-    error: str | None      # Error message if failed
+    from_agent: str              # Responding agent name
+    to_agent: str               # Original requester
+    result: Any                 # Response data
+    correlation_id: str         # Matches request ID
+    success: bool               # Success status
+    error: str | None           # Error message if failed
+    metadata: dict              # Additional metadata
+    response: Response[Any]     # Internal Response object (auto-created)
 ```
+
+**Key features:**
+
+```python
+# Create from agent Response
+response = await agent.think("Analyze data")
+agent_response = AgentResponse.from_response(
+    response,
+    from_agent="analyst",
+    to_agent="coordinator",
+)
+
+# Access full Response metadata
+core_response = agent_response.unwrap()
+tokens = core_response.metadata.tokens.total_tokens
+messages = core_response.messages  # Full conversation
+tool_calls = core_response.tool_calls  # Tool tracking
+
+# Backward compatible - old code still works
+old_style = AgentResponse(
+    from_agent="analyst",
+    to_agent="coordinator",
+    result="analysis complete",
+    correlation_id="corr-123",
+)
+# Automatically creates internal Response object
+assert old_style.response is not None
+```
+
+**Benefits:**
+- Full access to Response metadata (tokens, timing, messages)
+- Unified observability across direct calls and A2A
+- Seamless integration between agent operations
+- Complete backward compatibility
 
 ### Factory Functions
 
@@ -380,7 +417,9 @@ request = create_request(
 
 # Create response
 response = create_response(
-    request=request,
+    from_agent="data_analyst",
+    to_agent="coordinator",
+    correlation_id=request.correlation_id,
     result="Sales up 15% in Q4",
     success=True,
 )
