@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-01-21
+
+### Added
+
+#### Flow: Source Groups for Multi-Source Filtering
+
+**Named source groups** — Define reusable sets of sources for cleaner multi-source filtering:
+
+**Core API:**
+- `flow.add_source_group(name, sources)` — Define a named group
+- `flow.get_source_group(name)` — Retrieve group sources
+- Method chaining: `flow.add_source_group("g1", [...]).add_source_group("g2", [...])`
+
+**:group syntax:**
+```python
+# Define groups
+flow.add_source_group("analysts", ["agent1", "agent2", "agent3"])
+
+# Reference in after parameter
+flow.register(aggregator, on="analysis.done", after=":analysts")
+
+# Reference in pattern syntax
+flow.register(monitor, on="*.error@:analysts")
+```
+
+**Built-in groups:**
+- `:agents` — Automatically populated with all registered agents
+- `:system` — Predefined with system sources (flow, router, aggregator)
+
+**Examples:**
+```python
+# Auto-populated :agents group
+flow.register(agent1, on="task")
+flow.register(agent2, on="task")
+flow.register(monitor, on="*.done@:agents")  # Tracks both agents
+
+# Custom groups for team organization
+flow.add_source_group("writers", ["w1", "w2"])
+flow.add_source_group("reviewers", ["r1", "r2"])
+
+flow.register(reviewer, on="draft.done@:writers")
+flow.register(approver, on="review.done@:reviewers")
+```
+
+**Benefits:**
+- **DRY principle** — Define once, reference many times
+- **Maintainability** — Update group in one place
+- **Readability** — Semantic names vs repeated lists
+- **Organization** — Group agents by role, team, or responsibility
+
+**New features:**
+- 23 comprehensive tests (100% passing)
+- 5 interactive examples in `examples/flow/source_groups.py`
+- Complete documentation in `docs/reactors.md`
+- Integration with pattern syntax and after parameter
+
 ## [1.10.0] - 2026-01-21
 
 ### Added

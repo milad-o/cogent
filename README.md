@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.10.0-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.11.0-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,17 +58,22 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.10.0 - January 2026)
+## 🎉 Latest Changes (v1.11.0 - January 2026)
 
-**Pattern Syntax for Event@Source Filtering**
-- ✨ **Concise Pattern Syntax** — Use `on="event@source"` instead of `on="event", after="source"`
-- 🎯 **Wildcard Support** — `*.done@agent*` matches all .done events from any agent
-- 🔀 **Multiple Patterns** — `on=["event@source1", "event@source2"]` with OR logic
-- 🚫 **Reserved Separators** — `:` and `->` reserved for future features
-- 📦 **New Exports** — `parse_pattern()` and `ParsedPattern` for manual parsing
-- 📖 **Examples & Docs** — 6 interactive examples, comprehensive documentation
+**Source Groups for Multi-Source Filtering**
+- 🏷️ **Named Groups** — `flow.add_source_group("analysts", ["a1", "a2", "a3"])`
+- 🔗 **:group Syntax** — Reference groups with `after=":analysts"` or `on="*.done@:analysts"`
+- 🤖 **Built-in :agents** — Auto-populated group tracking all registered agents
+- ⚙️ **Built-in :system** — Predefined group for system sources (flow, router, aggregator)
+- 🔄 **Method Chaining** — Chain multiple group definitions
+- 📖 **Examples & Docs** — 5 interactive examples, comprehensive documentation
 
-**Previous (v1.9.0)** — Source-Based Reactor Filtering
+**Previous (v1.10.0)** — Pattern Syntax for Event@Source Filtering
+- ✨ Concise `event@source` syntax with wildcard support
+- 🔀 Multiple patterns with OR logic
+- 📦 New exports: `parse_pattern()` and `ParsedPattern`
+
+**v1.9.0** — Source-Based Reactor Filtering
 - ✨ **Multi-Level API** — Beginner (`after="source"`), Intermediate (helper functions), Advanced (composition)
 - 🎯 **Helper Functions** — `from_source()`, `not_from_source()`, `any_source()`, `matching_sources()`
 - 🔀 **Boolean Composition** — Combine filters with `&` (AND), `|` (OR), `~` (NOT)

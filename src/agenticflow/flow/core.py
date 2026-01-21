@@ -39,54 +39,6 @@ def _generate_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
-def _normalize_patterns(on: str | list[str] | None) -> tuple[frozenset[str], Any]:
-    """Convert on parameter to frozenset of patterns and extract source filter.
-    
-    Parses event@source syntax and extracts source filters.
-    
-    Args:
-        on: Event pattern(s), optionally with source filter using @, :, or -> separator
-    
-    Returns:
-        Tuple of (event_patterns, source_filter)
-        - event_patterns: frozenset of event patterns
-        - source_filter: SourceFilter if any pattern had source, None otherwise
-    
-    Examples:
-        >>> _normalize_patterns("agent.done@researcher")
-        (frozenset({'agent.done'}), SourceFilter(...))
-        
-        >>> _normalize_patterns(["*.done@agent1", "*.done@agent2"])
-        (frozenset({'*.done'}), SourceFilter(...))
-        
-        >>> _normalize_patterns("task.created")
-        (frozenset({'task.created'}), None)
-    """
-    from agenticflow.flow.parser import parse_pattern
-    from agenticflow.events.patterns import from_source
-    
-    if on is None:
-        return frozenset(), None
-    
-    patterns_list = [on] if isinstance(on, str) else on
-    event_patterns = []
-    source_filter = None
-    
-    for pattern in patterns_list:
-        parsed = parse_pattern(pattern)
-        event_patterns.append(parsed.event)
-        
-        # Combine source filters with OR logic if multiple patterns have sources
-        if parsed.source:
-            new_filter = from_source(parsed.source)
-            if source_filter is None:
-                source_filter = new_filter
-            else:
-                source_filter = source_filter | new_filter
-    
-    return frozenset(event_patterns), source_filter
-
-
 def _matches_pattern(event_type: str, pattern: str) -> bool:
     """Check if event type matches a pattern (supports * wildcard)."""
     return fnmatch.fnmatch(event_type, pattern)
@@ -212,6 +164,10 @@ class Flow:
         # Skills registry: name -> Skill
         self._skills_registry: dict[str, Skill] = {}
 
+        # Source groups: name -> set of sources
+        self._source_groups: dict[str, set[str]] = {}
+        self._init_builtin_groups()
+
         # Container-like features
         self._shared_memory: Any | None = None
         self._spawned: set[asyncio.Task[Any]] = set()
@@ -285,6 +241,80 @@ class Flow:
 
         matching = [s for s in self._skills_registry.values() if s.matches(event)]
         return sorted(matching, key=lambda s: -s.priority)
+
+    # -------------------------------------------------------------------------
+    # Source Groups API
+    # -------------------------------------------------------------------------
+
+    def _init_builtin_groups(self) -> None:
+        """Initialize built-in source groups.
+        
+        Built-in groups:
+            - :agents - Auto-populated with registered agent names
+            - :system - System sources (flow, router, aggregator)
+        """
+        self._source_groups["agents"] = set()  # Auto-populated on agent registration
+        self._source_groups["system"] = {"flow", "router", "aggregator"}
+
+    def add_source_group(self, name: str, sources: list[str]) -> Self:
+        """Define a named group of sources.
+        
+        Source groups allow cleaner multi-source filtering using :group syntax.
+        Groups can be referenced in `after` parameter and pattern syntax.
+        
+        Args:
+            name: Group name (without : prefix)
+            sources: List of source names or patterns
+        
+        Returns:
+            Self for method chaining
+        
+        Raises:
+            ValueError: If name starts with : or is empty
+        
+        Example:
+            ```python
+            # Define a group of analyst agents
+            flow.add_source_group("analysts", ["agent1", "agent2", "agent3"])
+            
+            # Use in after parameter
+            flow.register(aggregator, on="analysis.done", after=":analysts")
+            
+            # Use in pattern syntax
+            flow.register(reviewer, on="*.done@:analysts")
+            
+            # Chain multiple groups
+            flow.add_source_group("writers", ["writer1", "writer2"])
+                .add_source_group("reviewers", ["reviewer1", "reviewer2"])
+            ```
+        """
+        if not name or name.startswith(":"):
+            raise ValueError("Group name cannot be empty or start with ':'")
+        
+        self._source_groups[name] = set(sources)
+        return self
+    
+    def get_source_group(self, name: str) -> set[str]:
+        """Get sources in a named group.
+        
+        Args:
+            name: Group name (without : prefix)
+        
+        Returns:
+            Set of source names, or empty set if group doesn't exist
+        
+        Example:
+            ```python
+            flow.add_source_group("analysts", ["agent1", "agent2"])
+            sources = flow.get_source_group("analysts")
+            # {'agent1', 'agent2'}
+            
+            # Nonexistent group returns empty set
+            sources = flow.get_source_group("missing")
+            # set()
+            ```
+        """
+        return self._source_groups.get(name, set()).copy()
 
     # -------------------------------------------------------------------------
     # Memory API
@@ -400,6 +430,57 @@ class Flow:
         self._reactors.pop(reactor_id, None)
         self._bindings = [b for b in self._bindings if b.reactor_id != reactor_id]
 
+    def _normalize_patterns(self, on: str | list[str] | None) -> tuple[frozenset[str], Any]:
+        """Convert on parameter to frozenset of patterns and extract source filter.
+        
+        Parses event@source syntax and extracts source filters.
+        Supports :group references in pattern syntax.
+        
+        Args:
+            on: Event pattern(s), optionally with source filter using @ separator
+        
+        Returns:
+            Tuple of (event_patterns, source_filter)
+            - event_patterns: frozenset of event patterns
+            - source_filter: SourceFilter if any pattern had source, None otherwise
+        
+        Examples:
+            >>> flow._normalize_patterns("agent.done@researcher")
+            (frozenset({'agent.done'}), SourceFilter(...))
+            
+            >>> flow._normalize_patterns(["*.done@agent1", "*.done@agent2"])
+            (frozenset({'*.done'}), SourceFilter(...))
+            
+            >>> flow._normalize_patterns("task.created")
+            (frozenset({'task.created'}), None)
+            
+            >>> flow._normalize_patterns("*.done@:analysts")
+            (frozenset({'*.done'}), SourceFilter(...))
+        """
+        from agenticflow.flow.parser import parse_pattern
+        from agenticflow.events.patterns import from_source
+        
+        if on is None:
+            return frozenset(), None
+        
+        patterns_list = [on] if isinstance(on, str) else on
+        event_patterns = []
+        source_filter = None
+        
+        for pattern in patterns_list:
+            parsed = parse_pattern(pattern)
+            event_patterns.append(parsed.event)
+            
+            # Combine source filters with OR logic if multiple patterns have sources
+            if parsed.source:
+                # Pass self for :group support
+                new_filter = from_source(parsed.source, flow=self)
+                if source_filter is None:
+                    source_filter = new_filter
+                else:
+                    source_filter = source_filter | new_filter
+        
+        return frozenset(event_patterns), source_filter
 
     def register(
         self,
@@ -482,8 +563,13 @@ class Flow:
             )
             ```
         """
+        # Track agents in :agents group
+        from agenticflow.agent.base import Agent
+        if isinstance(reactor, Agent):
+            self._source_groups.setdefault("agents", set()).add(reactor.name)
+        
         # Parse patterns to extract source filter from event@source syntax
-        patterns, pattern_source_filter = _normalize_patterns(on)
+        patterns, pattern_source_filter = self._normalize_patterns(on)
         
         # Validate conflicting parameters
         if after is not None and when is not None:
@@ -507,10 +593,10 @@ class Flow:
         # Build final condition from available sources
         final_condition = when
         
-        # Convert 'after' to condition
+        # Convert 'after' to condition (pass self for :group support)
         if after is not None:
             from agenticflow.events.patterns import from_source
-            final_condition = from_source(after)
+            final_condition = from_source(after, flow=self)
         
         # Use pattern-extracted source filter if present
         if pattern_source_filter is not None:
