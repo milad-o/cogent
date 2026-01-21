@@ -2,6 +2,12 @@
 
 Comprehensive examples organized by category to help you learn AgenticFlow.
 
+## 🆕 What's New in v1.13.0
+
+**Response Protocol with Rich Metadata:**
+- [`basics/response.py`](basics/response.py) - Learn the Response[T] protocol
+- [`observability/response_metadata.py`](observability/response_metadata.py) - See metadata in Observer output
+
 ## Quick Start
 
 ```bash
@@ -10,6 +16,9 @@ export OPENAI_API_KEY="sk-..."  # or ANTHROPIC_API_KEY, etc.
 
 # Run any example
 uv run python examples/basics/hello_world.py
+
+# Try the new Response protocol example
+uv run python examples/basics/response.py
 ```
 
 ---
@@ -22,11 +31,13 @@ Core concepts every user should know.
 | Example | Description |
 |---------|-------------|
 | [hello_world.py](basics/hello_world.py) | Single agent basics |
+| [response.py](basics/response.py) | **NEW** Response[T] protocol - typed results with metadata |
 | [memory.py](basics/memory.py) | Thread-based conversation memory |
 | [roles.py](basics/roles.py) | Agent roles (worker, supervisor, etc.) |
 | [role_configs.py](basics/role_configs.py) | RoleConfig objects (recommended API) |
 | [streaming.py](basics/streaming.py) | Token-by-token LLM streaming |
 | [structured_output.py](basics/structured_output.py) | Pydantic/TypedDict responses |
+| [taskboard.py](basics/taskboard.py) | Built-in task management |
 
 ---
 
@@ -83,6 +94,7 @@ See what your agents are doing.
 |---------|-------------|
 | [events.py](observability/events.py) | Event callbacks and tracking |
 | [observer.py](observability/observer.py) | Observer levels (verbose, debug, trace) |
+| [response_metadata.py](observability/response_metadata.py) | **NEW** Response metadata in Observer (tokens, tools, errors) |
 | [deep_tracing.py](observability/deep_tracing.py) | Execution graphs and timelines |
 | [graph.py](observability/graph.py) | Visualize agents as Mermaid/ASCII diagrams |
 
