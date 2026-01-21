@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.8.6-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.10.0-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,18 +58,22 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.8.4 - January 2026)
+## 🎉 Latest Changes (v1.10.0 - January 2026)
 
-**KnowledgeGraph Three-Level Visualization API**
-- ✨ **Three-Level API** — Low (`kg.mermaid()`), Medium (`kg.render(format)`), High (`kg.display()`) level APIs
-- 🎯 **Simplified Jupyter Rendering** — `kg.display()` for inline notebook visualization
-- 🐛 **Fixed Redundant Titles** — Removed duplicate title in HTML output for cleaner display
-- 📖 **Updated Examples** — `kg_agent_viz.py` demonstrates all three API levels
+**Pattern Syntax for Event@Source Filtering**
+- ✨ **Concise Pattern Syntax** — Use `on="event@source"` instead of `on="event", after="source"`
+- 🎯 **Wildcard Support** — `*.done@agent*` matches all .done events from any agent
+- 🔀 **Multiple Patterns** — `on=["event@source1", "event@source2"]` with OR logic
+- 🚫 **Reserved Separators** — `:` and `->` reserved for future features
+- 📦 **New Exports** — `parse_pattern()` and `ParsedPattern` for manual parsing
+- 📖 **Examples & Docs** — 6 interactive examples, comprehensive documentation
 
-**Previous (v1.8.3)** — Knowledge Graph Visualization & Tool Improvements
-- ✨ **KnowledgeGraph Visualization** — Full GraphView integration with entity grouping, custom layouts (LR/TB/BT/RL), color-coded nodes
-- 🛠️ **Better Tool APIs** — Structured parameters for `query_knowledge` (source/relation/target), dict-based `remember`
-- ⚡ **Executor Enhancements** — Per-turn tool limits (50 instead of cumulative 20), semaphore-based concurrency (max 20 concurrent)
+**Previous (v1.9.0)** — Source-Based Reactor Filtering
+- ✨ **Multi-Level API** — Beginner (`after="source"`), Intermediate (helper functions), Advanced (composition)
+- 🎯 **Helper Functions** — `from_source()`, `not_from_source()`, `any_source()`, `matching_sources()`
+- 🔀 **Boolean Composition** — Combine filters with `&` (AND), `|` (OR), `~` (NOT)
+- 🌟 **Wildcard Patterns** — `after="agent*"` matches agent_1, agent_2, etc.
+- 📖 **Examples & Docs** — 10 interactive demos, comprehensive reactors.md section
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 

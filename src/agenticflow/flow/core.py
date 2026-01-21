@@ -39,13 +39,52 @@ def _generate_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
-def _normalize_patterns(on: str | list[str] | None) -> frozenset[str]:
-    """Convert on parameter to frozenset of patterns."""
+def _normalize_patterns(on: str | list[str] | None) -> tuple[frozenset[str], Any]:
+    """Convert on parameter to frozenset of patterns and extract source filter.
+    
+    Parses event@source syntax and extracts source filters.
+    
+    Args:
+        on: Event pattern(s), optionally with source filter using @, :, or -> separator
+    
+    Returns:
+        Tuple of (event_patterns, source_filter)
+        - event_patterns: frozenset of event patterns
+        - source_filter: SourceFilter if any pattern had source, None otherwise
+    
+    Examples:
+        >>> _normalize_patterns("agent.done@researcher")
+        (frozenset({'agent.done'}), SourceFilter(...))
+        
+        >>> _normalize_patterns(["*.done@agent1", "*.done@agent2"])
+        (frozenset({'*.done'}), SourceFilter(...))
+        
+        >>> _normalize_patterns("task.created")
+        (frozenset({'task.created'}), None)
+    """
+    from agenticflow.flow.parser import parse_pattern
+    from agenticflow.events.patterns import from_source
+    
     if on is None:
-        return frozenset()
-    if isinstance(on, str):
-        return frozenset([on])
-    return frozenset(on)
+        return frozenset(), None
+    
+    patterns_list = [on] if isinstance(on, str) else on
+    event_patterns = []
+    source_filter = None
+    
+    for pattern in patterns_list:
+        parsed = parse_pattern(pattern)
+        event_patterns.append(parsed.event)
+        
+        # Combine source filters with OR logic if multiple patterns have sources
+        if parsed.source:
+            new_filter = from_source(parsed.source)
+            if source_filter is None:
+                source_filter = new_filter
+            else:
+                source_filter = source_filter | new_filter
+    
+    return frozenset(event_patterns), source_filter
 
 
 def _matches_pattern(event_type: str, pattern: str) -> bool:
@@ -377,7 +416,12 @@ class Flow:
 
         Args:
             reactor: A Reactor instance, Agent, or callable function
-            on: Event type(s) to react to (supports wildcards like "task.*")
+            on: Event type(s) to react to. Supports:
+                - Simple patterns: "task.created"
+                - Wildcards: "task.*"
+                - Source filters: "task.created@api", "*.done@agent*"
+                - Multiple separators: @, :, ->
+                - Lists: ["event1@source1", "event2@source2"]
             name: Optional name/ID for the reactor (auto-generated if None)
             priority: Execution priority (higher values execute first)
             when: Optional condition function for filtering events
@@ -385,7 +429,7 @@ class Flow:
                 - Exact match: after="researcher"
                 - Multiple sources: after=["agent1", "agent2"]
                 - Wildcard patterns: after="agent*"
-                Cannot be used together with `when` parameter.
+                Cannot be used together with `when` parameter or `on` with @source.
             emits: Event type to emit after reactor completes
 
         Returns:
@@ -406,11 +450,29 @@ class Flow:
                 when=lambda e: e.data.get("priority") == "high",
             )
 
-            # Register with source filter
+            # Register with source filter (after parameter)
             flow.register(
                 reviewer,
                 on="agent.done",
                 after="researcher"  # Only from researcher
+            )
+            
+            # Register with source filter (pattern syntax)
+            flow.register(
+                reviewer,
+                on="agent.done@researcher"  # Same as above
+            )
+            
+            # Multiple patterns with sources
+            flow.register(
+                aggregator,
+                on=["*.done@agent1", "*.done@agent2"]
+            )
+            
+            # Wildcards in both event and source
+            flow.register(
+                monitor,
+                on="*.error@agent*"
             )
 
             # Register a function
@@ -420,6 +482,9 @@ class Flow:
             )
             ```
         """
+        # Parse patterns to extract source filter from event@source syntax
+        patterns, pattern_source_filter = _normalize_patterns(on)
+        
         # Validate conflicting parameters
         if after is not None and when is not None:
             raise ValueError(
@@ -427,10 +492,29 @@ class Flow:
                 "Use 'after' for source filtering or 'when' for custom conditions."
             )
         
-        # Convert 'after' to 'when' condition
+        if pattern_source_filter is not None and after is not None:
+            raise ValueError(
+                "Cannot specify both 'after' parameter and '@source' in pattern. "
+                "Use one approach: either 'after=\"source\"' or 'on=\"event@source\"'."
+            )
+        
+        if pattern_source_filter is not None and when is not None:
+            raise ValueError(
+                "Cannot specify both 'when' parameter and '@source' in pattern. "
+                "Use 'when' for custom conditions or '@source' for source filtering, not both."
+            )
+        
+        # Build final condition from available sources
+        final_condition = when
+        
+        # Convert 'after' to condition
         if after is not None:
             from agenticflow.events.patterns import from_source
-            when = from_source(after)
+            final_condition = from_source(after)
+        
+        # Use pattern-extracted source filter if present
+        if pattern_source_filter is not None:
+            final_condition = pattern_source_filter
         
         # Wrap non-reactor types
         wrapped_reactor = self._wrap_reactor(reactor)
@@ -442,13 +526,12 @@ class Flow:
         self._reactors[reactor_id] = wrapped_reactor
 
         # Create binding if patterns provided
-        if on:
-            patterns = _normalize_patterns(on)
+        if patterns:
             binding = ReactorBinding(
                 reactor_id=reactor_id,
                 patterns=patterns,
                 priority=priority,
-                condition=when,
+                condition=final_condition,
                 emits=emits,
             )
             self._bindings.append(binding)
