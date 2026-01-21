@@ -132,3 +132,38 @@ class TestAgentResponseIntegration:
         assert event.data["content"] == "Result"
         assert event.data["success"] is True
         assert event.correlation_id == "corr-456"
+
+    @pytest.mark.asyncio
+    async def test_response_includes_messages(self):
+        """Test that response includes conversation messages."""
+        agent = Agent(
+            name="TestAgent",
+            model=MockChatModel(responses=["Hello world"]),
+        )
+
+        response = await agent.think("Say hello")
+
+        # Should have system prompt, user message, and AI response
+        assert len(response.messages) >= 2
+        
+        # Check message types
+        has_user_msg = any(hasattr(m, 'role') and m.role == 'user' for m in response.messages)
+        has_ai_msg = any(hasattr(m, 'role') and m.role == 'assistant' for m in response.messages)
+        
+        assert has_user_msg, "Should have user message"
+        assert has_ai_msg, "Should have AI message"
+
+    @pytest.mark.asyncio
+    async def test_response_messages_in_to_dict(self):
+        """Test that messages are included in serialization."""
+        agent = Agent(
+            name="TestAgent",
+            model=MockChatModel(responses=["Response"]),
+        )
+
+        response = await agent.think("Test")
+        data = response.to_dict()
+
+        assert "messages" in data
+        assert isinstance(data["messages"], list)
+        assert len(data["messages"]) >= 2

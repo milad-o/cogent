@@ -153,6 +153,7 @@ class Response(Generic[T]):
         metadata: Consistent metadata (tokens, timing, model, etc)
         tool_calls: List of tool invocations during execution
         events: Events emitted during execution
+        messages: Full conversation history (system, user, assistant, tool messages)
         error: Error information if execution failed
 
     Examples:
@@ -170,12 +171,17 @@ class Response(Generic[T]):
         # Check success
         if response.success:
             print(f"Used {response.metadata.tokens.total_tokens} tokens")
+        
+        # Inspect conversation
+        for msg in response.messages:
+            print(f"{msg.role}: {msg.content[:100]}")
     """
 
     content: T
     metadata: ResponseMetadata
     tool_calls: list[ToolCall] = field(default_factory=list)
     events: list[Any] = field(default_factory=list)  # Will be list[Event] at runtime
+    messages: list[Any] = field(default_factory=list)  # Will be list[BaseMessage] at runtime
     error: ErrorInfo | None = None
 
     @property
@@ -228,6 +234,7 @@ class Response(Generic[T]):
             "metadata": self.metadata.to_dict(),
             "tool_calls": [tc.to_dict() for tc in self.tool_calls],
             "events": [e.to_dict() for e in self.events],
+            "messages": [m.to_dict() if hasattr(m, 'to_dict') else str(m) for m in self.messages],
             "error": self.error.to_dict() if self.error else None,
             "success": self.success,
         }
