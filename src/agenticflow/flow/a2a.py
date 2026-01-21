@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agenticflow.events import Event
+from agenticflow.core.response import Response, ResponseMetadata, ErrorInfo
 
 
 @dataclass
@@ -82,6 +83,9 @@ class AgentRequest:
 class AgentResponse:
     """Response from one agent to another.
 
+    This is now a wrapper around Response[T] that maintains backward compatibility
+    with the A2A communication pattern while leveraging the unified Response protocol.
+
     Attributes:
         from_agent: Name of the responding agent
         to_agent: Name of the original requester
@@ -90,6 +94,7 @@ class AgentResponse:
         success: Whether the task completed successfully
         error: Error message if task failed
         metadata: Additional metadata for the response
+        response: Internal Response[T] object (optional, for advanced use)
     """
 
     from_agent: str
@@ -99,6 +104,56 @@ class AgentResponse:
     success: bool = True
     error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    response: Response[Any] | None = None
+
+    def __post_init__(self) -> None:
+        """Create internal Response object if not provided."""
+        if self.response is None:
+            # Create Response object from AgentResponse data
+            error_info = None
+            if not self.success and self.error:
+                error_info = ErrorInfo(
+                    message=self.error,
+                    type="AgentError",
+                )
+
+            self.response = Response(
+                content=self.result,
+                metadata=ResponseMetadata(
+                    agent=self.from_agent,
+                    correlation_id=self.correlation_id,
+                ),
+                error=error_info,
+                messages=[],
+            )
+
+    @classmethod
+    def from_response(
+        cls,
+        response: Response[Any],
+        from_agent: str,
+        to_agent: str,
+    ) -> "AgentResponse":
+        """Create AgentResponse from a Response object.
+
+        Args:
+            response: The Response object to wrap
+            from_agent: Name of the responding agent
+            to_agent: Name of the original requester
+
+        Returns:
+            AgentResponse wrapping the Response
+        """
+        return cls(
+            from_agent=from_agent,
+            to_agent=to_agent,
+            result=response.content,
+            correlation_id=response.metadata.correlation_id or "",
+            success=response.success,
+            error=response.error.message if response.error else None,
+            metadata={},
+            response=response,
+        )
 
     def to_event(self, event_name: str = "agent.response") -> Event:
         """Convert response to an event for the requester."""
@@ -115,6 +170,15 @@ class AgentResponse:
             },
             correlation_id=self.correlation_id,
         )
+
+    def unwrap(self) -> Response[Any]:
+        """Get the underlying Response object.
+
+        Returns:
+            The Response[T] object with full metadata
+        """
+        assert self.response is not None
+        return self.response
 
 
 def create_request(
