@@ -18,8 +18,10 @@ Usage:
 from __future__ import annotations
 
 import os
+import time
+import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from agenticflow.models.base import (
@@ -28,6 +30,7 @@ from agenticflow.models.base import (
     BaseEmbedding,
     convert_messages,
 )
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -182,14 +185,61 @@ class OllamaChat(BaseChatModel):
         return _parse_response(response)
 
     async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
-        """Stream response asynchronously."""
+        """Stream response asynchronously with metadata.
+        
+        Yields:
+            AIMessage objects with incremental content and metadata.
+        """
         self._ensure_initialized()
         kwargs = self._build_request(messages)
         kwargs["stream"] = True
 
+        start_time = time.time()
+        chunk_metadata = {
+            "id": None,
+            "model": None,
+            "finish_reason": None,
+            "usage": None,
+        }
+        
         async for chunk in await self._async_client.chat.completions.create(**kwargs):
+            # Accumulate metadata
+            if hasattr(chunk, 'id') and chunk.id:
+                chunk_metadata["id"] = chunk.id
+            if hasattr(chunk, 'model') and chunk.model:
+                chunk_metadata["model"] = chunk.model
+            if chunk.choices and chunk.choices[0].finish_reason:
+                chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
+            if hasattr(chunk, 'usage') and chunk.usage:
+                chunk_metadata["usage"] = chunk.usage
+                # Yield final metadata chunk
+                metadata = MessageMetadata(
+                    id=str(uuid.uuid4()),
+                    timestamp=time.time(),
+                    model=chunk_metadata["model"],
+                    tokens=TokenUsage(
+                        prompt_tokens=chunk.usage.prompt_tokens,
+                        completion_tokens=chunk.usage.completion_tokens,
+                        total_tokens=chunk.usage.total_tokens,
+                    ),
+                    finish_reason=chunk_metadata["finish_reason"],
+                    response_id=chunk_metadata["id"],
+                    duration=time.time() - start_time,
+                )
+                yield AIMessage(content="", metadata=metadata)
+            
+            # Yield content chunks
             if chunk.choices and chunk.choices[0].delta.content:
-                yield AIMessage(content=chunk.choices[0].delta.content)
+                metadata = MessageMetadata(
+                    id=str(uuid.uuid4()),
+                    timestamp=time.time(),
+                    model=chunk_metadata["model"],
+                    tokens=None,
+                    finish_reason=chunk_metadata.get("finish_reason"),
+                    response_id=chunk_metadata["id"],
+                    duration=time.time() - start_time,
+                )
+                yield AIMessage(content=chunk.choices[0].delta.content, metadata=metadata)
 
     def _build_request(self, messages: list[Any]) -> dict[str, Any]:
         """Build API request, converting messages to dict format."""

@@ -17,6 +17,9 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import uuid
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -27,6 +30,7 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _schema_to_parameter_definitions(schema: dict[str, Any]) -> dict[str, Any]:
@@ -194,6 +198,69 @@ class CohereChat(BaseChatModel):
         kwargs = self._build_request(normalize_input(messages))
         response = await self._async_client.chat(**kwargs)
         return _parse_response(response)
+
+    async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
+        """Stream response asynchronously with metadata.
+
+        Args:
+            messages: Can be a string, list of dicts, or list of message objects.
+            
+        Yields:
+            AIMessage objects with incremental content and metadata.
+        """
+        self._ensure_initialized()
+        kwargs = self._build_request(normalize_input(messages))
+        
+        start_time = time.time()
+        chunk_metadata = {
+            "id": None,
+            "model": None,
+            "finish_reason": None,
+            "usage": None,
+        }
+        
+        stream = self._async_client.chat_stream(**kwargs)
+        
+        async for event in stream:
+            # Handle different event types
+            if event.type == 'content-delta':
+                if hasattr(event, 'delta') and hasattr(event.delta, 'message'):
+                    if hasattr(event.delta.message, 'content') and hasattr(event.delta.message.content, 'text'):
+                        text = event.delta.message.content.text
+                        if text:
+                            metadata = MessageMetadata(
+                                id=str(uuid.uuid4()),
+                                timestamp=time.time(),
+                                model=chunk_metadata.get("model"),
+                                tokens=None,
+                                finish_reason=chunk_metadata.get("finish_reason"),
+                                response_id=chunk_metadata.get("id"),
+                                duration=time.time() - start_time,
+                            )
+                            yield AIMessage(content=text, metadata=metadata)
+            
+            elif event.type == 'message-end':
+                if hasattr(event, 'delta'):
+                    if hasattr(event.delta, 'finish_reason'):
+                        chunk_metadata["finish_reason"] = event.delta.finish_reason
+                    if hasattr(event.delta, 'usage') and hasattr(event.delta.usage, 'tokens'):
+                        usage = event.delta.usage.tokens
+                        chunk_metadata["usage"] = usage
+                        # Yield final metadata chunk
+                        final_metadata = MessageMetadata(
+                            id=str(uuid.uuid4()),
+                            timestamp=time.time(),
+                            model=chunk_metadata.get("model"),
+                            tokens=TokenUsage(
+                                prompt_tokens=int(usage.input_tokens) if hasattr(usage, 'input_tokens') else 0,
+                                completion_tokens=int(usage.output_tokens) if hasattr(usage, 'output_tokens') else 0,
+                                total_tokens=int(usage.input_tokens + usage.output_tokens) if hasattr(usage, 'input_tokens') and hasattr(usage, 'output_tokens') else 0,
+                            ),
+                            finish_reason=chunk_metadata.get("finish_reason"),
+                            response_id=chunk_metadata.get("id"),
+                            duration=time.time() - start_time,
+                        )
+                        yield AIMessage(content="", metadata=final_metadata)
 
     def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
         """Build request for Cohere Chat API."""
