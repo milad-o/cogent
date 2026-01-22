@@ -333,7 +333,9 @@ class MistralEmbedding(BaseEmbedding):
         except ImportError:
             raise ImportError("openai package required. Install with: uv add openai")
 
-        api_key = self.api_key or os.environ.get("MISTRAL_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("mistral", self.api_key)
         if not api_key:
             raise ValueError(
                 "Mistral API key required. Set MISTRAL_API_KEY environment variable "

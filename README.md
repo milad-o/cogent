@@ -70,13 +70,16 @@ result = await agent.run("Find the latest news on AI agents")
 
 ```python
 # Tier 1: High-level (string models)
-agent = Agent("Helper", model="gpt4")           # Auto-resolves to gpt-4o
-agent = Agent("Helper", model="gemini")         # Auto-resolves to gemini-2.5-flash
-agent = Agent("Helper", model="anthropic:claude") # Provider prefix
+agent = Agent("Helper", model="gpt4")              # Auto-resolves to gpt-4o
+agent = Agent("Helper", model="gemini")            # Auto-resolves to gemini-2.5-flash
+agent = Agent("Helper", model="anthropic:claude")  # Provider prefix
 
-# Tier 2: Medium-level (factory)
+# Tier 2: Medium-level (factory) - multiple patterns supported
 from agenticflow.models import create_chat
-llm = create_chat("gpt4")  # One-liner
+llm = create_chat("gpt-4o")                  # Model name only
+llm = create_chat("openai:gpt-4o")           # Provider:model syntax
+llm = create_chat("openai", "gpt-4o")        # Separate arguments
+llm = create_chat("gpt-4o", temperature=0.7) # With configuration
 
 # Tier 3: Low-level (full control)
 from agenticflow.models import OpenAIChat

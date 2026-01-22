@@ -111,7 +111,11 @@ class OllamaChat(BaseChatModel):
         except ImportError:
             raise ImportError("openai package required. Install with: uv add openai")
 
-        host = self.host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        from agenticflow.config import get_config_value
+
+        host = get_config_value(
+            "ollama", "host", self.host, ["OLLAMA_HOST"]
+        ) or "http://localhost:11434"
         base_url = f"{host.rstrip('/')}/v1"
 
         self._client = OpenAI(
@@ -217,7 +221,11 @@ class OllamaEmbedding(BaseEmbedding):
         except ImportError:
             raise ImportError("openai package required. Install with: uv add openai")
 
-        host = self.host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        from agenticflow.config import get_config_value
+
+        host = get_config_value(
+            "ollama", "host", self.host, ["OLLAMA_HOST"]
+        ) or "http://localhost:11434"
         base_url = f"{host.rstrip('/')}/v1"
 
         self._client = OpenAI(

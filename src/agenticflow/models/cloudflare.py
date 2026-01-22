@@ -51,10 +51,12 @@ class CloudflareChat(BaseChatModel):
         except ImportError as exc:
             raise ImportError("openai package required. Install with: uv add openai") from exc
 
-        from agenticflow.config import get_api_key
+        from agenticflow.config import get_api_key, get_config_value
 
         api_key = get_api_key("cloudflare", self.api_key)
-        account_id = self.account_id or os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+        account_id = get_config_value(
+            "cloudflare", "account_id", self.account_id, ["CLOUDFLARE_ACCOUNT_ID"]
+        )
         if not account_id:
             raise ValueError("Cloudflare account_id is required")
 
@@ -141,10 +143,12 @@ class CloudflareEmbedding(BaseEmbedding):
         except ImportError as exc:
             raise ImportError("openai package required. Install with: uv add openai") from exc
 
-        from agenticflow.config import get_api_key
+        from agenticflow.config import get_api_key, get_config_value
 
         api_key = get_api_key("cloudflare", self.api_key)
-        account_id = self.account_id or os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+        account_id = get_config_value(
+            "cloudflare", "account_id", self.account_id, ["CLOUDFLARE_ACCOUNT_ID"]
+        )
         if not account_id:
             raise ValueError("Cloudflare account_id is required")
 
