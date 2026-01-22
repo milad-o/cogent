@@ -18,10 +18,15 @@ MODEL_ALIASES: dict[str, str] = {
     "gpt4-turbo": "gpt-4-turbo",
     "gpt35": "gpt-3.5-turbo",
     "gpt-35": "gpt-3.5-turbo",
+    "gpt5": "gpt-5.2",
+    "gpt5-mini": "gpt-5-mini",
+    "gpt5-nano": "gpt-5-nano",
     "o1": "o1",
     "o1-mini": "o1-mini",
     "o3": "o3-mini",
     "o3-mini": "o3-mini",
+    "o4": "o4-mini",
+    "o4-mini": "o4-mini",
     
     # Anthropic
     "claude": "claude-sonnet-4-20250514",
@@ -34,6 +39,9 @@ MODEL_ALIASES: dict[str, str] = {
     "gemini-flash": "gemini-2.5-flash",
     "gemini-pro": "gemini-2.5-pro",
     "gemini-exp": "gemini-2.0-flash-thinking-exp-1219",
+    "gemini3": "gemini-3-pro",
+    "gemini-3": "gemini-3-pro",
+    "gemini-3-flash": "gemini-3-flash",
     
     # Groq (fast inference)
     "llama": "llama-3.3-70b-versatile",
@@ -46,9 +54,23 @@ MODEL_ALIASES: dict[str, str] = {
     "ollama": "llama3.2",
     "ollama-llama": "llama3.2",
     
+    # Mistral
+    "mistral": "mistral-large-latest",
+    "mistral-large": "mistral-large-latest",
+    "mistral-large-3": "mistral-large-3",
+    "mistral-medium": "mistral-medium-3.1",
+    "mistral-small": "mistral-small-3.2",
+    "ministral": "ministral-3-14b",
+    "ministral-3": "ministral-3-14b",
+    "magistral": "magistral-medium-1.2",
+    "codestral": "codestral",
+    "devstral": "devstral-2",
+    
     # Cohere
-    "command": "command-r-plus",
+    "command": "command-a-03-2025",
+    "command-a": "command-a-03-2025",
     "command-r": "command-r-plus",
+    "command-r7b": "command-r7b-12-2024",
     "command-light": "command-r",
 }
 
@@ -60,40 +82,67 @@ MODEL_PROVIDERS: dict[str, str] = {
     "o1": "openai",
     "o3-": "openai",
     "o3": "openai",
-    "text-embedding": "openai",
+    "o4-": "openai",
+    "o4": "openai",
+    "text-embedding-": "openai",
+    "gpt-oss-": "openai",
+    "gpt-audio": "openai",
+    "gpt-realtime": "openai",
+    "gpt-image-": "openai",
+    "chatgpt-": "openai",
+    "sora-": "openai",
+    "dall-e-": "openai",
+    "whisper-": "openai",
+    "tts-": "openai",
+    "davinci-": "openai",
+    "babbage-": "openai",
     
     # Anthropic
     "claude-": "anthropic",
     
     # Google Gemini
     "gemini-": "gemini",
+    "gemini-flash": "gemini",
+    "gemini-pro": "gemini",
+    "gemini-exp": "gemini",
     "models/gemini": "gemini",
+    "nano-banana": "gemini",
+    "text-embedding-": "gemini",  # Gemini also has text-embedding models
     
     # Groq
     "llama-": "groq",
+    "llama3": "groq",
     "mixtral-": "groq",
     "qwen-": "groq",
+    "qwen2": "groq",
     "deepseek-": "groq",
     "gemma-": "groq",
+    "gemma2-": "groq",
 
     # Mistral
     "mistral-": "mistral",
     "codestral-": "mistral",
+    "codestral": "mistral",
     "ministral-": "mistral",
     "open-mistral-": "mistral",
     "pixtral-": "mistral",
+    "pixtral": "mistral",
     "magistral-": "mistral",
     "devstral-": "mistral",
-    "labs-mistral-": "mistral",
-    "labs-devstral-": "mistral",
     "voxtral-": "mistral",
+    "ocr-": "mistral",  # Mistral OCR models
     
     # Cloudflare Workers AI
     "@cf/": "cloudflare",
     
     # Cohere
     "command-": "cohere",
-    "embed-": "cohere",
+    "command": "cohere",
+    "c4ai-aya-": "cohere",
+    "embed-english-": "cohere",
+    "embed-multilingual-": "cohere",
+    "embed-v": "cohere",  # embed-v4.0
+    "rerank-": "cohere",
 }
 
 
