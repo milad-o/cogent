@@ -160,8 +160,12 @@ def resolve_model(model_str: str) -> tuple[str, str]:
     if model_str in ["o1", "o1-mini", "o3", "o3-mini"]:
         return "openai", model_str
     
-    # Default to OpenAI for unknown models (common default)
-    return "openai", model_str
+    # Cannot auto-detect provider - raise error
+    raise ValueError(
+        f"Cannot auto-detect provider for model: {model_str!r}. "
+        f"Use explicit provider syntax: 'provider:model' (e.g., 'openai:{model_str}') "
+        f"or create_chat('provider', '{model_str}')"
+    )
 
 
 def resolve_and_create_model(
