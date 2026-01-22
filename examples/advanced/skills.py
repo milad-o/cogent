@@ -12,9 +12,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import get_model
 
 from agenticflow import Agent, tool
 from agenticflow import (
@@ -118,7 +115,7 @@ async def main() -> None:
     # Create a coder agent that reacts to code events
     coder = Agent(
         name="coder",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You are a helpful coding assistant. When asked to write code, produce clean, working solutions.",
     )
     flow.register(coder, [react_to("code.write")])
@@ -126,7 +123,7 @@ async def main() -> None:
     # Create an error handler agent that reacts to errors
     debugger_agent = Agent(
         name="debugger_agent",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You are a debugging expert. Analyze errors systematically and propose solutions.",
     )
     flow.register(debugger_agent, [react_to("error.*")])

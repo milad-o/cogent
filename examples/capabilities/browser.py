@@ -13,10 +13,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.capabilities import Browser
@@ -32,10 +29,10 @@ async def main() -> None:
         print("Install playwright to run this example: uv add playwright && playwright install chromium")
         return
 
-    model = get_model()
+    model = "gpt4"
     researcher = Agent(
         name="WebResearcher",
-        model=model,
+        model="gpt4",
         instructions="You research topics by browsing the web. Extract relevant information from pages.",
         capabilities=[browser],
     )

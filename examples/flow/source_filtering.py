@@ -14,16 +14,13 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.events import Event, any_source, from_source, not_from_source
 
 # Initialize model
-model = get_model()
+model = "gpt4"
 
 
 # =============================================================================
@@ -126,14 +123,14 @@ async def level1_basic_after():
     # Create research agent
     researcher = Agent(
         name="researcher",
-        model=model,
+        model="gpt4",
         instructions="You are a research analyst. Provide a brief 2-sentence analysis."
     )
 
     # Create reviewer agent
     reviewer = Agent(
         name="reviewer",
-        model=model,
+        model="gpt4",
         instructions="You are a quality reviewer. Provide brief feedback in 2 sentences."
     )
 
@@ -169,20 +166,20 @@ async def level1_multiple_sources():
     # Create multiple analyst agents
     tech_analyst = Agent(
         name="tech_analyst",
-        model=model,
+        model="gpt4",
         instructions="You analyze technical aspects. Keep it brief (1-2 sentences)."
     )
 
     business_analyst = Agent(
         name="business_analyst",
-        model=model,
+        model="gpt4",
         instructions="You analyze business aspects. Keep it brief (1-2 sentences)."
     )
 
     # Create aggregator that combines reports from both analysts
     aggregator = Agent(
         name="aggregator",
-        model=model,
+        model="gpt4",
         instructions="Combine the analyses into a brief summary (2-3 sentences)."
     )
 
@@ -223,19 +220,19 @@ async def level1_wildcards():
     # Create multiple similar agents
     analyst1 = Agent(
         name="analyst_1",
-        model=model,
+        model="gpt4",
         instructions="Provide a brief 1-sentence analysis."
     )
     analyst2 = Agent(
         name="analyst_2",
-        model=model,
+        model="gpt4",
         instructions="Provide a brief 1-sentence analysis."
     )
 
     # Create supervisor that reacts to ALL analysts
     supervisor = Agent(
         name="supervisor",
-        model=model,
+        model="gpt4",
         instructions="Review the analyst reports and provide brief feedback (2 sentences)."
     )
 
@@ -280,12 +277,12 @@ async def level2_from_source():
 
     researcher = Agent(
         name="researcher",
-        model=model,
+        model="gpt4",
         instructions="Provide a brief 2-sentence analysis."
     )
     reviewer = Agent(
         name="reviewer",
-        model=model,
+        model="gpt4",
         instructions="Review the analysis briefly (2 sentences)."
     )
 
@@ -361,19 +358,19 @@ async def level2_composition():
     # Multiple analysts
     analyst_a = Agent(
         name="analyst_a",
-        model=model,
+        model="gpt4",
         instructions="Provide brief 1-sentence analysis."
     )
     analyst_b = Agent(
         name="analyst_b",
-        model=model,
+        model="gpt4",
         instructions="Provide brief 1-sentence analysis."
     )
 
     # Aggregator that combines reports from A or B
     aggregator = Agent(
         name="aggregator",
-        model=model,
+        model="gpt4",
         instructions="Combine the analyst reports into 2-3 sentences."
     )
 
@@ -415,7 +412,7 @@ async def level2_any_source():
     for source in sources:
         agent = Agent(
             name=source,
-            model=model,
+            model="gpt4",
             instructions="Provide a brief 1-sentence analysis."
         )
         flow.register(agent, on="task.created", emits="analysis.done")
@@ -423,7 +420,7 @@ async def level2_any_source():
     # Aggregator using any_source() - cleaner than long OR chain
     aggregator = Agent(
         name="aggregator",
-        model=model,
+        model="gpt4",
         instructions="Combine analyses into 2-3 sentences."
     )
 
@@ -465,25 +462,25 @@ async def real_world_research_workflow():
     # Create agents
     researcher = Agent(
         name="researcher",
-        model=model,
+        model="gpt4",
         instructions="You are a research analyst. Provide a brief 2-sentence analysis."
     )
 
     technical_reviewer = Agent(
         name="technical_reviewer",
-        model=model,
+        model="gpt4",
         instructions="Review technical accuracy in 1-2 sentences."
     )
 
     style_reviewer = Agent(
         name="style_reviewer",
-        model=model,
+        model="gpt4",
         instructions="Review writing style and clarity in 1-2 sentences."
     )
 
     final_editor = Agent(
         name="final_editor",
-        model=model,
+        model="gpt4",
         instructions="Combine the reviews into a brief final summary (2-3 sentences)."
     )
 
@@ -540,7 +537,7 @@ async def real_world_high_priority_alerts():
     # Alert handler that only processes high-priority API events
     alert_handler = Agent(
         name="alert_handler",
-        model=model,
+        model="gpt4",
         instructions="Handle urgent alerts and take immediate action."
     )
 

@@ -167,7 +167,7 @@ def get_api_key(provider: str, explicit_key: str | None = None) -> str | None:
         "groq": ["GROQ_API_KEY"],
         "azure": ["AZURE_OPENAI_API_KEY"],
         "cohere": ["COHERE_API_KEY", "CO_API_KEY"],
-        "cloudflare": ["CLOUDFLARE_API_KEY", "CF_API_KEY"],
+        "cloudflare": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_KEY", "CF_API_KEY"],
         "mistral": ["MISTRAL_API_KEY"],
         "together": ["TOGETHER_API_KEY"],
     }
@@ -199,6 +199,58 @@ def get_provider_config(provider: str) -> dict[str, Any]:
     config = load_config()
     models_config = config.get("models", {})
     return models_config.get(provider.lower(), {})
+
+
+def get_model_override(provider: str, kind: str) -> str | None:
+    """Get chat/embedding model override from env or config.
+
+    Priority:
+    1. Environment variables (e.g., OPENAI_CHAT_MODEL)
+    2. Config file (models.<provider>.chat_model / embedding_model)
+
+    Args:
+        provider: Provider name (openai, gemini, etc.)
+        kind: "chat" or "embedding"
+
+    Returns:
+        Model name override or None
+    """
+    provider_key = provider.lower()
+    if provider_key == "google":
+        provider_key = "gemini"
+
+    env_map: dict[str, dict[str, list[str]]] = {
+        "chat": {
+            "openai": ["OPENAI_CHAT_MODEL"],
+            "gemini": ["GEMINI_CHAT_MODEL"],
+            "groq": ["GROQ_CHAT_MODEL"],
+            "mistral": ["MISTRAL_CHAT_MODEL"],
+            "cohere": ["COHERE_CHAT_MODEL"],
+            "cloudflare": ["CLOUDFLARE_CHAT_MODEL"],
+            "github": ["GITHUB_CHAT_MODEL"],
+            "ollama": ["OLLAMA_CHAT_MODEL"],
+        },
+        "embedding": {
+            "openai": ["OPENAI_EMBEDDING_MODEL"],
+            "gemini": ["GEMINI_EMBEDDING_MODEL"],
+            "mistral": ["MISTRAL_EMBEDDING_MODEL"],
+            "cohere": ["COHERE_EMBEDDING_MODEL"],
+            "cloudflare": ["CLOUDFLARE_EMBEDDING_MODEL"],
+            "github": ["GITHUB_EMBEDDING_MODEL"],
+            "ollama": ["OLLAMA_EMBEDDING_MODEL"],
+        },
+    }
+
+    for env_var in env_map.get(kind, {}).get(provider_key, []):
+        value = os.environ.get(env_var)
+        if value:
+            return value
+
+    config = load_config()
+    models_config = config.get("models", {})
+    provider_config = models_config.get(provider_key, {})
+    key_name = "chat_model" if kind == "chat" else "embedding_model"
+    return provider_config.get(key_name)
 
 
 def get_default_model() -> str | None:

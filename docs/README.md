@@ -41,7 +41,7 @@ def get_weather(city: str) -> str:
     return f"Weather in {city}: 72°F, sunny"
 
 async def main():
-    # Simple string model (v1.14.0+)
+    # Simple string model (v1.14.1+)
     agent = Agent(
         name="Assistant",
         model="gpt4",  # Auto-resolves to gpt-4o

@@ -29,8 +29,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent, Observer
 from agenticflow.agent import ReasoningConfig, ReasoningStyle
@@ -40,7 +38,6 @@ from agenticflow.tools.base import tool
 try:
     from examples.config import get_model
 except ImportError:
-    from models import get_model
 
 
 # =============================================================================
@@ -116,12 +113,12 @@ async def example_basic_reasoning():
     print("Example 1: Basic Reasoning")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Enable reasoning with True (uses default config)
     agent = Agent(
         name="Analyst",
-        model=model,
+        model="gpt4",
         tools=[get_company_data, calculate_metrics],
         reasoning=True,  # Enable default reasoning
         observer=Observer.trace(),  # Show all reasoning events
@@ -145,12 +142,12 @@ async def example_reasoning_styles():
     print("Example 2: Reasoning Styles")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Critical reasoning - questions assumptions
     agent = Agent(
         name="CriticalAnalyst",
-        model=model,
+        model="gpt4",
         tools=[get_company_data, calculate_metrics, compare_companies],
         reasoning=ReasoningConfig.critical(),
         observer=Observer.normal(),  # Show progress and reasoning
@@ -174,12 +171,12 @@ async def example_deep_reasoning():
     print("Example 3: Deep Reasoning")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Deep reasoning - requires 70% confidence to stop thinking
     agent = Agent(
         name="DeepAnalyst",
-        model=model,
+        model="gpt4",
         tools=[get_company_data, calculate_metrics],
         reasoning=ReasoningConfig.deep(),
         observer=Observer.normal(),
@@ -204,12 +201,12 @@ async def example_quick_reasoning():
     print("Example 4: Quick vs No Reasoning Comparison")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Agent with quick reasoning
     agent_reasoning = Agent(
         name="QuickAnalyst",
-        model=model,
+        model="gpt4",
         tools=[get_company_data],
         reasoning=ReasoningConfig.quick(),
         observer=Observer.normal(),
@@ -218,7 +215,7 @@ async def example_quick_reasoning():
     # Agent without reasoning
     agent_no_reasoning = Agent(
         name="DirectAnalyst",
-        model=model,
+        model="gpt4",
         tools=[get_company_data],
         reasoning=None,  # No reasoning
         observer=Observer.normal(),
@@ -246,7 +243,7 @@ async def example_custom_config():
     print("Example 5: Custom Reasoning Config")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Custom config: exploratory style, show thinking, 2 rounds
     custom_config = ReasoningConfig(
@@ -259,7 +256,7 @@ async def example_custom_config():
     
     agent = Agent(
         name="Explorer",
-        model=model,
+        model="gpt4",
         tools=[get_company_data, calculate_metrics, compare_companies],
         reasoning=custom_config,
         observer=Observer.normal(),
@@ -284,12 +281,12 @@ async def example_per_call_reasoning():
     print("Example 6: Per-Call Reasoning Override")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Agent with NO reasoning by default
     agent = Agent(
         name="FlexibleAnalyst",
-        model=model,
+        model="gpt4",
         tools=[get_company_data, calculate_metrics],
         reasoning=False,  # Disabled by default
         observer=Observer.normal(),

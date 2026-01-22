@@ -11,12 +11,9 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 import tempfile
 from pathlib import Path
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.capabilities import Shell
@@ -36,10 +33,10 @@ async def main() -> None:
             timeout_seconds=30,
         )
 
-        model = get_model()
+        model = "gpt4"
         devops = Agent(
             name="DevOps",
-            model=model,
+            model="gpt4",
             instructions="You help analyze codebases using shell commands. Be efficient with commands.",
             capabilities=[shell],
         )

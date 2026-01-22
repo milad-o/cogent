@@ -17,10 +17,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.observability import Observer, ObservabilityLevel
@@ -33,7 +30,7 @@ async def main():
     print("="*80)
     
     # Create model
-    model = get_model()
+    model = "gpt4"
     
     # Use standard observer to show consistent formatting
     observer = Observer(level=ObservabilityLevel.DEBUG)
@@ -42,7 +39,7 @@ async def main():
     print("\n✓ Creating agent with taskboard and event tracking...")
     agent = Agent(
         name="ResearchAssistant",
-        model=model,
+        model="gpt4",
         taskboard=True,  # Enable taskboard with tools
         observer=observer,
     )

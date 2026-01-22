@@ -23,10 +23,7 @@ import json
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, tool
 from agenticflow.flow import pipeline
@@ -280,7 +277,7 @@ async def main() -> None:
     print()
 
     # Create agent
-    model = get_model()
+    model = "gpt4"
 
     assistant = Agent(
         name="Assistant",

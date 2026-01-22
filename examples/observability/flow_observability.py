@@ -12,9 +12,6 @@ import json
 import sys
 from pathlib import Path
 
-# Add examples to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.observability import Observer, TraceType
@@ -31,15 +28,15 @@ async def demo_observer_levels():
     print("DEMO 1: Observer Levels")
     print("=" * 80)
 
-    model = get_model()
+    model = "gpt4"
     researcher = Agent(
         name="researcher",
-        model=model,
+        model="gpt4",
         system_prompt="You are a research specialist. Provide concise, factual information.",
     )
     writer = Agent(
         name="writer",
-        model=model,
+        model="gpt4",
         system_prompt="You are a writer. Create clear, engaging content.",
     )
 
@@ -79,9 +76,9 @@ async def demo_trace_filtering():
     print("DEMO 2: Trace Filtering and Analysis")
     print("=" * 80)
 
-    model = get_model()
-    classifier = Agent(name="classifier", model=model, system_prompt="Classify the task type.")
-    processor = Agent(name="processor", model=model, system_prompt="Process the task.")
+    model = "gpt4"
+    classifier = Agent(name="classifier", model="gpt4", system_prompt="Classify the task type.")
+    processor = Agent(name="processor", model="gpt4", system_prompt="Process the task.")
 
     observer = Observer.trace()
     flow = Flow(observer=observer)
@@ -155,11 +152,11 @@ async def demo_performance_analysis():
     print("DEMO 3: Performance Analysis")
     print("=" * 80)
 
-    model = get_model()
+    model = "gpt4"
     
     # Create a multi-stage pipeline
     agents = [
-        Agent(name=f"stage_{i}", model=model, system_prompt=f"Stage {i} processor")
+        Agent(name=f"stage_{i}", model="gpt4", system_prompt=f"Stage {i} processor")
         for i in range(1, 4)
     ]
 
@@ -214,8 +211,8 @@ async def demo_debugging_unmatched():
     print("DEMO 4: Debugging Unmatched Events")
     print("=" * 80)
 
-    model = get_model()
-    agent = Agent(name="worker", model=model)
+    model = "gpt4"
+    agent = Agent(name="worker", model="gpt4")
 
     observer = Observer.debug()
     flow = Flow(observer=observer)
@@ -262,9 +259,9 @@ async def demo_export_traces():
     print("DEMO 5: Exporting Traces")
     print("=" * 80)
 
-    model = get_model()
-    agent1 = Agent(name="analyzer", model=model)
-    agent2 = Agent(name="reporter", model=model)
+    model = "gpt4"
+    agent1 = Agent(name="analyzer", model="gpt4")
+    agent2 = Agent(name="reporter", model="gpt4")
 
     observer = Observer.trace()
     flow = Flow(observer=observer)

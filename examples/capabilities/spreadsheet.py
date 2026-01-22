@@ -11,12 +11,9 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 import tempfile
 from pathlib import Path
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.capabilities import Spreadsheet
@@ -41,10 +38,10 @@ async def main() -> None:
         csv_path = Path(tmpdir) / "sales.csv"
         spreadsheet._write_csv(csv_path, sales_data)
 
-        model = get_model()
+        model = "gpt4"
         analyst = Agent(
             name="DataAnalyst",
-            model=model,
+            model="gpt4",
             instructions="You analyze sales data. Use the spreadsheet tools to answer questions.",
             capabilities=[spreadsheet],
         )

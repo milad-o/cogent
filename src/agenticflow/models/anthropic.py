@@ -149,7 +149,9 @@ class AnthropicChat(BaseChatModel):
                 "anthropic package required. Install with: uv add anthropic"
             )
 
-        api_key = self.api_key or os.environ.get("ANTHROPIC_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("anthropic", self.api_key)
 
         kwargs: dict[str, Any] = {
             "timeout": self.timeout,

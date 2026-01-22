@@ -292,7 +292,9 @@ class GeminiChat(BaseChatModel):
                 "Install with: uv add google-genai"
             )
 
-        api_key = self.api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("gemini", self.api_key)
 
         # Create the centralized client
         self._client = genai.Client(api_key=api_key)
@@ -438,7 +440,9 @@ class GeminiEmbedding(BaseEmbedding):
                 "Install with: uv add google-genai"
             )
 
-        api_key = self.api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("gemini", self.api_key)
 
         # Create the centralized client
         self._client = genai.Client(api_key=api_key)

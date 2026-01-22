@@ -13,7 +13,7 @@ Agents are the primary actors in the system. Each agent has:
 ```python
 from agenticflow import Agent
 
-# Simple string model (recommended for v1.14.0+)
+# Simple string model (recommended for v1.14.1+)
 agent = Agent(
     name="Researcher",
     model="gpt4",  # Auto-resolves to gpt-4o

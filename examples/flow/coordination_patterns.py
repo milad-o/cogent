@@ -10,9 +10,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.events import Event
@@ -41,15 +38,15 @@ async def example_1_map_reduce():
     print("\nThree workers process chunks independently, then Flow automatically")
     print("triggers coordinator when ALL workers complete.\n")
     
-    model = get_model()
+    model = "gpt4"
     
     # Create worker agents
-    worker1 = Agent(name="worker_1", model=model, instructions="Process data chunks briefly.")
-    worker2 = Agent(name="worker_2", model=model, instructions="Process data chunks briefly.")
-    worker3 = Agent(name="worker_3", model=model, instructions="Process data chunks briefly.")
+    worker1 = Agent(name="worker_1", model="gpt4", instructions="Process data chunks briefly.")
+    worker2 = Agent(name="worker_2", model="gpt4", instructions="Process data chunks briefly.")
+    worker3 = Agent(name="worker_3", model="gpt4", instructions="Process data chunks briefly.")
     
     # Coordinator agent
-    coordinator = Agent(name="coordinator", model=model, instructions="Aggregate all worker results briefly.")
+    coordinator = Agent(name="coordinator", model="gpt4", instructions="Aggregate all worker results briefly.")
     
     # Create Flow with observer to see coordination in action
     flow = Flow(observer=Observer.trace())
@@ -89,14 +86,14 @@ async def example_2_multi_stage():
     print("\nStage 1: Technical + Security review (parallel)")
     print("Stage 2: Business review (after Stage 1 complete)\n")
     
-    model = get_model()
+    model = "gpt4"
     
     # Stage 1 reviewers
-    tech = Agent(name="tech_review", model=model, instructions="Technical review - be brief.")
-    security = Agent(name="security_review", model=model, instructions="Security review - be brief.")
+    tech = Agent(name="tech_review", model="gpt4", instructions="Technical review - be brief.")
+    security = Agent(name="security_review", model="gpt4", instructions="Security review - be brief.")
     
     # Stage 2 reviewer  
-    business = Agent(name="business_review", model=model, instructions="Business review - be brief.")
+    business = Agent(name="business_review", model="gpt4", instructions="Business review - be brief.")
     
     # Create Flow with observer
     flow = Flow(observer=Observer.trace())
@@ -133,10 +130,10 @@ async def example_3_batches():
     print("=" * 70)
     print("\nProcess 3 batches. Coordination auto-resets after each.\n")
     
-    model = get_model()
+    model = "gpt4"
     
-    worker_a = Agent(name="worker_a", model=model, instructions="Process batches quickly.")
-    worker_b = Agent(name="worker_b", model=model, instructions="Process batches quickly.")
+    worker_a = Agent(name="worker_a", model="gpt4", instructions="Process batches quickly.")
+    worker_b = Agent(name="worker_b", model="gpt4", instructions="Process batches quickly.")
     
     # Create Flow with observer
     flow = Flow(observer=Observer.trace())
@@ -177,11 +174,11 @@ async def example_4_one_time_gate():
     print("\nDeployment gate: ALL checks must pass. Use .once() to")
     print("trigger only once.\n")
     
-    model = get_model()
+    model = "gpt4"
     
-    build = Agent(name="build_check", model=model, instructions="Check build status briefly.")
-    test = Agent(name="test_check", model=model, instructions="Run tests briefly.")
-    security = Agent(name="security_check", model=model, instructions="Security scan briefly.")
+    build = Agent(name="build_check", model="gpt4", instructions="Check build status briefly.")
+    test = Agent(name="test_check", model="gpt4", instructions="Run tests briefly.")
+    security = Agent(name="security_check", model="gpt4", instructions="Security scan briefly.")
     
     # Create Flow with observer
     flow = Flow(observer=Observer.trace())
@@ -225,11 +222,11 @@ async def example_5_composition():
     print("=" * 70)
     print("\nEscalate only when ALL supervisors flag AND priority is high.\n")
     
-    model = get_model()
+    model = "gpt4"
     
-    sup1 = Agent(name="supervisor_1", model=model, instructions="Monitor systems briefly.")
-    sup2 = Agent(name="supervisor_2", model=model, instructions="Monitor systems briefly.")
-    sup3 = Agent(name="supervisor_3", model=model, instructions="Monitor systems briefly.")
+    sup1 = Agent(name="supervisor_1", model="gpt4", instructions="Monitor systems briefly.")
+    sup2 = Agent(name="supervisor_2", model="gpt4", instructions="Monitor systems briefly.")
+    sup3 = Agent(name="supervisor_3", model="gpt4", instructions="Monitor systems briefly.")
     
     # Create Flow with observer
     flow = Flow(observer=Observer.trace())

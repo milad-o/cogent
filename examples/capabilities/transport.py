@@ -23,14 +23,11 @@ import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-# Add examples to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent
 from agenticflow.events import Event, EventBus
 from agenticflow import Flow, FlowConfig, react_to
 from agenticflow.reactive.transport import LocalTransport, RedisTransport
-from models import get_model
 
 
 # Mock Redis classes for demo when Redis is unavailable
@@ -189,18 +186,18 @@ async def agent_coordination():
     await transport.connect()
     
     bus = EventBus(transport=transport)
-    model = get_model()
+    model = "gpt4"
     
     # Create specialized agents
     analyzer = Agent(
         name="analyzer",
-        model=model,
+        model="gpt4",
         instructions="Analyze problems and identify root causes. Be concise (2-3 sentences).",
     )
     
     planner = Agent(
         name="planner",
-        model=model,
+        model="gpt4",
         instructions="Create action plans. List exactly 3 steps.",
     )
     
@@ -367,12 +364,12 @@ async def _run_multi_process(is_mock: bool):
     await transport.connect()
     
     bus = EventBus(transport=transport)
-    model = get_model()
+    model = "gpt4"
     
     # Create real agent with LLM
     agent = Agent(
         name="task_processor",
-        model=model,
+        model="gpt4",
         instructions="You are a task processor. Analyze tasks and provide brief, actionable insights (2-3 sentences max).",
     )
     

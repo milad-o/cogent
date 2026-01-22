@@ -11,12 +11,6 @@ Usage:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.core import AgentRole
@@ -66,14 +60,14 @@ async def demo_worker_vs_autonomous():
     """Show difference between WORKER and AUTONOMOUS with real LLM."""
     print("\n=== WORKER vs AUTONOMOUS (Real LLM Behavior) ===\n")
     
-    model = get_model()
+    model = "gpt4"
     task = "What is Python programming language?"
     
     # WORKER: Can use tools, but CANNOT finish
     print("1. WORKER Agent (can't finish):")
     worker = Agent(
         name="Worker",
-        model=model,
+        model="gpt4",
         role=AgentRole.WORKER,
         tools=[search_tool],
     )
@@ -88,7 +82,7 @@ async def demo_worker_vs_autonomous():
     print("\n2. AUTONOMOUS Agent (can finish):")
     autonomous = Agent(
         name="Autonomous",
-        model=model,
+        model="gpt4",
         role=AgentRole.AUTONOMOUS,
         tools=[search_tool],
     )
@@ -108,11 +102,11 @@ async def demo_supervisor_delegation():
     """Show supervisor trying to delegate (even without workers)."""
     print("\n\n=== SUPERVISOR Behavior (Delegation Tendency) ===\n")
     
-    model = get_model()
+    model = "gpt4"
     
     supervisor = Agent(
         name="Manager",
-        model=model,
+        model="gpt4",
         role=AgentRole.SUPERVISOR,
     )
     print(f"Capabilities: finish={supervisor.can_finish}, delegate={supervisor.can_delegate}, tools={supervisor.can_use_tools}")
@@ -134,11 +128,11 @@ async def demo_reviewer_behavior():
     """Show reviewer evaluating work."""
     print("\n\n=== REVIEWER Behavior (Evaluation Mode) ===\n")
     
-    model = get_model()
+    model = "gpt4"
     
     reviewer = Agent(
         name="QA",
-        model=model,
+        model="gpt4",
         role=AgentRole.REVIEWER,
     )
     print(f"Capabilities: finish={reviewer.can_finish}, delegate={reviewer.can_delegate}, tools={reviewer.can_use_tools}")
@@ -163,19 +157,19 @@ async def demo_tool_access_control():
     """Show that roles control tool access."""
     print("\n\n=== Tool Access Control by Role ===\n")
     
-    model = get_model()
+    model = "gpt4"
     task = "Search for information about Python"
     
     # WORKER: Can use tools
     print("1. WORKER (can_use_tools=True):")
-    worker = Agent(name="Worker", model=model, role=AgentRole.WORKER, tools=[search_tool])
+    worker = Agent(name="Worker", model="gpt4", role=AgentRole.WORKER, tools=[search_tool])
     print(f"   Tools available: {[t.name for t in worker.all_tools]}")
     result = await worker.run(task)
     print(f"   Used tools: {[tc.tool_name for tc in result.tool_calls] if result.tool_calls else 'None'}")
     
     # SUPERVISOR: Cannot use tools
     print("\n2. SUPERVISOR (can_use_tools=False):")
-    supervisor = Agent(name="Supervisor", model=model, role=AgentRole.SUPERVISOR, tools=[search_tool])
+    supervisor = Agent(name="Supervisor", model="gpt4", role=AgentRole.SUPERVISOR, tools=[search_tool])
     print(f"   Tools available: {[t.name for t in supervisor.all_tools]}")
     print(f"   But system prompt says: 'delegates tool work to workers'")
     result = await supervisor.run(task)
@@ -183,7 +177,7 @@ async def demo_tool_access_control():
     
     # REVIEWER: Cannot use tools
     print("\n3. REVIEWER (can_use_tools=False):")
-    reviewer = Agent(name="Reviewer", model=model, role=AgentRole.REVIEWER, tools=[search_tool])
+    reviewer = Agent(name="Reviewer", model="gpt4", role=AgentRole.REVIEWER, tools=[search_tool])
     print(f"   Tools available: {[t.name for t in reviewer.all_tools]}")
     print(f"   But system prompt says: 'focuses on judgment, not execution'")
     result = await reviewer.run(task)

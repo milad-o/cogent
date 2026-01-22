@@ -15,12 +15,6 @@ Run:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.agent.taskboard import TaskBoardConfig
@@ -77,12 +71,12 @@ async def demo_basic_taskboard():
     print("=" * 70)
     print()
     
-    model = get_model()
+    model = "gpt4"
     
     # Enable taskboard with default configuration
     agent = Agent(
         name="Researcher",
-        model=model,
+        model="gpt4",
         tools=[search_docs, run_code],
         taskboard=True,  # ← Adds task management tools
     )
@@ -127,12 +121,12 @@ async def demo_taskboard_with_verification():
     print("=" * 70)
     print()
     
-    model = get_model()
+    model = "gpt4"
     
     # Configure taskboard to require verification
     agent = Agent(
         name="CodeReviewer",
-        model=model,
+        model="gpt4",
         tools=[search_docs, run_code],
         taskboard=TaskBoardConfig(
             auto_verify=True,      # Agent must verify completion
@@ -170,11 +164,11 @@ async def demo_taskboard_inspection():
     print("=" * 70)
     print()
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="Analyst",
-        model=model,
+        model="gpt4",
         tools=[search_docs],
         taskboard=True,
     )
@@ -250,11 +244,11 @@ async def demo_taskboard_serialization():
     print("=" * 70)
     print()
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="Worker",
-        model=model,
+        model="gpt4",
         tools=[search_docs],
         taskboard=True,
     )

@@ -15,13 +15,6 @@ Usage:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from models import get_model
 
 from agenticflow import Agent
 
@@ -39,14 +32,12 @@ def search_web(query: str) -> str:
 
 
 async def main():
-    model = get_model()
-    
     # Example 1: Basic Response
     print("\n=== Basic Response ===")
     
     agent = Agent(
         name="Assistant",
-        model=model,
+        model="gpt4",  # Auto-loads API key from .env
         instructions="Be helpful and concise.",
     )
     
@@ -65,7 +56,7 @@ async def main():
     
     agent_with_tools = Agent(
         name="Calculator",
-        model=model,
+        model="gpt4",
         tools=[search_web],
     )
     
@@ -80,7 +71,7 @@ async def main():
     # Example 3: Conversation Memory
     print("\n=== Multi-Turn Conversations ===")
     
-    chatbot = Agent(name="Chatbot", model=model)
+    chatbot = Agent(name="Chatbot", model="gpt4")
     
     r1 = await chatbot.run("My favorite color is blue", thread_id="conv-1")
     r2 = await chatbot.run("What's my favorite color?", thread_id="conv-1")

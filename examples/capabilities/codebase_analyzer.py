@@ -16,11 +16,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from pathlib import Path
 
-from models import get_model
 
 
 def demo_programmatic():
@@ -99,11 +96,11 @@ async def demo_agent(analyzer):
     print("🤖 Agent with CodebaseAnalyzer Demo")
     print("=" * 60)
 
-    model = get_model()
+    model = "gpt4"
 
     agent = Agent(
         name="CodeExpert",
-        model=model,
+        model="gpt4",
         instructions="""You are a code analysis expert. You have access to a parsed codebase
 stored in a knowledge graph. Use the available tools to explore the code structure
 and answer questions about:

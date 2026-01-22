@@ -2,10 +2,9 @@
 
 Comprehensive examples organized by category to help you learn AgenticFlow.
 
-## 🆕 What's New in v1.14.0
+## 🆕 What's New in v1.14.1
 
 **3-Tier Model API - String Models:**
-- [`basics/simple_models.py`](basics/simple_models.py) - **NEW** All 3 API tiers demonstrated
 - [`basics/config_file.py`](basics/config_file.py) - **NEW** API key management guide
 - Use `model="gpt4"` instead of `ChatModel(model="gpt-4o")` → simpler!
 - 30+ model aliases: `gpt4`, `claude`, `gemini`, `llama`, etc.
@@ -21,14 +20,20 @@ Comprehensive examples organized by category to help you learn AgenticFlow.
 ## Quick Start
 
 ```bash
-# Set up your API key
-export OPENAI_API_KEY="sk-..."  # or ANTHROPIC_API_KEY, etc.
+# 1. Create .env file in project root
+cp examples/.env .env
 
-# Run any example
+# 2. Add your API key to .env
+# OPENAI_API_KEY=sk-...
+# ANTHROPIC_API_KEY=sk-ant-...
+# GEMINI_API_KEY=...
+
+# 3. Run any example - API keys load automatically!
 uv run python examples/basics/hello_world.py
 
-# Try the new Response protocol example
-uv run python examples/basics/response.py
+# Examples use direct string models - no config needed!
+# Agent(name="...", model="gpt4")  ✅ Simple!
+# Agent(name="...", model="claude")  ✅ Works!
 ```
 
 ---
@@ -41,8 +46,8 @@ Core concepts every user should know.
 | Example | Description |
 |---------|-------------|
 | [hello_world.py](basics/hello_world.py) | Single agent basics |
-| [simple_models.py](basics/simple_models.py) | **NEW v1.14.0** 3-tier model API (string models, factory, direct) |
-| [config_file.py](basics/config_file.py) | **NEW v1.14.0** API key management (.env, TOML, YAML) |
+| [config_file.py](basics/config_file.py) | **NEW v1.14.1** API key management (.env, TOML, YAML) |
+| [all_providers.py](basics/all_providers.py) | **NEW v1.14.1** Test all model providers (OpenAI, Anthropic, Gemini, Groq) |
 | [response.py](basics/response.py) | Response[T] protocol - typed results with metadata |
 | [memory.py](basics/memory.py) | Thread-based conversation memory |
 | [roles.py](basics/roles.py) | Agent roles (worker, supervisor, etc.) |
@@ -133,19 +138,47 @@ Advanced patterns for production systems.
 
 ## 🔧 Configuration
 
-All examples use `config.py` for model configuration:
+### Recommended: Direct String Models (v1.14.1+)
+
+All new examples use the **3-tier model API** - no `config.py` imports needed:
 
 ```python
-# examples/config.py loads from environment
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export AZURE_OPENAI_ENDPOINT="https://..."
-export AZURE_OPENAI_AUTH_TYPE="managed_identity"  # or api_key|default|client_secret
+from agenticflow import Agent
 
-# Or create a .env file in the project root
+# Tier 1: Simple strings (recommended!) ⭐
+agent = Agent(name="Helper", model="gpt4")
+agent = Agent(name="Helper", model="claude")
+agent = Agent(name="Helper", model="gemini")
+
+# Tier 2: Provider prefix for explicit control
+agent = Agent(name="Helper", model="anthropic:claude-sonnet-4")
+agent = Agent(name="Helper", model="groq:llama-70b")
+
+# Tier 3: Full control with model instances
+from agenticflow.models import OpenAIChat
+agent = Agent(name="Helper", model=OpenAIChat(model="gpt-4o", temperature=0.7))
 ```
 
-Supported providers: OpenAI, Anthropic, Azure OpenAI, Google Gemini, Groq, Ollama
+**API keys auto-load from:**
+1. `.env` file in project root (highest priority)
+2. `agenticflow.toml` or `agenticflow.yaml` (project-level)
+3. `~/.agenticflow/config.toml` or `config.yaml` (user-level)
+4. Environment variables (lowest priority)
+
+### Legacy: config.py Helper
+
+**Note:** `examples/models.py` is now **legacy** and maintained only for backward compatibility with older examples. New code should use direct string models as shown above.
+
+```python
+# ❌ Old way (legacy)
+from models import get_model
+agent = Agent(name="Helper", model=get_model())
+
+# ✅ New way (recommended)
+agent = Agent(name="Helper", model="gpt4")
+```
+
+**Supported providers:** OpenAI, Anthropic, Azure OpenAI, Google Gemini, Groq, Cohere, Cloudflare, Ollama
 
 ---
 
@@ -177,9 +210,10 @@ uv run python examples/retrieval/retrievers.py
 ## 📚 Learning Path
 
 **Beginners:**
-1. `basics/hello_world.py` - Your first agent
-2. `basics/memory.py` - Conversations that remember
-3. `flow/flow_basics.py` - Flow patterns and orchestration
+1. `basics/hello_world.py` - Your first agent with string models
+2. `basics/config_file.py` - **NEW** How API keys are loaded
+3. `basics/memory.py` - Conversations that remember
+4. `flow/flow_basics.py` - Flow patterns and orchestration
 
 **Intermediate:**
 4. `retrieval/retrievers.py` - Add knowledge to agents

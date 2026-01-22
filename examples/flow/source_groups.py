@@ -14,10 +14,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 
@@ -34,12 +31,12 @@ async def example_basic_groups():
     print("=" * 60)
 
     flow = Flow()
-    model = get_model()
+    model = "gpt4"
 
     # Create analyst agents
-    analyst1 = Agent(name="analyst1", model=model, instructions="You are analyst 1")
-    analyst2 = Agent(name="analyst2", model=model, instructions="You are analyst 2")
-    analyst3 = Agent(name="analyst3", model=model, instructions="You are analyst 3")
+    analyst1 = Agent(name="analyst1", model="gpt4", instructions="You are analyst 1")
+    analyst2 = Agent(name="analyst2", model="gpt4", instructions="You are analyst 2")
+    analyst3 = Agent(name="analyst3", model="gpt4", instructions="You are analyst 3")
 
     # Define a group of analysts
     flow.add_source_group("analysts", ["analyst1", "analyst2", "analyst3"])
@@ -78,11 +75,11 @@ async def example_pattern_syntax_with_groups():
     print("=" * 60)
 
     flow = Flow()
-    model = get_model()
+    model = "gpt4"
 
     # Create worker agents
-    worker1 = Agent(name="worker1", model=model, instructions="You are worker 1")
-    worker2 = Agent(name="worker2", model=model, instructions="You are worker 2")
+    worker1 = Agent(name="worker1", model="gpt4", instructions="You are worker 1")
+    worker2 = Agent(name="worker2", model="gpt4", instructions="You are worker 2")
 
     # Define workers group
     flow.add_source_group("workers", ["worker1", "worker2"])
@@ -119,12 +116,12 @@ async def example_builtin_agents_group():
     print("=" * 60)
 
     flow = Flow()
-    model = get_model()
+    model = "gpt4"
 
     # Create multiple agents
-    researcher = Agent(name="researcher", model=model, instructions="Research topics")
-    writer = Agent(name="writer", model=model, instructions="Write content")
-    editor = Agent(name="editor", model=model, instructions="Edit content")
+    researcher = Agent(name="researcher", model="gpt4", instructions="Research topics")
+    writer = Agent(name="writer", model="gpt4", instructions="Write content")
+    editor = Agent(name="editor", model="gpt4", instructions="Edit content")
 
     # Register agents (they're automatically added to :agents group)
     flow.register(researcher, on="task.created", emits="research.done")
@@ -187,7 +184,7 @@ async def example_chaining_groups():
     print("=" * 60)
 
     flow = Flow()
-    model = get_model()
+    model = "gpt4"
 
     # Chain group definitions
     flow.add_source_group("writers", ["w1", "w2", "w3"]) \
@@ -200,9 +197,9 @@ async def example_chaining_groups():
     print(f"  approvers: {flow.get_source_group('approvers')}")
 
     # Create workflow agents
-    writer = Agent(name="w1", model=model, instructions="Write content")
-    reviewer = Agent(name="r1", model=model, instructions="Review content")
-    approver = Agent(name="a1", model=model, instructions="Approve content")
+    writer = Agent(name="w1", model="gpt4", instructions="Write content")
+    reviewer = Agent(name="r1", model="gpt4", instructions="Review content")
+    approver = Agent(name="a1", model="gpt4", instructions="Approve content")
 
     # Register with group-based routing
     flow.register(writer, on="task.created", emits="draft.ready")

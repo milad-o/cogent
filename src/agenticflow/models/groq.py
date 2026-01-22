@@ -163,7 +163,9 @@ class GroqChat(BaseChatModel):
         except ImportError:
             raise ImportError("openai package required. Install with: uv add openai")
 
-        api_key = self.api_key or os.environ.get("GROQ_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("groq", self.api_key)
 
         self._client = OpenAI(
             base_url="https://api.groq.com/openai/v1",

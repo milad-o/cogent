@@ -8,10 +8,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.flow import Flow
@@ -24,24 +21,24 @@ async def demo_basic_graph() -> None:
     print("DEMO 1: Basic Event Graph")
     print("=" * 80)
 
-    model = get_model()
+    model = "gpt4"
     
     # Create agents
     classifier = Agent(
         name="Classifier",
-        model=model,
+        model="gpt4",
         system_prompt="Classify the task type.",
     )
     
     processor = Agent(
         name="Processor",
-        model=model,
+        model="gpt4",
         system_prompt="Process the classified task.",
     )
     
     finalizer = Agent(
         name="Finalizer",
-        model=model,
+        model="gpt4",
         system_prompt="Finalize the processing.",
     )
 
@@ -68,17 +65,17 @@ async def demo_graph_with_timing() -> None:
     print("DEMO 2: Event Graph with Timing")
     print("=" * 80)
 
-    model = get_model()
+    model = "gpt4"
     
     researcher = Agent(
         name="Researcher",
-        model=model,
+        model="gpt4",
         system_prompt="Research the topic briefly.",
     )
     
     writer = Agent(
         name="Writer",
-        model=model,
+        model="gpt4",
         system_prompt="Write a summary based on research.",
     )
 
@@ -104,30 +101,30 @@ async def demo_complex_flow() -> None:
     print("DEMO 3: Complex Multi-Branch Flow")
     print("=" * 80)
 
-    model = get_model()
+    model = "gpt4"
     
     # Router that determines priority
     router = Agent(
         name="Router",
-        model=model,
+        model="gpt4",
         system_prompt="Determine if task is urgent (mention of 'critical', 'urgent', 'emergency') or normal priority. Respond with just 'urgent' or 'normal'.",
     )
     
     urgent_handler = Agent(
         name="UrgentHandler",
-        model=model,
+        model="gpt4",
         system_prompt="Handle urgent tasks immediately with high priority response.",
     )
     
     normal_handler = Agent(
         name="NormalHandler",
-        model=model,
+        model="gpt4",
         system_prompt="Process normal priority tasks with standard response.",
     )
     
     reviewer = Agent(
         name="Reviewer",
-        model=model,
+        model="gpt4",
         system_prompt="Review completed work and provide feedback.",
     )
 
@@ -157,11 +154,11 @@ async def demo_export_graph() -> None:
 
     from pathlib import Path
     
-    model = get_model()
+    model = "gpt4"
     
-    agent1 = Agent(name="Agent1", model=model, system_prompt="Step 1")
-    agent2 = Agent(name="Agent2", model=model, system_prompt="Step 2")
-    agent3 = Agent(name="Agent3", model=model, system_prompt="Step 3")
+    agent1 = Agent(name="Agent1", model="gpt4", system_prompt="Step 1")
+    agent2 = Agent(name="Agent2", model="gpt4", system_prompt="Step 2")
+    agent3 = Agent(name="Agent3", model="gpt4", system_prompt="Step 3")
 
     observer = Observer.trace()
     flow = Flow(observer=observer)

@@ -185,10 +185,30 @@ def create_chat(
             model="my-model",
         )
     """
-    # High-level API: If model is None, treat provider as model string
-    if model is None:
+    provider_lower = provider.lower()
+    explicit_providers = {
+        "openai",
+        "azure",
+        "azure-foundry",
+        "github",
+        "anthropic",
+        "groq",
+        "gemini",
+        "google",
+        "cohere",
+        "cloudflare",
+        "ollama",
+        "mistral",
+        "custom",
+    }
+
+    if model is None and provider_lower in explicit_providers:
+        from agenticflow.config import get_model_override
+
+        model = get_model_override(provider_lower, "chat")
+    elif model is None:
         from agenticflow.models.registry import resolve_model
-        
+
         provider_resolved, model = resolve_model(provider)
         provider = provider_resolved
     
@@ -199,7 +219,13 @@ def create_chat(
         if api_key:
             kwargs["api_key"] = api_key
     
-    provider = provider.lower()
+    provider_lower = provider.lower()
+    if model is None:
+        from agenticflow.config import get_model_override
+
+        model = get_model_override(provider_lower, "embedding")
+
+    provider = provider_lower
 
     if provider == "openai":
         from agenticflow.models.openai import OpenAIChat

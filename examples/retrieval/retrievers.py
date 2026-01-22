@@ -17,12 +17,9 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from models import get_embeddings, get_model
 
 from agenticflow.vectorstore import VectorStore, Document
 from agenticflow.retriever import (
@@ -447,7 +444,7 @@ async def demo_summary_index() -> None:
     print("=" * 70)
 
     embeddings = get_embeddings()
-    model = get_model()
+    model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = SummaryIndex(
@@ -481,7 +478,7 @@ async def demo_keyword_table_index() -> None:
     print("8. KEYWORD TABLE INDEX (LLM Keyword Extraction)")
     print("=" * 70)
 
-    model = get_model()
+    model = "gpt4"
 
     index = KeywordTableIndex(
         llm=model,  # Auto-adapts chat models internally
@@ -512,7 +509,7 @@ async def demo_self_query_retriever() -> None:
     print("=" * 70)
 
     embeddings = get_embeddings()
-    model = get_model()
+    model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
@@ -586,7 +583,7 @@ async def demo_multi_representation_index() -> None:
     print("(Multiple embeddings per document)")
 
     embeddings = get_embeddings()
-    model = get_model()
+    model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = MultiRepresentationIndex(
@@ -625,7 +622,7 @@ async def demo_reranker() -> None:
     print("(Improve ranking with LLM scoring)")
 
     embeddings = get_embeddings()
-    model = get_model()
+    model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 

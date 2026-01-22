@@ -16,11 +16,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from dataclasses import dataclass
 
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.tools.base import tool
@@ -75,7 +72,7 @@ async def example_budget_guard():
     print("Example 1: BudgetGuard - Cost Control")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Create a guard that limits calls
     guard = BudgetGuard(
@@ -85,7 +82,7 @@ async def example_budget_guard():
     
     agent = Agent(
         name="ResearchBot",
-        model=model,
+        model="gpt4",
         tools=[search, calculate, get_weather],
         instructions="Help with research tasks. Use tools when helpful.",
         intercept=[guard],  # Add the guard
@@ -154,12 +151,12 @@ async def example_logging_interceptor():
     print("Example 2: Custom Logging Interceptor")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     logger = LoggingInterceptor(verbose=True)
     
     agent = Agent(
         name="LoggedBot",
-        model=model,
+        model="gpt4",
         tools=[search, calculate],
         instructions="Help with tasks concisely.",
         intercept=[logger],
@@ -196,11 +193,11 @@ async def example_query_enhancer():
     print("Example 3: Tool Argument Modifier")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="EnhancedBot",
-        model=model,
+        model="gpt4",
         tools=[search],
         instructions="Search for requested information.",
         intercept=[QueryEnhancer(context="latest news 2024")],
@@ -220,7 +217,7 @@ async def example_chained_interceptors():
     print("Example 4: Chaining Multiple Interceptors")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Create multiple interceptors
     budget = BudgetGuard(model_calls=5, tool_calls=10)
@@ -229,7 +226,7 @@ async def example_chained_interceptors():
     
     agent = Agent(
         name="FullyInterceptedBot",
-        model=model,
+        model="gpt4",
         tools=[search, calculate, get_weather],
         instructions="Help with research. Be thorough but concise.",
         intercept=[
@@ -277,11 +274,11 @@ async def example_safety_guard():
         """Delete a file (dangerous!)."""
         return f"Deleted {path}"
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="SafeBot",
-        model=model,
+        model="gpt4",
         tools=[search, delete_file],
         instructions="Help with tasks. You can search and delete files.",
         intercept=[SafetyGuard(blocked_tools=["delete_file"])],
@@ -301,7 +298,7 @@ async def example_pii_shield():
     print("Example 6: PIIShield - Protect Sensitive Data")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Create a PII shield that masks emails and SSNs
     shield = PIIShield(
@@ -311,7 +308,7 @@ async def example_pii_shield():
     
     agent = Agent(
         name="SecureBot",
-        model=model,
+        model="gpt4",
         instructions="Help with user requests.",
         intercept=[shield],
     )
@@ -333,7 +330,7 @@ async def example_pii_shield_block():
     print("Example 7: PIIShield - Block Sensitive Requests")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Block if credit card detected
     shield = PIIShield(
@@ -344,7 +341,7 @@ async def example_pii_shield_block():
     
     agent = Agent(
         name="StrictBot",
-        model=model,
+        model="gpt4",
         instructions="Help with user requests.",
         intercept=[shield],
     )
@@ -370,7 +367,7 @@ async def example_token_limiter():
     print("Example 8: TokenLimiter - Hard Context Limit")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Set a token limit (this is intentionally low for demo)
     limiter = TokenLimiter(
@@ -380,7 +377,7 @@ async def example_token_limiter():
     
     agent = Agent(
         name="LimitedBot",
-        model=model,
+        model="gpt4",
         instructions="Help with tasks.",
         intercept=[limiter],
     )
@@ -401,7 +398,7 @@ async def example_content_filter():
     print("Example 9: ContentFilter - Block Specific Content")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     filter_ = ContentFilter(
         blocked_words=["password", "hack"],
@@ -412,7 +409,7 @@ async def example_content_filter():
     
     agent = Agent(
         name="FilteredBot",
-        model=model,
+        model="gpt4",
         instructions="Help with tasks.",
         intercept=[filter_],
     )
@@ -433,7 +430,7 @@ async def example_rate_limiter():
     print("Example 10: RateLimiter - Control API Call Rate")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Max 5 tool calls per 10 seconds
     limiter = RateLimiter(
@@ -444,7 +441,7 @@ async def example_rate_limiter():
     
     agent = Agent(
         name="RateLimitedBot",
-        model=model,
+        model="gpt4",
         tools=[search, calculate],
         instructions="Help with tasks.",
         intercept=[limiter],
@@ -468,7 +465,7 @@ async def example_auditor():
     print("Example 11: Auditor - Compliance Logging")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Create auditor with redaction
     auditor = Auditor(
@@ -479,7 +476,7 @@ async def example_auditor():
     
     agent = Agent(
         name="AuditedBot",
-        model=model,
+        model="gpt4",
         tools=[search],
         instructions="Help with tasks.",
         intercept=[auditor],

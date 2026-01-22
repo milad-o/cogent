@@ -11,9 +11,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import get_model
 
 from agenticflow import Agent, Observer, ObservabilityLevel
 
@@ -31,10 +28,10 @@ async def demo_token_tracking():
         track_tokens=True,       # Track cumulative usage
     )
     
-    model = get_model()
+    model = "gpt4"
     agent = Agent(
         name="Assistant",
-        model=model,
+        model="gpt4",
         instructions="You are a helpful assistant.",
         observer=observer,
     )
@@ -54,10 +51,10 @@ async def demo_structured_export():
     
     observer = Observer.trace()
     
-    model = get_model()
+    model = "gpt4"
     agent = Agent(
         name="Researcher",
-        model=model,
+        model="gpt4",
         instructions="Research topics thoroughly.",
         observer=observer,
     )
@@ -94,10 +91,10 @@ async def demo_progress_indicators():
         show_progress_steps=True,  # Enable step progress
     )
     
-    model = get_model()
+    model = "gpt4"
     agent = Agent(
         name="Analyzer",
-        model=model,
+        model="gpt4",
         instructions="Break down problems into clear steps.",
         observer=observer,
     )

@@ -209,6 +209,14 @@ class RetryPolicy:
                 "not implemented",
                 "authentication",
                 "permission denied",
+                "incorrect api key",
+                "invalid api key",
+                "invalid api_key",
+                "api key",
+                "api_key",
+                "auth token",
+                "auth_token",
+                "401",
             ]
             return not any(pattern in error_msg for pattern in non_retryable_patterns)
 

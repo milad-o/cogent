@@ -4,9 +4,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.flow import Flow
@@ -14,10 +12,10 @@ from agenticflow.observability import Observer
 
 
 async def main():
-    model = get_model()
+    model = "gpt4"
     
-    agent1 = Agent(name="Agent1", model=model, system_prompt="Say hello")
-    agent2 = Agent(name="Agent2", model=model, system_prompt="Say goodbye")
+    agent1 = Agent(name="Agent1", model="gpt4", system_prompt="Say hello")
+    agent2 = Agent(name="Agent2", model="gpt4", system_prompt="Say goodbye")
     
     observer = Observer.trace()
     flow = Flow(observer=observer)

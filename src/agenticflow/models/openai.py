@@ -116,7 +116,9 @@ class OpenAIChat(BaseChatModel):
         except ImportError:
             raise ImportError("openai package required. Install with: uv add openai")
 
-        api_key = self.api_key or os.environ.get("OPENAI_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("openai", self.api_key)
 
         kwargs: dict[str, Any] = {
             "timeout": self.timeout,
@@ -253,7 +255,9 @@ class OpenAIEmbedding(BaseEmbedding):
         except ImportError:
             raise ImportError("openai package required. Install with: uv add openai")
 
-        api_key = self.api_key or os.environ.get("OPENAI_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("openai", self.api_key)
 
         kwargs: dict[str, Any] = {
             "timeout": self.timeout,

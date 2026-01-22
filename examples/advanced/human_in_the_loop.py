@@ -17,10 +17,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow.tools.base import tool
 
@@ -80,12 +77,12 @@ async def demo_basic_approval():
     print("="*60)
     
     # Get LLM model
-    model = get_model()
+    model = "gpt4"
     
     # Create agent with interrupt_on rules
     agent = Agent(
         name="FileManager",
-        model=model,
+        model="gpt4",
         tools=[read_file, write_file, delete_file],
         instructions="You manage files safely. When asked to perform file operations, use your tools.",
         # Configure which tools require approval
@@ -153,11 +150,11 @@ async def demo_dynamic_rules():
             print(f"   📧 External email detected: {to}")
         return is_external
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="EmailAssistant",
-        model=model,
+        model="gpt4",
         tools=[send_email, search_web],
         instructions="You help send emails. Use your tools when asked.",
         interrupt_on={
@@ -210,11 +207,11 @@ async def demo_abort():
     print("Demo 3: Abort Workflow")
     print("="*60)
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="DangerousAgent",
-        model=model,
+        model="gpt4",
         tools=[delete_file],
         instructions="Delete files as requested. Use your tools.",
         interrupt_on={
@@ -249,11 +246,11 @@ async def demo_interactive():
     print("Demo 4: Interactive Approval Loop")
     print("="*60)
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="SystemAdmin",
-        model=model,
+        model="gpt4",
         tools=[delete_file, write_file, read_file],
         instructions="Perform system administration using your tools.",
         interrupt_on={
@@ -329,11 +326,11 @@ async def demo_guidance():
     
     from agenticflow.agent.hitl import GuidanceResult, HumanResponse
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="FileAssistant",
-        model=model,
+        model="gpt4",
         tools=[delete_file, write_file, read_file],
         instructions="Help manage files safely using your tools.",
         interrupt_on={

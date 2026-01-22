@@ -22,10 +22,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.observability import Observer, ObservabilityLevel, Channel
@@ -61,7 +58,7 @@ def convert_temperature(value: float, from_unit: str, to_unit: str) -> str:
 
 async def main():
     # Get model from config
-    model = get_model()
+    model = "gpt4"
     print(f"Using LLM provider: {settings.llm_provider}")
 
     # Create an observer with DEBUG level AND explicit LLM channel opt-in
@@ -76,7 +73,7 @@ async def main():
     # Create an agent with tools
     agent = Agent(
         name="WeatherAssistant",
-        model=model,
+        model="gpt4",
         system_prompt="You are a helpful weather assistant. Use the available tools to help users with weather-related questions.",
         tools=[get_weather, convert_temperature],
     )

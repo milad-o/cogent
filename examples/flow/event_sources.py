@@ -20,9 +20,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Add examples to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import get_model
 
 from agenticflow import Agent, tool
 from agenticflow.flow import Flow  # Has source/sink methods
@@ -81,12 +78,12 @@ async def demo_file_processing():
     print("=" * 60)
 
     # Get LLM model
-    model = get_model()
+    model = "gpt4"
 
     # Create specialized agents for different file types
     json_agent = Agent(
         name="json_processor",
-        model=model,
+        model="gpt4",
         system_prompt="""You are a JSON data analyst. When you receive a file:
 1. Use the parse_json_file tool to read and validate it
 2. Summarize what data the file contains
@@ -96,7 +93,7 @@ async def demo_file_processing():
 
     csv_agent = Agent(
         name="csv_processor",
-        model=model,
+        model="gpt4",
         system_prompt="""You are a CSV data analyst. When you receive a file:
 1. Use the analyze_csv_file tool to get statistics
 2. Describe the data structure
@@ -106,7 +103,7 @@ async def demo_file_processing():
 
     text_agent = Agent(
         name="text_processor",
-        model=model,
+        model="gpt4",
         system_prompt="""You are a text analyst. When you receive a file:
 1. Use the extract_text tool to read the content
 2. Summarize the main points
@@ -217,12 +214,12 @@ async def demo_notification_sink():
             return "NotificationSink"
 
     # Get LLM model
-    model = get_model()
+    model = "gpt4"
 
     # Create a simple processing agent
     processor = Agent(
         name="order_processor",
-        model=model,
+        model="gpt4",
         system_prompt="You process orders. Acknowledge the order and confirm it's been processed.",
     )
 

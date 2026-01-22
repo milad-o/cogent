@@ -25,14 +25,8 @@ Usage:
 """
 
 import asyncio
-import sys
 import tempfile
 from pathlib import Path
-
-# Add parent directory to path to import models.py
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.memory import Memory
@@ -42,7 +36,7 @@ async def demo_memory_discovery():
     """Show how agents discover memory keys via search."""
     print("\n--- Memory Key Discovery ---")
 
-    model = get_model()
+    model = "gpt4"
     memory = Memory()
 
     # Pre-populate with some facts using varied key names
@@ -62,7 +56,7 @@ async def demo_memory_discovery():
 
     agent = Agent(
         name="Assistant",
-        model=model,
+        model="gpt4",
         instructions="Always use search_memories() to discover what you know. Be concise.",
         memory=memory,
     )
@@ -111,14 +105,14 @@ async def demo_conversation_memory():
     """Show conversation memory with automatic fact storage."""
     print("\n--- Conversation Memory (Thread-Based) ---")
 
-    model = get_model()
+    model = "gpt4"
     
     # Memory is always agentic - tools are automatically available
     memory = Memory()
 
     agent = Agent(
         name="Assistant",
-        model=model,
+        model="gpt4",
         instructions="You are a helpful assistant. Be concise (1-2 sentences max).",
         memory=memory,  # Tools: remember, recall, forget, search_memories, search_conversation
     )
@@ -180,7 +174,7 @@ async def demo_persistent_memory():
         print("  ⚠ SQLAlchemy not installed. Run: uv add sqlalchemy aiosqlite")
         return
 
-    model = get_model()
+    model = "gpt4"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "agent_memory.db"
@@ -196,7 +190,7 @@ async def demo_persistent_memory():
 
         agent = Agent(
             name="PersistentAgent",
-            model=model,
+            model="gpt4",
             instructions="Be very concise (one sentence max).",
             memory=memory,
         )
@@ -219,7 +213,7 @@ async def demo_persistent_memory():
 
         agent2 = Agent(
             name="PersistentAgent",
-            model=model,
+            model="gpt4",
             instructions="Be very concise (one sentence max).",
             memory=memory2,
         )
@@ -238,13 +232,13 @@ async def demo_memory_tools():
     """Show agent automatically using memory tools."""
     print("\n--- Agent with Memory Tools ---")
 
-    model = get_model()
+    model = "gpt4"
     memory = Memory()  # Always agentic
 
     # Just pass memory - tools are auto-added!
     agent = Agent(
         name="MemoryAgent",
-        model=model,
+        model="gpt4",
         instructions="You are a helpful assistant. Be concise.",
         memory=memory,  # Tools: remember, recall, forget, search_memories
     )
@@ -281,7 +275,7 @@ async def demo_shared_memory():
     """Show multiple agents sharing memory."""
     print("\n--- Shared Memory (Multi-Agent) ---")
 
-    model = get_model()
+    model = "gpt4"
 
     # Create shared memory
     shared_memory = Memory()
@@ -292,14 +286,14 @@ async def demo_shared_memory():
     # Two agents sharing memory
     researcher = Agent(
         name="Researcher",
-        model=model,
+        model="gpt4",
         instructions="You are a researcher. When asked to research, provide 2-3 bullet points. Be concise.",
         memory=shared_memory,
     )
 
     writer = Agent(
         name="Writer",
-        model=model,
+        model="gpt4",
         instructions="You are a writer. Summarize findings into one paragraph.",
         memory=shared_memory,
     )

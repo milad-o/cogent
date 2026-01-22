@@ -75,6 +75,18 @@ MODEL_PROVIDERS: dict[str, str] = {
     "qwen-": "groq",
     "deepseek-": "groq",
     "gemma-": "groq",
+
+    # Mistral
+    "mistral-": "mistral",
+    "codestral-": "mistral",
+    "ministral-": "mistral",
+    "open-mistral-": "mistral",
+    "pixtral-": "mistral",
+    "magistral-": "mistral",
+    "devstral-": "mistral",
+    "labs-mistral-": "mistral",
+    "labs-devstral-": "mistral",
+    "voxtral-": "mistral",
     
     # Cloudflare Workers AI
     "@cf/": "cloudflare",

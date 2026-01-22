@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.14.0-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.14.1-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,7 +58,7 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.14.0 - January 2026)
+## 🎉 Latest Changes (v1.14.1 - January 2026)
 
 **Simple Model API** 🚀
 - ✨ **String-based models** — `Agent(model="gpt4")` or `Agent(model="claude")`
