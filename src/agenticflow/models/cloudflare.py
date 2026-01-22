@@ -132,6 +132,7 @@ class CloudflareChat(BaseChatModel):
         self._ensure_initialized()
         kwargs = self._build_request(messages)
         kwargs["stream"] = True
+        kwargs["stream_options"] = {"include_usage": True}
         
         start_time = time.time()
         chunk_metadata = {
@@ -151,23 +152,8 @@ class CloudflareChat(BaseChatModel):
                 chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
             if hasattr(chunk, 'usage') and chunk.usage:
                 chunk_metadata["usage"] = chunk.usage
-                # Yield final metadata chunk
-                metadata = MessageMetadata(
-                    id=str(uuid.uuid4()),
-                    timestamp=time.time(),
-                    model=chunk_metadata["model"],
-                    tokens=TokenUsage(
-                        prompt_tokens=chunk.usage.prompt_tokens,
-                        completion_tokens=chunk.usage.completion_tokens,
-                        total_tokens=chunk.usage.total_tokens,
-                    ),
-                    finish_reason=chunk_metadata["finish_reason"],
-                    response_id=chunk_metadata["id"],
-                    duration=time.time() - start_time,
-                )
-                yield AIMessage(content="", metadata=metadata)
             
-            # Yield content chunks
+            # Yield content chunks with partial metadata
             if chunk.choices and chunk.choices[0].delta.content:
                 metadata = MessageMetadata(
                     id=str(uuid.uuid4()),
@@ -179,6 +165,23 @@ class CloudflareChat(BaseChatModel):
                     duration=time.time() - start_time,
                 )
                 yield AIMessage(content=chunk.choices[0].delta.content, metadata=metadata)
+        
+        # Yield final metadata chunk if we have usage or finish_reason
+        if chunk_metadata.get("usage") or chunk_metadata.get("finish_reason"):
+            metadata = MessageMetadata(
+                id=str(uuid.uuid4()),
+                timestamp=time.time(),
+                model=chunk_metadata["model"],
+                tokens=TokenUsage(
+                    prompt_tokens=chunk_metadata["usage"].prompt_tokens if chunk_metadata.get("usage") else 0,
+                    completion_tokens=chunk_metadata["usage"].completion_tokens if chunk_metadata.get("usage") else 0,
+                    total_tokens=chunk_metadata["usage"].total_tokens if chunk_metadata.get("usage") else 0,
+                ) if chunk_metadata.get("usage") else None,
+                finish_reason=chunk_metadata["finish_reason"],
+                response_id=chunk_metadata["id"],
+                duration=time.time() - start_time,
+            )
+            yield AIMessage(content="", metadata=metadata)
 
     def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
         formatted_messages = convert_messages(messages)
