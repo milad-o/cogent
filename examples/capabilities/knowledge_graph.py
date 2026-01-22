@@ -19,13 +19,10 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 import json
 from pathlib import Path
 import tempfile
 
-from models import get_model
 
 
 def load_knowledge_file(kg, filepath: str) -> dict:
@@ -73,7 +70,7 @@ async def demo():
     print("🧠 Knowledge Graph Capability Demo")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # === Step 1: Load KnowledgeGraph from file ===
     print("\n📂 Step 1: Load Knowledge from File")
@@ -126,7 +123,7 @@ async def demo():
     
     agent = Agent(
         name="CompanyExpert",
-        model=model,
+        model="gpt4",
         instructions="""You are a company knowledge expert. You have access to a knowledge graph
 containing information about employees, teams, projects, and technologies.
 

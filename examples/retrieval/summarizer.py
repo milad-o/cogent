@@ -20,11 +20,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from pathlib import Path
 
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.capabilities import Summarizer, SummarizerConfig
@@ -34,7 +31,7 @@ from agenticflow.capabilities.filesystem import FileSystem
 async def main() -> None:
     """Demonstrate the Summarizer capability."""
     
-    model = get_model()
+    model = "gpt4"
     data_dir = Path(__file__).parent / "data"
     
     print("=" * 70)

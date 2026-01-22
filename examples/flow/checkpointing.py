@@ -18,9 +18,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import get_model
 
 from agenticflow import Agent, tool
 from agenticflow import (
@@ -101,28 +98,28 @@ async def basic_checkpointing() -> None:
     # ETL Pipeline agents
     extractor = Agent(
         name="extractor",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You extract and fetch batch data. Use the fetch tool to get data.",
         tools=[fetch_batch_data],
     )
     
     validator = Agent(
         name="validator", 
-        model=get_model(),
+        model="gpt4",
         system_prompt="You validate data quality. Use the validate tool to check records.",
         tools=[validate_records],
     )
     
     transformer = Agent(
         name="transformer",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You transform data into reports. Use the transform tool.",
         tools=[transform_to_report],
     )
     
     notifier = Agent(
         name="notifier",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You send completion notifications. Keep it brief.",
         tools=[notify_completion],
     )
@@ -188,13 +185,13 @@ async def crash_recovery_simulation() -> None:
     # Create agents for the resumed flow
     sync_agent = Agent(
         name="sync_agent",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You handle data synchronization. Report completion status.",
     )
     
     finalizer = Agent(
         name="finalizer",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You finalize sync jobs and send notifications.",
         tools=[notify_completion],
     )
@@ -238,14 +235,14 @@ async def file_based_checkpointing() -> None:
 
         processor = Agent(
             name="processor",
-            model=get_model(),
+            model="gpt4",
             system_prompt="You process data batches. Report results briefly.",
             tools=[fetch_batch_data, validate_records],
         )
         
         reporter = Agent(
             name="reporter",
-            model=get_model(),
+            model="gpt4",
             system_prompt="You create reports from processed data.",
             tools=[transform_to_report],
         )
@@ -295,7 +292,7 @@ async def multi_flow_coordination() -> None:
         
         agent = Agent(
             name="worker",
-            model=get_model(),
+            model="gpt4",
             system_prompt="You process tasks efficiently. Be concise.",
         )
         

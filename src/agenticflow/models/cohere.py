@@ -125,7 +125,9 @@ class CohereChat(BaseChatModel):
         except ImportError as exc:
             raise ImportError("cohere package required. Install with: uv add cohere") from exc
 
-        api_key = self.api_key or os.environ.get("COHERE_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("cohere", self.api_key)
         client_kwargs = {
             "api_key": api_key,
             "timeout": self.timeout,
@@ -208,7 +210,9 @@ class CohereEmbedding(BaseEmbedding):
         except ImportError as exc:
             raise ImportError("cohere package required. Install with: uv add cohere") from exc
 
-        api_key = self.api_key or os.environ.get("COHERE_API_KEY")
+        from agenticflow.config import get_api_key
+
+        api_key = get_api_key("cohere", self.api_key)
         client_kwargs = {
             "api_key": api_key,
             "timeout": self.timeout,

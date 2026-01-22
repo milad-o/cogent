@@ -27,12 +27,6 @@ Run:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from models import get_model
 
 
 # =============================================================================
@@ -51,7 +45,7 @@ async def basic_streaming():
     # Create agent with streaming-capable model
     assistant = Agent(
         name="assistant",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You are a helpful assistant. Be concise.",
     )
     
@@ -90,13 +84,13 @@ async def multi_agent_streaming():
     # Create multiple agents
     researcher = Agent(
         name="researcher",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You research topics. Provide 2-3 key facts.",
     )
     
     writer = Agent(
         name="writer",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You write engaging summaries. Keep it to 2 sentences.",
     )
     
@@ -143,19 +137,19 @@ async def streaming_with_progress():
     # Create agents for a 3-stage pipeline
     analyzer = Agent(
         name="analyzer",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Analyze the problem. List 2 key points.",
     )
     
     planner = Agent(
         name="planner",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Create a solution plan. 2-3 steps.",
     )
     
     executor = Agent(
         name="executor",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Provide final solution. Be concise.",
     )
     
@@ -207,19 +201,19 @@ async def conditional_streaming():
     # Create specialized agents
     python_expert = Agent(
         name="python_expert",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You are a Python expert. Provide Python advice.",
     )
     
     js_expert = Agent(
         name="js_expert",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You are a JavaScript expert. Provide JS advice.",
     )
     
     general_agent = Agent(
         name="general",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You are a general programming assistant.",
     )
     
@@ -281,7 +275,7 @@ async def streaming_error_handling():
     # Create agent that might fail
     assistant = Agent(
         name="assistant",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You are a helpful assistant.",
     )
     

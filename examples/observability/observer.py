@@ -22,20 +22,17 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Observer, Channel, ObservabilityLevel, pipeline
 
 
 async def demo_levels():
     """Show different verbosity levels."""
-    model = get_model()
+    model = "gpt4"
     
-    analyst = Agent(name="Analyst", model=model)
-    writer = Agent(name="Writer", model=model)
+    analyst = Agent(name="Analyst", model="gpt4")
+    writer = Agent(name="Writer", model="gpt4")
     
     # Verbose - see what agents are thinking
     print("\n--- Level: verbose() - See Agent Thoughts ---")
@@ -50,11 +47,11 @@ async def demo_levels():
 
 async def demo_trace():
     """Show deep tracing with execution graph."""
-    model = get_model()
+    model = "gpt4"
     
-    researcher = Agent(name="Researcher", model=model)
-    analyst = Agent(name="Analyst", model=model)
-    writer = Agent(name="Writer", model=model)
+    researcher = Agent(name="Researcher", model="gpt4")
+    analyst = Agent(name="Analyst", model="gpt4")
+    writer = Agent(name="Writer", model="gpt4")
     
     # Trace - maximum observability
     print("\n--- Level: trace() - Deep Execution Tracing ---")
@@ -79,10 +76,10 @@ async def demo_trace():
 
 async def demo_callbacks():
     """Custom callbacks with silent display."""
-    model = get_model()
+    model = "gpt4"
     
-    analyst = Agent(name="Analyst", model=model)
-    writer = Agent(name="Writer", model=model)
+    analyst = Agent(name="Analyst", model="gpt4")
+    writer = Agent(name="Writer", model="gpt4")
     
     # Collect events via callbacks
     events = []

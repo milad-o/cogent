@@ -27,10 +27,7 @@ import json
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow.document.loaders import PDFVisionLoader
 from agenticflow.document.loaders.pdf import OutputFormat
@@ -76,7 +73,7 @@ async def main() -> None:
     if not pdf_path.exists():
         raise FileNotFoundError(f"Missing example PDF: {pdf_path}")
 
-    model = get_model()
+    model = "gpt4"
     print(
         f"Using model: {getattr(model, 'model', None) or getattr(model, 'deployment', None) or type(model).__name__}"
     )

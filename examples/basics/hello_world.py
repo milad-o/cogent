@@ -4,7 +4,7 @@ Demo: Basic Usage
 Single agent with instructions performing a task.
 
 Usage:
-    # Ensure GEMINI_API_KEY is set in .env file at project root
+    # Ensure OPENAI_API_KEY is set in .env file at project root
     uv run python examples/basics/hello_world.py
 """
 
@@ -17,7 +17,7 @@ async def main():
     # Simple string model - API key loaded automatically from .env
     assistant = Agent(
         name="Assistant",
-        model="gemini",  # or "gpt4", "claude", etc.
+        model="gpt4",  # or "gemini", "claude", etc.
         instructions="You are a helpful assistant. Be concise.",
     )
 

@@ -36,9 +36,8 @@ agent = Agent("Helper", model="openai:gpt-4o")
 
 **API Key Loading** (Priority Order):
 1. Explicit `api_key=` parameter (highest)
-2. Environment variables (`OPENAI_API_KEY`, `GEMINI_API_KEY`, etc.)
-3. `.env` file (automatically loaded)
-4. Config file `~/.agenticflow/config.toml` or `config.yaml` (lowest)
+2. Environment variables (includes `.env` when loaded)
+3. Config file `agenticflow.toml` / `agenticflow.yaml` or `~/.agenticflow/config.*` (lowest)
 
 ### Tier 2: Medium-Level (Factory Functions)
 
@@ -116,6 +115,36 @@ GROQ_API_KEY=gsk_...
 ```
 
 AgenticFlow automatically loads `.env` files using `python-dotenv`.
+
+### Model Overrides (Environment + Config)
+
+You can override default **chat** or **embedding** models via env vars or config files.
+
+**Environment variables (highest):**
+```bash
+OPENAI_CHAT_MODEL=gpt-4.1
+OPENAI_EMBEDDING_MODEL=text-embedding-3-large
+GEMINI_CHAT_MODEL=gemini-2.5-flash
+GEMINI_EMBEDDING_MODEL=gemini-embedding-001
+MISTRAL_CHAT_MODEL=mistral-small-latest
+MISTRAL_EMBEDDING_MODEL=mistral-embed
+GROQ_CHAT_MODEL=llama-3.1-8b-instant
+COHERE_CHAT_MODEL=command-a-03-2025
+COHERE_EMBEDDING_MODEL=embed-english-v3.0
+CLOUDFLARE_CHAT_MODEL=@cf/meta/llama-3.1-8b-instruct
+CLOUDFLARE_EMBEDDING_MODEL=@cf/baai/bge-base-en-v1.5
+GITHUB_CHAT_MODEL=gpt-4.1
+GITHUB_EMBEDDING_MODEL=text-embedding-3-large
+OLLAMA_CHAT_MODEL=qwen2.5:7b
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+```
+
+**Config file (fallback):**
+```toml
+[models.openai]
+chat_model = "gpt-4.1"
+embedding_model = "text-embedding-3-large"
+```
 
 ### Config File (Recommended for Production)
 

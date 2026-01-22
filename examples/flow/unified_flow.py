@@ -18,10 +18,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import (
     Agent,
@@ -42,20 +39,20 @@ def get_observer():
 
 async def basic_flow_example():
     """Basic Flow with explicit event wiring."""
-    model = get_model()
+    model = "gpt4"
     observer = get_observer()
     
     # Create agents with clean API
     researcher = Agent(
         name="researcher",
-        model=model,
+        model="gpt4",
         instructions="You research topics thoroughly. Return key findings in 2-3 sentences.",
         observer=observer,
     )
     
     writer = Agent(
         name="writer",
-        model=model,
+        model="gpt4",
         instructions="You write engaging content based on research. Keep it brief.",
         observer=observer,
     )
@@ -78,27 +75,27 @@ async def basic_flow_example():
 
 async def pipeline_pattern_example():
     """Pipeline pattern - sequential processing."""
-    model = get_model()
+    model = "gpt4"
     observer = get_observer()
     
     # Create stage agents
     stage1 = Agent(
         name="extractor",
-        model=model,
+        model="gpt4",
         instructions="Extract key points from the input. Be concise.",
         observer=observer,
     )
     
     stage2 = Agent(
         name="organizer",
-        model=model,
+        model="gpt4",
         instructions="Organize and structure the key points logically.",
         observer=observer,
     )
     
     stage3 = Agent(
         name="polisher",
-        model=model,
+        model="gpt4",
         instructions="Polish and finalize the content. Make it professional.",
         observer=observer,
     )
@@ -113,13 +110,13 @@ async def pipeline_pattern_example():
 
 async def supervisor_pattern_example():
     """Supervisor pattern - coordinator with workers."""
-    model = get_model()
+    model = "gpt4"
     observer = get_observer()
     
     # Coordinator agent
     coordinator = Agent(
         name="coordinator",
-        model=model,
+        model="gpt4",
         role="supervisor",
         instructions="You coordinate work and delegate to specialists. Provide a final summary.",
         observer=observer,
@@ -128,14 +125,14 @@ async def supervisor_pattern_example():
     # Worker agents
     analyst = Agent(
         name="analyst",
-        model=model,
+        model="gpt4",
         instructions="You analyze data and provide insights. Be analytical.",
         observer=observer,
     )
     
     writer = Agent(
         name="writer",
-        model=model,
+        model="gpt4",
         instructions="You write reports based on analysis. Be clear and concise.",
         observer=observer,
     )
@@ -194,12 +191,12 @@ async def custom_reactors_example():
 
 async def streaming_example():
     """Streaming events as they occur."""
-    model = get_model()
+    model = "gpt4"
     observer = get_observer()
     
     agent = Agent(
         name="joker",
-        model=model,
+        model="gpt4",
         instructions="Tell a short, clean joke. Keep it brief.",
         stream=True,
         observer=observer,

@@ -278,6 +278,10 @@ class BaseChatModel(ABC):
     def _ensure_initialized(self) -> None:
         """Lazily initialize clients on first use."""
         if not self._initialized:
+            try:
+                __import__("agenticflow.config")
+            except Exception:
+                pass
             self._init_client()
             self._initialized = True
 

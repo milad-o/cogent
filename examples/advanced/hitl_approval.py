@@ -31,13 +31,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# Add examples to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent
 from agenticflow.reactive.core import ReactionType, Trigger
 from agenticflow.reactive.flow import Flow, FlowConfig
-from models import get_model
 
 
 @dataclass
@@ -92,12 +89,12 @@ async def main():
     print("for agent actions in a reactive flow.\n")
     
     # Create model
-    model = get_model()
+    model = "gpt4"
     
     # Create agents
     analyst = Agent(
         name="analyst",
-        model=model,
+        model="gpt4",
         system_prompt=(
             "You are a data analyst. When you receive a task, "
             "analyze what needs to be done and propose a plan."
@@ -106,7 +103,7 @@ async def main():
     
     executor = Agent(
         name="executor",
-        model=model,
+        model="gpt4",
         system_prompt=(
             "You are an executor. You implement plans that have been approved. "
             "Be concise and actionable."

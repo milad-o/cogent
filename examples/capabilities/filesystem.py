@@ -15,12 +15,9 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 import tempfile
 from pathlib import Path
 
-from models import get_model
 
 # ============================================================
 # Programmatic Demo (no LLM needed)
@@ -197,7 +194,7 @@ async def agent_demo():
         print(f"⚠️  Data directory not found: {data_dir}")
         return
     
-    model = get_model()
+    model = "gpt4"
     
     fs = FileSystem(
         allowed_paths=[str(data_dir.resolve())],
@@ -209,7 +206,7 @@ async def agent_demo():
     
     agent = Agent(
         name="FileAssistant",
-        model=model,
+        model="gpt4",
         instructions=(
             f"You are a file analysis assistant. "
             f"The workspace directory is: {data_dir.resolve()}\n"

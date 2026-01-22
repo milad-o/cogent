@@ -18,8 +18,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent
 from agenticflow.capabilities import CodeSandbox
@@ -293,14 +291,13 @@ async def agent_demo():
     """Demonstrate agent using CodeSandbox for computation."""
     separator("Agent with CodeSandbox")
     
-    from models import get_model
     
     sandbox = CodeSandbox(allow_imports=True, timeout=5)
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="Compute Agent",
-        model=model,
+        model="gpt4",
         instructions="""You are a computation agent that helps users with calculations.
 Use the execute_python tool to run Python code for calculations.
 Always show your code and explain the results clearly.

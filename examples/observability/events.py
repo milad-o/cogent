@@ -23,11 +23,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from collections import defaultdict
 
-from models import get_model
 
 from agenticflow import tool
 from agenticflow import Agent, Observer, ObservabilityLevel, EventBus
@@ -59,7 +56,7 @@ async def example_basic_events():
     print("  Example 1: Basic Event Collection")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     events_by_category: dict[str, list[str]] = defaultdict(list)
     
     def collect_event(event):
@@ -74,7 +71,7 @@ async def example_basic_events():
     agent = create_agent_with_observer(
         observer,
         name="Assistant",
-        model=model,
+        model="gpt4",
         instructions="You are a helpful assistant. Be concise.",
     )
     
@@ -100,7 +97,7 @@ async def example_user_output_events():
     print("  Example 2: User Input & Output Events")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     user_events = []
     output_events = []
     
@@ -112,8 +109,8 @@ async def example_user_output_events():
     
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_io)
     
-    planner = Agent(name="Planner", model=model, instructions="Create brief plans.")
-    executor = Agent(name="Executor", model=model, instructions="Execute plans briefly.")
+    planner = Agent(name="Planner", model="gpt4", instructions="Create brief plans.")
+    executor = Agent(name="Executor", model="gpt4", instructions="Execute plans briefly.")
     
     flow = pipeline([planner, executor], observer=observer)
     
@@ -140,7 +137,7 @@ async def example_agent_lifecycle():
     print("  Example 3: Agent Lifecycle Events")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     lifecycle_events = []
     
     # Agent lifecycle event types
@@ -159,8 +156,8 @@ async def example_agent_lifecycle():
     
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_lifecycle)
     
-    researcher = Agent(name="Researcher", model=model, instructions="Research topics briefly.")
-    writer = Agent(name="Writer", model=model, instructions="Write content briefly.")
+    researcher = Agent(name="Researcher", model="gpt4", instructions="Research topics briefly.")
+    writer = Agent(name="Writer", model="gpt4", instructions="Write content briefly.")
     
     flow = pipeline([researcher, writer], observer=observer)
     
@@ -202,7 +199,7 @@ async def example_tool_events():
         """Get weather for a city."""
         return f"Weather in {city}: Sunny, 72°F"
     
-    model = get_model()
+    model = "gpt4"
     tool_events = []
     
     tool_event_types = {
@@ -221,7 +218,7 @@ async def example_tool_events():
     agent = create_agent_with_observer(
         observer,
         name="Calculator",
-        model=model,
+        model="gpt4",
         tools=[calculate, get_weather],
         instructions="Use tools to answer questions. Be concise.",
     )
@@ -251,7 +248,7 @@ async def example_llm_tracing():
     print("  Example 5: LLM Deep Tracing")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     llm_events = []
     
     llm_event_types = {
@@ -268,7 +265,7 @@ async def example_llm_tracing():
     agent = create_agent_with_observer(
         observer,
         name="Analyst",
-        model=model,
+        model="gpt4",
         instructions="You analyze data. Be concise.",
     )
     
@@ -300,7 +297,7 @@ async def example_message_events():
     print("  Example 6: Message Passing Events")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     message_events = []
     
     message_event_types = {
@@ -315,9 +312,9 @@ async def example_message_events():
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_messages)
     
     # Mesh pattern has agents communicating with each other
-    agent1 = Agent(name="Alice", model=model, instructions="You are Alice. Collaborate briefly.")
-    agent2 = Agent(name="Bob", model=model, instructions="You are Bob. Collaborate briefly.")
-    agent3 = Agent(name="Charlie", model=model, instructions="You are Charlie. Synthesize briefly.")
+    agent1 = Agent(name="Alice", model="gpt4", instructions="You are Alice. Collaborate briefly.")
+    agent2 = Agent(name="Bob", model="gpt4", instructions="You are Bob. Collaborate briefly.")
+    agent3 = Agent(name="Charlie", model="gpt4", instructions="You are Charlie. Synthesize briefly.")
     
     flow = mesh([agent1, agent2, agent3], max_rounds=1, observer=observer)
     
@@ -349,7 +346,7 @@ async def example_task_events():
     print("  Example 7: Task Lifecycle Events")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     task_events = []
     
     task_event_types = {
@@ -365,9 +362,9 @@ async def example_task_events():
     
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_tasks)
     
-    step1 = Agent(name="Step1", model=model, instructions="First step. Be brief.")
-    step2 = Agent(name="Step2", model=model, instructions="Second step. Be brief.")
-    step3 = Agent(name="Step3", model=model, instructions="Third step. Be brief.")
+    step1 = Agent(name="Step1", model="gpt4", instructions="First step. Be brief.")
+    step2 = Agent(name="Step2", model="gpt4", instructions="Second step. Be brief.")
+    step3 = Agent(name="Step3", model="gpt4", instructions="Third step. Be brief.")
     
     flow = pipeline([step1, step2, step3], observer=observer)
     
@@ -400,7 +397,7 @@ async def example_all_events_summary():
         """Look up information about a topic."""
         return f"Information about {topic}: It's interesting!"
     
-    model = get_model()
+    model = "gpt4"
     all_events = []
     
     def collect_all(event):
@@ -411,7 +408,7 @@ async def example_all_events_summary():
     agent = create_agent_with_observer(
         observer,
         name="ResearchBot",
-        model=model,
+        model="gpt4",
         tools=[lookup],
         instructions="Use the lookup tool to research topics. Be concise.",
     )

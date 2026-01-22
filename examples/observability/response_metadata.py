@@ -14,10 +14,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Observer, tool
 
@@ -51,10 +48,10 @@ async def demo_basic_response():
     """Basic response with metadata."""
     print("\n=== Basic Response ===")
     
-    model = get_model()
+    model = "gpt4"
     agent = Agent(
         name="Assistant",
-        model=model,
+        model="gpt4",
         verbosity=True,  # Observer shows metadata
     )
     
@@ -69,10 +66,10 @@ async def demo_tool_tracking():
     """Response with tool calls."""
     print(\"\\n=== Tool Call Tracking ===\")
     
-    model = get_model()
+    model = "gpt4"
     agent = Agent(
         name=\"MathBot\",
-        model=model,
+        model="gpt4",
         tools=[calculator],
         verbosity=True,
     )
@@ -88,12 +85,12 @@ async def demo_observer_integration():
     """Observer with Response metadata."""
     print("\n=== Observer Integration ===")
     
-    model = get_model()
+    model = "gpt4"
     observer = Observer.verbose()
     
     agent = Agent(
         name="Worker",
-        model=model,
+        model="gpt4",
         tools=[calculator],
         observer=observer,
     )

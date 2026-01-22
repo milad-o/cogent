@@ -20,15 +20,12 @@ import sys
 import time
 from pathlib import Path
 
-# Add examples dir to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent
 from agenticflow.executors import NativeExecutor, SequentialExecutor
 from agenticflow.tools import tool
 
 # Import from examples config
-from models import get_model
 
 
 # =============================================================================
@@ -100,7 +97,7 @@ async def demo_native():
     print("🚀 NATIVE Executor (Parallel - Default)")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # By default, Agent uses NativeExecutor (parallel tool execution)
     agent = Agent(
@@ -133,7 +130,7 @@ async def demo_sequential():
     print("📋 SEQUENTIAL Executor (Ordered Execution)")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Create agent
     agent = Agent(

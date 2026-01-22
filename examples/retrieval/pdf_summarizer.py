@@ -15,12 +15,9 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 import time
 from pathlib import Path
 
-from models import get_model
 
 from agenticflow.document.loaders import PDFMarkdownLoader
 from agenticflow.document.summarizer import MapReduceSummarizer, RefineSummarizer
@@ -29,7 +26,7 @@ from agenticflow.document.summarizer import MapReduceSummarizer, RefineSummarize
 async def main() -> None:
     """Summarize a PDF with progress tracking."""
     
-    model = get_model()
+    model = "gpt4"
     data_dir = Path(__file__).parent / "data"
     pdf_path = data_dir / "wikipedia_water_cycle.pdf"
     

@@ -19,10 +19,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add parent directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.observability import Observer, ObservabilityLevel, Channel
@@ -39,19 +36,19 @@ async def example_1_simple_delegation():
     print("Example 1: Simple Delegation")
     print("=" * 80 + "\n")
 
-    model = get_model()
+    model = "gpt4"
 
     # Coordinator agent that delegates specialized work
     coordinator = Agent(
         name="coordinator",
-        model=model,
+        model="gpt4",
         system_prompt="You coordinate projects and delegate work to specialists.",
     )
 
     # Specialist agent that processes delegated tasks
     data_analyst = Agent(
         name="data_analyst",
-        model=model,
+        model="gpt4",
         system_prompt="You are a data analysis specialist. Provide brief insights.",
     )
 
@@ -83,31 +80,31 @@ async def example_2_multi_specialist_team():
     print("Example 2: Multi-Specialist Team")
     print("=" * 80 + "\n")
 
-    model = get_model()
+    model = "gpt4"
 
     # Team coordinator
     coordinator = Agent(
         name="coordinator",
-        model=model,
+        model="gpt4",
         system_prompt="You coordinate a team of specialists.",
     )
 
     # Specialist agents
     data_analyst = Agent(
         name="data_analyst",
-        model=model,
+        model="gpt4",
         system_prompt="You analyze data. Provide brief insights.",
     )
 
     writer = Agent(
         name="writer",
-        model=model,
+        model="gpt4",
         system_prompt="You write creative content.",
     )
 
     researcher = Agent(
         name="researcher",
-        model=model,
+        model="gpt4",
         system_prompt="You research topics thoroughly.",
     )
 
@@ -155,26 +152,26 @@ async def example_3_chain_delegation():
     print("Example 3: Chain of Delegation")
     print("=" * 80 + "\n")
 
-    model = get_model()
+    model = "gpt4"
 
     # Project manager starts the chain
     pm = Agent(
         name="project_manager",
-        model=model,
+        model="gpt4",
         system_prompt="You're a project manager. Break down tasks into requirements.",
     )
 
     # Architect in the middle of the chain
     architect = Agent(
         name="architect",
-        model=model,
+        model="gpt4",
         system_prompt="You're a solution architect. Design systems and delegate implementation.",
     )
 
     # Developer at the end of the chain
     developer = Agent(
         name="developer",
-        model=model,
+        model="gpt4",
         system_prompt="You're a developer. Implement solutions with clean code.",
     )
 
@@ -207,31 +204,31 @@ async def example_4_parallel_delegation():
     print("Example 4: Parallel Delegation (Fan-out)")
     print("=" * 80 + "\n")
 
-    model = get_model()
+    model = "gpt4"
 
     # Coordinator that fans out work
     coordinator = Agent(
         name="coordinator",
-        model=model,
+        model="gpt4",
         system_prompt="You coordinate code reviews across multiple dimensions.",
     )
 
     # Multiple reviewers working in parallel
     security_reviewer = Agent(
         name="security_reviewer",
-        model=model,
+        model="gpt4",
         system_prompt="Review code for security vulnerabilities.",
     )
 
     performance_reviewer = Agent(
         name="performance_reviewer",
-        model=model,
+        model="gpt4",
         system_prompt="Review code for performance optimization opportunities.",
     )
 
     style_reviewer = Agent(
         name="style_reviewer",
-        model=model,
+        model="gpt4",
         system_prompt="Review code style and best practices.",
     )
 
@@ -269,26 +266,26 @@ async def example_5_request_response_pattern():
     print("Example 5: Request-Response Pattern")
     print("=" * 80 + "\n")
 
-    model = get_model()
+    model = "gpt4"
 
     # Requester agent
     requester = Agent(
         name="requester",
-        model=model,
+        model="gpt4",
         system_prompt="You request data processing tasks.",
     )
 
     # Processor that sends back responses
     processor = Agent(
         name="processor",
-        model=model,
+        model="gpt4",
         system_prompt="You process data and return results.",
     )
 
     # Agent that listens for responses
     response_handler = Agent(
         name="response_handler",
-        model=model,
+        model="gpt4",
         system_prompt="You receive and acknowledge processing results.",
     )
 

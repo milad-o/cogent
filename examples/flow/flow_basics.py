@@ -13,12 +13,6 @@ API Levels:
 
 import asyncio
 import random
-import sys
-from pathlib import Path
-
-# Add examples to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import get_model
 
 from agenticflow import Agent, tool
 from agenticflow import (
@@ -150,19 +144,19 @@ async def research_and_write() -> None:
 
     researcher = Agent(
         name="researcher",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You research topics using web search. Find 3 key facts. Be brief.",
         tools=[search_web],
     )
     writer = Agent(
         name="writer",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You write concise content based on research. Use the document tool to format output.",
         tools=[write_document],
     )
     editor = Agent(
         name="editor",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You polish content. Make it shorter and punchier. One paragraph max.",
     )
 
@@ -184,19 +178,19 @@ async def parallel_search_and_aggregate() -> None:
 
     web_searcher = Agent(
         name="web_searcher",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Search the web for the requested information. Report findings briefly.",
         tools=[search_web],
     )
     db_searcher = Agent(
         name="db_searcher",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Search internal databases for relevant records. Report findings briefly.",
         tools=[search_database],
     )
     aggregator = Agent(
         name="aggregator",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Combine search results into a unified brief report. Highlight key insights.",
         tools=[write_document],
     )
@@ -237,19 +231,19 @@ async def smart_routing() -> None:
 
     analyst = Agent(
         name="analyst",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You analyze data. Use analysis tools to extract insights.",
         tools=[analyze_data, generate_chart],
     )
     coder = Agent(
         name="coder",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You solve math and coding problems. Use the calculator for math.",
         tools=[calculate],
     )
     communicator = Agent(
         name="communicator",
-        model=get_model(),
+        model="gpt4",
         system_prompt="You handle communications. Send notifications as needed.",
         tools=[send_notification],
     )
@@ -298,7 +292,7 @@ async def event_driven_pipeline() -> None:
     # Data collector triggers on task.created
     collector = Agent(
         name="collector",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Collect data from web and database. Report raw findings.",
         tools=[search_web, search_database],
     )
@@ -306,7 +300,7 @@ async def event_driven_pipeline() -> None:
     # Analyzer triggers when collector completes
     analyzer = Agent(
         name="analyzer",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Analyze collected data. Generate insights and a chart.",
         tools=[analyze_data, generate_chart],
     )
@@ -314,7 +308,7 @@ async def event_driven_pipeline() -> None:
     # Reporter triggers when analyzer completes
     reporter = Agent(
         name="reporter",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Create a final report and notify stakeholders.",
         tools=[write_document, send_notification],
     )
@@ -345,7 +339,7 @@ async def conditional_workflow() -> None:
     # Quick responder for simple queries
     quick_responder = Agent(
         name="quick_responder",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Give quick, direct answers. One sentence max.",
         tools=[calculate],
     )
@@ -353,7 +347,7 @@ async def conditional_workflow() -> None:
     # Deep researcher for complex queries
     deep_researcher = Agent(
         name="deep_researcher",
-        model=get_model(),
+        model="gpt4",
         system_prompt="Do thorough research. Use all available tools.",
         tools=[search_web, search_database, analyze_data],
     )

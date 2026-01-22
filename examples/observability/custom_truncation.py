@@ -38,9 +38,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.observability import Observer, ObservabilityLevel
@@ -85,10 +83,10 @@ async def main():
     print(f"\n💡 Tip: Use max_output=500 to limit all, or None for no limit")
     
     # Create agent with taskboard
-    model = get_model()
+    model = "gpt4"
     agent = Agent(
         name="DetailedAgent",
-        model=model,
+        model="gpt4",
         taskboard=True,
         observer=observer,
     )

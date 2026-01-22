@@ -19,10 +19,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Observer
 from agenticflow.capabilities import WebSearch, KnowledgeGraph, FileSystem
@@ -87,7 +84,7 @@ async def agent_research_example():
     print("Agent Research Example: AI-Powered Web Research")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Combine WebSearch with KnowledgeGraph for research + memory
     ws = WebSearch(max_results=5)
@@ -96,7 +93,7 @@ async def agent_research_example():
     # Create agent with verbose observer to see its work
     agent = Agent(
         name="Researcher",
-        model=model,
+        model="gpt4",
         instructions="Search the web for facts and remember important information using the available tools.",
         capabilities=[ws, kg],
         verbosity="debug",  # Built-in observability
@@ -132,7 +129,7 @@ async def multi_capability_example():
     print("Multi-Capability Example: Web + Memory + Files")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace).resolve()
@@ -147,7 +144,7 @@ async def multi_capability_example():
         
         agent = Agent(
             name="ResearchAssistant",
-            model=model,
+            model="gpt4",
             instructions=(
                 f"You are a research assistant with access to web search, knowledge storage, and file writing tools. "
                 f"Always complete all parts of user requests. "

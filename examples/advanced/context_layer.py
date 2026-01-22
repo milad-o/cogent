@@ -18,11 +18,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from dataclasses import dataclass, field
 
-from models import get_model
 
 from agenticflow import Agent, RunContext
 from agenticflow.tools.base import tool
@@ -124,11 +121,11 @@ async def example_run_context():
     print("Example 1: RunContext - Pass Data to Tools")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="ContextAwareBot",
-        model=model,
+        model="gpt4",
         tools=[get_user_profile, log_action, search],
         instructions="Help users with their requests. Use get_user_profile to personalize.",
     )
@@ -176,11 +173,11 @@ async def example_permission_gate():
     print("Example 2: PermissionGate - Role-Based Tool Access")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="SecureBot",
-        model=model,
+        model="gpt4",
         tools=[search, read_data, write_data, admin_delete],
         instructions="Help with data tasks. Use available tools.",
         intercept=[RoleBasedGate()],
@@ -215,7 +212,7 @@ async def example_conversation_gate():
     print("Example 3: ConversationGate - Progressive Tool Unlock")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Start with basic tools, unlock more as conversation grows
     gate = ConversationGate(stages={
@@ -226,7 +223,7 @@ async def example_conversation_gate():
     
     agent = Agent(
         name="ProgressiveBot",
-        model=model,
+        model="gpt4",
         tools=[search, read_data, write_data],
         instructions="Help with data tasks using available tools.",
         intercept=[gate],
@@ -269,11 +266,11 @@ async def example_department_gate():
     print("Example 4: Custom ToolGate - Department-Based Access")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="DeptBot",
-        model=model,
+        model="gpt4",
         tools=[search, read_data, write_data, send_email, generate_report],
         instructions="Help with department tasks.",
         intercept=[DepartmentGate()],
@@ -321,7 +318,7 @@ async def example_tool_guard():
     print("Example 5: ToolGuard - Retry Failed Tools")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     global _call_count
     _call_count = 0
     
@@ -337,7 +334,7 @@ async def example_tool_guard():
     
     agent = Agent(
         name="ResilientBot",
-        model=model,
+        model="gpt4",
         tools=[flaky_api, search],
         instructions="Use the flaky_api tool to answer queries.",
         intercept=[guard],
@@ -358,7 +355,7 @@ async def example_circuit_breaker():
     print("Example 6: CircuitBreaker - Prevent Cascading Failures")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     breaker = CircuitBreaker(
         failure_threshold=3,   # Open after 3 failures
@@ -368,7 +365,7 @@ async def example_circuit_breaker():
     
     agent = Agent(
         name="ProtectedBot",
-        model=model,
+        model="gpt4",
         tools=[search],  # Using safe tools for demo
         instructions="Help with searches.",
         intercept=[breaker],
@@ -392,7 +389,7 @@ async def example_lambda_prompt():
     print("Example 7: LambdaPrompt - Simple Prompt Customization")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Add user name and role to every prompt
     adapter = LambdaPrompt(
@@ -405,7 +402,7 @@ async def example_lambda_prompt():
     
     agent = Agent(
         name="PersonalizedBot",
-        model=model,
+        model="gpt4",
         tools=[search],
         instructions="You are a helpful assistant.",
         intercept=[adapter],
@@ -428,7 +425,7 @@ async def example_context_prompt():
     print("Example 8: ContextPrompt - Template-Based Injection")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     adapter = ContextPrompt(
         template="User Details:\n- ID: {user_id}\n- Department: {department}\n- Role: {user_role}",
@@ -436,7 +433,7 @@ async def example_context_prompt():
     
     agent = Agent(
         name="TemplateBot",
-        model=model,
+        model="gpt4",
         tools=[search],
         instructions="Help users with their department-specific needs.",
         intercept=[adapter],
@@ -463,7 +460,7 @@ async def example_conversation_prompt():
     print("Example 9: ConversationPrompt - Stage-Based Instructions")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     adapter = ConversationPrompt(
         stages={
@@ -475,7 +472,7 @@ async def example_conversation_prompt():
     
     agent = Agent(
         name="AdaptiveBot",
-        model=model,
+        model="gpt4",
         instructions="You are a helpful assistant.",
         intercept=[adapter],
     )
@@ -497,12 +494,12 @@ async def example_combined():
     print("Example 10: Combined Context Layer")
     print("=" * 60)
     
-    model = get_model()
+    model = "gpt4"
     
     # Create a fully-featured agent
     agent = Agent(
         name="EnterpriseBot",
-        model=model,
+        model="gpt4",
         tools=[search, read_data, write_data, send_email, generate_report],
         instructions="Help enterprise users with their tasks.",
         intercept=[

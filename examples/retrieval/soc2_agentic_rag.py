@@ -25,10 +25,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_embeddings, get_model
 
 from agenticflow.agent import Agent
 from agenticflow.document.loaders import PDFMarkdownLoader
@@ -79,7 +76,7 @@ async def _build_detail_retriever(*, chunks: list[Document]) -> EnsembleRetrieve
 
 
 async def _build_summary_index(*, pages: list[Document]) -> SummaryIndex:
-    model = get_model()
+    model = "gpt4"
     summary_vectorstore = VectorStore(embeddings=get_embeddings())
     summary_index = SummaryIndex(
         llm=model,
@@ -224,7 +221,7 @@ Rules:
 
     return Agent(
         name="SOC2Analyst",
-        model=get_model(),
+        model="gpt4",
         tools=tools,
         instructions=instructions,
         memory=True,

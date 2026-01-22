@@ -33,14 +33,11 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from pathlib import Path
 
 from agenticflow import Agent, Observer
 from agenticflow.capabilities import MCP
 
-from models import get_model
 
 
 async def demo_research_agent() -> None:
@@ -62,7 +59,7 @@ async def demo_research_agent() -> None:
     # The LLM will discover available tools and use them appropriately
     agent = Agent(
         name="ResearchAgent",
-        model=get_model(),
+        model="gpt4",
         instructions="""You are a research assistant. 
 Use your available tools to find current, accurate information.
 Make ONE search, then respond with a concise answer citing sources.""",
@@ -99,7 +96,7 @@ async def demo_news_analyst() -> None:
     # Generic instructions - agent discovers news search capability
     agent = Agent(
         name="NewsAnalyst",
-        model=get_model(),
+        model="gpt4",
         instructions="""You are a news analyst.
 Find recent news on the topic and provide a brief summary.
 Make ONE search, then respond with key headlines and sources.""",
@@ -136,7 +133,7 @@ async def demo_fact_checker() -> None:
     # Generic instructions - agent uses tools based on descriptions
     agent = Agent(
         name="FactChecker",
-        model=get_model(),
+        model="gpt4",
         instructions="""You are a fact-checker.
 Make ONE search to find the answer.
 Once you find the fact, IMMEDIATELY respond with the answer and source.
@@ -171,7 +168,7 @@ async def demo_http_transport() -> None:
     
     agent = Agent(
         name="HTTPAgent",
-        model=get_model(),
+        model="gpt4",
         instructions="You are a research assistant. Use your tools to search. Be concise.",
         capabilities=[mcp],
         observer=Observer.debug(),
@@ -205,7 +202,7 @@ async def demo_stdio_subprocess() -> None:
     
     agent = Agent(
         name="SubprocessAgent",
-        model=get_model(),
+        model="gpt4",
         instructions="Use your search tool to answer briefly. Make ONE search only.",
         capabilities=[mcp],
     )

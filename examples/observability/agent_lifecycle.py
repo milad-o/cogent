@@ -17,9 +17,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent
 from agenticflow.observability import Observer, EventBus, EventType
@@ -198,7 +196,7 @@ async def main():
     print("=" * 70)
     print()
     
-    model = get_model()
+    model = "gpt4"
     
     # Create event bus and observer
     event_bus = EventBus()
@@ -208,7 +206,7 @@ async def main():
     # Create agent with event bus
     agent = Agent(
         name="MathAssistant",
-        model=model,
+        model="gpt4",
         tools=[calculate, get_info],
         event_bus=event_bus,
     )

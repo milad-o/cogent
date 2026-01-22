@@ -24,12 +24,6 @@ from agenticflow.observability.bus import EventBus
 from agenticflow.observability.event import EventType
 from agenticflow.tools import tool, DeferredResult
 
-EXAMPLES_DIR = Path(__file__).resolve().parents[1]
-if str(EXAMPLES_DIR) not in sys.path:
-    sys.path.insert(0, str(EXAMPLES_DIR))
-
-from models import get_model  # type: ignore  # noqa: E402
-
 
 # ==============================================================================
 # Example 1: Webhook Callback Pattern
@@ -203,11 +197,11 @@ async def demo_end_to_end_agent_deferred() -> None:
     print("=" * 40)
 
     event_bus = EventBus()
-    model = get_model()
+    model = "gpt4"
     agent = Agent(
         name="DeferredE2EAgent",
         system_prompt="You can run tools. Some tools complete later.",
-        model=model,
+        model="gpt4",
         event_bus=event_bus,
         tools=[process_video, request_payment_approval],
     )
@@ -281,14 +275,14 @@ async def demo_deferred_tools():
     # Create event bus
     event_bus = EventBus()
 
-    model = get_model()
+    model = "gpt4"
     
     # Create agent with deferred tool capabilities
     agent = Agent(
         name="DeferredTaskAgent",
         system_prompt="""You are an assistant that handles asynchronous tasks.
 When using deferred tools, wait for them to complete before proceeding.""",
-        model=model,
+        model="gpt4",
         event_bus=event_bus,
         tools=[process_video, transcribe_audio, request_payment_approval],
     )

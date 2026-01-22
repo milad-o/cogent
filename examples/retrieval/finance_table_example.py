@@ -23,10 +23,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model, get_embeddings, settings
 
 # =============================================================================
 # Ground Truth Values (for validation)
@@ -316,7 +313,7 @@ async def extract_and_query(pdf_path: Path) -> dict[str, tuple[str, bool]]:
     from agenticflow.vectorstore import VectorStore
     from agenticflow.retriever import DenseRetriever
 
-    model = get_model()
+    model = "gpt4"
     embeddings = get_embeddings()
     print(f"\n📊 Using model: {getattr(model, 'model', model.__class__.__name__)}")
 

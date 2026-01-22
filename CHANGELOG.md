@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.14.1] - 2026-01-22
+
+### Added
+
+- Environment variable overrides for chat/embedding models (e.g., `OPENAI_CHAT_MODEL`, `MISTRAL_EMBEDDING_MODEL`).
+
+### Changed
+
+- Standardized config loading so `.env` and config files apply to all model classes.
+- Cloudflare now honors `CLOUDFLARE_API_TOKEN` in config lookups.
+- Mistral model names now auto-detect to the Mistral provider.
+- Authentication/API key errors are treated as non-retryable.
+
 ### Changed
 
 - **`verbose` → `verbosity`** — Renamed parameter for clarity and expanded functionality

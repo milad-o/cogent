@@ -30,14 +30,11 @@ import sys
 import time
 from pathlib import Path
 
-# Add examples dir to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agenticflow import Agent
 from agenticflow.executors import TreeSearchExecutor
 from agenticflow.tools import tool
 
-from models import get_model
 
 
 # =============================================================================
@@ -88,7 +85,7 @@ async def demo_tree_search():
     print("🌳 TREE SEARCH (LATS) EXECUTOR DEMO")
     print("=" * 70)
     
-    model = get_model()
+    model = "gpt4"
     
     # Create agent without execution_strategy (we'll use executor directly)
     agent = Agent(
@@ -163,7 +160,7 @@ async def demo_comparison():
     print("📊 COMPARING EXECUTORS: Native vs Tree Search")
     print("=" * 70)
     
-    model = get_model()
+    model = "gpt4"
     
     agent = Agent(
         name="ComparisonAgent",

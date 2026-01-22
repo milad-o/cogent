@@ -10,10 +10,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add examples directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.events import Event
@@ -34,13 +31,13 @@ async def example_1_basic_at_separator():
     # Create agents
     researcher = Agent(
         name="researcher",
-        model=get_model(),
+        model="gpt4",
         instructions="You are a research agent. Analyze the topic briefly in 1-2 sentences.",
     )
     
     reviewer = Agent(
         name="reviewer",
-        model=get_model(),
+        model="gpt4",
         instructions="You are a reviewer. Review the research output briefly. Just say 'approved' or suggest 1 improvement.",
     )
     
@@ -78,7 +75,7 @@ async def example_2_wildcard_event():
     
     researcher = Agent(
         name="researcher",
-        model=get_model(),
+        model="gpt4",
         instructions="Research briefly in 1-2 sentences.",
     )
     
@@ -113,8 +110,8 @@ async def example_3_wildcard_source():
     
     flow = Flow()
     
-    worker1 = Agent(name="worker1", model=get_model(), instructions="Work briefly in 1 sentence.")
-    worker2 = Agent(name="worker2", model=get_model(), instructions="Work briefly in 1 sentence.")
+    worker1 = Agent(name="worker1", model="gpt4", instructions="Work briefly in 1 sentence.")
+    worker2 = Agent(name="worker2", model="gpt4", instructions="Work briefly in 1 sentence.")
     
     # Aggregator catches agent.done from any worker
     def aggregator(event: Event):
@@ -183,8 +180,8 @@ async def example_5_multiple_patterns():
     
     flow = Flow()
     
-    analyst1 = Agent(name="analyst1", model=get_model(), instructions="Analyze briefly in 1 sentence.")
-    analyst2 = Agent(name="analyst2", model=get_model(), instructions="Analyze briefly in 1 sentence.")
+    analyst1 = Agent(name="analyst1", model="gpt4", instructions="Analyze briefly in 1 sentence.")
+    analyst2 = Agent(name="analyst2", model="gpt4", instructions="Analyze briefly in 1 sentence.")
     
     # Aggregator processes results from EITHER analyst
     def aggregator(event: Event):
@@ -220,7 +217,7 @@ async def example_6_comparison():
     
     flow = Flow()
     
-    researcher = Agent(name="researcher", model=get_model(), instructions="Research briefly in 1-2 sentences.")
+    researcher = Agent(name="researcher", model="gpt4", instructions="Research briefly in 1-2 sentences.")
     
     # Method 1: Pattern syntax (concise)
     def reviewer1(event: Event):
