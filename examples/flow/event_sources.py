@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from models import get_model
 
 from agenticflow import Agent, tool
-from agenticflow.reactive.flow import Flow  # Has source/sink methods
+from agenticflow.flow import Flow  # Has source/sink methods
 from agenticflow import react_to, Observer
 from agenticflow.events import EventSink
 
