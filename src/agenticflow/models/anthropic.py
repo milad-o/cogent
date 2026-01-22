@@ -11,8 +11,10 @@ Usage:
 from __future__ import annotations
 
 import os
+import time
+import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from agenticflow.models.base import (
@@ -21,6 +23,7 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _messages_to_anthropic(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
@@ -222,18 +225,68 @@ class AnthropicChat(BaseChatModel):
         return _parse_response(response)
 
     async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
-        """Stream response asynchronously.
+        """Stream response asynchronously with metadata.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
+            
+        Yields:
+            AIMessage objects with incremental content and metadata.
         """
         self._ensure_initialized()
         kwargs = self._build_request(normalize_input(messages))
-        kwargs["stream"] = True
 
+        start_time = time.time()
+        chunk_metadata = {
+            "id": None,
+            "model": None,
+            "finish_reason": None,
+            "usage": None,
+        }
+        
         async with self._async_client.messages.stream(**kwargs) as stream:
             async for text in stream.text_stream:
-                yield AIMessage(content=text)
+                # Accumulate metadata from the stream
+                if hasattr(stream, 'current_message_snapshot'):
+                    msg = stream.current_message_snapshot
+                    if hasattr(msg, 'id') and msg.id:
+                        chunk_metadata["id"] = msg.id
+                    if hasattr(msg, 'model') and msg.model:
+                        chunk_metadata["model"] = msg.model
+                    if hasattr(msg, 'stop_reason') and msg.stop_reason:
+                        chunk_metadata["finish_reason"] = msg.stop_reason
+                    if hasattr(msg, 'usage') and msg.usage:
+                        chunk_metadata["usage"] = msg.usage
+                
+                metadata = MessageMetadata(
+                    id=str(uuid.uuid4()),
+                    timestamp=time.time(),
+                    model=chunk_metadata.get("model"),
+                    tokens=None,
+                    finish_reason=chunk_metadata.get("finish_reason"),
+                    response_id=chunk_metadata.get("id"),
+                    duration=time.time() - start_time,
+                )
+                yield AIMessage(content=text, metadata=metadata)
+            
+            # Yield final metadata chunk with complete usage
+            if hasattr(stream, 'current_message_snapshot'):
+                msg = stream.current_message_snapshot
+                if hasattr(msg, 'usage') and msg.usage:
+                    final_metadata = MessageMetadata(
+                        id=str(uuid.uuid4()),
+                        timestamp=time.time(),
+                        model=chunk_metadata.get("model"),
+                        tokens=TokenUsage(
+                            prompt_tokens=msg.usage.input_tokens,
+                            completion_tokens=msg.usage.output_tokens,
+                            total_tokens=msg.usage.input_tokens + msg.usage.output_tokens,
+                        ),
+                        finish_reason=chunk_metadata.get("finish_reason"),
+                        response_id=chunk_metadata.get("id"),
+                        duration=time.time() - start_time,
+                    )
+                    yield AIMessage(content="", metadata=final_metadata)
 
     def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
         """Build API request."""

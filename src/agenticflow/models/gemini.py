@@ -13,6 +13,8 @@ Usage:
 from __future__ import annotations
 
 import os
+import time
+import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
@@ -24,6 +26,7 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _messages_to_gemini(messages: list[dict[str, Any]], types: Any) -> tuple[str | None, list[Any]]:
@@ -407,10 +410,13 @@ class GeminiChat(BaseChatModel):
         return _parse_response(response)
 
     async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
-        """Stream response asynchronously.
+        """Stream response asynchronously with metadata.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
+            
+        Yields:
+            AIMessage objects with incremental content and metadata.
         """
         self._ensure_initialized()
 
@@ -419,14 +425,59 @@ class GeminiChat(BaseChatModel):
 
         config = self._build_config(system_instruction=system)
 
+        start_time = time.time()
+        chunk_metadata = {
+            "model": None,
+            "finish_reason": None,
+            "usage": None,
+        }
+        
         stream = await self._client.aio.models.generate_content_stream(
             model=self.model,
             contents=gemini_messages,
             config=config,
         )
         async for chunk in stream:
+            # Accumulate metadata
+            if hasattr(chunk, 'model_version') and chunk.model_version:
+                chunk_metadata["model"] = chunk.model_version
+            if hasattr(chunk, 'candidates') and chunk.candidates:
+                if hasattr(chunk.candidates[0], 'finish_reason'):
+                    chunk_metadata["finish_reason"] = str(chunk.candidates[0].finish_reason)
+            if hasattr(chunk, 'usage_metadata') and chunk.usage_metadata:
+                chunk_metadata["usage"] = chunk.usage_metadata
+            
+            # Yield content chunks
             if chunk.text:
-                yield AIMessage(content=chunk.text)
+                metadata = MessageMetadata(
+                    id=str(uuid.uuid4()),
+                    timestamp=time.time(),
+                    model=chunk_metadata.get("model"),
+                    tokens=TokenUsage(
+                        prompt_tokens=chunk_metadata["usage"].prompt_token_count if chunk_metadata["usage"] else None,
+                        completion_tokens=chunk_metadata["usage"].candidates_token_count if chunk_metadata["usage"] else None,
+                        total_tokens=chunk_metadata["usage"].total_token_count if chunk_metadata["usage"] else None,
+                    ) if chunk_metadata["usage"] else None,
+                    finish_reason=chunk_metadata.get("finish_reason"),
+                    duration=time.time() - start_time,
+                )
+                yield AIMessage(content=chunk.text, metadata=metadata)
+        
+        # Yield final metadata chunk if we have complete metadata
+        if chunk_metadata["usage"] or chunk_metadata["finish_reason"]:
+            final_metadata = MessageMetadata(
+                id=str(uuid.uuid4()),
+                timestamp=time.time(),
+                model=chunk_metadata.get("model"),
+                tokens=TokenUsage(
+                    prompt_tokens=chunk_metadata["usage"].prompt_token_count if chunk_metadata["usage"] else None,
+                    completion_tokens=chunk_metadata["usage"].candidates_token_count if chunk_metadata["usage"] else None,
+                    total_tokens=chunk_metadata["usage"].total_token_count if chunk_metadata["usage"] else None,
+                ) if chunk_metadata["usage"] else None,
+                finish_reason=chunk_metadata.get("finish_reason"),
+                duration=time.time() - start_time,
+            )
+            yield AIMessage(content="", metadata=final_metadata)
 
 
 @dataclass

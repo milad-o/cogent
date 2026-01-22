@@ -33,6 +33,8 @@ Available embedding models:
 from __future__ import annotations
 
 import os
+import time
+import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
@@ -44,6 +46,7 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -253,14 +256,14 @@ class MistralChat(BaseChatModel):
         messages: str | list[dict[str, Any]] | list[Any],
         **kwargs: Any,
     ) -> AsyncIterator[AIMessage]:
-        """Stream responses from the model.
+        """Stream responses from the model with metadata.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
             **kwargs: Additional arguments.
 
         Yields:
-            AIMessage chunks as they arrive.
+            AIMessage chunks with incremental content and metadata.
         """
         self._ensure_initialized()
 
@@ -280,11 +283,54 @@ class MistralChat(BaseChatModel):
 
         params.update(kwargs)
 
+        start_time = time.time()
+        chunk_metadata = {
+            "id": None,
+            "model": None,
+            "finish_reason": None,
+            "usage": None,
+        }
+        
         stream = await self._async_client.chat.completions.create(**params)
 
         async for chunk in stream:
+            # Accumulate metadata
+            if hasattr(chunk, 'id') and chunk.id:
+                chunk_metadata["id"] = chunk.id
+            if hasattr(chunk, 'model') and chunk.model:
+                chunk_metadata["model"] = chunk.model
+            if chunk.choices and chunk.choices[0].finish_reason:
+                chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
+            if hasattr(chunk, 'usage') and chunk.usage:
+                chunk_metadata["usage"] = chunk.usage
+                # Yield final metadata chunk
+                metadata = MessageMetadata(
+                    id=str(uuid.uuid4()),
+                    timestamp=time.time(),
+                    model=chunk_metadata["model"],
+                    tokens=TokenUsage(
+                        prompt_tokens=chunk.usage.prompt_tokens,
+                        completion_tokens=chunk.usage.completion_tokens,
+                        total_tokens=chunk.usage.total_tokens,
+                    ),
+                    finish_reason=chunk_metadata["finish_reason"],
+                    response_id=chunk_metadata["id"],
+                    duration=time.time() - start_time,
+                )
+                yield AIMessage(content="", metadata=metadata)
+            
+            # Yield content chunks
             if chunk.choices and chunk.choices[0].delta.content:
-                yield AIMessage(content=chunk.choices[0].delta.content)
+                metadata = MessageMetadata(
+                    id=str(uuid.uuid4()),
+                    timestamp=time.time(),
+                    model=chunk_metadata["model"],
+                    tokens=None,
+                    finish_reason=chunk_metadata.get("finish_reason"),
+                    response_id=chunk_metadata["id"],
+                    duration=time.time() - start_time,
+                )
+                yield AIMessage(content=chunk.choices[0].delta.content, metadata=metadata)
 
     def bind_tools(
         self,
