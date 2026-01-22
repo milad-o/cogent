@@ -55,7 +55,7 @@ async def demo_basic_response():
     agent = Agent(
         name="Assistant",
         model=model,
-        verbose=True,  # Observer shows metadata
+        verbosity=True,  # Observer shows metadata
     )
     
     response = await agent.run("What is 2+2?")
@@ -67,14 +67,14 @@ async def demo_basic_response():
 
 async def demo_tool_tracking():
     """Response with tool calls."""
-    print("\n=== Tool Call Tracking ===")
+    print(\"\\n=== Tool Call Tracking ===\")
     
     model = get_model()
     agent = Agent(
-        name="MathBot",
+        name=\"MathBot\",
         model=model,
         tools=[calculator],
-        verbose=True,
+        verbosity=True,
     )
     
     response = await agent.run("Calculate 123 * 456")

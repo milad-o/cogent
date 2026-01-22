@@ -610,19 +610,40 @@ result = await agent.run("Research and write about AI")
 Built-in observability for standalone usage:
 
 ```python
-agent = Agent(
-    name="Worker",
-    model=model,
-    verbose="debug",  # "progress" | "verbose" | "debug" | "trace"
-)
+from agenticflow import Agent
+from agenticflow.observability import ObservabilityLevel
+
+# Boolean shorthand
+agent = Agent(name="Worker", model=model, verbosity=True)  # Progress level
+
+# String levels
+agent = Agent(name="Worker", model=model, verbosity="debug")
+
+# Enum (explicit)
+agent = Agent(name="Worker", model=model, verbosity=ObservabilityLevel.DEBUG)
+
+# Integer (0-5)
+agent = Agent(name="Worker", model=model, verbosity=4)  # DEBUG
+
+# Advanced: Full control with observer
+from agenticflow.observability import Observer
+
+observer = Observer.debug()
+agent = Agent(name="Worker", model=model, observer=observer)
 ```
 
-Verbosity levels:
-- `False`: Silent
-- `True`/`"progress"`: Show thinking/responding
-- `"verbose"`: Include agent outputs
-- `"debug"`: Include tool calls
-- `"trace"`: Maximum detail
+**Verbosity levels:**
+
+| Level | Int | String | Description |
+|-------|-----|--------|-------------|
+| `OFF` | 0 | `"off"` | No output |
+| `RESULT` | 1 | `"result"`, `"minimal"` | Only final results |
+| `PROGRESS` | 2 | `"progress"`, `"normal"` | Key milestones (default for `True`) |
+| `DETAILED` | 3 | `"detailed"`, `"verbose"` | Tool calls, timing |
+| `DEBUG` | 4 | `"debug"` | Everything including internal events |
+| `TRACE` | 5 | `"trace"` | Maximum detail + execution graph |
+
+**Priority:** `observer` parameter takes precedence over `verbosity`.
 
 ## API Reference
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`verbose` → `verbosity`** — Renamed parameter for clarity and expanded functionality
+  - Now accepts `ObservabilityLevel` enum, int (0-5), string, or bool
+  - Consistent mapping: `False`/`0`/`"off"` → OFF, `True`/`2`/`"progress"` → PROGRESS, etc.
+  - Backward compatible: Existing string levels (`"debug"`, `"trace"`) still work
+  - Fixed issue where `verbose=True` mapped to "minimal" instead of "progress"
+  - **Migration:** Replace `verbose=` with `verbosity=` (all old values still work)
+
 ---
 
 ## [1.14.0] - 2026-01-22

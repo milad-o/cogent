@@ -52,7 +52,7 @@ async def main() -> None:
         flow = Flow(
             name="analysis",
             agents=[analyst],
-            verbose="debug",
+            verbosity="debug",
         )
 
         result = await flow.run(

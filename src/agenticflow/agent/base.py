@@ -163,7 +163,7 @@ class Agent:
         spawning: SpawningConfig | None = None,
 
         # Observability
-        verbose: bool | Literal["verbose", "debug", "trace"] = False,
+        verbosity: bool | str | int | None = None,
         observer: Observer | None = None,
 
         # TaskBoard
@@ -204,8 +204,8 @@ class Agent:
             output: Enforce structured output schema
             intercept: List of interceptors for execution hooks
             spawning: SpawningConfig for dynamic agent creation
-            verbose: Enable observability - False, True, "verbose", "debug", or "trace"
-            observer: Observer instance for rich observability
+            verbosity: Observability level - ObservabilityLevel enum, int (0-5), string ("off", "result", "progress", "detailed", "debug", "trace"), bool (False=off, True=progress), or None (default=off)
+            observer: Observer instance for rich observability (takes precedence over verbosity)
             taskboard: Enable task tracking - True, TaskBoardConfig, or False/None
             workers: Worker agent names (for SUPERVISOR role)
             criteria: Evaluation criteria (for REVIEWER role)
@@ -442,11 +442,11 @@ class Agent:
             self._capability_overrides["can_use_tools"] = can_use_tools
 
         # Setup observer for standalone agent usage
-        # observer parameter takes precedence over verbose
+        # observer parameter takes precedence over verbosity
         if observer is not None:
             self._setup_observer(observer)
-        elif verbose:
-            self._setup_verbose_observer(verbose)
+        elif verbosity is not None:
+            self._setup_verbosity_observer(verbosity)
 
         # Human-in-the-loop state
         self._pending_actions: dict[str, PendingAction] = {}  # action_id -> pending action
@@ -518,41 +518,68 @@ class Agent:
             fallback_registry=fallback_registry,
         )
 
-    def _setup_verbose_observer(self, verbose: bool | str) -> None:
+    def _setup_verbosity_observer(self, verbosity: bool | str | int) -> None:
         """Setup observer for standalone agent usage.
 
         Args:
-            verbose: Verbosity level for observability:
-                - False: No output (silent)
-                - True: Progress (thinking/responding with timing)
-                - "verbose": Show agent outputs/thoughts
-                - "debug": Show everything including tool calls
-                - "trace": Maximum detail + execution graph
+            verbosity: Observability level:
+                - False/0/"off": No output
+                - True/2/"progress": Progress milestones (default when True)
+                - 1/"result"/"minimal": Only final results
+                - 3/"detailed"/"verbose": Tool calls and timing
+                - 4/"debug": Everything including internal events
+                - 5/"trace": Maximum detail + execution graph
         """
-        if not verbose:
-            return
+        from agenticflow.observability import Observer, ObservabilityLevel
 
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.trace_bus is None:
             from agenticflow.observability import TraceBus
             self.trace_bus = TraceBus()
 
-        # Map verbose levels to Observer presets
-        from agenticflow.observability import Observer
+        # Convert to ObservabilityLevel
+        if isinstance(verbosity, bool):
+            level = ObservabilityLevel.PROGRESS if verbosity else ObservabilityLevel.OFF
+        elif isinstance(verbosity, int):
+            level = ObservabilityLevel(verbosity)
+        elif isinstance(verbosity, str):
+            # Map string names to enum
+            level_map = {
+                "off": ObservabilityLevel.OFF,
+                "result": ObservabilityLevel.RESULT,
+                "minimal": ObservabilityLevel.RESULT,  # Alias
+                "progress": ObservabilityLevel.PROGRESS,
+                "normal": ObservabilityLevel.PROGRESS,  # Alias
+                "detailed": ObservabilityLevel.DETAILED,
+                "verbose": ObservabilityLevel.DETAILED,  # Alias
+                "debug": ObservabilityLevel.DEBUG,
+                "trace": ObservabilityLevel.TRACE,
+            }
+            level = level_map.get(verbosity.lower())
+            if level is None:
+                raise ValueError(
+                    f"Invalid verbosity level: {verbosity!r}. "
+                    f"Use: {', '.join(repr(k) for k in level_map.keys())}"
+                )
+        else:
+            # Assume it's already an ObservabilityLevel enum
+            level = verbosity
 
-        if verbose is True or verbose == "minimal":
+        # Map to Observer presets
+        if level == ObservabilityLevel.OFF:
+            return  # No observer
+        elif level == ObservabilityLevel.RESULT:
             self._observer = Observer.minimal()
-        elif verbose == "verbose":
-            self._observer = Observer.verbose()
-        elif verbose == "debug":
+        elif level == ObservabilityLevel.PROGRESS:
+            self._observer = Observer.progress()
+        elif level == ObservabilityLevel.DETAILED:
+            self._observer = Observer.detailed()
+        elif level == ObservabilityLevel.DEBUG:
             self._observer = Observer.debug()
-        elif verbose == "trace":
+        elif level == ObservabilityLevel.TRACE:
             self._observer = Observer.trace()
         else:
-            raise ValueError(
-                f"Invalid verbose level: {verbose!r}. "
-                "Use: False, True, 'minimal', 'verbose', 'debug', or 'trace'"
-            )
+            raise ValueError(f"Unknown observability level: {level}")
 
         # Connect observer to event bus
         self._observer.attach(self.trace_bus)

@@ -607,18 +607,26 @@ except InterruptedException as e:
 
 ```python
 from agenticflow import Agent, Flow
+from agenticflow.observability import ObservabilityLevel
 
 # Verbosity levels for agents
 agent = Agent(
     name="Assistant",
     model=model,
-    verbose="debug",  # minimal | verbose | debug | trace
+    verbosity="debug",  # off | result | progress | detailed | debug | trace
 )
+
+# Or use enum/int
+agent = Agent(model=model, verbosity=ObservabilityLevel.DEBUG)  # Enum
+agent = Agent(model=model, verbosity=4)  # Int (0-5)
+
+# Boolean shorthand
+agent = Agent(model=model, verbosity=True)  # → PROGRESS level
 
 # Or for flows
 flow = Flow(
     agents=[...],
-    verbose=True,  # Progress output with timing
+    verbosity=True,  # Progress output with timing
 )
 
 # Advanced: Custom observer
@@ -626,7 +634,7 @@ from agenticflow.observability import Observer
 
 flow = Flow(
     agents=[...],
-    observer=Observer.verbose(),
+    observer=Observer.detailed(),
 )
 ```
 
