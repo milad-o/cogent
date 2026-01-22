@@ -1,35 +1,177 @@
 # Models Module
 
-The `agenticflow.models` module provides native LLM and embedding models using provider SDKs directly for high-performance inference.
+The `agenticflow.models` module provides a **3-tier API** for working with LLMs - from simple string-based models to full control with direct SDK access.
 
-## Overview
+## 🎯 3-Tier Model API
 
-Supported providers:
-- **OpenAI** - GPT-4o, GPT-4, GPT-3.5
-- **Azure OpenAI** - With Azure AD support
-- **Anthropic** - Claude 4, Claude 3.5
-- **Groq** - Fast inference (Llama, Mixtral)
-- **Google Gemini** - Gemini Pro, Flash
-- **Ollama** - Local models
-- **Custom** - Any OpenAI-compatible endpoint
+AgenticFlow offers three levels of abstraction - choose based on your needs:
+
+### Tier 1: High-Level (String Models) ⭐ **Recommended**
+
+The simplest way to get started. Just use model name strings:
 
 ```python
-from agenticflow.models import ChatModel, create_chat
+from agenticflow import Agent
 
-# Simple usage (OpenAI default)
-model = ChatModel(model="gpt-4o")
-response = await model.ainvoke([{"role": "user", "content": "Hello!"}])
+# Auto-resolves to gpt-4o
+agent = Agent("Helper", model="gpt4")
+
+# Auto-resolves to gemini-2.5-flash
+agent = Agent("Helper", model="gemini")
+
+# Auto-resolves to claude-sonnet-4
+agent = Agent("Helper", model="claude")
+
+# Provider prefix for explicit control
+agent = Agent("Helper", model="anthropic:claude-opus-4")
+agent = Agent("Helper", model="openai:gpt-4o")
+```
+
+**30+ Model Aliases:**
+- `gpt4`, `gpt4-mini`, `gpt4-turbo`, `gpt35`
+- `claude`, `claude-opus`, `claude-haiku`
+- `gemini`, `gemini-flash`, `gemini-pro`
+- `llama`, `llama-70b`, `llama-8b`, `mixtral`
+- `ollama`
+
+**API Key Loading** (Priority Order):
+1. Explicit `api_key=` parameter (highest)
+2. Environment variables (`OPENAI_API_KEY`, `GEMINI_API_KEY`, etc.)
+3. `.env` file (automatically loaded)
+4. Config file `~/.agenticflow/config.toml` or `config.yaml` (lowest)
+
+### Tier 2: Medium-Level (Factory Functions)
+
+For when you need a model instance without an agent:
+
+```python
+from agenticflow.models import create_chat
+
+# One argument - auto-resolves provider
+llm = create_chat("gpt4")
+llm = create_chat("claude")
+llm = create_chat("gemini")
+
+# Two arguments - explicit provider
+llm = create_chat("openai", "gpt-4o")
+llm = create_chat("anthropic", "claude-sonnet-4")
+llm = create_chat("gemini", "gemini-2.5-flash")
+
+# Use the model
+response = await llm.ainvoke("What is 2+2?")
 print(response.content)
+```
 
-# Factory for any provider
-model = create_chat("anthropic", model="claude-sonnet-4-20250514")
+### Tier 3: Low-Level (Direct Model Classes)
+
+For maximum control over model configuration:
+
+```python
+from agenticflow.models import OpenAIChat, AnthropicChat, GeminiChat
+
+# Full control over all parameters
+model = OpenAIChat(
+    model="gpt-4o",
+    temperature=0.7,
+    max_tokens=2000,
+    api_key="sk-...",
+    organization="org-...",
+)
+
+model = GeminiChat(
+    model="gemini-2.5-flash",
+    temperature=0.9,
+    api_key="...",
+)
+
+model = AnthropicChat(
+    model="claude-sonnet-4-20250514",
+    max_tokens=4096,
+    api_key="sk-ant-...",
+)
+```
+
+**When to Use Each Tier:**
+
+| Tier | Use Case | Example |
+|------|----------|---------|
+| **Tier 1** (Strings) | Quick prototyping, simple agents | `Agent(model="gpt4")` |
+| **Tier 2** (Factory) | Reusable model instances | `create_chat("claude")` |
+| **Tier 3** (Direct) | Custom config, advanced features | `OpenAIChat(temperature=0.9)` |
+
+---
+
+## Configuration
+
+### .env File (Recommended for Development)
+
+Create a `.env` file in your project root:
+
+```bash
+# .env
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=AIza...
+GROQ_API_KEY=gsk_...
+```
+
+AgenticFlow automatically loads `.env` files using `python-dotenv`.
+
+### Config File (Recommended for Production)
+
+Create a config file at one of these locations:
+
+**TOML Format** (`agenticflow.toml` or `~/.agenticflow/config.toml`):
+
+```toml
+[models]
+default = "gpt4"
+
+[models.openai]
+api_key = "sk-..."
+organization = "org-..."
+
+[models.anthropic]
+api_key = "sk-ant-..."
+
+[models.gemini]
+api_key = "..."
+
+[models.groq]
+api_key = "gsk_..."
+```
+
+**YAML Format** (`agenticflow.yaml` or `~/.agenticflow/config.yaml`):
+
+```yaml
+models:
+  default: gpt4
+  
+  openai:
+    api_key: sk-...
+    organization: org-...
+  
+  anthropic:
+    api_key: sk-ant-...
+  
+  gemini:
+    api_key: ...
+```
+
+### Environment Variables
+
+```bash
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
+export GEMINI_API_KEY=AIza...
+export GROQ_API_KEY=gsk_...
 ```
 
 ---
 
-## Flexible Input Types
+## Provider Support
 
-All chat models now accept multiple input formats for maximum convenience and flexibility:
+All chat models now accept multiple input formats for maximum convenience:
 
 ### 1. Simple String (Most Convenient)
 ```python
@@ -54,36 +196,21 @@ response = await model.ainvoke([
 ])
 ```
 
-### 4. Mixed Lists (Flexible)
-```python
-response = await model.ainvoke([
-    SystemMessage(content="You are helpful"),
-    {"role": "user", "content": "Hello"},
-])
-```
-
-**Benefits:**
-- **Convenience**: Quick queries with simple strings
-- **Type Safety**: Message objects for better IDE support
-- **Flexibility**: Mix formats as needed
-- **Backward Compatible**: All existing code continues to work
-- **Multimodal Support**: Complex content (images, etc.) preserved
-
 ---
 
 ## OpenAI
 
-The default provider for ChatModel and EmbeddingModel:
-
 ```python
-from agenticflow.models import ChatModel, EmbeddingModel
-from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
+from agenticflow.models import OpenAIChat, OpenAIEmbedding
 
-# Alias (recommended) - now supports simple strings!
-model = ChatModel(model="gpt-4o")
-response = await model.ainvoke("What is 2+2?")
+# Tier 1: Simple string
+agent = Agent("Helper", model="gpt4")
 
-# Explicit
+# Tier 2: Factory
+model = create_chat("gpt4")
+model = create_chat("openai", "gpt-4o")
+
+# Tier 3: Direct
 model = OpenAIChat(
     model="gpt-4o",
     temperature=0.7,

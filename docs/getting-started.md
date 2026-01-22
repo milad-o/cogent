@@ -34,7 +34,6 @@ pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 ```python
 import asyncio
 from agenticflow import Agent, tool
-from agenticflow.models import ChatModel
 
 @tool
 def get_weather(city: str) -> str:
@@ -42,9 +41,10 @@ def get_weather(city: str) -> str:
     return f"Weather in {city}: 72°F, sunny"
 
 async def main():
+    # Simple string model (recommended)
     agent = Agent(
         name="Assistant",
-        model=ChatModel(model="gpt-4o-mini"),
+        model="gpt4",  # Auto-resolves to gpt-4o
         tools=[get_weather],
     )
     
@@ -54,18 +54,31 @@ async def main():
 asyncio.run(main())
 ```
 
+**Other model options:**
+```python
+# With provider prefix
+agent = Agent(name="Assistant", model="anthropic:claude")
+
+# Medium-level: Factory function
+from agenticflow.models import create_chat
+agent = Agent(name="Assistant", model=create_chat("gpt4"))
+
+# Low-level: Full control
+from agenticflow.models import OpenAIChat
+agent = Agent(name="Assistant", model=OpenAIChat(model="gpt-4o", temperature=0.7))
+```
+
 ### With Capabilities
 
 Instead of defining individual tools, use pre-built capabilities:
 
 ```python
 from agenticflow import Agent
-from agenticflow.models import ChatModel
 from agenticflow.capabilities import FileSystem, WebSearch, CodeSandbox
 
 agent = Agent(
     name="Assistant",
-    model=ChatModel(model="gpt-4o"),
+    model="gpt4",  # Simple string model
     capabilities=[
         FileSystem(allowed_paths=["./project"]),
         WebSearch(),
@@ -87,7 +100,7 @@ Autonomous entities that think, act, and communicate:
 ```python
 agent = Agent(
     name="Researcher",
-    model=ChatModel(model="gpt-4o"),
+    model="gpt4",  # String model - auto-resolves to gpt-4o
     instructions="You are a thorough researcher.",
     tools=[search, summarize],
     verbose=True,

@@ -135,7 +135,7 @@ class Agent:
         *,
         # Core parameters
         name: str,
-        model: BaseChatModel | None = None,
+        model: BaseChatModel | str | None = None,
         role: AgentRole | Literal["worker", "supervisor", "reviewer", "autonomous"] | RoleConfig = AgentRole.WORKER,
         description: str = "",
         instructions: str | None = None,
@@ -184,7 +184,7 @@ class Agent:
 
         Args:
             name: Agent name
-            model: Chat model instance
+            model: Chat model - string (e.g., "gpt4", "claude"), provider:model (e.g., "anthropic:claude-sonnet-4"), or BaseChatModel instance
             role: Agent role - string, AgentRole enum, or RoleConfig object
             description: Agent description
             instructions: Instructions for the agent - defines behavior and personality
@@ -214,6 +214,28 @@ class Agent:
             can_delegate: Override capability to delegate to other agents
             can_use_tools: Override capability to call tools
             can_use_tools: Override capability to call tools (custom roles)
+        
+        Model Examples:
+            ```python
+            # High-level: Just model name (auto-detects provider)
+            agent = Agent(name="Helper", model="gpt4")
+            agent = Agent(name="Helper", model="claude")
+            agent = Agent(name="Helper", model="gemini")
+            
+            # With provider prefix for explicit control
+            agent = Agent(name="Helper", model="anthropic:claude-sonnet-4")
+            agent = Agent(name="Helper", model="groq:llama-70b")
+            
+            # Medium-level: Create model explicitly
+            from agenticflow.models import create_chat
+            model = create_chat("openai", "gpt-4o")
+            agent = Agent(name="Helper", model=model)
+            
+            # Low-level: Full control
+            from agenticflow.models import OpenAIChat
+            model = OpenAIChat(model="gpt-4o", temperature=0.7, api_key="sk-...")
+            agent = Agent(name="Helper", model=model)
+            ```
 
         Example with memory:
             ```python
@@ -1463,28 +1485,45 @@ class Agent:
     def model(self) -> BaseChatModel | None:
         """Get the LLM model.
 
-        Accepts native AgenticFlow models:
-        - ChatModel, AzureOpenAIChat, AnthropicChat, GroqChat, etc.
+        Accepts:
+        - String model names: "gpt4", "claude", "gemini"
+        - Provider:model syntax: "anthropic:claude-sonnet-4", "groq:llama-70b"
+        - Native AgenticFlow models: ChatModel, AzureOpenAIChat, AnthropicChat, GroqChat, etc.
 
         Example:
             ```python
-            from agenticflow.models import ChatModel
-            config = AgentConfig(name="Agent", model=ChatModel(model="gpt-4o"))
-
-            # Or use factory function
+            # High-level: String model
+            agent = Agent(name="Helper", model="gpt4")
+            agent = Agent(name="Helper", model="anthropic:claude-sonnet-4")
+            
+            # Medium-level: Factory function
             from agenticflow.models import create_chat
-            config = AgentConfig(name="Agent", model=create_chat("openai", model="gpt-4o"))
+            agent = Agent(name="Helper", model=create_chat("openai", "gpt-4o"))
+            
+            # Low-level: Direct model instance
+            from agenticflow.models import ChatModel
+            agent = Agent(name="Helper", model=ChatModel(model="gpt-4o"))
             ```
         """
         if self._model is None:
             model_spec = self.config.effective_model
             if model_spec is not None:
-                if isinstance(model_spec, BaseChatModel):
+                if isinstance(model_spec, str):
+                    # Resolve string to model instance
+                    from agenticflow.models import resolve_and_create_model
+                    try:
+                        self._model = resolve_and_create_model(model_spec)
+                    except Exception as e:
+                        raise ValueError(
+                            f"Failed to resolve model '{model_spec}': {e}\n"
+                            f"Valid examples: 'gpt4', 'claude', 'anthropic:claude-sonnet-4', 'groq:llama-70b'"
+                        ) from e
+                elif isinstance(model_spec, BaseChatModel):
                     self._model = model_spec
                 else:
                     raise TypeError(
-                        f"model must be a native BaseChatModel, got {type(model_spec).__name__}. "
-                        f"Use: ChatModel(model='gpt-4o') or create_chat('openai', model='gpt-4o')"
+                        f"model must be a string or BaseChatModel, got {type(model_spec).__name__}. "
+                        f"Use: 'gpt4', 'claude', ChatModel(model='gpt-4o'), or create_chat('openai', 'gpt-4o')"
                     )
         return self._model
 

@@ -19,9 +19,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import get_model
 
-from agenticflow import Agent, Observer
+from agenticflow import Agent, Observer, tool
 
-
+@tool
 def calculator(expression: str) -> float:
     """Calculate a mathematical expression.
     
@@ -33,7 +33,7 @@ def calculator(expression: str) -> float:
     """
     return eval(expression)
 
-
+@tool
 def get_weather(city: str) -> str:
     """Get weather information for a city.
     
@@ -58,9 +58,9 @@ async def demo_basic_response():
         verbose=True,  # Observer shows metadata
     )
     
-    response = await agent.run("What is the capital of France?")
+    response = await agent.run("What is 2+2?")
     
-    print(f"\nContent: {response.content}")
+    print(f"\nContent: {response.content or '(empty response from model)'}")
     if response.metadata.tokens:
         print(f"Tokens: {response.metadata.tokens.total_tokens}")
 

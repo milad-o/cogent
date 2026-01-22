@@ -9,6 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.14.0] - 2026-01-22
+
+### Added
+
+#### 3-Tier Model API 🚀
+
+**Simple string-based model API** — Create agents with just model name strings.
+
+**Tier 1: High-Level (String Models)**
+- `Agent("Helper", model="gpt4")` → Auto-resolves to gpt-4o
+- `Agent("Helper", model="gemini")` → Auto-resolves to gemini-2.5-flash
+- `Agent("Helper", model="anthropic:claude")` → Provider prefix syntax
+- 30+ model aliases: `gpt4`, `claude`, `gemini`, `llama`, `mixtral`, etc.
+
+**Tier 2: Medium-Level (Factory)**
+- `create_chat("gpt4")` → One argument with auto-resolution
+- `create_chat("openai", "gpt-4o")` → Two arguments (backward compatible)
+
+**Tier 3: Low-Level (Direct Classes)**
+- `OpenAIChat(model="gpt-4o", temperature=0.7)` → Full control
+
+**Configuration System:**
+- `.env` file auto-loading (python-dotenv)
+- Config file support: `~/.agenticflow/config.toml` or `config.yaml`
+- API key priority: Explicit param > Env var > .env > Config file
+
+**Files Created:**
+- `src/agenticflow/models/registry.py` — Model aliases and provider detection
+- `src/agenticflow/config.py` — Configuration loader
+- `examples/basics/simple_models.py` — 3-tier API demonstration
+- `examples/basics/config_file.py` — Config usage guide
+- `tests/test_model_registry.py` — Registry tests (28 tests)
+- `tests/test_config_loader.py` — Config loader tests (29 tests)
+- `tests/test_model_integration.py` — Integration tests (17 tests)
+
+### Changed
+
+- **Gemini Defaults** → Updated to 2.5 versions
+  - `gemini`: `gemini-2.0-flash-exp` → `gemini-2.5-flash`
+  - `gemini-pro`: `gemini-1.5-pro` → `gemini-2.5-pro`
+
+### Dependencies
+
+- Added `python-dotenv` for automatic .env loading
+
+### Migration
+
+Fully backward compatible. Existing code works unchanged.
+
+---
+
 ## [1.13.0] - 2026-01-21
 
 ### Added

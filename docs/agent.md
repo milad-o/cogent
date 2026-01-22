@@ -12,15 +12,37 @@ Agents are the primary actors in the system. Each agent has:
 
 ```python
 from agenticflow import Agent
-from agenticflow.models import ChatModel
 
-model = ChatModel(model="gpt-4o")
+# Simple string model (recommended for v1.14.0+)
+agent = Agent(
+    name="Researcher",
+    model="gpt4",  # Auto-resolves to gpt-4o
+    tools=[search_tool],
+    instructions="You are a research assistant.",
+)
 
+# With provider prefix
+agent = Agent(
+    name="Researcher",
+    model="anthropic:claude",  # Explicit provider
+    tools=[search_tool],
+)
+
+# Medium-level: Factory function
+from agenticflow.models import create_chat
+agent = Agent(
+    name="Researcher",
+    model=create_chat("gpt4"),
+    tools=[search_tool],
+)
+
+# Low-level: Full control
+from agenticflow.models import OpenAIChat
+model = OpenAIChat(model="gpt-4o", temperature=0.7)
 agent = Agent(
     name="Researcher",
     model=model,
     tools=[search_tool],
-    instructions="You are a research assistant.",
 )
 
 result = await agent.run("Find information about quantum computing")
@@ -38,20 +60,28 @@ from agenticflow import Agent
 # Simplified API (recommended)
 agent = Agent(
     name="Writer",
-    model=model,
+    model="gpt4",  # String model - auto-resolves to gpt-4o
     role="worker",  # String: "worker", "supervisor", "autonomous", "reviewer"
     tools=[write_tool],
     instructions="You write compelling content.",
 )
 
+# With provider prefix for other providers
+agent = Agent(
+    name="Writer",
+    model="anthropic:claude-sonnet-4",
+    role="worker",
+)
+
 # Advanced API with AgentConfig
 from agenticflow.agent import AgentConfig
 from agenticflow.core.enums import AgentRole
+from agenticflow.models import create_chat
 
 config = AgentConfig(
     name="Writer",
     role=AgentRole.WORKER,
-    model=model,
+    model=create_chat("gpt4"),
     tools=["write_poem", "write_story"],
     resilience_config=ResilienceConfig.aggressive(),
 )
@@ -74,14 +104,14 @@ from agenticflow import (
 # Supervisor - coordinates workers
 supervisor = Agent(
     name="Manager",
-    model=model,
+    model="gpt4",  # String model
     role=SupervisorRole(workers=["Analyst", "Writer"]),
 )
 
 # Worker - executes tasks with tools
 worker = Agent(
     name="Analyst",
-    model=model,
+    model="claude",  # Alias for claude-sonnet-4
     role=WorkerRole(specialty="data analysis and visualization"),
     tools=[search, analyze],
 )
@@ -89,16 +119,16 @@ worker = Agent(
 # Reviewer - evaluates and approves work
 reviewer = Agent(
     name="QA",
-    model=model,
+    model="gemini-pro",  # Alias for gemini-2.5-pro
     role=ReviewerRole(criteria=["accuracy", "clarity", "completeness"]),
 )
 
 # Autonomous - independent agent with full capabilities
 autonomous = Agent(
     name="Assistant",
-    model=model,
+    model="anthropic:claude-opus-4",  # Provider prefix
     role=AutonomousRole(),
-    tools=[search, write],
+)    tools=[search, write],
 )
 
 # Custom - hybrid role with explicit capability overrides
