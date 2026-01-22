@@ -126,11 +126,13 @@ Native SDK wrappers for all major LLM providers with zero abstraction overhead.
 
 | Provider | Chat | Embeddings | String Alias | Notes |
 |----------|------|------------|--------------|-------|
-| **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | `"gpt4"`, `"gpt4-mini"` | Default provider, GPT-4o, o1, o3 |
+| **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | `"gpt4"`, `"gpt5"`, `"o4"` | GPT-5 series, o4-mini, o3, GPT-4o |
 | **Azure** | `AzureOpenAIChat` | `AzureOpenAIEmbedding` | — | Managed Identity, Azure AD support |
 | **Anthropic** | `AnthropicChat` | — | `"claude"`, `"claude-opus"` | Claude 4, extended thinking |
-| **Gemini** | `GeminiChat` | `GeminiEmbedding` | `"gemini"`, `"gemini-pro"` | Google AI (2.5 Flash/Pro) |
+| **Gemini** | `GeminiChat` | `GeminiEmbedding` | `"gemini"`, `"gemini3"` | Gemini 3 Pro/Flash, Gemini 2.5 |
 | **Groq** | `GroqChat` | — | `"llama"`, `"mixtral"` | Fast inference, Llama 3.3, Mixtral |
+| **Mistral** | `MistralChat` | `MistralEmbedding` | `"mistral"`, `"codestral"` | Mistral Large 3, Ministral, Devstral |
+| **Cohere** | `CohereChat` | `CohereEmbedding` | `"command"`, `"command-a"` | Command A, Command R7B, Aya |
 | **Ollama** | `OllamaChat` | `OllamaEmbedding` | `"ollama"` | Local models, any GGUF |
 | **Custom** | `CustomChat` | `CustomEmbedding` | — | vLLM, Together AI, any OpenAI-compatible |
 
