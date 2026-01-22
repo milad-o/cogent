@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.14.1-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.14.2-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,35 +58,39 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.14.1 - January 2026)
+## 🎉 Latest Changes (v1.14.2 - January 2026)
 
-**Simple Model API** 🚀
+**Streaming Metadata** 🌊
+- ✨ **Complete observability** — Full metadata in streaming responses for all providers
+- 📊 **Token usage** — Real-time prompt/completion/total token counts during streaming
+- 🏷️ **Model & finish reason** — Track model version and completion status
+- 🔍 **Response tracking** — ID, timestamp, duration, and correlation ID
+- 🔧 **8 providers** — OpenAI, Gemini, Groq, Mistral, Cohere, Anthropic, Cloudflare, Ollama
+- 📦 **Consistent pattern** — All providers yield final metadata chunk after content
+
+```python
+from agenticflow.models import ChatModel
+
+model = ChatModel(model="gpt-4o")
+
+# Streaming now includes complete metadata
+async for chunk in model.astream([
+    {"role": "user", "content": "Explain streaming"}
+]):
+    print(chunk.content, end="", flush=True)
+    
+    # Metadata available in all chunks
+    if chunk.metadata:
+        print(f"\nModel: {chunk.metadata.model}")
+        print(f"Tokens: {chunk.metadata.tokens}")  # TokenUsage object
+        print(f"Finish: {chunk.metadata.finish_reason}")
+```
+
+**Previous (v1.14.1)** — Simple Model API
 - ✨ **String-based models** — `Agent(model="gpt4")` or `Agent(model="claude")`
 - 🔧 **Provider prefix** — `Agent(model="anthropic:claude-sonnet-4")` for explicit control
 - 🗝️ **Auto API keys** — Load from `.env`, config files, or environment variables
 - 📦 **30+ model aliases** — `gpt4`, `claude`, `gemini`, `llama`, etc.
-- 🎯 **3-tier API** — Simple strings, factory functions, or direct model classes
-- ✅ **Fully backward compatible** — All existing code works unchanged
-
-```python
-# Tier 1: High-level (string models)
-agent = Agent("Helper", model="gpt4")              # Auto-resolves to gpt-4o
-agent = Agent("Helper", model="gemini")            # Auto-resolves to gemini-2.5-flash
-agent = Agent("Helper", model="anthropic:claude")  # Provider prefix
-
-# Tier 2: Medium-level (factory) - multiple patterns supported
-from agenticflow.models import create_chat
-llm = create_chat("gpt-4o")                  # Model name only
-llm = create_chat("openai:gpt-4o")           # Provider:model syntax
-llm = create_chat("openai", "gpt-4o")        # Separate arguments
-llm = create_chat("gpt-4o", temperature=0.7) # With configuration
-
-# Tier 3: Low-level (full control)
-from agenticflow.models import OpenAIChat
-llm = OpenAIChat(model="gpt-4o", temperature=0.7)
-```
-
-**Previous (v1.13.0)** — Response Protocol
 - 📦 **Unified Response[T]** — Consistent responses with full metadata
 - 🔍 **Full Observability** — Conversation history, tokens, tool timing
 
