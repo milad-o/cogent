@@ -193,6 +193,7 @@ class OllamaChat(BaseChatModel):
         self._ensure_initialized()
         kwargs = self._build_request(messages)
         kwargs["stream"] = True
+        kwargs["stream_options"] = {"include_usage": True}  # Request token usage in final chunk
 
         start_time = time.time()
         chunk_metadata = {
