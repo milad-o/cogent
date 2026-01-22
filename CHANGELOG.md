@@ -17,15 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Response ID and timestamp
   - Request duration
   - Correlation ID for tracing
-- **Full Provider Coverage**: Streaming metadata implemented for all 8 chat providers:
+- **Full Provider Coverage**: Streaming metadata implemented for all 10 chat providers:
   - OpenAI (with `stream_options` for token usage)
   - Google Gemini (usage_metadata extraction)
   - Groq (stream_options support)
   - Mistral (metadata accumulation)
   - Cohere (event-based streaming with `message-end` event)
   - Anthropic (snapshot-based metadata)
-  - Cloudflare Workers AI (metadata support)
+  - Cloudflare Workers AI (stream_options for improved token handling)
   - Ollama (local model metadata)
+  - Azure OpenAI (stream_options support)
+  - Azure AI Foundry / GitHub Models (stream_options via model_extras)
 - **Consistent Streaming Pattern**: All providers now follow the same pattern:
   - Content chunks include partial metadata (model, response_id, timestamp)
   - Final chunk includes complete metadata (finish_reason, token usage)
@@ -34,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Streaming responses now yield a final metadata-only chunk after content completion
 - OpenAI streaming now uses `stream_options={"include_usage": True}` to request token usage
+- Cloudflare streaming now uses `stream_options` for better token tracking
+- Azure OpenAI streaming now uses `stream_options` for GitHub Models support
 - Cohere now has a complete `astream()` implementation (previously missing)
 
 ---

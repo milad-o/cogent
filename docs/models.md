@@ -590,7 +590,7 @@ async for chunk in model.astream([
 
 ### Streaming Metadata
 
-**All 8 chat providers** return complete metadata during streaming:
+**All 10 chat providers** return complete metadata during streaming:
 
 | Provider | Model | Finish Reason | Token Usage | Notes |
 |----------|-------|---------------|-------------|-------|
@@ -600,8 +600,10 @@ async for chunk in model.astream([
 | Mistral | ✅ | ✅ | ✅ | Metadata accumulation |
 | Cohere | ✅ | ✅ | ✅ | Event-based streaming (`message-end`) |
 | Anthropic | ✅ | ✅ | ✅ | Snapshot-based metadata |
-| Cloudflare | ✅ | ✅ | ⚠️ | Tokens=0 (API limitation) |
+| Cloudflare | ✅ | ✅ | ✅ | Stream options support |
 | Ollama | ✅ | ✅ | ✅ | Local model metadata |
+| Azure OpenAI | ✅ | ✅ | ✅ | Stream options support |
+| Azure AI Foundry / GitHub | ✅ | ✅ | ✅ | Stream options via model_extras |
 
 **Metadata Structure**:
 
