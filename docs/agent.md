@@ -252,12 +252,22 @@ Roles define **capabilities** (what an agent CAN do) and inject **system prompts
 
 ### Role Capabilities
 
-| Role | can_finish | can_delegate | can_use_tools | When to Use |
-|------|------------|--------------|---------------|-------------|
-| **WORKER** | ❌ | ❌ | ✅ | Executes tasks with tools, reports back |
-| **SUPERVISOR** | ✅ | ✅ | ❌ | Coordinates workers, makes final decisions |
-| **AUTONOMOUS** | ✅ | ❌ | ✅ | Independent operation, full lifecycle |
-| **REVIEWER** | ✅ | ❌ | ❌ | Evaluates work, approves/rejects |
+```
+┌─────────────┬────────────┬──────────────┬───────────────┐
+│ Role        │ can_finish │ can_delegate │ can_use_tools │
+├─────────────┼────────────┼──────────────┼───────────────┤
+│ WORKER      │     ❌     │      ❌      │      ✅       │
+│ SUPERVISOR  │     ✅     │      ✅      │      ❌       │
+│ AUTONOMOUS  │     ✅     │      ❌      │      ✅       │
+│ REVIEWER    │     ✅     │      ❌      │      ❌       │
+└─────────────┴────────────┴──────────────┴───────────────┘
+```
+
+**When to Use:**
+- **WORKER**: Executes tasks with tools, reports back
+- **SUPERVISOR**: Coordinates workers, makes final decisions
+- **AUTONOMOUS**: Independent operation, full lifecycle
+- **REVIEWER**: Evaluates work, approves/rejects
 
 ### How Roles Work
 
