@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agenticflow import Agent
 from agenticflow.flow import FlowConfig, pipeline
 from agenticflow.flow.checkpointer import FileCheckpointer
-from config import get_model
+from models import get_model
 
 
 async def main():

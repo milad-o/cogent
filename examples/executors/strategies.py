@@ -28,7 +28,7 @@ from agenticflow.executors import NativeExecutor, SequentialExecutor
 from agenticflow.tools import tool
 
 # Import from examples config
-from config import get_model
+from models import get_model
 
 
 # =============================================================================

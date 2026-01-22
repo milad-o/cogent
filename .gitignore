@@ -67,6 +67,12 @@ scripts/
 experiments/
 .github/copilot-instructions.md
 
+# Configuration files with API keys
+.env
+*.env
+!.env.example
+examples/models.yaml
+
 # MkDocs
 site/
 

@@ -248,14 +248,127 @@ orchestrator = Agent(
 
 ## Role System
 
-Roles define capabilities (what an agent CAN do), not personalities:
+Roles define **capabilities** (what an agent CAN do) and inject **system prompts** that guide LLM behavior. They don't define personalities - that comes from your `instructions`.
 
-| Role | can_finish | can_delegate | can_use_tools |
-|------|------------|--------------|---------------|
-| WORKER | ❌ | ❌ | ✅ |
-| SUPERVISOR | ✅ | ✅ | ❌ |
-| AUTONOMOUS | ✅ | ❌ | ✅ |
-| REVIEWER | ✅ | ❌ | ❌ |
+### Role Capabilities
+
+| Role | can_finish | can_delegate | can_use_tools | When to Use |
+|------|------------|--------------|---------------|-------------|
+| **WORKER** | ❌ | ❌ | ✅ | Executes tasks with tools, reports back |
+| **SUPERVISOR** | ✅ | ✅ | ❌ | Coordinates workers, makes final decisions |
+| **AUTONOMOUS** | ✅ | ❌ | ✅ | Independent operation, full lifecycle |
+| **REVIEWER** | ✅ | ❌ | ❌ | Evaluates work, approves/rejects |
+
+### How Roles Work
+
+Roles affect agent behavior in two ways:
+
+**1. Capability Controls** - What the agent is allowed to do:
+```python
+# WORKER can use tools but cannot finish
+worker = Agent(name="Analyst", model=model, role="worker", tools=[analyze_tool])
+assert worker.can_use_tools == True
+assert worker.can_finish == False  # Must report to supervisor
+
+# AUTONOMOUS can use tools AND finish
+autonomous = Agent(name="Assistant", model=model, role="autonomous", tools=[search_tool])
+assert autonomous.can_use_tools == True
+assert autonomous.can_finish == True  # Can conclude independently
+```
+
+**2. System Prompt Injection** - How the LLM thinks:
+
+Each role gets a specialized system prompt that guides its behavior:
+
+- **WORKER**: "Execute tasks using tools... You cannot finish the workflow yourself"
+- **SUPERVISOR**: "Delegate tasks to workers... Provide FINAL ANSWER when complete"
+- **AUTONOMOUS**: "Work independently... Finish when the task is complete"
+- **REVIEWER**: "Evaluate work quality... Approve or request revisions"
+
+**Example - See the difference:**
+```python
+# WORKER won't conclude
+worker = Agent(name="Worker", model=model, role="worker")
+result = await worker.run("What is Python?")
+# Response: "Python is a programming language..." (no conclusion)
+
+# AUTONOMOUS will conclude
+autonomous = Agent(name="Assistant", model=model, role="autonomous")
+result = await autonomous.run("What is Python?")
+# Response: "FINAL ANSWER: Python is a high-level programming language..."
+```
+
+### When to Use Each Role
+
+**WORKER** - Task execution:
+```python
+# ✅ Good: Has tools, reports results
+data_analyst = Agent(
+    name="DataAnalyst",
+    model=model,
+    role="worker",
+    tools=[load_data, analyze, plot],
+    instructions="Analyze datasets and create visualizations",
+)
+
+# In a Flow, supervisor coordinates workers
+```
+
+**SUPERVISOR** - Team coordination:
+```python
+# ✅ Good: Delegates to workers, makes final decisions
+manager = Agent(
+    name="Manager",
+    model=model,
+    role="supervisor",
+    instructions="Coordinate the research team to deliver comprehensive reports",
+)
+
+# LLM will try to delegate: "DELEGATE TO researcher: Find information about..."
+```
+
+**AUTONOMOUS** - Independent agents:
+```python
+# ✅ Good: Standalone assistant, full capability
+assistant = Agent(
+    name="Assistant",
+    model=model,
+    role="autonomous",
+    tools=[search, calculator, send_email],
+    instructions="Help users with their requests",
+)
+
+# Can use tools AND provide final answers independently
+```
+
+**REVIEWER** - Quality control:
+```python
+# ✅ Good: Evaluates quality, no tool execution
+qa = Agent(
+    name="QualityAssurance",
+    model=model,
+    role="reviewer",
+    instructions="Review code for quality, security, and best practices",
+)
+
+# LLM focuses on judgment: "FINAL ANSWER: Approved" or "REVISION NEEDED: ..."
+```
+
+### Capability Overrides
+
+Override role capabilities when needed:
+```python
+# Hybrid: Reviewer that can use tools
+tech_reviewer = Agent(
+    name="TechnicalReviewer",
+    model=model,
+    role="reviewer",
+    can_use_tools=True,  # Override! Run automated checks
+    tools=[lint_code, run_tests],
+)
+```
+
+See `examples/basics/role_behavior.py` for real LLM behavior examples.
 
 ## Memory
 

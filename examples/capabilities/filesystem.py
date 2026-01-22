@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import tempfile
 from pathlib import Path
 
-from config import get_model
+from models import get_model
 
 # ============================================================
 # Programmatic Demo (no LLM needed)

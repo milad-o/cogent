@@ -40,7 +40,7 @@ from pathlib import Path
 from agenticflow import Agent, Observer
 from agenticflow.capabilities import MCP
 
-from config import get_model
+from models import get_model
 
 
 async def demo_research_agent() -> None:

@@ -1,13 +1,24 @@
 """
 Demo: Memory-First Architecture with LLM
 
-Demonstrates the new unified Memory system with actual LLM interactions.
+Demonstrates the unified Memory system:
+
+**Memory is always agentic** - automatically provides memory tools:
+- remember(): Store long-term facts
+- recall(): Retrieve stored facts (requires exact key)
+- forget(): Remove facts
+- search_memories(): Search and discover keys (fuzzy matching)
+- search_conversation(): Search conversation history
+
+**Key Discovery Pattern:**
+Agents use search_memories() to discover what keys exist, then recall() for direct access.
 
 Features:
-- Thread-based conversation memory (agent remembers within a thread)
+- Key discovery via search_memories()
+- Thread-based conversation memory
 - Cross-thread memory sharing via scoped namespaces
-- Persistence with SQLAlchemyStore
-- Memory tools for long-term facts
+- Persistence with SQLAlchemyStore  
+- Automatic long-term fact management
 
 Usage:
     uv run python examples/basics/memory.py
@@ -15,33 +26,106 @@ Usage:
 
 import asyncio
 import sys
-from pathlib import Path
-
-# Add examples directory to path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
 import tempfile
 from pathlib import Path
 
-from config import get_model, settings
+# Add parent directory to path to import models.py
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from models import get_model
 
 from agenticflow import Agent
 from agenticflow.memory import Memory
 
 
+async def demo_memory_discovery():
+    """Show how agents discover memory keys via search."""
+    print("\n--- Memory Key Discovery ---")
+
+    model = get_model()
+    memory = Memory()
+
+    # Pre-populate with some facts using varied key names
+    print("\n  📝 Pre-populating memory with facts...")
+    await memory.remember("user_name", "Alice")
+    await memory.remember("favorite_language", "Python")
+    await memory.remember("job_title", "Senior Developer")
+    await memory.remember("team", "AI Research")
+    await memory.remember("email", "alice@example.com")
+    
+    print("  Stored keys:")
+    keys = await memory.keys()
+    for key in keys:
+        if not key.startswith("thread:") and not key.startswith("_"):
+            value = await memory.recall(key)
+            print(f"    • {key}: {value}")
+
+    agent = Agent(
+        name="Assistant",
+        model=model,
+        instructions="Always use search_memories() to discover what you know. Be concise.",
+        memory=memory,
+    )
+
+    # Test 1: Agent searches for 'user'
+    print("\n  [Test: What do you know about the user?]")
+    response1 = await agent.run(
+        "What do you know about the user?",
+        thread_id="discovery-demo",
+    )
+    print(f"  Agent: {response1.content}")
+    if response1.tool_calls:
+        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response1.tool_calls]}")
+
+    # Test 2: Specific query that requires discovery
+    print("\n  [Test: What programming language does the user prefer?]")
+    response2 = await agent.run(
+        "What programming language does the user prefer?",
+        thread_id="discovery-demo",
+    )
+    print(f"  Agent: {response2.content}")
+    if response2.tool_calls:
+        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response2.tool_calls]}")
+
+    # Show direct search vs recall
+    print("\n  💡 Key Discovery Mechanism:")
+    search_tool = next(t for t in memory.tools if t.name == "search_memories")
+    
+    # Search finds keys even with fuzzy queries
+    result = await search_tool.func(query="language")
+    print(f"    search_memories('language') → {result}")
+    
+    result = await search_tool.func(query="work")
+    print(f"    search_memories('work') → {result}")
+    
+    # Recall needs exact key
+    recall_tool = next(t for t in memory.tools if t.name == "recall")
+    result = await recall_tool.func(key="favorite_language")
+    print(f"    recall('favorite_language') → {result}")
+    
+    result = await recall_tool.func(key="occupation")  # Wrong key
+    print(f"    recall('occupation') → {result} ❌")
+
+
 async def demo_conversation_memory():
-    """Show LLM remembering conversation context via chat()."""
+    """Show conversation memory with automatic fact storage."""
     print("\n--- Conversation Memory (Thread-Based) ---")
 
     model = get_model()
-    memory = Memory()  # Memory is always agentic
+    
+    # Memory is always agentic - tools are automatically available
+    memory = Memory()
 
-    # Create agent with the new Memory class
     agent = Agent(
         name="Assistant",
         model=model,
         instructions="You are a helpful assistant. Be concise (1-2 sentences max).",
-        memory=memory,  # Tools auto-added automatically!
+        memory=memory,  # Tools: remember, recall, forget, search_memories, search_conversation
     )
+
+    # Show what tools were added
+    tool_names = [t.name for t in agent._direct_tools]
+    print(f"  🔧 Memory tools auto-added: {tool_names}\n")
 
     # Chat in a thread - agent automatically remembers!
     thread_id = "user-alice-123"
@@ -62,9 +146,11 @@ async def demo_conversation_memory():
         thread_id=thread_id,  # Same thread - remembers!
     )
     print("\n  User: What's my name and what do I do?")
-    print(f"  Assistant: {response2}")
+    print(f"  Assistant: {response2.content}")
+    if response2.tool_calls:
+        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response2.tool_calls]}")
 
-    # Show what's stored in long-term memory (via remember() tool)
+    # Show what's stored in long-term memory
     print("\n  📝 Long-term facts (stored via remember() tool):")
     keys = await memory.keys()
     for key in keys:
@@ -72,14 +158,16 @@ async def demo_conversation_memory():
             value = await memory.recall(key)
             print(f"    • {key}: {value}")
 
-    # Different thread - should know from context injection!
-    print("\n[Thread: different-thread] (fresh thread, but knows from memory)")
+    # Different thread - agent can recall from long-term memory!
+    print("\n[Different thread - recalls from long-term memory]")
     response3 = await agent.run(
         "What's my name and occupation?",
         thread_id="different-thread",
     )
     print("  User: What's my name and occupation?")
-    print(f"  Assistant: {response3}")
+    print(f"  Assistant: {response3.content}")
+    if response3.tool_calls:
+        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response3.tool_calls]}")
 
 
 async def demo_persistent_memory():
@@ -118,7 +206,7 @@ async def demo_persistent_memory():
             thread_id="session-demo",
         )
         print("  User: My favorite programming language is Rust.")
-        print(f"  Assistant: {response}")
+        print(f"  Assistant: {response.content}")
 
         await store.close()
         print("  ✓ Session 1 ended, database closed")
@@ -141,7 +229,7 @@ async def demo_persistent_memory():
             thread_id="session-demo",  # Same thread!
         )
         print("  User: What's my favorite programming language?")
-        print(f"  Assistant: {response2}")
+        print(f"  Assistant: {response2.content}")
 
         await store2.close()
 
@@ -151,7 +239,7 @@ async def demo_memory_tools():
     print("\n--- Agent with Memory Tools ---")
 
     model = get_model()
-    memory = Memory()  # Memory is always agentic
+    memory = Memory()  # Always agentic
 
     # Just pass memory - tools are auto-added!
     agent = Agent(
@@ -242,13 +330,14 @@ async def demo_shared_memory():
 async def main():
     print("\n" + "=" * 60)
     print("  Memory-First Architecture Demo (with LLM)")
-    print(f"  Provider: {settings.llm_provider}")
+    print("  Memory is always agentic - tools auto-added")
     print("=" * 60)
 
-    await demo_conversation_memory()
-    await demo_persistent_memory()
-    await demo_memory_tools()
-    await demo_shared_memory()
+    await demo_memory_discovery()     # How agents discover keys
+    await demo_conversation_memory()  # Conversation + long-term memory
+    await demo_persistent_memory()    # SQLite persistence
+    await demo_memory_tools()         # Detailed tool usage
+    await demo_shared_memory()        # Multi-agent sharing
 
     print("\n" + "=" * 60)
     print("✅ All demos completed!")

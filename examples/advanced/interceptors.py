@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dataclasses import dataclass
 
-from config import get_model
+from models import get_model
 
 from agenticflow import Agent
 from agenticflow.tools.base import tool

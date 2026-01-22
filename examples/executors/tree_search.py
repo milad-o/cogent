@@ -37,7 +37,7 @@ from agenticflow import Agent
 from agenticflow.executors import TreeSearchExecutor
 from agenticflow.tools import tool
 
-from config import get_model
+from models import get_model
 
 
 # =============================================================================

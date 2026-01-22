@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agenticflow import Agent
 from agenticflow.reactive.core import ReactionType, Trigger
 from agenticflow.reactive.flow import Flow, FlowConfig
-from config import get_model
+from models import get_model
 
 
 @dataclass

@@ -47,7 +47,7 @@ from pathlib import Path
 # Add examples directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import get_embeddings, get_model
+from models import get_embeddings, get_model
 
 from agenticflow.retriever import DenseRetriever, HyDERetriever
 from agenticflow.document import RecursiveCharacterSplitter

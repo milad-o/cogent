@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import time
 from pathlib import Path
 
-from config import get_model
+from models import get_model
 
 from agenticflow.document.loaders import PDFMarkdownLoader
 from agenticflow.document.summarizer import MapReduceSummarizer, RefineSummarizer

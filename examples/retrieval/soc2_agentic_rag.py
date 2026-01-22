@@ -28,7 +28,7 @@ from typing import Any
 # Add examples directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import get_embeddings, get_model
+from models import get_embeddings, get_model
 
 from agenticflow.agent import Agent
 from agenticflow.document.loaders import PDFMarkdownLoader

@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, Field
 from typing import Literal
 
-from config import get_model
+from models import get_model
 
 from agenticflow import Agent
 from agenticflow.agent.output import ResponseSchema, OutputMethod
