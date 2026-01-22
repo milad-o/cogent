@@ -65,7 +65,7 @@ result = await agent.run("Find the latest news on AI agents")
 - 📊 **Token usage** — Real-time prompt/completion/total token counts during streaming
 - 🏷️ **Model & finish reason** — Track model version and completion status
 - 🔍 **Response tracking** — ID, timestamp, duration, and correlation ID
-- 🔧 **8 providers** — OpenAI, Gemini, Groq, Mistral, Cohere, Anthropic, Cloudflare, Ollama
+- 🔧 **10 providers** — OpenAI, Gemini, Groq, Mistral, Cohere, Anthropic, Cloudflare, Ollama, Azure OpenAI, GitHub Models
 - 📦 **Consistent pattern** — All providers yield final metadata chunk after content
 
 ```python
