@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dataclasses import dataclass, field
 
-from config import get_model
+from models import get_model
 
 from agenticflow import Agent, RunContext
 from agenticflow.tools.base import tool

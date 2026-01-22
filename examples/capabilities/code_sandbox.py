@@ -293,7 +293,7 @@ async def agent_demo():
     """Demonstrate agent using CodeSandbox for computation."""
     separator("Agent with CodeSandbox")
     
-    from config import get_model
+    from models import get_model
     
     sandbox = CodeSandbox(allow_imports=True, timeout=5)
     model = get_model()

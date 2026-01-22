@@ -11,7 +11,7 @@ from pathlib import Path
 # Add examples to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import get_model
+from models import get_model
 
 from agenticflow import Agent
 from agenticflow.flow.reactive import Flow  # Use Flow directly

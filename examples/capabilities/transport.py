@@ -30,7 +30,7 @@ from agenticflow import Agent
 from agenticflow.events import Event, EventBus
 from agenticflow import Flow, FlowConfig, react_to
 from agenticflow.reactive.transport import LocalTransport, RedisTransport
-from config import get_model
+from models import get_model
 
 
 # Mock Redis classes for demo when Redis is unavailable

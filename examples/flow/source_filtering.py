@@ -17,7 +17,7 @@ from pathlib import Path
 # Add examples directory to path for config import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import get_model
+from models import get_model
 
 from agenticflow import Agent, Flow
 from agenticflow.events import Event, any_source, from_source, not_from_source

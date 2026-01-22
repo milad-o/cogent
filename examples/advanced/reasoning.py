@@ -40,7 +40,7 @@ from agenticflow.tools.base import tool
 try:
     from examples.config import get_model
 except ImportError:
-    from config import get_model
+    from models import get_model
 
 
 # =============================================================================

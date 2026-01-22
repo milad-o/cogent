@@ -25,7 +25,7 @@ import json
 from pathlib import Path
 import tempfile
 
-from config import get_model
+from models import get_model
 
 
 def load_knowledge_file(kg, filepath: str) -> dict:

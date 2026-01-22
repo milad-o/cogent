@@ -28,7 +28,7 @@ EXAMPLES_DIR = Path(__file__).resolve().parents[1]
 if str(EXAMPLES_DIR) not in sys.path:
     sys.path.insert(0, str(EXAMPLES_DIR))
 
-from config import get_model  # type: ignore  # noqa: E402
+from models import get_model  # type: ignore  # noqa: E402
 
 
 # ==============================================================================

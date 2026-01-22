@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from config import get_embeddings, get_model
+from models import get_embeddings, get_model
 
 from agenticflow.vectorstore import VectorStore, Document
 from agenticflow.retriever import (
