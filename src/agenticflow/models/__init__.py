@@ -346,35 +346,64 @@ def create_embedding(
     **kwargs: Any,
 ) -> BaseEmbedding:
     """Create an embedding model for any provider.
+    
+    Supports multiple invocation patterns like create_chat().
 
     Args:
-        provider: Provider name (openai, azure, gemini, cohere, cloudflare, ollama, custom)
-        model: Model name (provider-specific). Uses provider default if not specified.
-        **kwargs: Additional provider-specific arguments.
+        provider: Either provider name ("openai", "gemini") OR full model string
+            when used as single argument. Supports "provider:model" syntax.
+        model: Optional explicit model name. Use when specifying provider separately.
+        **kwargs: Provider-specific configuration (api_key, etc.)
 
     Returns:
-        Embedding model instance.
+        BaseEmbedding: Initialized embedding model ready for use.
 
-    Example:
-        # OpenAI
-        embedder = create_embedding("openai")
-
+    Examples:
+        # Pattern 1: Model name only (auto-detects provider)
+        embedder = create_embedding("text-embedding-3-large")
+        embedder = create_embedding("embed-english-v3.0")
+        
+        # Pattern 2: Provider:model syntax
+        embedder = create_embedding("openai:text-embedding-3-large")
+        embedder = create_embedding("cohere:embed-english-v3.0")
+        
+        # Pattern 3: Separate provider and model arguments
+        embedder = create_embedding("openai", "text-embedding-3-large")
+        embedder = create_embedding("gemini", "text-embedding-004")
+        
+        # Pattern 4: With configuration
+        embedder = create_embedding("openai", "text-embedding-3-small", api_key="sk-...")
+        
         # Azure
         embedder = create_embedding(
             "azure",
             deployment="text-embedding-3-small",
             azure_endpoint="https://your-resource.openai.azure.com",
         )
-
-        # Ollama
-        embedder = create_embedding("ollama", model="nomic-embed-text")
-
-        # Gemini
-        embedder = create_embedding("gemini", model="text-embedding-004")
-
-        # Cloudflare Workers AI
-        embedder = create_embedding("cloudflare", model="@cf/baai/bge-base-en-v1.5")
     """
+    provider_lower = provider.lower()
+    explicit_providers = {
+        "openai",
+        "azure",
+        "gemini",
+        "google",
+        "cohere",
+        "cloudflare",
+        "ollama",
+        "mistral",
+        "custom",
+    }
+
+    if model is None and provider_lower in explicit_providers:
+        from agenticflow.config import get_model_override
+
+        model = get_model_override(provider_lower, "embedding")
+    elif model is None:
+        from agenticflow.models.registry import resolve_model
+
+        provider_resolved, model = resolve_model(provider)
+        provider = provider_resolved
+    
     provider = provider.lower()
 
     if provider == "openai":
