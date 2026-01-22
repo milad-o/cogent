@@ -3,15 +3,7 @@ Demo: Clean 4-Role System
 
 Demonstrates the simplified role system with only 4 distinct roles.
 
-The Role System:
-┌─────────────┬────────────┬──────────────┬───────────────┐
-│ Role        │ can_finish │ can_delegate │ can_use_tools │
-├─────────────┼────────────┼──────────────┼───────────────┤
-│ WORKER      │     ❌     │      ❌      │      ✅       │
-│ SUPERVISOR  │     ✅     │      ✅      │      ❌       │
-│ AUTONOMOUS  │     ✅     │      ❌      │      ✅       │
-│ REVIEWER    │     ✅     │      ❌      │      ❌       │
-└─────────────┴────────────┴──────────────┴───────────────┘
+See docs/agent.md for the complete role system reference table and guide.
 
 Usage:
     uv run python examples/basics/roles.py
