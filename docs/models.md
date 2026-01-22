@@ -565,7 +565,7 @@ print(len(vectors[0]))  # 384
 
 ## Streaming
 
-All models support streaming:
+All models support streaming with **complete metadata**:
 
 ```python
 from agenticflow.models import ChatModel
@@ -576,6 +576,69 @@ async for chunk in model.astream([
     {"role": "user", "content": "Write a story"}
 ]):
     print(chunk.content, end="", flush=True)
+    
+    # Access metadata in all chunks
+    if chunk.metadata:
+        print(f"\nModel: {chunk.metadata.model}")
+        print(f"Response ID: {chunk.metadata.response_id}")
+        
+        # Token usage available in final chunk
+        if chunk.metadata.tokens:
+            print(f"Tokens: {chunk.metadata.tokens.total_tokens}")
+            print(f"Finish: {chunk.metadata.finish_reason}")
+```
+
+### Streaming Metadata
+
+**All 8 chat providers** return complete metadata during streaming:
+
+| Provider | Model | Finish Reason | Token Usage | Notes |
+|----------|-------|---------------|-------------|-------|
+| OpenAI | ✅ | ✅ | ✅ | Uses `stream_options={"include_usage": True}` |
+| Gemini | ✅ | ✅ | ✅ | Extracts from `usage_metadata` |
+| Groq | ✅ | ✅ | ✅ | Compatible with OpenAI pattern |
+| Mistral | ✅ | ✅ | ✅ | Metadata accumulation |
+| Cohere | ✅ | ✅ | ✅ | Event-based streaming (`message-end`) |
+| Anthropic | ✅ | ✅ | ✅ | Snapshot-based metadata |
+| Cloudflare | ✅ | ✅ | ⚠️ | Tokens=0 (API limitation) |
+| Ollama | ✅ | ✅ | ✅ | Local model metadata |
+
+**Metadata Structure**:
+
+```python
+@dataclass
+class MessageMetadata:
+    id: str | None              # Response ID
+    timestamp: str | None       # ISO 8601 timestamp
+    model: str | None           # Model name/version
+    tokens: TokenUsage | None   # Token counts
+    finish_reason: str | None   # stop, length, error
+    response_id: str | None     # Provider response ID
+    duration: float | None      # Request duration (ms)
+    correlation_id: str | None  # For tracing
+
+@dataclass
+class TokenUsage:
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+```
+
+**Streaming Pattern**:
+
+1. **Content chunks** — Include partial metadata (model, response_id, timestamp)
+2. **Final chunk** — Empty content with complete metadata (finish_reason, tokens)
+
+```python
+# Example streaming flow
+async for chunk in model.astream(messages):
+    # Chunks 1-N: Content with partial metadata
+    if chunk.content:
+        print(chunk.content, end="")
+    
+    # Final chunk: Complete metadata
+    if chunk.metadata and chunk.metadata.finish_reason:
+        print(f"\n\nCompleted with {chunk.metadata.tokens.total_tokens} tokens")
 ```
 
 ---

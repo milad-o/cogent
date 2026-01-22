@@ -68,6 +68,26 @@ class StreamChunk:
 - `event_id` / `event_name` — Event context that triggered this agent
 - `is_final` — True when agent completes (useful for UI formatting)
 - `finish_reason` — "stop" (complete), "length" (max tokens), "error" (failed)
+- `metadata` — **NEW in v1.14.2**: Includes model metadata with token usage, model name, response ID, timestamp
+
+**Streaming Metadata** (v1.14.2+):
+
+All chat providers now return complete metadata during streaming:
+
+```python
+async for chunk in flow.run_streaming("Analyze data"):
+    print(chunk.content, end="")
+    
+    # Access LLM metadata from the underlying model
+    # Note: metadata is from the model's response, not the Flow chunk itself
+    if hasattr(chunk, 'raw_response') and chunk.raw_response:
+        msg_metadata = chunk.raw_response.metadata
+        if msg_metadata:
+            print(f"\nModel: {msg_metadata.model}")
+            print(f"Tokens: {msg_metadata.tokens}")  # TokenUsage(prompt, completion, total)
+```
+
+For direct model streaming (without Flow), see [Models - Streaming](models.md#streaming) for full metadata details.
 
 ### run_streaming() vs run()
 
