@@ -14,7 +14,7 @@ from enum import Enum
 from typing import Any
 
 # Import AIMessage from core messages - single source of truth
-from agenticflow.core.messages import AIMessage
+from agenticflow.core.messages import AIMessage, EmbeddingMetadata, EmbeddingResult
 
 
 def normalize_input(messages: str | list[Any]) -> list[Any]:
@@ -401,26 +401,26 @@ class BaseEmbedding(ABC):
         ...
 
     @abstractmethod
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str]) -> EmbeddingResult:
         """Embed multiple texts synchronously.
 
         Args:
             texts: List of texts to embed.
 
         Returns:
-            List of embedding vectors.
+            EmbeddingResult with vectors and metadata.
         """
         ...
 
     @abstractmethod
-    async def aembed(self, texts: list[str]) -> list[list[float]]:
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
         """Embed multiple texts asynchronously.
 
         Args:
             texts: List of texts to embed.
 
         Returns:
-            List of embedding vectors.
+            EmbeddingResult with vectors and metadata.
         """
         ...
 
@@ -433,7 +433,8 @@ class BaseEmbedding(ABC):
         Returns:
             Embedding vector.
         """
-        return self.embed([text])[0]
+        result = self.embed([text])
+        return result.embeddings[0]
 
     async def aembed_query(self, text: str) -> list[float]:
         """Embed a single query text asynchronously.
@@ -445,20 +446,21 @@ class BaseEmbedding(ABC):
             Embedding vector.
         """
         result = await self.aembed([text])
-        return result[0]
+        return result.embeddings[0]
 
     # Aliases for common interface compatibility
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Embed texts (alias for embed)."""
-        return self.embed(texts)
+        return self.embed(texts).embeddings
 
     async def aembed_texts(self, texts: list[str]) -> list[list[float]]:
         """Embed texts async (alias for aembed)."""
-        return await self.aembed(texts)
+        result = await self.aembed(texts)
+        return result.embeddings
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents (alias for embed)."""
-        return self.embed(texts)
+        return self.embed(texts).embeddings
 
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents async (alias for aembed)."""

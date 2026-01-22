@@ -37,6 +37,61 @@ class TokenUsage:
 
 
 @dataclass
+class EmbeddingMetadata:
+    """Metadata for embedding operations.
+
+    Attributes:
+        id: Unique request identifier
+        timestamp: Unix timestamp of request
+        model: Model name used
+        tokens: Token usage (input tokens for embeddings)
+        duration: Request duration in seconds
+        dimensions: Embedding vector dimensionality
+        num_texts: Number of texts embedded in this batch
+    """
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: float = field(default_factory=time.time)
+    model: str | None = None
+    tokens: TokenUsage | None = None
+    duration: float | None = None
+    dimensions: int | None = None
+    num_texts: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp,
+            "model": self.model,
+            "tokens": self.tokens.to_dict() if self.tokens else None,
+            "duration": self.duration,
+            "dimensions": self.dimensions,
+            "num_texts": self.num_texts,
+        }
+
+
+@dataclass
+class EmbeddingResult:
+    """Result from embedding operation with metadata.
+
+    Attributes:
+        embeddings: List of embedding vectors
+        metadata: Metadata about the embedding operation
+    """
+
+    embeddings: list[list[float]]
+    metadata: EmbeddingMetadata = field(default_factory=EmbeddingMetadata)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            "embeddings": self.embeddings,
+            "metadata": self.metadata.to_dict(),
+        }
+
+
+@dataclass
 class MessageMetadata:
     """Metadata for message tracking and observability.
 

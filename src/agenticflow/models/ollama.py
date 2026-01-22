@@ -306,11 +306,15 @@ class OllamaEmbedding(BaseEmbedding):
             max_retries=self.max_retries,
         )
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts synchronously."""
+    def embed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts synchronously with metadata."""
         self._ensure_initialized()
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
 
+        start_time = time.time()
         all_embeddings: list[list[float]] = []
+        
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             response = self._client.embeddings.create(
@@ -319,12 +323,25 @@ class OllamaEmbedding(BaseEmbedding):
             )
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-        return all_embeddings
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Ollama typically doesn't return token counts for embeddings
+            duration=time.time() - start_time,
+            dimensions=len(all_embeddings[0]) if all_embeddings else None,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
-    async def aembed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts asynchronously."""
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts asynchronously with metadata."""
         self._ensure_initialized()
         import asyncio
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        start_time = time.time()
 
         async def embed_batch(batch: list[str]) -> list[list[float]]:
             response = await self._async_client.embeddings.create(
@@ -340,4 +357,13 @@ class OllamaEmbedding(BaseEmbedding):
         all_embeddings: list[list[float]] = []
         for batch_result in results:
             all_embeddings.extend(batch_result)
-        return all_embeddings
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Ollama typically doesn't return token counts for embeddings
+            duration=time.time() - start_time,
+            dimensions=len(all_embeddings[0]) if all_embeddings else None,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
