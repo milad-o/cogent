@@ -83,14 +83,28 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
+
+# All provider models
+from agenticflow.models.anthropic import AnthropicChat
 from agenticflow.models.cloudflare import CloudflareChat, CloudflareEmbedding
 from agenticflow.models.cohere import CohereChat, CohereEmbedding
+from agenticflow.models.gemini import GeminiChat, GeminiEmbedding
+from agenticflow.models.groq import GroqChat
+from agenticflow.models.ollama import OllamaChat, OllamaEmbedding
 
 # Mock models for testing
 from agenticflow.models.mock import MockChatModel, MockEmbedding
 
 # Default models (OpenAI)
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
+
+# Model registry for high-level API
+from agenticflow.models.registry import (
+    resolve_model,
+    resolve_and_create_model,
+    list_model_aliases,
+    get_provider_for_model,
+)
 
 # Aliases for convenience
 ChatModel = OpenAIChat
@@ -103,19 +117,49 @@ def create_chat(
     **kwargs: Any,
 ) -> BaseChatModel:
     """Create a chat model for any provider.
+    
+    Supports 3 usage patterns:
+    
+    1. High-level: Just model name (auto-resolves provider)
+       llm = create_chat("gpt4")
+       llm = create_chat("claude")
+       llm = create_chat("anthropic:claude-sonnet-4")
+    
+    2. Medium-level: Provider + model
+       llm = create_chat("openai", "gpt-4o")
+       llm = create_chat("anthropic", "claude-sonnet-4-20250514")
+    
+    3. Low-level: Provider + model + config
+       llm = create_chat("openai", "gpt-4o", api_key="sk-...", temperature=0.7)
 
     Args:
-        provider: Provider name (openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, custom)
-        model: Model name (provider-specific). Uses provider default if not specified.
+        provider: Provider name OR model string (if model is None).
+            When model is None, provider is treated as a model string.
+            When model is provided, provider is the provider name.
+        model: Optional model name (for explicit provider usage)
         **kwargs: Additional provider-specific arguments.
 
     Returns:
         Chat model instance.
 
     Example:
-        # OpenAI
-        llm = create_chat("openai", model="gpt-4o")
+        # High-level: Just model name
+        llm = create_chat("gpt4")
+        llm = create_chat("claude")
+        llm = create_chat("gemini")
+        
+        # With provider prefix
+        llm = create_chat("anthropic:claude-sonnet-4")
+        llm = create_chat("groq:llama-70b")
 
+        # Medium-level: Provider + model
+        llm = create_chat("openai", "gpt-4o")
+        llm = create_chat("anthropic", "claude-sonnet-4-20250514")
+        llm = create_chat("groq", "llama-3.3-70b-versatile")
+
+        # Low-level: Full control
+        llm = create_chat("openai", "gpt-4o", api_key="sk-...", temperature=0.7)
+        
         # Azure OpenAI with Entra ID
         llm = create_chat(
             "azure",
@@ -131,39 +175,30 @@ def create_chat(
             token=os.getenv("GITHUB_TOKEN"),
         )
 
-        # Azure AI Foundry custom endpoint
-        llm = create_chat(
-            "azure-foundry",
-            endpoint="https://your-foundry.azure.com/inference",
-            model="your-model",
-            api_key="your-key",
-        )
-
-        # Anthropic
-        llm = create_chat("anthropic", model="claude-sonnet-4-20250514")
-
-        # Groq
-        llm = create_chat("groq", model="llama-3.3-70b-versatile")
-
-        # Cohere
-        llm = create_chat("cohere", model="command-r-plus")
-
-        # Ollama
-        llm = create_chat("ollama", model="llama3.2")
-
-        # Gemini
-        llm = create_chat("gemini", model="gemini-2.0-flash-exp")
-
         # Cloudflare Workers AI
-        llm = create_chat("cloudflare", model="@cf/meta/llama-3.3-70b-instruct")
+        llm = create_chat("cloudflare", "@cf/meta/llama-3.3-70b-instruct")
 
-        # Custom
+        # Custom endpoint
         llm = create_chat(
             "custom",
             base_url="http://localhost:8000/v1",
             model="my-model",
         )
     """
+    # High-level API: If model is None, treat provider as model string
+    if model is None:
+        from agenticflow.models.registry import resolve_model
+        
+        provider_resolved, model = resolve_model(provider)
+        provider = provider_resolved
+    
+    # Auto-load API key from config if not provided
+    if "api_key" not in kwargs:
+        from agenticflow.config import get_api_key
+        api_key = get_api_key(provider, kwargs.get("api_key"))
+        if api_key:
+            kwargs["api_key"] = api_key
+    
     provider = provider.lower()
 
     if provider == "openai":
@@ -206,7 +241,7 @@ def create_chat(
     elif provider == "gemini" or provider == "google":
         from agenticflow.models.gemini import GeminiChat
 
-        return GeminiChat(model=model or "gemini-2.0-flash-exp", **kwargs)
+        return GeminiChat(model=model or "gemini-2.5-flash", **kwargs)
 
     elif provider == "cohere":
         from agenticflow.models.cohere import CohereChat
@@ -344,15 +379,31 @@ __all__ = [
     "convert_messages",
     "normalize_input",
     "is_native_model",
+    # Registry functions
+    "resolve_model",
+    "resolve_and_create_model",
+    "list_model_aliases",
+    "get_provider_for_model",
     # OpenAI models (also aliased as ChatModel/EmbeddingModel)
     "OpenAIChat",
     "OpenAIEmbedding",
+    # Anthropic
+    "AnthropicChat",
+    # Gemini
+    "GeminiChat",
+    "GeminiEmbedding",
+    # Groq
+    "GroqChat",
     # Cohere
     "CohereChat",
     "CohereEmbedding",
     # Cloudflare
     "CloudflareChat",
     "CloudflareEmbedding",
+    # Ollama
+    "OllamaChat",
+    "OllamaEmbedding",
+    # Aliases
     "ChatModel",  # Alias for OpenAIChat
     "EmbeddingModel",  # Alias for OpenAIEmbedding
     # Mock models for testing

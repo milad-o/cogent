@@ -118,9 +118,11 @@ class AgentConfig:
     role: AgentRole = AgentRole.WORKER
     description: str = ""
 
-    # LLM Configuration - native BaseChatModel
-    # Native models: from agenticflow.models.openai, azure, anthropic, groq, gemini, etc.
-    model: BaseChatModel | OpenAIChat | AzureOpenAIChat | AnthropicChat | None = None
+    # LLM Configuration - native BaseChatModel or string
+    # Can be:
+    # - String: "gpt4", "claude", "anthropic:claude-sonnet-4" (auto-resolved)
+    # - BaseChatModel: OpenAIChat, AzureOpenAIChat, AnthropicChat, etc.
+    model: BaseChatModel | OpenAIChat | AzureOpenAIChat | AnthropicChat | str | None = None
     temperature: float = 0.7  # Used only if model is None (for lazy creation)
     max_tokens: int | None = None  # Used only if model is None
     system_prompt: str | None = None

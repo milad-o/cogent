@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.13.0-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.14.0-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -45,53 +45,50 @@ AgenticFlow is a **production-grade multi-agent framework** designed for perform
 
 ```python
 from agenticflow import Agent, tool
-from agenticflow.models import ChatModel
 
 @tool
 def search(query: str) -> str:
     """Search the web."""
     return web_search(query)
 
-agent = Agent(name="Assistant", model=ChatModel(), tools=[search])
+# Simple string-based model API
+agent = Agent(name="Assistant", model="gpt4", tools=[search])
 result = await agent.run("Find the latest news on AI agents")
 ```
 
 ---
 
-## 🎉 Latest Changes (v1.13.0 - January 2026)
+## 🎉 Latest Changes (v1.14.0 - January 2026)
 
-**Response Protocol** 🎯
-- 📦 **Unified Response[T]** — Consistent responses across all agent operations with full metadata
-- 🔍 **Full Observability** — Access conversation history, token usage, and tool call timing
-- 🔗 **Event Integration** — Convert responses to events with `Event.from_response()`
-- 🤝 **A2A Integration** — AgentResponse wraps Response[T] for unified protocol
-- ✅ **Backward Compatible** — Existing code continues to work unchanged
+**Simple Model API** 🚀
+- ✨ **String-based models** — `Agent(model="gpt4")` or `Agent(model="claude")`
+- 🔧 **Provider prefix** — `Agent(model="anthropic:claude-sonnet-4")` for explicit control
+- 🗝️ **Auto API keys** — Load from `.env`, config files, or environment variables
+- 📦 **30+ model aliases** — `gpt4`, `claude`, `gemini`, `llama`, etc.
+- 🎯 **3-tier API** — Simple strings, factory functions, or direct model classes
+- ✅ **Fully backward compatible** — All existing code works unchanged
 
 ```python
-# Agent operations return Response[T]
-response = await agent.think("Analyze sales data")
+# Tier 1: High-level (string models)
+agent = Agent("Helper", model="gpt4")           # Auto-resolves to gpt-4o
+agent = Agent("Helper", model="gemini")         # Auto-resolves to gemini-2.5-flash
+agent = Agent("Helper", model="anthropic:claude") # Provider prefix
 
-# Access full metadata
-tokens = response.metadata.tokens.total_tokens
-duration = response.metadata.duration
+# Tier 2: Medium-level (factory)
+from agenticflow.models import create_chat
+llm = create_chat("gpt4")  # One-liner
 
-# Debug with conversation history
-for message in response.messages:
-    print(f"{message.role}: {message.content}")
-
-# Track tool calls
-for tool_call in response.tool_calls:
-    print(f"{tool_call.tool_name}: {tool_call.duration}s")
+# Tier 3: Low-level (full control)
+from agenticflow.models import OpenAIChat
+llm = OpenAIChat(model="gpt-4o", temperature=0.7)
 ```
 
-**Previous (v1.12.0)** — Coordination Patterns
-- 🎯 **Stateful Coordination** — `all_sources(["w1", "w2", "w3"])` waits for ALL sources to complete
-- 🔄 **Auto-Reset** — Coordination state resets automatically after triggering
-- 🎫 **One-Time Gates** — `.once()` method for single-trigger coordination
+**Previous (v1.13.0)** — Response Protocol
+- 📦 **Unified Response[T]** — Consistent responses with full metadata
+- 🔍 **Full Observability** — Conversation history, tokens, tool timing
 
-**v1.11.0** — Source Groups for Multi-Source Filtering
-- 🏷️ **Named Groups** — `flow.add_source_group("analysts", ["a1", "a2", "a3"])`
-- 🔗 **:group Syntax** — Reference groups with `after=":analysts"` or `on="*.done@:analysts"`
+**v1.12.0** — Coordination Patterns
+- 🎯 **Stateful Coordination** — `all_sources(["w1", "w2", "w3"])` waits for ALL sources
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
@@ -124,22 +121,32 @@ AgenticFlow is organized into focused modules, each with multiple backends and i
 
 Native SDK wrappers for all major LLM providers with zero abstraction overhead.
 
-| Provider | Chat | Embeddings | Notes |
-|----------|------|------------|-------|
-| **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | Default provider, GPT-4o, o1, o3 |
-| **Azure** | `AzureOpenAIChat` | `AzureOpenAIEmbedding` | Managed Identity, Azure AD support |
-| **Anthropic** | `AnthropicChat` | — | Claude 4, extended thinking |
-| **Gemini** | `GeminiChat` | `GeminiEmbedding` | Google AI, Vertex AI |
-| **Groq** | `GroqChat` | — | Fast inference, Llama 3.3, Mixtral |
-| **Ollama** | `OllamaChat` | `OllamaEmbedding` | Local models, any GGUF |
-| **Custom** | `CustomChat` | `CustomEmbedding` | vLLM, Together AI, any OpenAI-compatible |
+| Provider | Chat | Embeddings | String Alias | Notes |
+|----------|------|------------|--------------|-------|
+| **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | `"gpt4"`, `"gpt4-mini"` | Default provider, GPT-4o, o1, o3 |
+| **Azure** | `AzureOpenAIChat` | `AzureOpenAIEmbedding` | — | Managed Identity, Azure AD support |
+| **Anthropic** | `AnthropicChat` | — | `"claude"`, `"claude-opus"` | Claude 4, extended thinking |
+| **Gemini** | `GeminiChat` | `GeminiEmbedding` | `"gemini"`, `"gemini-pro"` | Google AI (2.5 Flash/Pro) |
+| **Groq** | `GroqChat` | — | `"llama"`, `"mixtral"` | Fast inference, Llama 3.3, Mixtral |
+| **Ollama** | `OllamaChat` | `OllamaEmbedding` | `"ollama"` | Local models, any GGUF |
+| **Custom** | `CustomChat` | `CustomEmbedding` | — | vLLM, Together AI, any OpenAI-compatible |
 
 ```python
-from agenticflow.models import create_chat, create_embedding
+# 3 ways to create models
 
-# Factory functions for any provider
-model = create_chat("anthropic", model="claude-sonnet-4-20250514")
-embedder = create_embedding("openai", model="text-embedding-3-large")
+# 1. Simple strings (recommended)
+agent = Agent("Helper", model="gpt4")
+agent = Agent("Helper", model="claude")
+agent = Agent("Helper", model="gemini")
+
+# 2. Factory functions
+from agenticflow.models import create_chat
+model = create_chat("gpt4")  # One argument
+model = create_chat("anthropic", "claude-sonnet-4")  # Two arguments
+
+# 3. Direct instantiation (full control)
+from agenticflow.models import OpenAIChat
+model = OpenAIChat(model="gpt-4o", temperature=0.7, api_key="sk-...")
 ```
 
 ### `agenticflow.capabilities` — Agent Capabilities
@@ -450,7 +457,7 @@ def calculate(expression: str) -> str:
 
 agent = Agent(
     name="Assistant",
-    model=ChatModel(model="gpt-4o"),
+    model="gpt4",  # Simple string model
     tools=[search, calculate],
 )
 
@@ -535,7 +542,7 @@ def get_weather(city: str) -> str:
 async def main():
     agent = Agent(
         name="Assistant",
-        model=ChatModel(model="gpt-4o-mini"),
+        model="gpt4-mini",  # Simple string alias
         tools=[get_weather],
     )
     

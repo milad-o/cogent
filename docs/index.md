@@ -20,14 +20,14 @@ AgenticFlow is a **production-grade multi-agent framework** designed for perform
 
 ```python
 from agenticflow import Agent, tool
-from agenticflow.models import ChatModel
 
 @tool
 def search(query: str) -> str:
     """Search the web."""
     return web_search(query)
 
-agent = Agent(name="Assistant", model=ChatModel(), tools=[search])
+# v1.14.0: Simple string models!
+agent = Agent(name="Assistant", model="gpt4", tools=[search])
 result = await agent.run("Find the latest news on AI agents")
 ```
 
@@ -68,13 +68,16 @@ uv add git+https://github.com/milad-o/agenticflow.git
 - [Capabilities](capabilities.md) — Explore built-in capabilities
 - [Examples](https://github.com/milad-o/agenticflow/tree/main/examples) — See working examples
 
-## Latest Release (v1.8.6)
+## Latest Release (v1.14.0)
 
-**Knowledge Graph Real-Time Persistence Everywhere**
+**3-Tier Model API - String Models**
 
-- 💾 **Memory Auto-Save** — In-memory backend now supports optional auto-save to file
-- 🔄 **Consistent Behavior** — All backends (memory, SQLite, JSON, Neo4j) now have real-time persistence
-- 📂 **Load Pre-Saved Graphs** — `KnowledgeGraph.from_file()` for easy loading
-- 🔧 **Backend Switching** — `kg.set_backend()` to change backends with optional migration
+- 🎯 **Simple String Models** — `Agent(model="gpt4")` auto-resolves to gpt-4o
+- 🏷️ **30+ Model Aliases** — `gpt4`, `claude`, `gemini`, `llama`, `mixtral`, etc.
+- 🔗 **Provider Prefix** — `"anthropic:claude"`, `"groq:llama-70b"`
+- ⚙️ **Auto-Configuration** — Loads API keys from `.env`, TOML, YAML, or env vars
+- 🔄 **Backward Compatible** — Existing code works unchanged
+- 🧠 **3 API Tiers** — String (simple), Factory (medium), Direct (full control)
+- ✅ **74 New Tests** — Comprehensive test coverage for all new features
 
 See [CHANGELOG](https://github.com/milad-o/agenticflow/blob/main/CHANGELOG.md) for full version history.

@@ -2,7 +2,17 @@
 
 Comprehensive examples organized by category to help you learn AgenticFlow.
 
-## 🆕 What's New in v1.13.0
+## 🆕 What's New in v1.14.0
+
+**3-Tier Model API - String Models:**
+- [`basics/simple_models.py`](basics/simple_models.py) - **NEW** All 3 API tiers demonstrated
+- [`basics/config_file.py`](basics/config_file.py) - **NEW** API key management guide
+- Use `model="gpt4"` instead of `ChatModel(model="gpt-4o")` → simpler!
+- 30+ model aliases: `gpt4`, `claude`, `gemini`, `llama`, etc.
+- Provider prefix: `"anthropic:claude"`, `"groq:llama-70b"`
+- Auto-loads from `.env`, config files, or environment variables
+
+## 👍 What's New in v1.13.0
 
 **Response Protocol with Rich Metadata:**
 - [`basics/response.py`](basics/response.py) - Learn the Response[T] protocol
@@ -31,7 +41,9 @@ Core concepts every user should know.
 | Example | Description |
 |---------|-------------|
 | [hello_world.py](basics/hello_world.py) | Single agent basics |
-| [response.py](basics/response.py) | **NEW** Response[T] protocol - typed results with metadata |
+| [simple_models.py](basics/simple_models.py) | **NEW v1.14.0** 3-tier model API (string models, factory, direct) |
+| [config_file.py](basics/config_file.py) | **NEW v1.14.0** API key management (.env, TOML, YAML) |
+| [response.py](basics/response.py) | Response[T] protocol - typed results with metadata |
 | [memory.py](basics/memory.py) | Thread-based conversation memory |
 | [roles.py](basics/roles.py) | Agent roles (worker, supervisor, etc.) |
 | [role_configs.py](basics/role_configs.py) | RoleConfig objects (recommended API) |
