@@ -218,6 +218,12 @@ settings = get_settings()
 
 def get_model(provider: LLMProvider | None = None):
     """Get a chat model for the specified or configured provider.
+    
+    Now uses the new 3-tier model API with automatic .env loading.
+    This function remains for backward compatibility with existing examples.
+    
+    New examples can use string models directly:
+        Agent(name="...", model="gemini")  # Simpler!
 
     Args:
         provider: Override provider (uses LLM_PROVIDER from .env if None).
@@ -228,82 +234,59 @@ def get_model(provider: LLMProvider | None = None):
     Raises:
         ValueError: If provider not configured properly.
     """
+    from agenticflow.models import create_chat
+    
     s = settings
     provider = provider or s.llm_provider
 
+    # Use the new 3-tier API with create_chat
+    # API keys are automatically loaded from .env by the config system
+    
     if provider == "gemini":
-        if not s.gemini_api_key:
-            raise ValueError("LLM_PROVIDER=gemini requires GEMINI_API_KEY")
-        from agenticflow.models.gemini import GeminiChat
-
-        return GeminiChat(model=s.gemini_model, api_key=s.gemini_api_key)
-
+        return create_chat("gemini", s.gemini_model)
+    
     elif provider == "openai":
-        if not s.openai_api_key:
-            raise ValueError("LLM_PROVIDER=openai requires OPENAI_API_KEY")
-        from agenticflow.models.openai import OpenAIChat
-
-        return OpenAIChat(model=s.openai_model, api_key=s.openai_api_key)
-
+        return create_chat("openai", s.openai_model)
+    
     elif provider == "anthropic":
-        if not s.anthropic_api_key:
-            raise ValueError("LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY")
-        from agenticflow.models.anthropic import AnthropicChat
-
-        return AnthropicChat(model=s.anthropic_model, api_key=s.anthropic_api_key)
-
+        return create_chat("anthropic", s.anthropic_model)
+    
     elif provider == "groq":
-        if not s.groq_api_key:
-            raise ValueError("LLM_PROVIDER=groq requires GROQ_API_KEY")
-        from agenticflow.models.groq import GroqChat
-
-        return GroqChat(model=s.groq_model, api_key=s.groq_api_key)
-
+        return create_chat("groq", s.groq_model)
+    
     elif provider == "azure":
+        # Azure requires special handling for auth types
         return _create_azure_chat(s)
-
+    
     elif provider == "ollama":
         from agenticflow.models.ollama import OllamaChat
-
         return OllamaChat(model=s.ollama_model, host=s.ollama_host)
-
+    
     elif provider == "mistral":
-        if not s.mistral_api_key:
-            raise ValueError("LLM_PROVIDER=mistral requires MISTRAL_API_KEY")
-        from agenticflow.models.mistral import MistralChat
-
-        return MistralChat(model=s.mistral_model, api_key=s.mistral_api_key)
-
+        return create_chat("mistral", s.mistral_model)
+    
     elif provider == "github":
         if not s.github_token:
             raise ValueError("LLM_PROVIDER=github requires GITHUB_TOKEN")
         from agenticflow.models.azure import AzureAIFoundryChat
-
         return AzureAIFoundryChat.from_github(
             model=s.github_model,
             token=s.github_token,
         )
-
+    
     elif provider == "cohere":
-        if not s.cohere_api_key:
-            raise ValueError("LLM_PROVIDER=cohere requires COHERE_API_KEY")
-        from agenticflow.models.cohere import CohereChat
-
-        return CohereChat(model=s.cohere_model, api_key=s.cohere_api_key)
-
+        return create_chat("cohere", s.cohere_model)
+    
     elif provider == "cloudflare":
-        if not s.cloudflare_api_token:
-            raise ValueError("LLM_PROVIDER=cloudflare requires CLOUDFLARE_API_TOKEN")
         if not s.cloudflare_account_id:
             raise ValueError("LLM_PROVIDER=cloudflare requires CLOUDFLARE_ACCOUNT_ID")
         from agenticflow.models.cloudflare import CloudflareChat
-
         return CloudflareChat(
             model=s.cloudflare_model,
             api_key=s.cloudflare_api_token,
             account_id=s.cloudflare_account_id,
         )
-
+    
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
 
