@@ -92,7 +92,9 @@ def _tools_to_anthropic(tools: list[Any]) -> list[dict[str, Any]]:
 
 
 def _parse_response(response: Any) -> AIMessage:
-    """Parse Anthropic response into AIMessage."""
+    """Parse Anthropic response into AIMessage with metadata."""
+    from agenticflow.core.messages import MessageMetadata, TokenUsage
+    
     content = ""
     tool_calls = []
 
@@ -106,9 +108,21 @@ def _parse_response(response: Any) -> AIMessage:
                 "args": block.input,
             })
 
+    metadata = MessageMetadata(
+        model=response.model,
+        tokens=TokenUsage(
+            prompt_tokens=response.usage.input_tokens if hasattr(response.usage, 'input_tokens') else 0,
+            completion_tokens=response.usage.output_tokens if hasattr(response.usage, 'output_tokens') else 0,
+            total_tokens=(response.usage.input_tokens + response.usage.output_tokens) if hasattr(response.usage, 'input_tokens') else 0,
+        ) if hasattr(response, 'usage') and response.usage else None,
+        finish_reason=response.stop_reason if hasattr(response, 'stop_reason') else None,
+        response_id=response.id if hasattr(response, 'id') else None,
+    )
+
     return AIMessage(
         content=content,
         tool_calls=tool_calls,
+        metadata=metadata,
     )
 
 

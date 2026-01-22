@@ -76,7 +76,9 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 
 
 def _parse_response(response: Any) -> AIMessage:
-    """Parse Cohere chat response into AIMessage."""
+    """Parse Cohere chat response into AIMessage with metadata."""
+    from agenticflow.core.messages import MessageMetadata, TokenUsage
+    
     tool_calls: list[dict[str, Any]] = []
     content_parts: list[str] = []
 
@@ -108,7 +110,19 @@ def _parse_response(response: Any) -> AIMessage:
             })
 
     content = "".join(content_parts) if content_parts else ""
-    return AIMessage(content=content, tool_calls=tool_calls)
+    
+    metadata = MessageMetadata(
+        model=response.response_id if hasattr(response, 'response_id') else None,
+        tokens=TokenUsage(
+            prompt_tokens=response.usage.input_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'input_tokens') else 0,
+            completion_tokens=response.usage.output_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'output_tokens') else 0,
+            total_tokens=(response.usage.input_tokens + response.usage.output_tokens) if hasattr(response, 'usage') and hasattr(response.usage, 'input_tokens') else 0,
+        ) if hasattr(response, 'usage') else None,
+        finish_reason=response.finish_reason if hasattr(response, 'finish_reason') else None,
+        response_id=response.response_id if hasattr(response, 'response_id') else None,
+    )
+    
+    return AIMessage(content=content, tool_calls=tool_calls, metadata=metadata)
 
 
 @dataclass

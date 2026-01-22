@@ -208,7 +208,9 @@ def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
 
 
 def _parse_response(response: Any) -> AIMessage:
-    """Parse Gemini response into AIMessage."""
+    """Parse Gemini response into AIMessage with metadata."""
+    from agenticflow.core.messages import MessageMetadata, TokenUsage
+    
     content = ""
     tool_calls = []
 
@@ -239,9 +241,20 @@ def _parse_response(response: Any) -> AIMessage:
                 "args": args_dict,
             })
 
+    metadata = MessageMetadata(
+        model=response.model_version if hasattr(response, 'model_version') else None,
+        tokens=TokenUsage(
+            prompt_tokens=response.usage_metadata.prompt_token_count if hasattr(response, 'usage_metadata') else 0,
+            completion_tokens=response.usage_metadata.candidates_token_count if hasattr(response, 'usage_metadata') else 0,
+            total_tokens=response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 0,
+        ) if hasattr(response, 'usage_metadata') else None,
+        finish_reason=candidate.finish_reason.name if hasattr(candidate, 'finish_reason') else None,
+    )
+
     return AIMessage(
         content=content,
         tool_calls=tool_calls,
+        metadata=metadata,
     )
 
 

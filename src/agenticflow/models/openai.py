@@ -33,7 +33,9 @@ from agenticflow.models.base import (
 
 
 def _parse_response(response: Any) -> AIMessage:
-    """Parse OpenAI response into AIMessage."""
+    """Parse OpenAI response into AIMessage with metadata."""
+    from agenticflow.core.messages import MessageMetadata, TokenUsage
+    
     choice = response.choices[0]
     message = choice.message
 
@@ -46,9 +48,21 @@ def _parse_response(response: Any) -> AIMessage:
                 "args": __import__("json").loads(tc.function.arguments),
             })
 
+    metadata = MessageMetadata(
+        model=response.model,
+        tokens=TokenUsage(
+            prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
+            completion_tokens=response.usage.completion_tokens if response.usage else 0,
+            total_tokens=response.usage.total_tokens if response.usage else 0,
+        ) if response.usage else None,
+        finish_reason=choice.finish_reason,
+        response_id=response.id,
+    )
+
     return AIMessage(
         content=message.content or "",
         tool_calls=tool_calls,
+        metadata=metadata,
     )
 
 

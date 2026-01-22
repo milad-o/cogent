@@ -70,7 +70,9 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 
 
 def _parse_response(response: Any) -> AIMessage:
-    """Parse Mistral response into AIMessage."""
+    """Parse Mistral response into AIMessage with metadata."""
+    from agenticflow.core.messages import MessageMetadata, TokenUsage
+    
     choice = response.choices[0]
     message = choice.message
 
@@ -86,9 +88,21 @@ def _parse_response(response: Any) -> AIMessage:
                 "args": args,
             })
 
+    metadata = MessageMetadata(
+        model=response.model if hasattr(response, 'model') else None,
+        tokens=TokenUsage(
+            prompt_tokens=response.usage.prompt_tokens if hasattr(response, 'usage') and response.usage else 0,
+            completion_tokens=response.usage.completion_tokens if hasattr(response, 'usage') and response.usage else 0,
+            total_tokens=response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0,
+        ) if hasattr(response, 'usage') and response.usage else None,
+        finish_reason=choice.finish_reason if hasattr(choice, 'finish_reason') else None,
+        response_id=response.id if hasattr(response, 'id') else None,
+    )
+
     return AIMessage(
         content=message.content or "",
         tool_calls=tool_calls,
+        metadata=metadata,
     )
 
 

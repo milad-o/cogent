@@ -84,6 +84,16 @@ from agenticflow.models.base import (
     normalize_input,
 )
 
+# Message types and metadata
+from agenticflow.core.messages import (
+    BaseMessage,
+    HumanMessage,
+    MessageMetadata,
+    SystemMessage,
+    TokenUsage,
+    ToolMessage,
+)
+
 # All provider models
 from agenticflow.models.anthropic import AnthropicChat
 from agenticflow.models.cloudflare import CloudflareChat, CloudflareEmbedding
@@ -467,6 +477,13 @@ __all__ = [
     "AIMessage",
     "BaseChatModel",
     "BaseEmbedding",
+    # Message types and metadata
+    "MessageMetadata",
+    "TokenUsage",
+    "BaseMessage",
+    "SystemMessage",
+    "HumanMessage",
+    "ToolMessage",
     # Utilities
     "convert_messages",
     "normalize_input",
