@@ -87,6 +87,8 @@ from agenticflow.models.base import (
 # Message types and metadata
 from agenticflow.core.messages import (
     BaseMessage,
+    EmbeddingMetadata,
+    EmbeddingResult,
     HumanMessage,
     MessageMetadata,
     SystemMessage,
@@ -480,6 +482,8 @@ __all__ = [
     # Message types and metadata
     "MessageMetadata",
     "TokenUsage",
+    "EmbeddingMetadata",
+    "EmbeddingResult",
     "BaseMessage",
     "SystemMessage",
     "HumanMessage",

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.4] - 2026-01-22
+
+### Added
+- **Embedding Metadata Support**: All embedding providers now return `EmbeddingResult` with rich metadata:
+  - Model name and version
+  - Token usage (prompt tokens for providers that support it: OpenAI, Cohere, Mistral, Azure)
+  - Request duration in seconds
+  - Vector dimensions
+  - Number of texts embedded
+  - Unique request ID and timestamp
+- **New Data Structures**:
+  - `EmbeddingMetadata` - Metadata for embedding operations
+  - `EmbeddingResult` - Wrapper containing embeddings + metadata
+- **Provider Coverage**: Metadata implemented for all 9 embedding providers:
+  - OpenAI (✅ with token usage)
+  - Gemini
+  - Cohere (✅ with token usage)
+  - Mistral (✅ with token usage)
+  - Ollama
+  - Cloudflare
+  - Azure OpenAI (✅ with token usage)
+  - Mock
+  - Custom
+
+### Changed
+- **Breaking Change**: Embedding methods now return `EmbeddingResult` instead of `list[list[float]]`
+  - Access embeddings via `result.embeddings`
+  - Access metadata via `result.metadata`
+  - Backward compatibility maintained through aliases (`embed_texts()`, `embed_documents()` still return plain lists)
+
 ## [1.14.3] - 2026-01-22
 
 ### Fixed

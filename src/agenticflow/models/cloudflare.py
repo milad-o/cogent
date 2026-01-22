@@ -233,19 +233,39 @@ class CloudflareEmbedding(BaseEmbedding):
         self._client = OpenAI(**kwargs)
         self._async_client = AsyncOpenAI(**kwargs)
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts synchronously with metadata."""
         self._ensure_initialized()
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        start_time = time.time()
         all_embeddings: list[list[float]] = []
+        
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             response = self._client.embeddings.create(**self._build_request(batch))
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-        return all_embeddings
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Cloudflare typically doesn't track token usage
+            duration=time.time() - start_time,
+            dimensions=len(all_embeddings[0]) if all_embeddings else self.dimension,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
-    async def aembed(self, texts: list[str]) -> list[list[float]]:
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts asynchronously with metadata."""
         self._ensure_initialized()
         import asyncio
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        start_time = time.time()
 
         async def embed_batch(batch: list[str]) -> list[list[float]]:
             response = await self._async_client.embeddings.create(**self._build_request(batch))
@@ -257,7 +277,16 @@ class CloudflareEmbedding(BaseEmbedding):
         all_embeddings: list[list[float]] = []
         for res in results:
             all_embeddings.extend(res)
-        return all_embeddings
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Cloudflare typically doesn't track token usage
+            duration=time.time() - start_time,
+            dimensions=len(all_embeddings[0]) if all_embeddings else self.dimension,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     def _build_request(self, texts: list[str]) -> dict[str, Any]:
         payload: dict[str, Any] = {

@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.14.2-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.14.4-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,46 +58,40 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.14.2 - January 2026)
+## 🎉 Latest Changes (v1.14.4 - January 2026)
 
-**Streaming Metadata** 🌊
+**Embedding Metadata** 📊
+- ✨ **Complete observability** — Rich metadata for all embedding operations
+- 📊 **Token usage** — Prompt token counts for supported providers (OpenAI, Cohere, Mistral, Azure)
+- 🏷️ **Model info** — Track model name, dimensions, duration
+- 🔍 **Request tracking** — ID, timestamp, num_texts embedded
+- 🔧 **9 providers** — OpenAI, Gemini, Cohere, Mistral, Ollama, Cloudflare, Azure OpenAI, Mock, Custom
+- 📦 **Consistent pattern** — All providers return `EmbeddingResult` with metadata
+
+```python
+from agenticflow.models import OpenAIEmbedding
+
+embedding = OpenAIEmbedding(model="text-embedding-3-small")
+
+# Embeddings now include complete metadata
+result = await embedding.aembed(["Hello world", "AgenticFlow is great"])
+
+print(result.embeddings)  # list[list[float]] - the actual vectors
+print(result.metadata.model)  # "text-embedding-3-small"
+print(result.metadata.tokens)  # TokenUsage(prompt=4, completion=0, total=4)
+print(result.metadata.dimensions)  # 1536
+print(result.metadata.duration)  # 1.181 seconds
+print(result.metadata.num_texts)  # 2
+```
+
+**Previous (v1.14.2)** — Streaming Metadata
 - ✨ **Complete observability** — Full metadata in streaming responses for all providers
 - 📊 **Token usage** — Real-time prompt/completion/total token counts during streaming
 - 🏷️ **Model & finish reason** — Track model version and completion status
-- 🔍 **Response tracking** — ID, timestamp, duration, and correlation ID
-- 🔧 **10 providers** — OpenAI, Gemini, Groq, Mistral, Cohere, Anthropic, Cloudflare, Ollama, Azure OpenAI, GitHub Models
-- 📦 **Consistent pattern** — All providers yield final metadata chunk after content
-
-```python
-from agenticflow.models import ChatModel
-
-model = ChatModel(model="gpt-4o")
-
-# Streaming now includes complete metadata
-async for chunk in model.astream([
-    {"role": "user", "content": "Explain streaming"}
-]):
-    print(chunk.content, end="", flush=True)
-    
-    # Metadata available in all chunks
-    if chunk.metadata:
-        print(f"\nModel: {chunk.metadata.model}")
-        print(f"Tokens: {chunk.metadata.tokens}")  # TokenUsage object
-        print(f"Finish: {chunk.metadata.finish_reason}")
-```
-
-**Previous (v1.14.1)** — Simple Model API
-- ✨ **String-based models** — `Agent(model="gpt4")` or `Agent(model="claude")`
-- 🔧 **Provider prefix** — `Agent(model="anthropic:claude-sonnet-4")` for explicit control
-- 🗝️ **Auto API keys** — Load from `.env`, config files, or environment variables
-- 📦 **30+ model aliases** — `gpt4`, `claude`, `gemini`, `llama`, etc.
-- 📦 **Unified Response[T]** — Consistent responses with full metadata
-- 🔍 **Full Observability** — Conversation history, tokens, tool timing
-
-**v1.12.0** — Coordination Patterns
-- 🎯 **Stateful Coordination** — `all_sources(["w1", "w2", "w3"])` waits for ALL sources
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
+
+---
 
 ---
 

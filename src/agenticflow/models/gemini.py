@@ -511,30 +511,52 @@ class GeminiEmbedding(BaseEmbedding):
         # Create the centralized client
         self._client = genai.Client(api_key=api_key)
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts synchronously."""
+    def embed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts synchronously with metadata."""
         self._ensure_initialized()
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
 
+        start_time = time.time()
         result = self._client.models.embed_content(
             model=self.model,
             contents=texts,
         )
         # Handle both single and multiple embeddings
         embeddings = result.embeddings
-        if embeddings:
-            return [emb.values for emb in embeddings]
-        return []
+        vectors = [emb.values for emb in embeddings] if embeddings else []
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Gemini doesn't provide token counts for embeddings
+            duration=time.time() - start_time,
+            dimensions=len(vectors[0]) if vectors else None,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
-    async def aembed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts asynchronously."""
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts asynchronously with metadata."""
         self._ensure_initialized()
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
 
+        start_time = time.time()
         result = await self._client.aio.models.embed_content(
             model=self.model,
             contents=texts,
         )
         # Handle both single and multiple embeddings
         embeddings = result.embeddings
-        if embeddings:
-            return [emb.values for emb in embeddings]
-        return []
+        vectors = [emb.values for emb in embeddings] if embeddings else []
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Gemini doesn't provide token counts for embeddings
+            duration=time.time() - start_time,
+            dimensions=len(vectors[0]) if vectors else None,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=vectors, metadata=metadata)

@@ -165,27 +165,55 @@ class MockEmbedding(BaseEmbedding):
 
         return embedding
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        """Generate mock embeddings synchronously.
+    def embed(self, texts: list[str]) -> EmbeddingResult:
+        """Generate mock embeddings synchronously with metadata.
 
         Args:
             texts: List of texts to embed.
 
         Returns:
-            List of embedding vectors.
+            EmbeddingResult with vectors and metadata.
         """
-        return [self._generate_embedding(text) for text in texts]
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult
 
-    async def aembed(self, texts: list[str]) -> list[list[float]]:
-        """Generate mock embeddings asynchronously.
+        start_time = time.time()
+        vectors = [self._generate_embedding(text) for text in texts]
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Mock doesn't track tokens
+            duration=time.time() - start_time,
+            dimensions=self.dimensions or 384,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=vectors, metadata=metadata)
+
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Generate mock embeddings asynchronously with metadata.
 
         Args:
             texts: List of texts to embed.
 
         Returns:
-            List of embedding vectors.
+            EmbeddingResult with vectors and metadata.
         """
-        return [self._generate_embedding(text) for text in texts]
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult
+
+        start_time = time.time()
+        vectors = [self._generate_embedding(text) for text in texts]
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=None,  # Mock doesn't track tokens
+            duration=time.time() - start_time,
+            dimensions=self.dimensions or 384,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
     @property
     def dimension(self) -> int:

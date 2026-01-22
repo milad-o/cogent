@@ -571,29 +571,62 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         self._client = AzureOpenAI(**kwargs)
         self._async_client = AsyncAzureOpenAI(**kwargs)
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts synchronously."""
+    def embed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts synchronously with metadata."""
         self._ensure_initialized()
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
 
+        start_time = time.time()
         all_embeddings: list[list[float]] = []
+        total_prompt_tokens = 0
+        model_name = None
+        
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i : i + self.batch_size]
             response = self._client.embeddings.create(**self._build_request(batch))
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-        return all_embeddings
+            
+            if response.usage:
+                total_prompt_tokens += response.usage.prompt_tokens
+            if response.model:
+                model_name = response.model
+        
+        metadata = EmbeddingMetadata(
+            model=model_name or self.deployment,
+            tokens=TokenUsage(
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=0,
+                total_tokens=total_prompt_tokens,
+            ) if total_prompt_tokens > 0 else None,
+            duration=time.time() - start_time,
+            dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
-    async def aembed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts asynchronously."""
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts asynchronously with metadata."""
         self._ensure_initialized()
         import asyncio
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
 
-        async def embed_batch(batch: list[str]) -> list[list[float]]:
+        start_time = time.time()
+        total_prompt_tokens = 0
+        model_name = None
+
+        async def embed_batch(batch: list[str]) -> tuple[list[list[float]], int, str | None]:
             response = await self._async_client.embeddings.create(
                 **self._build_request(batch)
             )
             sorted_data = sorted(response.data, key=lambda x: x.index)
-            return [d.embedding for d in sorted_data]
+            embeddings = [d.embedding for d in sorted_data]
+            tokens = response.usage.prompt_tokens if response.usage else 0
+            model = response.model if hasattr(response, 'model') else None
+            return embeddings, tokens, model
 
         batches = [
             texts[i : i + self.batch_size]
@@ -602,9 +635,25 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         results = await asyncio.gather(*[embed_batch(b) for b in batches])
 
         all_embeddings: list[list[float]] = []
-        for batch_result in results:
-            all_embeddings.extend(batch_result)
-        return all_embeddings
+        for batch_embeddings, tokens, model in results:
+            all_embeddings.extend(batch_embeddings)
+            total_prompt_tokens += tokens
+            if model:
+                model_name = model
+        
+        metadata = EmbeddingMetadata(
+            model=model_name or self.deployment,
+            tokens=TokenUsage(
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=0,
+                total_tokens=total_prompt_tokens,
+            ) if total_prompt_tokens > 0 else None,
+            duration=time.time() - start_time,
+            dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     def _build_request(self, texts: list[str]) -> dict[str, Any]:
         """Build API request."""

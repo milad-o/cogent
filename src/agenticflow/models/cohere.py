@@ -301,19 +301,67 @@ class CohereEmbedding(BaseEmbedding):
         self._client = ClientV2(**client_kwargs)
         self._async_client = AsyncClientV2(**client_kwargs)
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts synchronously."""
+    def embed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts synchronously with metadata."""
         self._ensure_initialized()
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        start_time = time.time()
         response = self._client.embed(model=self.model, texts=texts, input_type="search_document")
         embeddings = getattr(response, "embeddings", None) or getattr(response, "data", None)
-        return [list(vec) for vec in embeddings] if embeddings else []
+        vectors = [list(vec) for vec in embeddings] if embeddings else []
+        
+        # Cohere response may have meta with billed_units
+        tokens = None
+        if hasattr(response, 'meta') and hasattr(response.meta, 'billed_units'):
+            if hasattr(response.meta.billed_units, 'input_tokens'):
+                tokens = TokenUsage(
+                    prompt_tokens=response.meta.billed_units.input_tokens,
+                    completion_tokens=0,
+                    total_tokens=response.meta.billed_units.input_tokens,
+                )
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=tokens,
+            duration=time.time() - start_time,
+            dimensions=len(vectors[0]) if vectors else self.dimension,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
-    async def aembed(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts asynchronously."""
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts asynchronously with metadata."""
         self._ensure_initialized()
+        import time
+        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        start_time = time.time()
         response = await self._async_client.embed(model=self.model, texts=texts, input_type="search_document")
         embeddings = getattr(response, "embeddings", None) or getattr(response, "data", None)
-        return [list(vec) for vec in embeddings] if embeddings else []
+        vectors = [list(vec) for vec in embeddings] if embeddings else []
+        
+        # Cohere response may have meta with billed_units
+        tokens = None
+        if hasattr(response, 'meta') and hasattr(response.meta, 'billed_units'):
+            if hasattr(response.meta.billed_units, 'input_tokens'):
+                tokens = TokenUsage(
+                    prompt_tokens=response.meta.billed_units.input_tokens,
+                    completion_tokens=0,
+                    total_tokens=response.meta.billed_units.input_tokens,
+                )
+        
+        metadata = EmbeddingMetadata(
+            model=self.model,
+            tokens=tokens,
+            duration=time.time() - start_time,
+            dimensions=len(vectors[0]) if vectors else self.dimension,
+            num_texts=len(texts),
+        )
+        
+        return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
     @property
     def dimension(self) -> int:

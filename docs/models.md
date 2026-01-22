@@ -645,6 +645,133 @@ async for chunk in model.astream(messages):
 
 ---
 
+## Embeddings
+
+All embedding models support **rich metadata** with token usage tracking for supported providers:
+
+```python
+from agenticflow.models import OpenAIEmbedding, GeminiEmbedding
+
+# OpenAI embeddings with full token tracking
+embedding = OpenAIEmbedding(model="text-embedding-3-small")
+result = await embedding.aembed(["Hello world", "AgenticFlow"])
+
+# Access embeddings and metadata
+print(result.embeddings)  # list[list[float]] - the actual vectors
+print(result.metadata.model)  # "text-embedding-3-small"
+print(result.metadata.tokens)  # TokenUsage(prompt=4, completion=0, total=4)
+print(result.metadata.dimensions)  # 1536
+print(result.metadata.duration)  # 1.181 seconds
+print(result.metadata.num_texts)  # 2
+print(result.metadata.response_id)  # Unique ID for request
+print(result.metadata.timestamp)  # ISO 8601 timestamp
+
+# Gemini embeddings (no token data from API)
+gemini = GeminiEmbedding(model="text-embedding-004")
+result = await gemini.aembed(["Test"])
+print(result.metadata.model)  # "models/text-embedding-004"
+print(result.metadata.dimensions)  # 768
+print(result.metadata.tokens)  # None (Gemini doesn't provide)
+```
+
+### Embedding Metadata
+
+**All 9 embedding providers** return complete metadata:
+
+| Provider | Token Usage | Notes |
+|----------|-------------|-------|
+| OpenAI | ✅ | Extracts from `response.usage.prompt_tokens` |
+| Cohere | ✅ | Extracts from `response.meta.billed_units.input_tokens` |
+| Mistral | ✅ | Uses OpenAI SDK, provides token counts |
+| Azure OpenAI | ✅ | Extracts from `response.usage` like OpenAI |
+| Gemini | ❌ | API doesn't provide token counts for embeddings |
+| Ollama | ❌ | Local embeddings, no token tracking |
+| Cloudflare | ❌ | API doesn't track tokens |
+| Mock | ❌ | Test embedding, no real tokens |
+| Custom | ⚡ | Conditional - depends on underlying API |
+
+**Metadata Structure**:
+
+```python
+@dataclass
+class EmbeddingMetadata:
+    id: str                     # Unique request ID
+    timestamp: str              # ISO 8601 timestamp
+    model: str | None           # Model name/version
+    tokens: TokenUsage | None   # Token usage (if available)
+    duration: float             # Request duration (seconds)
+    dimensions: int | None      # Vector dimensions
+    num_texts: int              # Number of texts embedded
+
+@dataclass
+class EmbeddingResult:
+    embeddings: list[list[float]]  # The actual embedding vectors
+    metadata: EmbeddingMetadata    # Complete metadata
+```
+
+**Usage Examples**:
+
+```python
+# Method 1: Direct access to embeddings and metadata
+result = await embedding.aembed(["Text 1", "Text 2"])
+vectors = result.embeddings  # list[list[float]]
+meta = result.metadata       # EmbeddingMetadata
+
+# Method 2: Backward compatibility (returns just the vectors)
+vectors = await embedding.embed_texts(["Text"])  # list[list[float]]
+vectors = await embedding.embed_documents(["Text"])  # list[list[float]]
+
+# Single query embedding
+vector = await embedding.aembed_query("Search query")  # list[float]
+```
+
+**Observability Benefits**:
+
+- **Cost tracking** — Monitor token usage across providers
+- **Performance** — Track request duration and batch sizes
+- **Debugging** — Trace requests with unique IDs and timestamps
+- **Model versioning** — Know which embedding model version was used
+- **Capacity planning** — Understand dimensions and text counts
+
+---
+
+## Streaming
+
+All models support streaming with **complete metadata**:
+
+```python
+from agenticflow.models import ChatModel
+
+model = ChatModel(model="gpt-4o")
+
+async for chunk in model.astream([
+    {"role": "user", "content": "Write a story"}
+]):
+    print(chunk.content, end="", flush=True)
+    
+    # Access metadata in all chunks
+    if chunk.metadata:
+        print(f"\nModel: {chunk.metadata.model}")
+        print(f"Response ID: {chunk.metadata.response_id}")
+        
+        # Token usage available in final chunk
+        if chunk.metadata.tokens:
+            print(f"Tokens: {chunk.metadata.tokens.total_tokens}")
+            print(f"Finish: {chunk.metadata.finish_reason}")
+```
+
+### Streaming Metadata
+
+**All 10 chat providers** return complete metadata during streaming:
+
+| Provider | Model | Finish Reason | Token Usage | Notes |
+|----------|-------|---------------|-------------|-------|
+| OpenAI | ✅ | ✅ | ✅ | Uses `stream_options={"include_usage": True}` |
+| Gemini | ✅ | ✅ | ✅ | Extracts from `usage_metadata` |
+| Groq | ✅ | ✅ | ✅ | Compatible with OpenAI pattern |
+
+---
+
 ## Base Classes
 
 ### BaseChatModel
@@ -690,21 +817,33 @@ class AIMessage:
 
 ### BaseEmbedding
 
-Protocol for embedding models:
+Protocol for embedding models with metadata support:
 
 ```python
 from agenticflow.models.base import BaseEmbedding
+from agenticflow.core.messages import EmbeddingResult
 
 class BaseEmbedding(Protocol):
+    async def aembed(
+        self,
+        texts: list[str],
+    ) -> EmbeddingResult: ...
+    
+    def embed(
+        self,
+        texts: list[str],
+    ) -> EmbeddingResult: ...
+    
+    # Convenience methods (backward compatible)
     async def embed_documents(
         self,
         texts: list[str],
-    ) -> list[list[float]]: ...
+    ) -> list[list[float]]: ...  # Returns result.embeddings
     
     async def embed_query(
         self,
         text: str,
-    ) -> list[float]: ...
+    ) -> list[float]: ...  # Returns result.embeddings[0]
 ```
 
 ---
@@ -736,3 +875,4 @@ class BaseEmbedding(Protocol):
 |----------|-------------|
 | `create_chat(provider, **kwargs)` | Create chat model for any provider |
 | `create_embedding(provider, **kwargs)` | Create embedding model for any provider |
+
