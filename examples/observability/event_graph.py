@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from models import get_model
 
 from agenticflow import Agent
-from agenticflow.flow.reactive import Flow  # Use Flow directly
+from agenticflow.flow import Flow
 from agenticflow.observability import Observer
 
 

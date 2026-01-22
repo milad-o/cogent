@@ -1,4 +1,4 @@
-"""Quick test to see what traces Flow generates"""
+"""Quick test of event_graph()"""
 
 import asyncio
 import sys
@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from models import get_model
 
 from agenticflow import Agent
-from agenticflow.flow.reactive import Flow
+from agenticflow.flow import Flow
 from agenticflow.observability import Observer
 
 
@@ -27,9 +27,11 @@ async def main():
     
     await flow.run("test", initial_event="start")
     
-    print("\nAll traces captured:")
-    for observed in observer.events():
-        print(f"  {observed.type.value}: {observed.data}")
+    print("\n" + "=" * 80)
+    print("EVENT GRAPH:")
+    print("=" * 80)
+    graph = observer.event_graph(include_timing=True)
+    print(graph)
 
 
 if __name__ == "__main__":
