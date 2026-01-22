@@ -43,7 +43,7 @@ async def main() -> None:
     flow = Flow(
         name="web_research",
         agents=[researcher],
-        verbose=settings.verbose_level,
+        verbosity=settings.verbose_level,
     )
 
     result = await flow.run(

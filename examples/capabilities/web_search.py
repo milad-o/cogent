@@ -99,7 +99,7 @@ async def agent_research_example():
         model=model,
         instructions="Search the web for facts and remember important information using the available tools.",
         capabilities=[ws, kg],
-        verbose="debug",  # Built-in observability
+        verbosity="debug",  # Built-in observability
     )
     
     print(f"\n✓ Agent '{agent.name}' initialized")

@@ -47,7 +47,7 @@ async def main() -> None:
         flow = Flow(
             name="code_analysis",
             agents=[devops],
-            verbose="debug",
+            verbosity="debug",
         )
 
         result = await flow.run(
