@@ -72,7 +72,14 @@ response = await llm.ainvoke("What is 2+2?")
 print(response.content)
 ```
 
-**Auto-Detection:** Patterns 1 and 2 automatically detect the provider from model name prefixes (gpt-, gemini-, claude-, llama-, mistral-, command-, @cf/-, etc.)
+**Auto-Detection:** Patterns 1 and 2 automatically detect the provider from model name prefixes:
+- **OpenAI:** `gpt-`, `o1-`, `o3-`, `o4-`, `text-embedding-`, `gpt-audio`, `gpt-realtime`, `sora-`
+- **Gemini:** `gemini-`, `text-embedding-`
+- **Anthropic:** `claude-`
+- **Mistral:** `mistral-`, `ministral-`, `magistral-`, `devstral-`, `codestral-`, `voxtral-`, `ocr-`
+- **Cohere:** `command-`, `c4ai-aya-`, `embed-`, `rerank-`
+- **Groq:** `llama-`, `mixtral-`, `qwen-`, `deepseek-`, `gemma-`
+- **Cloudflare:** `@cf/`
 
 ### Tier 3: Low-Level (Direct Model Classes)
 
