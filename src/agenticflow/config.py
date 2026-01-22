@@ -262,3 +262,43 @@ def get_default_model() -> str | None:
     config = load_config()
     models_config = config.get("models", {})
     return models_config.get("default")
+
+
+def get_config_value(
+    provider: str,
+    key: str,
+    fallback: Any = None,
+    env_vars: list[str] | None = None,
+) -> Any:
+    """Get configuration value from env or config file.
+    
+    Priority:
+    1. Explicit fallback value (if provided)
+    2. Environment variables
+    3. Config file
+    
+    Args:
+        provider: Provider name (cloudflare, ollama, etc.)
+        key: Config key name (e.g., "account_id", "host")
+        fallback: Explicit value to use first
+        env_vars: List of env var names to check (in order)
+        
+    Returns:
+        Configuration value or None
+    """
+    # 1. Explicit value (highest priority)
+    if fallback is not None:
+        return fallback
+    
+    # 2. Environment variables
+    if env_vars:
+        for env_var in env_vars:
+            value = os.environ.get(env_var)
+            if value is not None:
+                return value
+    
+    # 3. Config file (lowest priority)
+    config = load_config()
+    models_config = config.get("models", {})
+    provider_config = models_config.get(provider.lower(), {})
+    return provider_config.get(key)

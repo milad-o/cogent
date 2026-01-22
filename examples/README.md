@@ -4,11 +4,14 @@ Comprehensive examples organized by category to help you learn AgenticFlow.
 
 ## 🆕 What's New in v1.14.1
 
-**3-Tier Model API - String Models:**
+**3-Tier Model API - Multiple Usage Patterns:**
 - [`basics/config_file.py`](basics/config_file.py) - **NEW** API key management guide
-- Use `model="gpt4"` instead of `ChatModel(model="gpt-4o")` → simpler!
+- [`basics/all_providers.py`](basics/all_providers.py) - **NEW** Test all providers in one script
+- **Pattern 1:** `create_chat("gpt-4o")` - model name only (auto-detects provider)
+- **Pattern 2:** `create_chat("openai:gpt-4o")` - provider:model syntax
+- **Pattern 3:** `create_chat("openai", "gpt-4o")` - separate arguments
+- **Pattern 4:** `create_chat("gpt-4o", temperature=0.7)` - with configuration
 - 30+ model aliases: `gpt4`, `claude`, `gemini`, `llama`, etc.
-- Provider prefix: `"anthropic:claude"`, `"groq:llama-70b"`
 - Auto-loads from `.env`, config files, or environment variables
 
 ## 👍 What's New in v1.13.0

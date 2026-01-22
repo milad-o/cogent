@@ -41,25 +41,38 @@ agent = Agent("Helper", model="openai:gpt-4o")
 
 ### Tier 2: Medium-Level (Factory Functions)
 
-For when you need a model instance without an agent:
+For when you need a model instance without an agent. Supports **4 flexible usage patterns**:
 
 ```python
 from agenticflow.models import create_chat
 
-# One argument - auto-resolves provider
-llm = create_chat("gpt4")
-llm = create_chat("claude")
-llm = create_chat("gemini")
+# Pattern 1: Model name only (auto-detects provider)
+llm = create_chat("gpt-4o")              # OpenAI
+llm = create_chat("gemini-2.5-pro")      # Google Gemini
+llm = create_chat("claude-sonnet-4")     # Anthropic
+llm = create_chat("llama-3.1-8b-instant")  # Groq
+llm = create_chat("mistral-small-latest")  # Mistral
 
-# Two arguments - explicit provider
+# Pattern 2: Provider:model syntax (explicit provider prefix)
+llm = create_chat("openai:gpt-4o")
+llm = create_chat("gemini:gemini-2.5-flash")
+llm = create_chat("anthropic:claude-sonnet-4-20250514")
+
+# Pattern 3: Separate provider and model arguments
 llm = create_chat("openai", "gpt-4o")
+llm = create_chat("gemini", "gemini-2.5-pro")
 llm = create_chat("anthropic", "claude-sonnet-4")
-llm = create_chat("gemini", "gemini-2.5-flash")
+
+# Pattern 4: With additional configuration
+llm = create_chat("gpt-4o", temperature=0.7, max_tokens=1000)
+llm = create_chat("openai", "gpt-4o", api_key="sk-custom...")
 
 # Use the model
 response = await llm.ainvoke("What is 2+2?")
 print(response.content)
 ```
+
+**Auto-Detection:** Patterns 1 and 2 automatically detect the provider from model name prefixes (gpt-, gemini-, claude-, llama-, mistral-, command-, @cf/-, etc.)
 
 ### Tier 3: Low-Level (Direct Model Classes)
 

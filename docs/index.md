@@ -77,7 +77,8 @@ uv add git+https://github.com/milad-o/agenticflow.git
 - 🔗 **Provider Prefix** — `"anthropic:claude"`, `"groq:llama-70b"`
 - ⚙️ **Auto-Configuration** — Loads API keys and model overrides from `.env`, TOML/YAML, or env vars
 - 🔄 **Backward Compatible** — Existing code works unchanged
-- 🧠 **3 API Tiers** — String (simple), Factory (medium), Direct (full control)
+- 🧠 **3 API Tiers** — String (simple), Factory (4 patterns), Direct (full control)
+- 🔍 **Auto Provider Detection** — `create_chat("gemini-2.5-pro")` automatically detects Google Gemini
 - ✅ **74 New Tests** — Comprehensive test coverage for all new features
 
 See [CHANGELOG](https://github.com/milad-o/agenticflow/blob/main/CHANGELOG.md) for full version history.

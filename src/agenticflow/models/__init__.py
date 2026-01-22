@@ -118,72 +118,109 @@ def create_chat(
 ) -> BaseChatModel:
     """Create a chat model for any provider.
     
-    Supports 3 usage patterns:
+    Universal factory function supporting multiple invocation styles for maximum flexibility.
+    Auto-loads API keys from environment (.env) and config files.
     
-    1. High-level: Just model name (auto-resolves provider)
-       llm = create_chat("gpt4")
-       llm = create_chat("claude")
-       llm = create_chat("anthropic:claude-sonnet-4")
+    Usage Patterns
+    --------------
     
-    2. Medium-level: Provider + model
-       llm = create_chat("openai", "gpt-4o")
-       llm = create_chat("anthropic", "claude-sonnet-4-20250514")
+    Pattern 1: Model name only (simplest - auto-detects provider)
+        >>> llm = create_chat("gpt-4o")              # OpenAI
+        >>> llm = create_chat("gemini-2.5-pro")      # Google Gemini
+        >>> llm = create_chat("claude-sonnet-4")     # Anthropic
+        >>> llm = create_chat("llama-3.1-8b-instant")  # Groq
+        >>> llm = create_chat("mistral-small-latest")  # Mistral
     
-    3. Low-level: Provider + model + config
-       llm = create_chat("openai", "gpt-4o", api_key="sk-...", temperature=0.7)
+    Pattern 2: Provider:model syntax (explicit provider)
+        >>> llm = create_chat("openai:gpt-4o")
+        >>> llm = create_chat("gemini:gemini-2.5-flash")
+        >>> llm = create_chat("anthropic:claude-sonnet-4-20250514")
+        >>> llm = create_chat("groq:llama-3.3-70b-versatile")
+    
+    Pattern 3: Separate provider and model arguments
+        >>> llm = create_chat("openai", "gpt-4o")
+        >>> llm = create_chat("gemini", "gemini-2.5-pro")
+        >>> llm = create_chat("anthropic", "claude-sonnet-4-20250514")
+    
+    Pattern 4: With additional configuration
+        >>> llm = create_chat("openai", "gpt-4o", temperature=0.7, max_tokens=1000)
+        >>> llm = create_chat("gemini:gemini-2.5-pro", temperature=0.9)
+        >>> llm = create_chat("gpt-4o", api_key="sk-...", temperature=0)
+    
+    Supported Providers
+    -------------------
+    - openai: GPT-4o, GPT-4, GPT-3.5, o1, o3
+    - gemini/google: Gemini 2.5 Pro, Flash, Flash-Lite
+    - anthropic: Claude Sonnet, Opus, Haiku
+    - groq: Llama, Mixtral, Qwen, DeepSeek (fast inference)
+    - mistral: Mistral Small, Large, Codestral, Pixtral
+    - cohere: Command R, Command R+
+    - cloudflare: Workers AI models (@cf/...)
+    - ollama: Local models
+    - azure: Azure OpenAI with Entra ID auth
+    - github: GitHub Models (via Azure AI Foundry)
+    - custom: Any OpenAI-compatible endpoint
 
     Args:
-        provider: Provider name OR model string (if model is None).
-            When model is None, provider is treated as a model string.
-            When model is provided, provider is the provider name.
-        model: Optional model name (for explicit provider usage)
-        **kwargs: Additional provider-specific arguments.
+        provider: Either provider name ("openai", "gemini") OR full model string
+            when used as single argument. Supports "provider:model" syntax.
+        model: Optional explicit model name. Use when specifying provider separately.
+        **kwargs: Provider-specific configuration (api_key, temperature, max_tokens, etc.)
 
     Returns:
-        Chat model instance.
+        BaseChatModel: Initialized chat model ready for use.
 
-    Example:
-        # High-level: Just model name
-        llm = create_chat("gpt4")
-        llm = create_chat("claude")
-        llm = create_chat("gemini")
+    Environment Variables
+    ---------------------
+    API keys automatically loaded from .env or environment:
+    - OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY, etc.
+    
+    Model overrides (optional):
+    - OPENAI_CHAT_MODEL, GEMINI_CHAT_MODEL, etc.
+
+    Examples:
+        Basic usage with auto-detection:
+            >>> llm = create_chat("gpt-4o")
+            >>> response = await llm.ainvoke("Hello!")
         
-        # With provider prefix
-        llm = create_chat("anthropic:claude-sonnet-4")
-        llm = create_chat("groq:llama-70b")
-
-        # Medium-level: Provider + model
-        llm = create_chat("openai", "gpt-4o")
-        llm = create_chat("anthropic", "claude-sonnet-4-20250514")
-        llm = create_chat("groq", "llama-3.3-70b-versatile")
-
-        # Low-level: Full control
-        llm = create_chat("openai", "gpt-4o", api_key="sk-...", temperature=0.7)
+        With provider prefix:
+            >>> llm = create_chat("anthropic:claude-sonnet-4")
+            >>> llm = create_chat("groq:llama-70b")
         
-        # Azure OpenAI with Entra ID
-        llm = create_chat(
-            "azure",
-            deployment="gpt-4o",
-            azure_endpoint="https://your-resource.openai.azure.com",
-            entra=AzureEntraAuth(method="default"),
-        )
-
-        # GitHub Models (via Azure AI Foundry)
-        llm = create_chat(
-            "github",
-            model="meta/Meta-Llama-3.1-8B-Instruct",
-            token=os.getenv("GITHUB_TOKEN"),
-        )
-
-        # Cloudflare Workers AI
-        llm = create_chat("cloudflare", "@cf/meta/llama-3.3-70b-instruct")
-
-        # Custom endpoint
-        llm = create_chat(
-            "custom",
-            base_url="http://localhost:8000/v1",
-            model="my-model",
-        )
+        Explicit provider and model:
+            >>> llm = create_chat("openai", "gpt-4o")
+            >>> llm = create_chat("gemini", "gemini-2.5-flash-lite")
+        
+        With configuration:
+            >>> llm = create_chat("gpt-4o", temperature=0.7, max_tokens=500)
+            >>> llm = create_chat("openai", "gpt-4o", api_key="sk-custom...")
+        
+        Azure OpenAI with Entra ID:
+            >>> from agenticflow.models.azure import AzureEntraAuth
+            >>> llm = create_chat(
+            ...     "azure",
+            ...     deployment="gpt-4o",
+            ...     azure_endpoint="https://your-resource.openai.azure.com",
+            ...     entra=AzureEntraAuth(method="default"),
+            ... )
+        
+        GitHub Models:
+            >>> import os
+            >>> llm = create_chat(
+            ...     "github",
+            ...     model="meta/Meta-Llama-3.1-8B-Instruct",
+            ...     token=os.getenv("GITHUB_TOKEN"),
+            ... )
+        
+        Cloudflare Workers AI:
+            >>> llm = create_chat("cloudflare", "@cf/meta/llama-3.1-8b-instruct")
+        
+        Custom endpoint (vLLM, Together AI, etc.):
+            >>> llm = create_chat(
+            ...     "custom",
+            ...     base_url="http://localhost:8000/v1",
+            ...     model="meta-llama/Llama-3.2-3B-Instruct",
+            ... )
     """
     provider_lower = provider.lower()
     explicit_providers = {
