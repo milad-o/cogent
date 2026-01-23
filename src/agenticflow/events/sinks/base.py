@@ -6,24 +6,22 @@ Event sinks send events from Flow to external systems
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from agenticflow.events.event import Event
 
 
-@dataclass
-class EventSink(ABC):
-    """Abstract base class for outbound event sinks.
+class EventSink(Protocol):
+    """Protocol for outbound event sinks.
 
     Event sinks receive events from Flow and deliver them
-    to external systems.
+    to external systems. Uses Protocol for structural typing,
+    so any class implementing these methods can be used as a sink.
 
     Example:
         ```python
-        class MyDatabaseSink(EventSink):
+        class MyDatabaseSink:
             async def send(self, event: Event) -> None:
                 await db.insert("events", event.to_dict())
 
@@ -32,7 +30,6 @@ class EventSink(ABC):
         ```
     """
 
-    @abstractmethod
     async def send(self, event: Event) -> None:
         """Send an event to the external system.
 
@@ -48,10 +45,11 @@ class EventSink(ABC):
         """Clean up resources (optional).
 
         Called when the flow shuts down. Override to close connections.
+        Default implementation does nothing.
         """
-        pass
+        ...
 
     @property
     def name(self) -> str:
         """Human-readable name for this sink (used in logging)."""
-        return self.__class__.__name__
+        ...

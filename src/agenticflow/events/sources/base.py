@@ -7,10 +7,8 @@ the Flow for event-driven processing.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from agenticflow.events.event import Event
@@ -20,13 +18,13 @@ if TYPE_CHECKING:
 EmitCallback = Callable[["Event"], Awaitable[None]]
 
 
-@dataclass
-class EventSource(ABC):
-    """Abstract base class for external event sources.
+class EventSource(Protocol):
+    """Protocol for external event sources.
 
     Event sources connect external systems to Flow. They listen for
     external triggers (HTTP requests, file changes, queue messages) and
-    emit corresponding events into the flow.
+    emit corresponding events into the flow. Uses Protocol for structural
+    typing, so any class implementing these methods can be used as a source.
 
     Lifecycle:
         1. `start(emit)` - Begin listening, call `emit(event)` when events arrive
@@ -34,7 +32,7 @@ class EventSource(ABC):
 
     Example:
         ```python
-        class MySource(EventSource):
+        class MySource:
             async def start(self, emit: EmitCallback) -> None:
                 # Connect to external system
                 while self._running:
@@ -46,7 +44,6 @@ class EventSource(ABC):
         ```
     """
 
-    @abstractmethod
     async def start(self, emit: EmitCallback) -> None:
         """Start listening for external events.
 
@@ -58,7 +55,6 @@ class EventSource(ABC):
         """
         ...
 
-    @abstractmethod
     async def stop(self) -> None:
         """Stop listening and clean up resources.
 
@@ -70,4 +66,4 @@ class EventSource(ABC):
     @property
     def name(self) -> str:
         """Human-readable name for this source (used in logging)."""
-        return self.__class__.__name__
+        ...

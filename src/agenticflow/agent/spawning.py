@@ -427,7 +427,7 @@ class SpawnManager:
                 },
             )
 
-    def get_summary(self) -> dict[str, Any]:
+    def get_summary(self) -> SpawnSummary:
         """Get summary of spawning activity."""
         return {
             "active_count": self.active_count,
