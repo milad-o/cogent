@@ -110,7 +110,7 @@ Respond in JSON format:
         extract_keywords: bool = True,
         name: str | None = None,
         verbose: bool = False,
-        logger: Any | None = None,
+        logger: object | None = None,
     ) -> None:
         """Create a summary index.
 
@@ -1012,7 +1012,7 @@ Extract all meaningful entities and relationships:"""
     def __init__(
         self,
         llm: Model,
-        knowledge_graph: Any,  # KnowledgeGraph capability
+        knowledge_graph: object,  # KnowledgeGraph capability
         vectorstore: VectorStore | None = None,
         *,
         include_text_chunks: bool = True,
