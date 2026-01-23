@@ -55,13 +55,16 @@ from agenticflow.tasks.task import Task
 from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from agenticflow.agent.memory import AgentMemory
+    from agenticflow.agent.memory import AgentMemory, MemoryStore
     from agenticflow.agent.resilience import ResilienceConfig, ToolResilience
+    from agenticflow.agent.spawning import SpawningConfig, SpawnManager
     from agenticflow.agent.streaming import StreamChunk, StreamEvent
     from agenticflow.graph import GraphView
+    from agenticflow.memory import Memory
     from agenticflow.observability.bus import TraceBus
     from agenticflow.observability.observer import Observer
     from agenticflow.observability.progress import ProgressTracker
+    from agenticflow.tools.deferred import DeferredToolManager
     from agenticflow.tools.registry import ToolRegistry
 
 
@@ -149,8 +152,8 @@ class Agent:
         trace_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
         # Memory and state
-        memory: bool | AgentMemory | None = None,
-        store: Any = None,
+        memory: bool | AgentMemory | Memory | None = None,
+        store: MemoryStore | None = None,
         # HITL and streaming
         interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
         stream: bool = False,
@@ -452,7 +455,7 @@ class Agent:
         self._interrupted_state: InterruptedState | None = None
 
         # Deferred tool execution manager (event-driven completion)
-        self._deferred_manager: Any | None = None
+        self._deferred_manager: DeferredToolManager | None = None
 
         # Setup capabilities (adds tools from each capability)
         if capabilities:
@@ -471,10 +474,10 @@ class Agent:
         self._setup_output(output)
 
         # Setup interceptors
-        self._interceptors: list[Any] = list(intercept) if intercept else []
+        self._interceptors: list[Callable] = list(intercept) if intercept else []
 
         # Spawning support (set externally or via SpawningConfig)
-        self._spawn_manager: Any | None = None
+        self._spawn_manager: SpawnManager | None = None
         self._setup_spawning(spawning)
 
         # Performance caches (invalidated when tools change)
@@ -585,7 +588,7 @@ class Agent:
         # Connect observer to event bus
         self._observer.attach(self.trace_bus)
 
-    def _setup_observer(self, observer: Any) -> None:
+    def _setup_observer(self, observer: Observer) -> None:
         """Setup observer instance for standalone agent usage.
 
         Args:
@@ -600,7 +603,7 @@ class Agent:
         self._observer = observer
         self._observer.attach(self.trace_bus)
 
-    def add_observer(self, observer: Any) -> None:
+    def add_observer(self, observer: Observer) -> None:
         """Add an observer for monitoring agent execution.
 
         This allows attaching a Observer to a standalone agent for
@@ -728,7 +731,7 @@ class Agent:
         return self._output_config is not None
 
     @property
-    def interceptors(self) -> list[Any]:
+    def interceptors(self) -> list[Callable]:
         """Get the list of interceptors for this agent."""
         return getattr(self, "_interceptors", [])
 
@@ -737,7 +740,7 @@ class Agent:
         """Whether the agent has interceptors configured."""
         return bool(getattr(self, "_interceptors", None))
 
-    def _setup_spawning(self, spawning: Any | None) -> None:
+    def _setup_spawning(self, spawning: SpawningConfig | None) -> None:
         """Setup spawning capability for dynamic agent creation.
 
         Args:
@@ -1097,18 +1100,18 @@ class Agent:
         self._capabilities_initialized = False
 
     @property
-    def capabilities(self) -> list[Any]:
+    def capabilities(self) -> list[object]:
         """List of capabilities attached to this agent."""
         return self._capabilities.copy()
 
-    def get_capability(self, name: str) -> Any | None:
+    def get_capability(self, name: str) -> object | None:
         """Get a capability by name."""
         for cap in self._capabilities:
             if cap.name == name:
                 return cap
         return None
 
-    def _setup_memory(self, memory: Any = None, store: Any = None) -> None:
+    def _setup_memory(self, memory: AgentMemory | Memory | object | None = None, store: MemoryStore | None = None) -> None:
         """Setup memory manager and memory tools.
 
         Args:
@@ -1120,7 +1123,7 @@ class Agent:
                 - dict: Create MemoryManager from kwargs
                 - AgentMemory: Legacy support
                 - External saver: Legacy support
-            store: External BaseStore for long-term memory (legacy).
+            store: External MemoryStore for long-term memory (legacy).
         """
         from agenticflow.agent.memory import AgentMemory, InMemorySaver
         from agenticflow.memory import Memory
