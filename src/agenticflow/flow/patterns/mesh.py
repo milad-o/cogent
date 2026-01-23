@@ -124,7 +124,7 @@ def mesh(
     round_tracker: dict[str, int] = {"current": 1, "contributions": 0}
     total_agents = len(agents)
 
-    async def round_controller(event: Any) -> Any:
+    async def round_controller(event: object) -> object:
         """Track contributions and manage rounds."""
         from agenticflow.events import Event
 
@@ -165,7 +165,7 @@ def mesh(
     return flow
 
 
-def _get_name(reactor: Any, default: str) -> str:
+def _get_name(reactor: object, default: str) -> str:
     """Get reactor name or default."""
     if hasattr(reactor, "name") and reactor.name:
         return reactor.name
@@ -174,7 +174,7 @@ def _get_name(reactor: Any, default: str) -> str:
 
 def collaborative(
     agents: list[Agent | Reactor],
-    **kwargs: Any,
+    **kwargs: object,
 ) -> Flow:
     """Alias for mesh()."""
     return mesh(agents, **kwargs)
@@ -182,7 +182,7 @@ def collaborative(
 
 def brainstorm(
     agents: list[Agent | Reactor],
-    **kwargs: Any,
+    **kwargs: object,
 ) -> Flow:
     """Alias for mesh()."""
     return mesh(agents, **kwargs)
