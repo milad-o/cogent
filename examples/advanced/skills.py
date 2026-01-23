@@ -115,7 +115,7 @@ async def main() -> None:
         model="gpt4",
         system_prompt="You are a helpful coding assistant. When asked to write code, produce clean, working solutions.",
     )
-    flow.register(coder, [react_to("code.write")])
+    flow.register(coder, on="code.write")
 
     # Create an error handler agent that reacts to errors
     debugger_agent = Agent(
@@ -123,9 +123,9 @@ async def main() -> None:
         model="gpt4",
         system_prompt="You are a debugging expert. Analyze errors systematically and propose solutions.",
     )
-    flow.register(debugger_agent, [react_to("error.*")])
+    flow.register(debugger_agent, on="error.*")
 
-    print(f"✓ Registered agents: {flow.agents}")
+    print(f"✓ Registered {len(flow.reactors)} reactors")
 
     # Run 1: Python code write event → triggers python_skill + coder agent
     print("\n" + "-" * 60)
@@ -135,9 +135,12 @@ async def main() -> None:
     result1 = await flow.run(
         "Write a function to calculate fibonacci numbers",
         initial_event="code.write",
-        initial_data={"language": "python"},
+        data={"language": "python"},
     )
-    print(f"\n📄 Output:\n{result1.output[:500]}...")
+    print(f"\n📄 Result: {result1.success}")
+    if result1.output:
+        output_str = str(result1.output)
+        print(f"📝 Output preview: {output_str[:500]}...")
 
     # Run 2: Error event → triggers debug_skill + debugger agent
     print("\n" + "-" * 60)
@@ -147,9 +150,12 @@ async def main() -> None:
     result2 = await flow.run(
         "Investigate why the API connection is failing",
         initial_event="error.network",
-        initial_data={"message": "Connection refused", "endpoint": "/api/v1/users"},
+        data={"message": "Connection refused", "endpoint": "/api/v1/users"},
     )
-    print(f"\n📄 Output:\n{result2.output[:500]}...")
+    print(f"\n📄 Result: {result2.success}")
+    if result2.output:
+        output_str = str(result2.output)
+        print(f"📝 Output preview: {output_str[:500]}...")
 
     print("\n" + "=" * 60)
     print("✅ Skills demo completed!")
