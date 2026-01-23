@@ -64,11 +64,11 @@ class Store(Protocol):
     - RedisStore: Distributed cache
     """
 
-    async def get(self, key: str) -> Any | None:
+    async def get(self, key: str) -> object | None:
         """Get value by key. Returns None if not found."""
         ...
 
-    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+    async def set(self, key: str, value: object, ttl: int | None = None) -> None:
         """Set value by key. Optional TTL in seconds."""
         ...
 
@@ -220,7 +220,7 @@ class Memory:
     async def remember(
         self,
         key: str,
-        value: Any,
+        value: object,  # Any JSON-serializable value
         *,
         ttl: int | None = None,
     ) -> None:
@@ -242,7 +242,7 @@ class Memory:
             },
         )
 
-    async def recall(self, key: str, default: Any = None) -> Any:
+    async def recall(self, key: str, default: object | None = None) -> object | None:
         """Retrieve a value from memory.
 
         Args:
@@ -345,8 +345,8 @@ class Memory:
     async def recall_many(
         self,
         keys: list[str],
-        default: Any = None,
-    ) -> dict[str, Any]:
+        default: object | None = None,
+    ) -> dict[str, object]:
         """Retrieve multiple values from memory.
 
         Args:
@@ -681,7 +681,7 @@ class Memory:
     # Convenience Methods
     # -------------------------------------------------------------------------
 
-    async def append(self, key: str, value: Any) -> None:
+    async def append(self, key: str, value: object) -> None:
         """Append a value to a list at key.
 
         Creates the list if it doesn't exist.
@@ -730,10 +730,10 @@ class InMemoryStore:
 
     def __init__(self) -> None:
         self._data: dict[
-            str, tuple[Any, float | None]
+            str, tuple[object, float | None]
         ] = {}  # key -> (value, expiry_time)
 
-    async def get(self, key: str, default: Any = None) -> Any | None:
+    async def get(self, key: str, default: object | None = None) -> object | None:
         """Get value, checking expiry."""
         if key not in self._data:
             return default
