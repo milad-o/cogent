@@ -167,7 +167,7 @@ class TaskManager:
         self,
         task_id: str,
         status: TaskStatus,
-        result: Any = None,
+        result: object | None = None,
         error: str | None = None,
         correlation_id: str | None = None,
     ) -> Task:
