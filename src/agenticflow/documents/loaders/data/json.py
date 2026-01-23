@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from agenticflow.documents.loaders.base import BaseLoader
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class JSONLoader(BaseLoader):

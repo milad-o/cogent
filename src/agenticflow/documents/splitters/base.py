@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from agenticflow.documents.types import Document
+from agenticflow.core import Document, DocumentMetadata
 
 if TYPE_CHECKING:
     pass
@@ -73,14 +73,22 @@ class BaseSplitter(ABC):
         chunks = []
         for doc in documents:
             doc_chunks = self.split_text(doc.text)
-            for chunk in doc_chunks:
-                # Inherit document metadata, but preserve chunk-specific fields
-                # (like chunk_index, start_index, end_index)
-                chunk_specific = {
-                    k: v for k, v in chunk.metadata.items()
-                    if k in ("chunk_index", "start_index", "end_index")
-                }
-                chunk.metadata = {**doc.metadata, **chunk_specific}
+            
+            # Inherit parent metadata and add chunking info
+            total_chunks = len(doc_chunks)
+            for i, chunk in enumerate(doc_chunks):
+                # Copy parent metadata and update chunk-specific fields
+                chunk.metadata.source = doc.metadata.source
+                chunk.metadata.source_type = doc.metadata.source_type
+                chunk.metadata.page = doc.metadata.page
+                chunk.metadata.loader = doc.metadata.loader
+                chunk.metadata.parent_id = doc.id
+                chunk.metadata.chunk_total = total_chunks
+                chunk.metadata.chunk_index = i
+                # Preserve custom metadata from both parent and chunk
+                if doc.metadata.custom:
+                    chunk.metadata.custom = {**doc.metadata.custom, **chunk.metadata.custom}
+                    
             chunks.extend(doc_chunks)
         return chunks
 
@@ -118,14 +126,13 @@ class BaseSplitter(ABC):
                 if self.strip_whitespace:
                     content = content.strip()
                 if content:
-                    chunks.append(Document(
-                        text=content,
-                        metadata={
-                            "chunk_index": len(chunks),
-                            "start_index": current_start,
-                            "end_index": position,
-                        },
-                    ))
+                    metadata = DocumentMetadata(
+                        start_char=current_start,
+                        end_char=position,
+                        chunk_index=len(chunks),
+                        custom={"splitter": self.__class__.__name__},
+                    )
+                    chunks.append(Document(text=content, metadata=metadata))
 
                 # Handle overlap
                 overlap_start = current_start
@@ -150,14 +157,13 @@ class BaseSplitter(ABC):
             if self.strip_whitespace:
                 content = content.strip()
             if content:
-                chunks.append(Document(
-                    text=content,
-                    metadata={
-                        "chunk_index": len(chunks),
-                        "start_index": current_start,
-                        "end_index": position,
-                    },
-                ))
+                metadata = DocumentMetadata(
+                    start_char=current_start,
+                    end_char=position,
+                    chunk_index=len(chunks),
+                    custom={"splitter": self.__class__.__name__},
+                )
+                chunks.append(Document(text=content, metadata=metadata))
 
         return chunks
 

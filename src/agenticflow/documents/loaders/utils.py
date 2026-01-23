@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 async def load_documents(

@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from agenticflow.documents.splitters.base import BaseSplitter
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class RecursiveCharacterSplitter(BaseSplitter):
@@ -148,7 +148,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
 
         # Renumber chunk indices
         for i, chunk in enumerate(chunks):
-            chunk.metadata["chunk_index"] = i
+            chunk.metadata.chunk_index = i
 
         return chunks
 

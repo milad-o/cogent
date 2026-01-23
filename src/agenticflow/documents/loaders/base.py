@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from agenticflow.documents.types import Document
+from agenticflow.core import Document, DocumentMetadata
 
 
 class BaseLoader(ABC):
@@ -88,6 +88,7 @@ class BaseLoader(ABC):
         self,
         content: str,
         path: Path,
+        page: int | None = None,
         **extra_metadata: Any,
     ) -> Document:
         """Helper to create a document with standard metadata.
@@ -95,17 +96,39 @@ class BaseLoader(ABC):
         Args:
             content: Document content.
             path: Source file path.
+            page: Page number for multi-page documents.
             **extra_metadata: Additional metadata fields.
 
         Returns:
             Document with populated metadata.
         """
-        metadata = {
-            "source": str(path),
-            "filename": path.name,
-            "file_type": path.suffix.lower(),
-            **extra_metadata,
+        # Determine source_type from file extension
+        ext = path.suffix.lower().lstrip(".")
+        source_type_map = {
+            "txt": "text",
+            "md": "markdown",
+            "rst": "rst",
+            "pdf": "pdf",
+            "docx": "docx",
+            "html": "html",
+            "htm": "html",
+            "csv": "csv",
+            "json": "json",
+            "jsonl": "jsonl",
+            "xlsx": "xlsx",
+            "py": "python",
+            "js": "javascript",
+            "ts": "typescript",
         }
+        source_type = source_type_map.get(ext, ext or "unknown")
+        
+        metadata = DocumentMetadata(
+            source=str(path),
+            source_type=source_type,
+            page=page,
+            loader=self.__class__.__name__,
+            custom=extra_metadata if extra_metadata else {},
+        )
         return Document(text=content, metadata=metadata)
 
 

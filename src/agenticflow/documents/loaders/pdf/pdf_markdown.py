@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.documents.loaders.base import BaseLoader
-from agenticflow.documents.types import Document
+from agenticflow.core import Document, DocumentMetadata
 from agenticflow.observability import LogLevel, ObservabilityLogger
 
 if TYPE_CHECKING:
@@ -176,13 +176,12 @@ class PDFProcessingResult:
         documents: list[Document] = []
         for result in self.page_results:
             if result.status == PageStatus.SUCCESS and result.content.strip():
-                doc = Document(
-                    text=result.content,
-                    metadata={
-                        "source": str(self.file_path),
-                        "filename": self.file_path.name,
-                        "file_type": ".pdf",
-                        "page": result.page_number,
+                metadata = DocumentMetadata(
+                    source=str(self.file_path),
+                    source_type="pdf",
+                    page=result.page_number,
+                    loader="PDFMarkdownLoader",
+                    custom={
                         "total_pages": self.total_pages,
                         "tables_count": result.tables_count,
                         "images_count": result.images_count,
@@ -190,6 +189,7 @@ class PDFProcessingResult:
                         **self.metadata,
                     },
                 )
+                doc = Document(text=result.content, metadata=metadata)
                 documents.append(doc)
         return documents
 

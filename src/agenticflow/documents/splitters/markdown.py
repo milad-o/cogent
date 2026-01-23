@@ -7,7 +7,7 @@ from typing import Any
 
 from agenticflow.documents.splitters.base import BaseSplitter
 from agenticflow.documents.splitters.character import RecursiveCharacterSplitter
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class MarkdownSplitter(BaseSplitter):
@@ -86,8 +86,8 @@ class MarkdownSplitter(BaseSplitter):
                 )
                 sub_chunks = sub_splitter.split_text(section_text)
                 for sub_chunk in sub_chunks:
-                    sub_chunk.metadata["headers"] = section["headers"]
-                    sub_chunk.metadata["chunk_index"] = len(chunks)
+                    sub_chunk.metadata.custom["headers"] = section["headers"]
+                    sub_chunk.metadata.chunk_index = len(chunks)
                     chunks.append(sub_chunk)
 
                 current_headers = section["headers"].copy()

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agenticflow.documents.loaders.base import BaseLoader
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 # Map extensions to language names
 EXTENSION_TO_LANGUAGE: dict[str, str] = {

@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from agenticflow.documents.loaders.base import BaseLoader
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 from agenticflow.models.base import BaseChatModel
 from agenticflow.observability import ObservabilityLogger
 
