@@ -268,8 +268,15 @@ model = OpenAIChat(
 )
 
 # Embeddings
-embeddings = EmbeddingModel(model="text-embedding-3-small")
-vectors = await embeddings.embed_documents(["Hello world"])
+embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+
+# Primary API with metadata
+result = await embeddings.aembed(["Hello world"])
+print(result.embeddings)  # Vectors
+print(result.metadata)    # Full metadata
+
+# Convenience for single text
+vector = await embeddings.aembed_one("Query")
 ```
 
 **With tools:**
@@ -336,6 +343,8 @@ embeddings = AzureOpenAIEmbedding(
     deployment="text-embedding-ada-002",
     entra=AzureEntraAuth(method="default"),
 )
+
+result = await embeddings.aembed(["Document text"])
 ```
 
 **Environment variables:**
@@ -647,32 +656,46 @@ async for chunk in model.astream(messages):
 
 ## Embeddings
 
-All embedding models support **rich metadata** with token usage tracking for supported providers:
+All 9 embedding providers support a **standardized API** with rich metadata and flexible usage patterns:
 
 ```python
-from agenticflow.models import OpenAIEmbedding, GeminiEmbedding
+from agenticflow.models import OpenAIEmbedding, GeminiEmbedding, OllamaEmbedding
 
-# OpenAI embeddings with full token tracking
-embedding = OpenAIEmbedding(model="text-embedding-3-small")
-result = await embedding.aembed(["Hello world", "AgenticFlow"])
+embedder = OpenAIEmbedding(model="text-embedding-3-small")
 
-# Access embeddings and metadata
-print(result.embeddings)  # list[list[float]] - the actual vectors
-print(result.metadata.model)  # "text-embedding-3-small"
-print(result.metadata.tokens)  # TokenUsage(prompt=4, completion=0, total=4)
-print(result.metadata.dimensions)  # 1536
-print(result.metadata.duration)  # 1.181 seconds
-print(result.metadata.num_texts)  # 2
-print(result.metadata.response_id)  # Unique ID for request
-print(result.metadata.timestamp)  # ISO 8601 timestamp
+# Primary API: embed() / aembed() - Returns EmbeddingResult with full metadata
+result = await embedder.aembed(["Hello world", "AgenticFlow"])
+print(result.embeddings)            # list[list[float]] - the actual vectors
+print(result.metadata.model)        # "text-embedding-3-small"
+print(result.metadata.tokens)       # TokenUsage(prompt=4, completion=0, total=4)
+print(result.metadata.dimensions)   # 1536
+print(result.metadata.duration)     # 0.181 seconds
+print(result.metadata.num_texts)    # 2
 
-# Gemini embeddings (no token data from API)
-gemini = GeminiEmbedding(model="text-embedding-004")
-result = await gemini.aembed(["Test"])
-print(result.metadata.model)  # "models/text-embedding-004"
-print(result.metadata.dimensions)  # 768
-print(result.metadata.tokens)  # None (Gemini doesn't provide)
+# Convenience: embed_one() / aembed_one() - Single text, returns vector only
+vector = await embedder.aembed_one("Single text")
+print(len(vector))  # 1536
+
+# Sync versions
+result = embedder.embed(["Text 1", "Text 2"])
+vector = embedder.embed_one("Single text")
+
+# VectorStore protocol: embed_texts() / embed_query() - Async, no metadata
+vectors = await embedder.embed_texts(["Doc1", "Doc2"])  # list[list[float]]
+query_vec = await embedder.embed_query("Search query")  # list[float]
 ```
+
+**Standardized API Summary:**
+
+| Method | Input | Returns | Async | Metadata |
+|--------|-------|---------|-------|----------|
+| `embed(texts)` | `list[str]` | `EmbeddingResult` | ❌ | ✅ |
+| `aembed(texts)` | `list[str]` | `EmbeddingResult` | ✅ | ✅ |
+| `embed_one(text)` | `str` | `list[float]` | ❌ | ❌ |
+| `aembed_one(text)` | `str` | `list[float]` | ✅ | ❌ |
+| `embed_texts(texts)` | `list[str]` | `list[list[float]]` | ✅ | ❌ |
+| `embed_query(text)` | `str` | `list[float]` | ✅ | ❌ |
+| `dimension` | property | `int` | - | - |
 
 ### Embedding Metadata
 
@@ -712,17 +735,22 @@ class EmbeddingResult:
 **Usage Examples**:
 
 ```python
-# Method 1: Direct access to embeddings and metadata
-result = await embedding.aembed(["Text 1", "Text 2"])
-vectors = result.embeddings  # list[list[float]]
-meta = result.metadata       # EmbeddingMetadata
+# Use case 1: Need metadata for cost tracking
+result = await embedder.aembed(["Text 1", "Text 2"])
+vectors = result.embeddings
+tokens = result.metadata.tokens  # Track token usage for billing
+duration = result.metadata.duration  # Monitor performance
 
-# Method 2: Backward compatibility (returns just the vectors)
-vectors = await embedding.embed_texts(["Text"])  # list[list[float]]
-vectors = await embedding.embed_documents(["Text"])  # list[list[float]]
+# Use case 2: Simple embedding without metadata
+vector = await embedder.aembed_one("Query text")  # Just returns the vector
 
-# Single query embedding
-vector = await embedding.aembed_query("Search query")  # list[float]
+# Use case 3: VectorStore integration (protocol compliance)
+# These methods are used internally by VectorStore
+vectors = await embedder.embed_texts(["Document 1", "Document 2"])
+query_vec = await embedder.embed_query("Search query")
+
+# Use case 4: Sync batch embedding
+result = embedder.embed(large_batch)  # Sync version for compatibility
 ```
 
 **Observability Benefits**:
@@ -817,34 +845,58 @@ class AIMessage:
 
 ### BaseEmbedding
 
-Protocol for embedding models with metadata support:
+Standardized protocol for all embedding models:
 
 ```python
 from agenticflow.models.base import BaseEmbedding
 from agenticflow.core.messages import EmbeddingResult
 
-class BaseEmbedding(Protocol):
-    async def aembed(
-        self,
-        texts: list[str],
-    ) -> EmbeddingResult: ...
+class BaseEmbedding(ABC):
+    # Primary methods - return full metadata
+    @abstractmethod
+    def embed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts synchronously with metadata."""
+        ...
     
-    def embed(
-        self,
-        texts: list[str],
-    ) -> EmbeddingResult: ...
+    @abstractmethod
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Embed texts asynchronously with metadata."""
+        ...
     
-    # Convenience methods (backward compatible)
-    async def embed_documents(
-        self,
-        texts: list[str],
-    ) -> list[list[float]]: ...  # Returns result.embeddings
+    # Convenience methods - single text, no metadata
+    def embed_one(self, text: str) -> list[float]:
+        """Embed single text synchronously, returns vector only."""
+        ...
     
-    async def embed_query(
-        self,
-        text: str,
-    ) -> list[float]: ...  # Returns result.embeddings[0]
+    async def aembed_one(self, text: str) -> list[float]:
+        """Embed single text asynchronously, returns vector only."""
+        ...
+    
+    # VectorStore protocol - async, no metadata
+    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Embed texts for VectorStore (async, returns vectors only)."""
+        ...
+    
+    async def embed_query(self, text: str) -> list[float]:
+        """Embed query for VectorStore (async, returns vector only)."""
+        ...
+    
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension."""
+        ...
 ```
+
+**All 9 providers implement this API:**
+- OpenAIEmbedding
+- AzureOpenAIEmbedding
+- OllamaEmbedding
+- CohereEmbedding
+- GeminiEmbedding
+- CloudflareEmbedding
+- MistralEmbedding
+- CustomEmbedding
+- MockEmbedding
 
 ---
 

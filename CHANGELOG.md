@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.5] - 2026-01-22
+
+### Changed
+- **Embedding API Standardization**: Clean, consistent API across all 9 embedding providers
+  - **Primary methods**: `embed()` / `aembed()` - Return `EmbeddingResult` with full metadata
+  - **Convenience methods**: `embed_one()` / `aembed_one()` - Single text, returns `list[float]` (no metadata)
+  - **VectorStore protocol**: `embed_texts()` / `embed_query()` - Async, returns vectors only (no metadata)
+  - All methods now follow clear naming: `embed()` for batch, `embed_one()` for single text
+  - `embed_texts()` and `embed_query()` are now async and comply with `EmbeddingProvider` protocol
+
+### Removed
+- **Breaking Change**: Removed redundant embedding method aliases:
+  - ❌ `aembed_query()` - Use `aembed_one()` instead
+  - ❌ `aembed_texts()` - Use `embed_texts()` (now async) instead  
+  - ❌ `embed_documents()` / `aembed_documents()` - Use `embed_texts()` instead
+  - These were confusing duplicates with unclear naming
+
+### Fixed
+- **VectorStore compatibility**: `embed_texts()` and `embed_query()` now properly implement the `EmbeddingProvider` protocol as async methods
+- **Protocol mismatch**: Resolved mismatch between `BaseEmbedding` implementation and `EmbeddingProvider` protocol
+
+### Documentation
+- Updated [docs/models.md](docs/models.md) with standardized API reference
+- Updated [docs/vectorstore.md](docs/vectorstore.md) with all 9 embedding providers
+- Updated [README.md](README.md) with new API examples
+- Added comprehensive API method comparison table
+
 ## [1.14.4] - 2026-01-22
 
 ### Added
