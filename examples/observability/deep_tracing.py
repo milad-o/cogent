@@ -1,26 +1,16 @@
 #!/usr/bin/env python3
 """
-Example 27: Deep Observability
-==============================
+Deep Observability - Full LLM transparency.
 
-This example demonstrates the enhanced observability features that provide
-full transparency into LLM interactions - no more black box!
+Shows all observability features: LLM requests/responses, tool calls, timing.
 
-What you'll see:
-- LLM_REQUEST: Full prompt, messages, and available tools sent to the LLM
-- LLM_RESPONSE: Raw LLM response with timing and token usage
-- LLM_TOOL_DECISION: When LLM decides to use tools and which ones
-
-Run with different observability levels:
-- PROGRESS: Basic milestones (thinking, responding)
-- DETAILED: + Tool calls and tool decisions
-- DEBUG: + Full LLM request/response payloads
-- TRACE: Everything including internal events
+Run:
+    uv run python examples/observability/deep_tracing.py
 """
 
 import asyncio
 
-from agenticflow import Agent, Flow
+from agenticflow import Agent
 from agenticflow.observability import Channel, ObservabilityLevel, Observer
 from agenticflow.tools import tool
 
@@ -53,48 +43,37 @@ def convert_temperature(value: float, from_unit: str, to_unit: str) -> str:
 
 
 async def main():
-    # Get model from config
-    model = "gpt4"
-    print(f"Using LLM provider: {settings.llm_provider}")
-
-    # Create an observer with DEBUG level AND explicit LLM channel opt-in
-    # Note: Channel.LLM must be explicitly added to see LLM request/response details
+    # Create observer with DEBUG level and LLM channel for full transparency
     observer = Observer(
         level=ObservabilityLevel.DEBUG,
-        channels=[Channel.AGENTS, Channel.TOOLS, Channel.TASKS, Channel.LLM],  # Opt-in to LLM content
+        channels=[Channel.AGENTS, Channel.TOOLS, Channel.TASKS, Channel.LLM],
         show_timestamps=True,
-        truncate=300,  # Show more content
+        truncate=300,
     )
 
-    # Create an agent with tools
+    # Create agent with tools
     agent = Agent(
         name="WeatherAssistant",
         model="gpt4",
-        system_prompt="You are a helpful weather assistant. Use the available tools to help users with weather-related questions.",
+        system_prompt="You are a helpful weather assistant. Use tools to help with weather questions.",
         tools=[get_weather, convert_temperature],
+        observer=observer,
     )
-
-    # Create flow with observer
-    flow = Flow(name="deep_observability_demo", agents=[agent], observer=observer)
 
     print("=" * 60)
     print("Deep Observability Demo")
     print("=" * 60)
     print(f"\nObserver Level: {observer.config.level.name}")
-    print("\nYou'll see:")
-    print("  📤 LLM_REQUEST  - What's being sent to the LLM")
-    print("  📥 LLM_RESPONSE - What the LLM returns")
-    print("  🎯 TOOL_DECISION - When LLM decides to use tools")
-    print("  🔧 TOOL_CALLED  - Actual tool executions")
+    print("\nYou'll see LLM request/response, tool decisions, and executions")
     print("-" * 60)
 
-    # Run a query that will use tools
+    # Run query that uses tools
     print("\n🔍 Query: 'What's the weather in London and convert it to Fahrenheit?'\n")
 
-    result = await flow.run("What's the weather in London? Please convert the temperature to Fahrenheit.")
+    result = await agent.run("What's the weather in London? Convert the temperature to Fahrenheit.")
 
     print("-" * 60)
-    print(f"\n✅ Final Result: {result}")
+    print(f"\n✅ Final Result: {result.unwrap()}")
 
     # Show observer summary
     print("\n" + "=" * 60)

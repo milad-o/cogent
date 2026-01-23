@@ -43,7 +43,7 @@ Usage:
 import asyncio
 
 from agenticflow.documents import RecursiveCharacterSplitter
-from agenticflow.models import OpenAIEmbedding
+from agenticflow.models import OpenAIEmbedding, create_chat
 from agenticflow.retriever import DenseRetriever, HyDERetriever
 from agenticflow.vectorstore import Document, VectorStore
 
@@ -109,7 +109,8 @@ connections and hobbies also play important roles in stress reduction.
 
 
 async def main() -> None:
-    model = "gpt4"
+    # Create chat model for generating hypothetical documents
+    chat_model = create_chat("gpt4")
     embeddings = OpenAIEmbedding(model="text-embedding-3-small")
 
     # =========================================================================
@@ -132,7 +133,7 @@ async def main() -> None:
 
     # Create retrievers
     base_retriever = DenseRetriever(store)
-    hyde_retriever = HyDERetriever(base_retriever, model)
+    hyde_retriever = HyDERetriever(base_retriever, chat_model)
 
     print("\nRetrievers ready:")
     print(f"  - Base: {base_retriever}")
@@ -283,7 +284,7 @@ Passage from medical textbook:"""
 │   - prompt_template: Customize generation for your domain            │
 │                                                                      │
 │ USAGE:                                                               │
-│   hyde = HyDERetriever(base_retriever, model)                        │
+│   hyde = HyDERetriever(base_retriever, chat_model)                        │
 │   docs = await hyde.retrieve("abstract question", k=5)               │
 │                                                                      │
 └──────────────────────────────────────────────────────────────────────┘

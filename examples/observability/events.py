@@ -22,9 +22,10 @@ Usage:
 import asyncio
 from collections import defaultdict
 
-from agenticflow import Agent, EventBus, ObservabilityLevel, Observer, tool
+from agenticflow import Agent, tool
+from agenticflow.events import EventBus
+from agenticflow.observability import Observer, ObservabilityLevel, TraceType
 from agenticflow.flow import mesh, pipeline
-from agenticflow.observability.event import EventType
 
 
 # ============================================================
@@ -97,9 +98,9 @@ async def example_user_output_events():
     output_events = []
 
     def track_io(event):
-        if event.type == EventType.USER_INPUT:
+        if event.type == TraceType.USER_INPUT:
             user_events.append(event.data)
-        elif event.type == EventType.OUTPUT_GENERATED:
+        elif event.type == TraceType.OUTPUT_GENERATED:
             output_events.append(event.data)
 
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_io)
@@ -137,11 +138,11 @@ async def example_agent_lifecycle():
 
     # Agent lifecycle event types
     agent_events = {
-        EventType.AGENT_INVOKED,
-        EventType.AGENT_THINKING,
-        EventType.AGENT_REASONING,
-        EventType.AGENT_RESPONDED,
-        EventType.AGENT_ERROR,
+        TraceType.AGENT_INVOKED,
+        TraceType.AGENT_THINKING,
+        TraceType.AGENT_REASONING,
+        TraceType.AGENT_RESPONDED,
+        TraceType.AGENT_ERROR,
     }
 
     def track_lifecycle(event):
@@ -198,10 +199,10 @@ async def example_tool_events():
     tool_events = []
 
     tool_event_types = {
-        EventType.TOOL_CALLED,
-        EventType.TOOL_RESULT,
-        EventType.TOOL_ERROR,
-        EventType.LLM_TOOL_DECISION,
+        TraceType.TOOL_CALLED,
+        TraceType.TOOL_RESULT,
+        TraceType.TOOL_ERROR,
+        TraceType.LLM_TOOL_DECISION,
     }
 
     def track_tools(event):
@@ -247,8 +248,8 @@ async def example_llm_tracing():
     llm_events = []
 
     llm_event_types = {
-        EventType.LLM_REQUEST,
-        EventType.LLM_RESPONSE,
+        TraceType.LLM_REQUEST,
+        TraceType.LLM_RESPONSE,
     }
 
     def track_llm(event):
@@ -296,8 +297,8 @@ async def example_message_events():
     message_events = []
 
     message_event_types = {
-        EventType.MESSAGE_SENT,
-        EventType.MESSAGE_RECEIVED,
+        TraceType.MESSAGE_SENT,
+        TraceType.MESSAGE_RECEIVED,
     }
 
     def track_messages(event):
@@ -345,10 +346,10 @@ async def example_task_events():
     task_events = []
 
     task_event_types = {
-        EventType.TASK_CREATED,
-        EventType.TASK_STARTED,
-        EventType.TASK_COMPLETED,
-        EventType.TASK_FAILED,
+        TraceType.TASK_CREATED,
+        TraceType.TASK_STARTED,
+        TraceType.TASK_COMPLETED,
+        TraceType.TASK_FAILED,
     }
 
     def track_tasks(event):

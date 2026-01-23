@@ -426,9 +426,10 @@ ACTION 3:
             system_prompt_override="You are an expert problem solver exploring multiple approaches. Generate diverse, creative solutions.",
         )
 
-        # Parse candidate actions
+        # Parse candidate actions (unwrap Response if needed)
+        response_text = response.unwrap() if hasattr(response, 'unwrap') else str(response)
         children = []
-        actions = self._parse_candidate_actions(response)
+        actions = self._parse_candidate_actions(response_text)
 
         for action in actions:
             child = SearchNode(
@@ -614,8 +615,9 @@ Respond with ONLY a number between 0.0 and 1.0."""
                     system_prompt_override="You are a precise evaluator. Output only a number.",
                 )
 
-                # Parse value
-                match = re.search(r"(\d+\.?\d*)", response)
+                # Parse value (unwrap Response if needed)
+                response_text = response.unwrap() if hasattr(response, 'unwrap') else str(response)
+                match = re.search(r"(\d+\.?\d*)", response_text)
                 if match:
                     value = float(match.group(1))
                     return max(0.0, min(1.0, value))
@@ -653,7 +655,9 @@ Respond with ONLY a number between 0.0 and 1.0."""
                 system_prompt_override="You are a precise evaluator. Output only a number.",
             )
 
-            match = re.search(r"(\d+\.?\d*)", response)
+            # Unwrap Response if needed
+            response_text = response.unwrap() if hasattr(response, 'unwrap') else str(response)
+            match = re.search(r"(\d+\.?\d*)", response_text)
             if match:
                 value = float(match.group(1))
                 return max(0.0, min(1.0, value))
@@ -701,7 +705,9 @@ Be specific and actionable. Start with "Instead of..." or "The problem was..."."
                 include_tools=False,
                 system_prompt_override="You are analyzing failures to improve future attempts. Be concise and specific.",
             )
-            return reflection.strip()[:200]  # Limit length
+            # Unwrap Response if needed
+            reflection_text = reflection.unwrap() if hasattr(reflection, 'unwrap') else str(reflection)
+            return reflection_text.strip()[:200]  # Limit length
         except Exception:
             return None
 
@@ -774,7 +780,8 @@ Best exploration path:
 
 Based on the exploration, provide the best answer you can. If uncertain, explain what's known and what's missing."""
 
-        return await self.agent.think(prompt)
+        response = await self.agent.think(prompt)
+        return response.unwrap() if hasattr(response, 'unwrap') else str(response)
 
     def _find_best_node(self, root: SearchNode) -> SearchNode | None:
         """Find the highest-value node in the tree.
