@@ -21,7 +21,7 @@ class XLSXLoader(BaseLoader):
         ...     print(f"Sheet: {doc.metadata['sheet']}")
     """
 
-    supported_extensions = [".xlsx", ".xls"]
+    supported_extensions: ClassVar[list[str]] = [".xlsx", ".xls"]
 
     def __init__(
         self,

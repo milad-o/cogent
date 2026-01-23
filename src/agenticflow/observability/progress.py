@@ -230,10 +230,10 @@ class Symbols:
     FILLED_CIRCLE = "●"
 
     # Progress
-    SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    SPINNER: ClassVar[list[str]] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     BAR_FILLED = "█"
     BAR_EMPTY = "░"
-    BAR_PARTIAL = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+    BAR_PARTIAL: ClassVar[list[str]] = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
     # DAG/Tree
     BRANCH = "├──"
@@ -256,7 +256,7 @@ class Symbols:
     ASCII_CROSS = "[X]"
     ASCII_ARROW = "->"
     ASCII_BULLET = "*"
-    ASCII_SPINNER = ["|", "/", "-", "\\"]
+    ASCII_SPINNER: ClassVar[list[str]] = ["|", "/", "-", "\\"]
     ASCII_BAR_FILLED = "#"
     ASCII_BAR_EMPTY = "-"
 
@@ -368,7 +368,6 @@ class BaseRenderer(ABC):
     @abstractmethod
     def render_event(self, event: ProgressEvent) -> str:
         """Render a progress event to string."""
-        pass
 
     def write(self, text: str) -> None:
         """Write text to output stream."""

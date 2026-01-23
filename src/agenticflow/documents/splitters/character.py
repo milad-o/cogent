@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -24,7 +25,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
         >>> chunks = splitter.split_text(long_text)
     """
 
-    DEFAULT_SEPARATORS = [
+    DEFAULT_SEPARATORS: ClassVar[list[str]] = [
         "\n\n",  # Paragraphs
         "\n",  # Lines
         ". ",  # Sentences (with space)

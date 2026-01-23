@@ -1174,7 +1174,6 @@ class Agent:
         # Invalidate caches since tools changed
         self._cached_tool_descriptions = None
         self._cached_bound_model = None
-        pass
 
     @property
     def memory(self):

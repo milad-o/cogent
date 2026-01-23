@@ -5,11 +5,12 @@ Defines the interface all storage backends must implement.
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship
 
 
+@runtime_checkable
 class GraphBackend(Protocol):
     """Protocol for graph storage backends."""
 

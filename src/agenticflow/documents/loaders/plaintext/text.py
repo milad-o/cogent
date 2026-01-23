@@ -19,10 +19,10 @@ class TextLoader(BaseLoader):
         >>> docs = await loader.load(Path("readme.txt"))
     """
 
-    supported_extensions = [".txt", ".text", ".rst", ".log"]
+    supported_extensions: ClassVar[list[str]] = [".txt", ".text", ".rst", ".log"]
 
     # Fallback encodings to try if UTF-8 fails
-    FALLBACK_ENCODINGS = ["latin-1", "cp1252", "iso-8859-1"]
+    FALLBACK_ENCODINGS: ClassVar[list[str]] = ["latin-1", "cp1252", "iso-8859-1"]
 
     async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a plain text file.

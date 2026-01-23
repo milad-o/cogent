@@ -25,7 +25,7 @@ class JSONLoader(BaseLoader):
         >>> docs = await loader.load(Path("articles.json"))
     """
 
-    supported_extensions = [".json", ".jsonl", ".ndjson"]
+    supported_extensions: ClassVar[list[str]] = [".json", ".jsonl", ".ndjson"]
 
     def __init__(
         self,

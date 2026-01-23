@@ -19,7 +19,7 @@ class WordLoader(BaseLoader):
         >>> docs = await loader.load(Path("document.docx"))
     """
 
-    supported_extensions = [".docx", ".doc"]
+    supported_extensions: ClassVar[list[str]] = [".docx", ".doc"]
 
     def __init__(
         self,

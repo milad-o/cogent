@@ -20,7 +20,7 @@ class MarkdownLoader(BaseLoader):
         >>> print(docs[0].metadata.get("title"))  # From frontmatter
     """
 
-    supported_extensions = [".md", ".markdown"]
+    supported_extensions: ClassVar[list[str]] = [".md", ".markdown"]
 
     def __init__(
         self,
@@ -83,10 +83,10 @@ class MarkdownLoader(BaseLoader):
 
                 # Handle quoted strings
                 if (
-                    value.startswith('"')
-                    and value.endswith('"')
-                    or value.startswith("'")
-                    and value.endswith("'")
+                    (value.startswith('"')
+                    and value.endswith('"'))
+                    or (value.startswith("'")
+                    and value.endswith("'"))
                 ):
                     value = value[1:-1]
 

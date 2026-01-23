@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import ClassVar
 
 from agenticflow.core import Document, DocumentMetadata
 
@@ -26,7 +27,7 @@ class BaseLoader(ABC):
     """
 
     # File extensions this loader supports
-    supported_extensions: list[str] = []
+    supported_extensions: ClassVar[list[str]] = []
 
     def __init__(self, encoding: str = "utf-8") -> None:
         """Initialize the loader.

@@ -235,10 +235,7 @@ def _extract_return_info(func: Callable[..., Any]) -> str:
         if in_returns:
             if stripped and (
                 stripped.endswith(":")
-                or stripped.startswith("Args:")
-                or stripped.startswith("Raises:")
-                or stripped.startswith("Example:")
-                or stripped.startswith("Note:")
+                or stripped.startswith(("Args:", "Raises:", "Example:", "Note:"))
             ):
                 break
             if stripped:

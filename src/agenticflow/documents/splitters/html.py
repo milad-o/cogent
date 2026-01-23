@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -23,7 +24,7 @@ class HTMLSplitter(BaseSplitter):
         >>> chunks = splitter.split_text(html_content)
     """
 
-    DEFAULT_SPLIT_TAGS = [
+    DEFAULT_SPLIT_TAGS: ClassVar[list[str]] = [
         "article",
         "section",
         "div",

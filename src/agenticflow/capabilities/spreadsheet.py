@@ -389,20 +389,20 @@ class Spreadsheet(BaseCapability):
                     # Complex condition
                     for op, target in condition.items():
                         if (
-                            op == "$gt"
-                            and not (value is not None and value > target)
-                            or op == "$gte"
-                            and not (value is not None and value >= target)
-                            or op == "$lt"
-                            and not (value is not None and value < target)
-                            or op == "$lte"
-                            and not (value is not None and value <= target)
-                            or op == "$ne"
-                            and value == target
-                            or op == "$in"
-                            and value not in target
-                            or op == "$nin"
-                            and value in target
+                            (op == "$gt"
+                            and not (value is not None and value > target))
+                            or (op == "$gte"
+                            and not (value is not None and value >= target))
+                            or (op == "$lt"
+                            and not (value is not None and value < target))
+                            or (op == "$lte"
+                            and not (value is not None and value <= target))
+                            or (op == "$ne"
+                            and value == target)
+                            or (op == "$in"
+                            and value not in target)
+                            or (op == "$nin"
+                            and value in target)
                         ):
                             match = False
                         elif op == "$contains":

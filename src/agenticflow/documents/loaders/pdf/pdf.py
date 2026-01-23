@@ -20,7 +20,7 @@ class PDFLoader(BaseLoader):
         >>> print(f"Loaded {len(docs)} pages")
     """
 
-    supported_extensions = [".pdf"]
+    supported_extensions: ClassVar[list[str]] = [".pdf"]
 
     def __init__(
         self,

@@ -31,7 +31,7 @@ class ConsoleEventHandler:
     """
 
     # Icons for different event types
-    ICONS: dict[TraceType, str] = {
+    ICONS: ClassVar[dict[TraceType, str]] = {
         # System
         TraceType.SYSTEM_STARTED: "🚀",
         TraceType.SYSTEM_STOPPED: "🏁",

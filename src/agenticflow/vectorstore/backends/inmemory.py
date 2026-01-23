@@ -101,7 +101,7 @@ class InMemoryBackend:
 
         # Check NumPy availability
         try:
-            import numpy as np  # noqa: F401
+            import numpy as np
 
             self._numpy_available = True
         except ImportError:

@@ -85,7 +85,7 @@ class MermaidBackend(Backend):
     MERMAID_INK_URL = "https://mermaid.ink"
 
     # Shape mappings to Mermaid syntax
-    SHAPE_MAP: dict[NodeShape, tuple[str, str]] = {
+    SHAPE_MAP: ClassVar[dict[NodeShape, tuple[str, str]]] = {
         NodeShape.RECTANGLE: ("[", "]"),
         NodeShape.ROUNDED: ("(", ")"),
         NodeShape.CIRCLE: ("((", "))"),
@@ -98,7 +98,7 @@ class MermaidBackend(Backend):
     }
 
     # Edge type mappings
-    EDGE_MAP: dict[EdgeType, str] = {
+    EDGE_MAP: ClassVar[dict[EdgeType, str]] = {
         EdgeType.ARROW: "-->",
         EdgeType.OPEN: "---",
         EdgeType.DOTTED: "-.->",
@@ -428,7 +428,7 @@ class GraphvizBackend(Backend):
     }
 
     # Direction mappings
-    DIRECTION_MAP: dict[GraphDirection, str] = {
+    DIRECTION_MAP: ClassVar[dict[GraphDirection, str]] = {
         GraphDirection.TOP_DOWN: "TB",
         GraphDirection.BOTTOM_UP: "BT",
         GraphDirection.LEFT_RIGHT: "LR",

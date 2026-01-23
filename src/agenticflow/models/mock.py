@@ -61,7 +61,6 @@ class MockChatModel(BaseChatModel):
 
     def _init_client(self) -> None:
         """No client needed for mock."""
-        pass
 
     def _get_next_response(self) -> str:
         """Get the next response in sequence, cycling if needed."""
@@ -149,7 +148,6 @@ class MockEmbedding(BaseEmbedding):
 
     def _init_client(self) -> None:
         """No client needed for mock."""
-        pass
 
     def _generate_embedding(self, text: str) -> list[float]:
         """Generate deterministic embedding from text hash.

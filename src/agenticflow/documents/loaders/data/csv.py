@@ -22,7 +22,7 @@ class CSVLoader(BaseLoader):
         >>> print(docs[0].metadata["columns"])
     """
 
-    supported_extensions = [".csv", ".tsv"]
+    supported_extensions: ClassVar[list[str]] = [".csv", ".tsv"]
 
     def __init__(
         self,
