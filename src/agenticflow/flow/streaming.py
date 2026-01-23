@@ -49,12 +49,22 @@ Example:
 
 from __future__ import annotations
 
+from __future__ import annotations
+
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from agenticflow.agent.streaming import StreamChunk as AgentStreamChunk
+
+
+class AgentProtocol(Protocol):
+    """Protocol for agent-like objects that can think/stream."""
+
+    async def think(self, task: str, *, stream: bool = False, **context: object) -> AsyncIterator[object]:
+        """Think about a task and optionally stream the response."""
+        ...
 
 
 @dataclass
@@ -95,7 +105,7 @@ class FlowStreamChunk:
     is_final: bool = False
     """True if this is the last chunk from this reaction."""
 
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, object] | None = None
     """Additional context about the streaming execution."""
 
     finish_reason: str | None = None
@@ -108,7 +118,7 @@ class FlowStreamChunk:
         agent_name: str,
         event_id: str,
         event_name: str,
-        **metadata: Any,
+        **metadata: object,
     ) -> FlowStreamChunk:
         """Create StreamChunk from agent's StreamChunk."""
         return cls(
@@ -128,13 +138,13 @@ StreamChunk = FlowStreamChunk
 
 
 async def _stream_agent_execution(
-    agent: Any,
+    agent: AgentProtocol,
     task: str,
-    event: Any,
+    event: object,
     agent_name: str,
     event_id: str,
     event_name: str,
-    **context: Any,
+    **context: object,
 ) -> AsyncIterator[StreamChunk]:
     """
     Execute agent with streaming enabled and yield StreamChunks.

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.flow.delegation import DelegationMixin
@@ -38,7 +38,7 @@ class FlowResult:
     execution_time_ms: float = 0.0
     """Total execution time in milliseconds."""
 
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
     """Additional execution metadata."""
 
 
@@ -71,7 +71,7 @@ class FlowProtocol(Protocol):
         """Event bus for internal communication."""
         ...
 
-    async def run(self, task: str, **kwargs: Any) -> FlowResult:
+    async def run(self, task: str, **kwargs: object) -> FlowResult:
         """
         Execute the flow with a task.
 
@@ -153,7 +153,7 @@ class BaseFlow(DelegationMixin):
         ...
 
     @abstractmethod
-    async def run(self, task: str, **kwargs: Any) -> FlowResult:
+    async def run(self, task: str, **kwargs: object) -> FlowResult:
         """Execute the flow with a task."""
         ...
 
@@ -174,7 +174,7 @@ class BaseFlow(DelegationMixin):
     def _observe(
         self,
         event_type: TraceType,
-        data: dict[str, Any],
+        data: dict[str, object],
     ) -> None:
         """
         Emit an observability event.
@@ -196,7 +196,7 @@ class BaseFlow(DelegationMixin):
     async def _publish(
         self,
         event_type: TraceType,
-        data: dict[str, Any],
+        data: dict[str, object],
     ) -> None:
         """
         Publish an event to the bus.

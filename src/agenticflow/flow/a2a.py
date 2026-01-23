@@ -31,7 +31,6 @@ Example:
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
 
 from agenticflow.core.response import ErrorInfo, Response, ResponseMetadata
 from agenticflow.events import Event
@@ -55,11 +54,11 @@ class AgentRequest:
     from_agent: str
     to_agent: str
     task: str
-    data: dict[str, Any] = field(default_factory=dict)
+    data: dict[str, object] = field(default_factory=dict)
     correlation_id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     reply_to: str = field(default="agent.response")
     timeout_ms: int | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
     def to_event(self) -> Event:
         """Convert request to an event for the target agent."""
@@ -99,12 +98,12 @@ class AgentResponse:
 
     from_agent: str
     to_agent: str
-    result: Any
+    result: object
     correlation_id: str
     success: bool = True
     error: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
-    response: Response[Any] | None = None
+    metadata: dict[str, object] = field(default_factory=dict)
+    response: Response[object] | None = None
 
     def __post_init__(self) -> None:
         """Create internal Response object if not provided."""
@@ -117,7 +116,7 @@ class AgentResponse:
                     type="AgentError",
                 )
 
-            self.response = Response(
+            self.response = Response[object](
                 content=self.result,
                 metadata=ResponseMetadata(
                     agent=self.from_agent,
@@ -130,7 +129,7 @@ class AgentResponse:
     @classmethod
     def from_response(
         cls,
-        response: Response[Any],
+        response: Response[object],
         from_agent: str,
         to_agent: str,
     ) -> "AgentResponse":
@@ -171,7 +170,7 @@ class AgentResponse:
             correlation_id=self.correlation_id,
         )
 
-    def unwrap(self) -> Response[Any]:
+    def unwrap(self) -> Response[object]:
         """Get the underlying Response object.
 
         Returns:
@@ -185,8 +184,8 @@ def create_request(
     from_agent: str,
     to_agent: str,
     task: str,
-    data: dict[str, Any] | None = None,
-    **kwargs: Any,
+    data: dict[str, object] | None = None,
+    **kwargs: object,
 ) -> AgentRequest:
     """Create an agent request.
 
@@ -213,10 +212,10 @@ def create_response(
     from_agent: str,
     to_agent: str,
     correlation_id: str,
-    result: Any,
+    result: object,
     success: bool = True,
     error: str | None = None,
-    **kwargs: Any,
+    **kwargs: object,
 ) -> AgentResponse:
     """Create an agent response.
 
