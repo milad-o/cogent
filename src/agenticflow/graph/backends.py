@@ -312,7 +312,7 @@ class MermaidBackend(Backend):
         except ImportError:
             raise ImportError(
                 "httpx required for PNG rendering. Install with: uv add httpx"
-            )
+            ) from None
 
         url = self.to_png_url(graph, config)
 
@@ -321,7 +321,7 @@ class MermaidBackend(Backend):
             response.raise_for_status()
             return response.content
         except httpx.HTTPError as e:
-            raise RuntimeError(f"Failed to render diagram: {e}")
+            raise RuntimeError(f"Failed to render diagram: {e}") from e
 
     def draw_svg(self, graph: Graph, config: GraphConfig | None = None) -> bytes:
         """Render as SVG bytes.
@@ -342,7 +342,7 @@ class MermaidBackend(Backend):
         except ImportError:
             raise ImportError(
                 "httpx required for SVG rendering. Install with: uv add httpx"
-            )
+            ) from None
 
         code = self.render(graph, config)
         encoded = base64.urlsafe_b64encode(code.encode()).decode()
@@ -353,7 +353,7 @@ class MermaidBackend(Backend):
             response.raise_for_status()
             return response.content
         except httpx.HTTPError as e:
-            raise RuntimeError(f"Failed to render diagram: {e}")
+            raise RuntimeError(f"Failed to render diagram: {e}") from e
 
     def to_html(self, graph: Graph, config: GraphConfig | None = None) -> str:
         """Generate HTML with embedded Mermaid for Jupyter notebooks.
@@ -565,7 +565,9 @@ class GraphvizBackend(Backend):
         try:
             import graphviz
         except ImportError:
-            raise ImportError("graphviz required. Install with: uv add graphviz")
+            raise ImportError(
+                "graphviz required. Install with: uv add graphviz"
+            ) from None
 
         dot_code = self.render(graph, config)
         gv = graphviz.Source(dot_code)
@@ -584,7 +586,9 @@ class GraphvizBackend(Backend):
         try:
             import graphviz
         except ImportError:
-            raise ImportError("graphviz required. Install with: uv add graphviz")
+            raise ImportError(
+                "graphviz required. Install with: uv add graphviz"
+            ) from None
 
         dot_code = self.render(graph, config)
         gv = graphviz.Source(dot_code)

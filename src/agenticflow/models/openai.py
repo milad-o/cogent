@@ -149,7 +149,9 @@ class OpenAIChat(BaseChatModel):
         try:
             from openai import AsyncOpenAI, OpenAI
         except ImportError:
-            raise ImportError("openai package required. Install with: uv add openai")
+            raise ImportError(
+                "openai package required. Install with: uv add openai"
+            ) from None
 
         from agenticflow.config import get_api_key
 
@@ -380,7 +382,9 @@ class OpenAIEmbedding(BaseEmbedding):
         try:
             from openai import AsyncOpenAI, OpenAI
         except ImportError:
-            raise ImportError("openai package required. Install with: uv add openai")
+            raise ImportError(
+                "openai package required. Install with: uv add openai"
+            ) from None
 
         from agenticflow.config import get_api_key
 

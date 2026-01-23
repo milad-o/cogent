@@ -91,7 +91,7 @@ def load_toml(path: Path) -> dict[str, Any]:
             raise ImportError(
                 "TOML support requires Python 3.11+ or 'tomli' package. "
                 "Install with: uv add tomli"
-            )
+            ) from None
 
     with open(path, "rb") as f:
         return tomllib.load(f)

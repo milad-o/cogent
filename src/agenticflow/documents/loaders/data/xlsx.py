@@ -62,7 +62,7 @@ class XLSXLoader(BaseLoader):
         except ImportError:
             raise ImportError(
                 "Excel loading requires 'openpyxl'. Install with: uv add openpyxl"
-            )
+            ) from None
 
         wb = load_workbook(str(path), read_only=True, data_only=True)
         documents = []

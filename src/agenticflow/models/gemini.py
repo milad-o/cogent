@@ -343,7 +343,7 @@ class GeminiChat(BaseChatModel):
         except ImportError:
             raise ImportError(
                 "google-genai package required. Install with: uv add google-genai"
-            )
+            ) from None
 
         from agenticflow.config import get_api_key
 
@@ -565,7 +565,7 @@ class GeminiEmbedding(BaseEmbedding):
         except ImportError:
             raise ImportError(
                 "google-genai package required. Install with: uv add google-genai"
-            )
+            ) from None
 
         from agenticflow.config import get_api_key
 

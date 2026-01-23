@@ -51,7 +51,7 @@ class TokenSplitter(BaseSplitter):
             except ImportError:
                 raise ImportError(
                     "Token splitting requires 'tiktoken'. Install with: uv add tiktoken"
-                )
+                ) from None
             except KeyError:
                 import tiktoken
 

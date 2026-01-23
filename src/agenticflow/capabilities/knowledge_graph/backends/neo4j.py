@@ -105,7 +105,7 @@ class Neo4jGraph(GraphBackend):
         except ImportError:
             raise ImportError(
                 "neo4j package required for Neo4j backend. Install with: uv add neo4j"
-            )
+            ) from None
 
         self._driver = GraphDatabase.driver(
             self._uri,

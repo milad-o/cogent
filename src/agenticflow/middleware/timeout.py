@@ -94,7 +94,7 @@ class TimeoutMiddleware(BaseMiddleware):
         except builtins.TimeoutError:
             if self.on_timeout:
                 self.on_timeout(reactor_name, timeout)
-            raise TimeoutError(reactor_name, timeout)
+            raise TimeoutError(reactor_name, timeout) from None
 
 
 @dataclass
