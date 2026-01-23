@@ -107,11 +107,15 @@ class MCPServerConfig:
             if not self.command:
                 msg = "command is required for stdio transport"
                 raise ValueError(msg)
-        elif self.transport in (
-            MCPTransport.HTTP,
-            MCPTransport.SSE,
-            MCPTransport.WEBSOCKET,
-        ) and not self.url:
+        elif (
+            self.transport
+            in (
+                MCPTransport.HTTP,
+                MCPTransport.SSE,
+                MCPTransport.WEBSOCKET,
+            )
+            and not self.url
+        ):
             msg = "url is required for HTTP/SSE/WebSocket transport"
             raise ValueError(msg)
 

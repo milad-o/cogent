@@ -66,7 +66,10 @@ class QdrantBackend:
     def __post_init__(self) -> None:
         """Initialize Qdrant client and collection."""
         try:
-            from qdrant_client import QdrantClient, models  # type: ignore[import-untyped]
+            from qdrant_client import (  # type: ignore[import-untyped]
+                QdrantClient,
+                models,
+            )
 
             self._models = models
         except ImportError as e:

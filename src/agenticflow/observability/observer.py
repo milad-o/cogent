@@ -1145,9 +1145,7 @@ class Observer:
             TraceType.TASK_FAILED,
             TraceType.STREAM_ERROR,
         }:
-            source = (
-                event.data.get("agent_name") or event.data.get("tool") or "unknown"
-            )
+            source = event.data.get("agent_name") or event.data.get("tool") or "unknown"
             error = event.data.get("error") or event.data.get(
                 "message", "Unknown error"
             )

@@ -2,7 +2,7 @@
 Enums for AgenticFlow - defines status types and roles.
 """
 
-from enum import Enum, IntEnum, StrEnum
+from enum import IntEnum, StrEnum
 
 
 class TaskStatus(StrEnum):

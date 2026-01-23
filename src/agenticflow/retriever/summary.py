@@ -18,7 +18,7 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult

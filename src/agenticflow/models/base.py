@@ -76,7 +76,9 @@ def convert_messages(messages: list[MessageInput]) -> list[dict[str, object]]:
         # Some providers may represent a single part as a dict.
         return bool(isinstance(value, dict) and "type" in value)
 
-    def _normalize_content(value: object) -> str | list[dict[str, object]] | dict[str, object]:
+    def _normalize_content(
+        value: object,
+    ) -> str | list[dict[str, object]] | dict[str, object]:
         """Coerce arbitrary content to a provider-safe representation.
 
         Default behavior is to convert to string for broad provider compatibility.
@@ -338,9 +340,7 @@ class BaseChatModel(ABC):
         ...
 
     @abstractmethod
-    async def ainvoke(
-        self, messages: str | list[MessageInput]
-    ) -> AIMessage:
+    async def ainvoke(self, messages: str | list[MessageInput]) -> AIMessage:
         """Invoke the model asynchronously.
 
         Args:

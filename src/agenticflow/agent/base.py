@@ -1111,7 +1111,11 @@ class Agent:
                 return cap
         return None
 
-    def _setup_memory(self, memory: AgentMemory | Memory | object | None = None, store: MemoryStore | None = None) -> None:
+    def _setup_memory(
+        self,
+        memory: AgentMemory | Memory | object | None = None,
+        store: MemoryStore | None = None,
+    ) -> None:
         """Setup memory manager and memory tools.
 
         Args:
