@@ -4,12 +4,15 @@ This module provides automatic tool injection for A2A delegation based on
 declarative delegation policies in Flow.register().
 """
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from agenticflow.tools import tool
 
+if TYPE_CHECKING:
+    from agenticflow.flow.core import Flow
 
-def create_delegate_tool(flow: Any, from_agent: str, allowed_specialists: list[str]) -> Any:
+
+def create_delegate_tool(flow: Flow, from_agent: str, allowed_specialists: list[str]) -> object:
     """Create a delegation tool for a coordinator agent.
 
     This tool is automatically injected based on can_delegate configuration.
@@ -89,7 +92,7 @@ Example:
     return delegate_to
 
 
-def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
+def create_reply_tool(flow: "Flow", specialist_agent: str) -> object:
     """Create a reply tool for a specialist agent.
 
     This tool is automatically injected based on handles/can_reply configuration.

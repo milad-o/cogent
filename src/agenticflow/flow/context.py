@@ -50,12 +50,12 @@ class FlowContext:
 
     flow_id: str
     event: Event
-    data: dict[str, Any] = field(default_factory=dict)
+    data: dict[str, object] = field(default_factory=dict)
     history: list[Event] = field(default_factory=list)
     original_task: str | None = None
-    _emit_fn: Any = None  # Callable[[str, dict], Awaitable[None]]
+    _emit_fn: Callable[[str, dict[str, object]], Awaitable[None]] | None = None
 
-    async def emit(self, event_type: str, data: dict[str, Any] | None = None) -> None:
+    async def emit(self, event_type: str, data: dict[str, object] | None = None) -> None:
         """Emit a new event into the flow.
 
         Args:
@@ -65,15 +65,15 @@ class FlowContext:
         if self._emit_fn:
             await self._emit_fn(event_type, data or {})
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> object:
         """Allow dict-like access to context data."""
         return self.data[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: object) -> None:
         """Allow dict-like setting of context data."""
         self.data[key] = value
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: object = None) -> object:
         """Get value from context data with default."""
         return self.data.get(key, default)
 
@@ -175,15 +175,15 @@ class ExecutionContext:
                     return response.result
                 else:
                     raise RuntimeError(f"Agent {agent_name} failed: {response.error}")
-            except TimeoutError:
+            except TimeoutError as timeout_err:
                 self.pending_responses.pop(request.correlation_id, None)
                 raise TimeoutError(
                     f"Agent {agent_name} did not respond within {timeout_ms}ms"
-                )
+                ) from timeout_err
 
         return None
 
-    def reply(self, result: Any, success: bool = True, error: str | None = None) -> AgentResponse:
+    def reply(self, result: object, success: bool = True, error: str | None = None) -> AgentResponse:
         """Create a response to an agent request.
 
         This is used by agents that receive delegated tasks to send results back.
@@ -224,15 +224,15 @@ class ExecutionContext:
             error=error,
         )
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> object:
         """Allow dict-like access to context data."""
         return self.data[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: object) -> None:
         """Allow dict-like setting of context data."""
         self.data[key] = value
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: object = None) -> object:
         """Get value from context data with default."""
         return self.data.get(key, default)
 

@@ -73,7 +73,7 @@ class BaseExecutor(ABC):
         """
         self.agent = agent
         self.max_iterations: int = 25
-        self.on_step: Callable[[str, Any], None] | None = None
+        self.on_step: Callable[[str, object], None] | None = None
         self.tracker: ProgressTracker | None = None
         self.verify_completion: bool = False  # Enable for strict verification
 
@@ -81,8 +81,8 @@ class BaseExecutor(ABC):
     async def execute(
         self,
         task: str,
-        context: dict[str, Any] | None = None,
-    ) -> Any:
+        context: dict[str, object] | None = None,
+    ) -> object:
         """Execute a task and return the result.
 
         Args:
@@ -193,7 +193,7 @@ Integrate the additions naturally into a complete response."""
 
         return await self.agent.think(enhancement_prompt)
 
-    def _emit_step(self, step_type: str, data: Any) -> None:
+    def _emit_step(self, step_type: str, data: object) -> None:
         """Emit a step event if callback is set.
 
         Args:
@@ -213,7 +213,7 @@ Integrate the additions naturally into a complete response."""
         if self.tracker:
             self.tracker.tool_call(tool, args, agent=self.agent.name)
 
-    def _track_tool_result(self, tool: str, result: Any, duration_ms: float = 0) -> None:
+    def _track_tool_result(self, tool: str, result: object, duration_ms: float = 0) -> None:
         """Track tool result via progress tracker if available.
 
         Args:
