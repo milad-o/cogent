@@ -107,7 +107,7 @@ class DocumentMetadata:
             return getattr(self, key)
         raise KeyError(key)
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get[T](self, key: str, default: T | None = None) -> T | None:
         """Provide dict-style get() for backward compatibility."""
         if key in self.custom:
             return self.custom.get(key, default)
