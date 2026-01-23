@@ -511,7 +511,7 @@ class AgentMemory:
     async def remember(
         self,
         key: str,
-        value: Any,
+        value: object,
         namespace: str = "default",
     ) -> None:
         """Store a long-term memory.
@@ -576,7 +576,7 @@ class AgentMemory:
         self,
         thread_id: str,
         key: str,
-        value: Any,
+        value: object,
     ) -> None:
         """Set a context value for a thread.
 
