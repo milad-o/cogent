@@ -38,7 +38,7 @@ async def basic_streaming():
     print("Demo 1: Basic Streaming")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow, react_to
+    from agenticflow import Agent, Flow
 
     # Create agent with streaming-capable model
     assistant = Agent(
@@ -49,7 +49,7 @@ async def basic_streaming():
 
     # Create reactive flow
     flow = Flow()
-    flow.register(assistant, [react_to("task.created")])
+    flow.register(assistant, on="task.created")
 
     print("\n📝 Task: Explain streaming in 2 sentences")
     print("-" * 70)
@@ -76,7 +76,7 @@ async def multi_agent_streaming():
     print("Demo 2: Multi-Agent Streaming")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow, react_to
+    from agenticflow import Agent, Flow
 
     # Create multiple agents
     researcher = Agent(
@@ -93,8 +93,8 @@ async def multi_agent_streaming():
 
     # Create flow with chained agents
     flow = Flow()
-    flow.register(researcher, [react_to("task.created").emits("researcher.completed")])
-    flow.register(writer, [react_to("researcher.completed")])
+    flow.register(researcher, on="task.created", emits="researcher.completed")
+    flow.register(writer, on="researcher.completed")
 
     print("\n📝 Task: Research and summarize quantum computing")
     print("-" * 70)
@@ -128,7 +128,7 @@ async def streaming_with_progress():
     print("Demo 3: Streaming with Progress Indicators")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow, react_to
+    from agenticflow import Agent, Flow
 
     # Create agents for a 3-stage pipeline
     analyzer = Agent(
@@ -151,9 +151,9 @@ async def streaming_with_progress():
 
     # Create pipeline flow
     flow = Flow()
-    flow.register(analyzer, [react_to("task.created").emits("analyzed")])
-    flow.register(planner, [react_to("analyzed").emits("planned")])
-    flow.register(executor, [react_to("planned")])
+    flow.register(analyzer, on="task.created", emits="analyzed")
+    flow.register(planner, on="analyzed", emits="planned")
+    flow.register(executor, on="planned")
 
     print("\n📝 Task: Build a web scraper")
     print("-" * 70)
@@ -191,7 +191,7 @@ async def conditional_streaming():
     print("Demo 4: Conditional Streaming (Event-Driven Routing)")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow, react_to
+    from agenticflow import Agent, Flow
 
     # Create specialized agents
     python_expert = Agent(
@@ -216,18 +216,19 @@ async def conditional_streaming():
     flow = Flow()
     flow.register(
         python_expert,
-        [react_to("question.asked").when(lambda e: "python" in str(e.data).lower())],
+        on="question.asked",
+        when=lambda e: "python" in str(e.data).lower(),
     )
     flow.register(
         js_expert,
-        [react_to("question.asked").when(lambda e: "javascript" in str(e.data).lower())],
+        on="question.asked",
+        when=lambda e: "javascript" in str(e.data).lower(),
     )
     flow.register(
         general_agent,
-        [react_to("question.asked").when(
-            lambda e: "python" not in str(e.data).lower()
-            and "javascript" not in str(e.data).lower()
-        )],
+        on="question.asked",
+        when=lambda e: "python" not in str(e.data).lower()
+        and "javascript" not in str(e.data).lower(),
     )
 
     # Test multiple questions
@@ -264,7 +265,7 @@ async def streaming_error_handling():
     print("Demo 5: Error Handling in Streaming")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow, react_to
+    from agenticflow import Agent, Flow
 
     # Create agent that might fail
     assistant = Agent(
@@ -274,7 +275,7 @@ async def streaming_error_handling():
     )
 
     flow = Flow()
-    flow.register(assistant, [react_to("task.created")])
+    flow.register(assistant, on="task.created")
 
     print("\n📝 Task: Streaming with potential errors")
     print("-" * 70)

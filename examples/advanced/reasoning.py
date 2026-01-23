@@ -38,6 +38,7 @@ from agenticflow.tools.base import tool
 try:
     from examples.config import get_model
 except ImportError:
+    pass
 
 
 # =============================================================================
@@ -225,11 +226,13 @@ async def example_quick_reasoning():
     
     print("With quick reasoning:")
     result1 = await agent_reasoning.run(task)
-    print(f"Result: {result1[:100]}...")
+    text1 = result1.unwrap()
+    print(f"Result: {str(text1)[:100]}...")
     
     print("\nWithout reasoning:")
     result2 = await agent_no_reasoning.run(task)
-    print(f"Result: {result2[:100]}...")
+    text2 = result2.unwrap()
+    print(f"Result: {str(text2)[:100]}...")
 
 
 # =============================================================================
@@ -298,7 +301,7 @@ async def example_per_call_reasoning():
         "What is ACME Corp's revenue?",
         reasoning=False,  # Explicit: no reasoning
     )
-    print(f"   Result: {result1}")
+    print(f"   Result: {result1.unwrap()}")
     
     # Complex task - enable reasoning for this call only
     print("\n🧠 Complex query (reasoning enabled for this call):")
@@ -306,7 +309,8 @@ async def example_per_call_reasoning():
         "Analyze ACME Corp's financial health and recommend actions",
         reasoning=True,  # Enable reasoning for this call
     )
-    print(f"   Result: {result2[:200]}...")
+    text2 = result2.unwrap()
+    print(f"   Result: {str(text2)[:200]}...")
     
     # Very complex - use custom config for this call
     print("\n🔬 Very complex query (custom reasoning config):")
@@ -318,7 +322,8 @@ async def example_per_call_reasoning():
             show_thinking=False,
         ),
     )
-    print(f"   Result: {result3[:200]}...")
+    text3 = result3.unwrap()
+    print(f"   Result: {str(text3)[:200]}...")
     
     print("\n💡 Per-call reasoning allows optimal thinking for each task!")
 

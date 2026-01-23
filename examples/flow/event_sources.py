@@ -19,9 +19,8 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from agenticflow import Agent, Observer, react_to, tool
-from agenticflow.events import EventSink
-from agenticflow.flow import Flow  # Has source/sink methods
+from agenticflow import Agent, tool
+from agenticflow.flow import Flow
 
 # =============================================================================
 # Define tools for file processing
@@ -107,27 +106,27 @@ async def demo_file_processing():
         tools=[extract_text],
     )
 
-    # Create observer for progress output
-    observer = Observer.progress()
-
     # Create event-driven flow
-    flow = Flow(observer=observer)
+    flow = Flow()
 
     # Register agents with file-extension-specific triggers
     flow.register(
         json_agent,
-        [react_to("file.created").when(lambda e: e.data.get("extension") == ".json")],
+        on="file.created",
+        when=lambda e: e.data.get("extension") == ".json",
     )
     flow.register(
         csv_agent,
-        [react_to("file.created").when(lambda e: e.data.get("extension") == ".csv")],
+        on="file.created",
+        when=lambda e: e.data.get("extension") == ".csv",
     )
     flow.register(
         text_agent,
-        [react_to("file.created").when(lambda e: e.data.get("extension") == ".txt")],
+        on="file.created",
+        when=lambda e: e.data.get("extension") == ".txt",
     )
 
-    print(f"\n✓ Registered agents: {flow.agents}")
+    print(f"\n✓ Registered event handlers successfully")
 
     # Create temp directory with test files
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -160,7 +159,7 @@ async def demo_file_processing():
             result = await flow.run(
                 f"Analyze the file: {filename}",
                 initial_event="file.created",
-                initial_data={
+                data={
                     "path": str(filepath),
                     "filename": filename,
                     "extension": filepath.suffix,
@@ -168,13 +167,12 @@ async def demo_file_processing():
             )
 
             print(f"\n--- {filename} ---")
-            if result.reactions:
-                for reaction in result.reactions:
-                    output = reaction.output or "(no output)"
-                    # Show first 300 chars
-                    print(output[:300] + ("..." if len(output) > 300 else ""))
+            if result.success:
+                output = str(result.output) if result.output else "(no output)"
+                # Show first 300 chars
+                print(output[:300] + ("..." if len(output) > 300 else ""))
             else:
-                print("(no matching agent)")
+                print(f"Error: {result.error or '(no output)'}")
 
         print(f"\n✅ Processed {len(files)} files")
 
@@ -186,59 +184,37 @@ async def demo_file_processing():
 
 async def demo_notification_sink():
     """
-    Demonstrate outbound event sinks for notifications.
+    Demonstrate event-based order processing.
     
-    Uses a mock sink to show how events can be sent to external systems.
+    Shows how to trigger agents on events and handle results.
     """
     print("\n" + "=" * 60)
-    print("Event Sink Notification Demo")
+    print("Order Processing Demo")
     print("=" * 60)
 
-    # Create a logging sink (in production, use WebhookSink)
-    received_events = []
-
-    class NotificationSink(EventSink):
-        """Mock sink that logs notifications (simulates Slack/email/webhook)."""
-
-        async def send(self, event) -> None:
-            received_events.append(event)
-            print(f"   � Notification: {event.name}")
-            print(f"      Agent: {event.data.get('agent', 'unknown')}")
-
-        @property
-        def name(self) -> str:
-            return "NotificationSink"
-
-    # Get LLM model
-    model = "gpt4"
-
-    # Create a simple processing agent
     processor = Agent(
         name="order_processor",
         model="gpt4",
         system_prompt="You process orders. Acknowledge the order and confirm it's been processed.",
     )
 
-    # Create flow with observer and notification sink
-    observer = Observer.minimal()
-    flow = Flow(observer=observer)
-
-    # Register agent
-    flow.register(processor, [react_to("order.created")])
-
-    # Add sink for completion events
-    flow.sink(NotificationSink(), pattern="*.completed")
+    flow = Flow()
+    flow.register(processor, on="order.created")
 
     print("\n🚀 Processing an order...")
 
     result = await flow.run(
         "Process order #12345 for customer Alice",
         initial_event="order.created",
-        initial_data={"order_id": "12345", "customer": "Alice", "total": 99.99},
+        data={"order_id": "12345", "customer": "Alice", "total": 99.99},
     )
 
-    print(f"\n✅ Flow completed in {result.execution_time_ms:.0f}ms")
-    print(f"   Notifications sent: {len(received_events)}")
+    if result.success:
+        print(f"✅ Order processed successfully")
+        response_text = str(result.output)[:300]
+        print(f"   Response: {response_text}")
+    else:
+        print(f"❌ Error: {result.error}")
 
 
 # =============================================================================
@@ -247,14 +223,11 @@ async def demo_notification_sink():
 
 
 async def main():
-    """Run demos."""
+    """Run all demos."""
     print("\n🎯 Event Sources & Sinks Demo (with LLM)")
     print("=" * 60)
 
-    # Demo 1: File-triggered processing
     await demo_file_processing()
-
-    # Demo 2: Notification sinks
     await demo_notification_sink()
 
     print("\n" + "=" * 60)

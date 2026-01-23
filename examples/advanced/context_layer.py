@@ -137,7 +137,8 @@ async def example_run_context():
         context=ctx,
     )
 
-    print(f"\nResult: {result[:300]}...")
+    text = result.unwrap()
+    print(f"\nResult: {str(text)[:300]}...")
 
 
 # =============================================================================
@@ -183,7 +184,8 @@ async def example_permission_gate():
         "Search for Python tutorials",
         context=guest_ctx,
     )
-    print(f"Result: {result[:200]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:200]}...")
 
     # Admin user - full access
     print("\n--- Admin user (all tools) ---")
@@ -192,7 +194,8 @@ async def example_permission_gate():
         "Read data from the users table",
         context=admin_ctx,
     )
-    print(f"Result: {result[:200]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:200]}...")
 
 
 # =============================================================================
@@ -224,7 +227,8 @@ async def example_conversation_gate():
 
     print("\n--- First message (only search available) ---")
     result = await agent.run("Search for database best practices")
-    print(f"Result: {result[:150]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:150]}...")
 
     print("\nNote: More tools unlock as message history grows!")
 
@@ -276,7 +280,8 @@ async def example_department_gate():
         "Generate a sales report",
         context=mkt_ctx,
     )
-    print(f"Result: {result[:150]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:150]}...")
 
     # Engineering department
     print("\n--- Engineering department ---")
@@ -285,7 +290,8 @@ async def example_department_gate():
         "Read data from the metrics table",
         context=eng_ctx,
     )
-    print(f"Result: {result[:150]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:150]}...")
 
 
 # =============================================================================

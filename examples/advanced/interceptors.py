@@ -87,7 +87,8 @@ async def example_budget_guard():
         "Search for Python tips, calculate 2+2, and get weather in NYC"
     )
 
-    print(f"\nResult: {result[:200]}..." if len(result) > 200 else f"\nResult: {result}")
+    text = result.unwrap()
+    print(f"\nResult: {str(text)[:200]}..." if len(str(text)) > 200 else f"\nResult: {text}")
     print("\nBudget usage:")
     print(f"  Model calls: {guard.current_model_calls}/{guard.model_calls}")
     print(f"  Tool calls: {guard.current_tool_calls}/{guard.tool_calls}")
@@ -197,8 +198,8 @@ async def example_query_enhancer():
     )
 
     result = await agent.run("Search for Python updates")
-    print(f"\nResult: {result[:200]}...")
-
+    text = result.unwrap()
+    print(f"\nResult: {str(text)[:200]}...")
 
 # =============================================================================
 # Example 4: Chaining Multiple Interceptors
@@ -311,8 +312,8 @@ async def example_pii_shield():
         "My email is john.doe@company.com and SSN is 123-45-6789. "
         "Can you help me update my profile?"
     )
-    print(f"\nAgent response (PII was masked): {result[:200]}...")
-
+    text = result.unwrap()
+    print(f"\nAgent response (PII was masked): {str(text)[:200]}...")
     # Check what was detected
     print(f"\nPII detections: {len(shield.get_detections(agent._interceptors[0]._last_ctx)) if hasattr(shield, '_last_ctx') else 'tracked internally'}")
 
@@ -378,7 +379,8 @@ async def example_token_limiter():
     # Short task - should work
     print("\n--- Short task (under limit) ---")
     result = await agent.run("Hello!")
-    print(f"Result: {result[:100]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:100]}...")
 
 
 # =============================================================================
@@ -410,7 +412,8 @@ async def example_content_filter():
     # Safe request
     print("\n--- Safe request ---")
     result = await agent.run("What's 2 + 2?")
-    print(f"Result: {result[:100]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:100]}...")
 
 
 # =============================================================================
@@ -442,7 +445,8 @@ async def example_rate_limiter():
 
     print("\n--- Making multiple calls ---")
     result = await agent.run("Search for Python and calculate 5*5")
-    print(f"Result: {result[:150]}...")
+    text = result.unwrap()
+    print(f"Result: {str(text)[:150]}...")
 
     usage = limiter.current_usage
     print(f"\nRate limit usage: {usage['global_calls']}/{usage['limit']} calls")
