@@ -94,7 +94,7 @@ class ParentDocumentRetriever(BaseRetriever):
                 for sep in [". ", ".\n", "! ", "? ", "\n\n"]:
                     last_sep = chunk.rfind(sep)
                     if last_sep > self._chunk_size // 2:
-                        chunk = chunk[:last_sep + len(sep)]
+                        chunk = chunk[: last_sep + len(sep)]
                         end = start + len(chunk)
                         break
 
@@ -135,16 +135,16 @@ class ParentDocumentRetriever(BaseRetriever):
             for i, chunk_text in enumerate(text_chunks):
                 chunk_doc = Document(
                     text=chunk_text,
-                            metadata={
-                                **(
-                                    doc.metadata.to_dict()
-                                    if hasattr(doc.metadata, "to_dict")
-                                    else dict(doc.metadata)
-                                ),
-                                "parent_id": parent_id,
-                                "chunk_index": i,
-                                "total_chunks": len(text_chunks),
-                            },
+                    metadata={
+                        **(
+                            doc.metadata.to_dict()
+                            if hasattr(doc.metadata, "to_dict")
+                            else dict(doc.metadata)
+                        ),
+                        "parent_id": parent_id,
+                        "chunk_index": i,
+                        "total_chunks": len(text_chunks),
+                    },
                 )
                 chunks_to_add.append(chunk_doc)
 
@@ -266,7 +266,7 @@ class SentenceWindowRetriever(BaseRetriever):
 
         # Simple sentence splitting
         # More sophisticated: use nltk or spacy
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+        sentences = re.split(r"(?<=[.!?])\s+", text)
         return [s.strip() for s in sentences if s.strip()]
 
     async def add_documents(

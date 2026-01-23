@@ -17,7 +17,7 @@ Usage:
 
     # Embeddings
     embedder = OpenAIEmbedding()
-    vectors = await embedder.aembed(["Hello", "World"])
+    result = await embedder.aembed_texts(["Hello", "World"])
 """
 
 from __future__ import annotations
@@ -50,11 +50,13 @@ def _parse_response(response: Any) -> AIMessage:
     tool_calls = []
     if message.tool_calls:
         for tc in message.tool_calls:
-            tool_calls.append({
-                "id": tc.id,
-                "name": tc.function.name,
-                "args": __import__("json").loads(tc.function.arguments),
-            })
+            tool_calls.append(
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "args": __import__("json").loads(tc.function.arguments),
+                }
+            )
 
     metadata = MessageMetadata(
         model=response.model,
@@ -62,7 +64,9 @@ def _parse_response(response: Any) -> AIMessage:
             prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
             completion_tokens=response.usage.completion_tokens if response.usage else 0,
             total_tokens=response.usage.total_tokens if response.usage else 0,
-        ) if response.usage else None,
+        )
+        if response.usage
+        else None,
         finish_reason=choice.finish_reason,
         response_id=response.id,
     )
@@ -85,14 +89,16 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
         elif hasattr(tool, "name") and hasattr(tool, "description"):
             # Our native Tool format
             schema = getattr(tool, "args_schema", {}) or {}
-            formatted.append({
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description or "",
-                    "parameters": schema,
-                },
-            })
+            formatted.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description or "",
+                        "parameters": schema,
+                    },
+                }
+            )
         elif isinstance(tool, dict):
             formatted.append(tool)
     return formatted
@@ -134,7 +140,9 @@ class OpenAIChat(BaseChatModel):
 
     model: str = "gpt-4o-mini"
     base_url: str = ""
-    use_responses_api: bool = False  # Use beta Responses API instead of Chat Completions
+    use_responses_api: bool = (
+        False  # Use beta Responses API instead of Chat Completions
+    )
 
     def _init_client(self) -> None:
         """Initialize OpenAI clients."""
@@ -199,7 +207,9 @@ class OpenAIChat(BaseChatModel):
             response = self._client.chat.completions.create(**kwargs)
         return _parse_response(response)
 
-    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+    async def ainvoke(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AIMessage:
         """Invoke asynchronously.
 
         Args:
@@ -213,12 +223,14 @@ class OpenAIChat(BaseChatModel):
             response = await self._async_client.chat.completions.create(**kwargs)
         return _parse_response(response)
 
-    async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
+    async def astream(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously with metadata.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
-            
+
         Yields:
             AIMessage objects with incremental content and metadata. The last chunk
             will have empty content but complete metadata (finish_reason and token usage).
@@ -230,7 +242,9 @@ class OpenAIChat(BaseChatModel):
         self._ensure_initialized()
         kwargs = self._build_request(normalize_input(messages))
         kwargs["stream"] = True
-        kwargs["stream_options"] = {"include_usage": True}  # Request usage in final chunk
+        kwargs["stream_options"] = {
+            "include_usage": True
+        }  # Request usage in final chunk
 
         start_time = time.time()
         chunk_metadata = {
@@ -239,7 +253,6 @@ class OpenAIChat(BaseChatModel):
             "finish_reason": None,
             "usage": None,
         }
-        has_yielded_final = False
 
         if self.use_responses_api:
             stream = await self._async_client.beta.responses.create(**kwargs)
@@ -258,7 +271,7 @@ class OpenAIChat(BaseChatModel):
                 chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
 
             # Check for usage (comes in final chunk with stream_options)
-            if hasattr(chunk, 'usage') and chunk.usage:
+            if hasattr(chunk, "usage") and chunk.usage:
                 chunk_metadata["usage"] = chunk.usage
                 # This is the final chunk with usage - yield it with complete metadata
                 metadata = MessageMetadata(
@@ -276,7 +289,6 @@ class OpenAIChat(BaseChatModel):
                 )
                 # Yield final metadata-only chunk
                 yield AIMessage(content="", metadata=metadata)
-                has_yielded_final = True
 
             # Yield content chunks with partial metadata
             if chunk.choices and chunk.choices[0].delta.content:
@@ -285,7 +297,9 @@ class OpenAIChat(BaseChatModel):
                     timestamp=time.time(),
                     model=chunk_metadata["model"],
                     tokens=None,  # Will be in final chunk
-                    finish_reason=chunk_metadata.get("finish_reason"),  # May be None until near end
+                    finish_reason=chunk_metadata.get(
+                        "finish_reason"
+                    ),  # May be None until near end
                     response_id=chunk_metadata["id"],
                     duration=time.time() - start_time,
                 )
@@ -295,7 +309,9 @@ class OpenAIChat(BaseChatModel):
                     metadata=metadata,
                 )
 
-    def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
+    def _build_request(
+        self, messages: list[dict[str, Any]] | list[Any]
+    ) -> dict[str, Any]:
         """Build API request.
 
         Args:
@@ -316,8 +332,7 @@ class OpenAIChat(BaseChatModel):
         # o1, o3, gpt-5 series don't support temperature
         model_lower = self.model.lower()
         supports_temperature = not any(
-            prefix in model_lower
-            for prefix in ("o1", "o3", "gpt-5")
+            prefix in model_lower for prefix in ("o1", "o3", "gpt-5")
         )
         if supports_temperature and self.temperature is not None:
             kwargs["temperature"] = self.temperature
@@ -348,10 +363,10 @@ class OpenAIEmbedding(BaseEmbedding):
         embedder = OpenAIEmbedding()  # Uses text-embedding-3-small by default
 
         # Single text
-        vector = await embedder.aembed_query("Hello world")
+        result = await embedder.aembed_text("Hello world")
 
         # Batch embedding
-        vectors = await embedder.aembed(["Hello", "World"])
+        result = await embedder.aembed_texts(["Hello", "World"])
 
         # With dimension reduction
         embedder = OpenAIEmbedding(dimensions=256)
@@ -383,51 +398,8 @@ class OpenAIEmbedding(BaseEmbedding):
         self._client = OpenAI(**kwargs)
         self._async_client = AsyncOpenAI(**kwargs)
 
-    def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts synchronously with metadata."""
-        self._ensure_initialized()
-        import time
-
-        from agenticflow.core.messages import (
-            EmbeddingMetadata,
-            EmbeddingResult,
-            TokenUsage,
-        )
-
-        start_time = time.time()
-        all_embeddings: list[list[float]] = []
-        total_prompt_tokens = 0
-        model_name = None
-
-        for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
-            response = self._client.embeddings.create(**self._build_request(batch))
-            sorted_data = sorted(response.data, key=lambda x: x.index)
-            all_embeddings.extend([d.embedding for d in sorted_data])
-
-            # Accumulate metadata
-            if response.usage:
-                total_prompt_tokens += response.usage.prompt_tokens
-            if response.model:
-                model_name = response.model
-
-        # Build metadata
-        metadata = EmbeddingMetadata(
-            model=model_name or self.model,
-            tokens=TokenUsage(
-                prompt_tokens=total_prompt_tokens,
-                completion_tokens=0,
-                total_tokens=total_prompt_tokens,
-            ) if total_prompt_tokens > 0 else None,
-            duration=time.time() - start_time,
-            dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
-            num_texts=len(texts),
-        )
-
-        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
-
-    async def aembed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts asynchronously with metadata."""
+    async def embed(self, texts: str | list[str]) -> EmbeddingResult:
+        """Embed one or more texts asynchronously with metadata."""
         self._ensure_initialized()
         import asyncio
         import time
@@ -438,19 +410,29 @@ class OpenAIEmbedding(BaseEmbedding):
             TokenUsage,
         )
 
+        # Normalize input
+        texts_list = [texts] if isinstance(texts, str) else texts
+
         start_time = time.time()
         total_prompt_tokens = 0
         model_name = None
 
-        async def embed_batch(batch: list[str]) -> tuple[list[list[float]], int, str | None]:
-            response = await self._async_client.embeddings.create(**self._build_request(batch))
+        async def embed_batch(
+            batch: list[str],
+        ) -> tuple[list[list[float]], int, str | None]:
+            response = await self._async_client.embeddings.create(
+                **self._build_request(batch)
+            )
             sorted_data = sorted(response.data, key=lambda x: x.index)
             embeddings = [d.embedding for d in sorted_data]
             tokens = response.usage.prompt_tokens if response.usage else 0
-            model = response.model if hasattr(response, 'model') else None
+            model = response.model if hasattr(response, "model") else None
             return embeddings, tokens, model
 
-        batches = [texts[i:i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        batches = [
+            texts_list[i : i + self.batch_size]
+            for i in range(0, len(texts_list), self.batch_size)
+        ]
         results = await asyncio.gather(*[embed_batch(b) for b in batches])
 
         all_embeddings: list[list[float]] = []
@@ -467,10 +449,12 @@ class OpenAIEmbedding(BaseEmbedding):
                 prompt_tokens=total_prompt_tokens,
                 completion_tokens=0,
                 total_tokens=total_prompt_tokens,
-            ) if total_prompt_tokens > 0 else None,
+            )
+            if total_prompt_tokens > 0
+            else None,
             duration=time.time() - start_time,
             dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
-            num_texts=len(texts),
+            num_texts=len(texts_list),
         )
 
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)

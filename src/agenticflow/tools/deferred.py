@@ -308,7 +308,13 @@ class DeferredWaiter:
                 else:
                     # Default: check for "complete", "done", "finished" states
                     state = status.get("state", status.get("status", ""))
-                    if state.lower() in ("complete", "completed", "done", "finished", "success"):
+                    if state.lower() in (
+                        "complete",
+                        "completed",
+                        "done",
+                        "finished",
+                        "success",
+                    ):
                         self.deferred.complete(status)
                         return status
                     elif state.lower() in ("failed", "error"):
@@ -443,7 +449,7 @@ class DeferredManager:
 
             # Trim history
             if len(self._completed) > self._max_history:
-                self._completed = self._completed[-self._max_history:]
+                self._completed = self._completed[-self._max_history :]
 
     def cancel(self, job_id: str) -> bool:
         """
@@ -482,9 +488,15 @@ class DeferredManager:
         return {
             "pending": self.pending_count,
             "completed": len([d for d in self._completed if d.is_completed]),
-            "failed": len([d for d in self._completed if d._status == DeferredStatus.FAILED]),
-            "timed_out": len([d for d in self._completed if d._status == DeferredStatus.TIMEOUT]),
-            "cancelled": len([d for d in self._completed if d._status == DeferredStatus.CANCELLED]),
+            "failed": len(
+                [d for d in self._completed if d._status == DeferredStatus.FAILED]
+            ),
+            "timed_out": len(
+                [d for d in self._completed if d._status == DeferredStatus.TIMEOUT]
+            ),
+            "cancelled": len(
+                [d for d in self._completed if d._status == DeferredStatus.CANCELLED]
+            ),
             "pending_jobs": self.pending_jobs,
         }
 

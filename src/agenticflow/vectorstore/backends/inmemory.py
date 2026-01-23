@@ -103,6 +103,7 @@ class InMemoryBackend:
         # Check NumPy availability
         try:
             import numpy as np  # noqa: F401
+
             self._numpy_available = True
         except ImportError:
             self._numpy_available = False
@@ -127,7 +128,9 @@ class InMemoryBackend:
             msg = f"Lengths must match: ids={len(ids)}, embeddings={len(embeddings)}, documents={len(documents)}"
             raise ValueError(msg)
 
-        for doc_id, embedding, document in zip(ids, embeddings, documents, strict=False):
+        for doc_id, embedding, document in zip(
+            ids, embeddings, documents, strict=False
+        ):
             # Normalize if requested
             if self.normalize:
                 embedding = self._normalize_vector(embedding)
@@ -229,11 +232,13 @@ class InMemoryBackend:
         # Return top k
         results = []
         for score, stored in scores[:k]:
-            results.append(SearchResult(
-                document=stored.document,
-                score=score,
-                id=stored.id,
-            ))
+            results.append(
+                SearchResult(
+                    document=stored.document,
+                    score=score,
+                    id=stored.id,
+                )
+            )
 
         return results
 
@@ -287,11 +292,13 @@ class InMemoryBackend:
         results = []
         for idx in top_indices:
             stored = filtered_docs[idx]
-            results.append(SearchResult(
-                document=stored.document,
-                score=float(scores[idx]),
-                id=stored.id,
-            ))
+            results.append(
+                SearchResult(
+                    document=stored.document,
+                    score=float(scores[idx]),
+                    id=stored.id,
+                )
+            )
 
         return results
 
@@ -369,7 +376,11 @@ class InMemoryBackend:
         Checks both DocumentMetadata fields and custom dict.
         """
         metadata_dict = doc.metadata.to_dict()
-        custom = metadata_dict.get("custom", {}) if isinstance(metadata_dict.get("custom"), dict) else {}
+        custom = (
+            metadata_dict.get("custom", {})
+            if isinstance(metadata_dict.get("custom"), dict)
+            else {}
+        )
         for key, value in filter.items():
             if key in metadata_dict:
                 if metadata_dict[key] != value:

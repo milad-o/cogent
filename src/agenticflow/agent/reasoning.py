@@ -269,21 +269,18 @@ STYLE_INSTRUCTIONS = {
 - Identify cause and effect relationships
 - Use structured step-by-step reasoning
 - Support conclusions with evidence""",
-
     ReasoningStyle.EXPLORATORY: """
 **Exploratory Style**:
 - Consider multiple possible approaches
 - Weigh pros and cons of each option
 - Think about edge cases and alternatives
 - Be open to unexpected solutions""",
-
     ReasoningStyle.CRITICAL: """
 **Critical Style**:
 - Question assumptions in the problem
 - Look for potential flaws or gaps
 - Consider what could go wrong
 - Validate information before using it""",
-
     ReasoningStyle.CREATIVE: """
 **Creative Style**:
 - Think beyond conventional solutions
@@ -323,9 +320,7 @@ def build_reasoning_prompt(
     """
     style_instructions = STYLE_INSTRUCTIONS.get(config.style, "")
 
-    REASONING_SYSTEM_PROMPT.format(
-        style_instructions=style_instructions
-    )
+    REASONING_SYSTEM_PROMPT.format(style_instructions=style_instructions)
 
     prompt_parts = [
         f"Task: {task}",
@@ -362,6 +357,7 @@ def extract_thinking(response: str) -> tuple[str | None, str]:
 
     return thinking_content, cleaned_response
 
+
 def extract_ready(response: str) -> bool:
     """Extract <ready> tag to check if AI is ready to proceed.
 
@@ -382,6 +378,7 @@ def extract_ready(response: str) -> bool:
 
     return False  # Default to not ready if tag not found
 
+
 def estimate_confidence(thinking: str) -> float:
     """
     Estimate confidence level from thinking content.
@@ -398,14 +395,27 @@ def estimate_confidence(thinking: str) -> float:
 
     # High confidence indicators
     high_confidence = [
-        "i'm confident", "i am confident", "clearly", "definitely",
-        "this will work", "straightforward", "simple", "obvious",
+        "i'm confident",
+        "i am confident",
+        "clearly",
+        "definitely",
+        "this will work",
+        "straightforward",
+        "simple",
+        "obvious",
     ]
 
     # Low confidence indicators
     low_confidence = [
-        "not sure", "uncertain", "unclear", "might", "maybe",
-        "could be", "need more", "ambiguous", "risky",
+        "not sure",
+        "uncertain",
+        "unclear",
+        "might",
+        "maybe",
+        "could be",
+        "need more",
+        "ambiguous",
+        "risky",
     ]
 
     high_count = sum(1 for phrase in high_confidence if phrase in thinking_lower)

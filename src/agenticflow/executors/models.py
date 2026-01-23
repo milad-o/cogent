@@ -89,12 +89,14 @@ class ExecutionPlan:
             ID of the new call (e.g., "call_0").
         """
         call_id = f"call_{len(self.calls)}"
-        self.calls.append(ToolCall(
-            id=call_id,
-            tool_name=tool_name,
-            args=args,
-            depends_on=depends_on or [],
-        ))
+        self.calls.append(
+            ToolCall(
+                id=call_id,
+                tool_name=tool_name,
+                args=args,
+                depends_on=depends_on or [],
+            )
+        )
         return call_id
 
     def get_ready_calls(self, completed: set[str]) -> list[ToolCall]:
@@ -107,7 +109,8 @@ class ExecutionPlan:
             List of calls that can be executed now.
         """
         return [
-            call for call in self.calls
+            call
+            for call in self.calls
             if call.status == "pending" and call.is_ready(completed)
         ]
 
@@ -128,8 +131,7 @@ class ExecutionPlan:
 
         while remaining:
             wave = [
-                c.id for c in self.calls
-                if c.id in remaining and c.is_ready(completed)
+                c.id for c in self.calls if c.id in remaining and c.is_ready(completed)
             ]
             if not wave:
                 # Circular dependency or error

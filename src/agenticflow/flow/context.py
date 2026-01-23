@@ -56,7 +56,9 @@ class FlowContext:
     original_task: str | None = None
     _emit_fn: Callable[[str, dict[str, object]], Awaitable[None]] | None = None
 
-    async def emit(self, event_type: str, data: dict[str, object] | None = None) -> None:
+    async def emit(
+        self, event_type: str, data: dict[str, object] | None = None
+    ) -> None:
         """Emit a new event into the flow.
 
         Args:
@@ -108,7 +110,9 @@ class ExecutionContext:
     event: Event | None = None
     task: str = ""
     data: dict[str, object] = field(default_factory=dict)
-    pending_responses: dict[str, asyncio.Future[AgentResponse]] = field(default_factory=dict)
+    pending_responses: dict[str, asyncio.Future[AgentResponse]] = field(
+        default_factory=dict
+    )
     event_queue: asyncio.Queue[Event] | None = None
 
     async def delegate_to(
@@ -184,7 +188,9 @@ class ExecutionContext:
 
         return None
 
-    def reply(self, result: object, success: bool = True, error: str | None = None) -> AgentResponse:
+    def reply(
+        self, result: object, success: bool = True, error: str | None = None
+    ) -> AgentResponse:
         """Create a response to an agent request.
 
         This is used by agents that receive delegated tasks to send results back.
@@ -219,7 +225,9 @@ class ExecutionContext:
         return create_response(
             from_agent=self.current_agent,
             to_agent=request_data.get("from_agent", ""),
-            correlation_id=request_data.get("correlation_id", self.event.correlation_id or ""),
+            correlation_id=request_data.get(
+                "correlation_id", self.event.correlation_id or ""
+            ),
             result=result,
             success=success,
             error=error,

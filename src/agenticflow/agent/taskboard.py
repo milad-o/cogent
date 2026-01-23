@@ -60,8 +60,10 @@ if TYPE_CHECKING:
 # Task Status
 # ============================================================================
 
+
 class TaskStatus(Enum):
     """Status of a task."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     DONE = "done"
@@ -73,9 +75,11 @@ class TaskStatus(Enum):
 # Data Classes
 # ============================================================================
 
+
 @dataclass
 class Task:
     """A trackable task item."""
+
     id: str
     description: str
     status: TaskStatus = TaskStatus.PENDING
@@ -128,6 +132,7 @@ class Task:
 @dataclass
 class Note:
     """A note or observation."""
+
     id: str
     content: str
     category: str = "observation"  # observation, insight, question
@@ -144,6 +149,7 @@ class Note:
 @dataclass
 class ErrorRecord:
     """Record of an error for learning."""
+
     tool_name: str
     error_type: str
     error_message: str
@@ -156,6 +162,7 @@ class ErrorRecord:
 @dataclass
 class LearnedPattern:
     """A learned failure pattern with optional fix."""
+
     tool_name: str
     pattern: str
     count: int = 1
@@ -166,6 +173,7 @@ class LearnedPattern:
 @dataclass
 class Reflection:
     """A reflection or lesson learned."""
+
     content: str
     category: str  # success, failure, insight, strategy
     context: str | None = None
@@ -175,6 +183,7 @@ class Reflection:
 # ============================================================================
 # TaskBoard Configuration
 # ============================================================================
+
 
 @dataclass
 class TaskBoardConfig:
@@ -188,6 +197,7 @@ class TaskBoardConfig:
         include_instructions: Add task management instructions to system prompt.
         emit_events: Emit events to event bus for observability.
     """
+
     auto_verify: bool = True
     max_tasks: int = 50
     max_notes: int = 30
@@ -199,6 +209,7 @@ class TaskBoardConfig:
 # ============================================================================
 # TaskBoard
 # ============================================================================
+
 
 class TaskBoard:
     """
@@ -273,11 +284,14 @@ class TaskBoard:
         self._tasks[task_id] = Task(id=task_id, description=description)
 
         # Emit event
-        self._emit_event("taskboard.task_added", {
-            "task_id": task_id,
-            "description": description,
-            "status": TaskStatus.PENDING.value,
-        })
+        self._emit_event(
+            "taskboard.task_added",
+            {
+                "task_id": task_id,
+                "description": description,
+                "status": TaskStatus.PENDING.value,
+            },
+        )
 
         # Trim if over limit
         if len(self._tasks) > self.config.max_tasks:
@@ -333,10 +347,13 @@ class TaskBoard:
         task = self.find_task(query)
         if task:
             task.start()
-            self._emit_event("taskboard.task_started", {
-                "task_id": task.id,
-                "description": task.description,
-            })
+            self._emit_event(
+                "taskboard.task_started",
+                {
+                    "task_id": task.id,
+                    "description": task.description,
+                },
+            )
             return True
         return False
 
@@ -353,11 +370,14 @@ class TaskBoard:
         task = self.find_task(query)
         if task:
             task.complete(result)
-            self._emit_event("taskboard.task_completed", {
-                "task_id": task.id,
-                "description": task.description,
-                "result": result,
-            })
+            self._emit_event(
+                "taskboard.task_completed",
+                {
+                    "task_id": task.id,
+                    "description": task.description,
+                    "result": result,
+                },
+            )
             return True
         return False
 
@@ -374,11 +394,14 @@ class TaskBoard:
         task = self.find_task(query)
         if task:
             task.fail(error)
-            self._emit_event("taskboard.task_failed", {
-                "task_id": task.id,
-                "description": task.description,
-                "error": error,
-            })
+            self._emit_event(
+                "taskboard.task_failed",
+                {
+                    "task_id": task.id,
+                    "description": task.description,
+                    "error": error,
+                },
+            )
             return True
         return False
 
@@ -400,7 +423,8 @@ class TaskBoard:
     def get_pending(self) -> list[Task]:
         """Get pending/in-progress tasks."""
         return [
-            t for t in self._tasks.values()
+            t
+            for t in self._tasks.values()
             if t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS)
         ]
 
@@ -442,19 +466,24 @@ class TaskBoard:
         self._notes.append(Note(id=note_id, content=content, category=category))
 
         # Emit event
-        self._emit_event("taskboard.note_added", {
-            "note_id": note_id,
-            "content": content,
-            "category": category,
-        })
+        self._emit_event(
+            "taskboard.note_added",
+            {
+                "note_id": note_id,
+                "content": content,
+                "category": category,
+            },
+        )
 
         # Trim if over limit
         if len(self._notes) > self.config.max_notes:
-            self._notes = self._notes[-self.config.max_notes:]
+            self._notes = self._notes[-self.config.max_notes :]
 
         return note_id
 
-    def get_notes(self, category: str | None = None, limit: int | None = None) -> list[Note]:
+    def get_notes(
+        self, category: str | None = None, limit: int | None = None
+    ) -> list[Note]:
         """Get notes.
 
         Args:
@@ -500,12 +529,14 @@ class TaskBoard:
         if not self.config.track_errors:
             return
 
-        self._errors.append(ErrorRecord(
-            tool_name=tool_name,
-            error_type=type(error).__name__,
-            error_message=str(error),
-            args=args or {},
-        ))
+        self._errors.append(
+            ErrorRecord(
+                tool_name=tool_name,
+                error_type=type(error).__name__,
+                error_message=str(error),
+                args=args or {},
+            )
+        )
 
         # Keep recent errors only
         if len(self._errors) > 20:
@@ -534,8 +565,8 @@ class TaskBoard:
         pattern = message
         pattern = re.sub(r"'[^']*'", "'...'", pattern)
         pattern = re.sub(r'"[^"]*"', '"..."', pattern)
-        pattern = re.sub(r'\b\d+\b', '#', pattern)
-        pattern = re.sub(r'/[\w/.-]+', '<path>', pattern)
+        pattern = re.sub(r"\b\d+\b", "#", pattern)
+        pattern = re.sub(r"/[\w/.-]+", "<path>", pattern)
         return pattern[:100] if len(pattern) > 100 else pattern
 
     def get_known_fix(self, tool_name: str, error_message: str) -> str | None:
@@ -572,11 +603,13 @@ class TaskBoard:
             category: success, failure, insight, or strategy.
             context: Optional context.
         """
-        self._reflections.append(Reflection(
-            content=content,
-            category=category,
-            context=context or self._goal,
-        ))
+        self._reflections.append(
+            Reflection(
+                content=content,
+                category=category,
+                context=context or self._goal,
+            )
+        )
 
         # Keep recent reflections
         if len(self._reflections) > 20:
@@ -621,7 +654,9 @@ class TaskBoard:
         if notes:
             lines.append(f"📝 Notes ({len(self._notes)} total):")
             for note in notes:
-                icon = {"observation": "•", "insight": "💡", "question": "❓"}.get(note.category, "•")
+                icon = {"observation": "•", "insight": "💡", "question": "❓"}.get(
+                    note.category, "•"
+                )
                 lines.append(f"  {icon} {note.content}")
 
         return "\n".join(lines) if lines else "Empty taskboard"
@@ -644,7 +679,13 @@ class TaskBoard:
         if pending or done:
             lines = ["**Progress**:"]
             for t in done[-3:]:
-                result_str = f" → {t.result[:30]}..." if t.result and len(t.result) > 30 else f" → {t.result}" if t.result else ""
+                result_str = (
+                    f" → {t.result[:30]}..."
+                    if t.result and len(t.result) > 30
+                    else f" → {t.result}"
+                    if t.result
+                    else ""
+                )
                 lines.append(f"  ✓ {t.description}{result_str}")
             for t in pending:
                 icon = "→" if t.status == TaskStatus.IN_PROGRESS else "○"
@@ -664,7 +705,12 @@ class TaskBoard:
         if reflections:
             lines = ["**Learned**:"]
             for r in reflections:
-                icon = {"success": "✓", "failure": "✗", "insight": "💡", "strategy": "📋"}.get(r.category, "•")
+                icon = {
+                    "success": "✓",
+                    "failure": "✗",
+                    "insight": "💡",
+                    "strategy": "📋",
+                }.get(r.category, "•")
                 lines.append(f"  {icon} {r.content}")
             sections.append("\n".join(lines))
 
@@ -691,7 +737,9 @@ class TaskBoard:
         # Check for tasks without results
         no_result = [t for t in done if not t.result]
         if no_result:
-            issues.append(f"{len(no_result)} completed task(s) have no result documented")
+            issues.append(
+                f"{len(no_result)} completed task(s) have no result documented"
+            )
 
         return {
             "complete": len(pending) == 0 and len(failed) == 0,
@@ -711,7 +759,10 @@ class TaskBoard:
             "goal": self._goal,
             "tasks": [t.to_dict() for t in self._tasks.values()],
             "notes": [n.to_dict() for n in self._notes],
-            "reflections": [{"content": r.content, "category": r.category} for r in self._reflections],
+            "reflections": [
+                {"content": r.content, "category": r.category}
+                for r in self._reflections
+            ],
         }
 
     def clear(self) -> None:
@@ -766,15 +817,14 @@ def create_taskboard_tools(board: TaskBoard) -> list[BaseTool]:
         """Create a task list for multi-step work."""
         # Handle various LLM parameter naming
         task_list = (
-            kwargs.get("tasks")
-            or kwargs.get("task_list")
-            or kwargs.get("items")
-            or []
+            kwargs.get("tasks") or kwargs.get("task_list") or kwargs.get("items") or []
         )
         if not task_list:
             return "❌ No tasks provided. Pass a list of task descriptions."
 
-        goal_text = kwargs.get("goal") or kwargs.get("objective") or kwargs.get("target")
+        goal_text = (
+            kwargs.get("goal") or kwargs.get("objective") or kwargs.get("target")
+        )
 
         if goal_text:
             board.set_goal(goal_text)
@@ -796,7 +846,11 @@ def create_taskboard_tools(board: TaskBoard) -> list[BaseTool]:
         description="Create a task list for multi-step work. Use at the start of complex tasks to break them into steps.",
         func=_plan_tasks_impl,
         args_schema={
-            "tasks": {"type": "array", "items": {"type": "string"}, "description": "List of task descriptions"},
+            "tasks": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of task descriptions",
+            },
             "goal": {"type": "string", "description": "Optional overall goal"},
         },
     )
@@ -844,7 +898,13 @@ def create_taskboard_tools(board: TaskBoard) -> list[BaseTool]:
 
         status_lower = str(status).lower()
 
-        if status_lower in ("started", "start", "in_progress", "working", "in-progress"):
+        if status_lower in (
+            "started",
+            "start",
+            "in_progress",
+            "working",
+            "in-progress",
+        ):
             board.start_task(str(task_id))
             return f"→ Started: {found.description}"
 
@@ -862,7 +922,9 @@ def create_taskboard_tools(board: TaskBoard) -> list[BaseTool]:
 
         elif status_lower in ("failed", "fail", "error"):
             board.fail_task(str(task_id), result or "Unknown error")
-            return f"✗ Failed: {found.description}\n  Error: {result or 'Unknown error'}"
+            return (
+                f"✗ Failed: {found.description}\n  Error: {result or 'Unknown error'}"
+            )
 
         elif status_lower in ("skip", "skipped"):
             board.skip_task(str(task_id))
@@ -876,9 +938,18 @@ def create_taskboard_tools(board: TaskBoard) -> list[BaseTool]:
         description="Mark a task as started, done, or failed. Use task name or number to identify the task.",
         func=_update_task_impl,
         args_schema={
-            "task_name": {"type": "string", "description": "Task name/description (partial match OK) or task number (1-based)"},
-            "status": {"type": "string", "description": "New status: 'started', 'done', 'failed', or 'skip'"},
-            "result": {"type": "string", "description": "Optional result message or error description"},
+            "task_name": {
+                "type": "string",
+                "description": "Task name/description (partial match OK) or task number (1-based)",
+            },
+            "status": {
+                "type": "string",
+                "description": "New status: 'started', 'done', 'failed', or 'skip'",
+            },
+            "result": {
+                "type": "string",
+                "description": "Optional result message or error description",
+            },
         },
     )
 
@@ -905,7 +976,10 @@ def create_taskboard_tools(board: TaskBoard) -> list[BaseTool]:
         func=_add_note_impl,
         args_schema={
             "note": {"type": "string", "description": "The note content"},
-            "category": {"type": "string", "description": "Category: observation, insight, or question"},
+            "category": {
+                "type": "string",
+                "description": "Category: observation, insight, or question",
+            },
         },
     )
 

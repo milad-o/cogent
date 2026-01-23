@@ -53,8 +53,7 @@ class WordLoader(BaseLoader):
         path = Path(path)
         if path.suffix.lower() == ".doc":
             raise ValueError(
-                "Old .doc format is not supported. "
-                "Please convert to .docx format."
+                "Old .doc format is not supported. Please convert to .docx format."
             )
 
         try:

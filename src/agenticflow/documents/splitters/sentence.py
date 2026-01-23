@@ -27,9 +27,24 @@ class SentenceSplitter(BaseSplitter):
 
     # Common abbreviations that don't end sentences
     ABBREVIATIONS = {
-        "mr", "mrs", "ms", "dr", "prof", "sr", "jr",
-        "vs", "etc", "fig", "eg", "ie", "al", "vol",
-        "inc", "ltd", "corp", "co",
+        "mr",
+        "mrs",
+        "ms",
+        "dr",
+        "prof",
+        "sr",
+        "jr",
+        "vs",
+        "etc",
+        "fig",
+        "eg",
+        "ie",
+        "al",
+        "vol",
+        "inc",
+        "ltd",
+        "corp",
+        "co",
     }
 
     def __init__(
@@ -50,7 +65,7 @@ class SentenceSplitter(BaseSplitter):
     def _split_sentences(self, text: str) -> list[str]:
         """Split text into individual sentences."""
         # Pattern matches sentence-ending punctuation followed by space and capital
-        pattern = r'(?<=[.!?])\s+(?=[A-Z])'
+        pattern = r"(?<=[.!?])\s+(?=[A-Z])"
 
         # Split on the pattern
         raw_sentences = re.split(pattern, text)
@@ -65,7 +80,9 @@ class SentenceSplitter(BaseSplitter):
 
             # Check if previous sentence ended with abbreviation
             if current:
-                last_word = current.split()[-1].rstrip(".").lower() if current.split() else ""
+                last_word = (
+                    current.split()[-1].rstrip(".").lower() if current.split() else ""
+                )
                 if last_word in self.ABBREVIATIONS:
                     current = current + " " + sent
                     continue

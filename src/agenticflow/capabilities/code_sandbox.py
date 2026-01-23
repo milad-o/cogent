@@ -51,7 +51,9 @@ class ExecutionResult:
             "success": self.success,
             "output": self.output,
             "error": self.error,
-            "return_value": repr(self.return_value) if self.return_value is not None else None,
+            "return_value": repr(self.return_value)
+            if self.return_value is not None
+            else None,
             "execution_time_ms": self.execution_time_ms,
             "executed_at": self.executed_at.isoformat(),
         }
@@ -59,11 +61,13 @@ class ExecutionResult:
 
 class TimeoutError(Exception):
     """Raised when execution times out."""
+
     pass
 
 
 class SecurityError(Exception):
     """Raised when code violates security constraints."""
+
     pass
 
 
@@ -185,7 +189,14 @@ class CodeValidator(ast.NodeVisitor):
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
         # Block access to dangerous attributes
-        dangerous_attrs = {"__class__", "__bases__", "__subclasses__", "__mro__", "__code__", "__globals__"}
+        dangerous_attrs = {
+            "__class__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__code__",
+            "__globals__",
+        }
         if node.attr in dangerous_attrs:
             self.errors.append(f"Blocked attribute access: {node.attr}")
         self.generic_visit(node)
@@ -345,6 +356,7 @@ class CodeSandbox(BaseCapability):
             ExecutionResult with output and status
         """
         import time
+
         start_time = time.perf_counter()
 
         # Validate first
@@ -359,79 +371,82 @@ class CodeSandbox(BaseCapability):
             return result
 
         # Create restricted globals
-        safe_builtins = {
-            k: v for k, v in __builtins__.items()
-            if k not in self._blocked_builtins
-        } if isinstance(__builtins__, dict) else {
-            k: getattr(__builtins__, k)
-            for k in dir(__builtins__)
-            if not k.startswith("_") and k not in self._blocked_builtins
-        }
+        safe_builtins = (
+            {k: v for k, v in __builtins__.items() if k not in self._blocked_builtins}
+            if isinstance(__builtins__, dict)
+            else {
+                k: getattr(__builtins__, k)
+                for k in dir(__builtins__)
+                if not k.startswith("_") and k not in self._blocked_builtins
+            }
+        )
 
         # Add safe functions
-        safe_builtins.update({
-            "print": print,
-            "len": len,
-            "range": range,
-            "enumerate": enumerate,
-            "zip": zip,
-            "map": map,
-            "filter": filter,
-            "sorted": sorted,
-            "reversed": reversed,
-            "sum": sum,
-            "min": min,
-            "max": max,
-            "abs": abs,
-            "round": round,
-            "pow": pow,
-            "divmod": divmod,
-            "int": int,
-            "float": float,
-            "str": str,
-            "bool": bool,
-            "list": list,
-            "dict": dict,
-            "set": set,
-            "tuple": tuple,
-            "frozenset": frozenset,
-            "type": type,
-            "isinstance": isinstance,
-            "issubclass": issubclass,
-            "callable": callable,
-            "repr": repr,
-            "ascii": ascii,
-            "chr": chr,
-            "ord": ord,
-            "hex": hex,
-            "oct": oct,
-            "bin": bin,
-            "format": format,
-            "slice": slice,
-            "all": all,
-            "any": any,
-            "iter": iter,
-            "next": next,
-            "id": id,
-            "hash": hash,
-            "object": object,
-            "staticmethod": staticmethod,
-            "classmethod": classmethod,
-            "property": property,
-            "super": super,
-            "Exception": Exception,
-            "ValueError": ValueError,
-            "TypeError": TypeError,
-            "KeyError": KeyError,
-            "IndexError": IndexError,
-            "AttributeError": AttributeError,
-            "RuntimeError": RuntimeError,
-            "StopIteration": StopIteration,
-            "ZeroDivisionError": ZeroDivisionError,
-            "True": True,
-            "False": False,
-            "None": None,
-        })
+        safe_builtins.update(
+            {
+                "print": print,
+                "len": len,
+                "range": range,
+                "enumerate": enumerate,
+                "zip": zip,
+                "map": map,
+                "filter": filter,
+                "sorted": sorted,
+                "reversed": reversed,
+                "sum": sum,
+                "min": min,
+                "max": max,
+                "abs": abs,
+                "round": round,
+                "pow": pow,
+                "divmod": divmod,
+                "int": int,
+                "float": float,
+                "str": str,
+                "bool": bool,
+                "list": list,
+                "dict": dict,
+                "set": set,
+                "tuple": tuple,
+                "frozenset": frozenset,
+                "type": type,
+                "isinstance": isinstance,
+                "issubclass": issubclass,
+                "callable": callable,
+                "repr": repr,
+                "ascii": ascii,
+                "chr": chr,
+                "ord": ord,
+                "hex": hex,
+                "oct": oct,
+                "bin": bin,
+                "format": format,
+                "slice": slice,
+                "all": all,
+                "any": any,
+                "iter": iter,
+                "next": next,
+                "id": id,
+                "hash": hash,
+                "object": object,
+                "staticmethod": staticmethod,
+                "classmethod": classmethod,
+                "property": property,
+                "super": super,
+                "Exception": Exception,
+                "ValueError": ValueError,
+                "TypeError": TypeError,
+                "KeyError": KeyError,
+                "IndexError": IndexError,
+                "AttributeError": AttributeError,
+                "RuntimeError": RuntimeError,
+                "StopIteration": StopIteration,
+                "ZeroDivisionError": ZeroDivisionError,
+                "True": True,
+                "False": False,
+                "None": None,
+            }
+        )
 
         restricted_globals = {"__builtins__": safe_builtins}
 
@@ -475,17 +490,20 @@ class CodeSandbox(BaseCapability):
 
             # Only use signal on Unix systems AND in main thread
             import threading
+
             use_signal = (
-                hasattr(signal, "SIGALRM") and
-                threading.current_thread() is threading.main_thread()
+                hasattr(signal, "SIGALRM")
+                and threading.current_thread() is threading.main_thread()
             )
             if use_signal:
                 old_handler = signal.signal(signal.SIGALRM, timeout_handler)
                 signal.alarm(self._timeout)
 
             try:
-                with contextlib.redirect_stdout(stdout_capture), \
-                     contextlib.redirect_stderr(stderr_capture):
+                with (
+                    contextlib.redirect_stdout(stdout_capture),
+                    contextlib.redirect_stderr(stderr_capture),
+                ):
                     # Execute the code
                     exec(compile(code, "<sandbox>", "exec"), restricted_globals)
 
@@ -512,7 +530,7 @@ class CodeSandbox(BaseCapability):
 
         # Truncate if needed
         if len(output) > self._max_output_length:
-            output = output[:self._max_output_length] + "\n[Output truncated...]"
+            output = output[: self._max_output_length] + "\n[Output truncated...]"
 
         execution_time = (time.perf_counter() - start_time) * 1000
 

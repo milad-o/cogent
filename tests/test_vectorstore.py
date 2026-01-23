@@ -478,14 +478,16 @@ class TestMockEmbeddings:
     @pytest.mark.asyncio
     async def test_embed_texts(self, embeddings: MockEmbeddings) -> None:
         """Test embedding multiple texts."""
-        vectors = await embeddings.embed_texts(["Hello", "World"])
+        result = await embeddings.embed(["Hello", "World"])
+        vectors = result.embeddings
         assert len(vectors) == 2
         assert all(len(v) == 128 for v in vectors)
 
     @pytest.mark.asyncio
     async def test_embed_query(self, embeddings: MockEmbeddings) -> None:
-        """Test embedding a single query."""
-        vector = await embeddings.aembed_one("Hello")
+        """Test embedding a single text."""
+        result = await embeddings.embed("Hello")
+        vector = result.embeddings[0]
         assert len(vector) == 128
 
     @pytest.mark.asyncio
@@ -518,8 +520,9 @@ class TestMockEmbeddings:
         assert abs(magnitude - 1.0) < 0.01  # Should be ~1
 
     def test_sync_embed(self, embeddings: MockEmbeddings) -> None:
-        """Test synchronous embedding."""
-        result = embeddings.embed(["Hello", "World"])
+        """Test deprecated synchronous embedding method."""
+        with pytest.warns(DeprecationWarning, match="embed_texts.*deprecated"):
+            result = embeddings.embed_texts(["Hello", "World"])
         assert len(result.embeddings) == 2
         assert all(len(v) == 128 for v in result.embeddings)
 

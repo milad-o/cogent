@@ -49,6 +49,7 @@ class SemanticSplitter(BaseSplitter):
         """Get or create embedding model."""
         if self._embedding_model is None:
             from agenticflow.models import EmbeddingModel
+
             self._embedding_model = EmbeddingModel()
         return self._embedding_model
 
@@ -74,7 +75,8 @@ class SemanticSplitter(BaseSplitter):
             return [Document(text=text, metadata={"chunk_index": 0})]
 
         # Get embeddings for all sentences
-        embeddings = await self.embedding_model.aembed(sentences)
+        embeddings_result = await self.embedding_model.embed(sentences)
+        embeddings = embeddings_result.embeddings
 
         # Find breakpoints based on similarity
         breakpoints = self._find_breakpoints(embeddings)
@@ -99,10 +101,12 @@ class SemanticSplitter(BaseSplitter):
                     sub_chunks = sub_splitter.split_text(content)
                     chunks.extend(sub_chunks)
                 else:
-                    chunks.append(Document(
-                        text=content,
-                        metadata={"chunk_index": len(chunks)},
-                    ))
+                    chunks.append(
+                        Document(
+                            text=content,
+                            metadata={"chunk_index": len(chunks)},
+                        )
+                    )
 
                 current_sentences = []
 
@@ -128,7 +132,9 @@ class SemanticSplitter(BaseSplitter):
                 sim = self._cosine_similarity(prev_emb, curr_embedding)
                 similarities.append(sim)
 
-            avg_similarity = sum(similarities) / len(similarities) if similarities else 1.0
+            avg_similarity = (
+                sum(similarities) / len(similarities) if similarities else 1.0
+            )
 
             if avg_similarity < self.breakpoint_threshold:
                 breakpoints.add(i - 1)  # Break after previous sentence

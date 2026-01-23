@@ -15,6 +15,7 @@ from agenticflow.capabilities.knowledge_graph.backends.sqlite import SQLiteGraph
 # Neo4j is optional - only import if neo4j package is installed
 try:
     from agenticflow.capabilities.knowledge_graph.backends.neo4j import Neo4jGraph
+
     _HAS_NEO4J = True
 except ImportError:
     Neo4jGraph = None  # type: ignore

@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-01-23
+
+### Changed
+- **Embedding API Standardization**: Complete overhaul of embedding models interface for consistency and simplicity
+  - **Single Async Method**: All embedding models now use `async def embed(texts: str | list[str]) → EmbeddingResult`
+    - Accepts single text or list of texts (automatic normalization)
+    - Always returns `EmbeddingResult` with full metadata (tokens, duration, dimensions, model, num_texts)
+    - Async-only (removed sync methods for cleaner API)
+  - **VectorStore Protocol Methods**: Added semantic distinction where needed
+    - `embed_documents(texts: str | list[str])` - For document embedding
+    - `embed_query(query: str)` - For query embedding (e.g., Cohere uses different embeddings for queries vs documents)
+  - **Metadata Everywhere**: All methods return `EmbeddingResult` with comprehensive metadata
+    - Previously: VectorStore discarded metadata, only kept vectors
+    - Now: Full cost tracking, performance monitoring, token usage available
+  - **Backward Compatibility**: Deprecated methods still available with warnings
+    - `embed_texts()`, `embed_text()`, `aembed_texts()`, `aembed_text()`, `aembed_one()` all deprecated
+    - Clear migration path to new `embed()` method
+  - **Updated Providers**: Standardized across all 9 embedding providers
+    - OpenAI, Azure OpenAI, Mock, Ollama, Gemini, Cohere, Cloudflare, Custom, Mistral
+
+### Added
+- `EmbeddingResult` return type for all embedding methods (with embeddings + metadata)
+- `embed_documents()` and `embed_query()` protocol methods in `BaseEmbedding`
+- Comprehensive metadata tracking for embedding operations
+- Input normalization (`str | list[str]`) across all embedding methods
+
+### Removed
+- Sync embedding methods (`embed_texts()`, `embed_text()`) - use async `embed()` instead
+- Old async methods (`aembed_texts()`, `aembed_text()`, `aembed_one()`) - consolidated into `embed()`
+
+### Fixed
+- Missing `EmbeddingResult` imports across all embedding model files
+- Missing `asyncio` import in `BaseEmbedding.embed_one()` deprecated method
+- Code formatting: 275 auto-fixes applied (whitespace, imports, nested ifs, error handling)
+- Reduced linting errors from 370 to 94 (75% reduction)
+
 ## [1.16.0] - 2026-01-23
 
 ### Changed

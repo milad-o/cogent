@@ -22,10 +22,11 @@ from agenticflow.interceptors.base import (
 
 class PIIAction(Enum):
     """Action to take when PII is detected."""
-    MASK = "mask"      # Replace PII with [REDACTED]
-    BLOCK = "block"    # Stop execution
-    WARN = "warn"      # Log warning but continue
-    LOG = "log"        # Log detection, no modification
+
+    MASK = "mask"  # Replace PII with [REDACTED]
+    BLOCK = "block"  # Stop execution
+    WARN = "warn"  # Log warning but continue
+    LOG = "log"  # Log detection, no modification
 
 
 # Common PII patterns
@@ -142,12 +143,14 @@ class PIIShield(Interceptor):
         matches = []
         for pii_type, pattern in self._patterns.items():
             for match in pattern.finditer(text):
-                matches.append((
-                    pii_type,
-                    match.group(),
-                    match.start(),
-                    match.end(),
-                ))
+                matches.append(
+                    (
+                        pii_type,
+                        match.group(),
+                        match.start(),
+                        match.end(),
+                    )
+                )
         return matches
 
     def _mask_text(self, text: str) -> tuple[str, list[tuple[str, str]]]:
@@ -260,8 +263,7 @@ class PIIShield(Interceptor):
 
         # Track detections
         ctx.state["pii_shield"]["detections"].extend(
-            {"type": t, "value": v, "source": "message"}
-            for t, v in all_detections
+            {"type": t, "value": v, "source": "message"} for t, v in all_detections
         )
 
         # Handle based on action

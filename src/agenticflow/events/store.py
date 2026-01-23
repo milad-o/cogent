@@ -131,7 +131,7 @@ class InMemoryEventStore(EventStore):
 
         # Trim if needed
         if len(self._events[flow_id]) > self._max_events:
-            self._events[flow_id] = self._events[flow_id][-self._max_events:]
+            self._events[flow_id] = self._events[flow_id][-self._max_events :]
 
     async def get_events(
         self,

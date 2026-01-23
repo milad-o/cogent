@@ -12,7 +12,7 @@ Usage:
 
     # Embeddings
     embedder = OllamaEmbedding(model="nomic-embed-text")
-    vectors = await embedder.aembed(["Hello", "World"])
+    result = await embedder.aembed_texts(["Hello", "World"])
 """
 
 from __future__ import annotations
@@ -23,7 +23,12 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from agenticflow.core.messages import MessageMetadata, TokenUsage
+from agenticflow.core.messages import (
+    EmbeddingMetadata,
+    EmbeddingResult,
+    MessageMetadata,
+    TokenUsage,
+)
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -42,14 +47,16 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
             formatted.append(tool.to_openai())
         elif hasattr(tool, "name") and hasattr(tool, "description"):
             schema = getattr(tool, "args_schema", {}) or {}
-            formatted.append({
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description or "",
-                    "parameters": schema,
-                },
-            })
+            formatted.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description or "",
+                        "parameters": schema,
+                    },
+                }
+            )
         elif isinstance(tool, dict):
             formatted.append(tool)
     return formatted
@@ -65,22 +72,35 @@ def _parse_response(response: Any) -> AIMessage:
     tool_calls = []
     if message.tool_calls:
         for tc in message.tool_calls:
-            tool_calls.append({
-                "id": tc.id,
-                "name": tc.function.name,
-                "args": __import__("json").loads(tc.function.arguments)
-                    if isinstance(tc.function.arguments, str) else tc.function.arguments,
-            })
+            tool_calls.append(
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "args": __import__("json").loads(tc.function.arguments)
+                    if isinstance(tc.function.arguments, str)
+                    else tc.function.arguments,
+                }
+            )
 
     metadata = MessageMetadata(
-        model=response.model if hasattr(response, 'model') else None,
+        model=response.model if hasattr(response, "model") else None,
         tokens=TokenUsage(
-            prompt_tokens=response.usage.prompt_tokens if hasattr(response, 'usage') and response.usage else 0,
-            completion_tokens=response.usage.completion_tokens if hasattr(response, 'usage') and response.usage else 0,
-            total_tokens=response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0,
-        ) if hasattr(response, 'usage') and response.usage else None,
-        finish_reason=choice.finish_reason if hasattr(choice, 'finish_reason') else None,
-        response_id=response.id if hasattr(response, 'id') else None,
+            prompt_tokens=response.usage.prompt_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            completion_tokens=response.usage.completion_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            total_tokens=response.usage.total_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+        )
+        if hasattr(response, "usage") and response.usage
+        else None,
+        finish_reason=choice.finish_reason
+        if hasattr(choice, "finish_reason")
+        else None,
+        response_id=response.id if hasattr(response, "id") else None,
     )
 
     return AIMessage(
@@ -129,9 +149,10 @@ class OllamaChat(BaseChatModel):
 
         from agenticflow.config import get_config_value
 
-        host = get_config_value(
-            "ollama", "host", self.host, ["OLLAMA_HOST"]
-        ) or "http://localhost:11434"
+        host = (
+            get_config_value("ollama", "host", self.host, ["OLLAMA_HOST"])
+            or "http://localhost:11434"
+        )
         base_url = f"{host.rstrip('/')}/v1"
 
         self._client = OpenAI(
@@ -180,19 +201,23 @@ class OllamaChat(BaseChatModel):
     async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
         """Invoke asynchronously."""
         self._ensure_initialized()
-        response = await self._async_client.chat.completions.create(**self._build_request(messages))
+        response = await self._async_client.chat.completions.create(
+            **self._build_request(messages)
+        )
         return _parse_response(response)
 
     async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously with metadata.
-        
+
         Yields:
             AIMessage objects with incremental content and metadata.
         """
         self._ensure_initialized()
         kwargs = self._build_request(messages)
         kwargs["stream"] = True
-        kwargs["stream_options"] = {"include_usage": True}  # Request token usage in final chunk
+        kwargs["stream_options"] = {
+            "include_usage": True
+        }  # Request token usage in final chunk
 
         start_time = time.time()
         chunk_metadata = {
@@ -204,13 +229,13 @@ class OllamaChat(BaseChatModel):
 
         async for chunk in await self._async_client.chat.completions.create(**kwargs):
             # Accumulate metadata
-            if hasattr(chunk, 'id') and chunk.id:
+            if hasattr(chunk, "id") and chunk.id:
                 chunk_metadata["id"] = chunk.id
-            if hasattr(chunk, 'model') and chunk.model:
+            if hasattr(chunk, "model") and chunk.model:
                 chunk_metadata["model"] = chunk.model
             if chunk.choices and chunk.choices[0].finish_reason:
                 chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
-            if hasattr(chunk, 'usage') and chunk.usage:
+            if hasattr(chunk, "usage") and chunk.usage:
                 chunk_metadata["usage"] = chunk.usage
                 # Yield final metadata chunk
                 metadata = MessageMetadata(
@@ -239,7 +264,9 @@ class OllamaChat(BaseChatModel):
                     response_id=chunk_metadata["id"],
                     duration=time.time() - start_time,
                 )
-                yield AIMessage(content=chunk.choices[0].delta.content, metadata=metadata)
+                yield AIMessage(
+                    content=chunk.choices[0].delta.content, metadata=metadata
+                )
 
     def _build_request(self, messages: list[Any]) -> dict[str, Any]:
         """Build API request, converting messages to dict format."""
@@ -253,8 +280,7 @@ class OllamaChat(BaseChatModel):
 
         model_lower = (self.model or "").lower()
         supports_temperature = not any(
-            prefix in model_lower
-            for prefix in ("o1", "o3", "gpt-5")
+            prefix in model_lower for prefix in ("o1", "o3", "gpt-5")
         )
         if supports_temperature and self.temperature is not None:
             kwargs["temperature"] = self.temperature
@@ -282,7 +308,7 @@ class OllamaEmbedding(BaseEmbedding):
         # Custom model
         embedder = OllamaEmbedding(model="mxbai-embed-large")
 
-        vectors = await embedder.aembed(["Hello", "World"])
+        result = await embedder.aembed_texts(["Hello", "World"])
     """
 
     model: str = "nomic-embed-text"
@@ -297,9 +323,10 @@ class OllamaEmbedding(BaseEmbedding):
 
         from agenticflow.config import get_config_value
 
-        host = get_config_value(
-            "ollama", "host", self.host, ["OLLAMA_HOST"]
-        ) or "http://localhost:11434"
+        host = (
+            get_config_value("ollama", "host", self.host, ["OLLAMA_HOST"])
+            or "http://localhost:11434"
+        )
         base_url = f"{host.rstrip('/')}/v1"
 
         self._client = OpenAI(
@@ -315,49 +342,25 @@ class OllamaEmbedding(BaseEmbedding):
             max_retries=self.max_retries,
         )
 
-    def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts synchronously with metadata."""
-        self._ensure_initialized()
-        import time
+    async def embed(self, texts: str | list[str]) -> EmbeddingResult:
+        """Embed one or more texts asynchronously with metadata.
 
-        from agenticflow.core.messages import (
-            EmbeddingMetadata,
-            EmbeddingResult,
-        )
+        Args:
+            texts: Single text or list of texts to embed.
 
-        start_time = time.time()
-        all_embeddings: list[list[float]] = []
-
-        for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
-            response = self._client.embeddings.create(
-                model=self.model,
-                input=batch,
-            )
-            sorted_data = sorted(response.data, key=lambda x: x.index)
-            all_embeddings.extend([d.embedding for d in sorted_data])
-
-        metadata = EmbeddingMetadata(
-            model=self.model,
-            tokens=None,  # Ollama typically doesn't return token counts for embeddings
-            duration=time.time() - start_time,
-            dimensions=len(all_embeddings[0]) if all_embeddings else None,
-            num_texts=len(texts),
-        )
-
-        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
-
-    async def aembed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts asynchronously with metadata."""
+        Returns:
+            EmbeddingResult with vectors and metadata.
+        """
         self._ensure_initialized()
         import asyncio
         import time
 
         from agenticflow.core.messages import (
-            EmbeddingMetadata,
             EmbeddingResult,
         )
 
+        # Normalize input
+        texts_list = [texts] if isinstance(texts, str) else texts
         start_time = time.time()
 
         async def embed_batch(batch: list[str]) -> list[list[float]]:
@@ -368,7 +371,10 @@ class OllamaEmbedding(BaseEmbedding):
             sorted_data = sorted(response.data, key=lambda x: x.index)
             return [d.embedding for d in sorted_data]
 
-        batches = [texts[i:i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        batches = [
+            texts_list[i : i + self.batch_size]
+            for i in range(0, len(texts_list), self.batch_size)
+        ]
         results = await asyncio.gather(*[embed_batch(b) for b in batches])
 
         all_embeddings: list[list[float]] = []
@@ -380,7 +386,7 @@ class OllamaEmbedding(BaseEmbedding):
             tokens=None,  # Ollama typically doesn't return token counts for embeddings
             duration=time.time() - start_time,
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
-            num_texts=len(texts),
+            num_texts=len(texts_list),
         )
 
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)

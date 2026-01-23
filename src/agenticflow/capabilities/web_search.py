@@ -68,7 +68,9 @@ class FetchedPage:
         return {
             "url": self.url,
             "title": self.title,
-            "content": self.content[:1000] + "..." if len(self.content) > 1000 else self.content,
+            "content": self.content[:1000] + "..."
+            if len(self.content) > 1000
+            else self.content,
             "fetched_at": self.fetched_at.isoformat(),
             "content_type": self.content_type,
             "error": self.error,
@@ -111,11 +113,10 @@ class DuckDuckGoProvider(SearchProvider):
         if self._ddgs is None:
             try:
                 from ddgs import DDGS
+
                 self._ddgs = DDGS(timeout=self._timeout)
             except ImportError:
-                raise ImportError(
-                    "ddgs package required. Install with: uv add ddgs"
-                )
+                raise ImportError("ddgs package required. Install with: uv add ddgs")
         return self._ddgs
 
     def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
@@ -125,13 +126,15 @@ class DuckDuckGoProvider(SearchProvider):
 
         try:
             for i, r in enumerate(ddgs.text(query, max_results=max_results)):
-                results.append(SearchResult(
-                    title=r.get("title", ""),
-                    url=r.get("href", r.get("link", "")),
-                    snippet=r.get("body", r.get("snippet", "")),
-                    source=self.name,
-                    position=i + 1,
-                ))
+                results.append(
+                    SearchResult(
+                        title=r.get("title", ""),
+                        url=r.get("href", r.get("link", "")),
+                        snippet=r.get("body", r.get("snippet", "")),
+                        source=self.name,
+                        position=i + 1,
+                    )
+                )
         except Exception:
             # Return empty results on error, let caller handle
             pass
@@ -145,13 +148,15 @@ class DuckDuckGoProvider(SearchProvider):
 
         try:
             for i, r in enumerate(ddgs.news(query, max_results=max_results)):
-                results.append(SearchResult(
-                    title=r.get("title", ""),
-                    url=r.get("url", r.get("link", "")),
-                    snippet=r.get("body", r.get("excerpt", "")),
-                    source=self.name,
-                    position=i + 1,
-                ))
+                results.append(
+                    SearchResult(
+                        title=r.get("title", ""),
+                        url=r.get("url", r.get("link", "")),
+                        snippet=r.get("body", r.get("excerpt", "")),
+                        source=self.name,
+                        position=i + 1,
+                    )
+                )
         except Exception:
             pass
 
@@ -210,13 +215,15 @@ class BraveSearchProvider(SearchProvider):
                 data = response.json()
 
                 for i, item in enumerate(data.get("web", {}).get("results", [])):
-                    results.append(SearchResult(
-                        title=item.get("title", ""),
-                        url=item.get("url", ""),
-                        snippet=item.get("description", ""),
-                        source=self.name,
-                        position=i + 1,
-                    ))
+                    results.append(
+                        SearchResult(
+                            title=item.get("title", ""),
+                            url=item.get("url", ""),
+                            snippet=item.get("description", ""),
+                            source=self.name,
+                            position=i + 1,
+                        )
+                    )
         except Exception:
             pass
 
@@ -244,13 +251,15 @@ class BraveSearchProvider(SearchProvider):
                 data = response.json()
 
                 for i, item in enumerate(data.get("results", [])):
-                    results.append(SearchResult(
-                        title=item.get("title", ""),
-                        url=item.get("url", ""),
-                        snippet=item.get("description", ""),
-                        source=self.name,
-                        position=i + 1,
-                    ))
+                    results.append(
+                        SearchResult(
+                            title=item.get("title", ""),
+                            url=item.get("url", ""),
+                            snippet=item.get("description", ""),
+                            source=self.name,
+                            position=i + 1,
+                        )
+                    )
         except Exception:
             pass
 
@@ -317,13 +326,15 @@ class TavilyProvider(SearchProvider):
                 data = response.json()
 
                 for i, item in enumerate(data.get("results", [])):
-                    results.append(SearchResult(
-                        title=item.get("title", ""),
-                        url=item.get("url", ""),
-                        snippet=item.get("content", ""),
-                        source=self.name,
-                        position=i + 1,
-                    ))
+                    results.append(
+                        SearchResult(
+                            title=item.get("title", ""),
+                            url=item.get("url", ""),
+                            snippet=item.get("content", ""),
+                            source=self.name,
+                            position=i + 1,
+                        )
+                    )
         except Exception:
             pass
 
@@ -353,13 +364,15 @@ class TavilyProvider(SearchProvider):
                 data = response.json()
 
                 for i, item in enumerate(data.get("results", [])):
-                    results.append(SearchResult(
-                        title=item.get("title", ""),
-                        url=item.get("url", ""),
-                        snippet=item.get("content", ""),
-                        source=self.name,
-                        position=i + 1,
-                    ))
+                    results.append(
+                        SearchResult(
+                            title=item.get("title", ""),
+                            url=item.get("url", ""),
+                            snippet=item.get("content", ""),
+                            source=self.name,
+                            position=i + 1,
+                        )
+                    )
         except Exception:
             pass
 
@@ -422,13 +435,15 @@ class SerpAPIProvider(SearchProvider):
                 data = response.json()
 
                 for i, item in enumerate(data.get("organic_results", [])):
-                    results.append(SearchResult(
-                        title=item.get("title", ""),
-                        url=item.get("link", ""),
-                        snippet=item.get("snippet", ""),
-                        source=self.name,
-                        position=item.get("position", i + 1),
-                    ))
+                    results.append(
+                        SearchResult(
+                            title=item.get("title", ""),
+                            url=item.get("link", ""),
+                            snippet=item.get("snippet", ""),
+                            source=self.name,
+                            position=item.get("position", i + 1),
+                        )
+                    )
         except Exception:
             pass
 
@@ -456,13 +471,15 @@ class SerpAPIProvider(SearchProvider):
                 data = response.json()
 
                 for i, item in enumerate(data.get("news_results", [])[:max_results]):
-                    results.append(SearchResult(
-                        title=item.get("title", ""),
-                        url=item.get("link", ""),
-                        snippet=item.get("snippet", ""),
-                        source=self.name,
-                        position=i + 1,
-                    ))
+                    results.append(
+                        SearchResult(
+                            title=item.get("title", ""),
+                            url=item.get("link", ""),
+                            snippet=item.get("snippet", ""),
+                            source=self.name,
+                            position=i + 1,
+                        )
+                    )
         except Exception:
             pass
 
@@ -662,7 +679,10 @@ class WebSearch(BaseCapability):
 
                 # Truncate if needed
                 if len(content) > self._max_content_length:
-                    content = content[:self._max_content_length] + "\n\n[Content truncated...]"
+                    content = (
+                        content[: self._max_content_length]
+                        + "\n\n[Content truncated...]"
+                    )
 
                 return FetchedPage(
                     url=url,
@@ -705,7 +725,9 @@ class WebSearch(BaseCapability):
             title = title_tag.get_text(strip=True)
 
         # Remove non-content elements
-        for element in soup(["script", "style", "nav", "footer", "header", "aside", "noscript"]):
+        for element in soup(
+            ["script", "style", "nav", "footer", "header", "aside", "noscript"]
+        ):
             element.decompose()
 
         # Get text content

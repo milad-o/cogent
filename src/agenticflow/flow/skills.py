@@ -88,7 +88,9 @@ class Skill:
     tools: tuple[Callable[..., object], ...] = field(default_factory=tuple)
     """Tools available only when this skill is active."""
 
-    context_enricher: Callable[[Event, dict[str, object]], dict[str, object]] | None = None
+    context_enricher: Callable[[Event, dict[str, object]], dict[str, object]] | None = (
+        None
+    )
     """Optional function to modify context when skill activates.
 
     Receives the triggering event and current context, returns enriched context.
@@ -134,7 +136,8 @@ def skill(
     prompt: str,
     when: Callable[[Event], bool] | None = None,
     tools: list[Callable[..., object]] | None = None,
-    context_enricher: Callable[[Event, dict[str, object]], dict[str, object]] | None = None,
+    context_enricher: Callable[[Event, dict[str, object]], dict[str, object]]
+    | None = None,
     priority: int = 0,
 ) -> Skill:
     """Create a skill with a clean kwargs API.
@@ -207,7 +210,9 @@ class SkillBuilder:
         self._trigger_builder = TriggerBuilder(pattern)
         self._prompt: str = ""
         self._tools: list[Callable[..., object]] = []
-        self._context_enricher: Callable[[Event, dict[str, object]], dict[str, object]] | None = None
+        self._context_enricher: (
+            Callable[[Event, dict[str, object]], dict[str, object]] | None
+        ) = None
         self._priority: int = 0
 
     def when(self, condition: Callable[[Event], bool]) -> SkillBuilder:
@@ -247,4 +252,3 @@ class SkillBuilder:
 
     def __iter__(self):
         yield self.build()
-

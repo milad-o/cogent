@@ -48,7 +48,7 @@ class TableChunk:
         if include_context and self.following_context:
             parts.append(self.following_context)
 
-        return '\n'.join(parts)
+        return "\n".join(parts)
 
 
 class TableAwareSplitter(BaseSplitter):
@@ -144,20 +144,24 @@ class TableAwareSplitter(BaseSplitter):
             for i, chunk in enumerate(table_chunks):
                 # Build metadata
                 metadata = doc.metadata.copy() if self.preserve_metadata else {}
-                metadata.update({
-                    'chunk_index': i,
-                    'chunk_type': 'table' if chunk.table_html else 'text',
-                })
+                metadata.update(
+                    {
+                        "chunk_index": i,
+                        "chunk_type": "table" if chunk.table_html else "text",
+                    }
+                )
 
                 if chunk.table_number is not None:
-                    metadata['table_number'] = chunk.table_number
+                    metadata["table_number"] = chunk.table_number
                 if chunk.caption:
-                    metadata['table_caption'] = chunk.caption
+                    metadata["table_caption"] = chunk.caption
 
                 # Create new document
-                split_docs.append(Document(
-                text=chunk.to_text(include_context=True),
-                ))
+                split_docs.append(
+                    Document(
+                        text=chunk.to_text(include_context=True),
+                    )
+                )
 
         return split_docs
 
@@ -174,19 +178,21 @@ class TableAwareSplitter(BaseSplitter):
 
         # Pattern to match HTML tags
         # Matches: <tag ...>content</tag>
-        pattern = r'<(h[1-6]|p|table)[^>]*>(.*?)</\1>'
+        pattern = r"<(h[1-6]|p|table)[^>]*>(.*?)</\1>"
 
         for match in re.finditer(pattern, html, re.DOTALL):
             tag = match.group(1)
             content = match.group(0)  # Full match including tags
 
-            element_type = 'heading' if tag.startswith('h') else tag
-            elements.append({
-                'type': element_type,
-                'tag': tag,
-                'content': content,
-                'text': match.group(2),  # Content without tags
-            })
+            element_type = "heading" if tag.startswith("h") else tag
+            elements.append(
+                {
+                    "type": element_type,
+                    "tag": tag,
+                    "content": content,
+                    "text": match.group(2),  # Content without tags
+                }
+            )
 
         return elements
 
@@ -206,64 +212,68 @@ class TableAwareSplitter(BaseSplitter):
             element = elements[i]
 
             # Check if this is a table
-            if element['type'] == 'table':
+            if element["type"] == "table":
                 # Get context before (any elements)
                 start_idx = max(0, i - self.context_before)
                 preceding = []
                 for j in range(start_idx, i):
-                    preceding.append(elements[j]['content'])
+                    preceding.append(elements[j]["content"])
 
                 # Get context after (any elements, stop at next table)
                 following = []
                 for j in range(i + 1, min(i + 1 + self.context_after, len(elements))):
-                    if elements[j]['type'] == 'table':
+                    if elements[j]["type"] == "table":
                         break  # Stop at next table
-                    following.append(elements[j]['content'])
+                    following.append(elements[j]["content"])
 
                 # Try to extract table number from any surrounding text
                 table_number = None
                 caption = None
-                all_context = '\n'.join(preceding + following)
-                match = re.search(r'Table (\d+)[:\s]', all_context)
+                all_context = "\n".join(preceding + following)
+                match = re.search(r"Table (\d+)[:\s]", all_context)
                 if match:
                     table_number = int(match.group(1))
                     # Extract full caption line
-                    for line in all_context.split('\n'):
-                        if f'Table {table_number}' in line:
+                    for line in all_context.split("\n"):
+                        if f"Table {table_number}" in line:
                             caption = line.strip()
                             break
 
                 # Create table chunk
-                chunks.append(TableChunk(
-                    table_number=table_number,
-                    caption=caption,
-                    table_html=element['content'],
-                    preceding_context='\n'.join(preceding),
-                    following_context='\n'.join(following),
-                ))
+                chunks.append(
+                    TableChunk(
+                        table_number=table_number,
+                        caption=caption,
+                        table_html=element["content"],
+                        preceding_context="\n".join(preceding),
+                        following_context="\n".join(following),
+                    )
+                )
 
                 # Move past this table
                 i += 1
 
             else:
                 # Accumulate text elements between tables
-                text_elements = [element['content']]
+                text_elements = [element["content"]]
                 i += 1
 
                 # Collect consecutive non-table elements
-                while i < len(elements) and elements[i]['type'] != 'table':
-                    text_elements.append(elements[i]['content'])
+                while i < len(elements) and elements[i]["type"] != "table":
+                    text_elements.append(elements[i]["content"])
                     i += 1
 
                 # Create text chunk if substantial
-                text_content = '\n'.join(text_elements)
+                text_content = "\n".join(text_elements)
                 if len(text_content) >= self.min_text_chunk_size:
-                    chunks.append(TableChunk(
-                        table_number=None,
-                        caption=None,
-                        table_html='',
-                        preceding_context=text_content,
-                        following_context='',
-                    ))
+                    chunks.append(
+                        TableChunk(
+                            table_number=None,
+                            caption=None,
+                            table_html="",
+                            preceding_context=text_content,
+                            following_context="",
+                        )
+                    )
 
         return chunks

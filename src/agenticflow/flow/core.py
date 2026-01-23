@@ -48,6 +48,7 @@ def _matches_pattern(event_type: str, pattern: str) -> bool:
 @dataclass
 class _PendingReaction:
     """Tracks a pending reactor execution."""
+
     reactor_id: str
     event: Event
     binding: ReactorBinding
@@ -129,7 +130,8 @@ class Flow:
         event_bus: EventBus | None = None,
         observer: Observer | None = None,
         checkpointer: Checkpointer | None = None,
-        thread_id_resolver: Callable[[Event, dict[str, object]], str | None] | None = None,
+        thread_id_resolver: Callable[[Event, dict[str, object]], str | None]
+        | None = None,
     ) -> None:
         """Initialize the Flow.
 
@@ -258,7 +260,7 @@ class Flow:
 
     def _init_builtin_groups(self) -> None:
         """Initialize built-in source groups.
-        
+
         Built-in groups:
             - :agents - Auto-populated with registered agent names
             - :system - System sources (flow, router, aggregator)
@@ -268,31 +270,31 @@ class Flow:
 
     def add_source_group(self, name: str, sources: list[str]) -> Self:
         """Define a named group of sources.
-        
+
         Source groups allow cleaner multi-source filtering using :group syntax.
         Groups can be referenced in `after` parameter and pattern syntax.
-        
+
         Args:
             name: Group name (without : prefix)
             sources: List of source names or patterns
-        
+
         Returns:
             Self for method chaining
-        
+
         Raises:
             ValueError: If name starts with : or is empty
-        
+
         Example:
             ```python
             # Define a group of analyst agents
             flow.add_source_group("analysts", ["agent1", "agent2", "agent3"])
-            
+
             # Use in after parameter
             flow.register(aggregator, on="analysis.done", after=":analysts")
-            
+
             # Use in pattern syntax
             flow.register(reviewer, on="*.done@:analysts")
-            
+
             # Chain multiple groups
             flow.add_source_group("writers", ["writer1", "writer2"])
                 .add_source_group("reviewers", ["reviewer1", "reviewer2"])
@@ -306,19 +308,19 @@ class Flow:
 
     def get_source_group(self, name: str) -> set[str]:
         """Get sources in a named group.
-        
+
         Args:
             name: Group name (without : prefix)
-        
+
         Returns:
             Set of source names, or empty set if group doesn't exist
-        
+
         Example:
             ```python
             flow.add_source_group("analysts", ["agent1", "agent2"])
             sources = flow.get_source_group("analysts")
             # {'agent1', 'agent2'}
-            
+
             # Nonexistent group returns empty set
             sources = flow.get_source_group("missing")
             # set()
@@ -328,16 +330,16 @@ class Flow:
 
     def reset_coordination(self, binding_id: str) -> Self:
         """Manually reset a coordination point for a specific reactor binding.
-        
+
         Use this to reset coordinations that have reset_after=False, allowing
         them to trigger again when all sources emit in the next cycle.
-        
+
         Args:
             binding_id: Unique identifier for the reactor binding (from register())
-        
+
         Returns:
             Self for method chaining
-        
+
         Example:
             ```python
             # Register one-time coordination
@@ -346,11 +348,11 @@ class Flow:
                 on="task.done",
                 when=all_sources(["a", "b", "c"], reset_after=False)
             )
-            
+
             # Later, manually reset to allow triggering again
             flow.reset_coordination(binding_id)
             ```
-        
+
         Note:
             For coordinations with reset_after=True (default), this method
             is not needed as they auto-reset after each completion.
@@ -452,7 +454,9 @@ class Flow:
             ```
         """
 
-        def _thread_id_resolver(event: Event, _context: dict[str, object]) -> str | None:
+        def _thread_id_resolver(
+            event: Event, _context: dict[str, object]
+        ) -> str | None:
             data = getattr(event, "data", None) or {}
             value = data.get(key)
             if value is None:
@@ -472,30 +476,32 @@ class Flow:
         self._reactors.pop(reactor_id, None)
         self._bindings = [b for b in self._bindings if b.reactor_id != reactor_id]
 
-    def _normalize_patterns(self, on: str | list[str] | None) -> tuple[frozenset[str], object | None]:
+    def _normalize_patterns(
+        self, on: str | list[str] | None
+    ) -> tuple[frozenset[str], object | None]:
         """Convert on parameter to frozenset of patterns and extract source filter.
-        
+
         Parses event@source syntax and extracts source filters.
         Supports :group references in pattern syntax.
-        
+
         Args:
             on: Event pattern(s), optionally with source filter using @ separator
-        
+
         Returns:
             Tuple of (event_patterns, source_filter)
             - event_patterns: frozenset of event patterns
             - source_filter: SourceFilter if any pattern had source, None otherwise
-        
+
         Examples:
             >>> flow._normalize_patterns("agent.done@researcher")
             (frozenset({'agent.done'}), SourceFilter(...))
-            
+
             >>> flow._normalize_patterns(["*.done@agent1", "*.done@agent2"])
             (frozenset({'*.done'}), SourceFilter(...))
-            
+
             >>> flow._normalize_patterns("task.created")
             (frozenset({'task.created'}), None)
-            
+
             >>> flow._normalize_patterns("*.done@:analysts")
             (frozenset({'*.done'}), SourceFilter(...))
         """
@@ -579,19 +585,19 @@ class Flow:
                 on="agent.done",
                 after="researcher"  # Only from researcher
             )
-            
+
             # Register with source filter (pattern syntax)
             flow.register(
                 reviewer,
                 on="agent.done@researcher"  # Same as above
             )
-            
+
             # Multiple patterns with sources
             flow.register(
                 aggregator,
                 on=["*.done@agent1", "*.done@agent2"]
             )
-            
+
             # Wildcards in both event and source
             flow.register(
                 monitor,
@@ -607,6 +613,7 @@ class Flow:
         """
         # Track agents in :agents group
         from agenticflow.agent.base import Agent
+
         if isinstance(reactor, Agent):
             self._source_groups.setdefault("agents", set()).add(reactor.name)
 
@@ -638,6 +645,7 @@ class Flow:
         # Convert 'after' to condition (pass self for :group support)
         if after is not None:
             from agenticflow.events.patterns import from_source
+
             final_condition = from_source(after, flow=self)
 
         # Use pattern-extracted source filter if present
@@ -671,7 +679,9 @@ class Flow:
 
         return reactor_id
 
-    def _wrap_reactor(self, reactor: Reactor | Agent | Callable[..., object]) -> Reactor:
+    def _wrap_reactor(
+        self, reactor: Reactor | Agent | Callable[..., object]
+    ) -> Reactor:
         """Wrap non-Reactor types into Reactor instances."""
         # Already a Reactor (has handle method)
         if hasattr(reactor, "handle") and callable(reactor.handle):
@@ -690,6 +700,7 @@ class Flow:
         # Callable -> FunctionReactor
         if callable(reactor):
             from agenticflow.reactors.function import FunctionReactor
+
             return FunctionReactor(reactor)
 
         raise TypeError(
@@ -733,7 +744,9 @@ class Flow:
                         break  # Don't add same binding twice
         return matches
 
-    async def emit(self, event: Event | str, data: dict[str, object] | None = None) -> None:
+    async def emit(
+        self, event: Event | str, data: dict[str, object] | None = None
+    ) -> None:
         """Emit an event into the flow.
 
         Args:
@@ -866,7 +879,9 @@ class Flow:
                         if result_events:
                             if isinstance(result_events, Event):
                                 await self.emit(result_events)
-                                final_output = result_events.data.get("output", result_events.data)
+                                final_output = result_events.data.get(
+                                    "output", result_events.data
+                                )
                             elif isinstance(result_events, list):
                                 for e in result_events:
                                     await self.emit(e)
@@ -874,11 +889,17 @@ class Flow:
 
                         # Auto-emit if configured
                         if binding.emits and result_events:
-                            out = result_events if isinstance(result_events, Event) else result_events[-1]
+                            out = (
+                                result_events
+                                if isinstance(result_events, Event)
+                                else result_events[-1]
+                            )
                             emit_event = Event(
                                 name=binding.emits,
                                 source=binding.reactor_id,
-                                data=out.data if isinstance(out, Event) else {"result": out},
+                                data=out.data
+                                if isinstance(out, Event)
+                                else {"result": out},
                                 correlation_id=event.correlation_id,
                             )
                             await self.emit(emit_event)
@@ -889,7 +910,9 @@ class Flow:
                                 success=False,
                                 error=str(e),
                                 events_processed=events_processed,
-                                event_history=self._event_history if self.config.enable_history else [],
+                                event_history=self._event_history
+                                if self.config.enable_history
+                                else [],
                                 flow_id=self._flow_id,
                             )
                         # continue or retry handled by middleware
@@ -1097,7 +1120,7 @@ class Flow:
             await self._event_queue.put(event)
 
         # Use provided context or restore from state
-        run_context = context if context is not None else dict(state.context)
+        context if context is not None else dict(state.context)
 
         # Resume from last round
         rounds = state.round
@@ -1142,18 +1165,26 @@ class Flow:
                         if result_events:
                             if isinstance(result_events, Event):
                                 await self.emit(result_events)
-                                final_output = result_events.data.get("output", result_events.data)
+                                final_output = result_events.data.get(
+                                    "output", result_events.data
+                                )
                             elif isinstance(result_events, list):
                                 for e in result_events:
                                     await self.emit(e)
                                     final_output = e.data.get("output", e.data)
 
                         if binding.emits and result_events:
-                            out = result_events if isinstance(result_events, Event) else result_events[-1]
+                            out = (
+                                result_events
+                                if isinstance(result_events, Event)
+                                else result_events[-1]
+                            )
                             emit_event = Event(
                                 name=binding.emits,
                                 source=binding.reactor_id,
-                                data=out.data if isinstance(out, Event) else {"result": out},
+                                data=out.data
+                                if isinstance(out, Event)
+                                else {"result": out},
                                 correlation_id=event.correlation_id,
                             )
                             await self.emit(emit_event)
@@ -1164,7 +1195,9 @@ class Flow:
                                 success=False,
                                 error=str(e),
                                 events_processed=events_processed,
-                                event_history=self._event_history if self.config.enable_history else [],
+                                event_history=self._event_history
+                                if self.config.enable_history
+                                else [],
                                 flow_id=self._flow_id,
                             )
 
@@ -1278,7 +1311,9 @@ class Flow:
                                         agent_name=binding.reactor_id,
                                         event_id=event.id,
                                         event_name=event.name,
-                                        content=str(result_events.data.get("output", "")),
+                                        content=str(
+                                            result_events.data.get("output", "")
+                                        ),
                                         delta=str(result_events.data.get("output", "")),
                                         is_final=True,
                                         finish_reason="stop",
@@ -1288,11 +1323,17 @@ class Flow:
                                         await self.emit(e)
 
                             if binding.emits and result_events:
-                                out = result_events if isinstance(result_events, Event) else result_events[-1]
+                                out = (
+                                    result_events
+                                    if isinstance(result_events, Event)
+                                    else result_events[-1]
+                                )
                                 emit_event = Event(
                                     name=binding.emits,
                                     source=binding.reactor_id,
-                                    data=out.data if isinstance(out, Event) else {"result": out},
+                                    data=out.data
+                                    if isinstance(out, Event)
+                                    else {"result": out},
                                     correlation_id=event.correlation_id,
                                 )
                                 await self.emit(emit_event)

@@ -55,6 +55,7 @@ class RetrievalResult:
         """Ensure document is properly typed."""
         # Import here to avoid circular imports
         from agenticflow.core import Document
+
         if not isinstance(self.document, Document):
             raise TypeError(f"document must be a Document, got {type(self.document)}")
 
@@ -220,10 +221,14 @@ class BaseRetriever:
         """Emit an event if event_bus is configured."""
         if self._event_bus:
             from agenticflow.observability.trace_record import TraceType
-            await self._event_bus.publish(TraceType(event_type), {
-                "retriever": self.name,
-                **data,
-            })
+
+            await self._event_bus.publish(
+                TraceType(event_type),
+                {
+                    "retriever": self.name,
+                    **data,
+                },
+            )
 
     @overload
     async def retrieve(
@@ -271,36 +276,47 @@ class BaseRetriever:
         """
         start = time.perf_counter()
 
-        await self._emit("retrieval.start", {
-            "query": query[:100],
-            "k": k,
-            "filter": filter,
-        })
+        await self._emit(
+            "retrieval.start",
+            {
+                "query": query[:100],
+                "k": k,
+                "filter": filter,
+            },
+        )
 
         try:
-            results = await self.retrieve_with_scores(query, k=k, filter=filter, **kwargs)
+            results = await self.retrieve_with_scores(
+                query, k=k, filter=filter, **kwargs
+            )
 
             duration_ms = (time.perf_counter() - start) * 1000
             top_scores = [r.score for r in results[:3]] if results else []
 
-            await self._emit("retrieval.complete", {
-                "query": query[:100],
-                "k": k,
-                "results_count": len(results),
-                "top_scores": top_scores,
-                "duration_ms": duration_ms,
-            })
+            await self._emit(
+                "retrieval.complete",
+                {
+                    "query": query[:100],
+                    "k": k,
+                    "results_count": len(results),
+                    "top_scores": top_scores,
+                    "duration_ms": duration_ms,
+                },
+            )
 
             if include_scores:
                 return results
             return [r.document for r in results]
 
         except Exception as e:
-            await self._emit("retrieval.error", {
-                "query": query[:100],
-                "error": str(e),
-                "duration_ms": (time.perf_counter() - start) * 1000,
-            })
+            await self._emit(
+                "retrieval.error",
+                {
+                    "query": query[:100],
+                    "error": str(e),
+                    "duration_ms": (time.perf_counter() - start) * 1000,
+                },
+            )
             raise
 
     async def retrieve_with_scores(
@@ -337,7 +353,11 @@ class BaseRetriever:
         Subclasses can override for more efficient batch processing.
         """
         import asyncio
-        tasks = [self.retrieve(q, k=k, filter=filter, include_scores=include_scores) for q in queries]
+
+        tasks = [
+            self.retrieve(q, k=k, filter=filter, include_scores=include_scores)
+            for q in queries
+        ]
         return await asyncio.gather(*tasks)
 
     def __repr__(self) -> str:

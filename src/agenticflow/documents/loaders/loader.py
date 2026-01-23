@@ -73,7 +73,9 @@ class DocumentLoader:
             loader_class = get_loader(extension)
             if loader_class:
                 # Check if it's a class (BaseLoader subclass) or function
-                if isinstance(loader_class, type) and issubclass(loader_class, BaseLoader):
+                if isinstance(loader_class, type) and issubclass(
+                    loader_class, BaseLoader
+                ):
                     self._loader_cache[extension] = loader_class(encoding=self.encoding)
                 else:
                     # It's a callable (function), store as-is
@@ -120,6 +122,7 @@ class DocumentLoader:
                 from agenticflow.documents.loaders.registry import (
                     list_supported_extensions,
                 )
+
                 raise ValueError(
                     f"Unsupported file type: {ext}. "
                     f"Supported: {', '.join(list_supported_extensions())}"
@@ -131,6 +134,7 @@ class DocumentLoader:
         else:
             # It's a callable (custom function loader)
             import inspect
+
             if inspect.iscoroutinefunction(loader):
                 return await loader(path, **kwargs)
             else:

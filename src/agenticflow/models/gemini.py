@@ -18,7 +18,12 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
-from agenticflow.core.messages import MessageMetadata, TokenUsage
+from agenticflow.core.messages import (
+    EmbeddingMetadata,
+    EmbeddingResult,
+    MessageMetadata,
+    TokenUsage,
+)
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -28,7 +33,9 @@ from agenticflow.models.base import (
 )
 
 
-def _messages_to_gemini(messages: list[dict[str, Any]], types: Any) -> tuple[str | None, list[Any]]:
+def _messages_to_gemini(
+    messages: list[dict[str, Any]], types: Any
+) -> tuple[str | None, list[Any]]:
     """Convert messages to Gemini format using the new google.genai types.
 
     Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
@@ -54,10 +61,12 @@ def _messages_to_gemini(messages: list[dict[str, Any]], types: Any) -> tuple[str
         if role == "system":
             system_instruction = content
         elif role == "user":
-            gemini_messages.append(types.Content(
-                role="user",
-                parts=[types.Part(text=content)],
-            ))
+            gemini_messages.append(
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=content)],
+                )
+            )
         elif role == "assistant":
             if tool_calls:
                 parts = []
@@ -70,48 +79,63 @@ def _messages_to_gemini(messages: list[dict[str, Any]], types: Any) -> tuple[str
                         tc_args = getattr(tc, "args", {})
                     else:
                         tc_name = tc.get("name", tc.get("function", {}).get("name", ""))
-                        tc_args = tc.get("args", tc.get("function", {}).get("arguments", {}))
+                        tc_args = tc.get(
+                            "args", tc.get("function", {}).get("arguments", {})
+                        )
 
                     # Parse args if it's a JSON string (OpenAI format)
                     if isinstance(tc_args, str):
                         import json
+
                         try:
                             tc_args = json.loads(tc_args)
                         except json.JSONDecodeError:
                             tc_args = {}
 
-                    parts.append(types.Part(
-                        function_call=types.FunctionCall(
-                            name=tc_name,
-                            args=tc_args,
+                    parts.append(
+                        types.Part(
+                            function_call=types.FunctionCall(
+                                name=tc_name,
+                                args=tc_args,
+                            )
                         )
-                    ))
+                    )
                 gemini_messages.append(types.Content(role="model", parts=parts))
             else:
-                gemini_messages.append(types.Content(
-                    role="model",
-                    parts=[types.Part(text=content)],
-                ))
+                gemini_messages.append(
+                    types.Content(
+                        role="model",
+                        parts=[types.Part(text=content)],
+                    )
+                )
         elif role == "tool":
             # Get the function name - try 'name' attribute first, then extract from tool_call_id
             tool_name = name
             if not tool_name:
                 # Try to get tool_call_id and extract name from it
-                tool_call_id = getattr(msg, "tool_call_id", "") if hasattr(msg, "tool_call_id") else msg.get("tool_call_id", "")
+                tool_call_id = (
+                    getattr(msg, "tool_call_id", "")
+                    if hasattr(msg, "tool_call_id")
+                    else msg.get("tool_call_id", "")
+                )
                 if tool_call_id and tool_call_id.startswith("call_"):
                     tool_name = tool_call_id[5:]  # Remove "call_" prefix
                 else:
                     tool_name = tool_call_id or "unknown_function"
 
-            gemini_messages.append(types.Content(
-                role="user",
-                parts=[types.Part(
-                    function_response=types.FunctionResponse(
-                        name=tool_name,
-                        response={"result": content},
-                    )
-                )],
-            ))
+            gemini_messages.append(
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                name=tool_name,
+                                response={"result": content},
+                            )
+                        )
+                    ],
+                )
+            )
 
     return system_instruction, gemini_messages
 
@@ -182,26 +206,29 @@ def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
                 else:
                     # Flat format: {param_name: param_schema, ...}
                     parameters["properties"] = {
-                        k: _convert_schema_types(v)
-                        for k, v in schema.items()
+                        k: _convert_schema_types(v) for k, v in schema.items()
                     }
 
-            function_declarations.append(types.FunctionDeclaration(
-                name=tool.name,
-                description=tool.description or "",
-                parameters=parameters,
-            ))
+            function_declarations.append(
+                types.FunctionDeclaration(
+                    name=tool.name,
+                    description=tool.description or "",
+                    parameters=parameters,
+                )
+            )
         elif isinstance(tool, dict):
             if "function" in tool:
                 func = tool["function"]
                 params = func.get("parameters", {})
                 if params:
                     params = _convert_schema_types(params)
-                function_declarations.append(types.FunctionDeclaration(
-                    name=func["name"],
-                    description=func.get("description", ""),
-                    parameters=params or None,
-                ))
+                function_declarations.append(
+                    types.FunctionDeclaration(
+                        name=func["name"],
+                        description=func.get("description", ""),
+                        parameters=params or None,
+                    )
+                )
             else:
                 # Already in correct format
                 function_declarations.append(types.FunctionDeclaration(**tool))
@@ -222,7 +249,7 @@ def _parse_response(response: Any) -> AIMessage:
         return AIMessage(content="")
 
     # Gemini can return None for content when blocked or failed
-    if not candidate.content or not hasattr(candidate.content, 'parts'):
+    if not candidate.content or not hasattr(candidate.content, "parts"):
         return AIMessage(content="")
 
     for part in candidate.content.parts:
@@ -237,20 +264,32 @@ def _parse_response(response: Any) -> AIMessage:
                 for key, value in fc.args.items():
                     args_dict[key] = value
 
-            tool_calls.append({
-                "id": f"call_{fc.name}",  # Gemini doesn't provide IDs
-                "name": fc.name,
-                "args": args_dict,
-            })
+            tool_calls.append(
+                {
+                    "id": f"call_{fc.name}",  # Gemini doesn't provide IDs
+                    "name": fc.name,
+                    "args": args_dict,
+                }
+            )
 
     metadata = MessageMetadata(
-        model=response.model_version if hasattr(response, 'model_version') else None,
+        model=response.model_version if hasattr(response, "model_version") else None,
         tokens=TokenUsage(
-            prompt_tokens=response.usage_metadata.prompt_token_count if hasattr(response, 'usage_metadata') else 0,
-            completion_tokens=response.usage_metadata.candidates_token_count if hasattr(response, 'usage_metadata') else 0,
-            total_tokens=response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 0,
-        ) if hasattr(response, 'usage_metadata') else None,
-        finish_reason=candidate.finish_reason.name if hasattr(candidate, 'finish_reason') else None,
+            prompt_tokens=response.usage_metadata.prompt_token_count
+            if hasattr(response, "usage_metadata")
+            else 0,
+            completion_tokens=response.usage_metadata.candidates_token_count
+            if hasattr(response, "usage_metadata")
+            else 0,
+            total_tokens=response.usage_metadata.total_token_count
+            if hasattr(response, "usage_metadata")
+            else 0,
+        )
+        if hasattr(response, "usage_metadata")
+        else None,
+        finish_reason=candidate.finish_reason.name
+        if hasattr(candidate, "finish_reason")
+        else None,
     )
 
     return AIMessage(
@@ -303,8 +342,7 @@ class GeminiChat(BaseChatModel):
             from google.genai import types
         except ImportError:
             raise ImportError(
-                "google-genai package required. "
-                "Install with: uv add google-genai"
+                "google-genai package required. Install with: uv add google-genai"
             )
 
         from agenticflow.config import get_api_key
@@ -360,6 +398,7 @@ class GeminiChat(BaseChatModel):
                 config_kwargs["tools"] = [tool]
                 # Use AUTO mode for balanced tool usage
                 from google.genai.types import FunctionCallingConfigMode
+
                 config_kwargs["tool_config"] = self._types.ToolConfig(
                     function_calling_config=self._types.FunctionCallingConfig(
                         mode=FunctionCallingConfigMode.AUTO
@@ -392,7 +431,9 @@ class GeminiChat(BaseChatModel):
         )
         return _parse_response(response)
 
-    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+    async def ainvoke(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AIMessage:
         """Invoke asynchronously.
 
         Args:
@@ -412,12 +453,14 @@ class GeminiChat(BaseChatModel):
         )
         return _parse_response(response)
 
-    async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
+    async def astream(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously with metadata.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
-            
+
         Yields:
             AIMessage objects with incremental content and metadata.
         """
@@ -442,12 +485,14 @@ class GeminiChat(BaseChatModel):
         )
         async for chunk in stream:
             # Accumulate metadata
-            if hasattr(chunk, 'model_version') and chunk.model_version:
+            if hasattr(chunk, "model_version") and chunk.model_version:
                 chunk_metadata["model"] = chunk.model_version
-            if hasattr(chunk, 'candidates') and chunk.candidates:
-                if hasattr(chunk.candidates[0], 'finish_reason'):
-                    chunk_metadata["finish_reason"] = str(chunk.candidates[0].finish_reason)
-            if hasattr(chunk, 'usage_metadata') and chunk.usage_metadata:
+            if hasattr(chunk, "candidates") and chunk.candidates:
+                if hasattr(chunk.candidates[0], "finish_reason"):
+                    chunk_metadata["finish_reason"] = str(
+                        chunk.candidates[0].finish_reason
+                    )
+            if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
                 chunk_metadata["usage"] = chunk.usage_metadata
 
             # Yield content chunks
@@ -457,10 +502,18 @@ class GeminiChat(BaseChatModel):
                     timestamp=time.time(),
                     model=chunk_metadata.get("model"),
                     tokens=TokenUsage(
-                        prompt_tokens=chunk_metadata["usage"].prompt_token_count if chunk_metadata["usage"] else None,
-                        completion_tokens=chunk_metadata["usage"].candidates_token_count if chunk_metadata["usage"] else None,
-                        total_tokens=chunk_metadata["usage"].total_token_count if chunk_metadata["usage"] else None,
-                    ) if chunk_metadata["usage"] else None,
+                        prompt_tokens=chunk_metadata["usage"].prompt_token_count
+                        if chunk_metadata["usage"]
+                        else None,
+                        completion_tokens=chunk_metadata["usage"].candidates_token_count
+                        if chunk_metadata["usage"]
+                        else None,
+                        total_tokens=chunk_metadata["usage"].total_token_count
+                        if chunk_metadata["usage"]
+                        else None,
+                    )
+                    if chunk_metadata["usage"]
+                    else None,
                     finish_reason=chunk_metadata.get("finish_reason"),
                     duration=time.time() - start_time,
                 )
@@ -473,10 +526,18 @@ class GeminiChat(BaseChatModel):
                 timestamp=time.time(),
                 model=chunk_metadata.get("model"),
                 tokens=TokenUsage(
-                    prompt_tokens=chunk_metadata["usage"].prompt_token_count if chunk_metadata["usage"] else None,
-                    completion_tokens=chunk_metadata["usage"].candidates_token_count if chunk_metadata["usage"] else None,
-                    total_tokens=chunk_metadata["usage"].total_token_count if chunk_metadata["usage"] else None,
-                ) if chunk_metadata["usage"] else None,
+                    prompt_tokens=chunk_metadata["usage"].prompt_token_count
+                    if chunk_metadata["usage"]
+                    else None,
+                    completion_tokens=chunk_metadata["usage"].candidates_token_count
+                    if chunk_metadata["usage"]
+                    else None,
+                    total_tokens=chunk_metadata["usage"].total_token_count
+                    if chunk_metadata["usage"]
+                    else None,
+                )
+                if chunk_metadata["usage"]
+                else None,
                 finish_reason=chunk_metadata.get("finish_reason"),
                 duration=time.time() - start_time,
             )
@@ -503,8 +564,7 @@ class GeminiEmbedding(BaseEmbedding):
             from google import genai
         except ImportError:
             raise ImportError(
-                "google-genai package required. "
-                "Install with: uv add google-genai"
+                "google-genai package required. Install with: uv add google-genai"
             )
 
         from agenticflow.config import get_api_key
@@ -514,49 +574,29 @@ class GeminiEmbedding(BaseEmbedding):
         # Create the centralized client
         self._client = genai.Client(api_key=api_key)
 
-    def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts synchronously with metadata."""
+    async def embed(self, texts: str | list[str]) -> EmbeddingResult:
+        """Embed one or more texts asynchronously with metadata.
+
+        Args:
+            texts: Single text or list of texts to embed.
+
+        Returns:
+            EmbeddingResult with vectors and metadata.
+        """
         self._ensure_initialized()
         import time
 
         from agenticflow.core.messages import (
-            EmbeddingMetadata,
             EmbeddingResult,
         )
 
+        # Normalize input
+        texts_list = [texts] if isinstance(texts, str) else texts
         start_time = time.time()
-        result = self._client.models.embed_content(
-            model=self.model,
-            contents=texts,
-        )
-        # Handle both single and multiple embeddings
-        embeddings = result.embeddings
-        vectors = [emb.values for emb in embeddings] if embeddings else []
 
-        metadata = EmbeddingMetadata(
-            model=self.model,
-            tokens=None,  # Gemini doesn't provide token counts for embeddings
-            duration=time.time() - start_time,
-            dimensions=len(vectors[0]) if vectors else None,
-            num_texts=len(texts),
-        )
-
-        return EmbeddingResult(embeddings=vectors, metadata=metadata)
-
-    async def aembed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts asynchronously with metadata."""
-        self._ensure_initialized()
-        import time
-
-        from agenticflow.core.messages import (
-            EmbeddingMetadata,
-            EmbeddingResult,
-        )
-
-        start_time = time.time()
         result = await self._client.aio.models.embed_content(
             model=self.model,
-            contents=texts,
+            contents=texts_list,
         )
         # Handle both single and multiple embeddings
         embeddings = result.embeddings
@@ -567,7 +607,7 @@ class GeminiEmbedding(BaseEmbedding):
             tokens=None,  # Gemini doesn't provide token counts for embeddings
             duration=time.time() - start_time,
             dimensions=len(vectors[0]) if vectors else None,
-            num_texts=len(texts),
+            num_texts=len(texts_list),
         )
 
         return EmbeddingResult(embeddings=vectors, metadata=metadata)

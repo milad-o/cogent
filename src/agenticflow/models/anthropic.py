@@ -25,7 +25,9 @@ from agenticflow.models.base import (
 )
 
 
-def _messages_to_anthropic(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
+def _messages_to_anthropic(
+    messages: list[dict[str, Any]],
+) -> tuple[str | None, list[dict[str, Any]]]:
     """Convert messages to Anthropic format, extracting system message."""
     system = None
     anthropic_messages = []
@@ -46,24 +48,36 @@ def _messages_to_anthropic(messages: list[dict[str, Any]]) -> tuple[str | None, 
                 if content:
                     content_blocks.append({"type": "text", "text": content})
                 for tc in tool_calls:
-                    content_blocks.append({
-                        "type": "tool_use",
-                        "id": tc.get("id", ""),
-                        "name": tc.get("name", tc.get("function", {}).get("name", "")),
-                        "input": tc.get("args", tc.get("function", {}).get("arguments", {})),
-                    })
-                anthropic_messages.append({"role": "assistant", "content": content_blocks})
+                    content_blocks.append(
+                        {
+                            "type": "tool_use",
+                            "id": tc.get("id", ""),
+                            "name": tc.get(
+                                "name", tc.get("function", {}).get("name", "")
+                            ),
+                            "input": tc.get(
+                                "args", tc.get("function", {}).get("arguments", {})
+                            ),
+                        }
+                    )
+                anthropic_messages.append(
+                    {"role": "assistant", "content": content_blocks}
+                )
             else:
                 anthropic_messages.append({"role": "assistant", "content": content})
         elif role == "tool":
-            anthropic_messages.append({
-                "role": "user",
-                "content": [{
-                    "type": "tool_result",
-                    "tool_use_id": msg.get("tool_call_id", ""),
-                    "content": content,
-                }],
-            })
+            anthropic_messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": msg.get("tool_call_id", ""),
+                            "content": content,
+                        }
+                    ],
+                }
+            )
 
     return system, anthropic_messages
 
@@ -74,20 +88,24 @@ def _tools_to_anthropic(tools: list[Any]) -> list[dict[str, Any]]:
     for tool in tools:
         if hasattr(tool, "name") and hasattr(tool, "description"):
             schema = getattr(tool, "args_schema", {}) or {}
-            anthropic_tools.append({
-                "name": tool.name,
-                "description": tool.description or "",
-                "input_schema": schema,
-            })
+            anthropic_tools.append(
+                {
+                    "name": tool.name,
+                    "description": tool.description or "",
+                    "input_schema": schema,
+                }
+            )
         elif isinstance(tool, dict):
             # Handle OpenAI format
             if "function" in tool:
                 func = tool["function"]
-                anthropic_tools.append({
-                    "name": func["name"],
-                    "description": func.get("description", ""),
-                    "input_schema": func.get("parameters", {}),
-                })
+                anthropic_tools.append(
+                    {
+                        "name": func["name"],
+                        "description": func.get("description", ""),
+                        "input_schema": func.get("parameters", {}),
+                    }
+                )
             else:
                 anthropic_tools.append(tool)
     return anthropic_tools
@@ -104,21 +122,33 @@ def _parse_response(response: Any) -> AIMessage:
         if block.type == "text":
             content += block.text
         elif block.type == "tool_use":
-            tool_calls.append({
-                "id": block.id,
-                "name": block.name,
-                "args": block.input,
-            })
+            tool_calls.append(
+                {
+                    "id": block.id,
+                    "name": block.name,
+                    "args": block.input,
+                }
+            )
 
     metadata = MessageMetadata(
         model=response.model,
         tokens=TokenUsage(
-            prompt_tokens=response.usage.input_tokens if hasattr(response.usage, 'input_tokens') else 0,
-            completion_tokens=response.usage.output_tokens if hasattr(response.usage, 'output_tokens') else 0,
-            total_tokens=(response.usage.input_tokens + response.usage.output_tokens) if hasattr(response.usage, 'input_tokens') else 0,
-        ) if hasattr(response, 'usage') and response.usage else None,
-        finish_reason=response.stop_reason if hasattr(response, 'stop_reason') else None,
-        response_id=response.id if hasattr(response, 'id') else None,
+            prompt_tokens=response.usage.input_tokens
+            if hasattr(response.usage, "input_tokens")
+            else 0,
+            completion_tokens=response.usage.output_tokens
+            if hasattr(response.usage, "output_tokens")
+            else 0,
+            total_tokens=(response.usage.input_tokens + response.usage.output_tokens)
+            if hasattr(response.usage, "input_tokens")
+            else 0,
+        )
+        if hasattr(response, "usage") and response.usage
+        else None,
+        finish_reason=response.stop_reason
+        if hasattr(response, "stop_reason")
+        else None,
+        response_id=response.id if hasattr(response, "id") else None,
     )
 
     return AIMessage(
@@ -210,25 +240,33 @@ class AnthropicChat(BaseChatModel):
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
-        response = self._client.messages.create(**self._build_request(normalize_input(messages)))
+        response = self._client.messages.create(
+            **self._build_request(normalize_input(messages))
+        )
         return _parse_response(response)
 
-    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+    async def ainvoke(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AIMessage:
         """Invoke asynchronously.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
-        response = await self._async_client.messages.create(**self._build_request(normalize_input(messages)))
+        response = await self._async_client.messages.create(
+            **self._build_request(normalize_input(messages))
+        )
         return _parse_response(response)
 
-    async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
+    async def astream(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously with metadata.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
-            
+
         Yields:
             AIMessage objects with incremental content and metadata.
         """
@@ -246,15 +284,15 @@ class AnthropicChat(BaseChatModel):
         async with self._async_client.messages.stream(**kwargs) as stream:
             async for text in stream.text_stream:
                 # Accumulate metadata from the stream
-                if hasattr(stream, 'current_message_snapshot'):
+                if hasattr(stream, "current_message_snapshot"):
                     msg = stream.current_message_snapshot
-                    if hasattr(msg, 'id') and msg.id:
+                    if hasattr(msg, "id") and msg.id:
                         chunk_metadata["id"] = msg.id
-                    if hasattr(msg, 'model') and msg.model:
+                    if hasattr(msg, "model") and msg.model:
                         chunk_metadata["model"] = msg.model
-                    if hasattr(msg, 'stop_reason') and msg.stop_reason:
+                    if hasattr(msg, "stop_reason") and msg.stop_reason:
                         chunk_metadata["finish_reason"] = msg.stop_reason
-                    if hasattr(msg, 'usage') and msg.usage:
+                    if hasattr(msg, "usage") and msg.usage:
                         chunk_metadata["usage"] = msg.usage
 
                 metadata = MessageMetadata(
@@ -269,9 +307,9 @@ class AnthropicChat(BaseChatModel):
                 yield AIMessage(content=text, metadata=metadata)
 
             # Yield final metadata chunk with complete usage
-            if hasattr(stream, 'current_message_snapshot'):
+            if hasattr(stream, "current_message_snapshot"):
                 msg = stream.current_message_snapshot
-                if hasattr(msg, 'usage') and msg.usage:
+                if hasattr(msg, "usage") and msg.usage:
                     final_metadata = MessageMetadata(
                         id=str(uuid.uuid4()),
                         timestamp=time.time(),
@@ -279,7 +317,8 @@ class AnthropicChat(BaseChatModel):
                         tokens=TokenUsage(
                             prompt_tokens=msg.usage.input_tokens,
                             completion_tokens=msg.usage.output_tokens,
-                            total_tokens=msg.usage.input_tokens + msg.usage.output_tokens,
+                            total_tokens=msg.usage.input_tokens
+                            + msg.usage.output_tokens,
                         ),
                         finish_reason=chunk_metadata.get("finish_reason"),
                         response_id=chunk_metadata.get("id"),
@@ -287,7 +326,9 @@ class AnthropicChat(BaseChatModel):
                     )
                     yield AIMessage(content="", metadata=final_metadata)
 
-    def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
+    def _build_request(
+        self, messages: list[dict[str, Any]] | list[Any]
+    ) -> dict[str, Any]:
         """Build API request."""
         # Convert to standard format first
         formatted = convert_messages(messages)

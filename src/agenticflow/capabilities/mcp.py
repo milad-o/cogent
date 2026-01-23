@@ -107,7 +107,11 @@ class MCPServerConfig:
             if not self.command:
                 msg = "command is required for stdio transport"
                 raise ValueError(msg)
-        elif self.transport in (MCPTransport.HTTP, MCPTransport.SSE, MCPTransport.WEBSOCKET):
+        elif self.transport in (
+            MCPTransport.HTTP,
+            MCPTransport.SSE,
+            MCPTransport.WEBSOCKET,
+        ):
             if not self.url:
                 msg = "url is required for HTTP/SSE/WebSocket transport"
                 raise ValueError(msg)
@@ -182,6 +186,7 @@ class MCP(BaseCapability):
         """Emit an event through the agent's event bus if available."""
         if self._agent and hasattr(self._agent, "event_bus") and self._agent.event_bus:
             from agenticflow.observability.trace_record import Trace, TraceType
+
             try:
                 agent_id = self._agent.id if hasattr(self._agent, "id") else None
                 event = Trace(
@@ -238,7 +243,11 @@ class MCP(BaseCapability):
             cwd=cwd,
             name=name,
         )
-        return cls(servers=[config], auto_refresh=auto_refresh, tool_name_prefix=tool_name_prefix)
+        return cls(
+            servers=[config],
+            auto_refresh=auto_refresh,
+            tool_name_prefix=tool_name_prefix,
+        )
 
     @classmethod
     def http(
@@ -284,7 +293,11 @@ class MCP(BaseCapability):
             timeout=timeout,
             name=name,
         )
-        return cls(servers=[config], auto_refresh=auto_refresh, tool_name_prefix=tool_name_prefix)
+        return cls(
+            servers=[config],
+            auto_refresh=auto_refresh,
+            tool_name_prefix=tool_name_prefix,
+        )
 
     @classmethod
     def sse(
@@ -322,7 +335,11 @@ class MCP(BaseCapability):
             timeout=timeout,
             name=name,
         )
-        return cls(servers=[config], auto_refresh=auto_refresh, tool_name_prefix=tool_name_prefix)
+        return cls(
+            servers=[config],
+            auto_refresh=auto_refresh,
+            tool_name_prefix=tool_name_prefix,
+        )
 
     @classmethod
     def websocket(
@@ -355,7 +372,11 @@ class MCP(BaseCapability):
             url=url,
             name=name,
         )
-        return cls(servers=[config], auto_refresh=auto_refresh, tool_name_prefix=tool_name_prefix)
+        return cls(
+            servers=[config],
+            auto_refresh=auto_refresh,
+            tool_name_prefix=tool_name_prefix,
+        )
 
     @property
     def name(self) -> str:
@@ -444,7 +465,9 @@ class MCP(BaseCapability):
         for config, result in zip(self._servers, results, strict=False):
             if isinstance(result, Exception):
                 server_name = config.name or config.command or config.url
-                logger.error("Failed to connect to MCP server %s: %s", server_name, result)
+                logger.error(
+                    "Failed to connect to MCP server %s: %s", server_name, result
+                )
 
     async def _disconnect_all(self) -> None:
         """Disconnect from all MCP servers."""
@@ -452,10 +475,13 @@ class MCP(BaseCapability):
         tool_count = len(self._discovered_tools)
 
         # Emit disconnection event
-        await self._emit("mcp.server.disconnected", {
-            "server_count": server_count,
-            "tool_count": tool_count,
-        })
+        await self._emit(
+            "mcp.server.disconnected",
+            {
+                "server_count": server_count,
+                "tool_count": tool_count,
+            },
+        )
 
         # Close all context managers
         # Note: MCP uses anyio internally, which requires contexts to be
@@ -468,7 +494,9 @@ class MCP(BaseCapability):
             except RuntimeError as e:
                 # Suppress anyio cancel scope errors - resources are still freed
                 if "cancel scope" in str(e).lower():
-                    logger.debug("MCP context cleanup from different task (harmless): %s", e)
+                    logger.debug(
+                        "MCP context cleanup from different task (harmless): %s", e
+                    )
                 else:
                     logger.error("Error closing MCP context: %s", e)
             except Exception as e:
@@ -485,12 +513,15 @@ class MCP(BaseCapability):
         server_name = config.name or config.command or config.url or "unknown"
 
         # Emit connecting event
-        await self._emit("mcp.server.connecting", {
-            "server_name": server_name,
-            "transport": config.transport.value,
-            "url": config.url,
-            "command": config.command,
-        })
+        await self._emit(
+            "mcp.server.connecting",
+            {
+                "server_name": server_name,
+                "transport": config.transport.value,
+                "url": config.url,
+                "command": config.command,
+            },
+        )
 
         try:
             if config.transport == MCPTransport.STDIO:
@@ -506,11 +537,20 @@ class MCP(BaseCapability):
                 raise ValueError(msg)
 
             # Emit connected event
-            await self._emit("mcp.server.connected", {
-                "server_name": server_name,
-                "transport": config.transport.value,
-                "tool_count": len([t for t in self._discovered_tools.values() if t.server_name == server_name]),
-            })
+            await self._emit(
+                "mcp.server.connected",
+                {
+                    "server_name": server_name,
+                    "transport": config.transport.value,
+                    "tool_count": len(
+                        [
+                            t
+                            for t in self._discovered_tools.values()
+                            if t.server_name == server_name
+                        ]
+                    ),
+                },
+            )
             logger.info("Connected to MCP server: %s", server_name)
 
         except ImportError as e:
@@ -521,11 +561,14 @@ class MCP(BaseCapability):
             raise
         except Exception as e:
             # Emit error event
-            await self._emit("mcp.server.error", {
-                "server_name": server_name,
-                "transport": config.transport.value,
-                "error": str(e),
-            })
+            await self._emit(
+                "mcp.server.error",
+                {
+                    "server_name": server_name,
+                    "transport": config.transport.value,
+                    "error": str(e),
+                },
+            )
             logger.error("Failed to connect to MCP server %s: %s", server_name, e)
             raise
 
@@ -607,7 +650,9 @@ class MCP(BaseCapability):
         # Discover tools
         await self._discover_tools(session, server_name)
 
-    async def _connect_websocket(self, config: MCPServerConfig, server_name: str) -> None:
+    async def _connect_websocket(
+        self, config: MCPServerConfig, server_name: str
+    ) -> None:
         """Connect to an MCP server via WebSocket transport."""
         from mcp import ClientSession
         from mcp.client.websocket import websocket_client
@@ -641,7 +686,9 @@ class MCP(BaseCapability):
             self._discovered_tools[tool_name] = MCPToolInfo(
                 name=tool.name,
                 description=tool.description or f"MCP tool: {tool.name}",
-                input_schema=tool.inputSchema if isinstance(tool.inputSchema, dict) else {},
+                input_schema=tool.inputSchema
+                if isinstance(tool.inputSchema, dict)
+                else {},
                 server_name=server_name,
             )
 
@@ -653,11 +700,14 @@ class MCP(BaseCapability):
             logger.debug("Discovered tool: %s from %s", tool_name, server_name)
 
         # Emit tools discovered event
-        await self._emit("mcp.tools.discovered", {
-            "server_name": server_name,
-            "tool_count": len(discovered_tool_names),
-            "tools": discovered_tool_names,
-        })
+        await self._emit(
+            "mcp.tools.discovered",
+            {
+                "server_name": server_name,
+                "tool_count": len(discovered_tool_names),
+                "tools": discovered_tool_names,
+            },
+        )
 
     def _make_tool_name(self, original_name: str, server_name: str) -> str:
         """Create a unique tool name."""
@@ -670,7 +720,9 @@ class MCP(BaseCapability):
         # If multiple servers, add server suffix for uniqueness
         if len(self._servers) > 1:
             # Clean server name for use in tool name
-            clean_server = server_name.replace(".", "_").replace("/", "_").replace("-", "_")
+            clean_server = (
+                server_name.replace(".", "_").replace("/", "_").replace("-", "_")
+            )
             name = f"{name}_{clean_server}"
 
         return name
@@ -692,12 +744,15 @@ class MCP(BaseCapability):
                 return f"Error: Not connected to MCP server {server_name}"
 
             # Emit tool called event
-            await capability._emit("mcp.tool.called", {
-                "tool_name": tool_name,
-                "mcp_tool_name": mcp_tool.name,
-                "server_name": server_name,
-                "arguments": kwargs,
-            })
+            await capability._emit(
+                "mcp.tool.called",
+                {
+                    "tool_name": tool_name,
+                    "mcp_tool_name": mcp_tool.name,
+                    "server_name": server_name,
+                    "arguments": kwargs,
+                },
+            )
 
             try:
                 result = await session.call_tool(mcp_tool.name, arguments=kwargs)
@@ -714,33 +769,47 @@ class MCP(BaseCapability):
 
                 # Include structured content if available
                 if result.structuredContent:
-                    output_parts.append(f"\nStructured: {json.dumps(result.structuredContent)}")
+                    output_parts.append(
+                        f"\nStructured: {json.dumps(result.structuredContent)}"
+                    )
 
-                result_text = "\n".join(output_parts) if output_parts else "Tool executed successfully"
+                result_text = (
+                    "\n".join(output_parts)
+                    if output_parts
+                    else "Tool executed successfully"
+                )
 
                 # Emit tool result event
-                await capability._emit("mcp.tool.result", {
-                    "tool_name": tool_name,
-                    "mcp_tool_name": mcp_tool.name,
-                    "server_name": server_name,
-                    "result_length": len(result_text),
-                })
+                await capability._emit(
+                    "mcp.tool.result",
+                    {
+                        "tool_name": tool_name,
+                        "mcp_tool_name": mcp_tool.name,
+                        "server_name": server_name,
+                        "result_length": len(result_text),
+                    },
+                )
 
                 return result_text
 
             except Exception as e:
                 # Emit tool error event
-                await capability._emit("mcp.tool.error", {
-                    "tool_name": tool_name,
-                    "mcp_tool_name": mcp_tool.name,
-                    "server_name": server_name,
-                    "error": str(e),
-                })
+                await capability._emit(
+                    "mcp.tool.error",
+                    {
+                        "tool_name": tool_name,
+                        "mcp_tool_name": mcp_tool.name,
+                        "server_name": server_name,
+                        "error": str(e),
+                    },
+                )
                 logger.error("Error calling MCP tool %s: %s", mcp_tool.name, e)
                 return f"Error calling tool: {e}"
 
         # Build args schema from input schema
-        input_schema = mcp_tool.inputSchema if isinstance(mcp_tool.inputSchema, dict) else {}
+        input_schema = (
+            mcp_tool.inputSchema if isinstance(mcp_tool.inputSchema, dict) else {}
+        )
         args_schema = self._build_args_schema_dict(input_schema)
 
         return BaseTool(
@@ -764,7 +833,9 @@ class MCP(BaseCapability):
 
         return args_schema
 
-    def _build_args_schema(self, tool_name: str, input_schema: dict[str, Any]) -> type | None:
+    def _build_args_schema(
+        self, tool_name: str, input_schema: dict[str, Any]
+    ) -> type | None:
         """Build a Pydantic model for tool arguments from JSON schema."""
 
         from pydantic import Field, create_model

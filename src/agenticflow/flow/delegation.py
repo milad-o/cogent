@@ -78,7 +78,7 @@ class DelegationMixin:
             reply_tool = create_reply_tool(self, agent.name)  # type: ignore[arg-type]
 
             # Add to agent's tool list
-            if not hasattr(agent, '_direct_tools'):
+            if not hasattr(agent, "_direct_tools"):
                 agent._direct_tools = []  # type: ignore[attr-defined]
             agent._direct_tools.append(reply_tool)  # type: ignore[attr-defined]
             if reply_tool.name not in agent.config.tools:
@@ -90,7 +90,9 @@ class DelegationMixin:
                 "When you receive a delegated task, complete it and use the "
                 "reply_with_result tool to send your results back to the coordinator."
             )
-            agent.config.system_prompt = (agent.config.system_prompt or "") + reply_instructions
+            agent.config.system_prompt = (
+                agent.config.system_prompt or ""
+            ) + reply_instructions
 
         # === Inject delegation tool for coordinators ===
         if can_delegate:
@@ -100,14 +102,15 @@ class DelegationMixin:
             if can_delegate is True:
                 # Auto-discover specialists
                 # For event-driven flows: agents that handle agent.request
-                if trigger_config and hasattr(self, '_agents_registry'):
+                if trigger_config and hasattr(self, "_agents_registry"):
                     registry = self._agents_registry
                     specialists = [
-                        name for name, (_, cfg) in registry.items()
+                        name
+                        for name, (_, cfg) in registry.items()
                         if any(t.on == "agent.request" for t in cfg.triggers)
                     ]
                 # For topologies: agents with can_reply=True or explicit delegation config
-                elif hasattr(self, '_agents') or hasattr(self, 'workers'):
+                elif hasattr(self, "_agents") or hasattr(self, "workers"):
                     # Agents are registered dynamically; delegation list populated at registration time
                     specialists = []
             else:
@@ -117,7 +120,7 @@ class DelegationMixin:
                 delegate_tool = create_delegate_tool(self, agent.name, specialists)  # type: ignore[arg-type]
 
                 # Add to agent's tool list
-                if not hasattr(agent, '_direct_tools'):
+                if not hasattr(agent, "_direct_tools"):
                     agent._direct_tools = []  # type: ignore[attr-defined]
                 agent._direct_tools.append(delegate_tool)  # type: ignore[attr-defined]
                 if delegate_tool.name not in agent.config.tools:
@@ -131,7 +134,9 @@ class DelegationMixin:
                     f"Available specialists: {specialists_list}\n"
                     f"Use delegate_to(specialist='name', task='description') to hand off work."
                 )
-                agent.config.system_prompt = (agent.config.system_prompt or "") + delegate_instructions
+                agent.config.system_prompt = (
+                    agent.config.system_prompt or ""
+                ) + delegate_instructions
 
     def _resolve_specialists(
         self,
@@ -154,19 +159,20 @@ class DelegationMixin:
         specialists: list[str] = []
 
         # Reactive flows: look for agents handling agent.request
-        if hasattr(self, '_agents_registry'):
+        if hasattr(self, "_agents_registry"):
             registry = self._agents_registry
             specialists = [
-                name for name, (_, cfg) in registry.items()
-                if any(t.on == "agent.request" for t in getattr(cfg, 'triggers', []))
+                name
+                for name, (_, cfg) in registry.items()
+                if any(t.on == "agent.request" for t in getattr(cfg, "triggers", []))
             ]
 
         # Topologies: look for workers or other agents
-        elif hasattr(self, 'workers'):
+        elif hasattr(self, "workers"):
             workers = self.workers
             specialists = [w.name for w in workers if w.name != agent.name]
 
-        elif hasattr(self, '_agents'):
+        elif hasattr(self, "_agents"):
             agents_list = self._agents
             specialists = [a.name for a in agents_list if a.name != agent.name]
 

@@ -197,7 +197,9 @@ class IdempotencyGuard:
             self._seen.add(key)
             return True
 
-    async def run_once(self, key: str, fn: Callable[[], Awaitable[Any]]) -> tuple[bool, Any]:
+    async def run_once(
+        self, key: str, fn: Callable[[], Awaitable[Any]]
+    ) -> tuple[bool, Any]:
         """Run a coroutine exactly once per key.
 
         Returns (ran, result). If ran is False, result is None.
@@ -276,4 +278,3 @@ class Stopwatch:
     @property
     def elapsed_s(self) -> float:
         return time.perf_counter() - self._t0
-

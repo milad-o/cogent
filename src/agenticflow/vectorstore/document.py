@@ -49,7 +49,11 @@ def create_documents(
     documents = []
     for i, text in enumerate(texts):
         # Create DocumentMetadata from dict (backward compatible)
-        metadata = DocumentMetadata.from_dict(metadatas[i]) if metadatas else DocumentMetadata()
+        metadata = (
+            DocumentMetadata.from_dict(metadatas[i])
+            if metadatas
+            else DocumentMetadata()
+        )
 
         # Override ID if provided
         if ids:
@@ -64,6 +68,7 @@ def create_documents(
 # ============================================================
 # Text Splitting Utilities
 # ============================================================
+
 
 def split_text(
     text: str,
@@ -119,7 +124,7 @@ def split_text(
             # Include the separator position
             split_pos += 1
 
-        chunk_text = text[start:start + split_pos].strip()
+        chunk_text = text[start : start + split_pos].strip()
         if chunk_text:
             chunks.append(chunk_text)
 

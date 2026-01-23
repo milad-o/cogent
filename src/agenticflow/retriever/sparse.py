@@ -46,7 +46,7 @@ class BM25Index:
         """
         # Lowercase and split on non-alphanumeric
         text = text.lower()
-        tokens = re.findall(r'\b\w+\b', text)
+        tokens = re.findall(r"\b\w+\b", text)
         return tokens
 
     def add_documents(self, documents: list[Document]) -> None:
@@ -114,10 +114,7 @@ class BM25Index:
             # Apply metadata filter
             if filter:
                 metadata_dict = doc.metadata.to_dict()
-                match = all(
-                    metadata_dict.get(k) == v
-                    for k, v in filter.items()
-                )
+                match = all(metadata_dict.get(k) == v for k, v in filter.items())
                 if not match:
                     continue
 
@@ -261,7 +258,9 @@ class BM25Retriever(BaseRetriever):
         documents = [
             Document(
                 text=text,
-                metadata=DocumentMetadata.from_dict(meta) if meta else DocumentMetadata(),
+                metadata=DocumentMetadata.from_dict(meta)
+                if meta
+                else DocumentMetadata(),
             )
             for text, meta in zip(texts, metadatas, strict=False)
         ]
@@ -322,7 +321,9 @@ class BM25Retriever(BaseRetriever):
         Returns:
             List of RetrievalResult ordered by BM25 score.
         """
-        search_results = self._index.search(query=query, k=k, filter=filter, keywords=keywords)
+        search_results = self._index.search(
+            query=query, k=k, filter=filter, keywords=keywords
+        )
 
         # Normalize scores to 0-1 range if we have results
         max_score = max((s for _, s in search_results), default=1.0)
@@ -334,7 +335,10 @@ class BM25Retriever(BaseRetriever):
             normalized_score = score / max_score
 
             # Apply threshold
-            if self.score_threshold is not None and normalized_score < self.score_threshold:
+            if (
+                self.score_threshold is not None
+                and normalized_score < self.score_threshold
+            ):
                 continue
 
             results.append(
@@ -482,7 +486,7 @@ class TFIDFRetriever(BaseRetriever):
 
     def _tokenize(self, text: str) -> list[str]:
         """Tokenize text."""
-        return re.findall(r'\b\w+\b', text.lower())
+        return re.findall(r"\b\w+\b", text.lower())
 
     def add_documents(self, documents: list[Document]) -> None:
         """Add documents to the index."""

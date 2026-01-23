@@ -106,7 +106,8 @@ class JSONLoader(BaseLoader):
             try:
                 data = json.loads(line)
                 doc = self._item_to_document(
-                    data, path,
+                    data,
+                    path,
                     line=i + 1,
                     total_lines=len(lines),
                 )

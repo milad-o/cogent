@@ -129,36 +129,36 @@ def create_chat(
     **kwargs: Any,
 ) -> BaseChatModel:
     """Create a chat model for any provider.
-    
+
     Universal factory function supporting multiple invocation styles for maximum flexibility.
     Auto-loads API keys from environment (.env) and config files.
-    
+
     Usage Patterns
     --------------
-    
+
     Pattern 1: Model name only (simplest - auto-detects provider)
         >>> llm = create_chat("gpt-4o")              # OpenAI
         >>> llm = create_chat("gemini-2.5-pro")      # Google Gemini
         >>> llm = create_chat("claude-sonnet-4")     # Anthropic
         >>> llm = create_chat("llama-3.1-8b-instant")  # Groq
         >>> llm = create_chat("mistral-small-latest")  # Mistral
-    
+
     Pattern 2: Provider:model syntax (explicit provider)
         >>> llm = create_chat("openai:gpt-4o")
         >>> llm = create_chat("gemini:gemini-2.5-flash")
         >>> llm = create_chat("anthropic:claude-sonnet-4-20250514")
         >>> llm = create_chat("groq:llama-3.3-70b-versatile")
-    
+
     Pattern 3: Separate provider and model arguments
         >>> llm = create_chat("openai", "gpt-4o")
         >>> llm = create_chat("gemini", "gemini-2.5-pro")
         >>> llm = create_chat("anthropic", "claude-sonnet-4-20250514")
-    
+
     Pattern 4: With additional configuration
         >>> llm = create_chat("openai", "gpt-4o", temperature=0.7, max_tokens=1000)
         >>> llm = create_chat("gemini:gemini-2.5-pro", temperature=0.9)
         >>> llm = create_chat("gpt-4o", api_key="sk-...", temperature=0)
-    
+
     Supported Providers
     -------------------
     - openai: GPT-4o, GPT-4, GPT-3.5, o1, o3
@@ -186,7 +186,7 @@ def create_chat(
     ---------------------
     API keys automatically loaded from .env or environment:
     - OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY, etc.
-    
+
     Model overrides (optional):
     - OPENAI_CHAT_MODEL, GEMINI_CHAT_MODEL, etc.
 
@@ -194,19 +194,19 @@ def create_chat(
         Basic usage with auto-detection:
             >>> llm = create_chat("gpt-4o")
             >>> response = await llm.ainvoke("Hello!")
-        
+
         With provider prefix:
             >>> llm = create_chat("anthropic:claude-sonnet-4")
             >>> llm = create_chat("groq:llama-70b")
-        
+
         Explicit provider and model:
             >>> llm = create_chat("openai", "gpt-4o")
             >>> llm = create_chat("gemini", "gemini-2.5-flash-lite")
-        
+
         With configuration:
             >>> llm = create_chat("gpt-4o", temperature=0.7, max_tokens=500)
             >>> llm = create_chat("openai", "gpt-4o", api_key="sk-custom...")
-        
+
         Azure OpenAI with Entra ID:
             >>> from agenticflow.models.azure import AzureEntraAuth
             >>> llm = create_chat(
@@ -215,7 +215,7 @@ def create_chat(
             ...     azure_endpoint="https://your-resource.openai.azure.com",
             ...     entra=AzureEntraAuth(method="default"),
             ... )
-        
+
         GitHub Models:
             >>> import os
             >>> llm = create_chat(
@@ -223,10 +223,10 @@ def create_chat(
             ...     model="meta/Meta-Llama-3.1-8B-Instruct",
             ...     token=os.getenv("GITHUB_TOKEN"),
             ... )
-        
+
         Cloudflare Workers AI:
             >>> llm = create_chat("cloudflare", "@cf/meta/llama-3.1-8b-instruct")
-        
+
         Custom endpoint (vLLM, Together AI, etc.):
             >>> llm = create_chat(
             ...     "custom",
@@ -264,6 +264,7 @@ def create_chat(
     # Auto-load API key from config if not provided
     if "api_key" not in kwargs:
         from agenticflow.config import get_api_key
+
         api_key = get_api_key(provider, kwargs.get("api_key"))
         if api_key:
             kwargs["api_key"] = api_key
@@ -284,7 +285,9 @@ def create_chat(
     elif provider == "azure":
         from agenticflow.models.azure import AzureOpenAIChat
 
-        return AzureOpenAIChat(deployment=model or kwargs.pop("deployment", None), **kwargs)
+        return AzureOpenAIChat(
+            deployment=model or kwargs.pop("deployment", None), **kwargs
+        )
 
     elif provider == "azure-foundry":
         from agenticflow.models.azure import AzureAIFoundryChat
@@ -358,7 +361,7 @@ def create_embedding(
     **kwargs: Any,
 ) -> BaseEmbedding:
     """Create an embedding model for any provider.
-    
+
     Supports multiple invocation patterns like create_chat().
 
     Args:
@@ -374,18 +377,18 @@ def create_embedding(
         # Pattern 1: Model name only (auto-detects provider)
         embedder = create_embedding("text-embedding-3-large")
         embedder = create_embedding("embed-english-v3.0")
-        
+
         # Pattern 2: Provider:model syntax
         embedder = create_embedding("openai:text-embedding-3-large")
         embedder = create_embedding("cohere:embed-english-v3.0")
-        
+
         # Pattern 3: Separate provider and model arguments
         embedder = create_embedding("openai", "text-embedding-3-large")
         embedder = create_embedding("gemini", "text-embedding-004")
-        
+
         # Pattern 4: With configuration
         embedder = create_embedding("openai", "text-embedding-3-small", api_key="sk-...")
-        
+
         # Azure
         embedder = create_embedding(
             "azure",

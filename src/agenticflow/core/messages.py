@@ -217,7 +217,9 @@ class AIMessage(BaseMessage):
                     "type": "function",
                     "function": {
                         "name": tc.get("name", ""),
-                        "arguments": tc.get("args", "{}") if isinstance(tc.get("args"), str) else __import__("json").dumps(tc.get("args", {})),
+                        "arguments": tc.get("args", "{}")
+                        if isinstance(tc.get("args"), str)
+                        else __import__("json").dumps(tc.get("args", {})),
                     },
                 }
                 for tc in self.tool_calls
@@ -291,11 +293,15 @@ def parse_openai_response(response: Any) -> AIMessage:
 
     if message.tool_calls:
         for tc in message.tool_calls:
-            tool_calls.append({
-                "id": tc.id,
-                "name": tc.function.name,
-                "args": __import__("json").loads(tc.function.arguments) if tc.function.arguments else {},
-            })
+            tool_calls.append(
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "args": __import__("json").loads(tc.function.arguments)
+                    if tc.function.arguments
+                    else {},
+                }
+            )
 
     # Extract metadata
     metadata = MessageMetadata(
@@ -304,7 +310,9 @@ def parse_openai_response(response: Any) -> AIMessage:
             prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
             completion_tokens=response.usage.completion_tokens if response.usage else 0,
             total_tokens=response.usage.total_tokens if response.usage else 0,
-        ) if response.usage else None,
+        )
+        if response.usage
+        else None,
         finish_reason=choice.finish_reason,
         response_id=response.id,
     )

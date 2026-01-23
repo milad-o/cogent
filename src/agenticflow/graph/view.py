@@ -83,7 +83,9 @@ def _get_standard_class_defs() -> dict[str, ClassDef]:
         ),
         "config": ClassDef(
             name="config",
-            style=NodeStyle(fill="#fff3e0", stroke="#ff9800", color="#333", dashed=True),
+            style=NodeStyle(
+                fill="#fff3e0", stroke="#ff9800", color="#333", dashed=True
+            ),
         ),
         "start": ClassDef(
             name="start",
@@ -321,29 +323,30 @@ class GraphView:
 
     def display(self) -> None:
         """Display the graph in Jupyter notebook.
-        
+
         Uses _repr_markdown_() for native Mermaid rendering in VS Code.
-        
+
         Example:
             >>> view = kg.visualize()
             >>> view.display()  # Shows inline in Jupyter
         """
         try:
             from IPython.display import display as ipy_display
+
             ipy_display(self)
         except ImportError:
             print("IPython not available. Use .html() or .mermaid() instead.")
 
     def render(self, format: str = "auto") -> str | bytes:
         """High-level rendering method with auto-detection.
-        
+
         Args:
             format: Output format - "auto", "mermaid", "ascii", "dot", "html", "png", "svg"
                    "auto" will use HTML in Jupyter, mermaid otherwise.
-        
+
         Returns:
             Rendered content as string or bytes (for images).
-            
+
         Example:
             >>> view.render()           # Auto-detect context
             >>> view.render("mermaid")  # Get mermaid code
@@ -376,7 +379,7 @@ class GraphView:
 
     def _repr_markdown_(self) -> str:
         """IPython/Jupyter Markdown representation.
-        
+
         This enables native Mermaid rendering in VS Code notebooks.
         Just evaluate the GraphView object and it will render as a diagram.
         """

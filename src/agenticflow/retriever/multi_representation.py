@@ -29,22 +29,24 @@ if TYPE_CHECKING:
 
 class RepresentationType(Enum):
     """Types of document representations."""
-    ORIGINAL = "original"      # Raw document text
-    SUMMARY = "summary"        # Condensed summary
-    DETAILED = "detailed"      # Technical details emphasized
-    KEYWORDS = "keywords"      # Key terms and concepts
-    QUESTIONS = "questions"    # Hypothetical questions answered
-    ENTITIES = "entities"      # Named entities and relationships
+
+    ORIGINAL = "original"  # Raw document text
+    SUMMARY = "summary"  # Condensed summary
+    DETAILED = "detailed"  # Technical details emphasized
+    KEYWORDS = "keywords"  # Key terms and concepts
+    QUESTIONS = "questions"  # Hypothetical questions answered
+    ENTITIES = "entities"  # Named entities and relationships
 
 
 class QueryType(Enum):
     """Types of queries for routing."""
-    BROAD = "broad"            # General, conceptual queries
-    SPECIFIC = "specific"      # Technical, detailed queries
-    KEYWORD = "keyword"        # Exact term searches
-    QUESTION = "question"      # Natural language questions
-    ENTITY = "entity"          # Entity-focused queries
-    AUTO = "auto"              # Automatic detection
+
+    BROAD = "broad"  # General, conceptual queries
+    SPECIFIC = "specific"  # Technical, detailed queries
+    KEYWORD = "keyword"  # Exact term searches
+    QUESTION = "question"  # Natural language questions
+    ENTITY = "entity"  # Entity-focused queries
+    AUTO = "auto"  # Automatic detection
 
 
 @dataclass
@@ -113,51 +115,51 @@ class MultiRepresentationIndex(BaseRetriever):
     _name: str = "multi_representation"
 
     # Generation prompts
-    SUMMARY_PROMPT = '''Create a brief conceptual summary of this document.
+    SUMMARY_PROMPT = """Create a brief conceptual summary of this document.
 Focus on the main ideas and high-level concepts.
 Keep it under 100 words.
 
 Document:
 {text}
 
-Summary:'''
+Summary:"""
 
-    DETAILED_PROMPT = '''Extract the key technical details from this document.
+    DETAILED_PROMPT = """Extract the key technical details from this document.
 Include specific terms, methods, numbers, and precise information.
 Focus on details that would answer specific technical questions.
 
 Document:
 {text}
 
-Technical Details:'''
+Technical Details:"""
 
-    KEYWORDS_PROMPT = '''Extract the most important keywords and key phrases from this document.
+    KEYWORDS_PROMPT = """Extract the most important keywords and key phrases from this document.
 Include technical terms, concepts, proper nouns, and important topics.
 Return as a comma-separated list.
 
 Document:
 {text}
 
-Keywords:'''
+Keywords:"""
 
-    QUESTIONS_PROMPT = '''Generate 3-5 questions that this document answers.
+    QUESTIONS_PROMPT = """Generate 3-5 questions that this document answers.
 Focus on questions a user might ask that would lead to this document.
 
 Document:
 {text}
 
-Questions (one per line):'''
+Questions (one per line):"""
 
-    ENTITIES_PROMPT = '''Extract named entities from this document.
+    ENTITIES_PROMPT = """Extract named entities from this document.
 Include people, organizations, technologies, products, and locations.
 Return as a comma-separated list.
 
 Document:
 {text}
 
-Entities:'''
+Entities:"""
 
-    QUERY_CLASSIFICATION_PROMPT = '''Classify this search query into one of these categories:
+    QUERY_CLASSIFICATION_PROMPT = """Classify this search query into one of these categories:
 - BROAD: General, conceptual, or exploratory query
 - SPECIFIC: Technical, detailed, or precise query
 - KEYWORD: Looking for specific terms or exact matches
@@ -166,7 +168,7 @@ Entities:'''
 
 Query: {query}
 
-Category (one word):'''
+Category (one word):"""
 
     def __init__(
         self,
@@ -347,11 +349,13 @@ Category (one word):'''
                     rep_id = f"{doc_id}:{rep_type}"
                     await self._vectorstore.add_texts(
                         [text],
-                        metadatas=[{
-                            "doc_id": doc_id,
-                            "representation": rep_type,
-                            **metadata_dict,
-                        }],
+                        metadatas=[
+                            {
+                                "doc_id": doc_id,
+                                "representation": rep_type,
+                                **metadata_dict,
+                            }
+                        ],
                         ids=[rep_id],
                     )
 
@@ -389,21 +393,25 @@ Category (one word):'''
                 if filter:
                     rep_filter.update(filter)
 
-                results = await self._vectorstore.search(query, k=k * 2, filter=rep_filter)
+                results = await self._vectorstore.search(
+                    query, k=k * 2, filter=rep_filter
+                )
 
                 rep_results = []
                 for r in results:
                     doc_id = r.document.metadata.get("doc_id")
                     if doc_id and doc_id in self._documents:
-                        rep_results.append(RetrievalResult(
-                            document=self._documents[doc_id],
-                            score=r.score,
-                            retriever_name=self.name,
-                            metadata={
-                                "representation": rep_type,
-                                "matched_text": r.document.text[:200],
-                            },
-                        ))
+                        rep_results.append(
+                            RetrievalResult(
+                                document=self._documents[doc_id],
+                                score=r.score,
+                                retriever_name=self.name,
+                                metadata={
+                                    "representation": rep_type,
+                                    "matched_text": r.document.text[:200],
+                                },
+                            )
+                        )
 
                 if rep_results:
                     all_results.append(rep_results)
@@ -428,16 +436,18 @@ Category (one word):'''
             for r in results:
                 doc_id = r.document.metadata.get("doc_id")
                 if doc_id and doc_id in self._documents:
-                    retrieval_results.append(RetrievalResult(
-                        document=self._documents[doc_id],
-                        score=r.score,
-                        retriever_name=self.name,
-                        metadata={
-                            "query_type": query_type.value,
-                            "representation": rep_type,
-                            "matched_text": r.document.text[:200],
-                        },
-                    ))
+                    retrieval_results.append(
+                        RetrievalResult(
+                            document=self._documents[doc_id],
+                            score=r.score,
+                            retriever_name=self.name,
+                            metadata={
+                                "query_type": query_type.value,
+                                "representation": rep_type,
+                                "matched_text": r.document.text[:200],
+                            },
+                        )
+                    )
 
             return retrieval_results
 

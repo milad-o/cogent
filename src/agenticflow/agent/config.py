@@ -122,7 +122,9 @@ class AgentConfig:
     # Can be:
     # - String: "gpt4", "claude", "anthropic:claude-sonnet-4" (auto-resolved)
     # - BaseChatModel: OpenAIChat, AzureOpenAIChat, AnthropicChat, etc.
-    model: BaseChatModel | OpenAIChat | AzureOpenAIChat | AnthropicChat | str | None = None
+    model: BaseChatModel | OpenAIChat | AzureOpenAIChat | AnthropicChat | str | None = (
+        None
+    )
     temperature: float = 0.7  # Used only if model is None (for lazy creation)
     max_tokens: int | None = None  # Used only if model is None
     system_prompt: str | None = None
@@ -186,7 +188,9 @@ class AgentConfig:
             strategy = strategy_map.get(self.execution_strategy.lower())
             if strategy is None:
                 valid = ", ".join(strategy_map.keys())
-                raise ValueError(f"Invalid execution_strategy: {self.execution_strategy}. Valid: {valid}")
+                raise ValueError(
+                    f"Invalid execution_strategy: {self.execution_strategy}. Valid: {valid}"
+                )
             object.__setattr__(self, "execution_strategy", strategy)
 
     def with_tools(self, tools: list[str]) -> AgentConfig:

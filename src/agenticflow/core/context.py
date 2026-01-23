@@ -98,6 +98,7 @@ class RunContext:
         # Create a copy with updated metadata
         # This works for subclasses too via __class__
         import copy
+
         new_ctx = copy.copy(self)
         new_ctx.metadata = new_metadata
         return new_ctx

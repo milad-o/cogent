@@ -184,10 +184,21 @@ class DocumentMetadata:
         """
         # Standard fields that DocumentMetadata recognizes
         standard_fields = {
-            "id", "timestamp", "source", "source_type", "page",
-            "chunk_index", "chunk_total", "start_char", "end_char",
-            "token_count", "char_count", "loader", "created_by",
-            "parent_id", "custom"
+            "id",
+            "timestamp",
+            "source",
+            "source_type",
+            "page",
+            "chunk_index",
+            "chunk_total",
+            "start_char",
+            "end_char",
+            "token_count",
+            "char_count",
+            "loader",
+            "created_by",
+            "parent_id",
+            "custom",
         }
 
         # Collect unknown fields into custom

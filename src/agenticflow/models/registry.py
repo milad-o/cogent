@@ -27,13 +27,11 @@ MODEL_ALIASES: dict[str, str] = {
     "o3-mini": "o3-mini",
     "o4": "o4-mini",
     "o4-mini": "o4-mini",
-
     # Anthropic
     "claude": "claude-sonnet-4-20250514",
     "claude-sonnet": "claude-sonnet-4-20250514",
     "claude-opus": "claude-opus-4-20250514",
     "claude-haiku": "claude-haiku-4-20250323",
-
     # Google Gemini
     "gemini": "gemini-2.5-flash",
     "gemini-flash": "gemini-2.5-flash",
@@ -42,18 +40,15 @@ MODEL_ALIASES: dict[str, str] = {
     "gemini3": "gemini-3-pro",
     "gemini-3": "gemini-3-pro",
     "gemini-3-flash": "gemini-3-flash",
-
     # Groq (fast inference)
     "llama": "llama-3.3-70b-versatile",
     "llama-70b": "llama-3.3-70b-versatile",
     "llama-8b": "llama-3.1-8b-instant",
     "mixtral": "mixtral-8x7b-32768",
     "qwen": "qwen-2.5-72b-versatile",
-
     # Ollama (local)
     "ollama": "llama3.2",
     "ollama-llama": "llama3.2",
-
     # Mistral
     "mistral": "mistral-large-latest",
     "mistral-large": "mistral-large-latest",
@@ -65,7 +60,6 @@ MODEL_ALIASES: dict[str, str] = {
     "magistral": "magistral-medium-1.2",
     "codestral": "codestral",
     "devstral": "devstral-2",
-
     # Cohere
     "command": "command-a-03-2025",
     "command-a": "command-a-03-2025",
@@ -96,10 +90,8 @@ MODEL_PROVIDERS: dict[str, str] = {
     "tts-": "openai",
     "davinci-": "openai",
     "babbage-": "openai",
-
     # Anthropic
     "claude-": "anthropic",
-
     # Google Gemini
     "gemini-": "gemini",
     "gemini-flash": "gemini",
@@ -108,7 +100,6 @@ MODEL_PROVIDERS: dict[str, str] = {
     "models/gemini": "gemini",
     "nano-banana": "gemini",
     "text-embedding-": "gemini",  # Gemini also has text-embedding models
-
     # Groq
     "llama-": "groq",
     "llama3": "groq",
@@ -118,7 +109,6 @@ MODEL_PROVIDERS: dict[str, str] = {
     "deepseek-": "groq",
     "gemma-": "groq",
     "gemma2-": "groq",
-
     # Mistral
     "mistral-": "mistral",
     "codestral-": "mistral",
@@ -131,10 +121,8 @@ MODEL_PROVIDERS: dict[str, str] = {
     "devstral-": "mistral",
     "voxtral-": "mistral",
     "ocr-": "mistral",  # Mistral OCR models
-
     # Cloudflare Workers AI
     "@cf/": "cloudflare",
-
     # Cohere
     "command-": "cohere",
     "command": "cohere",
@@ -148,29 +136,29 @@ MODEL_PROVIDERS: dict[str, str] = {
 
 def resolve_model(model_str: str) -> tuple[str, str]:
     """Resolve model string to (provider, model_name).
-    
+
     Supports:
     - Aliases: "gpt4" → ("openai", "gpt-4o")
     - Provider prefix: "anthropic:claude-sonnet-4" → ("anthropic", "claude-sonnet-4")
     - Full names: "gpt-4o" → ("openai", "gpt-4o")
     - Pattern matching: Auto-detects provider from model name
-    
+
     Args:
         model_str: Model string (alias, provider:model, or full name)
-        
+
     Returns:
         Tuple of (provider, model_name)
-        
+
     Raises:
         ValueError: If model string cannot be resolved
-        
+
     Examples:
         >>> resolve_model("gpt4")
         ('openai', 'gpt-4o')
-        
+
         >>> resolve_model("anthropic:claude-sonnet-4")
         ('anthropic', 'claude-sonnet-4')
-        
+
         >>> resolve_model("gemini-2.0-flash-exp")
         ('gemini', 'gemini-2.0-flash-exp')
     """
@@ -226,16 +214,16 @@ def resolve_and_create_model(
     **kwargs: Any,
 ) -> Any:  # Returns BaseChatModel
     """Resolve model string and create model instance.
-    
+
     Convenience function that combines resolve_model() and create_chat().
-    
+
     Args:
         model_str: Model string to resolve
         **kwargs: Additional arguments passed to create_chat()
-        
+
     Returns:
         Chat model instance
-        
+
     Examples:
         >>> llm = resolve_and_create_model("gpt4")
         >>> llm = resolve_and_create_model("anthropic:claude-sonnet-4")
@@ -249,7 +237,7 @@ def resolve_and_create_model(
 
 def list_model_aliases() -> dict[str, str]:
     """Get all available model aliases.
-    
+
     Returns:
         Dictionary of alias -> full model name
     """
@@ -258,10 +246,10 @@ def list_model_aliases() -> dict[str, str]:
 
 def get_provider_for_model(model_name: str) -> str | None:
     """Get provider name for a model.
-    
+
     Args:
         model_name: Full model name
-        
+
     Returns:
         Provider name or None if not found
     """

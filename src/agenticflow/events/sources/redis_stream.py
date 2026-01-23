@@ -77,8 +77,7 @@ class RedisStreamSource(EventSource):
             import redis.asyncio as redis
         except ImportError as e:
             raise ImportError(
-                "RedisStreamSource requires 'redis'. "
-                "Install with: uv add redis"
+                "RedisStreamSource requires 'redis'. Install with: uv add redis"
             ) from e
 
         self._running = True
@@ -130,6 +129,7 @@ class RedisStreamSource(EventSource):
             except Exception as e:
                 # Log error but continue
                 import sys
+
                 print(f"RedisStreamSource error: {e}", file=sys.stderr)
                 await asyncio.sleep(1)
 
@@ -174,7 +174,9 @@ class RedisStreamSource(EventSource):
             data = decoded
 
         # Add message ID for reference
-        mid = message_id.decode("utf-8") if isinstance(message_id, bytes) else message_id
+        mid = (
+            message_id.decode("utf-8") if isinstance(message_id, bytes) else message_id
+        )
         data["_redis_message_id"] = mid
 
         return Event(

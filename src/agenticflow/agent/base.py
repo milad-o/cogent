@@ -136,44 +136,38 @@ class Agent:
         # Core parameters
         name: str,
         model: BaseChatModel | str | None = None,
-        role: AgentRole | Literal["worker", "supervisor", "reviewer", "autonomous"] | RoleConfig = AgentRole.WORKER,
+        role: AgentRole
+        | Literal["worker", "supervisor", "reviewer", "autonomous"]
+        | RoleConfig = AgentRole.WORKER,
         description: str = "",
         instructions: str | None = None,
         tools: Sequence[BaseTool | str | Callable] | None = None,
         capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
-
         # Advanced parameters (usually provided by Flow)
         trace_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
-
         # Memory and state
         memory: bool | AgentMemory | None = None,
         store: Any = None,
-
         # HITL and streaming
         interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
         stream: bool = False,
-
         # Advanced features
         reasoning: bool | ReasoningConfig = False,
         output: type | dict | ResponseSchema | None = None,
         intercept: Sequence[Callable] | None = None,
         spawning: SpawningConfig | None = None,
-
         # Observability
         verbosity: bool | str | int | None = None,
         observer: Observer | None = None,
-
         # TaskBoard
         taskboard: bool | TaskBoardConfig | None = None,
-
         # Role-specific parameters (only used if role is string/enum, ignored if RoleConfig)
         workers: list[str] | None = None,
         criteria: list[str] | None = None,
         specialty: str | None = None,
-
         # Capability overrides
         can_finish: bool | None = None,
         can_delegate: bool | None = None,
@@ -214,23 +208,23 @@ class Agent:
             can_delegate: Override capability to delegate to other agents
             can_use_tools: Override capability to call tools
             can_use_tools: Override capability to call tools (custom roles)
-        
+
         Model Examples:
             ```python
             # High-level: Just model name (auto-detects provider)
             agent = Agent(name="Helper", model="gpt4")
             agent = Agent(name="Helper", model="claude")
             agent = Agent(name="Helper", model="gemini")
-            
+
             # With provider prefix for explicit control
             agent = Agent(name="Helper", model="anthropic:claude-sonnet-4")
             agent = Agent(name="Helper", model="groq:llama-70b")
-            
+
             # Medium-level: Create model explicitly
             from agenticflow.models import create_chat
             model = create_chat("openai", "gpt-4o")
             agent = Agent(name="Helper", model=model)
-            
+
             # Low-level: Full control
             from agenticflow.models import OpenAIChat
             model = OpenAIChat(model="gpt-4o", temperature=0.7, api_key="sk-...")
@@ -356,7 +350,7 @@ class Agent:
         if isinstance(role, str):
             # String role - convert to enum
             role_enum = AgentRole(role.lower())
-        elif hasattr(role, 'get_role_type'):
+        elif hasattr(role, "get_role_type"):
             # RoleConfig object
             role_config = role
             role_enum = role_config.get_role_type()
@@ -384,6 +378,7 @@ class Agent:
         effective_prompt = instructions or system_prompt
         if not effective_prompt:
             from agenticflow.agent.roles import get_role_prompt
+
             has_tools = bool(tool_names or self._direct_tools)
             effective_prompt = get_role_prompt(role_enum, has_tools=has_tools)
 
@@ -397,7 +392,9 @@ class Agent:
                 effective_prompt += f"\n\nYour team members: {', '.join(workers)}"
 
             if criteria and role_enum == AgentRole.REVIEWER:
-                effective_prompt += "\n\nEvaluation criteria:\n- " + "\n- ".join(criteria)
+                effective_prompt += "\n\nEvaluation criteria:\n- " + "\n- ".join(
+                    criteria
+                )
 
             if specialty and role_enum == AgentRole.WORKER:
                 effective_prompt += f"\n\nYour specialty: {specialty}"
@@ -449,7 +446,9 @@ class Agent:
             self._setup_verbosity_observer(verbosity)
 
         # Human-in-the-loop state
-        self._pending_actions: dict[str, PendingAction] = {}  # action_id -> pending action
+        self._pending_actions: dict[
+            str, PendingAction
+        ] = {}  # action_id -> pending action
         self._interrupted_state: InterruptedState | None = None
 
         # Deferred tool execution manager (event-driven completion)
@@ -498,6 +497,7 @@ class Agent:
         elif self.config.retry_on_error:
             # Create config from legacy settings
             from agenticflow.agent.resilience import RetryPolicy, RetryStrategy
+
             resilience_config = ResilienceConfig(
                 retry_policy=RetryPolicy(
                     max_retries=self.config.max_retries,
@@ -535,6 +535,7 @@ class Agent:
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.trace_bus is None:
             from agenticflow.observability import TraceBus
+
             self.trace_bus = TraceBus()
 
         # Convert to ObservabilityLevel
@@ -593,6 +594,7 @@ class Agent:
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.trace_bus is None:
             from agenticflow.observability import TraceBus
+
             self.trace_bus = TraceBus()
 
         self._observer = observer
@@ -689,7 +691,8 @@ class Agent:
                 return TokenUsage(
                     prompt_tokens=metadata.get("input_tokens", 0),
                     completion_tokens=metadata.get("output_tokens", 0),
-                    total_tokens=metadata.get("input_tokens", 0) + metadata.get("output_tokens", 0),
+                    total_tokens=metadata.get("input_tokens", 0)
+                    + metadata.get("output_tokens", 0),
                 )
 
         return None
@@ -782,6 +785,7 @@ class Agent:
             # Ensure event bus exists
             if self.trace_bus is None:
                 from agenticflow.observability.bus import TraceBus
+
                 self.trace_bus = TraceBus()
 
             self._deferred_manager = DeferredManager(self.trace_bus)
@@ -900,7 +904,9 @@ class Agent:
             elif hasattr(tool, "invoke"):
                 # Sync invoke interface
                 loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(None, lambda: tool.invoke(tool_args))
+                result = await loop.run_in_executor(
+                    None, lambda: tool.invoke(tool_args)
+                )
             else:
                 # Callable tool
                 if asyncio.iscoroutinefunction(tool):
@@ -1017,7 +1023,9 @@ class Agent:
                 model=self.config.model,
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
-                system_prompt=self.config.system_prompt + "\n\n" + TASKBOARD_INSTRUCTIONS,
+                system_prompt=self.config.system_prompt
+                + "\n\n"
+                + TASKBOARD_INSTRUCTIONS,
                 model_kwargs=self.config.model_kwargs,
                 stream=self.config.stream,
                 tools=self.config.tools,
@@ -1250,13 +1258,14 @@ class Agent:
     def role_behavior(self):
         """Get behavior definition for this agent's role."""
         from agenticflow.agent.roles import get_role_behavior
+
         return get_role_behavior(self.role)
 
     @property
     def can_delegate(self) -> bool:
         """Whether this agent can delegate to other agents."""
         # Check RoleConfig first
-        if hasattr(self, '_role_config') and self._role_config:
+        if hasattr(self, "_role_config") and self._role_config:
             return self._role_config.get_capabilities()["can_delegate"]
         # Then check capability overrides
         if "can_delegate" in self._capability_overrides:
@@ -1268,7 +1277,7 @@ class Agent:
     def can_finish(self) -> bool:
         """Whether this agent can provide final answers."""
         # Check RoleConfig first
-        if hasattr(self, '_role_config') and self._role_config:
+        if hasattr(self, "_role_config") and self._role_config:
             return self._role_config.get_capabilities()["can_finish"]
         # Then check capability overrides
         if "can_finish" in self._capability_overrides:
@@ -1280,7 +1289,7 @@ class Agent:
     def can_use_tools(self) -> bool:
         """Whether this agent can use tools directly."""
         # Check RoleConfig first
-        if hasattr(self, '_role_config') and self._role_config:
+        if hasattr(self, "_role_config") and self._role_config:
             return self._role_config.get_capabilities()["can_use_tools"]
         # Then check capability overrides
         if "can_use_tools" in self._capability_overrides:
@@ -1414,7 +1423,9 @@ class Agent:
         for cap in self._capabilities:
             cap_tools = cap.tools
             if cap_tools:
-                tool_list = "\n".join(f"  - {t.name}: {t.description}" for t in cap_tools)
+                tool_list = "\n".join(
+                    f"  - {t.name}: {t.description}" for t in cap_tools
+                )
                 sections.append(f"**{cap.name}** - {cap.description}\n{tool_list}")
             else:
                 sections.append(f"**{cap.name}** - {cap.description}")
@@ -1443,6 +1454,7 @@ class Agent:
         if not base_prompt:
             if tools or caps_desc:
                 from agenticflow.agent.roles import get_role_prompt
+
                 has_tools = bool(tools)
                 base_prompt = get_role_prompt(self.config.role, has_tools=has_tools)
             else:
@@ -1458,7 +1470,9 @@ class Agent:
             result = result.replace("{tools}", tools_desc)
 
         if has_caps_placeholder:
-            result = result.replace("{capabilities}", caps_desc if caps_desc else "No capabilities.")
+            result = result.replace(
+                "{capabilities}", caps_desc if caps_desc else "No capabilities."
+            )
 
         # Auto-append if no placeholders and we have tools/capabilities
         if not has_tools_placeholder and not has_caps_placeholder:
@@ -1476,6 +1490,7 @@ class Agent:
         # Add memory system prompt if Memory is configured
         if self._memory_manager:
             from agenticflow.memory.tools import get_memory_prompt_addition
+
             memory_prompt = get_memory_prompt_addition(has_tools=True)
             result = f"{result}\n\n{memory_prompt}"
 
@@ -1522,11 +1537,11 @@ class Agent:
             # High-level: String model
             agent = Agent(name="Helper", model="gpt4")
             agent = Agent(name="Helper", model="anthropic:claude-sonnet-4")
-            
+
             # Medium-level: Factory function
             from agenticflow.models import create_chat
             agent = Agent(name="Helper", model=create_chat("openai", "gpt-4o"))
-            
+
             # Low-level: Direct model instance
             from agenticflow.models import ChatModel
             agent = Agent(name="Helper", model=ChatModel(model="gpt-4o"))
@@ -1538,6 +1553,7 @@ class Agent:
                 if isinstance(model_spec, str):
                     # Resolve string to model instance
                     from agenticflow.models import resolve_and_create_model
+
                     try:
                         self._model = resolve_and_create_model(model_spec)
                     except Exception as e:
@@ -1604,7 +1620,7 @@ class Agent:
 
     def _extract_response_metadata(self, response: Response[Any]) -> dict[str, Any]:
         """Extract Response metadata for observability events.
-        
+
         Returns dictionary with response metadata suitable for event data.
         """
         metadata: dict[str, Any] = {}
@@ -1761,8 +1777,12 @@ class Agent:
                 "model": model_identifier(self.model),
                 "messages": dict_messages,
                 "message_count": len(dict_messages),
-                "system_prompt_length": len(effective_prompt) if effective_prompt else 0,
-                "tools_available": [t.name for t in self.all_tools] if include_tools and self.all_tools else [],
+                "system_prompt_length": len(effective_prompt)
+                if effective_prompt
+                else 0,
+                "tools_available": [t.name for t in self.all_tools]
+                if include_tools and self.all_tools
+                else [],
             },
             correlation_id,
         )
@@ -1784,7 +1804,8 @@ class Agent:
                     "response": result,
                     "response_length": len(result) if result else 0,
                     "duration_ms": duration_ms,
-                    "has_tool_calls": hasattr(response, 'tool_calls') and bool(response.tool_calls),
+                    "has_tool_calls": hasattr(response, "tool_calls")
+                    and bool(response.tool_calls),
                 },
                 correlation_id,
             )
@@ -1809,7 +1830,8 @@ class Agent:
                 metadata=metadata,
                 tool_calls=[],
                 events=[],
-                messages=messages + [AIMessage(content=result)],  # Include full conversation
+                messages=messages
+                + [AIMessage(content=result)],  # Include full conversation
                 error=None,
             )
 
@@ -1899,6 +1921,7 @@ class Agent:
             If stream=True: AsyncIterator[StreamChunk] for direct iteration.
         """
         import warnings
+
         warnings.warn(
             "chat() is deprecated. Use run(task, thread_id=...) instead.",
             DeprecationWarning,
@@ -1961,6 +1984,7 @@ class Agent:
             - `agent.think_stream("prompt")` → `agent.think("prompt", stream=True)`
         """
         import warnings
+
         warnings.warn(
             "think_stream() is deprecated. Use think(prompt, stream=True) instead.",
             DeprecationWarning,
@@ -2050,7 +2074,9 @@ class Agent:
                     "agent_id": self.id,
                     "agent_name": self.name,
                     "response": accumulated_content,
-                    "response_preview": accumulated_content[:500] if accumulated_content else "",
+                    "response_preview": accumulated_content[:500]
+                    if accumulated_content
+                    else "",
                     "duration_ms": duration_ms,
                     "streaming": True,
                     "token_count": index,
@@ -2089,6 +2115,7 @@ class Agent:
         This method is kept for backward compatibility.
         """
         import warnings
+
         warnings.warn(
             "chat_stream() is deprecated. Use run(task, stream=True, thread_id=...) instead.",
             DeprecationWarning,
@@ -2323,7 +2350,9 @@ class Agent:
         """
         tool_obj = self._get_tool(tool_name)
         if not tool_obj:
-            raise ValueError(f"Unknown tool: {tool_name}. Available: {[t.name for t in self.all_tools]}")
+            raise ValueError(
+                f"Unknown tool: {tool_name}. Available: {[t.name for t in self.all_tools]}"
+            )
 
         # Check if agent is allowed to use this tool
         if not self.config.can_use_tool(tool_name):
@@ -2369,7 +2398,9 @@ class Agent:
                 interrupt_reason=InterruptReason.TOOL_APPROVAL,
             )
             self._interrupted_state = interrupted
-            raise InterruptedException(interrupted, f"Tool '{tool_name}' requires human approval")
+            raise InterruptedException(
+                interrupted, f"Tool '{tool_name}' requires human approval"
+            )
 
         await self._set_status(AgentStatus.ACTING, correlation_id)
 
@@ -2450,7 +2481,9 @@ class Agent:
                             )
                 else:
                     # All retries and fallbacks exhausted
-                    error = exec_result.error or RuntimeError(f"Tool {tool_name} failed")
+                    error = exec_result.error or RuntimeError(
+                        f"Tool {tool_name} failed"
+                    )
 
                     await self._emit_event(
                         TraceType.TOOL_ERROR,
@@ -2460,8 +2493,12 @@ class Agent:
                             "error": str(error),
                             "attempts": exec_result.attempts,
                             "fallback_chain": exec_result.fallback_chain,
-                            "circuit_state": exec_result.circuit_state.value if exec_result.circuit_state else None,
-                            "recovery_action": exec_result.recovery_action.value if exec_result.recovery_action else None,
+                            "circuit_state": exec_result.circuit_state.value
+                            if exec_result.circuit_state
+                            else None,
+                            "recovery_action": exec_result.recovery_action.value
+                            if exec_result.recovery_action
+                            else None,
                         },
                         correlation_id,
                     )
@@ -2470,7 +2507,7 @@ class Agent:
                         tracker.tool_error(
                             tool_name,
                             f"{error} (after {exec_result.attempts} attempts, "
-                            f"fallbacks: {exec_result.fallback_chain or 'none'})"
+                            f"fallbacks: {exec_result.fallback_chain or 'none'})",
                         )
 
                     self.state.record_error(str(error))
@@ -2490,7 +2527,9 @@ class Agent:
             self.state.add_acting_time(duration_ms)
 
             if tracker:
-                tracker.tool_result(tool_name, str(result)[:200], duration_ms=duration_ms)
+                tracker.tool_result(
+                    tool_name, str(result)[:200], duration_ms=duration_ms
+                )
 
             await self._set_status(AgentStatus.IDLE, correlation_id)
             return result
@@ -2590,7 +2629,9 @@ class Agent:
         )
 
         if tracker:
-            tracker.update(f"▶️ Resumed: {decision.decision.value} - {pending.describe()}")
+            tracker.update(
+                f"▶️ Resumed: {decision.decision.value} - {pending.describe()}"
+            )
 
         # Handle decision types
         if decision.decision == DecisionType.ABORT:
@@ -2633,7 +2674,11 @@ class Agent:
             )
 
         # APPROVE or EDIT - execute the tool
-        args = decision.modified_args if decision.decision == DecisionType.EDIT else pending.args
+        args = (
+            decision.modified_args
+            if decision.decision == DecisionType.EDIT
+            else pending.args
+        )
 
         if decision.decision == DecisionType.EDIT and tracker:
             tracker.update(f"✏️ Edited args: {args}")
@@ -2667,6 +2712,7 @@ class Agent:
 
         try:
             if use_resilience and self._resilience:
+
                 def get_fallback_tool(name: str):
                     t = self._get_tool(name)
                     return t.invoke if t else None
@@ -2683,20 +2729,26 @@ class Agent:
                     result = exec_result.result
                     duration_ms = exec_result.total_time_ms
                 else:
-                    error = exec_result.error or RuntimeError(f"Tool {pending.tool_name} failed")
+                    error = exec_result.error or RuntimeError(
+                        f"Tool {pending.tool_name} failed"
+                    )
                     raise error
             else:
                 if hasattr(tool_obj, "ainvoke"):
                     result = await tool_obj.ainvoke(args)
                 else:
                     loop = asyncio.get_event_loop()
-                    result = await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+                    result = await loop.run_in_executor(
+                        None, lambda: tool_obj.invoke(args)
+                    )
                 duration_ms = (now_utc() - start_time).total_seconds() * 1000
 
             self.state.add_acting_time(duration_ms)
 
             if tracker:
-                tracker.tool_result(pending.tool_name, str(result)[:200], duration_ms=duration_ms)
+                tracker.tool_result(
+                    pending.tool_name, str(result)[:200], duration_ms=duration_ms
+                )
 
             await self._set_status(AgentStatus.IDLE, correlation_id)
             return result
@@ -2793,7 +2845,9 @@ class Agent:
             """Execute a single tool with resilience (for parallel execution)."""
             tool_obj = self._get_tool(tool_name)
             if not tool_obj:
-                raise ValueError(f"Unknown tool: {tool_name}. Available: {[t.name for t in self.all_tools]}")
+                raise ValueError(
+                    f"Unknown tool: {tool_name}. Available: {[t.name for t in self.all_tools]}"
+                )
 
             if not self.config.can_use_tool(tool_name):
                 raise PermissionError(
@@ -2824,7 +2878,9 @@ class Agent:
                     return await tool_obj.ainvoke(args)
                 else:
                     loop = asyncio.get_event_loop()
-                    return await loop.run_in_executor(None, lambda: tool_obj.invoke(args))
+                    return await loop.run_in_executor(
+                        None, lambda: tool_obj.invoke(args)
+                    )
 
         # Create tasks for parallel execution
         tasks = [execute_single(name, args) for name, args in tool_calls]
@@ -2864,7 +2920,9 @@ class Agent:
                         tracker.tool_error(tool_name, str(result))
                     else:
                         tracker.tool_result(tool_name, str(result)[:100])
-                tracker.update(f"Completed {successes}/{len(tool_calls)} tools ({duration_ms:.0f}ms)")
+                tracker.update(
+                    f"Completed {successes}/{len(tool_calls)} tools ({duration_ms:.0f}ms)"
+                )
 
             await self._set_status(AgentStatus.IDLE, correlation_id)
             return results
@@ -3073,7 +3131,9 @@ class Agent:
         # Load conversation history into agent state if thread_id provided
         if thread_id:
             # Set current thread on memory for tools to access
-            if self._memory_manager and hasattr(self._memory_manager, '_current_thread_id'):
+            if self._memory_manager and hasattr(
+                self._memory_manager, "_current_thread_id"
+            ):
                 self._memory_manager._current_thread_id = thread_id
 
             if self._memory_manager:
@@ -3154,7 +3214,9 @@ class Agent:
                 content=None,
                 metadata=metadata,
                 tool_calls=list(self.state.tool_calls),
-                messages=list(self.state.message_history),  # Include messages even on error
+                messages=list(
+                    self.state.message_history
+                ),  # Include messages even on error
                 events=list(self.state.emitted_events),
                 error=ErrorInfo(
                     message=str(e),
@@ -3205,34 +3267,56 @@ class Agent:
             for iteration in range(max_iterations):
                 async for chunk in bound_model.astream(dict_messages):
                     # Yield text content
-                    if hasattr(chunk, 'content') and chunk.content:
+                    if hasattr(chunk, "content") and chunk.content:
                         accumulated_content += chunk.content
                         yield StreamChunk(content=chunk.content, index=iteration)
 
                     # Check for tool calls at end of stream
-                    tool_calls = getattr(chunk, 'tool_calls', None)
+                    tool_calls = getattr(chunk, "tool_calls", None)
                     if tool_calls:
                         # Execute tools and continue loop
-                        dict_messages.append({
-                            "role": "assistant",
-                            "content": accumulated_content,
-                            "tool_calls": [
-                                {"id": tc.get("id", f"call_{i}"), "name": tc.get("name"), "args": tc.get("args", {})}
-                                for i, tc in enumerate(tool_calls)
-                            ] if tool_calls else [],
-                        })
+                        dict_messages.append(
+                            {
+                                "role": "assistant",
+                                "content": accumulated_content,
+                                "tool_calls": [
+                                    {
+                                        "id": tc.get("id", f"call_{i}"),
+                                        "name": tc.get("name"),
+                                        "args": tc.get("args", {}),
+                                    }
+                                    for i, tc in enumerate(tool_calls)
+                                ]
+                                if tool_calls
+                                else [],
+                            }
+                        )
 
                         for tc in tool_calls:
-                            tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
-                            tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
-                            tool_id = tc.get("id", "call_0") if isinstance(tc, dict) else getattr(tc, "id", "call_0")
+                            tool_name = (
+                                tc.get("name", "")
+                                if isinstance(tc, dict)
+                                else getattr(tc, "name", "")
+                            )
+                            tool_args = (
+                                tc.get("args", {})
+                                if isinstance(tc, dict)
+                                else getattr(tc, "args", {})
+                            )
+                            tool_id = (
+                                tc.get("id", "call_0")
+                                if isinstance(tc, dict)
+                                else getattr(tc, "id", "call_0")
+                            )
 
                             result = await self._execute_tool(tool_name, tool_args)
-                            dict_messages.append({
-                                "role": "tool",
-                                "tool_call_id": tool_id,
-                                "content": str(result),
-                            })
+                            dict_messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tool_id,
+                                    "content": str(result),
+                                }
+                            )
 
                         accumulated_content = ""
                         break  # Continue outer loop for next iteration
@@ -3264,7 +3348,9 @@ class Agent:
         # Load conversation history if thread_id provided
         if thread_id:
             # Set current thread on memory for tools to access
-            if self._memory_manager and hasattr(self._memory_manager, '_current_thread_id'):
+            if self._memory_manager and hasattr(
+                self._memory_manager, "_current_thread_id"
+            ):
                 self._memory_manager._current_thread_id = thread_id
 
             if self._memory_manager:
@@ -3294,8 +3380,12 @@ class Agent:
                 ],
             )
         else:
-            await self._memory.add_message(HumanMessage(content=user_message), thread_id=thread_id)
-            await self._memory.add_message(AIMessage(content=str(assistant_response)), thread_id=thread_id)
+            await self._memory.add_message(
+                HumanMessage(content=user_message), thread_id=thread_id
+            )
+            await self._memory.add_message(
+                AIMessage(content=str(assistant_response)), thread_id=thread_id
+            )
 
     # =========================================================================
     # DEPRECATED METHODS (kept for backward compatibility)
@@ -3312,6 +3402,7 @@ class Agent:
         This method is kept for backward compatibility.
         """
         import warnings
+
         warnings.warn(
             "run_turbo() is deprecated. Use run() instead.",
             DeprecationWarning,
@@ -3321,9 +3412,8 @@ class Agent:
 
     def is_available(self) -> bool:
         """Check if agent can accept new work."""
-        return (
-            self.state.is_available()
-            and self.state.has_capacity(self.config.max_concurrent_tasks)
+        return self.state.is_available() and self.state.has_capacity(
+            self.config.max_concurrent_tasks
         )
 
     # --- Resilience Control Methods ---

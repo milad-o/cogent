@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 def _create_remember_tool(memory: Memory) -> BaseTool:
     """Create a remember tool bound to a Memory instance."""
+
     async def remember(key: str, value: str) -> str:
         """Save an important fact to long-term memory.
 
@@ -51,7 +52,10 @@ Args:
     value: The fact to remember""",
         func=remember,
         args_schema={
-            "key": {"type": "string", "description": "Short descriptive key for the fact"},
+            "key": {
+                "type": "string",
+                "description": "Short descriptive key for the fact",
+            },
             "value": {"type": "string", "description": "The fact to remember"},
         },
     )
@@ -59,6 +63,7 @@ Args:
 
 def _create_recall_tool(memory: Memory) -> BaseTool:
     """Create a recall tool bound to a Memory instance."""
+
     async def recall(key: str) -> str:
         """Recall a specific fact from long-term memory.
 
@@ -90,6 +95,7 @@ Returns:
 
 def _create_forget_tool(memory: Memory) -> BaseTool:
     """Create a forget tool bound to a Memory instance."""
+
     async def forget(key: str) -> str:
         """Remove a fact from long-term memory.
 
@@ -121,6 +127,7 @@ Args:
 
 def _create_search_memories_tool(memory: Memory) -> BaseTool:
     """Create a search_memories tool bound to a Memory instance."""
+
     async def search_memories(query: str) -> str:
         """Search long-term memory for relevant facts.
 
@@ -135,7 +142,11 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
                     lines = []
                     for result in results:
                         content = result.content[:200]  # Truncate long content
-                        score = f"(relevance: {result.score:.2f})" if hasattr(result, 'score') else ""
+                        score = (
+                            f"(relevance: {result.score:.2f})"
+                            if hasattr(result, "score")
+                            else ""
+                        )
                         lines.append(f"- {content} {score}")
                     return "Found (semantic search):\n" + "\n".join(lines)
             except Exception:
@@ -179,27 +190,31 @@ Returns:
     Matching memories or indication if none found""",
         func=search_memories,
         args_schema={
-            "query": {"type": "string", "description": "Search term to find relevant memories"},
+            "query": {
+                "type": "string",
+                "description": "Search term to find relevant memories",
+            },
         },
     )
 
 
 def _create_search_conversation_tool(memory: Memory) -> BaseTool:
     """Create a tool to search conversation history semantically."""
+
     async def search_conversation(query: str, max_results: int = 5) -> str:
         """Search through past conversation messages for relevant context.
-        
+
         Use this for:
         - Finding what was discussed earlier in long conversations
         - Retrieving context that may not have been saved as a fact
         - When conversation exceeds context window limits
-        
+
         Args:
             query: What to search for in the conversation history
             max_results: Maximum number of messages to return (default: 5)
         """
         # Get current thread_id from memory context
-        thread_id = getattr(memory, '_current_thread_id', None)
+        thread_id = getattr(memory, "_current_thread_id", None)
 
         # Get conversation messages
         messages = await memory.get_messages(thread_id=thread_id)
@@ -215,14 +230,16 @@ def _create_search_conversation_tool(memory: Memory) -> BaseTool:
                 relevant_messages = []
 
                 for msg in messages:
-                    content = msg.content if hasattr(msg, 'content') else str(msg)
+                    content = msg.content if hasattr(msg, "content") else str(msg)
                     # Simple relevance check (could be enhanced with embeddings)
                     if query_lower in content.lower():
                         relevant_messages.append(content)
 
                 if relevant_messages:
                     results = relevant_messages[:max_results]
-                    return "Relevant messages from conversation:\n" + "\n---\n".join(results)
+                    return "Relevant messages from conversation:\n" + "\n---\n".join(
+                        results
+                    )
                 else:
                     return f"No relevant conversation found for: {query}"
             except Exception:
@@ -232,8 +249,8 @@ def _create_search_conversation_tool(memory: Memory) -> BaseTool:
         recent = messages[-max_results:]
         lines = []
         for msg in recent:
-            content = msg.content if hasattr(msg, 'content') else str(msg)
-            role = getattr(msg, 'role', 'unknown')
+            content = msg.content if hasattr(msg, "content") else str(msg)
+            role = getattr(msg, "role", "unknown")
             lines.append(f"[{role}] {content[:150]}")
 
         return "Recent conversation context:\n" + "\n".join(lines)
@@ -253,8 +270,15 @@ Returns:
     Relevant messages from the conversation""",
         func=search_conversation,
         args_schema={
-            "query": {"type": "string", "description": "What to search for in conversation history"},
-            "max_results": {"type": "integer", "description": "Maximum results (default: 5)", "default": 5},
+            "query": {
+                "type": "string",
+                "description": "What to search for in conversation history",
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum results (default: 5)",
+                "default": 5,
+            },
         },
     )
 
@@ -290,7 +314,7 @@ You have memory tools to persist facts AND search long conversations.
 **CRITICAL WORKFLOWS:**
 
 1. **At start of conversation** - Call `search_memories("user")` to recall what you know
-2. **When user shares info** - IMMEDIATELY call `remember()` to save it  
+2. **When user shares info** - IMMEDIATELY call `remember()` to save it
 3. **When asked about something** - ALWAYS search first before saying "I don't know":
    - For facts → `search_memories(query)` or `recall(key)`
    - For past conversation → `search_conversation(query)`

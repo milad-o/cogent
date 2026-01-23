@@ -76,15 +76,15 @@ class SummaryIndex(BaseRetriever):
     _name: str = "summary"
 
     # Prompts
-    SUMMARY_PROMPT = '''Summarize the following document concisely, capturing the main topics and key points.
+    SUMMARY_PROMPT = """Summarize the following document concisely, capturing the main topics and key points.
 Keep the summary under 200 words.
 
 Document:
 {text}
 
-Summary:'''
+Summary:"""
 
-    SUMMARY_WITH_ENTITIES_PROMPT = '''Analyze the following document and provide:
+    SUMMARY_WITH_ENTITIES_PROMPT = """Analyze the following document and provide:
 1. A concise summary (under 200 words)
 2. Key entities mentioned (people, organizations, concepts, technologies)
 3. Important keywords
@@ -99,7 +99,7 @@ Respond in JSON format:
         {{"name": "entity name", "type": "Person|Organization|Concept|Technology|Location|Other"}}
     ],
     "keywords": ["keyword1", "keyword2", ...]
-}}'''
+}}"""
 
     def __init__(
         self,
@@ -353,16 +353,18 @@ Respond in JSON format:
                     original_doc = self._documents[doc_id]
                     summary = self._summaries.get(doc_id)
 
-                    retrieval_results.append(RetrievalResult(
-                        document=original_doc,
-                        score=r.score,
-                        retriever_name=self.name,
-                        metadata={
-                            "summary": summary.summary if summary else None,
-                            "keywords": summary.keywords if summary else [],
-                            "entities": summary.entities if summary else [],
-                        },
-                    ))
+                    retrieval_results.append(
+                        RetrievalResult(
+                            document=original_doc,
+                            score=r.score,
+                            retriever_name=self.name,
+                            metadata={
+                                "summary": summary.summary if summary else None,
+                                "keywords": summary.keywords if summary else [],
+                                "entities": summary.entities if summary else [],
+                            },
+                        )
+                    )
 
             return retrieval_results
         else:
@@ -392,16 +394,18 @@ Respond in JSON format:
                 doc = self._documents[doc_id]
                 summary = self._summaries[doc_id]
 
-                results.append(RetrievalResult(
-                    document=doc,
-                    score=score / len(query.split()),  # Normalize
-                    retriever_name=self.name,
-                    metadata={
-                        "summary": summary.summary,
-                        "keywords": summary.keywords,
-                        "entities": summary.entities,
-                    },
-                ))
+                results.append(
+                    RetrievalResult(
+                        document=doc,
+                        score=score / len(query.split()),  # Normalize
+                        retriever_name=self.name,
+                        metadata={
+                            "summary": summary.summary,
+                            "keywords": summary.keywords,
+                            "entities": summary.entities,
+                        },
+                    )
+                )
 
             return results
 
@@ -426,10 +430,12 @@ Respond in JSON format:
         all_entities = []
         for doc_id, summary in self._summaries.items():
             for entity in summary.entities:
-                all_entities.append({
-                    **entity,
-                    "source_doc": doc_id,
-                })
+                all_entities.append(
+                    {
+                        **entity,
+                        "source_doc": doc_id,
+                    }
+                )
         return all_entities
 
     def get_keywords(self) -> dict[str, list[str]]:
@@ -479,17 +485,18 @@ class TreeIndex(BaseRetriever):
 
     _name: str = "tree"
 
-    SUMMARIZE_PROMPT = '''Summarize the following texts into a single coherent summary.
+    SUMMARIZE_PROMPT = """Summarize the following texts into a single coherent summary.
 Capture the main themes and key points. Keep it under 300 words.
 
 Texts:
 {texts}
 
-Summary:'''
+Summary:"""
 
     @dataclass
     class TreeNode:
         """Node in the summary tree."""
+
         node_id: str
         text: str
         summary: str | None = None
@@ -543,7 +550,7 @@ Summary:'''
                 for sep in ["\n\n", ". ", ".\n", "\n"]:
                     last_sep = chunk.rfind(sep)
                     if last_sep > self._chunk_size // 2:
-                        chunk = chunk[:last_sep + len(sep)]
+                        chunk = chunk[: last_sep + len(sep)]
                         break
 
             if chunk.strip():
@@ -582,7 +589,7 @@ Summary:'''
 
             # Group nodes
             for i in range(0, len(current_level), self._max_children):
-                children = current_level[i:i + self._max_children]
+                children = current_level[i : i + self._max_children]
 
                 # Get texts to summarize
                 child_texts = []
@@ -691,15 +698,17 @@ Summary:'''
                     path.append(parent.summary)
                 current = parent
 
-            results.append(RetrievalResult(
-                document=Document(text=node.text, metadata={"node_id": node_id}),
-                score=score / len(query.split()),
-                retriever_name=self.name,
-                metadata={
-                    "depth": node.depth,
-                    "path_summaries": path[::-1],  # Root to leaf
-                },
-            ))
+            results.append(
+                RetrievalResult(
+                    document=Document(text=node.text, metadata={"node_id": node_id}),
+                    score=score / len(query.split()),
+                    retriever_name=self.name,
+                    metadata={
+                        "depth": node.depth,
+                        "path_summaries": path[::-1],  # Root to leaf
+                    },
+                )
+            )
 
         return results
 
@@ -731,14 +740,14 @@ class KeywordTableIndex(BaseRetriever):
 
     _name: str = "keyword_table"
 
-    EXTRACT_KEYWORDS_PROMPT = '''Extract the most important keywords and key phrases from this document.
+    EXTRACT_KEYWORDS_PROMPT = """Extract the most important keywords and key phrases from this document.
 Include technical terms, proper nouns, and important concepts.
 Return as a JSON array of strings.
 
 Document:
 {text}
 
-Keywords (JSON array):'''
+Keywords (JSON array):"""
 
     def __init__(
         self,
@@ -775,15 +784,51 @@ Keywords (JSON array):'''
         from collections import Counter
 
         # Tokenize
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
 
         # Remove common stopwords
         stopwords = {
-            'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can',
-            'has', 'have', 'will', 'your', 'was', 'were', 'been', 'being',
-            'that', 'this', 'with', 'from', 'they', 'which', 'their', 'would',
-            'there', 'what', 'about', 'when', 'make', 'like', 'just', 'over',
-            'such', 'into', 'than', 'them', 'some', 'could', 'other', 'then',
+            "the",
+            "and",
+            "for",
+            "are",
+            "but",
+            "not",
+            "you",
+            "all",
+            "can",
+            "has",
+            "have",
+            "will",
+            "your",
+            "was",
+            "were",
+            "been",
+            "being",
+            "that",
+            "this",
+            "with",
+            "from",
+            "they",
+            "which",
+            "their",
+            "would",
+            "there",
+            "what",
+            "about",
+            "when",
+            "make",
+            "like",
+            "just",
+            "over",
+            "such",
+            "into",
+            "than",
+            "them",
+            "some",
+            "could",
+            "other",
+            "then",
         }
         words = [w for w in words if w not in stopwords]
 
@@ -801,7 +846,7 @@ Keywords (JSON array):'''
                 # Parse JSON array
                 keywords = json.loads(response)
                 if isinstance(keywords, list):
-                    return keywords[:self._max_keywords]
+                    return keywords[: self._max_keywords]
             except json.JSONDecodeError:
                 pass
 
@@ -860,7 +905,7 @@ Keywords (JSON array):'''
         import re
 
         # Extract query keywords
-        query_keywords = re.findall(r'\b[a-zA-Z]{2,}\b', query.lower())
+        query_keywords = re.findall(r"\b[a-zA-Z]{2,}\b", query.lower())
 
         # Score documents
         doc_scores: dict[str, float] = {}
@@ -882,15 +927,17 @@ Keywords (JSON array):'''
         for doc_id, score in sorted_docs[:k]:
             doc = self._documents[doc_id]
 
-            results.append(RetrievalResult(
-                document=doc,
-                score=score / len(query_keywords) if query_keywords else 0.0,
-                retriever_name=self.name,
-                metadata={
-                    "matched_keywords": doc_matched_keywords[doc_id],
-                    "doc_keywords": self._doc_keywords[doc_id],
-                },
-            ))
+            results.append(
+                RetrievalResult(
+                    document=doc,
+                    score=score / len(query_keywords) if query_keywords else 0.0,
+                    retriever_name=self.name,
+                    metadata={
+                        "matched_keywords": doc_matched_keywords[doc_id],
+                        "doc_keywords": self._doc_keywords[doc_id],
+                    },
+                )
+            )
 
         return results
 
@@ -943,7 +990,7 @@ class KnowledgeGraphIndex(BaseRetriever):
 
     _name: str = "knowledge_graph"
 
-    EXTRACT_TRIPLETS_PROMPT = '''Extract entities and relationships from this text.
+    EXTRACT_TRIPLETS_PROMPT = """Extract entities and relationships from this text.
 
 Text:
 {text}
@@ -960,7 +1007,7 @@ For each relationship found, output in this JSON format:
 
 Common relationship types: works_at, located_in, created_by, part_of, related_to, manages, owns, uses, depends_on
 
-Extract all meaningful entities and relationships:'''
+Extract all meaningful entities and relationships:"""
 
     def __init__(
         self,
@@ -1008,7 +1055,7 @@ Extract all meaningful entities and relationships:'''
                 for sep in ["\n\n", ". ", ".\n"]:
                     last_sep = chunk.rfind(sep)
                     if last_sep > self._chunk_size // 2:
-                        chunk = chunk[:last_sep + len(sep)]
+                        chunk = chunk[: last_sep + len(sep)]
                         break
 
             if chunk.strip():
@@ -1018,7 +1065,9 @@ Extract all meaningful entities and relationships:'''
 
         return chunks
 
-    async def _extract_graph_data(self, text: str, doc_id: str) -> tuple[list[dict], list[dict]]:
+    async def _extract_graph_data(
+        self, text: str, doc_id: str
+    ) -> tuple[list[dict], list[dict]]:
         """Extract entities and relationships from text."""
         prompt = self.EXTRACT_TRIPLETS_PROMPT.format(text=text[:4000])
         response = await self._llm.generate(prompt)
@@ -1079,11 +1128,13 @@ Extract all meaningful entities and relationships:'''
                 if self._vectorstore and self._include_chunks:
                     await self._vectorstore.add_texts(
                         [chunk],
-                        metadatas=[{
-                            "doc_id": doc_id,
-                            "chunk_id": chunk_id,
-                            "entities": entity_names,
-                        }],
+                        metadatas=[
+                            {
+                                "doc_id": doc_id,
+                                "chunk_id": chunk_id,
+                                "entities": entity_names,
+                            }
+                        ],
                     )
 
             ids.append(doc_id)
@@ -1115,7 +1166,9 @@ Extract all meaningful entities and relationships:'''
                 # Get related entities
                 rels = self._kg.graph.get_relationships(entity.id, direction="both")
                 for rel in rels:
-                    related_entities.append(rel.target_id if rel.source_id == entity.id else rel.source_id)
+                    related_entities.append(
+                        rel.target_id if rel.source_id == entity.id else rel.source_id
+                    )
 
                 # Find documents mentioning this entity
                 if hasattr(entity, "attributes") and "source_doc" in entity.attributes:
@@ -1124,21 +1177,27 @@ Extract all meaningful entities and relationships:'''
         # If we found related entities, get their source docs too
         for entity_name in related_entities:
             entity = self._kg.graph.get_entity(entity_name)
-            if entity and hasattr(entity, "attributes") and "source_doc" in entity.attributes:
+            if (
+                entity
+                and hasattr(entity, "attributes")
+                and "source_doc" in entity.attributes
+            ):
                 relevant_doc_ids.add(entity.attributes["source_doc"])
 
         # Convert to results
         for doc_id in list(relevant_doc_ids)[:k]:
             if doc_id in self._documents:
-                results.append(RetrievalResult(
-                    document=self._documents[doc_id],
-                    score=1.0,
-                    retriever_name=self.name,
-                    metadata={
-                        "retrieval_method": "graph",
-                        "related_entities": related_entities[:10],
-                    },
-                ))
+                results.append(
+                    RetrievalResult(
+                        document=self._documents[doc_id],
+                        score=1.0,
+                        retriever_name=self.name,
+                        metadata={
+                            "retrieval_method": "graph",
+                            "related_entities": related_entities[:10],
+                        },
+                    )
+                )
 
         # Supplement with vector search if available
         if self._vectorstore and len(results) < k:
@@ -1146,15 +1205,21 @@ Extract all meaningful entities and relationships:'''
 
             for vr in vector_results:
                 doc_id = vr.document.metadata.get("doc_id")
-                if doc_id and doc_id in self._documents and doc_id not in relevant_doc_ids:
-                    results.append(RetrievalResult(
-                        document=self._documents[doc_id],
-                        score=vr.score,
-                        retriever_name=self.name,
-                        metadata={
-                            "retrieval_method": "vector",
-                            "entities": vr.document.metadata.get("entities", []),
-                        },
-                    ))
+                if (
+                    doc_id
+                    and doc_id in self._documents
+                    and doc_id not in relevant_doc_ids
+                ):
+                    results.append(
+                        RetrievalResult(
+                            document=self._documents[doc_id],
+                            score=vr.score,
+                            retriever_name=self.name,
+                            metadata={
+                                "retrieval_method": "vector",
+                                "entities": vr.document.metadata.get("entities", []),
+                            },
+                        )
+                    )
 
         return results[:k]

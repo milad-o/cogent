@@ -67,8 +67,7 @@ class WebhookSink(EventSink):
                 import httpx
             except ImportError as e:
                 raise ImportError(
-                    "WebhookSink requires 'httpx'. "
-                    "Install with: uv add httpx"
+                    "WebhookSink requires 'httpx'. Install with: uv add httpx"
                 ) from e
             self._client = httpx.AsyncClient(timeout=self.timeout)
         return self._client

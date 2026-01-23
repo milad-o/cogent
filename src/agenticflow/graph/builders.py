@@ -86,7 +86,9 @@ def _get_standard_class_defs() -> dict[str, ClassDef]:
         ),
         "config": ClassDef(
             name="config",
-            style=NodeStyle(fill="#fff3e0", stroke="#ff9800", color="#333", dashed=True),
+            style=NodeStyle(
+                fill="#fff3e0", stroke="#ff9800", color="#333", dashed=True
+            ),
         ),
     }
 

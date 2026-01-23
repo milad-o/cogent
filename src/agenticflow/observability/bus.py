@@ -171,7 +171,10 @@ class TraceBus:
 
             event = EventClass(
                 type=event_type,
-                data={"event_name": event if event_type == TraceType.CUSTOM else None, **(data or {})},
+                data={
+                    "event_name": event if event_type == TraceType.CUSTOM else None,
+                    **(data or {}),
+                },
             )
 
         # Add to history
@@ -179,7 +182,7 @@ class TraceBus:
             self._event_history.append(event)
             # Trim history if needed
             if len(self._event_history) > self._max_history:
-                self._event_history = self._event_history[-self._max_history:]
+                self._event_history = self._event_history[-self._max_history :]
 
         # Call specific handlers
         for handler in self._handlers[event.type]:

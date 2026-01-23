@@ -138,7 +138,11 @@ class SQLAlchemyStore:
                 expires_at = mapped_column(DateTime(timezone=True), nullable=True)
 
                 __table_args__ = (
-                    Index(f"idx_{table_name}_expires", "expires_at", postgresql_where=expires_at.isnot(None)),
+                    Index(
+                        f"idx_{table_name}_expires",
+                        "expires_at",
+                        postgresql_where=expires_at.isnot(None),
+                    ),
                 )
 
             self._model = MemoryEntry
@@ -406,6 +410,7 @@ class RedisStore:
             async with self._init_lock:
                 if self._client is None:
                     import redis.asyncio as redis
+
                     self._client = await redis.from_url(self._url)
         return self._client
 

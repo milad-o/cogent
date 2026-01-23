@@ -56,11 +56,11 @@ from agenticflow.core.utils import generate_id, now_utc
 class TraceLevel(Enum):
     """Trace detail levels."""
 
-    MINIMAL = 1    # Only final results
-    NODES = 2      # Node transitions
-    TOOLS = 3      # Tool calls
-    FULL = 4       # Everything including state
-    DEBUG = 5      # Maximum detail
+    MINIMAL = 1  # Only final results
+    NODES = 2  # Node transitions
+    TOOLS = 3  # Tool calls
+    FULL = 4  # Everything including state
+    DEBUG = 5  # Maximum detail
 
     def __ge__(self, other: TraceLevel) -> bool:
         return self.value >= other.value
@@ -210,11 +210,13 @@ class ExecutionSpan:
 
     def add_event(self, name: str, attributes: dict | None = None) -> None:
         """Add an event to the span."""
-        self.events.append({
-            "name": name,
-            "timestamp": now_utc().isoformat(),
-            "attributes": attributes or {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "timestamp": now_utc().isoformat(),
+                "attributes": attributes or {},
+            }
+        )
 
     def to_dict(self) -> dict:
         return {
@@ -313,7 +315,6 @@ class ExecutionTracer:
         stream: TextIO | None = None,
         live: bool = True,  # Print events as they happen
         colors: bool = True,
-
         # Callbacks
         on_node: Callable[[NodeTrace], None] | None = None,
         on_tool: Callable[[ToolTrace], None] | None = None,
@@ -553,10 +554,12 @@ class ExecutionTracer:
             state: State to capture.
         """
         if self.level >= TraceLevel.FULL:
-            node.state_snapshots.append({
-                "timestamp": now_utc().isoformat(),
-                "state": state,
-            })
+            node.state_snapshots.append(
+                {
+                    "timestamp": now_utc().isoformat(),
+                    "state": state,
+                }
+            )
 
             if self.on_state:
                 self.on_state(node.id, state)
@@ -617,7 +620,9 @@ class ExecutionTracer:
             error: Error message if failed.
         """
         trace.completed_at = now_utc()
-        trace.duration_ms = (trace.completed_at - trace.started_at).total_seconds() * 1000
+        trace.duration_ms = (
+            trace.completed_at - trace.started_at
+        ).total_seconds() * 1000
         trace.result = result
         trace.error = error
 
@@ -721,7 +726,9 @@ class ExecutionTracer:
             if node.tool_traces and self.level >= TraceLevel.TOOLS:
                 for tool in node.tool_traces:
                     tool_status = "✓" if not tool.error else "✗"
-                    lines.append(f"{prefix}  └─🔧 {tool_status} {tool.tool_name} ({tool.duration_ms:.0f}ms)")
+                    lines.append(
+                        f"{prefix}  └─🔧 {tool_status} {tool.tool_name} ({tool.duration_ms:.0f}ms)"
+                    )
 
             # Children
             child_list = children.get(node_id, [])
@@ -778,12 +785,18 @@ class ExecutionTracer:
                 lines.append(f"  {time_str}  ▶ {obj.name} started")
             elif event_type == "end":
                 status = "✓" if obj.status == NodeStatus.COMPLETED else "✗"
-                lines.append(f"  {time_str}  {status} {obj.name} ({obj.duration_ms:.0f}ms)")
+                lines.append(
+                    f"  {time_str}  {status} {obj.name} ({obj.duration_ms:.0f}ms)"
+                )
             elif event_type == "tool_start":
-                lines.append(f"  {time_str}    → {obj.tool_name}({_truncate(str(obj.args), 50)})")
+                lines.append(
+                    f"  {time_str}    → {obj.tool_name}({_truncate(str(obj.args), 50)})"
+                )
             elif event_type == "tool_end":
                 status = "✓" if not obj.error else "✗"
-                lines.append(f"  {time_str}    {status} {obj.tool_name} ({obj.duration_ms:.0f}ms)")
+                lines.append(
+                    f"  {time_str}    {status} {obj.tool_name} ({obj.duration_ms:.0f}ms)"
+                )
 
         return "\n".join(lines)
 
@@ -797,8 +810,14 @@ class ExecutionTracer:
 
         total_duration = 0
         if self._nodes:
-            started = min((n.started_at for n in self._nodes.values() if n.started_at), default=None)
-            ended = max((n.completed_at for n in self._nodes.values() if n.completed_at), default=None)
+            started = min(
+                (n.started_at for n in self._nodes.values() if n.started_at),
+                default=None,
+            )
+            ended = max(
+                (n.completed_at for n in self._nodes.values() if n.completed_at),
+                default=None,
+            )
             if started and ended:
                 total_duration = (ended - started).total_seconds() * 1000
 
@@ -819,7 +838,11 @@ class ExecutionTracer:
         lines.append(f"    Total: {len(self._spans)}")
 
         # Tool breakdown
-        tool_stats = {k.replace("tool.", ""): v for k, v in self._stats.items() if k.startswith("tool.")}
+        tool_stats = {
+            k.replace("tool.", ""): v
+            for k, v in self._stats.items()
+            if k.startswith("tool.")
+        }
         if tool_stats:
             lines.append("")
             lines.append("  Tool Calls:")
@@ -937,8 +960,10 @@ class ExecutionTracer:
         self.stream.flush()
 
     def _print_span_end(self, span: ExecutionSpan) -> None:
-        status = self._c('green', '✓') if span.status == "ok" else self._c('red', '✗')
-        self.stream.write(f"  {status} {span.name} {self._c('dim', f'({span.duration_ms:.0f}ms)')}\n")
+        status = self._c("green", "✓") if span.status == "ok" else self._c("red", "✗")
+        self.stream.write(
+            f"  {status} {span.name} {self._c('dim', f'({span.duration_ms:.0f}ms)')}\n"
+        )
         self.stream.flush()
 
     def _print_node_start(self, node: NodeTrace) -> None:
@@ -952,18 +977,26 @@ class ExecutionTracer:
         self.stream.write(f"{type_icon} {self._c('bold', node.name)} started\n")
 
         if node.input and self.level >= TraceLevel.FULL:
-            self.stream.write(f"   {self._c('dim', 'Input:')} {_truncate(str(node.input), 100)}\n")
+            self.stream.write(
+                f"   {self._c('dim', 'Input:')} {_truncate(str(node.input), 100)}\n"
+            )
 
         self.stream.flush()
 
     def _print_node_end(self, node: NodeTrace) -> None:
-        status = self._c('green', '✓') if node.status == NodeStatus.COMPLETED else self._c('red', '✗')
-        duration = self._c('dim', f'({node.duration_ms:.0f}ms)')
+        status = (
+            self._c("green", "✓")
+            if node.status == NodeStatus.COMPLETED
+            else self._c("red", "✗")
+        )
+        duration = self._c("dim", f"({node.duration_ms:.0f}ms)")
 
         self.stream.write(f"{status} {node.name} {duration}\n")
 
         if node.output and self.level >= TraceLevel.FULL:
-            self.stream.write(f"   {self._c('dim', 'Output:')} {_truncate(str(node.output), 200)}\n")
+            self.stream.write(
+                f"   {self._c('dim', 'Output:')} {_truncate(str(node.output), 200)}\n"
+            )
 
         if node.error:
             self.stream.write(f"   {self._c('red', 'Error:')} {node.error}\n")
@@ -972,18 +1005,24 @@ class ExecutionTracer:
 
     def _print_tool_start(self, trace: ToolTrace) -> None:
         args_str = _truncate(str(trace.args), 80)
-        self.stream.write(f"   {self._c('yellow', '→')} {trace.tool_name}({args_str})\n")
+        self.stream.write(
+            f"   {self._c('yellow', '→')} {trace.tool_name}({args_str})\n"
+        )
         self.stream.flush()
 
     def _print_tool_end(self, trace: ToolTrace) -> None:
-        status = self._c('green', '✓') if not trace.error else self._c('red', '✗')
-        duration = self._c('dim', f'({trace.duration_ms:.0f}ms)')
+        status = self._c("green", "✓") if not trace.error else self._c("red", "✗")
+        duration = self._c("dim", f"({trace.duration_ms:.0f}ms)")
 
         if trace.error:
-            self.stream.write(f"   {status} {trace.tool_name} {duration} - {self._c('red', trace.error)}\n")
+            self.stream.write(
+                f"   {status} {trace.tool_name} {duration} - {self._c('red', trace.error)}\n"
+            )
         else:
             result_str = _truncate(str(trace.result), 100) if trace.result else ""
-            self.stream.write(f"   {status} {trace.tool_name} {duration} → {result_str}\n")
+            self.stream.write(
+                f"   {status} {trace.tool_name} {duration} → {result_str}\n"
+            )
 
         self.stream.flush()
 
@@ -992,12 +1031,13 @@ def _truncate(s: str, max_len: int) -> str:
     """Truncate string to max length."""
     if len(s) <= max_len:
         return s
-    return s[:max_len - 3] + "..."
+    return s[: max_len - 3] + "..."
 
 
 # ============================================================
 # Integration helper - wrap existing observers
 # ============================================================
+
 
 class TracingObserver:
     """

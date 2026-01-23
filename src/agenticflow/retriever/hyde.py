@@ -144,7 +144,9 @@ class HyDERetriever(BaseRetriever):
         if self.n_hypotheticals == 1:
             hypotheticals = [await self.generate_hypothetical(query)]
         else:
-            tasks = [self.generate_hypothetical(query) for _ in range(self.n_hypotheticals)]
+            tasks = [
+                self.generate_hypothetical(query) for _ in range(self.n_hypotheticals)
+            ]
             hypotheticals = await asyncio.gather(*tasks)
 
         # Search with each hypothetical document

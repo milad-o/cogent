@@ -209,7 +209,9 @@ class Event:
             name=name,
             source=source,
             data=event_data,
-            correlation_id=response.metadata.correlation_id if response.metadata else None,
+            correlation_id=response.metadata.correlation_id
+            if response.metadata
+            else None,
             metadata=event_metadata,
         )
 

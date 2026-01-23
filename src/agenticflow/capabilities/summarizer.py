@@ -69,11 +69,29 @@ class SummarizerConfig:
     show_progress: bool = True
     """Show human-friendly progress output during summarization."""
 
-    supported_extensions: frozenset[str] = frozenset({
-        ".txt", ".md", ".markdown", ".rst", ".text",
-        ".py", ".js", ".ts", ".java", ".c", ".cpp", ".h", ".hpp",
-        ".json", ".yaml", ".yml", ".xml", ".html", ".css",
-    })
+    supported_extensions: frozenset[str] = frozenset(
+        {
+            ".txt",
+            ".md",
+            ".markdown",
+            ".rst",
+            ".text",
+            ".py",
+            ".js",
+            ".ts",
+            ".java",
+            ".c",
+            ".cpp",
+            ".h",
+            ".hpp",
+            ".json",
+            ".yaml",
+            ".yml",
+            ".xml",
+            ".html",
+            ".css",
+        }
+    )
     """File extensions that can be read as text for summarization."""
 
 
@@ -238,7 +256,9 @@ class Summarizer(BaseCapability):
         self._check_file_size(path)
         return path.read_text(encoding="utf-8")
 
-    def _result_to_dict(self, result: SummaryResult, source: str | None = None) -> dict[str, Any]:
+    def _result_to_dict(
+        self, result: SummaryResult, source: str | None = None
+    ) -> dict[str, Any]:
         """Convert SummaryResult to a dictionary for tool output."""
         output = {
             "summary": result.summary,
@@ -380,11 +400,13 @@ class Summarizer(BaseCapability):
                     summarizer = self._get_summarizer(strat)
 
                     result = await summarizer.summarize(content, context=context)
-                    summaries.append({
-                        "file": str(fp),
-                        "summary": result.summary,
-                        "reduction_ratio": round(result.reduction_ratio, 2),
-                    })
+                    summaries.append(
+                        {
+                            "file": str(fp),
+                            "summary": result.summary,
+                            "reduction_ratio": round(result.reduction_ratio, 2),
+                        }
+                    )
 
                 return {
                     "summaries": summaries,
@@ -406,19 +428,30 @@ class Summarizer(BaseCapability):
                     "map_reduce": {
                         "name": "Map-Reduce",
                         "description": "Parallel chunk summarization, then combine. Fast and scalable.",
-                        "best_for": ["Large documents", "When speed matters", "Independent sections"],
+                        "best_for": [
+                            "Large documents",
+                            "When speed matters",
+                            "Independent sections",
+                        ],
                         "tradeoffs": "May lose some cross-section context",
                     },
                     "refine": {
                         "name": "Iterative Refinement",
                         "description": "Sequential processing, refining summary with each chunk.",
-                        "best_for": ["Narrative documents", "When coherence is critical", "Smaller docs"],
+                        "best_for": [
+                            "Narrative documents",
+                            "When coherence is critical",
+                            "Smaller docs",
+                        ],
                         "tradeoffs": "Slower (sequential), may drift from early content",
                     },
                     "hierarchical": {
                         "name": "Hierarchical Tree",
                         "description": "Tree-based recursive summarization. Balances parallel and coherence.",
-                        "best_for": ["Very large documents (books)", "Multi-level abstraction needed"],
+                        "best_for": [
+                            "Very large documents (books)",
+                            "Multi-level abstraction needed",
+                        ],
                         "tradeoffs": "More complex, good for 100+ page documents",
                     },
                 },

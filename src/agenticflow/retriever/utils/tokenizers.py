@@ -59,7 +59,7 @@ class SimpleTokenizer(BaseTokenizer):
         *,
         lowercase: bool = True,
         min_length: int = 1,
-        pattern: str = r'\b\w+\b',
+        pattern: str = r"\b\w+\b",
     ) -> None:
         """Create a simple tokenizer.
 
@@ -115,7 +115,7 @@ class WordPieceTokenizer(BaseTokenizer):
         self.lowercase = lowercase
         self.unk_token = unk_token
         self.max_word_length = max_word_length
-        self._word_pattern = re.compile(r'\b\w+\b')
+        self._word_pattern = re.compile(r"\b\w+\b")
 
     def tokenize(self, text: str) -> list[str]:
         """Tokenize text using WordPiece."""
@@ -185,19 +185,98 @@ class StopwordTokenizer(BaseTokenizer):
     """
 
     # Common English stopwords
-    DEFAULT_STOPWORDS = frozenset({
-        "a", "an", "and", "are", "as", "at", "be", "been", "being",
-        "but", "by", "can", "could", "do", "does", "doing", "done",
-        "for", "from", "had", "has", "have", "having", "he", "her",
-        "here", "him", "his", "how", "i", "if", "in", "into", "is",
-        "it", "its", "just", "me", "more", "most", "my", "no", "not",
-        "now", "of", "on", "only", "or", "other", "our", "out", "own",
-        "same", "she", "should", "so", "some", "such", "than", "that",
-        "the", "their", "them", "then", "there", "these", "they",
-        "this", "those", "through", "to", "too", "up", "very", "was",
-        "we", "were", "what", "when", "where", "which", "while", "who",
-        "will", "with", "would", "you", "your",
-    })
+    DEFAULT_STOPWORDS = frozenset(
+        {
+            "a",
+            "an",
+            "and",
+            "are",
+            "as",
+            "at",
+            "be",
+            "been",
+            "being",
+            "but",
+            "by",
+            "can",
+            "could",
+            "do",
+            "does",
+            "doing",
+            "done",
+            "for",
+            "from",
+            "had",
+            "has",
+            "have",
+            "having",
+            "he",
+            "her",
+            "here",
+            "him",
+            "his",
+            "how",
+            "i",
+            "if",
+            "in",
+            "into",
+            "is",
+            "it",
+            "its",
+            "just",
+            "me",
+            "more",
+            "most",
+            "my",
+            "no",
+            "not",
+            "now",
+            "of",
+            "on",
+            "only",
+            "or",
+            "other",
+            "our",
+            "out",
+            "own",
+            "same",
+            "she",
+            "should",
+            "so",
+            "some",
+            "such",
+            "than",
+            "that",
+            "the",
+            "their",
+            "them",
+            "then",
+            "there",
+            "these",
+            "they",
+            "this",
+            "those",
+            "through",
+            "to",
+            "too",
+            "up",
+            "very",
+            "was",
+            "we",
+            "were",
+            "what",
+            "when",
+            "where",
+            "which",
+            "while",
+            "who",
+            "will",
+            "with",
+            "would",
+            "you",
+            "your",
+        }
+    )
 
     def __init__(
         self,
@@ -257,16 +336,34 @@ class StemmerTokenizer(BaseTokenizer):
         """
         # Common suffixes to strip
         suffixes = [
-            "ingly", "edly", "tion", "sion", "ness", "ment",
-            "able", "ible", "less", "ious", "eous",
-            "ing", "ely", "ful", "ive", "ize",
-            "ly", "es", "ed", "er", "en", "s",
+            "ingly",
+            "edly",
+            "tion",
+            "sion",
+            "ness",
+            "ment",
+            "able",
+            "ible",
+            "less",
+            "ious",
+            "eous",
+            "ing",
+            "ely",
+            "ful",
+            "ive",
+            "ize",
+            "ly",
+            "es",
+            "ed",
+            "er",
+            "en",
+            "s",
         ]
 
         original = word
         for suffix in suffixes:
             if word.endswith(suffix) and len(word) - len(suffix) >= 2:
-                word = word[:-len(suffix)]
+                word = word[: -len(suffix)]
                 break
 
         # Avoid overly short stems
@@ -323,7 +420,7 @@ class NGramTokenizer(BaseTokenizer):
 
         ngrams = []
         for i in range(len(text) - self.n + 1):
-            ngram = text[i:i + self.n]
+            ngram = text[i : i + self.n]
             if ngram.strip():  # Skip whitespace-only n-grams
                 ngrams.append(ngram)
 
@@ -378,6 +475,7 @@ class CompositeTokenizer(BaseTokenizer):
 
 
 # Convenience factory functions
+
 
 def create_tokenizer(
     style: str = "simple",

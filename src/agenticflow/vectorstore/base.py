@@ -58,13 +58,12 @@ class EmbeddingProvider(Protocol):
     compatibility with VectorStore backends.
 
     Required methods:
-    - embed_texts: Generate embeddings for multiple texts (async)
-    - embed_query: Generate embedding for a single query (async)
+    - embed_documents: Embed documents (single or batch, async, with metadata)
+    - embed_query: Embed a search query (async, with metadata)
     - dimension: The dimension of embeddings produced (property)
 
-    All methods are async and return vectors without metadata for efficiency.
-    For metadata (tokens, duration, model info), use the primary embed()/aembed()
-    methods on concrete embedding classes.
+    All methods return EmbeddingResult with full metadata including tokens,
+    duration, and model information for cost tracking and performance monitoring.
     """
 
     @property
@@ -72,32 +71,31 @@ class EmbeddingProvider(Protocol):
         """Return the dimension of embeddings.
 
         Returns:
-            Embedding vector dimension (e.g., 1536 for OpenAI ada-002).
+            Embedding vector dimension (e.g., 1536 for OpenAI text-embedding-3-small).
         """
         ...
 
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for multiple texts asynchronously.
+    async def embed_documents(self, texts: str | list[str]) -> EmbeddingResult:
+        """Generate embeddings for document texts asynchronously.
 
         Args:
-            texts: List of texts to embed.
+            texts: Single document or list of documents to embed.
 
         Returns:
-            List of embedding vectors (no metadata).
+            EmbeddingResult with vectors and metadata.
         """
         ...
 
-    async def embed_query(self, text: str) -> list[float]:
-        """Generate embedding for a single query text asynchronously.
+    async def embed_query(self, query: str) -> EmbeddingResult:
+        """Generate embedding for a search query asynchronously.
 
         Some models may use different embeddings for queries vs documents.
-        Most implementations treat this the same as embed_texts([text])[0].
 
         Args:
-            text: Query text to embed.
+            query: Query text to embed.
 
         Returns:
-            Embedding vector (no metadata).
+            EmbeddingResult with vector and metadata.
         """
         ...
 

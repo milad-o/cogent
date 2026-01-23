@@ -62,8 +62,7 @@ class PDFLoader(BaseLoader):
                 pass
 
         raise ImportError(
-            "PDF loading requires 'pypdf' or 'pdfplumber'. "
-            "Install with: uv add pypdf"
+            "PDF loading requires 'pypdf' or 'pdfplumber'. Install with: uv add pypdf"
         )
 
     def _load_with_pypdf(self, path: Path) -> list[Document]:

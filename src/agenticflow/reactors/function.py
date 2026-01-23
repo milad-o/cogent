@@ -15,10 +15,7 @@ if TYPE_CHECKING:
 
 
 # Type for functions that can be wrapped
-ReactorFunction = (
-    Callable[[Event], Any]
-    | Callable[[Event, "Context"], Any]
-)
+ReactorFunction = Callable[[Event], Any] | Callable[[Event, "Context"], Any]
 
 
 class FunctionReactor(BaseReactor):
@@ -144,6 +141,7 @@ def function_reactor(
             return "Done"
         ```
     """
+
     def decorator(f: ReactorFunction) -> FunctionReactor:
         return FunctionReactor(f, name=name, emit_name=emit_name)
 

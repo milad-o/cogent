@@ -327,7 +327,9 @@ class PDFProcessingResult:
                         ]
                     )
 
-                page_path = output_path / f"{stem}_page_{page_result.page_number:04d}.md"
+                page_path = (
+                    output_path / f"{stem}_page_{page_result.page_number:04d}.md"
+                )
                 page_path.write_text(page_content, encoding=encoding)
                 saved_paths.append(page_path)
 
@@ -717,6 +719,7 @@ class PDFMarkdownLoader(BaseLoader):
 
         if mode == "single":
             parts: list[str] = []
+
             def _page_block(page_number: int, content: str) -> str:
                 if include_page_numbers and include_page_breaks:
                     return "\n".join(
@@ -868,7 +871,9 @@ class PDFMarkdownLoader(BaseLoader):
 
             # Process pages (parallel or sequential)
             process_fn = (
-                self._process_pages_parallel if parallel else self._process_pages_sequential
+                self._process_pages_parallel
+                if parallel
+                else self._process_pages_sequential
             )
             page_results = await process_fn(
                 path,
@@ -916,8 +921,12 @@ class PDFMarkdownLoader(BaseLoader):
                 )
 
             if show_progress:
-                pages_per_sec = page_count / (total_time_ms / 1000) if total_time_ms > 0 else 0
-                print(f"✅ {successful}/{page_count} pages in {total_time_ms/1000:.1f}s ({pages_per_sec:.1f} pages/sec)")
+                pages_per_sec = (
+                    page_count / (total_time_ms / 1000) if total_time_ms > 0 else 0
+                )
+                print(
+                    f"✅ {successful}/{page_count} pages in {total_time_ms / 1000:.1f}s ({pages_per_sec:.1f} pages/sec)"
+                )
 
             return result
 

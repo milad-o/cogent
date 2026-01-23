@@ -57,6 +57,7 @@ class FAISSBackend:
         try:
             import faiss
             import numpy as np
+
             self._faiss = faiss
             self._np = np
         except ImportError as e:
@@ -86,7 +87,9 @@ class FAISSBackend:
             # HNSW index for fast approximate search
             self._index = faiss.IndexHNSWFlat(self.dimension, 32)  # 32 neighbors
         else:
-            msg = f"Unknown index_type: {self.index_type}. Use 'flat', 'ivf', or 'hnsw'."
+            msg = (
+                f"Unknown index_type: {self.index_type}. Use 'flat', 'ivf', or 'hnsw'."
+            )
             raise ValueError(msg)
 
     def _normalize(self, vectors: Any) -> Any:
@@ -194,11 +197,13 @@ class FAISSBackend:
             if filter and not self._matches_filter(doc, filter):
                 continue
 
-            results.append(SearchResult(
-                document=doc,
-                score=float(score),
-                id=doc_id,
-            ))
+            results.append(
+                SearchResult(
+                    document=doc,
+                    score=float(score),
+                    id=doc_id,
+                )
+            )
 
             if len(results) >= k:
                 break

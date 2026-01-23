@@ -8,16 +8,16 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class ParsedPattern:
     """Parsed event pattern with optional source filter.
-    
+
     Attributes:
         event: The event pattern (e.g., "agent.done", "*.done")
         source: Optional source filter (e.g., "researcher", "agent*")
         separator: The separator used, if any ("@")
-    
+
     Examples:
         >>> parse_pattern("agent.done@researcher")
         ParsedPattern(event='agent.done', source='researcher', separator='@')
-        
+
         >>> parse_pattern("*.done")
         ParsedPattern(event='*.done', source=None, separator=None)
     """
@@ -29,33 +29,33 @@ class ParsedPattern:
 
 def parse_pattern(pattern: str) -> ParsedPattern:
     """Parse event pattern with optional source filter.
-    
+
     Supports the @ separator syntax:
         - "event@source" - @ separator
-    
+
     Both event and source parts support wildcards (*, ?).
-    
+
     Note: The : and -> separators are reserved for future features.
-    
+
     Args:
         pattern: Event pattern string, optionally with source filter
-    
+
     Returns:
         ParsedPattern with event, optional source, and separator
-    
+
     Examples:
         Basic pattern without source:
         >>> parse_pattern("agent.done")
         ParsedPattern(event='agent.done', source=None, separator=None)
-        
+
         Pattern with @ separator:
         >>> parse_pattern("agent.done@researcher")
         ParsedPattern(event='agent.done', source='researcher', separator='@')
-        
+
         Pattern with wildcards:
         >>> parse_pattern("*.done@agent*")
         ParsedPattern(event='*.done', source='agent*', separator='@')
-        
+
         Multiple sources not supported (use list or OR logic):
         >>> # NOT: "event@source1,source2"
         >>> # USE: ["event@source1", "event@source2"]

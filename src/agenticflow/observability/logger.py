@@ -176,7 +176,7 @@ class ObservabilityLogger:
         # Store entry
         self._entries.append(entry)
         if len(self._entries) > self._max_entries:
-            self._entries = self._entries[-self._max_entries:]
+            self._entries = self._entries[-self._max_entries :]
 
         # Output
         self.output.write(entry.format(self.format) + "\n")

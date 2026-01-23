@@ -170,7 +170,7 @@ Final Summary:"""
                 for separator in ["\n\n", ". ", ".\n", "\n", " "]:
                     last_sep = chunk.rfind(separator)
                     if last_sep > self._chunk_size // 2:  # At least half the chunk
-                        chunk = chunk[:last_sep + len(separator)]
+                        chunk = chunk[: last_sep + len(separator)]
                         break
 
             stripped = chunk.strip()
@@ -284,7 +284,7 @@ class MapReduceSummarizer(BaseSummarizer):
     ) -> str:
         """Combine multiple summaries into one."""
         combined_text = "\n\n---\n\n".join(
-            f"[Section {i+1}]\n{s}" for i, s in enumerate(summaries)
+            f"[Section {i + 1}]\n{s}" for i, s in enumerate(summaries)
         )
 
         # If combined summaries are still too long, recurse
@@ -354,7 +354,9 @@ class MapReduceSummarizer(BaseSummarizer):
         )
 
         if self._show_progress:
-            print(f"📄 Summarizing document ({original_length:,} chars) in {total_chunks} chunks...")
+            print(
+                f"📄 Summarizing document ({original_length:,} chars) in {total_chunks} chunks..."
+            )
             print(f"   Strategy: map-reduce | Concurrency: {self._max_concurrent}")
             sys.stdout.flush()
 
@@ -383,14 +385,13 @@ class MapReduceSummarizer(BaseSummarizer):
                     elapsed = time.perf_counter() - map_start
                     rate = completed / elapsed if elapsed > 0 else 0
                     eta = (total_chunks - completed) / rate if rate > 0 else 0
-                    print(f"  ✓ Chunk {completed}/{total_chunks} ({chunk_time:.1f}s) | Rate: {rate:.1f}/s | ETA: {eta:.0f}s")
+                    print(
+                        f"  ✓ Chunk {completed}/{total_chunks} ({chunk_time:.1f}s) | Rate: {rate:.1f}/s | ETA: {eta:.0f}s"
+                    )
                     sys.stdout.flush()
                 return result
 
-        tasks = [
-            bounded_summarize(chunk, i)
-            for i, chunk in enumerate(chunks)
-        ]
+        tasks = [bounded_summarize(chunk, i) for i, chunk in enumerate(chunks)]
         chunk_summaries = await asyncio.gather(*tasks)
         map_time = time.perf_counter() - map_start
 
@@ -402,7 +403,9 @@ class MapReduceSummarizer(BaseSummarizer):
         )
 
         if self._show_progress:
-            print(f"🔄 Combining {total_chunks} summaries... (map phase: {map_time:.1f}s)")
+            print(
+                f"🔄 Combining {total_chunks} summaries... (map phase: {map_time:.1f}s)"
+            )
             sys.stdout.flush()
 
         # Reduce phase: combine summaries
@@ -419,11 +422,15 @@ class MapReduceSummarizer(BaseSummarizer):
             map_time_s=round(map_time, 2),
             reduce_time_s=round(reduce_time, 2),
             reduction_ratio=round(reduction, 1),
-            chars_per_sec=round(original_length / total_time, 0) if total_time > 0 else 0,
+            chars_per_sec=round(original_length / total_time, 0)
+            if total_time > 0
+            else 0,
         )
 
         if self._show_progress:
-            print(f"✅ Summary complete in {total_time:.1f}s ({len(final_summary):,} chars, {reduction:.1f}x reduction)")
+            print(
+                f"✅ Summary complete in {total_time:.1f}s ({len(final_summary):,} chars, {reduction:.1f}x reduction)"
+            )
             print(f"   Throughput: {original_length / total_time:,.0f} chars/sec")
             sys.stdout.flush()
 
@@ -440,7 +447,9 @@ class MapReduceSummarizer(BaseSummarizer):
                 "total_time_s": round(total_time, 2),
                 "map_time_s": round(map_time, 2),
                 "reduce_time_s": round(reduce_time, 2),
-                "chunks_per_sec": round(total_chunks / map_time, 2) if map_time > 0 else 0,
+                "chunks_per_sec": round(total_chunks / map_time, 2)
+                if map_time > 0
+                else 0,
             },
         )
 
@@ -511,7 +520,9 @@ class RefineSummarizer(BaseSummarizer):
         )
 
         if self._show_progress:
-            print(f"📄 Summarizing document ({original_length:,} chars) with refinement...")
+            print(
+                f"📄 Summarizing document ({original_length:,} chars) with refinement..."
+            )
 
         # Initial summary from first chunk
         current_summary = await self._call_model(
@@ -553,13 +564,17 @@ class RefineSummarizer(BaseSummarizer):
 
         if self._show_progress:
             reduction = original_length / len(final_summary) if final_summary else 1.0
-            print(f"✅ Summary complete ({len(final_summary):,} chars, {reduction:.1f}x reduction)")
+            print(
+                f"✅ Summary complete ({len(final_summary):,} chars, {reduction:.1f}x reduction)"
+            )
 
         return SummaryResult(
             summary=final_summary,
             strategy=SummarizationStrategy.REFINE,
             chunks_processed=total_chunks,
-            reduction_ratio=original_length / len(final_summary) if final_summary else 1.0,
+            reduction_ratio=original_length / len(final_summary)
+            if final_summary
+            else 1.0,
             intermediate_summaries=intermediate_summaries,
             metadata={
                 "original_length": original_length,
@@ -680,7 +695,9 @@ class HierarchicalSummarizer(BaseSummarizer):
 
         if self._show_progress:
             print(f"📄 Summarizing document ({original_length:,} chars)")
-            print(f"   {total_chunks} chunks, {tree_depth} levels, branching factor {self._branching_factor}")
+            print(
+                f"   {total_chunks} chunks, {tree_depth} levels, branching factor {self._branching_factor}"
+            )
 
         levels: list[list[str]] = []
         current_level = chunks
@@ -695,19 +712,18 @@ class HierarchicalSummarizer(BaseSummarizer):
             # Group current level into batches
             groups: list[list[str]] = []
             for i in range(0, len(current_level), self._branching_factor):
-                groups.append(current_level[i:i + self._branching_factor])
+                groups.append(current_level[i : i + self._branching_factor])
 
             if self._show_progress:
-                print(f"  Level {level_num}: Combining {len(current_level)} → {len(groups)} summaries")
+                print(
+                    f"  Level {level_num}: Combining {len(current_level)} → {len(groups)} summaries"
+                )
 
             async def bounded_summarize(group: list[str], idx: int) -> str:
                 async with semaphore:
                     return await self._summarize_group(group, level_num)
 
-            tasks = [
-                bounded_summarize(group, i)
-                for i, group in enumerate(groups)
-            ]
+            tasks = [bounded_summarize(group, i) for i, group in enumerate(groups)]
             next_level = await asyncio.gather(*tasks)
 
             levels.append(list(next_level))
@@ -732,7 +748,9 @@ class HierarchicalSummarizer(BaseSummarizer):
 
         if self._show_progress:
             reduction = original_length / len(final_summary) if final_summary else 1.0
-            print(f"✅ Summary complete ({len(final_summary):,} chars, {reduction:.1f}x reduction)")
+            print(
+                f"✅ Summary complete ({len(final_summary):,} chars, {reduction:.1f}x reduction)"
+            )
 
         # Flatten all intermediate summaries
         all_intermediates = [s for level in levels for s in level]
@@ -741,7 +759,9 @@ class HierarchicalSummarizer(BaseSummarizer):
             summary=final_summary,
             strategy=SummarizationStrategy.HIERARCHICAL,
             chunks_processed=total_chunks,
-            reduction_ratio=original_length / len(final_summary) if final_summary else 1.0,
+            reduction_ratio=original_length / len(final_summary)
+            if final_summary
+            else 1.0,
             intermediate_summaries=all_intermediates,
             metadata={
                 "original_length": original_length,

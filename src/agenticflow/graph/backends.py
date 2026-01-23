@@ -375,6 +375,7 @@ class MermaidBackend(Backend):
 
         # Generate unique ID for this diagram
         import random
+
         diagram_id = f"mermaid-{random.randint(1000, 9999)}"
 
         # Use traditional script loading approach for better Jupyter compatibility
@@ -395,7 +396,7 @@ class MermaidBackend(Backend):
       padding: {cfg.padding}
     }}
   }};
-  
+
   if (typeof mermaid !== 'undefined') {{
     mermaid.initialize(config);
     mermaid.render('graph-{diagram_id}', diagram).then(result => {{
@@ -457,8 +458,8 @@ class GraphvizBackend(Backend):
         # Graph attributes
         direction = self.DIRECTION_MAP.get(cfg.direction, "TB")
         lines.append(f'    rankdir="{direction}";')
-        lines.append(f'    nodesep={cfg.node_spacing / 72:.2f};')  # Convert to inches
-        lines.append(f'    ranksep={cfg.rank_spacing / 72:.2f};')
+        lines.append(f"    nodesep={cfg.node_spacing / 72:.2f};")  # Convert to inches
+        lines.append(f"    ranksep={cfg.rank_spacing / 72:.2f};")
 
         if cfg.title:
             lines.append(f'    label="{cfg.title}";')
@@ -511,7 +512,7 @@ class GraphvizBackend(Backend):
             if node.style.color:
                 attrs.append(f'fontcolor="{node.style.color}"')
 
-        return f'{node.id} [{", ".join(attrs)}];'
+        return f"{node.id} [{', '.join(attrs)}];"
 
     def _render_edge(self, edge: Edge) -> str:
         """Render a single edge."""
@@ -564,9 +565,7 @@ class GraphvizBackend(Backend):
         try:
             import graphviz
         except ImportError:
-            raise ImportError(
-                "graphviz required. Install with: uv add graphviz"
-            )
+            raise ImportError("graphviz required. Install with: uv add graphviz")
 
         dot_code = self.render(graph, config)
         gv = graphviz.Source(dot_code)
@@ -585,9 +584,7 @@ class GraphvizBackend(Backend):
         try:
             import graphviz
         except ImportError:
-            raise ImportError(
-                "graphviz required. Install with: uv add graphviz"
-            )
+            raise ImportError("graphviz required. Install with: uv add graphviz")
 
         dot_code = self.render(graph, config)
         gv = graphviz.Source(dot_code)

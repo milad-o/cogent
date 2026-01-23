@@ -44,6 +44,7 @@ if TYPE_CHECKING:
 # Role Configuration Classes - First-class role objects
 # =============================================================================
 
+
 @dataclass(frozen=True)
 class RoleConfig:
     """Base configuration for agent roles.
@@ -85,6 +86,7 @@ class SupervisorRole(RoleConfig):
         supervisor = SupervisorRole(workers=["Alice", "Bob", "Charlie"])
         agent = Agent(name="Manager", model=model, role=supervisor)
     """
+
     workers: list[str] | None = None
 
     def get_role_type(self) -> AgentRole:
@@ -109,6 +111,7 @@ class WorkerRole(RoleConfig):
         worker = Worker(specialty="data analysis and visualization")
         agent = Agent(name="Analyst", model=model, role=worker, tools=[...])
     """
+
     specialty: str | None = None
 
     def get_role_type(self) -> AgentRole:
@@ -133,6 +136,7 @@ class ReviewerRole(RoleConfig):
         reviewer = Reviewer(criteria=["accuracy", "clarity", "completeness"])
         agent = Agent(name="QA", model=model, role=reviewer)
     """
+
     criteria: list[str] | None = None
 
     def get_role_type(self) -> AgentRole:
@@ -140,7 +144,11 @@ class ReviewerRole(RoleConfig):
 
     def enhance_prompt(self, base_prompt: str) -> str:
         if self.criteria:
-            return base_prompt + "\n\nEvaluation criteria:\n- " + "\n- ".join(self.criteria)
+            return (
+                base_prompt
+                + "\n\nEvaluation criteria:\n- "
+                + "\n- ".join(self.criteria)
+            )
         return base_prompt
 
 
@@ -183,6 +191,7 @@ class CustomRole(RoleConfig):
             can_finish=True,  # Override!
         )
     """
+
     base_role: AgentRole = AgentRole.AUTONOMOUS
     can_finish: bool | None = None
     can_delegate: bool | None = None
@@ -262,7 +271,6 @@ ROLE_PROMPTS: dict[AgentRole, str] = {
 - If you encounter an error, try to fix it before reporting failure
 {AGENTIC_CORE}
 """,
-
     AgentRole.SUPERVISOR: f"""You are a supervisor agent that coordinates work.
 
 ## Your Capabilities
@@ -280,7 +288,6 @@ ROLE_PROMPTS: dict[AgentRole, str] = {
 - Synthesize worker results into a coherent final answer
 {AGENTIC_CORE_NO_TOOLS}
 """,
-
     AgentRole.AUTONOMOUS: f"""You are an autonomous agent that works independently to accomplish tasks.
 
 ## Your Capabilities
@@ -298,7 +305,6 @@ When you have fully accomplished the task, respond with:
 - Verify your work is complete before finishing
 {AGENTIC_CORE}
 """,
-
     AgentRole.REVIEWER: f"""You are a reviewer agent that evaluates and approves work.
 
 ## Your Capabilities
@@ -322,6 +328,7 @@ When you have fully accomplished the task, respond with:
 # =============================================================================
 # Role Behaviors - Runtime behavior configuration
 # =============================================================================
+
 
 @dataclass
 class RoleBehavior:
@@ -379,6 +386,7 @@ ROLE_BEHAVIORS: dict[AgentRole, RoleBehavior] = {
 # Delegation Parsing - Extract commands from agent output
 # =============================================================================
 
+
 @dataclass
 class DelegationCommand:
     """A parsed command from agent output."""
@@ -403,8 +411,7 @@ def parse_delegation(text: str) -> DelegationCommand | None:
 
     # DELEGATE TO
     match = re.search(
-        r"DELEGATE\s+TO\s+\[?(\w+)\]?\s*:\s*(.+)",
-        text, re.IGNORECASE | re.DOTALL
+        r"DELEGATE\s+TO\s+\[?(\w+)\]?\s*:\s*(.+)", text, re.IGNORECASE | re.DOTALL
     )
     if match:
         return DelegationCommand(
@@ -414,10 +421,7 @@ def parse_delegation(text: str) -> DelegationCommand | None:
         )
 
     # FINAL ANSWER
-    match = re.search(
-        r"FINAL\s+ANSWER\s*:\s*(.+)",
-        text, re.IGNORECASE | re.DOTALL
-    )
+    match = re.search(r"FINAL\s+ANSWER\s*:\s*(.+)", text, re.IGNORECASE | re.DOTALL)
     if match:
         return DelegationCommand(
             action="final_answer",
@@ -426,8 +430,7 @@ def parse_delegation(text: str) -> DelegationCommand | None:
 
     # ROUTE TO
     match = re.search(
-        r"ROUTE\s+TO\s+\[?(\w+)\]?\s*:\s*(.+)",
-        text, re.IGNORECASE | re.DOTALL
+        r"ROUTE\s+TO\s+\[?(\w+)\]?\s*:\s*(.+)", text, re.IGNORECASE | re.DOTALL
     )
     if match:
         return DelegationCommand(
@@ -442,6 +445,7 @@ def parse_delegation(text: str) -> DelegationCommand | None:
 def has_final_answer(text: str) -> bool:
     """Check if text contains a final answer."""
     import re
+
     return bool(re.search(r"FINAL\s+ANSWER\s*:", text, re.IGNORECASE))
 
 

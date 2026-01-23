@@ -69,6 +69,7 @@ class BaseLoader(ABC):
             List of Document objects.
         """
         import asyncio
+
         return asyncio.run(self.load(path, **kwargs))
 
     def can_load(self, path: str | Path) -> bool:

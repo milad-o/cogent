@@ -104,10 +104,13 @@ class ContextCompressor(Interceptor):
         tokens = _estimate_tokens(text)
 
         # Track compression in state
-        ctx.state.setdefault("context_compressor", {
-            "compressions": 0,
-            "original_tokens": tokens,
-        })
+        ctx.state.setdefault(
+            "context_compressor",
+            {
+                "compressions": 0,
+                "original_tokens": tokens,
+            },
+        )
 
         if tokens <= self.threshold_tokens:
             return InterceptResult.ok()
@@ -144,8 +147,8 @@ class ContextCompressor(Interceptor):
             return messages
 
         # Split into old (to summarize) and recent (to keep)
-        old_messages = working_messages[:-self.keep_recent]
-        recent_messages = working_messages[-self.keep_recent:]
+        old_messages = working_messages[: -self.keep_recent]
+        recent_messages = working_messages[-self.keep_recent :]
 
         # Format old messages for summarization
         history_text = self._format_for_summary(old_messages)
@@ -161,10 +164,12 @@ class ContextCompressor(Interceptor):
             result.append(system_msg)
 
         # Add summary as a system note
-        result.append({
-            "role": "system",
-            "content": f"[Previous conversation summary]\n{summary}",
-        })
+        result.append(
+            {
+                "role": "system",
+                "content": f"[Previous conversation summary]\n{summary}",
+            }
+        )
 
         # Add recent messages
         result.extend(recent_messages)
@@ -213,9 +218,9 @@ class ContextCompressor(Interceptor):
 
         # Use the agent's model directly
         try:
-            response = await ctx.agent.model.ainvoke([
-                {"role": "user", "content": prompt}
-            ])
+            response = await ctx.agent.model.ainvoke(
+                [{"role": "user", "content": prompt}]
+            )
 
             # Extract content from response
             if hasattr(response, "content"):
@@ -231,10 +236,13 @@ class ContextCompressor(Interceptor):
 
     def stats(self, ctx: InterceptContext) -> dict[str, Any]:
         """Get compression statistics from context state."""
-        return ctx.state.get("context_compressor", {
-            "compressions": 0,
-            "original_tokens": 0,
-        })
+        return ctx.state.get(
+            "context_compressor",
+            {
+                "compressions": 0,
+                "original_tokens": 0,
+            },
+        )
 
 
 @dataclass

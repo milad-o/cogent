@@ -132,7 +132,10 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
     origin = getattr(py_type, "__origin__", None)
     if origin is list:
         args = getattr(py_type, "__args__", (Any,))
-        return {"type": "array", "items": _python_type_to_json_schema(args[0]) if args else {}}
+        return {
+            "type": "array",
+            "items": _python_type_to_json_schema(args[0]) if args else {},
+        }
 
     return type_map.get(py_type, {"type": "string"})
 
@@ -163,7 +166,10 @@ def _type_to_readable_string(py_type: type) -> str:
 
     # Handle Union (including Optional which is Union[X, None])
     import types
-    if origin is types.UnionType or (hasattr(origin, "__name__") and origin.__name__ == "Union"):
+
+    if origin is types.UnionType or (
+        hasattr(origin, "__name__") and origin.__name__ == "Union"
+    ):
         type_strs = [_type_to_readable_string(arg) for arg in args]
         # Check for Optional pattern (X | None)
         if len(type_strs) == 2 and "None" in type_strs:
@@ -215,7 +221,9 @@ def _extract_return_info(func: Callable[..., Any]) -> str:
         stripped = line.strip()
 
         # Check for start of Returns section
-        if stripped.lower().startswith("returns:") or stripped.lower().startswith(":returns:"):
+        if stripped.lower().startswith("returns:") or stripped.lower().startswith(
+            ":returns:"
+        ):
             in_returns = True
             # Get content after "Returns:"
             after_colon = stripped.split(":", 1)[-1].strip()
@@ -225,9 +233,13 @@ def _extract_return_info(func: Callable[..., Any]) -> str:
 
         # Check for end of Returns section (new section starts)
         if in_returns:
-            if stripped and (stripped.endswith(":") or stripped.startswith("Args:") or
-                            stripped.startswith("Raises:") or stripped.startswith("Example:") or
-                            stripped.startswith("Note:")):
+            if stripped and (
+                stripped.endswith(":")
+                or stripped.startswith("Args:")
+                or stripped.startswith("Raises:")
+                or stripped.startswith("Example:")
+                or stripped.startswith("Note:")
+            ):
                 break
             if stripped:
                 returns_lines.append(stripped)
@@ -293,7 +305,12 @@ def _extract_schema_from_function(func: Callable[..., Any]) -> dict[str, Any]:
     return schema
 
 
-def tool(func: Callable[..., Any] | None = None, *, name: str | None = None, description: str | None = None) -> BaseTool | Callable[[Callable[..., Any]], BaseTool]:
+def tool(
+    func: Callable[..., Any] | None = None,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+) -> BaseTool | Callable[[Callable[..., Any]], BaseTool]:
     """Decorator to create a tool from a function.
 
     The function's docstring becomes the tool description.
@@ -315,9 +332,14 @@ def tool(func: Callable[..., Any] | None = None, *, name: str | None = None, des
             '''Search the web.'''
             return f"Results for: {query}"
     """
+
     def decorator(fn: Callable[..., Any]) -> BaseTool:
         tool_name = name or fn.__name__
-        base_desc = description or (fn.__doc__ or "").split("\n")[0].strip() or f"Tool: {tool_name}"
+        base_desc = (
+            description
+            or (fn.__doc__ or "").split("\n")[0].strip()
+            or f"Tool: {tool_name}"
+        )
         args_schema = _extract_schema_from_function(fn)
         return_info = _extract_return_info(fn)
 
