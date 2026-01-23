@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from agenticflow.events.event import Event
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     pass
 
 
-class ReactionType(Enum):
+class ReactionType(StrEnum):
     """How an agent reacts when triggered."""
 
     RUN = "run"  # Run agent with event data as context

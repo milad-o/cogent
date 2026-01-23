@@ -6,10 +6,10 @@ For core Document and DocumentMetadata types, see agenticflow.core.document.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class FileType(Enum):
+class FileType(StrEnum):
     """Supported file types for document loading.
 
     Each value maps to the file extension (without dot).
@@ -94,7 +94,7 @@ class FileType(Enum):
         return None
 
 
-class SplitterType(Enum):
+class SplitterType(StrEnum):
     """Types of text splitters available."""
 
     RECURSIVE = "recursive"

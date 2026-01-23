@@ -8,7 +8,7 @@ in a single run, preventing runaway costs and infinite loops.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from agenticflow.interceptors.base import (
     InterceptContext,
@@ -17,7 +17,7 @@ from agenticflow.interceptors.base import (
 )
 
 
-class ExitBehavior(Enum):
+class ExitBehavior(StrEnum):
     """What to do when budget is exhausted."""
 
     STOP = "stop"  # Stop execution, return final response

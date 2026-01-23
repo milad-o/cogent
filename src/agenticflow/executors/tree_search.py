@@ -20,14 +20,14 @@ import json
 import math
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.executors.base import BaseExecutor
 
 
-class NodeState(Enum):
+class NodeState(StrEnum):
     """State of a search tree node."""
 
     PENDING = "pending"  # Not yet expanded

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.interceptors.base import (
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     pass
 
 
-class FailoverTrigger(Enum):
+class FailoverTrigger(StrEnum):
     """Triggers that activate model fallback."""
 
     RATE_LIMIT = "rate_limit"

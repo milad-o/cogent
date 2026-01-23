@@ -12,11 +12,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class InterruptReason(Enum):
+class InterruptReason(StrEnum):
     """Reasons why agent execution was interrupted."""
 
     TOOL_APPROVAL = "tool_approval"  # Tool requires human approval
@@ -27,7 +27,7 @@ class InterruptReason(Enum):
     CUSTOM = "custom"  # Custom interrupt reason
 
 
-class DecisionType(Enum):
+class DecisionType(StrEnum):
     """Types of human decisions for pending actions."""
 
     APPROVE = "approve"  # Approve the action as-is

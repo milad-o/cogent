@@ -10,7 +10,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +22,7 @@ from agenticflow.interceptors.base import (
 )
 
 
-class AuditTraceType(Enum):
+class AuditTraceType(StrEnum):
     """Types of audit events."""
 
     RUN_START = "run_start"

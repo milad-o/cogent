@@ -29,7 +29,7 @@ import time
 from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 # ==============================================================================
 
 
-class PDFProcessingStatus(Enum):
+class PDFProcessingStatus(StrEnum):
     """Status of PDF processing operations."""
 
     PENDING = "pending"
@@ -58,7 +58,7 @@ class PDFProcessingStatus(Enum):
     PARTIAL = "partial"  # Some pages failed
 
 
-class PageStatus(Enum):
+class PageStatus(StrEnum):
     """Status of individual page processing."""
 
     PENDING = "pending"
@@ -68,7 +68,7 @@ class PageStatus(Enum):
     EMPTY = "empty"  # Page has no extractable text
 
 
-class OutputFormat(Enum):
+class OutputFormat(StrEnum):
     """Output format for PDF extraction."""
 
     MARKDOWN = "markdown"

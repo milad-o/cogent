@@ -72,7 +72,7 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.utils import generate_id, now_utc
@@ -82,7 +82,7 @@ if TYPE_CHECKING:
     from agenticflow.events.bus import EventBus
 
 
-class DeferredStatus(Enum):
+class DeferredStatus(StrEnum):
     """Status of a deferred result."""
 
     PENDING = "pending"

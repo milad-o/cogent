@@ -46,7 +46,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.utils import generate_id, now_utc
@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 # ============================================================================
 
 
-class TaskStatus(Enum):
+class TaskStatus(StrEnum):
     """Status of a task."""
 
     PENDING = "pending"
