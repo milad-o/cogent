@@ -10,6 +10,7 @@ import pytest
 from agenticflow.documents import (
     # Types
     Document,
+    DocumentMetadata,
     TextChunk,
     FileType,
     SplitterType,
@@ -88,16 +89,16 @@ class TestDocument:
     
     def test_create_document(self) -> None:
         """Test creating a document."""
-        doc = Document(text="Test content", metadata={"key": "value"})
+        metadata = DocumentMetadata(source="test.txt", custom={"key": "value"})
+        doc = Document(text="Test content", metadata=metadata)
         assert doc.text == "Test content"
         assert doc.content == "Test content"  # Alias works
-        assert doc.metadata["key"] == "value"
+        assert doc.metadata.custom["key"] == "value"
     
     def test_document_auto_source(self) -> None:
         """Test that source is auto-added to metadata."""
         doc = Document(text="Test")
-        assert "source" in doc.metadata
-        assert doc.metadata["source"] == "unknown"
+        assert doc.metadata.source == "unknown"
     
     def test_document_length(self) -> None:
         """Test document length."""
@@ -111,17 +112,18 @@ class TestDocument:
     
     def test_document_to_dict(self) -> None:
         """Test converting document to dict."""
-        doc = Document(text="Test", metadata={"key": "value"})
+        metadata = DocumentMetadata(source="test.txt", custom={"key": "value"})
+        doc = Document(text="Test", metadata=metadata)
         d = doc.to_dict()
         assert d["text"] == "Test"
-        assert d["metadata"]["key"] == "value"
+        assert d["metadata"]["custom"]["key"] == "value"
     
     def test_document_from_dict(self) -> None:
         """Test creating document from dict."""
-        d = {"text": "Test", "metadata": {"key": "value"}}
+        d = {"text": "Test", "metadata": {"source": "test.txt", "custom": {"key": "value"}}}
         doc = Document.from_dict(d)
         assert doc.text == "Test"
-        assert doc.metadata["key"] == "value"
+        assert doc.metadata.custom["key"] == "value"
 
 
 class TestTextChunk:
@@ -166,7 +168,7 @@ class TestTextChunk:
         doc = chunk.to_document()
         assert isinstance(doc, Document)
         assert doc.content == "Test"
-        assert doc.metadata["source"] == "test.txt"
+        assert doc.metadata.source == "test.txt"
 
 
 # ============================================================================
@@ -225,8 +227,8 @@ class TestIndividualLoaders:
         loader = MarkdownLoader()
         docs = await loader.load(md_file)
         
-        assert docs[0].metadata.get("title") == "My Doc"
-        assert docs[0].metadata.get("author") == "Test"
+        assert docs[0].metadata.custom.get("title") == "My Doc"
+        assert docs[0].metadata.custom.get("author") == "Test"
     
     @pytest.mark.asyncio
     async def test_html_loader(self, temp_dir: Path) -> None:
@@ -252,7 +254,7 @@ class TestIndividualLoaders:
         
         assert len(docs) == 1
         assert "def hello" in docs[0].content
-        assert docs[0].metadata["language"] == "python"
+        assert docs[0].metadata.custom.get("language") == "python"
     
     @pytest.mark.asyncio
     async def test_csv_loader(self, temp_dir: Path) -> None:
@@ -265,7 +267,7 @@ class TestIndividualLoaders:
         
         assert len(docs) == 1
         assert "Alice" in docs[0].content
-        assert docs[0].metadata["row_count"] == 2
+        assert docs[0].metadata.custom.get("row_count") == 2
     
     @pytest.mark.asyncio
     async def test_json_loader(self, temp_dir: Path) -> None:
@@ -342,15 +344,15 @@ class TestRecursiveCharacterSplitter:
     def test_split_documents(self) -> None:
         """Test splitting multiple documents."""
         docs = [
-            Document(text="First document content", metadata={"id": "1"}),
-            Document(text="Second document content", metadata={"id": "2"}),
+            Document(text="First document content", metadata=DocumentMetadata(custom={"id": "1"})),
+            Document(text="Second document content", metadata=DocumentMetadata(custom={"id": "2"})),
         ]
         splitter = RecursiveCharacterSplitter(chunk_size=15, chunk_overlap=0)
         chunks = splitter.split_documents(docs)
         
         assert len(chunks) >= 2
         # Chunks should inherit document metadata
-        ids = {c.metadata.get("id") for c in chunks}
+        ids = {c.metadata.custom.get("id") for c in chunks}
         assert "1" in ids or "2" in ids
 
 
@@ -403,7 +405,7 @@ Content for section 1.
         chunks = splitter.split_text(text)
         
         assert len(chunks) >= 1
-        assert any("headers" in c.metadata for c in chunks)
+        assert any("headers" in c.metadata.custom for c in chunks)
 
 
 class TestCodeSplitter:
@@ -422,7 +424,7 @@ def function_two():
         chunks = splitter.split_text(code)
         
         assert len(chunks) >= 1
-        assert all(c.metadata.get("language") == "python" for c in chunks)
+        assert all(c.metadata.custom.get("language") == "python" for c in chunks)
 
 
 class TestSplitTextFunction:
@@ -449,8 +451,8 @@ class TestModuleExports:
     """Tests for module-level exports."""
     
     def test_document_module_exports(self) -> None:
-        """Test that document module exports all components."""
-        from agenticflow import document
+        """Test that documents module exports all components."""
+        from agenticflow import documents as document
         
         # Types
         assert hasattr(document, "Document")

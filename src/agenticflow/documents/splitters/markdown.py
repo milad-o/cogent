@@ -95,12 +95,13 @@ class MarkdownSplitter(BaseSplitter):
 
             # Check if we need to start new chunk
             if current_length + section_length > self.chunk_size and current_content:
+                from agenticflow.core import DocumentMetadata
                 chunks.append(Document(
                     text="\n\n".join(current_content),
-                    metadata={
-                        "headers": dict(current_headers),
-                        "chunk_index": len(chunks),
-                    }
+                    metadata=DocumentMetadata(
+                        chunk_index=len(chunks),
+                        custom={"headers": dict(current_headers)}
+                    )
                 ))
                 current_content = []
                 current_length = 0
@@ -111,12 +112,13 @@ class MarkdownSplitter(BaseSplitter):
 
         # Add final chunk
         if current_content:
+            from agenticflow.core import DocumentMetadata
             chunks.append(Document(
                 text="\n\n".join(current_content),
-                metadata={
-                    "headers": dict(current_headers),
-                    "chunk_index": len(chunks),
-                }
+                metadata=DocumentMetadata(
+                    chunk_index=len(chunks),
+                    custom={"headers": dict(current_headers)}
+                )
             ))
 
         return chunks
