@@ -34,7 +34,6 @@ async def main() -> None:
         csv_path = Path(tmpdir) / "sales.csv"
         spreadsheet._write_csv(csv_path, sales_data)
 
-        model = "gpt4"
         analyst = Agent(
             name="DataAnalyst",
             model="gpt4",
@@ -42,16 +41,10 @@ async def main() -> None:
             capabilities=[spreadsheet],
         )
 
-        flow = Flow(
-            name="analysis",
-            agents=[analyst],
-            verbosity="debug",
-        )
-
-        result = await flow.run(
+        result = await analyst.run(
             f"Read the CSV file at {csv_path} and tell me the total sales by region."
         )
-        print(f"\n{result.output}")
+        print(f"\n{result.unwrap()}")
 
 
 if __name__ == "__main__":

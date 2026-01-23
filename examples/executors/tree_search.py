@@ -173,7 +173,8 @@ async def demo_comparison():
     start = time.time()
     native_result = await agent.run(task)
     native_time = time.time() - start
-    print(f"   Result: {native_result[:200]}...")
+    result_text = native_result.unwrap() if hasattr(native_result, 'unwrap') else str(native_result)
+    print(f"   Result: {result_text[:200]}...")
     print(f"   Time: {native_time:.2f}s\n")
 
     # Tree search execution

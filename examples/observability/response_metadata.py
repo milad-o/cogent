@@ -64,11 +64,11 @@ async def demo_basic_response():
 
 async def demo_tool_tracking():
     """Response with tool calls."""
-    print(\"\\n=== Tool Call Tracking ===\")
+    print("\n=== Tool Call Tracking ===")
     
     model = "gpt4"
     agent = Agent(
-        name=\"MathBot\",
+        name="MathBot",
         model="gpt4",
         tools=[calculator],
         verbosity=True,

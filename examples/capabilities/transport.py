@@ -1,23 +1,17 @@
 """
-Event Transport - LocalTransport & RedisTransport
+⚠️  DEPRECATED EXAMPLE
 
-Demonstrates both LocalTransport (no dependencies) and RedisTransport (distributed).
+This example uses the deprecated reactive.transport module which is no longer available.
+The transport layer has been reorganized.
 
-Features:
-    ✓ LocalTransport: Pattern matching, event delivery, agent coordination
-    ✓ RedisTransport: Cross-process communication (mocked if Redis unavailable)
-    ✓ Real LLM integration with reactive flows
-    ✓ Multiple agents coordinating via events
-
-Run:
-    uv run python examples/reactive/transport.py
-
-Optional: Real Redis for production use
-    docker run -d -p 6379:6379 redis:7-alpine
-    # or: brew install redis && redis-server
+For distributed event patterns, see examples/flow/event_sources.py
 """
 
-import asyncio
+import sys
+
+print("⚠️  This example is deprecated and uses old reactive.transport API.")
+print("See examples/flow/event_sources.py for current event-driven patterns.")
+sys.exit(0)
 import json
 from unittest.mock import patch
 

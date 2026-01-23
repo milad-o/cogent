@@ -37,17 +37,11 @@ async def main() -> None:
             capabilities=[shell],
         )
 
-        flow = Flow(
-            name="code_analysis",
-            agents=[devops],
-            verbosity="debug",
-        )
-
-        result = await flow.run(
+        result = await devops.run(
             f"Analyze the project in {tmpdir}. "
             "List all files, count lines of Python code, and summarize what the project does."
         )
-        print(f"\n{result.output}")
+        print(f"\n{result.unwrap()}")
 
 
 if __name__ == "__main__":
