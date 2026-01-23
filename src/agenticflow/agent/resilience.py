@@ -822,7 +822,7 @@ class ExecutionResult:
     """Result of a resilient tool execution."""
 
     success: bool
-    result: Any = None
+    result: object | None = None
     error: Exception | None = None
     tool_used: str = ""  # May differ from requested if fallback used
     attempts: int = 1
@@ -1063,7 +1063,7 @@ class ToolResilience:
         self,
         tool_fn: Callable[..., Any],
         args: dict[str, Any],
-        tool_obj: Any | None = None,
+        tool_obj: object | None = None,
     ) -> Any:
         """Execute tool function, handling both sync and async.
 
@@ -1189,7 +1189,7 @@ class ModelExecutionResult:
     """Result of a resilient model (LLM) execution."""
 
     success: bool
-    result: Any = None
+    result: object | None = None
     error: Exception | None = None
     attempts: int = 1
     total_time_ms: float = 0.0
