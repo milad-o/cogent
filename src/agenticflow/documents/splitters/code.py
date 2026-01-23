@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -24,7 +25,7 @@ class CodeSplitter(BaseSplitter):
     """
 
     # Language-specific split patterns
-    LANGUAGE_PATTERNS: dict[str, list[str]] = {
+    LANGUAGE_PATTERNS: ClassVar[dict[str, list[str]]] = {
         "python": [
             r"\nclass\s+\w+",  # Class definitions
             r"\ndef\s+\w+",  # Function definitions

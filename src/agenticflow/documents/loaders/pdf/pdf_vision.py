@@ -94,7 +94,7 @@ class PDFVisionOptions:
 class PDFVisionLoader(BaseLoader):
     """Render PDF pages to images and extract via a vision model."""
 
-    supported_extensions = [".pdf"]
+    supported_extensions: ClassVar[list[str]] = [".pdf"]
 
     def __init__(
         self,

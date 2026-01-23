@@ -373,7 +373,6 @@ def should_interrupt(
 class HITLException(Exception):
     """Base exception for HITL operations."""
 
-    pass
 
 
 class InterruptedException(HITLException):

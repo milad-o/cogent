@@ -67,10 +67,10 @@ class CodeLoader(BaseLoader):
         >>> print(docs[0].metadata["language"])  # "python"
     """
 
-    supported_extensions = list(EXTENSION_TO_LANGUAGE.keys())
+    supported_extensions: ClassVar[list[str]] = list(EXTENSION_TO_LANGUAGE.keys())
 
     # Fallback encodings for code files
-    FALLBACK_ENCODINGS = ["latin-1", "cp1252"]
+    FALLBACK_ENCODINGS: ClassVar[list[str]] = ["latin-1", "cp1252"]
 
     async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a source code file.

@@ -238,7 +238,6 @@ class TraceBus:
 
         # No event loop available - silently skip
         # This can happen in pure sync contexts or during testing
-        pass
 
     async def publish_many(self, events: list[Trace]) -> None:
         """

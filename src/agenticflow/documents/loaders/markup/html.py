@@ -22,7 +22,7 @@ class HTMLLoader(BaseLoader):
         >>> print(docs[0].metadata.get("title"))
     """
 
-    supported_extensions = [".html", ".htm"]
+    supported_extensions: ClassVar[list[str]] = [".html", ".htm"]
 
     def __init__(
         self,

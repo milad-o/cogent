@@ -78,7 +78,6 @@ class CommandResult:
 class SecurityError(Exception):
     """Raised when a command violates security constraints."""
 
-    pass
 
 
 class Shell(BaseCapability):
@@ -126,7 +125,7 @@ class Shell(BaseCapability):
         return self.get_tools()
 
     # Dangerous commands that are always blocked
-    ALWAYS_BLOCKED = {
+    ALWAYS_BLOCKED: ClassVar[set[str]] = {
         "rm -rf /",
         "rm -rf /*",
         "mkfs",
@@ -138,7 +137,7 @@ class Shell(BaseCapability):
     }
 
     # Dangerous patterns to detect
-    DANGEROUS_PATTERNS = [
+    DANGEROUS_PATTERNS: ClassVar[list[str]] = [
         r"rm\s+-rf\s+/",
         r">\s*/dev/sd",
         r"mkfs\.",
@@ -153,7 +152,7 @@ class Shell(BaseCapability):
     ]
 
     # Default blocked commands
-    DEFAULT_BLOCKED = {
+    DEFAULT_BLOCKED: ClassVar[set[str]] = {
         "sudo",
         "su",
         "doas",  # Privilege escalation

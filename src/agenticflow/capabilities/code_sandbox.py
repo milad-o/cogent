@@ -62,13 +62,11 @@ class ExecutionResult:
 class TimeoutError(Exception):
     """Raised when execution times out."""
 
-    pass
 
 
 class SecurityError(Exception):
     """Raised when code violates security constraints."""
 
-    pass
 
 
 # Dangerous modules/functions that should be blocked
@@ -240,7 +238,7 @@ class CodeSandbox(BaseCapability):
     """
 
     # Safe imports that can be allowed
-    SAFE_IMPORTS = {
+    SAFE_IMPORTS: ClassVar[set[str]] = {
         "math",
         "random",
         "datetime",

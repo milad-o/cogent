@@ -420,7 +420,7 @@ def _process_page_batch(
         # Import pymupdf.layout BEFORE pymupdf4llm to enable advanced layout features
         # This activates header/footer extraction and disables legacy mode warnings
         try:
-            import pymupdf.layout  # noqa: F401
+            import pymupdf.layout
         except ImportError:
             pass  # pymupdf_layout not installed, will use legacy mode
 
@@ -562,7 +562,7 @@ class PDFMarkdownLoader(BaseLoader):
         >>> docs = result.to_documents()
     """
 
-    supported_extensions = [".pdf"]
+    supported_extensions: ClassVar[list[str]] = [".pdf"]
 
     def __init__(
         self,
@@ -1094,7 +1094,7 @@ class PDFMarkdownLoader(BaseLoader):
         for batch_idx, batch in enumerate(batches):
             try:
                 batch_dicts = _process_page_batch(str(path), batch, config_dict)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 if self._log:
                     self._log.error(
                         "Batch processing failed (sequential)",

@@ -913,7 +913,6 @@ class Flow:
                                 flow_id=self._flow_id,
                             )
                         # continue or retry handled by middleware
-                        pass
 
             return FlowResult(
                 success=True,

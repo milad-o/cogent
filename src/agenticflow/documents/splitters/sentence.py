@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -25,7 +26,7 @@ class SentenceSplitter(BaseSplitter):
     """
 
     # Common abbreviations that don't end sentences
-    ABBREVIATIONS = {
+    ABBREVIATIONS: ClassVar[set[str]] = {
         "mr",
         "mrs",
         "ms",

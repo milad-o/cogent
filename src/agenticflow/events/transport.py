@@ -96,19 +96,16 @@ class Transport(Protocol):
 class TransportError(Exception):
     """Base exception for transport errors."""
 
-    pass
 
 
 class ConnectionError(TransportError):
     """Failed to connect to transport backend."""
 
-    pass
 
 
 class PublishError(TransportError):
     """Failed to publish event."""
 
-    pass
 
 
 class LocalTransport:

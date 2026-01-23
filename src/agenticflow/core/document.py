@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 
 @dataclass
@@ -81,7 +81,7 @@ class DocumentMetadata:
 
     id_provided: bool = field(default=False, init=False, repr=False)
 
-    _STANDARD_FIELDS = {
+    _STANDARD_FIELDS: ClassVar[set[str]] = {
         "id",
         "timestamp",
         "source",
