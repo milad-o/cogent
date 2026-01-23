@@ -72,7 +72,7 @@ class MockChatModel(BaseChatModel):
         return response
 
     def invoke(
-        self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any
+        self, messages: str | list[dict[str, Any]] | list[object], **kwargs: Any
     ) -> AIMessage:
         """Generate mock response synchronously.
 
@@ -92,7 +92,7 @@ class MockChatModel(BaseChatModel):
         )
 
     async def ainvoke(
-        self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any
+        self, messages: str | list[dict[str, Any]] | list[object], **kwargs: Any
     ) -> AIMessage:
         """Generate mock response asynchronously.
 
@@ -105,7 +105,7 @@ class MockChatModel(BaseChatModel):
         """
         return self.invoke(messages, **kwargs)
 
-    def bind_tools(self, tools: list[Any], **kwargs: Any) -> MockChatModel:
+    def bind_tools(self, tools: list[object], **kwargs: Any) -> MockChatModel:
         """Return self (tools binding is a no-op for mock).
 
         Args:
