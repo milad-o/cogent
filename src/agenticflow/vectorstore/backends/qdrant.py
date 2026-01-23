@@ -140,9 +140,14 @@ class QdrantBackend:
         points = []
         for doc_id, embedding, doc in zip(ids, embeddings, documents, strict=False):
             # Build payload (metadata + text)
+            metadata_dict = doc.metadata.to_dict()
+            
+            # Flatten custom fields to top level for easier filtering
+            custom = metadata_dict.pop("custom", {})
             payload = {
                 "text": doc.text,
-                **doc.metadata.to_dict(),
+                **metadata_dict,
+                **custom,  # Merge custom fields to top level
             }
 
             points.append(
@@ -179,13 +184,22 @@ class QdrantBackend:
         # Build filter
         query_filter = self._build_filter(filter) if filter else None
 
-        # Search
-        results = self._client.search(
-            collection_name=self.collection_name,
-            query_vector=embedding,
-            limit=k,
-            query_filter=query_filter,
-        )
+        # Search (using query_points for newer API or search for older)
+        try:
+            results = self._client.query_points(
+                collection_name=self.collection_name,
+                query=embedding,
+                limit=k,
+                query_filter=query_filter,
+            ).points
+        except AttributeError:
+            # Fallback for older Qdrant client versions
+            results = self._client.search(
+                collection_name=self.collection_name,
+                query_vector=embedding,
+                limit=k,
+                query_filter=query_filter,
+            )
 
         # Build SearchResult objects
         search_results: list[SearchResult] = []
@@ -193,11 +207,15 @@ class QdrantBackend:
         for result in results:
             payload = result.payload or {}
             text = payload.pop("text", "")
+            
+            # Create metadata with id
+            metadata = payload.copy()
+            if "id" not in metadata:
+                metadata["id"] = str(result.id)
 
             doc = Document(
                 text=text,
-                metadata=payload,
-                id=str(result.id),
+                metadata=metadata,
             )
 
             search_results.append(
