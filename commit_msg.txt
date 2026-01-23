@@ -1,0 +1,12 @@
+feat(docs): complete v1.15.0 documentation and version bump
+
+Phase 7: Documentation
+- Updated docs/document.md with comprehensive DocumentMetadata section
+- Updated docs/vectorstore.md with DocumentMetadata usage examples
+- Updated CHANGELOG.md with v1.15.0 entry and migration guide
+- Updated README.md with v1.15.0 announcement
+
+Phase 8: Version Bump
+- Updated pyproject.toml version: 1.14.5 -> 1.15.0
+
+All phases complete (0-8). Ready for release.

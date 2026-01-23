@@ -47,25 +47,63 @@ for r in results:
 ### With Documents
 
 ```python
-from agenticflow.vectorstore import VectorStore, Document
+from agenticflow.vectorstore import VectorStore, Document, DocumentMetadata
 
-# Create documents with metadata
+# Create documents with structured metadata
 docs = [
-    Document(text="Python guide", metadata={"type": "tutorial", "lang": "python"}),
-    Document(text="JavaScript intro", metadata={"type": "tutorial", "lang": "js"}),
-    Document(text="ML basics", metadata={"type": "guide", "topic": "ml"}),
+    Document(
+        text="Python guide", 
+        metadata=DocumentMetadata(
+            source="tutorial.md",
+            source_type="markdown",
+            custom={"type": "tutorial", "lang": "python"}
+        )
+    ),
+    Document(
+        text="JavaScript intro", 
+        metadata=DocumentMetadata(
+            source="intro.md",
+            custom={"type": "tutorial", "lang": "js"}
+        )
+    ),
+    Document(
+        text="ML basics", 
+        metadata=DocumentMetadata(
+            source="guide.pdf",
+            source_type="pdf",
+            page=1,
+            custom={"type": "guide", "topic": "ml"}
+        )
+    ),
 ]
 
 store = VectorStore()
 await store.add_documents(docs)
 
-# Search with metadata filter
+# Access structured metadata in results
+results = await store.search("programming tutorial", k=5)
+for r in results:
+    print(f"Source: {r.document.source}")  # Convenience property
+    print(f"Type: {r.document.metadata.source_type}")
+    print(f"Custom: {r.document.metadata.custom.get('type')}")
+
+# Search with metadata filter (use custom dict for app-specific filters)
 results = await store.search(
     "programming tutorial",
     k=5,
-    filter={"type": "tutorial"},
+    filter={"custom": {"type": "tutorial"}},
 )
 ```
+
+**Note on Metadata Filtering:**
+
+VectorStore backends have different filtering capabilities:
+
+- **InMemory/FAISS**: Full dict matching, nested filtering supported
+- **Chroma**: Only supports primitive types (str, int, float, bool) - nested dicts like `custom` are stringified
+- **Qdrant/PGVector**: Full JSON filtering supported
+
+For maximum compatibility, use standard DocumentMetadata fields (source, page, etc.) or keep custom dict values simple.
 
 ---
 

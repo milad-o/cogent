@@ -7,6 +7,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-01-22
+
+### Changed
+- **Document & DocumentMetadata Standardization**: Complete overhaul of document metadata system
+  - **Module Rename**: `agenticflow.document` → `agenticflow.documents` (plural, clearer naming)
+  - **Core Type**: Document and DocumentMetadata moved to `agenticflow.core.documents` alongside Response and ChatMessage
+  - **Structured Metadata**: Replaced `dict[str, Any]` metadata with typed `DocumentMetadata` dataclass
+    - 15 standard fields: id, timestamp, source, source_type, page, chunk_index, chunk_total, start_char, end_char, token_count, char_count, loader, created_by, parent_id, custom
+    - Type safety with IDE autocomplete
+    - Auto-population: char_count, id, timestamp set automatically
+    - Provenance tracking: loader, created_by, parent_id for observability
+    - Chunking-aware: chunk_index, chunk_total, parent_id for relationships
+  - **Convenience Properties**: `doc.id`, `doc.source`, `doc.page`, `doc.chunk_index` access metadata directly
+  - **Auto-Population**: Loaders automatically populate source, source_type, page, loader fields
+  - **Splitter Integration**: Splitters preserve parent metadata and add chunk info (chunk_index, chunk_total, parent_id, start_char, end_char)
+
+### Added
+- `DocumentMetadata` dataclass in `agenticflow.core.documents`
+- Convenience properties on Document for common metadata access
+- Backward compatible `from_dict()` - auto-collects unknown fields into custom dict
+- Re-exports from `agenticflow.documents` for convenience (documents is now preferred import path)
+- Documentation: Updated docs/document.md and docs/vectorstore.md with new API
+
+### Removed
+- **Breaking Change**: Document no longer accepts dict metadata or `id` parameter directly
+  - Old: `Document(text="...", metadata={"key": "value"}, id="doc_123")`
+  - New: `Document(text="...", metadata=DocumentMetadata(id="doc_123", custom={"key": "value"}))`
+- **Breaking Change**: Direct dict-style metadata access removed
+  - Old: `doc.metadata["key"]`
+  - New: `doc.metadata.custom["key"]` or use standard fields like `doc.metadata.source`
+- **Breaking Change**: Module renamed from `document` (singular) to `documents` (plural)
+  - Old: `from agenticflow.document import Document`
+  - New: `from agenticflow.documents import Document` or `from agenticflow.core import Document`
+
+### Migration Guide
+
+#### 1. Update Imports
+```python
+# Old
+from agenticflow.document import Document, DocumentLoader
+
+# New (preferred)
+from agenticflow.documents import Document, DocumentMetadata, DocumentLoader
+
+# Or use core import
+from agenticflow.core import Document, DocumentMetadata
+```
+
+#### 2. Create Documents with DocumentMetadata
+```python
+# Old
+doc = Document(
+    text="content",
+    metadata={"source": "file.txt", "page": 1, "custom": "value"},
+    id="doc_123"
+)
+
+# New
+doc = Document(
+    text="content",
+    metadata=DocumentMetadata(
+        id="doc_123",
+        source="file.txt",
+        page=1,
+        custom={"custom": "value"}
+    )
+)
+```
+
+#### 3. Access Metadata via Properties
+```python
+# Old
+source = doc.metadata["source"]
+page = doc.metadata.get("page")
+
+# New - standard fields
+source = doc.metadata.source  # or doc.source (convenience)
+page = doc.metadata.page      # or doc.page
+
+# New - custom fields
+custom = doc.metadata.custom["custom"]
+```
+
+#### 4. Loaders Auto-Populate Metadata
+```python
+# Loaders now automatically populate metadata
+docs = await PDFMarkdownLoader().load("report.pdf")
+doc = docs[0]
+
+# Access populated metadata
+print(doc.source)                    # "report.pdf"
+print(doc.metadata.source_type)      # "pdf"
+print(doc.metadata.page)             # 1
+print(doc.metadata.loader)           # "PDFMarkdownLoader"
+print(doc.metadata.char_count)       # Auto-calculated
+```
+
+#### 5. Splitters Preserve and Extend Metadata
+```python
+splitter = RecursiveCharacterSplitter(chunk_size=500)
+chunks = splitter.split_documents(docs)
+
+chunk = chunks[0]
+print(chunk.metadata.parent_id)      # ID of original document
+print(chunk.metadata.chunk_index)    # 0
+print(chunk.metadata.chunk_total)    # 10
+print(chunk.metadata.start_char)     # 0
+print(chunk.metadata.end_char)       # 500
+```
+
+#### 6. Backward Compatibility via from_dict()
+```python
+# Old code passing dict metadata still works via from_dict()
+doc = Document.from_dict({
+    "text": "content",
+    "metadata": {
+        "source": "file.txt",
+        "unknown_field": "value"  # Goes into custom dict
+    }
+})
+print(doc.metadata.custom["unknown_field"])  # "value"
+```
+
+### Fixed
+- ChromaBackend now properly creates DocumentMetadata from stored dicts
+- TextChunk.to_document() handles both dict and DocumentMetadata
+- from_dict() gracefully handles non-dict custom fields
+
 ## [1.14.5] - 2026-01-22
 
 ### Changed

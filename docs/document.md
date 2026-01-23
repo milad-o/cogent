@@ -5,25 +5,161 @@ The `agenticflow.documents` module provides comprehensive document loading, text
 ## Overview
 
 The document module includes:
-- **Loaders**: Load documents from various file formats
-- **Splitters**: Chunk text for embedding and retrieval
+- **Document & DocumentMetadata**: Type-safe document structure with rich metadata
+- **Loaders**: Load documents from various file formats with automatic metadata population
+- **Splitters**: Chunk text for embedding and retrieval while preserving metadata
 - **Summarizers**: Handle documents exceeding LLM context limits
 
 ```python
 from agenticflow.documents import (
     Document,
+    DocumentMetadata,
     DocumentLoader,
     RecursiveCharacterSplitter,
 )
 
-# Load documents
+# Load documents - metadata automatically populated
 loader = DocumentLoader()
 docs = await loader.load_directory("./documents")
 
-# Split into chunks
+# Access structured metadata
+for doc in docs:
+    print(f"Source: {doc.source}")
+    print(f"Type: {doc.metadata.source_type}")
+    print(f"Page: {doc.metadata.page}")
+
+# Split into chunks - metadata preserved
 splitter = RecursiveCharacterSplitter(chunk_size=1000, chunk_overlap=200)
 chunks = splitter.split_documents(docs)
 ```
+
+---
+
+## Document & Metadata
+
+### Document
+
+Core document type used throughout agenticflow:
+
+```python
+from agenticflow.documents import Document, DocumentMetadata
+
+# Create with structured metadata
+doc = Document(
+    text="Document content...",
+    metadata=DocumentMetadata(
+        source="report.pdf",
+        source_type="pdf",
+        page=5,
+        loader="PDFMarkdownLoader"
+    )
+)
+
+# Convenience properties
+print(doc.id)        # doc_a1b2c3d4e5f6g7h8
+print(doc.source)    # report.pdf
+print(doc.page)      # 5
+
+# Access full metadata
+print(doc.metadata.char_count)  # Auto-populated
+print(doc.metadata.timestamp)   # Creation time
+```
+
+### DocumentMetadata
+
+Structured metadata with type safety and IDE autocomplete:
+
+```python
+@dataclass
+class DocumentMetadata:
+    """Structured metadata for documents with provenance and tracking."""
+    
+    # Identification & timing
+    id: str                        # Auto-generated: doc_a1b2c3d4
+    timestamp: float               # Unix timestamp
+    
+    # Source information
+    source: str                    # File path, URL, etc.
+    source_type: str | None        # "pdf", "markdown", "web", "api"
+    
+    # Content positioning (for chunked documents)
+    page: int | None               # Page number
+    chunk_index: int | None        # Chunk position (0-based)
+    chunk_total: int | None        # Total chunks from parent
+    start_char: int | None         # Start position in parent
+    end_char: int | None           # End position in parent
+    
+    # Content metrics
+    token_count: int | None        # Token count (if computed)
+    char_count: int | None         # Character count (auto-populated)
+    
+    # Provenance & relationships
+    loader: str | None             # Loader that created document
+    created_by: str | None         # Agent/tool name
+    parent_id: str | None          # Parent document ID (for chunks)
+    
+    # Custom fields (extensibility)
+    custom: dict[str, Any]         # User-defined metadata
+```
+
+**Key Features:**
+
+1. **Type Safety**: Properties with proper types, no dict key errors
+2. **Auto-population**: `char_count`, `id`, `timestamp` set automatically
+3. **Provenance**: Track `loader`, `created_by`, `parent_id` for observability
+4. **Chunking-aware**: `chunk_index`, `chunk_total`, `parent_id` for chunk relationships
+5. **Extensible**: Use `custom` dict for application-specific fields
+
+**Example - Chunk Metadata:**
+
+```python
+# Loaders automatically populate metadata
+docs = await PDFMarkdownLoader().load("report.pdf")
+doc = docs[0]
+
+print(doc.metadata.loader)       # "PDFMarkdownLoader"
+print(doc.metadata.source_type)  # "pdf"
+print(doc.metadata.page)         # 1
+
+# Splitters preserve and extend metadata
+splitter = RecursiveCharacterSplitter(chunk_size=500)
+chunks = splitter.split_documents(docs)
+
+chunk = chunks[0]
+print(chunk.metadata.parent_id)    # ID of original document
+print(chunk.metadata.chunk_index)  # 0
+print(chunk.metadata.chunk_total)  # 10
+print(chunk.metadata.start_char)   # 0
+print(chunk.metadata.end_char)     # 500
+```
+
+**Serialization:**
+
+```python
+# To dict (for storage/API)
+data = doc.to_dict()
+# {
+#   "text": "...",
+#   "metadata": {
+#     "id": "doc_...",
+#     "source": "file.txt",
+#     "char_count": 1234,
+#     ...
+#   }
+# }
+
+# From dict (backward compatible - collects unknown fields into custom)
+doc = Document.from_dict({
+    "text": "...",
+    "metadata": {
+        "source": "file.txt",
+        "custom_field": "value"  # Goes into metadata.custom
+    }
+})
+print(doc.metadata.custom["custom_field"])  # "value"
+```
+
+---
 
 ## Document Loaders
 
