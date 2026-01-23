@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.3] - 2026-01-23
+
+### Added
+- **Test Coverage Enhancement**: Enabled 422 additional tests (+28% coverage)
+  - Installed optional test dependencies: `faiss-cpu`, `qdrant-client`, `sqlalchemy`, `aiosqlite`, `psycopg2-binary`, `redis`, `rank-bm25`, `sentence-transformers`, `beautifulsoup4`
+  - Total test count increased from 1,503 to 1,925 tests
+  - Vector store backend tests now cover FAISS, Qdrant, PgVector, and Redis
+  - Retrieval tests now include BM25, ensemble, and cross-encoder reranking
+  - Web search tests now include BeautifulSoup HTML parsing
+
+### Fixed
+- **FAISS Backend**: Enhanced metadata filter matching to support custom fields
+  - Filter now checks both top-level and `custom` metadata dictionary
+  - Enables filtering by custom metadata attributes (e.g., `{"category": "tech"}`)
+- **BM25Retriever Tests**: Corrected API usage
+  - Fixed `k` parameter placement (moved to `retrieve()` method)
+  - Removed invalid `tokenizer` parameter from constructor
+- **Qdrant Backend Tests**: Fixed configuration parameters
+  - Removed invalid `location` parameter
+  - Added required `dimension` parameter for in-memory mode
+- **Streaming Tests**: Implemented proper error handling test with mock model
+- **Retriever Tests**: Re-enabled `test_parent_retriever_with_scores` (removed skip decorator)
+
+### Removed
+- **Obsolete Test**: Deleted `test_extract_html_regex` (functionality merged into `_extract_html_content`)
+
 ## [1.17.2] - 2026-01-23
 
 ### Removed

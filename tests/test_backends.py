@@ -515,6 +515,7 @@ class TestQdrantBackend:
         """Test Qdrant with in-memory storage."""
         pytest.importorskip("qdrant_client")
         from agenticflow.vectorstore.backends import QdrantBackend
+        from agenticflow.vectorstore.document import Document
 
         # Use in-memory mode (no url or path)
         backend = QdrantBackend(
@@ -522,40 +523,44 @@ class TestQdrantBackend:
             dimension=4,
         )
 
-        ids = ["doc1", "doc2"]
+        ids = [1, 2]
         embeddings = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
-        metadatas = [{"type": "a"}, {"type": "b"}]
+        documents = [
+            Document(text="Document A", metadata={"type": "a"}),
+            Document(text="Document B", metadata={"type": "b"}),
+        ]
 
-        await backend.add(ids, embeddings, metadatas)
+        await backend.add(ids, embeddings, documents)
 
         results = await backend.search([1.0, 0.0, 0.0, 0.0], k=1)
         assert len(results) == 1
-        assert results[0][0] == "doc1"
+        assert results[0].id == "1"
 
     @pytest.mark.asyncio
     async def test_qdrant_with_filter(self):
         """Test Qdrant search with filter."""
         pytest.importorskip("qdrant_client")
         from agenticflow.vectorstore.backends import QdrantBackend
+        from agenticflow.vectorstore.document import Document
 
         backend = QdrantBackend(
             collection_name="test_filter",
             dimension=4,
         )
 
-        ids = ["doc1", "doc2", "doc3"]
+        ids = [1, 2, 3]
         embeddings = [
             [1.0, 0.0, 0.0, 0.0],
             [0.9, 0.1, 0.0, 0.0],
             [0.8, 0.2, 0.0, 0.0],
         ]
-        metadatas = [
-            {"category": "A"},
-            {"category": "B"},
-            {"category": "A"},
+        documents = [
+            Document(text="Doc A", metadata={"category": "A"}),
+            Document(text="Doc B", metadata={"category": "B"}),
+            Document(text="Doc C", metadata={"category": "A"}),
         ]
 
-        await backend.add(ids, embeddings, metadatas)
+        await backend.add(ids, embeddings, documents)
 
         results = await backend.search(
             [1.0, 0.0, 0.0, 0.0],
