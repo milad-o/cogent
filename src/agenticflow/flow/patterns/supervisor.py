@@ -129,7 +129,7 @@ def supervisor(
     return flow
 
 
-def _get_name(reactor: Any, default: str) -> str:
+def _get_name(reactor: object, default: str) -> str:
     """Get reactor name or default."""
     if hasattr(reactor, "name") and reactor.name:
         return reactor.name
@@ -139,7 +139,7 @@ def _get_name(reactor: Any, default: str) -> str:
 def coordinator(
     coordinator: Agent | Reactor,
     workers: list[Agent | Reactor],
-    **kwargs: Any,
+    **kwargs: object,
 ) -> Flow:
     """Alias for supervisor()."""
     return supervisor(coordinator, workers, **kwargs)

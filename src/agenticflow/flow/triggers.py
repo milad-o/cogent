@@ -33,7 +33,7 @@ TriggerCondition = Callable[[Event], bool]
 EventPattern = str | re.Pattern[str] | Any
 
 
-def _event_name(event: Any) -> str:
+def _event_name(event: object) -> str:
     """Get the effective event name for both core and legacy observability events."""
     # Core events
     if hasattr(event, "name"):
@@ -96,7 +96,7 @@ class Trigger:
     priority: int = 0
     """Higher priority triggers are evaluated first."""
 
-    breakpoint: Any | None = None
+    breakpoint: object | None = None
     """Optional HITL breakpoint for human approval/input."""
 
     def matches(self, event: Event) -> bool:

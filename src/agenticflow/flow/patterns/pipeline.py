@@ -111,7 +111,7 @@ def pipeline(
     return flow
 
 
-def _get_stage_name(stage: Any, index: int) -> str:
+def _get_stage_name(stage: object, index: int) -> str:
     """Get a name for a stage."""
     if hasattr(stage, "name") and stage.name:
         return stage.name
@@ -120,7 +120,7 @@ def _get_stage_name(stage: Any, index: int) -> str:
 
 def chain(
     stages: list[Agent | Reactor],
-    **kwargs: Any,
+    **kwargs: object,
 ) -> Flow:
     """Alias for pipeline()."""
     return pipeline(stages, **kwargs)
