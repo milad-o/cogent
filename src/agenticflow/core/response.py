@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -109,7 +110,8 @@ class ResponseMetadata:
         model: Model name/identifier used (if applicable)
         tokens: Token usage information
         duration: Execution duration in seconds
-        timestamp: Unix timestamp of response creation
+        timestamp: Unix timestamp of response creation (machine-readable)
+        timestamp_iso: ISO 8601 formatted timestamp (human-readable)
         correlation_id: ID linking related operations
         trace_id: ID for distributed tracing
     """
@@ -119,6 +121,7 @@ class ResponseMetadata:
     tokens: TokenUsage | None = None
     duration: float = 0.0
     timestamp: float = field(default_factory=time.time)
+    timestamp_iso: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     correlation_id: str | None = None
     trace_id: str | None = None
 
@@ -130,6 +133,7 @@ class ResponseMetadata:
             "tokens": self.tokens.to_dict() if self.tokens else None,
             "duration": self.duration,
             "timestamp": self.timestamp,
+            "timestamp_iso": self.timestamp_iso,
             "correlation_id": self.correlation_id,
             "trace_id": self.trace_id,
         }
