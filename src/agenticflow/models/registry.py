@@ -178,6 +178,10 @@ def resolve_model(model_str: str) -> tuple[str, str]:
         raise ValueError(f"Invalid model string: {model_str!r}")
     
     model_str = model_str.strip()
+    model_lower = model_str.lower()
+
+    if model_lower in {"ollama", "ollama-llama"}:
+        return "ollama", MODEL_ALIASES[model_lower]
     
     # Handle provider:model syntax
     if ":" in model_str:

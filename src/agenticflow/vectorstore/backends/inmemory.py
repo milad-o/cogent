@@ -369,9 +369,15 @@ class InMemoryBackend:
         Checks both DocumentMetadata fields and custom dict.
         """
         metadata_dict = doc.metadata.to_dict()
+        custom = metadata_dict.get("custom", {}) if isinstance(metadata_dict.get("custom"), dict) else {}
         for key, value in filter.items():
-            if key not in metadata_dict:
-                return False
-            if metadata_dict[key] != value:
-                return False
+            if key in metadata_dict:
+                if metadata_dict[key] != value:
+                    return False
+                continue
+            if key in custom:
+                if custom[key] != value:
+                    return False
+                continue
+            return False
         return True

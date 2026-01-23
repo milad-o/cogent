@@ -135,12 +135,16 @@ class ParentDocumentRetriever(BaseRetriever):
             for i, chunk_text in enumerate(text_chunks):
                 chunk_doc = Document(
                     text=chunk_text,
-                    metadata={
-                        **doc.metadata,
-                        "parent_id": parent_id,
-                        "chunk_index": i,
-                        "total_chunks": len(text_chunks),
-                    },
+                            metadata={
+                                **(
+                                    doc.metadata.to_dict()
+                                    if hasattr(doc.metadata, "to_dict")
+                                    else dict(doc.metadata)
+                                ),
+                                "parent_id": parent_id,
+                                "chunk_index": i,
+                                "total_chunks": len(text_chunks),
+                            },
                 )
                 chunks_to_add.append(chunk_doc)
 
@@ -292,7 +296,11 @@ class SentenceWindowRetriever(BaseRetriever):
                 sent_doc = Document(
                     text=sentence,
                     metadata={
-                        **doc.metadata,
+                        **(
+                            doc.metadata.to_dict()
+                            if hasattr(doc.metadata, "to_dict")
+                            else dict(doc.metadata)
+                        ),
                         "doc_id": doc_id,
                         "sentence_index": i,
                         "total_sentences": len(sentences),
@@ -357,7 +365,11 @@ class SentenceWindowRetriever(BaseRetriever):
                     document=Document(
                         text=window_text,
                         metadata={
-                            **sent_doc.metadata,
+                            **(
+                                sent_doc.metadata.to_dict()
+                                if hasattr(sent_doc.metadata, "to_dict")
+                                else dict(sent_doc.metadata)
+                            ),
                             "window_size": self._window_size,
                             "matched_sentence": sent_doc.text,
                         },

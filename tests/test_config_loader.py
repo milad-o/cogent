@@ -343,16 +343,12 @@ class TestDotenvIntegration:
         
         # Load it
         from dotenv import load_dotenv
-        load_dotenv(env_file)
-        
-        try:
+        with patch.dict(os.environ, {}, clear=True):
+            load_dotenv(env_file, override=True)
+
             key = get_api_key("openai", None)
             # Should get the key from env (loaded from .env)
             assert key == "sk-dotenv-key"
-        finally:
-            # Clean up
-            if "OPENAI_API_KEY" in os.environ:
-                del os.environ["OPENAI_API_KEY"]
 
 
 class TestErrorHandling:

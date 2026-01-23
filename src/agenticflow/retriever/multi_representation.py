@@ -338,13 +338,21 @@ Category (one word):'''
                     continue
 
                 if text:
+                    metadata_dict = (
+                        doc.metadata.to_dict()
+                        if hasattr(doc.metadata, "to_dict")
+                        else dict(doc.metadata)
+                    )
+                    metadata_dict.pop("id", None)
+                    rep_id = f"{doc_id}:{rep_type}"
                     await self._vectorstore.add_texts(
                         [text],
                         metadatas=[{
                             "doc_id": doc_id,
                             "representation": rep_type,
-                            **doc.metadata,
+                            **metadata_dict,
                         }],
+                        ids=[rep_id],
                     )
 
         return doc_ids

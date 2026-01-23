@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from agenticflow.core import DocumentMetadata
 from agenticflow.retriever.base import FusionStrategy, RetrievalResult
 
 if TYPE_CHECKING:
@@ -77,7 +78,13 @@ def _get_doc_key(result: RetrievalResult) -> str:
     Uses metadata 'id' if available, otherwise falls back to text hash.
     """
     # Check for explicit ID in metadata first
-    doc_id = result.document.metadata.get("id")
+    doc_id = None
+    metadata = result.document.metadata
+    if isinstance(metadata, DocumentMetadata):
+        if metadata.id_provided:
+            doc_id = metadata.id
+    elif isinstance(metadata, dict):
+        doc_id = metadata.get("id")
     if doc_id:
         return str(doc_id)
     # Fall back to text-based key
@@ -348,11 +355,17 @@ def deduplicate_results(
     for result in results:
         # Determine document key
         if by == "id":
-            key = result.document.metadata.get("id", str(id(result.document)))
+            metadata = result.document.metadata
+            if isinstance(metadata, DocumentMetadata) and metadata.id_provided:
+                key = metadata.id
+            elif isinstance(metadata, dict):
+                key = metadata.get("id", str(id(result.document)))
+            else:
+                key = str(id(result.document))
         elif by == "text":
             key = result.document.text
         else:  # auto
-            key = result.document.metadata.get("id") or result.document.text
+            key = _get_doc_key(result)
 
         # Keep higher score
         if key not in seen or result.score > seen[key].score:

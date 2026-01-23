@@ -50,8 +50,7 @@ class TestModelAliases:
     
     def test_ollama_aliases(self):
         """Test Ollama model aliases."""
-        # Note: ollama alias resolves to openai provider with llama3.2 model
-        assert resolve_model("ollama") == ("openai", "llama3.2")
+        assert resolve_model("ollama") == ("ollama", "llama3.2")
     
     def test_case_sensitivity(self):
         """Test that aliases are case-insensitive."""
@@ -139,10 +138,8 @@ class TestEdgeCases:
     
     def test_unknown_model_no_pattern(self):
         """Test unknown model with no pattern match."""
-        provider, model = resolve_model("unknown-model-xyz")
-        assert model == "unknown-model-xyz"
-        # Should default to some provider or raise error
-        # Current implementation might return the model as-is
+        with pytest.raises(ValueError, match="Cannot auto-detect provider"):
+            resolve_model("unknown-model-xyz")
     
     def test_whitespace_handling(self):
         """Test whitespace in model strings."""

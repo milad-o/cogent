@@ -369,8 +369,8 @@ class TestRecursiveCharacterSplitter:
         # Should have chunks from both documents
         assert len(chunks) >= 2
         # Chunks should inherit document metadata
-        ids = {c.metadata.get("id") for c in chunks}
-        assert "1" in ids or "2" in ids
+        parent_ids = {c.metadata.get("parent_id") for c in chunks}
+        assert "1" in parent_ids or "2" in parent_ids
 
 
 class TestCharacterSplitter:

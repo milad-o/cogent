@@ -159,16 +159,17 @@ api_key = "sk-config-test-key"
 """)
         
         with patch('agenticflow.config.find_config_file', return_value=config_file):
-            with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
-                try:
-                    create_chat("gpt4")
-                except:
-                    pass
-                
-                # Verify API key from config was used
-                if mock_init.called:
-                    call_kwargs = mock_init.call_args[1]
-                    assert call_kwargs.get("api_key") == "sk-config-test-key"
+            with patch.dict('os.environ', {}, clear=True):
+                with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
+                    try:
+                        create_chat("gpt4")
+                    except:
+                        pass
+                    
+                    # Verify API key from config was used
+                    if mock_init.called:
+                        call_kwargs = mock_init.call_args[1]
+                        assert call_kwargs.get("api_key") == "sk-config-test-key"
     
     def test_env_var_overrides_config(self, tmp_path):
         """Test that environment variables override config file."""
