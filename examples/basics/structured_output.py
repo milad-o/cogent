@@ -58,15 +58,16 @@ async def example_contact_extraction():
     for text in texts:
         print(f"\nInput: {text}")
         result = await agent.run(f"Extract contact info: {text}")
+        structured = result.content
 
-        if result.valid:
-            contact = result.data
+        if structured.valid:
+            contact = structured.data
             print(f"  Name: {contact.name}")
             print(f"  Email: {contact.email}")
             print(f"  Phone: {contact.phone or 'N/A'}")
             print(f"  Company: {contact.company or 'N/A'}")
         else:
-            print(f"  Error: {result.error}")
+            print(f"  Error: {structured.error}")
 
 
 # =============================================================================
@@ -104,9 +105,10 @@ async def example_sentiment_analysis():
     for review in reviews:
         print(f"\nReview: {review[:50]}...")
         result = await agent.run(f"Analyze sentiment: {review}")
+        structured = result.content
 
-        if result.valid:
-            analysis = result.data
+        if structured.valid:
+            analysis = structured.data
             print(f"  Sentiment: {analysis.sentiment} ({analysis.confidence:.0%} confidence)")
             print(f"  Key phrases: {', '.join(analysis.key_phrases)}")
             print(f"  Summary: {analysis.summary}")
@@ -148,9 +150,10 @@ async def example_meeting_actions():
 
     print(f"Meeting notes: {meeting_notes[:80]}...")
     result = await agent.run(f"Extract key action: {meeting_notes}")
+    structured = result.content
 
-    if result.valid:
-        action = result.data
+    if structured.valid:
+        action = structured.data
         print(f"\n  Task: {action.task}")
         print(f"  Assignee: {action.assignee}")
         print(f"  Priority: {action.priority}")
@@ -210,20 +213,21 @@ async def example_advanced_config():
 
     print(f"Review: {review_text[:60]}...")
     result = await agent.run(f"Parse this review: {review_text}")
+    structured = result.content
 
-    print(f"\n  Attempts: {result.attempts}")
-    print(f"  Valid: {result.valid}")
+    print(f"\n  Attempts: {structured.attempts}")
+    print(f"  Valid: {structured.valid}")
 
-    if result.valid:
-        review = result.data
+    if structured.valid:
+        review = structured.data
         print(f"  Rating: {'⭐' * review.rating}")
         print(f"  Title: {review.title}")
         print(f"  Pros: {', '.join(review.pros)}")
         print(f"  Cons: {', '.join(review.cons)}")
         print(f"  Recommends: {'Yes' if review.recommendation else 'No'}")
 
-    if result.raw:
-        print(f"\n  Raw output preview: {result.raw[:100]}...")
+    if structured.raw:
+        print(f"\n  Raw output preview: {structured.raw[:100]}...")
 
 
 # =============================================================================
@@ -265,9 +269,10 @@ async def example_json_schema():
 
     print(f"Input: {text}")
     result = await agent.run(f"Parse event: {text}")
+    structured = result.content
 
-    if result.valid:
-        event = result.data
+    if structured.valid:
+        event = structured.data
         print(f"\n  Event: {event}")
 
 

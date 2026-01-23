@@ -165,7 +165,9 @@ async def research_and_write() -> None:
         "Write about renewable energy trends"
     )
 
-    print(f"\n📄 Final Output:\n{result.output[:500]}")
+    out = result.output
+    preview = out.content if hasattr(out, "content") else out
+    print(f"\n📄 Final Output:\n{str(preview)[:500]}")
 
 
 async def parallel_search_and_aggregate() -> None:
@@ -218,7 +220,9 @@ async def parallel_search_and_aggregate() -> None:
         initial_event="task.created"
     )
 
-    print(f"\n📄 Aggregated Report:\n{result.output[:500]}")
+    out = result.output
+    preview = out.content if hasattr(out, "content") else out
+    print(f"\n📄 Aggregated Report:\n{str(preview)[:500]}")
 
 
 async def smart_routing() -> None:
@@ -325,7 +329,9 @@ async def event_driven_pipeline() -> None:
         initial_event="task.created",
     )
 
-    print(f"\n📄 Final Report:\n{result.output[:500]}")
+    out = result.output
+    preview = out.content if hasattr(out, "content") else out
+    print(f"\n📄 Final Report:\n{str(preview)[:500]}")
 
 
 async def conditional_workflow() -> None:
@@ -372,7 +378,9 @@ async def conditional_workflow() -> None:
     # Short query → quick responder
     print("\n📌 Short Query:")
     result1 = await flow.run("What is 15% of 200?", initial_event="task.created")
-    print(f"   → {result1.output[:100]}")
+    out1 = result1.output
+    preview1 = out1.content if hasattr(out1, "content") else out1
+    print(f"   → {str(preview1)[:100]}")
 
     # Long query → deep researcher
     print("\n📌 Complex Query:")

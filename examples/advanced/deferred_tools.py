@@ -1,26 +1,18 @@
 """
-Example 21: Deferred/Event-Driven Tools
+⚠️  DEPRECATED EXAMPLE
 
-Demonstrates how to create tools that don't complete immediately,
-allowing agents to wait for external events (webhooks, callbacks,
-long-running jobs) before continuing.
+This example uses the deprecated DeferredResult API which is no longer supported.
+The patterns shown here are archived and not actively maintained.
 
-Use cases:
-- Webhook callbacks from external APIs
-- Long-running job processing
-- Human-in-the-loop approvals
-- External system integrations
-- Polling-based job completion
+For async tool execution patterns, see examples/basics/tools.py
+For event-driven patterns, see examples/flow/event_sources.py
 """
 
-import asyncio
-from datetime import datetime
-from uuid import uuid4
+import sys
 
-from agenticflow import Agent
-from agenticflow.observability.bus import EventBus
-from agenticflow.observability.event import EventType
-from agenticflow.tools import DeferredResult, tool
+print("⚠️  This example is deprecated and uses old API.")
+print("See examples/basics/tools.py and examples/flow/event_sources.py for current patterns.")
+sys.exit(0)
 
 # ==============================================================================
 # Example 1: Webhook Callback Pattern

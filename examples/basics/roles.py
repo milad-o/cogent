@@ -145,13 +145,18 @@ async def demo_supervisor_flow():
     from agenticflow import supervisor as supervisor_pattern
 
     flow = supervisor_pattern(
-        supervisor=supervisor,
+        coordinator=supervisor,
         workers=[researcher, writer],
         observer=Observer.normal(),
     )
 
     result = await flow.run("Benefits of remote work")
-    print(f"\n  Result: {result.output[:200]}...")
+    out = result.output
+    preview = (
+        out.content if hasattr(out, "content") else out
+    )
+    text = str(preview)
+    print(f"\n  Result: {text[:200]}...")
 
 
 async def demo_review_flow():
@@ -187,7 +192,12 @@ async def demo_review_flow():
     )
 
     result = await flow.run("Cloud computing benefits")
-    print(f"\n  Final output: {result.output[:200]}...")
+    out = result.output
+    preview = (
+        out.content if hasattr(out, "content") else out
+    )
+    text = str(preview)
+    print(f"\n  Final output: {text[:200]}...")
 
 
 async def demo_autonomous():
@@ -207,8 +217,9 @@ async def demo_autonomous():
     )
 
     # For single agent, just run directly (no Flow needed)
-    result = await assistant.run("What's 2+2?")
-    print(f"\n  Answer: {result[:200]}...")
+    response = await assistant.run("What's 2+2?")
+    text = response.unwrap()
+    print(f"\n  Answer: {str(text)[:200]}...")
 
 
 async def main():
