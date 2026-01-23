@@ -1,6 +1,6 @@
 """Document class for vector store.
 
-Re-exports the unified Document class from agenticflow.documents.
+Re-exports the unified Document class from agenticflow.core.
 Also provides utility functions for document creation and splitting.
 """
 
@@ -9,10 +9,11 @@ from __future__ import annotations
 from typing import Any
 
 # Re-export the unified Document class
-from agenticflow.documents.types import Document
+from agenticflow.core import Document, DocumentMetadata
 
 __all__ = [
     "Document",
+    "DocumentMetadata",
     "create_documents",
     "split_text",
     "split_documents",
@@ -47,11 +48,14 @@ def create_documents(
 
     documents = []
     for i, text in enumerate(texts):
-        doc = Document(
-            text=text,
-            metadata=metadatas[i] if metadatas else {},
-            id=ids[i] if ids else "",
-        )
+        # Create DocumentMetadata from dict (backward compatible)
+        metadata = DocumentMetadata.from_dict(metadatas[i]) if metadatas else DocumentMetadata()
+        
+        # Override ID if provided
+        if ids:
+            metadata.id = ids[i]
+            
+        doc = Document(text=text, metadata=metadata)
         documents.append(doc)
 
     return documents
@@ -154,14 +158,18 @@ def split_documents(
         chunks = split_text(doc.text, chunk_size, chunk_overlap)
 
         for i, chunk_text in enumerate(chunks):
-            chunk_doc = Document(
-                text=chunk_text,
-                metadata={
-                    **doc.metadata,
-                    "_chunk_index": i,
-                    "_parent_id": doc.id,
-                },
+            # Create metadata inheriting from parent
+            chunk_metadata = DocumentMetadata(
+                source=doc.metadata.source,
+                source_type=doc.metadata.source_type,
+                page=doc.metadata.page,
+                loader=doc.metadata.loader,
+                parent_id=doc.id,
+                chunk_index=i,
+                chunk_total=len(chunks),
+                custom=doc.metadata.custom.copy() if doc.metadata.custom else {},
             )
+            chunk_doc = Document(text=chunk_text, metadata=chunk_metadata)
             chunked.append(chunk_doc)
 
     return chunked

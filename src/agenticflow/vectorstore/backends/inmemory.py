@@ -366,10 +366,12 @@ class InMemoryBackend:
         """Check if document metadata matches filter.
 
         Uses exact match for all filter keys.
+        Checks both DocumentMetadata fields and custom dict.
         """
+        metadata_dict = doc.metadata.to_dict()
         for key, value in filter.items():
-            if key not in doc.metadata:
+            if key not in metadata_dict:
                 return False
-            if doc.metadata[key] != value:
+            if metadata_dict[key] != value:
                 return False
         return True

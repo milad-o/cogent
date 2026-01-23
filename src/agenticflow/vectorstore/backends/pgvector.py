@@ -130,7 +130,7 @@ class PgVectorBackend:
                         text = EXCLUDED.text,
                         metadata = EXCLUDED.metadata
                     """,
-                    (doc_id, embedding, doc.text, json.dumps(doc.metadata)),
+                    (doc_id, embedding, doc.text, json.dumps(doc.metadata.to_dict())),
                 )
 
             self._conn.commit()
