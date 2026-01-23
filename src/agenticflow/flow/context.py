@@ -7,8 +7,9 @@ enabling agent-to-agent communication and shared state management.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.events import Event
 
@@ -106,7 +107,7 @@ class ExecutionContext:
     current_agent: str
     event: Event | None = None
     task: str = ""
-    data: dict[str, Any] = field(default_factory=dict)
+    data: dict[str, object] = field(default_factory=dict)
     pending_responses: dict[str, asyncio.Future[AgentResponse]] = field(default_factory=dict)
     event_queue: asyncio.Queue[Event] | None = None
 
@@ -115,10 +116,10 @@ class ExecutionContext:
         agent_name: str,
         task: str,
         *,
-        data: dict[str, Any] | None = None,
+        data: dict[str, object] | None = None,
         wait: bool = True,
         timeout_ms: int | None = None,
-    ) -> Any | None:
+    ) -> object | None:
         """Delegate a task to another agent.
 
         Args:
