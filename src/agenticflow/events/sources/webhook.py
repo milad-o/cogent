@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any
 
 from agenticflow.events.event import Event
 from agenticflow.events.sources.base import EmitCallback, EventSource
@@ -57,7 +56,7 @@ class WebhookSource(EventSource):
     event_name_header: str = "X-Event-Name"
     secret: str | None = None
 
-    _server: Any = field(default=None, repr=False)
+    _server: object = field(default=None, repr=False)
     _emit: EmitCallback | None = field(default=None, repr=False)
 
     async def start(self, emit: EmitCallback) -> None:

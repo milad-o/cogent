@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -42,7 +41,7 @@ class RecursiveCharacterSplitter(BaseSplitter):
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         separators: list[str] | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.separators = separators or self.DEFAULT_SEPARATORS.copy()
@@ -181,7 +180,7 @@ class CharacterSplitter(BaseSplitter):
         separator: str = "\n\n",
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.separator = separator

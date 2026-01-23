@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -37,7 +36,7 @@ class PDFLoader(BaseLoader):
         super().__init__(encoding)
         self.extract_images = extract_images
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a PDF file.
 
         Args:

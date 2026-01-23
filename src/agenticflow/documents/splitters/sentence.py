@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -52,7 +51,7 @@ class SentenceSplitter(BaseSplitter):
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         min_sentence_length: int = 10,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.min_sentence_length = min_sentence_length

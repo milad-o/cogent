@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -50,7 +49,7 @@ class HTMLSplitter(BaseSplitter):
         chunk_size: int = 1000,
         chunk_overlap: int = 200,
         tags_to_split_on: list[str] | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.tags_to_split_on = tags_to_split_on or self.DEFAULT_SPLIT_TAGS

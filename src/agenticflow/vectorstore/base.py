@@ -9,7 +9,7 @@ Defines the core abstractions:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from agenticflow.vectorstore.document import Document
@@ -130,7 +130,7 @@ class VectorStoreBackend(Protocol):
         self,
         embedding: list[float],
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents.
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, overload, runtime_checkable
 
 from agenticflow.tools.base import BaseTool
 
@@ -49,7 +49,7 @@ class RetrievalResult:
     document: Document
     score: float
     retriever_name: str = ""
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Ensure document is properly typed."""
@@ -93,10 +93,10 @@ class Retriever(Protocol):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: Literal[False] = False,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document]: ...
 
     @overload
@@ -104,20 +104,20 @@ class Retriever(Protocol):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: Literal[True],
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[RetrievalResult]: ...
 
     async def retrieve(
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: bool = False,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document] | list[RetrievalResult]:
         """Retrieve documents matching the query.
 
@@ -139,8 +139,8 @@ class Retriever(Protocol):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
-        **kwargs: Any,
+        filter: dict[str, object] | None = None,
+        **kwargs: object,
     ) -> list[RetrievalResult]:
         """Retrieve documents with relevance scores.
 
@@ -217,7 +217,7 @@ class BaseRetriever:
         """Set the EventBus for observability."""
         self._event_bus = value
 
-    async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
+    async def _emit(self, event_type: str, data: dict[str, object]) -> None:
         """Emit an event if event_bus is configured."""
         if self._event_bus:
             from agenticflow.observability.trace_record import TraceType
@@ -235,10 +235,10 @@ class BaseRetriever:
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: Literal[False] = False,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document]: ...
 
     @overload
@@ -246,20 +246,20 @@ class BaseRetriever:
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: Literal[True],
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[RetrievalResult]: ...
 
     async def retrieve(
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: bool = False,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document] | list[RetrievalResult]:
         """Retrieve documents matching the query.
 
@@ -323,8 +323,8 @@ class BaseRetriever:
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
-        **kwargs: Any,
+        filter: dict[str, object] | None = None,
+        **kwargs: object,
     ) -> list[RetrievalResult]:
         """Retrieve documents with scores.
 
@@ -343,7 +343,7 @@ class BaseRetriever:
         self,
         queries: list[str],
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: bool = False,
     ) -> list[list[Document]] | list[list[RetrievalResult]]:
@@ -414,8 +414,8 @@ class BaseRetriever:
         async def _tool(
             query: str,
             k: int = k_default,
-            filter: dict[str, Any] | None = None,
-        ) -> list[dict[str, Any]]:
+            filter: dict[str, object] | None = None,
+        ) -> list[dict[str, object]]:
             results = await self.retrieve(
                 query,
                 k=k,
@@ -423,9 +423,9 @@ class BaseRetriever:
                 include_scores=True,
             )
 
-            payload: list[dict[str, Any]] = []
+            payload: list[dict[str, object]] = []
             for r in results:
-                entry: dict[str, Any] = {"text": r.document.text}
+                entry: dict[str, object] = {"text": r.document.text}
                 if include_metadata:
                     entry["metadata"] = r.document.metadata
                 if include_scores:

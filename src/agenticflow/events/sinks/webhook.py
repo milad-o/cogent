@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any
 
 from agenticflow.events.event import Event
 from agenticflow.events.sinks.base import EventSink
@@ -58,9 +57,9 @@ class WebhookSink(EventSink):
     timeout: float = 30.0
     include_event_headers: bool = True
 
-    _client: Any = field(default=None, repr=False)
+    _client: object = field(default=None, repr=False)
 
-    async def _get_client(self) -> Any:
+    async def _get_client(self) -> object:
         """Get or create the HTTP client."""
         if self._client is None:
             try:

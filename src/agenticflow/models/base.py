@@ -9,37 +9,60 @@ from __future__ import annotations
 import contextlib
 import json
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Protocol, runtime_checkable
 
 # Import AIMessage from core messages - single source of truth
 from agenticflow.core.messages import AIMessage, EmbeddingResult
 
 
-def normalize_input(messages: str | list[Any]) -> list[Any]:
+@runtime_checkable
+class MessageLike(Protocol):
+    """Protocol for message-like objects.
+
+    Any object with role and content attributes can be treated as a message.
+    This includes dict messages and message objects (SystemMessage, HumanMessage, etc.).
+    """
+
+    @property
+    def role(self) -> str:
+        """Message role (system, user, assistant, tool)."""
+        ...
+
+    @property
+    def content(self) -> str | list[dict[str, object]] | None:
+        """Message content (text or multimodal parts)."""
+        ...
+
+
+MessageInput = str | dict[str, object] | MessageLike
+"""Accepted message input types: string, dict, or message-like object."""
+
+
+def normalize_input(messages: str | list[MessageInput]) -> list[MessageInput]:
     """Normalize various input types to a list of messages.
 
     Args:
         messages: Can be a string or list of messages.
 
     Returns:
-        List of messages (dicts or objects).
+        List of messages (dicts or message-like objects).
     """
     if isinstance(messages, str):
         return [{"role": "user", "content": messages}]
     return messages
 
 
-def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
+def convert_messages(messages: list[MessageInput]) -> list[dict[str, object]]:
     """Convert messages to dict format for API calls.
 
     Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
     This is a shared utility used by all model providers.
     """
 
-    def _is_multimodal_content(value: Any) -> bool:
+    def _is_multimodal_content(value: object) -> bool:
         """Return True if `content` is already in provider multimodal format.
 
         We intentionally preserve OpenAI-style content parts, e.g.:
@@ -53,7 +76,7 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
         # Some providers may represent a single part as a dict.
         return bool(isinstance(value, dict) and "type" in value)
 
-    def _normalize_content(value: Any) -> Any:
+    def _normalize_content(value: object) -> str | list[dict[str, object]] | dict[str, object]:
         """Coerce arbitrary content to a provider-safe representation.
 
         Default behavior is to convert to string for broad provider compatibility.
@@ -83,13 +106,13 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
         except Exception:
             return ""
 
-    def _normalize_message_dict(raw: dict[str, Any]) -> dict[str, Any]:
+    def _normalize_message_dict(raw: dict[str, object]) -> dict[str, object]:
         msg = dict(raw)  # shallow copy
         if "content" in msg:
             msg["content"] = _normalize_content(msg.get("content"))
         return msg
 
-    result: list[dict[str, Any]] = []
+    result: list[dict[str, object]] = []
     for msg in messages:
         # Already a dict
         if isinstance(msg, dict):
@@ -108,7 +131,7 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
 
         # Message object with role and content attributes
         if hasattr(msg, "role") and hasattr(msg, "content"):
-            msg_dict: dict[str, Any] = {
+            msg_dict: dict[str, object] = {
                 "role": getattr(msg, "role", "user"),
                 "content": _normalize_content(getattr(msg, "content", "")),
             }
@@ -155,8 +178,8 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
     # - Ensure tool messages have a tool_call_id that matches a prior tool_call
     # - If a tool message cannot be paired, we drop it to avoid a hard 400
     def _sanitize_tool_messages(
-        formatted: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
+        formatted: list[dict[str, object]],
+    ) -> list[dict[str, object]]:
         # Tracks ids for the *most recent* assistant tool_calls message.
         # OpenAI/Azure require tool messages to follow that assistant message
         # (possibly with other tool messages in between, but no other role).
@@ -164,7 +187,7 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
         consumed_last_ids: set[str] = set()
         in_tool_response_zone: bool = False  # True after assistant with tool_calls
 
-        out: list[dict[str, Any]] = []
+        out: list[dict[str, object]] = []
         for idx, m in enumerate(formatted):
             role = m.get("role")
 
@@ -277,12 +300,12 @@ class BaseChatModel(ABC):
     max_retries: int = 2
 
     # Tool binding state
-    _tools: list[Any] = field(default_factory=list, repr=False)
+    _tools: list[Callable[..., object]] = field(default_factory=list, repr=False)
     _parallel_tool_calls: bool = field(default=True, repr=False)
 
     # Client state (lazy initialized)
-    _client: Any = field(default=None, repr=False)
-    _async_client: Any = field(default=None, repr=False)
+    _client: object = field(default=None, repr=False)
+    _async_client: object = field(default=None, repr=False)
     _initialized: bool = field(default=False, repr=False)
 
     def _ensure_initialized(self) -> None:
@@ -299,7 +322,7 @@ class BaseChatModel(ABC):
         ...
 
     @abstractmethod
-    def invoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+    def invoke(self, messages: str | list[MessageInput]) -> AIMessage:
         """Invoke the model synchronously.
 
         Args:
@@ -316,7 +339,7 @@ class BaseChatModel(ABC):
 
     @abstractmethod
     async def ainvoke(
-        self, messages: str | list[dict[str, Any]] | list[Any]
+        self, messages: str | list[MessageInput]
     ) -> AIMessage:
         """Invoke the model asynchronously.
 
@@ -335,7 +358,7 @@ class BaseChatModel(ABC):
     @abstractmethod
     def bind_tools(
         self,
-        tools: list[Any],
+        tools: list[Callable[..., object]],
         *,
         parallel_tool_calls: bool = True,
     ) -> BaseChatModel:
@@ -352,7 +375,7 @@ class BaseChatModel(ABC):
 
     async def astream(
         self,
-        messages: str | list[dict[str, Any]] | list[Any],
+        messages: str | list[MessageInput],
     ) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously.
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -90,7 +89,7 @@ class CodeSplitter(BaseSplitter):
         language: str = "python",
         chunk_size: int = 1500,
         chunk_overlap: int = 200,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.language = language.lower()

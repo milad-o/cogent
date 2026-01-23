@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -25,7 +24,7 @@ class TextLoader(BaseLoader):
     # Fallback encodings to try if UTF-8 fails
     FALLBACK_ENCODINGS = ["latin-1", "cp1252", "iso-8859-1"]
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a plain text file.
 
         Args:

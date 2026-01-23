@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 import io
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -42,7 +41,7 @@ class CSVLoader(BaseLoader):
         self.delimiter = delimiter
         self.row_as_document = row_as_document
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a CSV file.
 
         Args:

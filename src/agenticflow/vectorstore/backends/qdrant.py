@@ -13,7 +13,6 @@ Best for:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from agenticflow.vectorstore.base import SearchResult
 from agenticflow.vectorstore.document import Document
@@ -61,13 +60,13 @@ class QdrantBackend:
     distance: str = "cosine"
     path: str | None = None
 
-    _client: Any = field(default=None, init=False, repr=False)
-    _models: Any = field(default=None, init=False, repr=False)
+    _client: object = field(default=None, init=False, repr=False)
+    _models: object = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize Qdrant client and collection."""
         try:
-            from qdrant_client import QdrantClient, models
+            from qdrant_client import QdrantClient, models  # type: ignore[import-untyped]
 
             self._models = models
         except ImportError as e:
@@ -161,7 +160,7 @@ class QdrantBackend:
         self,
         embedding: list[float],
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents.
 
@@ -276,7 +275,7 @@ class QdrantBackend:
     # Helpers
     # ============================================================
 
-    def _build_filter(self, filter: dict[str, Any]) -> Any:
+    def _build_filter(self, filter: dict[str, object]) -> object:
         """Build Qdrant filter from simple filter dict.
 
         Supports:

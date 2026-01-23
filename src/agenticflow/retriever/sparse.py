@@ -11,7 +11,6 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Any
 
 from agenticflow.core import Document, DocumentMetadata
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
@@ -81,7 +80,7 @@ class BM25Index:
         self,
         query: str | None = None,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         keywords: list[str] | None = None,
     ) -> list[tuple[Document, float]]:
         """Search for documents matching the query.
@@ -246,7 +245,7 @@ class BM25Retriever(BaseRetriever):
     def add_texts(
         self,
         texts: list[str],
-        metadatas: list[dict[str, Any]] | None = None,
+        metadatas: list[dict[str, object]] | None = None,
     ) -> None:
         """Add texts to the index.
 
@@ -270,11 +269,11 @@ class BM25Retriever(BaseRetriever):
         self,
         query: str | None = None,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         *,
         include_scores: bool = False,
         keywords: list[str] | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document] | list[RetrievalResult]:
         """Retrieve documents using BM25.
 
@@ -307,7 +306,7 @@ class BM25Retriever(BaseRetriever):
         self,
         query: str | None = None,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         keywords: list[str] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents using BM25.
@@ -392,7 +391,7 @@ class BM25Retriever(BaseRetriever):
             "Searches based on keyword matching and term frequency."
         )
 
-        args_schema: dict[str, Any] = {
+        args_schema: dict[str, object] = {
             "query": {
                 "type": "string",
                 "description": "Natural language search query (will be tokenized into keywords).",
@@ -420,9 +419,9 @@ class BM25Retriever(BaseRetriever):
         async def _tool(
             query: str | None = None,
             k: int = k_default,
-            filter: dict[str, Any] | None = None,
+            filter: dict[str, object] | None = None,
             keywords: list[str] | None = None,
-        ) -> list[dict[str, Any]]:
+        ) -> list[dict[str, object]]:
             results = await self.retrieve(
                 query=query,
                 k=k,
@@ -431,9 +430,9 @@ class BM25Retriever(BaseRetriever):
                 include_scores=True,
             )
 
-            payload: list[dict[str, Any]] = []
+            payload: list[dict[str, object]] = []
             for r in results:
-                entry: dict[str, Any] = {"text": r.document.text}
+                entry: dict[str, object] = {"text": r.document.text}
                 if include_metadata:
                     entry["metadata"] = r.document.metadata
                 if include_scores:
@@ -525,7 +524,7 @@ class TFIDFRetriever(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve using TF-IDF cosine similarity."""
         if not self._documents:

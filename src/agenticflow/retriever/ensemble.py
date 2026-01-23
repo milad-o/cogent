@@ -6,8 +6,6 @@ using various fusion strategies.
 
 from __future__ import annotations
 
-from typing import Any
-
 from agenticflow.core import Document
 from agenticflow.retriever.base import (
     BaseRetriever,
@@ -91,7 +89,7 @@ class EnsembleRetriever(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve from all retrievers and fuse results.
 
@@ -243,7 +241,7 @@ class WeightedRetriever(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve with weighted scores."""
         results = await self._retriever.retrieve_with_scores(query, k=k, filter=filter)

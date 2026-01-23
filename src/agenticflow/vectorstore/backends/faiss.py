@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from agenticflow.vectorstore.base import SearchResult
 from agenticflow.vectorstore.document import Document
@@ -45,17 +44,17 @@ class FAISSBackend:
     nprobe: int = 10
     persist_directory: str | Path | None = None
 
-    _index: Any = field(default=None, init=False, repr=False)
+    _index: object = field(default=None, init=False, repr=False)
     _id_to_doc: dict[str, Document] = field(default_factory=dict, repr=False)
     _id_to_idx: dict[str, int] = field(default_factory=dict, repr=False)
     _idx_to_id: dict[int, str] = field(default_factory=dict, repr=False)
-    _faiss: Any = field(default=None, init=False, repr=False)
-    _np: Any = field(default=None, init=False, repr=False)
+    _faiss: object = field(default=None, init=False, repr=False)
+    _np: object = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize FAISS index."""
         try:
-            import faiss
+            import faiss  # type: ignore[import-untyped]
             import numpy as np
 
             self._faiss = faiss
@@ -92,12 +91,12 @@ class FAISSBackend:
             )
             raise ValueError(msg)
 
-    def _normalize(self, vectors: Any) -> Any:
+    def _normalize(self, vectors: object) -> object:
         """Normalize vectors for cosine similarity."""
         np = self._np
-        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-        norms = np.where(norms == 0, 1, norms)  # Avoid division by zero
-        return vectors / norms
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)  # type: ignore[attr-defined]
+        norms = np.where(norms == 0, 1, norms)  # type: ignore[attr-defined] # Avoid division by zero
+        return vectors / norms  # type: ignore[operator]
 
     async def add(
         self,
@@ -151,7 +150,7 @@ class FAISSBackend:
         self,
         embedding: list[float],
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents.
 
@@ -329,7 +328,7 @@ class FAISSBackend:
     # ============================================================
 
     @staticmethod
-    def _matches_filter(doc: Document, filter: dict[str, Any]) -> bool:
+    def _matches_filter(doc: Document, filter: dict[str, object]) -> bool:
         """Check if document metadata matches filter."""
         metadata_dict = doc.metadata.to_dict()
         for key, value in filter.items():

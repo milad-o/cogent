@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 from agenticflow.vectorstore.base import SearchResult
 from agenticflow.vectorstore.document import Document
@@ -145,7 +144,7 @@ class InMemoryBackend:
         self,
         embedding: list[float],
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents using configured similarity metric.
 
@@ -212,7 +211,7 @@ class InMemoryBackend:
         self,
         embedding: list[float],
         k: int,
-        filter: dict[str, Any] | None,
+        filter: dict[str, object] | None,
     ) -> list[SearchResult]:
         """Pure Python search implementation."""
         scores: list[tuple[float, StoredDocument]] = []
@@ -246,7 +245,7 @@ class InMemoryBackend:
         self,
         embedding: list[float],
         k: int,
-        filter: dict[str, Any] | None,
+        filter: dict[str, object] | None,
     ) -> list[SearchResult]:
         """NumPy-accelerated search implementation."""
         import numpy as np
@@ -369,7 +368,7 @@ class InMemoryBackend:
         return sum(abs(x - y) for x, y in zip(a, b, strict=False))
 
     @staticmethod
-    def _matches_filter(doc: Document, filter: dict[str, Any]) -> bool:
+    def _matches_filter(doc: Document, filter: dict[str, object]) -> bool:
         """Check if document metadata matches filter.
 
         Uses exact match for all filter keys.

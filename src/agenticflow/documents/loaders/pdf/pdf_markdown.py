@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core import Document, DocumentMetadata
 from agenticflow.documents.loaders.base import BaseLoader
@@ -157,7 +157,7 @@ class PDFProcessingResult:
     empty_pages: int = 0
     page_results: list[PageResult] = field(default_factory=list)
     total_time_ms: float = 0.0
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
     @property
     def success_rate(self) -> float:
@@ -401,8 +401,8 @@ class ProcessingMetrics:
 def _process_page_batch(
     pdf_path: str,
     page_numbers: Sequence[int],
-    config_dict: dict[str, Any],
-) -> list[dict[str, Any]]:
+    config_dict: dict[str, object],
+) -> list[dict[str, object]]:
     """Process a batch of pages in a separate process.
 
     This function runs in a ProcessPoolExecutor worker process.
@@ -437,7 +437,7 @@ def _process_page_batch(
             for pn in page_numbers
         ]
 
-    results: list[dict[str, Any]] = []
+    results: list[dict[str, object]] = []
 
     for page_num in page_numbers:
         start_time = time.perf_counter()
@@ -518,7 +518,7 @@ def _process_page_batch(
     return results
 
 
-def _get_pdf_page_count(pdf_path: str) -> tuple[int, dict[str, Any]]:
+def _get_pdf_page_count(pdf_path: str) -> tuple[int, dict[str, object]]:
     """Get the page count and metadata of a PDF.
 
     Args:
@@ -635,7 +635,7 @@ class PDFMarkdownLoader(BaseLoader):
         path: str | Path,
         *,
         tracking: bool = False,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document] | PDFProcessingResult:
         """Load a PDF file and convert to Markdown documents.
 
@@ -807,7 +807,7 @@ class PDFMarkdownLoader(BaseLoader):
     async def _load_with_tracking(
         self,
         path: str | Path,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> PDFProcessingResult:
         """Load a PDF with full processing tracking.
 
@@ -946,7 +946,7 @@ class PDFMarkdownLoader(BaseLoader):
         self,
         path: Path,
         page_count: int,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[PageResult]:
         """Process all pages in parallel batches.
 
@@ -1053,7 +1053,7 @@ class PDFMarkdownLoader(BaseLoader):
         self,
         path: Path,
         page_count: int,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[PageResult]:
         """Process all pages sequentially in the current process.
 

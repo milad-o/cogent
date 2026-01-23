@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -98,7 +98,7 @@ class BaseExecutor(ABC):
         self,
         task: str,
         result: str,
-        context: dict[str, Any] | None = None,
+        context: dict[str, object] | None = None,
     ) -> CompletionCheck:
         """Verify that the task is truly complete.
 
@@ -206,7 +206,7 @@ Integrate the additions naturally into a complete response."""
         if self.on_step:
             self.on_step(step_type, data)
 
-    def _track_tool_call(self, tool: str, args: dict[str, Any]) -> None:
+    def _track_tool_call(self, tool: str, args: dict[str, object]) -> None:
         """Track tool call via progress tracker if available.
 
         Args:

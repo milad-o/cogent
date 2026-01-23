@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from agenticflow.vectorstore.base import SearchResult
 from agenticflow.vectorstore.document import Document
@@ -43,13 +42,13 @@ class ChromaBackend:
     persist_directory: str | Path | None = None
     distance_fn: str = "cosine"
 
-    _client: Any = field(default=None, init=False, repr=False)
-    _collection: Any = field(default=None, init=False, repr=False)
+    _client: object = field(default=None, init=False, repr=False)
+    _collection: object = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize Chroma client and collection."""
         try:
-            import chromadb
+            import chromadb  # type: ignore[import-untyped]
             from chromadb.config import Settings
         except ImportError as e:
             msg = "ChromaDB not installed. Install with: pip install chromadb"
@@ -109,7 +108,7 @@ class ChromaBackend:
         self,
         embedding: list[float],
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents.
 
@@ -247,7 +246,7 @@ class ChromaBackend:
     # ============================================================
 
     @staticmethod
-    def _sanitize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    def _sanitize_metadata(metadata: dict[str, object]) -> dict[str, object]:
         """Sanitize metadata for Chroma (only str, int, float, bool allowed)."""
         sanitized = {}
         for key, value in metadata.items():
@@ -261,7 +260,7 @@ class ChromaBackend:
         return sanitized
 
     @staticmethod
-    def _build_where_clause(filter: dict[str, Any]) -> dict[str, Any]:
+    def _build_where_clause(filter: dict[str, object]) -> dict[str, object]:
         """Build Chroma where clause from simple filter dict.
 
         Supports:

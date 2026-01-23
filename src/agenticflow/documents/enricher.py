@@ -10,7 +10,7 @@ import re
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
 
@@ -209,7 +209,7 @@ class MetadataEnricher:
         extract_urls: bool = False,
         compute_reading_time: bool = True,
         words_per_minute: int = 200,
-        custom_extractors: dict[str, Callable[[Document], Any]] | None = None,
+        custom_extractors: dict[str, Callable[[Document]]] | None = None,
         stop_words: frozenset[str] | None = None,
     ) -> None:
         """Initialize the enricher.
@@ -402,8 +402,8 @@ def enrich_documents(
     extract_keywords: bool = True,
     count_words: bool = True,
     compute_reading_time: bool = True,
-    custom_extractors: dict[str, Callable[[Document], Any]] | None = None,
-    **kwargs: Any,
+    custom_extractors: dict[str, Callable[[Document]]] | None = None,
+    **kwargs: object,
 ) -> list[Document]:
     """Convenience function to enrich documents.
 

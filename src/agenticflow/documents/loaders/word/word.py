@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -36,7 +35,7 @@ class WordLoader(BaseLoader):
         super().__init__(encoding)
         self.include_tables = include_tables
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a Word document.
 
         Args:

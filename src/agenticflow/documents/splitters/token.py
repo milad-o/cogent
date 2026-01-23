@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
 from agenticflow.documents.splitters.character import RecursiveCharacterSplitter
@@ -29,7 +27,7 @@ class TokenSplitter(BaseSplitter):
         chunk_size: int = 500,
         chunk_overlap: int = 50,
         model_name: str = "gpt-4",
-        **kwargs: Any,
+        **kwargs: object,
     ):
         self._tokenizer = None
         self._model_name = model_name
@@ -43,11 +41,11 @@ class TokenSplitter(BaseSplitter):
         )
 
     @property
-    def tokenizer(self) -> Any:
+    def tokenizer(self) -> object:
         """Lazy-load tiktoken encoder."""
         if self._tokenizer is None:
             try:
-                import tiktoken
+                import tiktoken  # type: ignore[import-untyped]
 
                 self._tokenizer = tiktoken.encoding_for_model(self._model_name)
             except ImportError:

@@ -1139,20 +1139,19 @@ class Observer:
             self.config.on_message(sender, receiver, content)
 
         # Error callback
-        if self.config.on_error:
-            if event.type in {
-                TraceType.AGENT_ERROR,
-                TraceType.TOOL_ERROR,
-                TraceType.TASK_FAILED,
-                TraceType.STREAM_ERROR,
-            }:
-                source = (
-                    event.data.get("agent_name") or event.data.get("tool") or "unknown"
-                )
-                error = event.data.get("error") or event.data.get(
-                    "message", "Unknown error"
-                )
-                self.config.on_error(source, error)
+        if self.config.on_error and event.type in {
+            TraceType.AGENT_ERROR,
+            TraceType.TOOL_ERROR,
+            TraceType.TASK_FAILED,
+            TraceType.STREAM_ERROR,
+        }:
+            source = (
+                event.data.get("agent_name") or event.data.get("tool") or "unknown"
+            )
+            error = event.data.get("error") or event.data.get(
+                "message", "Unknown error"
+            )
+            self.config.on_error(source, error)
 
         # Streaming callback
         if self.config.on_stream and channel == Channel.STREAMING:

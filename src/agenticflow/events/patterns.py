@@ -11,7 +11,6 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
 
 from agenticflow.events.event import Event
 from agenticflow.flow.state import CoordinationState
@@ -292,7 +291,7 @@ class SourceFilter:
         return f"SourceFilter({self._predicate!r})"
 
 
-def from_source(source: str | list[str], flow: Any = None) -> SourceFilter:
+def from_source(source: str | list[str], flow: object = None) -> SourceFilter:
     """Filter events from specific source(s).
 
     Supports exact matches, lists (OR logic), wildcard patterns, and group references.

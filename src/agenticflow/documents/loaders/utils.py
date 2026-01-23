@@ -5,14 +5,13 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 
 
 async def load_documents(
     source: str | Path | Sequence[str | Path],
-    **kwargs: Any,
+    **kwargs: object,
 ) -> list[Document]:
     """Load documents from file(s) or directory.
 
@@ -53,7 +52,7 @@ async def load_documents(
 
 def load_documents_sync(
     source: str | Path | Sequence[str | Path],
-    **kwargs: Any,
+    **kwargs: object,
 ) -> list[Document]:
     """Synchronous version of load_documents.
 
