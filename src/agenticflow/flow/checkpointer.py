@@ -15,7 +15,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     pass
@@ -45,15 +45,15 @@ class FlowState:
     checkpoint_id: str
     task: str
     events_processed: int = 0
-    pending_events: list[dict[str, Any]] = field(default_factory=list)
-    context: dict[str, Any] = field(default_factory=dict)
-    reactions: list[dict[str, Any]] = field(default_factory=list)
+    pending_events: list[dict[str, object]] = field(default_factory=list)
+    context: dict[str, object] = field(default_factory=dict)
+    reactions: list[dict[str, object]] = field(default_factory=list)
     last_output: str = ""
     round: int = 0
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dictionary for storage."""
         return {
             "flow_id": self.flow_id,
@@ -70,7 +70,7 @@ class FlowState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> FlowState:
+    def from_dict(cls, data: dict[str, object]) -> FlowState:
         """Deserialize from dictionary."""
         timestamp = data.get("timestamp")
         if isinstance(timestamp, str):
@@ -79,17 +79,17 @@ class FlowState:
             timestamp = datetime.now(UTC)
 
         return cls(
-            flow_id=data["flow_id"],
-            checkpoint_id=data["checkpoint_id"],
-            task=data.get("task", ""),
-            events_processed=data.get("events_processed", 0),
-            pending_events=data.get("pending_events", []),
-            context=data.get("context", {}),
-            reactions=data.get("reactions", []),
-            last_output=data.get("last_output", ""),
-            round=data.get("round", 0),
+            flow_id=data["flow_id"],  # type: ignore[arg-type]
+            checkpoint_id=data["checkpoint_id"],  # type: ignore[arg-type]
+            task=data.get("task", ""),  # type: ignore[arg-type]
+            events_processed=data.get("events_processed", 0),  # type: ignore[arg-type]
+            pending_events=data.get("pending_events", []),  # type: ignore[arg-type]
+            context=data.get("context", {}),  # type: ignore[arg-type]
+            reactions=data.get("reactions", []),  # type: ignore[arg-type]
+            last_output=data.get("last_output", ""),  # type: ignore[arg-type]
+            round=data.get("round", 0),  # type: ignore[arg-type]
             timestamp=timestamp,
-            metadata=data.get("metadata", {}),
+            metadata=data.get("metadata", {}),  # type: ignore[arg-type]
         )
 
 
