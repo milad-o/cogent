@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Protocol
 
 from agenticflow.events import Event
 from agenticflow.reactors.base import BaseReactor
 
 if TYPE_CHECKING:
     from agenticflow.flow.context import Context
+
+
+class Logger(Protocol):
+    """Protocol for logger-like objects."""
+
+    def info(self, msg: str) -> None: ...
+    def debug(self, msg: str) -> None: ...
+    def warning(self, msg: str) -> None: ...
+    def error(self, msg: str) -> None: ...
 
 
 class Gateway(BaseReactor):
@@ -76,7 +86,7 @@ class Gateway(BaseReactor):
             raise
 
     @abstractmethod
-    async def send(self, event: Event, ctx: Context) -> Any:
+    async def send(self, event: Event, ctx: Context) -> object:
         """Send event to external system.
 
         Args:
@@ -128,7 +138,7 @@ class HttpGateway(Gateway):
         self._method = method
         self._headers = headers or {}
 
-    async def send(self, event: Event, ctx: Context) -> Any:
+    async def send(self, event: Event, ctx: Context) -> object:
         """Send HTTP request."""
         try:
             import aiohttp
@@ -157,7 +167,7 @@ class LogGateway(Gateway):
     def __init__(
         self,
         *,
-        logger: Any = None,
+        logger: Logger | None = None,
         level: str = "info",
         name: str | None = None,
     ) -> None:
@@ -200,7 +210,7 @@ class CallbackGateway(Gateway):
 
     def __init__(
         self,
-        callback: Any,  # Callable[[Event, Context], Any]
+        callback: Callable[[Event, Context], object],
         *,
         name: str | None = None,
         emit: str | None = None,
@@ -215,7 +225,7 @@ class CallbackGateway(Gateway):
         super().__init__(name or "callback_gateway", emit)
         self._callback = callback
 
-    async def send(self, event: Event, ctx: Context) -> Any:
+    async def send(self, event: Event, ctx: Context) -> object:
         """Call the callback."""
         import asyncio
 
