@@ -32,7 +32,7 @@ class ToolCall:
     tool_name: str
     args: dict[str, Any]
     depends_on: list[str] = field(default_factory=list)
-    result: Any = None
+    result: object | None = None
     error: str | None = None
     status: str = "pending"  # pending, running, completed, failed
     duration_ms: float = 0.0

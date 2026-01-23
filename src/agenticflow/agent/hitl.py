@@ -125,7 +125,7 @@ class HumanDecision:
     modified_args: dict[str, Any] | None = None
     feedback: str | None = None
     guidance: str | None = None  # Instructions for agent to reconsider
-    response: Any = None  # Direct response value for RESPOND decisions
+    response: object | None = None  # Direct response value for RESPOND decisions
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
@@ -223,7 +223,7 @@ class HumanDecision:
 
     @classmethod
     def respond(
-        cls, action_id: str, response: Any, feedback: str | None = None
+        cls, action_id: str, response: object, feedback: str | None = None
     ) -> HumanDecision:
         """
         Create a direct response - provides a value the agent requested.
@@ -467,7 +467,7 @@ class HumanResponse:
     """
 
     action_id: str
-    response: Any
+    response: object
     original_action: PendingAction
     feedback: str | None = None
 

@@ -42,6 +42,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.core.utils import generate_id, now_utc
@@ -155,8 +156,8 @@ class SpawnedAgentInfo:
     task: str
     parent_id: str
     depth: int
-    created_at: Any = field(default_factory=now_utc)
-    completed_at: Any | None = None
+    created_at: datetime = field(default_factory=now_utc)
+    completed_at: datetime | None = None
     result: str | None = None
     error: str | None = None
     status: str = "running"  # running, completed, failed, cancelled
