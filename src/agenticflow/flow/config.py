@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from agenticflow.events import Event
@@ -86,13 +86,13 @@ class FlowResult:
     """
 
     success: bool = True
-    output: Any = None
+    output: object = None
     error: str | None = None
     events_processed: int = 0
-    event_history: list[Any] = field(default_factory=list)  # list[Event]
-    final_event: Any = None  # Event | None
+    event_history: list[object] = field(default_factory=list)  # list[Event]
+    final_event: object = None  # Event | None
     flow_id: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
     def __bool__(self) -> bool:
         """Result is truthy if successful."""
