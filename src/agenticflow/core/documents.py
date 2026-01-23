@@ -123,12 +123,29 @@ class DocumentMetadata:
     def from_dict(cls, data: dict[str, Any]) -> DocumentMetadata:
         """Create DocumentMetadata from dictionary.
 
+        For backward compatibility, any fields not recognized as standard
+        metadata fields will be placed in the custom dict.
+
         Args:
             data: Dictionary with metadata fields.
 
         Returns:
             New DocumentMetadata instance.
         """
+        # Standard fields that DocumentMetadata recognizes
+        standard_fields = {
+            "id", "timestamp", "source", "source_type", "page",
+            "chunk_index", "chunk_total", "start_char", "end_char",
+            "token_count", "char_count", "loader", "created_by",
+            "parent_id", "custom"
+        }
+        
+        # Collect unknown fields into custom
+        custom = data.get("custom", {}).copy() if data.get("custom") else {}
+        for key, value in data.items():
+            if key not in standard_fields:
+                custom[key] = value
+        
         return cls(
             id=data.get("id", f"doc_{uuid.uuid4().hex[:16]}"),
             timestamp=data.get("timestamp", time.time()),
@@ -144,7 +161,7 @@ class DocumentMetadata:
             loader=data.get("loader"),
             created_by=data.get("created_by"),
             parent_id=data.get("parent_id"),
-            custom=data.get("custom", {}),
+            custom=custom,
         )
 
 
