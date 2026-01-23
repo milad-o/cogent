@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import base64
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from agenticflow.graph.config import GraphConfig, GraphDirection, GraphTheme
 from agenticflow.graph.primitives import (
@@ -415,7 +415,7 @@ class GraphvizBackend(Backend):
     """
 
     # Shape mappings to Graphviz
-    SHAPE_MAP: dict[NodeShape, str] = {
+    SHAPE_MAP: ClassVar[dict[NodeShape, str]] = {
         NodeShape.RECTANGLE: "box",
         NodeShape.ROUNDED: "box",  # with style=rounded
         NodeShape.CIRCLE: "circle",
@@ -563,7 +563,7 @@ class GraphvizBackend(Backend):
             ImportError: If graphviz not installed.
         """
         try:
-            import graphviz
+            import graphviz  # type: ignore[import-untyped]
         except ImportError:
             raise ImportError(
                 "graphviz required. Install with: uv add graphviz"
@@ -584,7 +584,7 @@ class GraphvizBackend(Backend):
             SVG string.
         """
         try:
-            import graphviz
+            import graphviz  # type: ignore[import-untyped]
         except ImportError:
             raise ImportError(
                 "graphviz required. Install with: uv add graphviz"
