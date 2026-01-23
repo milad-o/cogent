@@ -13,9 +13,9 @@ from __future__ import annotations
 import asyncio
 import fnmatch
 import uuid
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self, TypeVar
+from typing import TYPE_CHECKING, Self, TypeVar
 
 from agenticflow.events import Event, EventBus
 from agenticflow.flow.config import FlowConfig, FlowResult, ReactorBinding
@@ -129,7 +129,7 @@ class Flow:
         event_bus: EventBus | None = None,
         observer: Observer | None = None,
         checkpointer: Checkpointer | None = None,
-        thread_id_resolver: Callable[[Event, dict[str, Any]], str | None] | None = None,
+        thread_id_resolver: Callable[[Event, dict[str, object]], str | None] | None = None,
     ) -> None:
         """Initialize the Flow.
 
@@ -180,8 +180,8 @@ class Flow:
         self._coordination = CoordinationManager()
 
         # Container-like features
-        self._shared_memory: Any | None = None
-        self._spawned: set[asyncio.Task[Any]] = set()
+        self._shared_memory: object | None = None
+        self._spawned: set[asyncio.Task[object]] = set()
 
     @property
     def reactors(self) -> list[str]:
@@ -194,7 +194,7 @@ class Flow:
         return list(self._skills_registry.keys())
 
     @property
-    def memory(self) -> Any | None:
+    def memory(self) -> object | None:
         """Shared memory configured via `with_memory()` (if any)."""
         return self._shared_memory
 
@@ -362,7 +362,7 @@ class Flow:
     # Memory API
     # -------------------------------------------------------------------------
 
-    def with_memory(self, memory: Any | None = None) -> Self:
+    def with_memory(self, memory: object | None = None) -> Self:
         """Configure shared memory for agents registered to this flow.
 
         If set, agents without an existing `memory_manager` will receive this
@@ -390,7 +390,7 @@ class Flow:
     # Background Tasks API
     # -------------------------------------------------------------------------
 
-    def spawn(self, coro: Any) -> asyncio.Task[Any]:
+    def spawn(self, coro: Awaitable[object]) -> asyncio.Task[object]:
         """Spawn a background task and track it for cleanup.
 
         Args:
@@ -411,7 +411,7 @@ class Flow:
         task = asyncio.create_task(coro)
         self._spawned.add(task)
 
-        def _done(_t: asyncio.Task[Any]) -> None:
+        def _done(_t: asyncio.Task[object]) -> None:
             self._spawned.discard(_t)
 
         task.add_done_callback(_done)
@@ -452,7 +452,7 @@ class Flow:
             ```
         """
 
-        def _thread_id_resolver(event: Event, _context: dict[str, Any]) -> str | None:
+        def _thread_id_resolver(event: Event, _context: dict[str, object]) -> str | None:
             data = getattr(event, "data", None) or {}
             value = data.get(key)
             if value is None:
@@ -472,7 +472,7 @@ class Flow:
         self._reactors.pop(reactor_id, None)
         self._bindings = [b for b in self._bindings if b.reactor_id != reactor_id]
 
-    def _normalize_patterns(self, on: str | list[str] | None) -> tuple[frozenset[str], Any]:
+    def _normalize_patterns(self, on: str | list[str] | None) -> tuple[frozenset[str], object | None]:
         """Convert on parameter to frozenset of patterns and extract source filter.
         
         Parses event@source syntax and extracts source filters.
@@ -526,7 +526,7 @@ class Flow:
 
     def register(
         self,
-        reactor: Reactor | Agent | Callable[..., Any],
+        reactor: Reactor | Agent | Callable[..., object],
         on: str | list[str] | None = None,
         *,
         name: str | None = None,
@@ -671,7 +671,7 @@ class Flow:
 
         return reactor_id
 
-    def _wrap_reactor(self, reactor: Reactor | Agent | Callable[..., Any]) -> Reactor:
+    def _wrap_reactor(self, reactor: Reactor | Agent | Callable[..., object]) -> Reactor:
         """Wrap non-Reactor types into Reactor instances."""
         # Already a Reactor (has handle method)
         if hasattr(reactor, "handle") and callable(reactor.handle):
@@ -733,7 +733,7 @@ class Flow:
                         break  # Don't add same binding twice
         return matches
 
-    async def emit(self, event: Event | str, data: dict[str, Any] | None = None) -> None:
+    async def emit(self, event: Event | str, data: dict[str, object] | None = None) -> None:
         """Emit an event into the flow.
 
         Args:
@@ -762,7 +762,7 @@ class Flow:
         task: str | None = None,
         *,
         initial_event: str | Event | None = "task.created",
-        data: dict[str, Any] | None = None,
+        data: dict[str, object] | None = None,
     ) -> FlowResult:
         """Run the flow to completion.
 
@@ -819,7 +819,7 @@ class Flow:
         # Event processing loop
         rounds = 0
         events_processed = 0
-        final_output: Any = None
+        final_output: object | None = None
 
         try:
             while rounds < self.config.max_rounds:
@@ -954,7 +954,7 @@ class Flow:
         task: str | None = None,
         *,
         initial_event: str | Event | None = "task.created",
-        data: dict[str, Any] | None = None,
+        data: dict[str, object] | None = None,
     ) -> AsyncIterator[Event]:
         """Stream events as they occur during flow execution.
 
@@ -1061,7 +1061,7 @@ class Flow:
         self,
         state: FlowState,
         *,
-        context: dict[str, Any] | None = None,
+        context: dict[str, object] | None = None,
     ) -> FlowResult:
         """Resume a flow from a checkpoint.
 
@@ -1102,7 +1102,7 @@ class Flow:
         # Resume from last round
         rounds = state.round
         events_processed = state.events_processed
-        final_output: Any = state.last_output
+        final_output: object | None = state.last_output
 
         try:
             while rounds < self.config.max_rounds:
@@ -1193,8 +1193,8 @@ class Flow:
         task: str,
         *,
         initial_event: str = "task.created",
-        initial_data: dict[str, Any] | None = None,
-        context: dict[str, Any] | None = None,
+        initial_data: dict[str, object] | None = None,
+        context: dict[str, object] | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Execute the flow with streaming output.
 
