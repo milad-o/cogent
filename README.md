@@ -5,24 +5,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.17.3-blue.svg" alt="Version">
-  </a>
-  <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-  </a>
-  <a href="https://www.python.org/downloads/">
-    <img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python">
-  </a>
-  <a href="https://milad-o.github.io/agenticflow">
-    <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
-  </a>
-  <a href="https://github.com/milad-o/agenticflow/actions">
-    <img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build">
-  </a>
-  <a href="https://github.com/milad-o/agenticflow/tree/main/tests">
-    <img src="https://img.shields.io/badge/tests-1925-success.svg" alt="Tests">
-  </a>
+  <a href="https://github.com/milad-o/agenticflow/releases"><img src="https://img.shields.io/badge/version-1.17.3-blue.svg" alt="Version"></a>
+  <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python"></a>
+  <a href="https://milad-o.github.io/agenticflow"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
+  <a href="https://github.com/milad-o/agenticflow/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build"></a>
+  <a href="https://github.com/milad-o/agenticflow/tree/main/tests"><img src="https://img.shields.io/badge/tests-1925-success.svg" alt="Tests"></a>
 </p>
 
 <p align="center">
