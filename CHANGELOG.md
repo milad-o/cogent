@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Document & DocumentMetadata Standardization**: Complete overhaul of document metadata system
   - **Module Rename**: `agenticflow.document` → `agenticflow.documents` (plural, clearer naming)
-  - **Core Type**: Document and DocumentMetadata moved to `agenticflow.core.documents` alongside Response and ChatMessage
+  - **Core Type**: Document and DocumentMetadata moved to `agenticflow.core.document` alongside Response and ChatMessage
   - **Structured Metadata**: Replaced `dict[str, Any]` metadata with typed `DocumentMetadata` dataclass
     - 15 standard fields: id, timestamp, source, source_type, page, chunk_index, chunk_total, start_char, end_char, token_count, char_count, loader, created_by, parent_id, custom
     - Type safety with IDE autocomplete
@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Splitter Integration**: Splitters preserve parent metadata and add chunk info (chunk_index, chunk_total, parent_id, start_char, end_char)
 
 ### Added
-- `DocumentMetadata` dataclass in `agenticflow.core.documents`
+- `DocumentMetadata` dataclass in `agenticflow.core.document`
 - Convenience properties on Document for common metadata access
 - Backward compatible `from_dict()` - auto-collects unknown fields into custom dict
 - Re-exports from `agenticflow.documents` for convenience (documents is now preferred import path)

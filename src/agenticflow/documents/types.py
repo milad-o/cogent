@@ -1,7 +1,7 @@
 """Types for document processing.
 
 This module defines data structures used in the document processing pipeline.
-For core Document and DocumentMetadata types, see agenticflow.core.documents.
+For core Document and DocumentMetadata types, see agenticflow.core.document.
 """
 
 from __future__ import annotations
