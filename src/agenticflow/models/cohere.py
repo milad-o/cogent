@@ -275,6 +275,11 @@ class CohereChat(BaseChatModel):
             kwargs["max_tokens"] = self.max_tokens
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
+        
+        # Structured output support (if configured)
+        if hasattr(self, "_response_format") and self._response_format:
+            kwargs["response_format"] = self._response_format
+        
         return kwargs
 
 

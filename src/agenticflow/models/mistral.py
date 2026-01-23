@@ -141,6 +141,7 @@ class MistralChat(BaseChatModel):
     base_url: str = "https://api.mistral.ai/v1"
 
     _tool_choice: str | dict[str, Any] | None = field(default=None, repr=False)
+    _parallel_tool_calls: bool = field(default=True, repr=False)
 
     def _init_client(self) -> None:
         """Initialize Mistral client (OpenAI-compatible)."""
@@ -203,6 +204,7 @@ class MistralChat(BaseChatModel):
         # Add tools if bound
         if self._tools:
             params["tools"] = _format_tools(self._tools)
+            params["parallel_tool_calls"] = self._parallel_tool_calls
             if self._tool_choice:
                 params["tool_choice"] = self._tool_choice
 
@@ -243,6 +245,13 @@ class MistralChat(BaseChatModel):
 
         if self._tools:
             params["tools"] = _format_tools(self._tools)
+            params["parallel_tool_calls"] = self._parallel_tool_calls
+            if self._tool_choice:
+                params["tool_choice"] = self._tool_choice
+
+        if self._tools:
+            params["tools"] = _format_tools(self._tools)
+            params["parallel_tool_calls"] = self._parallel_tool_calls
             if self._tool_choice:
                 params["tool_choice"] = self._tool_choice
 
@@ -336,7 +345,8 @@ class MistralChat(BaseChatModel):
         self,
         tools: list[Any],
         tool_choice: str | dict[str, Any] | None = None,
-        **kwargs: Any,  # Accept extra kwargs like parallel_tool_calls
+        parallel_tool_calls: bool = True,
+        **kwargs: Any,
     ) -> MistralChat:
         """Bind tools to the model.
 
@@ -348,7 +358,6 @@ class MistralChat(BaseChatModel):
         Returns:
             New model instance with tools bound.
         """
-        # Note: Mistral doesn't support parallel_tool_calls, so we ignore it
         new_model = MistralChat(
             model=self.model,
             base_url=self.base_url,
@@ -360,6 +369,7 @@ class MistralChat(BaseChatModel):
         )
         new_model._tools = tools
         new_model._tool_choice = tool_choice
+        new_model._parallel_tool_calls = parallel_tool_calls
         new_model._client = self._client
         new_model._async_client = self._async_client
         new_model._initialized = True

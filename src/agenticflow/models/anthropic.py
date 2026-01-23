@@ -304,4 +304,8 @@ class AnthropicChat(BaseChatModel):
             kwargs["system"] = system
         if self._tools:
             kwargs["tools"] = _tools_to_anthropic(self._tools)
+            kwargs["tool_choice"] = {
+                "type": "auto",
+                "disable_parallel_tool_use": not self._parallel_tool_calls,
+            }
         return kwargs

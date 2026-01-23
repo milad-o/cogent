@@ -307,7 +307,7 @@ class AzureOpenAIChat(BaseChatModel):
     model: str = ""  # Azure uses deployment name, not model
     azure_endpoint: str | None = None
     deployment: str | None = None
-    api_version: str = "2024-08-01-preview"
+    api_version: str = "2024-10-21"
 
     # Auth (preferred)
     entra: AzureEntraAuth | None = None
@@ -478,13 +478,29 @@ class AzureOpenAIChat(BaseChatModel):
         kwargs: dict[str, Any] = {
             "model": self.deployment,
             "messages": formatted_messages,
-            "temperature": self.temperature,
         }
+
+        model_lower = (self.deployment or "").lower()
+        supports_temperature = not any(
+            prefix in model_lower
+            for prefix in ("o1", "o3", "gpt-5")
+        )
+        if supports_temperature and self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+
         if self.max_tokens:
-            kwargs["max_tokens"] = self.max_tokens
+            if not supports_temperature:
+                kwargs["max_completion_tokens"] = self.max_tokens
+            else:
+                kwargs["max_tokens"] = self.max_tokens
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
+        
+        # Structured output support
+        if hasattr(self, "_response_format") and self._response_format:
+            kwargs["response_format"] = self._response_format
+        
         return kwargs
 
 
@@ -523,7 +539,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
     model: str = ""  # Azure uses deployment name
     azure_endpoint: str | None = None
     deployment: str | None = None
-    api_version: str = "2024-08-01-preview"
+    api_version: str = "2024-10-21"
 
     # Auth (preferred)
     entra: AzureEntraAuth | None = None
@@ -1035,11 +1051,23 @@ class AzureAIFoundryChat(BaseChatModel):
             "model": self.model,
         }
 
-        if self.temperature is not None:
+        model_lower = (self.model or "").lower()
+        supports_temperature = not any(
+            prefix in model_lower
+            for prefix in ("o1", "o3", "gpt-5")
+        )
+        if supports_temperature and self.temperature is not None:
             kwargs["temperature"] = self.temperature
         if self.max_tokens:
-            kwargs["max_tokens"] = self.max_tokens
+            if not supports_temperature:
+                kwargs["max_completion_tokens"] = self.max_tokens
+            else:
+                kwargs["max_tokens"] = self.max_tokens
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
+        
+        # Structured output support
+        if hasattr(self, "_response_format") and self._response_format:
+            kwargs["response_format"] = self._response_format
 
         return kwargs

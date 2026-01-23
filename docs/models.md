@@ -301,6 +301,26 @@ if response.tool_calls:
         print(f"Tool: {call['name']}, Args: {call['args']}")
 ```
 
+**Responses API (Beta):**
+
+OpenAI's Responses API is optimized for tool use and structured outputs. Use the `use_responses_api=True` parameter:
+
+```python
+from agenticflow.models.openai import OpenAIChat
+
+# Standard Chat Completions API (default)
+model = OpenAIChat(model="gpt-4o")
+
+# Responses API (optimized for tool use)
+model = OpenAIChat(model="gpt-4o", use_responses_api=True)
+
+# Works seamlessly with tools
+bound = model.bind_tools([search_tool, calc_tool])
+response = await bound.ainvoke(messages)
+```
+
+The Responses API provides better performance for multi-turn tool conversations while maintaining the same interface.
+
 ---
 
 ## Azure OpenAI
@@ -431,6 +451,24 @@ response = await model.ainvoke([
 | `llama-3.1-8b-instant` | Fast Llama 3.1 8B |
 | `mixtral-8x7b-32768` | Mixtral 8x7B |
 | `gemma2-9b-it` | Gemma 2 9B |
+
+**Responses API (Beta):**
+
+Groq also supports OpenAI's Responses API for optimized tool use:
+
+```python
+from agenticflow.models.groq import GroqChat
+
+# Standard Chat Completions API (default)
+model = GroqChat(model="llama-3.3-70b-versatile")
+
+# Responses API (optimized for tool use)
+model = GroqChat(model="llama-3.3-70b-versatile", use_responses_api=True)
+
+# Works seamlessly with tools
+bound = model.bind_tools([search_tool])
+response = await bound.ainvoke(messages)
+```
 
 ---
 

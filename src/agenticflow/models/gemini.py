@@ -366,6 +366,10 @@ class GeminiChat(BaseChatModel):
                         mode=FunctionCallingConfigMode.AUTO
                     )
                 )
+        
+        # Structured output support
+        if hasattr(self, "_response_schema") and self._response_schema:
+            config_kwargs["response_schema"] = self._response_schema
 
         return self._types.GenerateContentConfig(**config_kwargs)
 
