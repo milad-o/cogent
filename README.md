@@ -49,46 +49,21 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.15.0 - January 2026)
+## 🎉 Latest Changes (v1.17.3 - January 2026)
 
-**Document & Metadata Standardization** 📄
-- ✨ **Structured metadata** — `DocumentMetadata` dataclass with 15 typed fields
-- 🎯 **Type safety** — No more dict guessing - autocomplete, validation, clarity
-- 🔧 **Auto-population** — Loaders automatically set source, source_type, timestamps, char_count
-- 🧩 **Chunk tracking** — Built-in parent_id, chunk_index, total_chunks for split documents
-- 🔌 **Backward compatible** — `from_dict()` auto-collects unknown fields into custom dict
-- 🏗️ **Architectural alignment** — Document/DocumentMetadata now in `core/` (like Response/ChatMessage)
+**Comprehensive Test Coverage Expansion** 🧪
+- ✨ **+422 tests enabled** — Test suite expanded from 1,503 to 1,925 tests (+28%)
+- 📦 **Optional dependencies** — FAISS, Qdrant, Redis, BM25, sentence-transformers, BeautifulSoup4
+- 🔧 **Backend improvements** — Fixed Qdrant metadata filtering, FAISS custom fields, proper error handling
+- 🐛 **Bug fixes** — Resolved streaming test implementation, retriever API compatibility
+- 🎯 **Infrastructure tests** — Properly skipped network/Redis-dependent tests for CI/CD
 
-```python
-from agenticflow.core import Document, DocumentMetadata
-from agenticflow.documents import PyPDFLoader
-
-# Loaders auto-populate structured metadata
-loader = PyPDFLoader("report.pdf")
-docs = await loader.load()
-
-print(docs[0].metadata.source)        # "report.pdf"
-print(docs[0].metadata.source_type)   # "pdf"
-print(docs[0].metadata.page)          # 1
-print(docs[0].metadata.total_pages)   # 42
-print(docs[0].metadata.char_count)    # 3847 (auto-calculated)
-print(docs[0].metadata.created_at)    # datetime.datetime(...)
-
-# Chunk metadata preserved through splits
-from agenticflow.documents import RecursiveSplitter
-splitter = RecursiveSplitter(chunk_size=1000)
-chunks = splitter.split_documents(docs)
-
-print(chunks[0].metadata.parent_id)   # "original-doc-id"
-print(chunks[0].metadata.chunk_index) # 0
-print(chunks[0].metadata.total_chunks) # 5
-print(chunks[0].metadata.page)        # 1 (inherited from parent)
-```
-
-**Previous (v1.14.5)** — Embedding API Standardization
-- ✨ **Standardized API** — Clean methods across all 9 providers
-- 🎯 **Primary methods** — `embed()` / `aembed()` with full metadata
-- 📊 **Token tracking** — OpenAI, Cohere, Mistral, Azure OpenAI
+**Previous (v1.17.2 - January 2026)** — Code Modernization
+- 🔄 **Exception chaining** — 35 violations fixed with proper `from e` / `from None` patterns
+- 📝 **Broad exception handlers** — 14 cases documented with fallback strategies
+- 🏷️ **Type annotations** — 32 mutable class attributes annotated with `ClassVar`
+- ♻️ **Code quality** — 28 auto-fixable issues resolved (PIE, RUF rules)
+- ✅ **Batch operations** — Added to InMemoryGraph backend
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 
