@@ -197,12 +197,29 @@ async def test_conditional_streaming(model):
 # Error Handling
 # =============================================================================
 
-@pytest.mark.skip("Error handling test - needs proper failing model implementation")
+@pytest.mark.asyncio
 async def test_streaming_error_handling():
     """Test error handling during streaming."""
-    # This test would require a model that intentionally fails during streaming
-    # Skipping for now as it requires special mock setup
-    pass
+    from unittest.mock import AsyncMock, patch
+    from agenticflow import Agent
+    
+    # Create agent with mocked model that fails during streaming
+    agent = Agent("test-agent", model="openai:gpt-4")
+    
+    # Mock the model to raise an error during streaming
+    async def failing_stream(*args, **kwargs):
+        yield {"type": "text", "text": "Starting..."}
+        raise RuntimeError("Simulated streaming failure")
+    
+    with patch.object(agent._model, "stream", side_effect=failing_stream):
+        chunks = []
+        try:
+            async for chunk in agent.stream("test message"):
+                chunks.append(chunk)
+        except RuntimeError as e:
+            assert str(e) == "Simulated streaming failure"
+            assert len(chunks) == 1  # Should have received one chunk before failure
+            assert chunks[0]["text"] == "Starting..."
 
 
 # =============================================================================

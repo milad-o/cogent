@@ -87,6 +87,13 @@ dev = [
     "pymdown-extensions>=10.20",
     "mkdocs-redirects>=1.2.2",
     "ipykernel>=7.1.0",
+    "faiss-cpu>=1.13.2",
+    "qdrant-client>=1.16.2",
+    "psycopg2-binary>=2.9.11",
+    "redis>=7.1.0",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=5.2.0",
+    "beautifulsoup4>=4.14.2",
 ]
 
 [project.scripts]
