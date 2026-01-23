@@ -8,7 +8,7 @@ Usage:
 
     # Create mock embeddings
     embeddings = MockEmbedding(dimensions=384)
-    result = embeddings.embed_texts(["Hello", "World"])
+    result = await embeddings.embed(["Hello", "World"])
 
     # Create mock chat model
     model = MockChatModel(responses=["Hello!", "How can I help?"])
@@ -136,11 +136,11 @@ class MockEmbedding(BaseEmbedding):
     Example:
         >>> from agenticflow.models.mock import MockEmbedding
         >>> embeddings = MockEmbedding(dimensions=128)
-        >>> result = embeddings.embed_texts(["Hello", "World"])
+        >>> result = await embeddings.embed(["Hello", "World"])
         >>> len(result.embeddings[0])
         128
         >>> # Same text = same embedding
-        >>> embeddings.embed_texts(["Hello"]).embeddings[0] == embeddings.embed_texts(["Hello"]).embeddings[0]
+        >>> await embeddings.embed(["Hello"]).embeddings[0] == await embeddings.embed(["Hello"]).embeddings[0]
         True
     """
 

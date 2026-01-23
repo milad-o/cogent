@@ -493,18 +493,18 @@ class TestMockEmbeddings:
     @pytest.mark.asyncio
     async def test_deterministic(self, embeddings: MockEmbeddings) -> None:
         """Test that same text produces same embedding."""
-        v1 = await embeddings.aembed_one("Test text")
-        v2 = await embeddings.aembed_one("Test text")
-        assert v1 == v2
+        result1 = await embeddings.embed("Test text")
+        result2 = await embeddings.embed("Test text")
+        assert result1.embeddings[0] == result2.embeddings[0]
 
     @pytest.mark.asyncio
     async def test_different_texts_different_embeddings(
         self, embeddings: MockEmbeddings
     ) -> None:
         """Test that different texts produce different embeddings."""
-        v1 = await embeddings.aembed_one("Hello")
-        v2 = await embeddings.aembed_one("World")
-        assert v1 != v2
+        result1 = await embeddings.embed("Hello")
+        result2 = await embeddings.embed("World")
+        assert result1.embeddings[0] != result2.embeddings[0]
 
     def test_dimension_property(self, embeddings: MockEmbeddings) -> None:
         """Test dimension property."""
@@ -515,14 +515,15 @@ class TestMockEmbeddings:
         """Test that embeddings are normalized."""
         import math
 
-        vector = await embeddings.aembed_one("Test")
+        result = await embeddings.embed("Test")
+        vector = result.embeddings[0]
         magnitude = math.sqrt(sum(x * x for x in vector))
         assert abs(magnitude - 1.0) < 0.01  # Should be ~1
 
-    def test_sync_embed(self, embeddings: MockEmbeddings) -> None:
-        """Test deprecated synchronous embedding method."""
-        with pytest.warns(DeprecationWarning, match="embed_texts.*deprecated"):
-            result = embeddings.embed_texts(["Hello", "World"])
+    @pytest.mark.asyncio
+    async def test_async_embed(self, embeddings: MockEmbeddings) -> None:
+        """Test async embedding method."""
+        result = await embeddings.embed(["Hello", "World"])
         assert len(result.embeddings) == 2
         assert all(len(v) == 128 for v in result.embeddings)
 

@@ -318,7 +318,7 @@ class CustomEmbedding(BaseEmbedding):
             model="togethercomputer/m2-bert-80M-8k-retrieval",
         )
 
-        result = await embedder.aembed_texts(["Hello", "World"])
+        result = await embedder.embed(["Hello", "World"])
     """
 
     model: str = "text-embedding-3-small"

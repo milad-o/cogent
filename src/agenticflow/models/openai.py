@@ -17,7 +17,7 @@ Usage:
 
     # Embeddings
     embedder = OpenAIEmbedding()
-    result = await embedder.aembed_texts(["Hello", "World"])
+    result = await embedder.embed(["Hello", "World"])
 """
 
 from __future__ import annotations
@@ -363,10 +363,10 @@ class OpenAIEmbedding(BaseEmbedding):
         embedder = OpenAIEmbedding()  # Uses text-embedding-3-small by default
 
         # Single text
-        result = await embedder.aembed_text("Hello world")
+        result = await embedder.embed("Hello world")
 
         # Batch embedding
-        result = await embedder.aembed_texts(["Hello", "World"])
+        result = await embedder.embed(["Hello", "World"])
 
         # With dimension reduction
         embedder = OpenAIEmbedding(dimensions=256)

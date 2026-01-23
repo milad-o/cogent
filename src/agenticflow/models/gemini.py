@@ -553,7 +553,7 @@ class GeminiEmbedding(BaseEmbedding):
 
         embedder = GeminiEmbedding()  # Uses gemini-embedding-001
 
-        vectors = await embedder.aembed(["Hello", "World"])
+        vectors = await embedder.embed(["Hello", "World"])
     """
 
     model: str = "gemini-embedding-001"

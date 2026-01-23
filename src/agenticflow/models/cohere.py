@@ -10,7 +10,7 @@ Usage:
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
 
     embedder = CohereEmbedding(model="embed-english-v3.0")
-    vectors = await embedder.aembed(["Hello", "World"])
+    vectors = await embedder.embed(["Hello", "World"])
 """
 
 from __future__ import annotations

@@ -1703,7 +1703,7 @@ class Agent:
 
         if use_streaming:
             # Streaming: return async iterator (no await needed)
-            return self.think_stream(
+            return self._think_stream_impl(
                 prompt,
                 correlation_id=correlation_id,
                 include_tools=include_tools,
@@ -1888,52 +1888,6 @@ class Agent:
                 ),
             )
 
-    def chat(
-        self,
-        message: str,
-        thread_id: str | None = None,
-        *,
-        user_id: str | None = None,
-        stream: bool | None = None,
-        correlation_id: str | None = None,
-        metadata: dict | None = None,
-    ) -> Coroutine[Any, Any, str] | AsyncIterator[StreamChunk]:
-        """
-        Chat with the agent, maintaining conversation history per thread.
-
-        .. deprecated::
-            Use run(task, thread_id=...) instead:
-
-            - `await agent.chat("Hi")` → `await agent.run("Hi")`
-            - `await agent.chat("Hi", thread_id="t1")` → `await agent.run("Hi", thread_id="t1")`
-            - `async for chunk in agent.chat("Hi", stream=True)` → `async for chunk in agent.run("Hi", stream=True)`
-
-        Args:
-            message: The user's message.
-            thread_id: Unique identifier for the conversation thread.
-            user_id: Optional user identifier for long-term memory.
-            stream: Enable streaming. If True, returns async iterator. If False, returns awaitable.
-            correlation_id: Optional correlation ID for event tracking.
-            metadata: Optional metadata to store with the conversation.
-
-        Returns:
-            If stream=False: Awaitable that yields response when awaited.
-            If stream=True: AsyncIterator[StreamChunk] for direct iteration.
-        """
-        import warnings
-
-        warnings.warn(
-            "chat() is deprecated. Use run(task, thread_id=...) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        # Determine if streaming
-        use_streaming = stream if stream is not None else self.config.stream
-
-        # Delegate to run()
-        return self.run(message, stream=use_streaming, thread_id=thread_id)
-
     async def get_thread_history(
         self,
         thread_id: str,
@@ -1964,7 +1918,7 @@ class Agent:
     # STREAMING METHODS (Internal - use think(stream=True) instead)
     # =========================================================================
 
-    async def think_stream(
+    async def _think_stream_impl(
         self,
         prompt: str,
         correlation_id: str | None = None,
@@ -1972,25 +1926,7 @@ class Agent:
         include_tools: bool = True,
         system_prompt_override: str | None = None,
     ) -> AsyncIterator[StreamChunk]:
-        """
-        DEPRECATED: Use think(prompt, stream=True) instead.
-
-        Stream the agent's thinking response token by token.
-        This method is kept for backward compatibility.
-
-        .. deprecated::
-            Use think(prompt, stream=True) instead:
-
-            - `agent.think_stream("prompt")` → `agent.think("prompt", stream=True)`
-        """
-        import warnings
-
-        warnings.warn(
-            "think_stream() is deprecated. Use think(prompt, stream=True) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
+        """Internal implementation of streaming think."""
         from agenticflow.agent.streaming import (
             chunk_from_message,
         )
@@ -2099,33 +2035,7 @@ class Agent:
             )
             raise
 
-    async def chat_stream(
-        self,
-        message: str,
-        thread_id: str | None = None,
-        *,
-        user_id: str | None = None,
-        correlation_id: str | None = None,
-        metadata: dict | None = None,
-    ) -> AsyncIterator[StreamChunk]:
-        """
-        DEPRECATED: Use run(task, stream=True, thread_id=...) instead.
-
-        Stream a chat response token by token with conversation history.
-        This method is kept for backward compatibility.
-        """
-        import warnings
-
-        warnings.warn(
-            "chat_stream() is deprecated. Use run(task, stream=True, thread_id=...) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        # Delegate to run() which returns async iterator
-        async for chunk in self.run(message, stream=True, thread_id=thread_id):
-            yield chunk
-
-    async def stream_events(
+    async def get_thread_history(
         self,
         prompt: str,
         correlation_id: str | None = None,
@@ -3390,25 +3300,6 @@ class Agent:
     # =========================================================================
     # DEPRECATED METHODS (kept for backward compatibility)
     # =========================================================================
-
-    async def run_turbo(
-        self,
-        task: str,
-        context: dict[str, Any] | None = None,
-    ) -> Any:
-        """
-        DEPRECATED: Use run() instead - it's already optimized.
-
-        This method is kept for backward compatibility.
-        """
-        import warnings
-
-        warnings.warn(
-            "run_turbo() is deprecated. Use run() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return await self.run(task, context=context)
 
     def is_available(self) -> bool:
         """Check if agent can accept new work."""

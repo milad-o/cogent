@@ -559,7 +559,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             entra=AzureEntraAuth(method="default"),
         )
 
-        vectors = await embedder.aembed(["Hello", "World"])
+        vectors = await embedder.embed(["Hello", "World"])
     """
 
     model: str = ""  # Azure uses deployment name

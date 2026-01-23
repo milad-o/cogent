@@ -133,7 +133,7 @@ embeddings = OpenAIEmbedding(model="text-embedding-3-large")
 store = VectorStore(embeddings=embeddings)
 
 # Use embeddings directly
-result = await embeddings.aembed(["Hello", "World"])
+result = await embeddings.embed(["Hello", "World"])
 print(result.metadata.tokens)  # Track token usage
 ```
 
