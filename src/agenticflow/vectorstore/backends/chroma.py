@@ -92,7 +92,7 @@ class ChromaBackend:
 
         # Prepare data for Chroma
         texts = [doc.text for doc in documents]
-        metadatas = [doc.metadata for doc in documents]
+        metadatas = [doc.metadata.to_dict() for doc in documents]
 
         # Sanitize metadata (Chroma only supports str, int, float, bool)
         sanitized_metadatas = [self._sanitize_metadata(m) for m in metadatas]

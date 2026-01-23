@@ -326,9 +326,10 @@ class FAISSBackend:
     @staticmethod
     def _matches_filter(doc: Document, filter: dict[str, Any]) -> bool:
         """Check if document metadata matches filter."""
+        metadata_dict = doc.metadata.to_dict()
         for key, value in filter.items():
-            if key not in doc.metadata:
+            if key not in metadata_dict:
                 return False
-            if doc.metadata[key] != value:
+            if metadata_dict[key] != value:
                 return False
         return True

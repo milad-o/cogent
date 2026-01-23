@@ -139,7 +139,7 @@ class QdrantBackend:
             # Build payload (metadata + text)
             payload = {
                 "text": doc.text,
-                **doc.metadata,
+                **doc.metadata.to_dict(),
             }
 
             points.append(models.PointStruct(
