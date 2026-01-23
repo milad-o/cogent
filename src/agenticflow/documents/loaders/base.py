@@ -122,12 +122,15 @@ class BaseLoader(ABC):
         }
         source_type = source_type_map.get(ext, ext or "unknown")
         
+        custom = dict(extra_metadata) if extra_metadata else {}
+        custom.setdefault("file_type", path.suffix.lower())
+
         metadata = DocumentMetadata(
             source=str(path),
             source_type=source_type,
             page=page,
             loader=self.__class__.__name__,
-            custom=extra_metadata if extra_metadata else {},
+            custom=custom,
         )
         return Document(text=content, metadata=metadata)
 

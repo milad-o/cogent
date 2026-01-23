@@ -53,7 +53,7 @@ class DocumentMetadata:
     """
 
     # Identification & timing
-    id: str = field(default_factory=lambda: f"doc_{uuid.uuid4().hex[:16]}")
+    id: str | None = None
     timestamp: float = field(default_factory=time.time)
 
     # Source information
@@ -78,6 +78,56 @@ class DocumentMetadata:
 
     # Custom fields (extensibility)
     custom: dict[str, Any] = field(default_factory=dict)
+
+    id_provided: bool = field(default=False, init=False, repr=False)
+
+    _STANDARD_FIELDS = {
+        "id",
+        "timestamp",
+        "source",
+        "source_type",
+        "page",
+        "chunk_index",
+        "chunk_total",
+        "start_char",
+        "end_char",
+        "token_count",
+        "char_count",
+        "loader",
+        "created_by",
+        "parent_id",
+        "custom",
+    }
+
+    def __getitem__(self, key: str) -> Any:
+        """Provide dict-style access for backward compatibility."""
+        if key in self.custom:
+            return self.custom[key]
+        if key in self._STANDARD_FIELDS:
+            return getattr(self, key)
+        raise KeyError(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Provide dict-style get() for backward compatibility."""
+        if key in self.custom:
+            return self.custom.get(key, default)
+        if key in self._STANDARD_FIELDS:
+            return getattr(self, key)
+        return default
+
+    def __contains__(self, key: object) -> bool:
+        """Support `in` checks for backward compatibility."""
+        if not isinstance(key, str):
+            return False
+        return key in self.custom or key in self._STANDARD_FIELDS
+
+    def __post_init__(self) -> None:
+        """Ensure ID exists and track if it was provided explicitly."""
+        if self.id is None:
+            self.id = f"doc_{uuid.uuid4().hex[:16]}"
+            self.id_provided = False
+        else:
+            self.id_provided = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary for serialization.
@@ -148,7 +198,7 @@ class DocumentMetadata:
                 custom[key] = value
         
         return cls(
-            id=data.get("id", f"doc_{uuid.uuid4().hex[:16]}"),
+            id=data.get("id"),
             timestamp=data.get("timestamp", time.time()),
             source=data.get("source", "unknown"),
             source_type=data.get("source_type"),
@@ -206,6 +256,10 @@ class Document:
 
     def __post_init__(self) -> None:
         """Auto-populate char_count in metadata."""
+        if self.metadata is None:
+            self.metadata = DocumentMetadata()
+        elif isinstance(self.metadata, dict):
+            self.metadata = DocumentMetadata.from_dict(self.metadata)
         if self.metadata.char_count is None:
             self.metadata.char_count = len(self.text)
 

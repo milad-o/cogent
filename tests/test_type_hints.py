@@ -35,14 +35,14 @@ def test_role_autocomplete():
 
 
 def test_verbose_autocomplete():
-    """Verbose parameter should show autocomplete for: False, True, 'verbose', 'debug', 'trace'."""
+    """Verbosity parameter should show autocomplete for: False, True, 'verbose', 'debug', 'trace'."""
     model = ChatModel(model="gpt-4o-mini")
     
     # Pylance should suggest: False, True, "verbose", "debug", "trace"
     agent = Agent(
         name="Test",
         model=model,
-        verbose="debug",  # <-- Autocomplete should work here!
+        verbosity="debug",  # <-- Autocomplete should work here!
     )
 
 
@@ -104,7 +104,7 @@ def test_all_parameters_visible():
         output=None,
         intercept=None,
         spawning=None,
-        verbose=False,
+        verbosity=False,
         observer=None,
         taskboard=None,
         workers=None,

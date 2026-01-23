@@ -316,7 +316,11 @@ class TimeBasedIndex(BaseRetriever):
 
             # Prepare for vector store
             metadata = {
-                **doc.metadata,
+                    **(
+                        doc.metadata.to_dict()
+                        if hasattr(doc.metadata, "to_dict")
+                        else dict(doc.metadata)
+                    ),
                 "doc_id": doc_id,
                 self._timestamp_field: self._timestamps[doc_id].isoformat(),
             }
