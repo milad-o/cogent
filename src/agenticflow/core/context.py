@@ -71,7 +71,7 @@ class RunContext:
 
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get[T](self, key: str, default: T | None = None) -> T | None:
         """Get a metadata value by key.
 
         Args:

@@ -93,7 +93,7 @@ class DeferredStatus(StrEnum):
 
 
 @dataclass
-class DeferredResult:
+class DeferredResult[T]:
     """
     A deferred result that the agent will wait for.
 
@@ -134,7 +134,7 @@ class DeferredResult:
 
     # Internal state
     _status: DeferredStatus = field(default=DeferredStatus.PENDING, repr=False)
-    _result: Any = field(default=None, repr=False)
+    _result: T | None = field(default=None, repr=False)
     _error: str | None = field(default=None, repr=False)
     _completed_at: datetime | None = field(default=None, repr=False)
 
@@ -154,7 +154,7 @@ class DeferredResult:
         return self._status == DeferredStatus.COMPLETED
 
     @property
-    def result(self) -> Any:
+    def result(self) -> T | None:
         """Get the result (only valid if completed)."""
         return self._result
 
@@ -163,7 +163,7 @@ class DeferredResult:
         """Get error message if failed."""
         return self._error
 
-    def complete(self, result: Any) -> None:
+    def complete(self, result: T) -> None:
         """Mark as completed with result."""
         self._status = DeferredStatus.COMPLETED
         self._result = result
