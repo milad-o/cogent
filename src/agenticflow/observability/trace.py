@@ -139,8 +139,8 @@ class NodeTrace:
     status: NodeStatus = NodeStatus.PENDING
 
     # Input/Output
-    input: Any = None
-    output: Any = None
+    input: object | None = None
+    output: object | None = None
     error: str | None = None
 
     # Structure
@@ -465,7 +465,7 @@ class ExecutionTracer:
         name: str,
         node_type: NodeType = NodeType.AGENT,
         *,
-        input: Any = None,
+        input: object | None = None,
         parent_id: str | None = None,
         depends_on: list[str] | None = None,
         agent_name: str | None = None,
@@ -518,7 +518,7 @@ class ExecutionTracer:
     def end_node(
         self,
         node: NodeTrace,
-        output: Any = None,
+        output: object | None = None,
         status: NodeStatus = NodeStatus.COMPLETED,
         error: str | None = None,
     ) -> None:
