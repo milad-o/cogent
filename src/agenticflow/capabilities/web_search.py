@@ -156,7 +156,7 @@ class DuckDuckGoProvider(SearchProvider):
                     )
                 )
         except Exception:
-            pass
+            pass  # DuckDuckGo search failed, return empty results
 
         return results
 
@@ -225,7 +225,7 @@ class BraveSearchProvider(SearchProvider):
                         )
                     )
         except Exception:
-            pass
+            pass  # Brave API request failed, return empty results
 
         return results
 
@@ -263,7 +263,7 @@ class BraveSearchProvider(SearchProvider):
                         )
                     )
         except Exception:
-            pass
+            pass  # Brave news API request failed, return empty results
 
         return results
 
@@ -340,7 +340,7 @@ class TavilyProvider(SearchProvider):
                         )
                     )
         except Exception:
-            pass
+            pass  # Tavily API request failed, return empty results
 
         return results
 
@@ -380,7 +380,7 @@ class TavilyProvider(SearchProvider):
                         )
                     )
         except Exception:
-            pass
+            pass  # Tavily news API request failed, return empty results
 
         return results
 
@@ -453,7 +453,7 @@ class SerpAPIProvider(SearchProvider):
                         )
                     )
         except Exception:
-            pass
+            pass  # SerpAPI request failed, return empty results
 
         return results
 
@@ -491,7 +491,7 @@ class SerpAPIProvider(SearchProvider):
                         )
                     )
         except Exception:
-            pass
+            pass  # SerpAPI news request failed, return empty results
 
         return results
 

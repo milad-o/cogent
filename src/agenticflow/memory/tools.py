@@ -243,7 +243,7 @@ def _create_search_conversation_tool(memory: Memory) -> BaseTool:
                 else:
                     return f"No relevant conversation found for: {query}"
             except Exception:
-                pass
+                pass  # Vector search failed, fall back to recent messages
 
         # Fallback: return recent messages
         recent = messages[-max_results:]

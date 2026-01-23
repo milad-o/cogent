@@ -90,7 +90,7 @@ class EventBus:
                         self._transport.subscribe(pattern_str, transport_handler)
                     )
                 except Exception:
-                    pass
+                    pass  # Transport subscription is optional, failures are non-critical
 
     def subscribe_all(self, handler: EventHandler) -> None:
         if handler not in self._global_handlers:
