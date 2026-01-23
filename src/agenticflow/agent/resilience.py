@@ -21,7 +21,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 if TYPE_CHECKING:
     from agenticflow.observability.progress import ProgressTracker
@@ -53,6 +53,27 @@ class RecoveryAction(StrEnum):
     SKIP = "skip"  # Skip and continue (return error result)
     ABORT = "abort"  # Abort entire execution
     ADAPT = "adapt"  # Let agent decide (re-think)
+
+
+class CircuitStatus(TypedDict):
+    """Circuit breaker status information."""
+
+    state: str
+    failure_count: int
+    success_count: int
+    failure_threshold: int
+    reset_timeout: float
+    seconds_until_half_open: float | None
+
+
+class ResilienceSuggestions(TypedDict):
+    """Suggestions for improving tool reliability."""
+
+    tool: str
+    failure_rate: float
+    total_calls: int
+    common_errors: list[tuple[str, int]]
+    recommendations: list[str]
 
 
 @dataclass
@@ -393,7 +414,7 @@ class CircuitBreaker:
         self._state = CircuitState.OPEN
         self._last_failure_time = time.time()
 
-    def get_status(self) -> dict[str, Any]:
+    def get_status(self) -> CircuitStatus:
         """Get circuit breaker status as dict."""
         return {
             "state": self.state.value,
@@ -554,13 +575,13 @@ class FailureMemory:
 
         return recent_failures >= self.learning_threshold
 
-    def get_suggestions(self, tool_name: str) -> dict[str, Any]:
+    def get_suggestions(self, tool_name: str) -> ResilienceSuggestions:
         """Get suggestions for improving tool reliability."""
         stats = self._tool_stats.get(tool_name, {"successes": 0, "failures": 0})
         failure_rate = self.get_failure_rate(tool_name)
         common_errors = self.get_common_errors(tool_name)
 
-        suggestions = {
+        suggestions: ResilienceSuggestions = {
             "tool": tool_name,
             "failure_rate": failure_rate,
             "total_calls": stats["successes"] + stats["failures"],
