@@ -25,8 +25,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-
+from agenticflow.models import OpenAIEmbedding
 from agenticflow.agent import Agent
 from agenticflow.document.loaders import PDFMarkdownLoader
 from agenticflow.document.splitters import RecursiveCharacterSplitter
@@ -61,7 +60,8 @@ def _chunk_pages(*, pages: list[Document]) -> list[Document]:
 
 
 async def _build_detail_retriever(*, chunks: list[Document]) -> EnsembleRetriever:
-    vectorstore = VectorStore(embeddings=get_embeddings())
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(chunks)
 
     dense = DenseRetriever(vectorstore=vectorstore)
@@ -77,7 +77,8 @@ async def _build_detail_retriever(*, chunks: list[Document]) -> EnsembleRetrieve
 
 async def _build_summary_index(*, pages: list[Document]) -> SummaryIndex:
     model = "gpt4"
-    summary_vectorstore = VectorStore(embeddings=get_embeddings())
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    summary_vectorstore = VectorStore(embeddings=embeddings)
     summary_index = SummaryIndex(
         llm=model,
         vectorstore=summary_vectorstore,
