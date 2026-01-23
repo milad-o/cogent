@@ -620,7 +620,7 @@ Respond with ONLY a number between 0.0 and 1.0."""
                     value = float(match.group(1))
                     return max(0.0, min(1.0, value))
             except Exception:
-                pass
+                pass  # Parsing failed, use default value
 
             return 0.8  # Default for final answers
 
@@ -658,7 +658,7 @@ Respond with ONLY a number between 0.0 and 1.0."""
                 value = float(match.group(1))
                 return max(0.0, min(1.0, value))
         except Exception:
-            pass
+            pass  # Parsing failed, use default value
 
         return 0.4  # Default for partial progress
 

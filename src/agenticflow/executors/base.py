@@ -155,7 +155,7 @@ Respond with ONLY JSON:
                     summary=data.get("summary", ""),
                 )
         except Exception:
-            pass
+            pass  # Parsing failed, fall through to default
 
         # Default to complete if verification fails
         return CompletionCheck(
