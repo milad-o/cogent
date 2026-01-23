@@ -516,10 +516,10 @@ class TestQdrantBackend:
         pytest.importorskip("qdrant_client")
         from agenticflow.vectorstore.backends import QdrantBackend
 
-        # Use in-memory mode (location=":memory:")
+        # Use in-memory mode (no url or path)
         backend = QdrantBackend(
             collection_name="test_collection",
-            location=":memory:",
+            dimension=4,
         )
 
         ids = ["doc1", "doc2"]
@@ -540,7 +540,7 @@ class TestQdrantBackend:
 
         backend = QdrantBackend(
             collection_name="test_filter",
-            location=":memory:",
+            dimension=4,
         )
 
         ids = ["doc1", "doc2", "doc3"]

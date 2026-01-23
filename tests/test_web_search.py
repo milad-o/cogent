@@ -286,10 +286,6 @@ class TestWebSearchFetch:
 class TestHTMLExtraction:
     """Test HTML content extraction."""
 
-    def test_extract_html_regex(self):
-        """Test regex-based HTML extraction."""
-        pytest.skip("_extract_html_regex was merged into _extract_html_content")
-
     @pytest.mark.skipif(
         not importlib.util.find_spec("bs4"),
         reason="beautifulsoup4 not installed"
