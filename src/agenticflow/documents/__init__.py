@@ -52,7 +52,7 @@ Example:
 from agenticflow.core import Document, DocumentMetadata
 
 # Types
-from agenticflow.documents.types import FileType, SplitterType, TextChunk
+from agenticflow.documents.types import FileType, SplitterType
 
 # Enricher
 from agenticflow.documents.enricher import (
@@ -108,7 +108,6 @@ __all__ = [
     # Types
     "Document",
     "DocumentMetadata",
-    "TextChunk",
     "FileType",
     "SplitterType",
     # Loaders

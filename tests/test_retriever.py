@@ -28,7 +28,7 @@ from agenticflow.documents.splitters import (
     SentenceSplitter,
     split_text,
 )
-from agenticflow.documents.types import Document, TextChunk
+from agenticflow.documents.types import Document
 
 from agenticflow.retriever.utils.fusion import (
     deduplicate_results,
@@ -304,26 +304,6 @@ class TestLoadDocuments:
 # ============================================================================
 # Test Text Splitters
 # ============================================================================
-
-
-class TestTextChunk:
-    """Tests for TextChunk dataclass."""
-
-    def test_create_chunk(self) -> None:
-        """Test creating a text chunk."""
-        chunk = TextChunk(text="Test content", metadata={"index": 0})
-        assert chunk.content == "Test content"
-        assert chunk.metadata["index"] == 0
-
-    def test_chunk_length(self) -> None:
-        """Test chunk length."""
-        chunk = TextChunk(text="Hello")
-        assert len(chunk) == 5
-
-    def test_chunk_repr(self) -> None:
-        """Test chunk string representation."""
-        chunk = TextChunk(text="Short")
-        assert "Short" in repr(chunk)
 
 
 class TestRecursiveCharacterSplitter:

@@ -66,7 +66,6 @@ from agenticflow.documents import (
     RecursiveCharacterSplitter,
     SemanticSplitter,
     SentenceSplitter,
-    TextChunk,
     TokenSplitter,
     load_documents,
     load_documents_sync,
@@ -153,7 +152,6 @@ __all__ = [
     "load_documents",
     "load_documents_sync",
     # Text Splitting (re-exported from agenticflow.documents)
-    "TextChunk",
     "TextSplitter",
     "RecursiveCharacterSplitter",
     "CharacterSplitter",
