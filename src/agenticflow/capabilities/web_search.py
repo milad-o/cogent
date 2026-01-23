@@ -23,10 +23,9 @@ Example:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import urlparse
 
 from agenticflow.capabilities.base import BaseCapability
@@ -77,21 +76,18 @@ class FetchedPage:
         }
 
 
-class SearchProvider(ABC):
-    """Abstract base for search providers."""
+class SearchProvider(Protocol):
+    """Protocol for search providers."""
 
     @property
-    @abstractmethod
     def name(self) -> str:
         """Provider name."""
         ...
 
-    @abstractmethod
     def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
         """Execute a search query."""
         ...
 
-    @abstractmethod
     def news(self, query: str, max_results: int = 10) -> list[SearchResult]:
         """Search news articles."""
         ...
