@@ -58,7 +58,7 @@ class EmbeddingMetadata:
     dimensions: int | None = None
     num_texts: int = 0
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
@@ -83,7 +83,7 @@ class EmbeddingResult:
     embeddings: list[list[float]]
     metadata: EmbeddingMetadata = field(default_factory=EmbeddingMetadata)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for serialization."""
         return {
             "embeddings": self.embeddings,
@@ -115,7 +115,7 @@ class MessageMetadata:
     response_id: str | None = None
     correlation_id: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for serialization."""
         return {
             "id": self.id,
