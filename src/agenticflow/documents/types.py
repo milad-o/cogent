@@ -197,7 +197,15 @@ class TextChunk:
         Returns:
             Document with chunk text and metadata.
         """
-        return Document(text=self.text, metadata=self.metadata.copy())
+        from agenticflow.core import DocumentMetadata
+        
+        # Handle both dict and DocumentMetadata
+        if isinstance(self.metadata, DocumentMetadata):
+            metadata = self.metadata
+        else:
+            metadata = DocumentMetadata.from_dict(self.metadata)
+        
+        return Document(text=self.text, metadata=metadata)
 
 
 __all__ = [
