@@ -385,8 +385,8 @@ class BaseEmbedding(ABC):
     batch_size: int = 100
 
     # Client state (lazy initialized)
-    _client: Any = field(default=None, repr=False)
-    _async_client: Any = field(default=None, repr=False)
+    _client: object = field(default=None, repr=False)
+    _async_client: object = field(default=None, repr=False)
     _initialized: bool = field(default=False, repr=False)
 
     def _ensure_initialized(self) -> None:
