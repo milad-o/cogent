@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 from agenticflow.retriever.base import RetrievalResult
 
 if TYPE_CHECKING:
-    from agenticflow.vectorstore import Document
+    from agenticflow.core import Document
 
 
 @runtime_checkable

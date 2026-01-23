@@ -12,7 +12,7 @@ from agenticflow.retriever.base import RetrievalResult
 from agenticflow.retriever.rerankers.base import BaseReranker
 
 if TYPE_CHECKING:
-    from agenticflow.vectorstore import Document
+    from agenticflow.core import Document
 
 
 class CrossEncoderReranker(BaseReranker):

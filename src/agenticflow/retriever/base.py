@@ -17,7 +17,7 @@ from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
     from agenticflow.observability.bus import TraceBus
-    from agenticflow.vectorstore import Document
+    from agenticflow.core import Document
 
 
 class FusionStrategy(Enum):
@@ -54,7 +54,7 @@ class RetrievalResult:
     def __post_init__(self) -> None:
         """Ensure document is properly typed."""
         # Import here to avoid circular imports
-        from agenticflow.vectorstore import Document
+        from agenticflow.core import Document
         if not isinstance(self.document, Document):
             raise TypeError(f"document must be a Document, got {type(self.document)}")
 

@@ -15,7 +15,7 @@ from agenticflow.retriever.base import (
     Retriever,
 )
 from agenticflow.retriever.utils.fusion import fuse_results, normalize_scores
-from agenticflow.vectorstore import Document
+from agenticflow.core import Document
 
 
 class EnsembleRetriever(BaseRetriever):
