@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 def split_text(

@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 if TYPE_CHECKING:
     pass

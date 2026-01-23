@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from agenticflow.documents.splitters.base import BaseSplitter
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class CodeSplitter(BaseSplitter):
@@ -108,14 +108,14 @@ class CodeSplitter(BaseSplitter):
                 chunks = self._merge_splits(sections, "\n")
                 if chunks:
                     for chunk in chunks:
-                        chunk.metadata["language"] = self.language
+                        chunk.metadata.custom["language"] = self.language
                     return chunks
 
         # Fallback to simple line splitting
         lines = text.split("\n")
         chunks = self._merge_splits(lines, "\n")
         for chunk in chunks:
-            chunk.metadata["language"] = self.language
+            chunk.metadata.custom["language"] = self.language
         return chunks
 
     def _split_by_pattern(self, text: str, pattern: str) -> list[str]:

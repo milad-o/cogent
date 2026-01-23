@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from agenticflow.documents.splitters.base import BaseSplitter
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class HTMLSplitter(BaseSplitter):

@@ -11,7 +11,7 @@ from typing import Any
 
 from agenticflow.documents.loaders.base import BaseLoader
 from agenticflow.documents.loaders.registry import get_loader, register_loader
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class DocumentLoader:

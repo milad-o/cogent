@@ -8,7 +8,7 @@ from typing import Any
 from agenticflow.documents.splitters.base import BaseSplitter
 from agenticflow.documents.splitters.character import RecursiveCharacterSplitter
 from agenticflow.documents.splitters.sentence import SentenceSplitter
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class SemanticSplitter(BaseSplitter):
@@ -108,7 +108,7 @@ class SemanticSplitter(BaseSplitter):
 
         # Renumber
         for i, chunk in enumerate(chunks):
-            chunk.metadata["chunk_index"] = i
+            chunk.metadata.chunk_index = i
 
         return chunks
 

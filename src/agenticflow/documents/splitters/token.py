@@ -6,7 +6,7 @@ from typing import Any
 
 from agenticflow.documents.splitters.base import BaseSplitter
 from agenticflow.documents.splitters.character import RecursiveCharacterSplitter
-from agenticflow.documents.types import Document
+from agenticflow.core import Document
 
 
 class TokenSplitter(BaseSplitter):
@@ -75,7 +75,7 @@ class TokenSplitter(BaseSplitter):
 
         # Add token count metadata
         for chunk in chunks:
-            chunk.metadata["token_count"] = self._token_length(chunk.text)
+            chunk.metadata.token_count = self._token_length(chunk.text)
 
         return chunks
 
