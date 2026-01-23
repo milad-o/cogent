@@ -11,7 +11,6 @@ from agenticflow.documents import (
     # Types
     Document,
     DocumentMetadata,
-    TextChunk,
     FileType,
     SplitterType,
     # Loaders
@@ -124,51 +123,6 @@ class TestDocument:
         doc = Document.from_dict(d)
         assert doc.text == "Test"
         assert doc.metadata.custom["key"] == "value"
-
-
-class TestTextChunk:
-    """Tests for TextChunk dataclass."""
-    
-    def test_create_chunk(self) -> None:
-        """Test creating a text chunk."""
-        chunk = TextChunk(text="Test content", metadata={"index": 0})
-        assert chunk.text == "Test content"
-        assert chunk.content == "Test content"  # Alias works
-        assert chunk.metadata["index"] == 0
-    
-    def test_chunk_length(self) -> None:
-        """Test chunk length."""
-        chunk = TextChunk(text="Hello")
-        assert len(chunk) == 5
-    
-    def test_chunk_with_indices(self) -> None:
-        """Test chunk with start/end indices."""
-        chunk = TextChunk(text="Test", start_index=0, end_index=4)
-        assert chunk.start_index == 0
-        assert chunk.end_index == 4
-    
-    def test_chunk_to_dict(self) -> None:
-        """Test converting chunk to dict."""
-        chunk = TextChunk(text="Test", start_index=0, end_index=4)
-        d = chunk.to_dict()
-        assert d["text"] == "Test"
-        assert d["start_index"] == 0
-        assert d["end_index"] == 4
-    
-    def test_chunk_from_dict(self) -> None:
-        """Test creating chunk from dict."""
-        d = {"text": "Test", "metadata": {}, "start_index": 0, "end_index": 4}
-        chunk = TextChunk.from_dict(d)
-        assert chunk.text == "Test"
-        assert chunk.start_index == 0
-    
-    def test_chunk_to_document(self) -> None:
-        """Test converting chunk to document."""
-        chunk = TextChunk(text="Test", metadata={"source": "test.txt"})
-        doc = chunk.to_document()
-        assert isinstance(doc, Document)
-        assert doc.content == "Test"
-        assert doc.metadata.source == "test.txt"
 
 
 # ============================================================================
@@ -456,7 +410,6 @@ class TestModuleExports:
         
         # Types
         assert hasattr(document, "Document")
-        assert hasattr(document, "TextChunk")
         assert hasattr(document, "FileType")
         assert hasattr(document, "SplitterType")
         
@@ -483,7 +436,6 @@ class TestModuleExports:
         from agenticflow.retriever import (
             Document,
             DocumentLoader,
-            TextChunk,
             RecursiveCharacterSplitter,
             split_text,
         )
@@ -491,6 +443,5 @@ class TestModuleExports:
         # These should work and be the same types
         assert Document is not None
         assert DocumentLoader is not None
-        assert TextChunk is not None
         assert RecursiveCharacterSplitter is not None
         assert split_text is not None
