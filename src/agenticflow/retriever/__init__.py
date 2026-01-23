@@ -37,7 +37,7 @@ This module provides a comprehensive retrieval system with multiple strategies.
 
 Example:
     >>> from agenticflow.retriever import DenseRetriever, HybridRetriever
-    >>> from agenticflow.document import DocumentLoader, RecursiveCharacterSplitter
+    >>> from agenticflow.documents import DocumentLoader, RecursiveCharacterSplitter
     >>> from agenticflow.vectorstore import VectorStore
     >>>
     >>> # Load and split documents
@@ -54,7 +54,7 @@ Example:
 """
 
 # Re-export document types for backward compatibility
-from agenticflow.document import (
+from agenticflow.documents import (
     LOADERS,
     CharacterSplitter,
     CodeSplitter,
@@ -72,7 +72,7 @@ from agenticflow.document import (
     load_documents_sync,
     split_text,
 )
-from agenticflow.document import (
+from agenticflow.documents import (
     BaseSplitter as TextSplitter,
 )
 from agenticflow.retriever.base import (
@@ -146,13 +146,13 @@ from agenticflow.retriever.utils.llm_adapter import (
 )
 
 __all__ = [
-    # Document types (re-exported from agenticflow.document)
+    # Document types (re-exported from agenticflow.documents)
     "Document",
     "DocumentLoader",
     "LOADERS",
     "load_documents",
     "load_documents_sync",
-    # Text Splitting (re-exported from agenticflow.document)
+    # Text Splitting (re-exported from agenticflow.documents)
     "TextChunk",
     "TextSplitter",
     "RecursiveCharacterSplitter",

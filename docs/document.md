@@ -1,6 +1,6 @@
 # Document Module
 
-The `agenticflow.document` module provides comprehensive document loading, text splitting, and summarization capabilities for RAG (Retrieval Augmented Generation) systems.
+The `agenticflow.documents` module provides comprehensive document loading, text splitting, and summarization capabilities for RAG (Retrieval Augmented Generation) systems.
 
 ## Overview
 
@@ -10,7 +10,7 @@ The document module includes:
 - **Summarizers**: Handle documents exceeding LLM context limits
 
 ```python
-from agenticflow.document import (
+from agenticflow.documents import (
     Document,
     DocumentLoader,
     RecursiveCharacterSplitter,
@@ -32,7 +32,7 @@ chunks = splitter.split_documents(docs)
 The main loader class that auto-detects file types:
 
 ```python
-from agenticflow.document.loaders import DocumentLoader
+from agenticflow.documents.loaders import DocumentLoader
 
 loader = DocumentLoader()
 
@@ -65,7 +65,7 @@ docs = await loader.load("data.csv", encoding="utf-8")
 High-performance PDF loader optimized for LLM/RAG with parallel processing:
 
 ```python
-from agenticflow.document.loaders import PDFMarkdownLoader
+from agenticflow.documents.loaders import PDFMarkdownLoader
 
 loader = PDFMarkdownLoader(
     max_workers=4,      # CPU workers for parallel processing
@@ -110,7 +110,7 @@ class PDFProcessingResult:
 ### Convenience Functions
 
 ```python
-from agenticflow.document.loaders import load_documents, load_documents_sync
+from agenticflow.documents.loaders import load_documents, load_documents_sync
 
 # Async loading
 docs = await load_documents("./data")
@@ -124,7 +124,7 @@ docs = load_documents_sync("./data")
 Register custom file handlers:
 
 ```python
-from agenticflow.document.loaders import BaseLoader, register_loader
+from agenticflow.documents.loaders import BaseLoader, register_loader
 
 class XMLLoader(BaseLoader):
     EXTENSIONS = [".xml"]
@@ -145,7 +145,7 @@ register_loader(XMLLoader)
 The recommended splitter for most use cases:
 
 ```python
-from agenticflow.document.splitters import RecursiveCharacterSplitter
+from agenticflow.documents.splitters import RecursiveCharacterSplitter
 
 splitter = RecursiveCharacterSplitter(
     chunk_size=1000,      # Target chunk size
@@ -175,7 +175,7 @@ chunks = splitter.split_documents(docs)
 Split by sentence boundaries:
 
 ```python
-from agenticflow.document.splitters import SentenceSplitter
+from agenticflow.documents.splitters import SentenceSplitter
 
 splitter = SentenceSplitter(
     chunk_size=1000,
@@ -190,7 +190,7 @@ chunks = splitter.split_text(text)
 Preserve Markdown structure:
 
 ```python
-from agenticflow.document.splitters import MarkdownSplitter
+from agenticflow.documents.splitters import MarkdownSplitter
 
 splitter = MarkdownSplitter(
     chunk_size=1000,
@@ -209,7 +209,7 @@ chunks = splitter.split_text(markdown_text)
 Language-aware code splitting:
 
 ```python
-from agenticflow.document.splitters import CodeSplitter
+from agenticflow.documents.splitters import CodeSplitter
 
 splitter = CodeSplitter(
     language="python",
@@ -226,7 +226,7 @@ chunks = splitter.split_text(python_code)
 Split based on semantic similarity:
 
 ```python
-from agenticflow.document.splitters import SemanticSplitter
+from agenticflow.documents.splitters import SemanticSplitter
 
 splitter = SemanticSplitter(
     embedding_model=my_embeddings,
@@ -241,7 +241,7 @@ chunks = await splitter.split_text(text)
 Split by token count (for LLM context limits):
 
 ```python
-from agenticflow.document.splitters import TokenSplitter
+from agenticflow.documents.splitters import TokenSplitter
 
 splitter = TokenSplitter(
     chunk_size=512,       # Max tokens per chunk
@@ -255,7 +255,7 @@ chunks = splitter.split_text(text)
 ### Convenience Function
 
 ```python
-from agenticflow.document.splitters import split_text
+from agenticflow.documents.splitters import split_text
 
 chunks = split_text(
     text,
@@ -272,7 +272,7 @@ chunks = split_text(
 The standard document container:
 
 ```python
-from agenticflow.document import Document
+from agenticflow.documents import Document
 
 doc = Document(
     text="Document content...",
@@ -293,7 +293,7 @@ print(doc.metadata["source"])
 Chunk with position information:
 
 ```python
-from agenticflow.document import TextChunk
+from agenticflow.documents import TextChunk
 
 chunk = TextChunk(
     text="Chunk content...",
@@ -314,7 +314,7 @@ For documents exceeding LLM context limits, use summarization strategies:
 Parallel chunk summarization, then combine:
 
 ```python
-from agenticflow.document.summarizer import MapReduceSummarizer
+from agenticflow.documents.summarizer import MapReduceSummarizer
 
 summarizer = MapReduceSummarizer(model=my_model)
 result = await summarizer.summarize(long_text)
@@ -325,7 +325,7 @@ result = await summarizer.summarize(long_text)
 Sequential refinement through chunks:
 
 ```python
-from agenticflow.document.summarizer import RefineSummarizer
+from agenticflow.documents.summarizer import RefineSummarizer
 
 summarizer = RefineSummarizer(model=my_model)
 result = await summarizer.summarize(long_text)
@@ -336,7 +336,7 @@ result = await summarizer.summarize(long_text)
 Tree-based recursive summarization:
 
 ```python
-from agenticflow.document.summarizer import HierarchicalSummarizer
+from agenticflow.documents.summarizer import HierarchicalSummarizer
 
 summarizer = HierarchicalSummarizer(
     model=my_model,
@@ -350,7 +350,7 @@ result = await summarizer.summarize(very_long_text)
 ## Exports
 
 ```python
-from agenticflow.document import (
+from agenticflow.documents import (
     # Types
     Document,
     TextChunk,
@@ -385,7 +385,7 @@ from agenticflow.document import (
     split_text,
 )
 
-from agenticflow.document.loaders import (
+from agenticflow.documents.loaders import (
     # PDF LLM types
     PDFProcessingResult,
     PDFProcessingStatus,

@@ -27,8 +27,8 @@ from typing import Any
 
 from agenticflow.models import OpenAIEmbedding
 from agenticflow.agent import Agent
-from agenticflow.document.loaders import PDFMarkdownLoader
-from agenticflow.document.splitters import RecursiveCharacterSplitter
+from agenticflow.documents.loaders import PDFMarkdownLoader
+from agenticflow.documents.splitters import RecursiveCharacterSplitter
 from agenticflow.observability.bus import EventBus
 from agenticflow.observability.event import EventType
 from agenticflow.retriever import BM25Retriever, DenseRetriever, EnsembleRetriever, SummaryIndex

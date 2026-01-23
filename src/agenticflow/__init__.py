@@ -430,11 +430,12 @@ TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
 
 # Capabilities (composable tools for agents)
 # Document processing module
-from agenticflow import document
+from agenticflow import documents
 from agenticflow.capabilities import (
     BaseCapability,
     KnowledgeGraph,
 )
+from agenticflow.core import Document, DocumentMetadata
 
 # Native message types (from core.messages)
 from agenticflow.core.messages import (
@@ -726,6 +727,9 @@ __all__ = [
     "AIMessage",
     "SystemMessage",
     "ToolMessage",
-    # Document processing
-    "document",
+    # Document types (core)
+    "Document",
+    "DocumentMetadata",
+    # Document processing module
+    "documents",
 ]

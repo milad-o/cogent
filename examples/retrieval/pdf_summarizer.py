@@ -19,8 +19,8 @@ import time
 from pathlib import Path
 
 
-from agenticflow.document.loaders import PDFMarkdownLoader
-from agenticflow.document.summarizer import MapReduceSummarizer, RefineSummarizer
+from agenticflow.documents.loaders import PDFMarkdownLoader
+from agenticflow.documents.summarizer import MapReduceSummarizer, RefineSummarizer
 
 
 async def main() -> None:
