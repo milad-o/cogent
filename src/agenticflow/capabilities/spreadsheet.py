@@ -416,12 +416,11 @@ class Spreadsheet(BaseCapability):
                                 and str(value).lower().startswith(str(target).lower())
                             ):
                                 match = False
-                        elif op == "$endswith":
-                            if not (
-                                value
-                                and str(value).lower().endswith(str(target).lower())
-                            ):
-                                match = False
+                        elif op == "$endswith" and not (
+                            value
+                            and str(value).lower().endswith(str(target).lower())
+                        ):
+                            match = False
                 else:
                     # Exact match
                     if value != condition:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -32,12 +31,12 @@ class SemanticSplitter(BaseSplitter):
 
     def __init__(
         self,
-        embedding_model: Any = None,
+        embedding_model: object = None,
         chunk_size: int = 1000,
         chunk_overlap: int = 0,
         breakpoint_threshold: float = 0.5,
         buffer_size: int = 1,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self._embedding_model = embedding_model
@@ -45,7 +44,7 @@ class SemanticSplitter(BaseSplitter):
         self.buffer_size = buffer_size
 
     @property
-    def embedding_model(self) -> Any:
+    def embedding_model(self) -> object:
         """Get or create embedding model."""
         if self._embedding_model is None:
             from agenticflow.models import EmbeddingModel

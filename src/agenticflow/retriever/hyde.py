@@ -15,7 +15,7 @@ https://arxiv.org/abs/2212.10496
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 from agenticflow.retriever.utils.llm_adapter import adapt_llm
@@ -116,8 +116,8 @@ class HyDERetriever(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
-        **kwargs: Any,
+        filter: dict[str, object] | None = None,
+        **kwargs: object,
     ) -> list[RetrievalResult]:
         """Retrieve documents using HyDE.
 

@@ -6,8 +6,6 @@ Also provides utility functions for document creation and splitting.
 
 from __future__ import annotations
 
-from typing import Any
-
 # Re-export the unified Document class
 from agenticflow.core import Document, DocumentMetadata
 
@@ -22,7 +20,7 @@ __all__ = [
 
 def create_documents(
     texts: list[str],
-    metadatas: list[dict[str, Any]] | None = None,
+    metadatas: list[dict[str, object]] | None = None,
     ids: list[str] | None = None,
 ) -> list[Document]:
     """Create multiple documents from texts.

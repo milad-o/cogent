@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
@@ -208,7 +208,7 @@ class TimeBasedIndex(BaseRetriever):
         return self._reference_date or datetime.now(UTC)
 
     def _extract_timestamp(
-        self, text: str, metadata: dict[str, Any]
+        self, text: str, metadata: dict[str, object]
     ) -> datetime | None:
         """Extract timestamp from text or metadata."""
         # First check metadata
@@ -360,7 +360,7 @@ class TimeBasedIndex(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         time_range: TimeRange | None = None,
         apply_decay: bool = True,
     ) -> list[RetrievalResult]:
@@ -438,7 +438,7 @@ class TimeBasedIndex(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve most recent matching documents.
 
@@ -454,7 +454,7 @@ class TimeBasedIndex(BaseRetriever):
         point_in_time: datetime | str,
         k: int = 4,
         window_days: int = 30,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents as they existed at a point in time.
 
@@ -528,7 +528,7 @@ class TimeBasedIndex(BaseRetriever):
             "Recent documents are ranked higher based on recency decay."
         )
 
-        args_schema: dict[str, Any] = {
+        args_schema: dict[str, object] = {
             "query": {
                 "type": "string",
                 "description": "Natural language search query.",
@@ -566,11 +566,11 @@ class TimeBasedIndex(BaseRetriever):
         async def _tool(
             query: str,
             k: int = k_default,
-            filter: dict[str, Any] | None = None,
+            filter: dict[str, object] | None = None,
             time_start: str | None = None,
             time_end: str | None = None,
             apply_decay: bool = True,
-        ) -> list[dict[str, Any]]:
+        ) -> list[dict[str, object]]:
             # Parse time range if provided
             time_range = None
             if allow_time_range and (time_start or time_end):
@@ -599,9 +599,9 @@ class TimeBasedIndex(BaseRetriever):
                 include_scores=True,
             )
 
-            payload: list[dict[str, Any]] = []
+            payload: list[dict[str, object]] = []
             for r in results:
-                entry: dict[str, Any] = {"text": r.document.text}
+                entry: dict[str, object] = {"text": r.document.text}
                 if include_metadata:
                     entry["metadata"] = r.document.metadata
                 if include_scores:

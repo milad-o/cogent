@@ -6,7 +6,7 @@ This is the most common retriever type for semantic search.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 
@@ -61,7 +61,7 @@ class DenseRetriever(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents using vector similarity.
 
@@ -109,7 +109,7 @@ class DenseRetriever(BaseRetriever):
     async def add_texts(
         self,
         texts: list[str],
-        metadatas: list[dict[str, Any]] | None = None,
+        metadatas: list[dict[str, object]] | None = None,
     ) -> list[str]:
         """Add texts to the underlying vector store.
 
@@ -126,7 +126,7 @@ class DenseRetriever(BaseRetriever):
 def create_dense_retriever(
     embeddings: EmbeddingProvider | None = None,
     backend: str = "inmemory",
-    **kwargs: Any,
+    **kwargs: object,
 ) -> DenseRetriever:
     """Create a dense retriever with a new vector store.
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Literal
 
 from agenticflow.models.openai import OpenAIEmbedding
 from agenticflow.vectorstore.backends.inmemory import InMemoryBackend, SimilarityMetric
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 BackendType = Literal["inmemory", "faiss", "chroma"]
 
 
-async def _emit_event(event_type: str, data: dict[str, Any]) -> None:
+async def _emit_event(event_type: str, data: dict[str, object]) -> None:
     """Emit an event to the global event bus if available."""
     try:
         from agenticflow.observability.bus import get_event_bus
@@ -91,7 +91,7 @@ class VectorStore:
     async def add_texts(
         self,
         texts: list[str],
-        metadatas: list[dict[str, Any]] | None = None,
+        metadatas: list[dict[str, object]] | None = None,
         ids: list[str] | None = None,
     ) -> list[str]:
         """Add texts to the vector store.
@@ -190,7 +190,7 @@ class VectorStore:
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents.
 
@@ -231,7 +231,7 @@ class VectorStore:
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[Document]:
         """Search and return just the documents (alias for compatibility).
 
@@ -303,7 +303,7 @@ class VectorStore:
     def from_texts(
         cls,
         texts: list[str],
-        metadatas: list[dict[str, Any]] | None = None,
+        metadatas: list[dict[str, object]] | None = None,
         embeddings: EmbeddingProvider | None = None,
         backend: BackendType = "inmemory",
     ) -> VectorStore:
@@ -391,7 +391,7 @@ class VectorStore:
 
 async def create_vectorstore(
     texts: list[str] | None = None,
-    metadatas: list[dict[str, Any]] | None = None,
+    metadatas: list[dict[str, object]] | None = None,
     embeddings: EmbeddingProvider | None = None,
     backend: BackendType = "inmemory",
 ) -> VectorStore:

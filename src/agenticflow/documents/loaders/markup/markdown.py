@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -37,7 +36,7 @@ class MarkdownLoader(BaseLoader):
         super().__init__(encoding)
         self.extract_frontmatter = extract_frontmatter
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a Markdown file.
 
         Args:
@@ -50,7 +49,7 @@ class MarkdownLoader(BaseLoader):
         path = Path(path)
         encoding = kwargs.get("encoding", self.encoding)
         content = path.read_text(encoding=encoding)
-        metadata: dict[str, Any] = {}
+        metadata: dict[str, object] = {}
 
         # Extract YAML frontmatter if present
         if self.extract_frontmatter and content.startswith("---"):
@@ -58,7 +57,7 @@ class MarkdownLoader(BaseLoader):
 
         return [self._create_document(content, path, **metadata)]
 
-    def _extract_frontmatter(self, content: str) -> tuple[str, dict[str, Any]]:
+    def _extract_frontmatter(self, content: str) -> tuple[str, dict[str, object]]:
         """Extract YAML frontmatter from content.
 
         Args:
@@ -75,7 +74,7 @@ class MarkdownLoader(BaseLoader):
         remaining_content = parts[2].strip()
 
         # Parse simple key: value frontmatter
-        metadata: dict[str, Any] = {}
+        metadata: dict[str, object] = {}
         for line in frontmatter_text.split("\n"):
             if ":" in line:
                 key, value = line.split(":", 1)

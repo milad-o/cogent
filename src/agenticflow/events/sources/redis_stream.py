@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass, field
-from typing import Any
 from uuid import uuid4
 
 from agenticflow.events.event import Event
@@ -61,7 +60,7 @@ class RedisStreamSource(EventSource):
     block_ms: int = 5000
 
     _running: bool = field(default=False, repr=False)
-    _client: Any = field(default=None, repr=False)
+    _client: object = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if self.consumer is None:
@@ -164,7 +163,7 @@ class RedisStreamSource(EventSource):
         )
 
         # Extract/parse data
-        data: dict[str, Any]
+        data: dict[str, object]
         if "data" in decoded:
             try:
                 data = json.loads(decoded.pop("data"))

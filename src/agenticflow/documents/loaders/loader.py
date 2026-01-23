@@ -7,7 +7,6 @@ import mimetypes
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -48,7 +47,7 @@ class DocumentLoader:
     def register_loader(
         self,
         extension: str,
-        loader: type[BaseLoader] | Callable[[Path], Any],
+        loader: type[BaseLoader] | Callable[[Path]],
     ) -> None:
         """Register a custom loader for a file extension.
 
@@ -86,7 +85,7 @@ class DocumentLoader:
     async def load(
         self,
         path: str | Path,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document]:
         """Load a single file.
 
@@ -143,7 +142,7 @@ class DocumentLoader:
     def load_sync(
         self,
         path: str | Path,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document]:
         """Synchronous version of load.
 
@@ -159,7 +158,7 @@ class DocumentLoader:
     async def load_many(
         self,
         paths: Sequence[str | Path],
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document]:
         """Load multiple files concurrently.
 
@@ -188,7 +187,7 @@ class DocumentLoader:
         glob: str = "**/*",
         recursive: bool = True,
         exclude: Sequence[str] | None = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> list[Document]:
         """Load all files from a directory.
 

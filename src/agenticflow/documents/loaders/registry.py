@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -74,7 +74,7 @@ def get_loader(extension: str) -> type[BaseLoader] | None:
 
 def register_loader(
     extension: str,
-    loader: type[BaseLoader] | Callable[[Path], Any],
+    loader: type[BaseLoader] | Callable[[Path]],
 ) -> None:
     """Register a custom loader for a file extension.
 

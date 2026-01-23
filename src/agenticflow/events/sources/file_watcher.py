@@ -11,7 +11,6 @@ import contextlib
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Any
 
 from agenticflow.events.event import Event
 from agenticflow.events.sources.base import EmitCallback, EventSource
@@ -53,7 +52,7 @@ class FileWatcherSource(EventSource):
     recursive: bool = True
     event_prefix: str = "file"
 
-    _task: asyncio.Task[Any] | None = field(default=None, repr=False)
+    _task: asyncio.Task[None] | None = field(default=None, repr=False)
     _running: bool = field(default=False, repr=False)
 
     async def start(self, emit: EmitCallback) -> None:

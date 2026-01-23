@@ -13,7 +13,7 @@ import inspect
 import re
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.events.event import Event
 
@@ -109,7 +109,7 @@ class EventBus:
         self._global_handlers.clear()
 
     async def publish(
-        self, event: Event | str, data: dict[str, Any] | None = None
+        self, event: Event | str, data: dict[str, object] | None = None
     ) -> Event:
         """Publish an event.
 

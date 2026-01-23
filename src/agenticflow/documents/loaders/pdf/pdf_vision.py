@@ -30,7 +30,6 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -113,7 +112,7 @@ class PDFVisionLoader(BaseLoader):
         self.verbose = verbose
         self._logger = ObservabilityLogger("pdf_vision_loader")
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a PDF and extract content using vision.
 
         Keyword Args:
@@ -176,7 +175,7 @@ class PDFVisionLoader(BaseLoader):
         doc = fitz.open(str(pdf_path))
         total_pages = doc.page_count
 
-        timing: dict[str, Any] = {
+        timing: dict[str, object] = {
             "total_pages": total_pages,
             "selected_pages": None,
             "pdf_open_ms": (time.monotonic() - t0) * 1000.0,
@@ -213,8 +212,8 @@ class PDFVisionLoader(BaseLoader):
 
         timing["selected_pages"] = selected_pages
 
-        pdf_metadata: dict[str, Any] | None = None
-        toc: list[dict[str, Any]] | None = None
+        pdf_metadata: dict[str, object] | None = None
+        toc: list[dict[str, object]] | None = None
 
         if options.extract_metadata:
             t_meta = time.monotonic()
@@ -225,7 +224,7 @@ class PDFVisionLoader(BaseLoader):
         if options.extract_toc:
             t_toc = time.monotonic()
             toc = _extract_embedded_toc(doc)
-            toc_info: dict[str, Any] = {
+            toc_info: dict[str, object] = {
                 "source": "embedded" if toc else None,
                 "entries": len(toc or []),
                 "scan_pages": 0,
@@ -302,7 +301,7 @@ class PDFVisionLoader(BaseLoader):
                     }
                 )
 
-            page_metadata: dict[str, Any] = {
+            page_metadata: dict[str, object] = {
                 "page": page_number,
                 "total_pages": total_pages,
                 "loader": "PDFVisionLoader",
@@ -340,15 +339,15 @@ class PDFVisionLoader(BaseLoader):
         return documents
 
 
-def _render_page_png(page: Any, *, dpi: int) -> bytes:
+def _render_page_png(page: object, *, dpi: int) -> bytes:
     """Render a PDF page to PNG bytes via PyMuPDF."""
     # PDF points are 72 dpi.
     zoom = max(dpi, 72) / 72.0
     import fitz  # type: ignore
 
-    mat = fitz.Matrix(zoom, zoom)
-    pix = page.get_pixmap(matrix=mat, alpha=False)
-    return pix.tobytes("png")
+    mat = fitz.Matrix(zoom, zoom)  # type: ignore[attr-defined]
+    pix = page.get_pixmap(matrix=mat, alpha=False)  # type: ignore[attr-defined]
+    return pix.tobytes("png")  # type: ignore[attr-defined, return-value]
 
 
 def _data_url_for_png(png_bytes: bytes) -> str:
@@ -415,14 +414,14 @@ async def _extract_page_with_vision(
     page_number: int,
     total_pages: int,
     options: PDFVisionOptions,
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Call a vision model to extract a single page."""
 
     prompt = _build_page_prompt(
         page_number=page_number, total_pages=total_pages, options=options
     )
 
-    messages: list[dict[str, Any]] = [
+    messages: list[dict[str, object]] = [
         {
             "role": "user",
             "content": [
@@ -507,14 +506,14 @@ async def _extract_page_with_vision(
     return {"content": raw, "header": None, "footer": None, "printed_page_number": None}
 
 
-def _extract_embedded_toc(doc: Any) -> list[dict[str, Any]]:
+def _extract_embedded_toc(doc: object) -> list[dict[str, object]]:
     """Extract embedded table-of-contents if present."""
     try:
         toc_raw = doc.get_toc(simple=True)
     except Exception:
         return []
 
-    toc: list[dict[str, Any]] = []
+    toc: list[dict[str, object]] = []
     for item in toc_raw or []:
         # item: [level, title, page]
         if not isinstance(item, (list, tuple)) or len(item) < 3:
@@ -528,12 +527,12 @@ async def _extract_toc_with_vision(
     *,
     model: BaseChatModel,
     pdf_path: Path,
-    doc: Any,
+    doc: object,
     dpi: int,
     scan_pages: int,
     timeout_s: float | None,
     timing: bool,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     """Best-effort vision TOC extraction by scanning the first pages.
 
     Behavior:
@@ -543,10 +542,10 @@ async def _extract_toc_with_vision(
     """
     _ = pdf_path  # reserved for future debug output
 
-    attempts: list[dict[str, Any]] = []
+    attempts: list[dict[str, object]] = []
 
     in_toc = False
-    merged_entries: list[dict[str, Any]] = []
+    merged_entries: list[dict[str, object]] = []
 
     for page_index in range(scan_pages):
         page = doc.load_page(page_index)
@@ -567,7 +566,7 @@ async def _extract_toc_with_vision(
             'If it is NOT a TOC page, output: {"is_toc_page": false, "entries": []}.'
         )
 
-        messages: list[dict[str, Any]] = [
+        messages: list[dict[str, object]] = [
             {
                 "role": "user",
                 "content": [
@@ -612,7 +611,7 @@ async def _extract_toc_with_vision(
         parsed_entries = parsed.get("entries")
 
         if is_toc_page and isinstance(parsed_entries, list):
-            page_entries: list[dict[str, Any]] = []
+            page_entries: list[dict[str, object]] = []
             for e in parsed_entries:
                 if not isinstance(e, dict):
                     continue
@@ -673,7 +672,7 @@ async def _extract_toc_with_vision(
 
     # Best-effort normalize + de-dupe (TOCs sometimes repeat headers across pages).
     seen: set[tuple[int, str, int]] = set()
-    normalized: list[dict[str, Any]] = []
+    normalized: list[dict[str, object]] = []
     for entry in merged_entries:
         key = (
             int(entry.get("level", 1)),

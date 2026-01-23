@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document, DocumentMetadata
 
@@ -38,7 +37,7 @@ class BaseLoader(ABC):
         self.encoding = encoding
 
     @abstractmethod
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load documents from a file.
 
         Args:
@@ -55,7 +54,7 @@ class BaseLoader(ABC):
         """
         ...
 
-    def load_sync(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    def load_sync(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Synchronous version of load.
 
         Default implementation uses asyncio.run().
@@ -90,7 +89,7 @@ class BaseLoader(ABC):
         content: str,
         path: Path,
         page: int | None = None,
-        **extra_metadata: Any,
+        **extra_metadata: object,
     ) -> Document:
         """Helper to create a document with standard metadata.
 

@@ -6,7 +6,7 @@ expected by LLM-powered retrievers (SummaryIndex, KeywordTableIndex, etc.).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from agenticflow.models import BaseChatModel
@@ -65,7 +65,7 @@ class ChatModelAdapter:
         return response.content
 
 
-def adapt_llm(llm: Any) -> LLMProtocol:
+def adapt_llm(llm: object) -> LLMProtocol:
     """Automatically adapt an LLM to the retriever interface.
 
     If the LLM already has a `.generate()` method, returns it as-is.

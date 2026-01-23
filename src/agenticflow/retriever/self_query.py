@@ -7,7 +7,7 @@ structured filters and semantic search queries.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 from agenticflow.retriever.utils.llm_adapter import adapt_llm
@@ -32,7 +32,7 @@ class ParsedQuery:
     """Result of parsing a natural language query."""
 
     semantic_query: str
-    filter: dict[str, Any] | None = None
+    filter: dict[str, object] | None = None
 
 
 DEFAULT_PARSE_PROMPT = """You are a query parser. Given a user query and available attributes, extract:

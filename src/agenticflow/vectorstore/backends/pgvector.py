@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any
 
 from agenticflow.vectorstore.base import SearchResult
 from agenticflow.vectorstore.document import Document
@@ -47,8 +46,8 @@ class PgVectorBackend:
     dimension: int = 1536
     distance: str = "cosine"
 
-    _conn: Any = field(default=None, init=False, repr=False)
-    _pool: Any = field(default=None, init=False, repr=False)
+    _conn: object = field(default=None, init=False, repr=False)
+    _pool: object = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize database connection and table."""
@@ -139,7 +138,7 @@ class PgVectorBackend:
         self,
         embedding: list[float],
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[SearchResult]:
         """Search for similar documents."""
         # Build distance operator based on metric
@@ -155,7 +154,7 @@ class PgVectorBackend:
 
         # Build WHERE clause for filter
         where_clause = ""
-        filter_params: list[Any] = []
+        filter_params: list[object] = []
         if filter:
             conditions = []
             for key, value in filter.items():

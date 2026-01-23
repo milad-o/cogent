@@ -10,7 +10,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.events.event import Event
 
@@ -30,7 +30,7 @@ class ReactionType(Enum):
 
 # Type aliases
 TriggerCondition = Callable[[Event], bool]
-EventPattern = str | re.Pattern[str] | Any
+EventPattern = str | re.Pattern[str] | object
 
 
 def _event_name(event: object) -> str:

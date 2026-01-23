@@ -111,10 +111,9 @@ class MCPServerConfig:
             MCPTransport.HTTP,
             MCPTransport.SSE,
             MCPTransport.WEBSOCKET,
-        ):
-            if not self.url:
-                msg = "url is required for HTTP/SSE/WebSocket transport"
-                raise ValueError(msg)
+        ) and not self.url:
+            msg = "url is required for HTTP/SSE/WebSocket transport"
+            raise ValueError(msg)
 
 
 @dataclass

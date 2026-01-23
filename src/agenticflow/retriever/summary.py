@@ -38,7 +38,7 @@ class DocumentSummary:
     summary: str
     keywords: list[str] = field(default_factory=list)
     entities: list[dict[str, str]] = field(default_factory=list)  # For KG integration
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 class SummaryIndex(BaseRetriever):
@@ -330,7 +330,7 @@ Respond in JSON format:
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents by searching summaries.
 
@@ -409,7 +409,7 @@ Respond in JSON format:
 
             return results
 
-    def get_entities(self) -> list[dict[str, Any]]:
+    def get_entities(self) -> list[dict[str, object]]:
         """Get all extracted entities for KnowledgeGraph integration.
 
         Returns:
@@ -653,7 +653,7 @@ Summary:"""
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve by traversing tree from roots.
 
@@ -890,7 +890,7 @@ Keywords (JSON array):"""
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve documents by keyword matching.
 
@@ -1145,7 +1145,7 @@ Extract all meaningful entities and relationships:"""
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve using graph + optional vector search.
 

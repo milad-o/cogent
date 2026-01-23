@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
 from agenticflow.retriever.base import BaseRetriever, FusionStrategy, RetrievalResult
@@ -60,7 +60,7 @@ class DocumentRepresentations:
     keywords: list[str] = field(default_factory=list)
     questions: list[str] = field(default_factory=list)
     entities: list[str] = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 class MultiRepresentationIndex(BaseRetriever):
@@ -365,7 +365,7 @@ Category (one word):"""
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
         query_type: QueryType | None = None,
         search_all: bool = False,
     ) -> list[RetrievalResult]:
@@ -462,7 +462,7 @@ Category (one word):"""
         """
         return self._doc_representations.get(doc_id)
 
-    def get_representation_stats(self) -> dict[str, Any]:
+    def get_representation_stats(self) -> dict[str, object]:
         """Get statistics about stored representations.
 
         Returns:
@@ -543,7 +543,7 @@ Category (one word):"""
             "Supports query routing to different representation types."
         )
 
-        args_schema: dict[str, Any] = {
+        args_schema: dict[str, object] = {
             "query": {
                 "type": "string",
                 "description": "Natural language search query.",
@@ -579,10 +579,10 @@ Category (one word):"""
         async def _tool(
             query: str,
             k: int = k_default,
-            filter: dict[str, Any] | None = None,
+            filter: dict[str, object] | None = None,
             query_type: str = "auto",
             search_all: bool = False,
-        ) -> list[dict[str, Any]]:
+        ) -> list[dict[str, object]]:
             # Convert query_type string to enum
             qt = QueryType(query_type) if allow_query_type else None
 
@@ -595,9 +595,9 @@ Category (one word):"""
                 include_scores=True,
             )
 
-            payload: list[dict[str, Any]] = []
+            payload: list[dict[str, object]] = []
             for r in results:
-                entry: dict[str, Any] = {"text": r.document.text}
+                entry: dict[str, object] = {"text": r.document.text}
                 if include_metadata:
                     entry["metadata"] = r.document.metadata
                 if include_scores:

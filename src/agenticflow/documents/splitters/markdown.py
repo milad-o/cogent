@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
@@ -33,7 +32,7 @@ class MarkdownSplitter(BaseSplitter):
         chunk_overlap: int = 200,
         headers_to_split_on: list[str] | None = None,
         return_each_section: bool = False,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(chunk_size=chunk_size, chunk_overlap=chunk_overlap, **kwargs)
         self.headers_to_split_on = headers_to_split_on or ["#", "##", "###"]
@@ -133,12 +132,12 @@ class MarkdownSplitter(BaseSplitter):
 
         return chunks
 
-    def _split_by_headers(self, text: str) -> list[dict[str, Any]]:
+    def _split_by_headers(self, text: str) -> list[dict[str, object]]:
         """Split markdown into sections by headers."""
         header_pattern = r"^(#{1,6})\s+(.+)$"
 
         lines = text.split("\n")
-        sections: list[dict[str, Any]] = []
+        sections: list[dict[str, object]] = []
         current_headers: dict[str, str] = {}
         current_content: list[str] = []
 

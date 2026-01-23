@@ -27,7 +27,7 @@ import json
 import logging
 import uuid
 from collections.abc import Callable
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from agenticflow.events.event import Event
 
@@ -365,7 +365,7 @@ try:
                 except Exception as e:
                     logging.error(f"Redis listener error: {e}", exc_info=True)
 
-        async def _handle_message(self, message: dict[str, Any]) -> None:
+        async def _handle_message(self, message: dict[str, object]) -> None:
             """Handle incoming Redis message."""
             try:
                 from dataclasses import fields

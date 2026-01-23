@@ -61,7 +61,7 @@ class CohereReranker(BaseReranker):
         """Lazy load the Cohere client."""
         if self._client is None:
             try:
-                import cohere
+                import cohere  # type: ignore[import-untyped]
             except ImportError as e:
                 raise ImportError(
                     "CohereReranker requires cohere. Install with: uv add cohere"

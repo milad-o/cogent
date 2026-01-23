@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
@@ -210,8 +210,8 @@ class HybridRetriever(BaseRetriever):
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
-        **kwargs: Any,
+        filter: dict[str, object] | None = None,
+        **kwargs: object,
     ) -> list[RetrievalResult]:
         """Retrieve using hybrid metadata + content search.
 

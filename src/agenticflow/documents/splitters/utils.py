@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from agenticflow.core import Document
 
 
@@ -12,7 +10,7 @@ def split_text(
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
     splitter_type: str = "recursive",
-    **kwargs: Any,
+    **kwargs: object,
 ) -> list[Document]:
     """Split text using specified strategy.
 

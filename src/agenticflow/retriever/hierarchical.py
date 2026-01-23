@@ -15,7 +15,7 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
@@ -48,7 +48,7 @@ class HierarchyNode:
     summary: str | None = None
     parent_id: str | None = None
     children: list[str] = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
     # Position in document
     start_pos: int = 0
@@ -412,7 +412,7 @@ Summary:"""
         self,
         query: str,
         k: int = 4,
-        filter: dict[str, Any] | None = None,
+        filter: dict[str, object] | None = None,
     ) -> list[RetrievalResult]:
         """Retrieve using hierarchical search.
 
@@ -499,7 +499,7 @@ Summary:"""
 
         return results[:k]
 
-    def get_structure(self, doc_id: str | None = None) -> dict[str, Any]:
+    def get_structure(self, doc_id: str | None = None) -> dict[str, object]:
         """Get the document structure as a tree.
 
         Args:
@@ -509,7 +509,7 @@ Summary:"""
             Nested dictionary representing document hierarchy.
         """
 
-        def build_tree(node_id: str) -> dict[str, Any]:
+        def build_tree(node_id: str) -> dict[str, object]:
             node = self._nodes.get(node_id)
             if not node:
                 return {}

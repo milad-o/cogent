@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -45,7 +44,7 @@ class JSONLoader(BaseLoader):
         self.content_key = content_key
         self.metadata_keys = metadata_keys or []
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load a JSON or JSONL file.
 
         Args:
@@ -119,9 +118,9 @@ class JSONLoader(BaseLoader):
 
     def _item_to_document(
         self,
-        item: Any,
+        item: object,
         path: Path,
-        **extra_meta: Any,
+        **extra_meta: object,
     ) -> Document:
         """Convert a JSON item to a Document.
 
@@ -140,7 +139,7 @@ class JSONLoader(BaseLoader):
             content = json.dumps(item, indent=2, ensure_ascii=False)
 
         # Extract metadata
-        metadata: dict[str, Any] = {}
+        metadata: dict[str, object] = {}
         if self.metadata_keys and isinstance(item, dict):
             for key in self.metadata_keys:
                 if key in item:

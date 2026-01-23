@@ -272,39 +272,38 @@ class CohereChat(BaseChatModel):
                             )
                             yield AIMessage(content=text, metadata=metadata)
 
-            elif event.type == "message-end":
-                if hasattr(event, "delta"):
-                    if hasattr(event.delta, "finish_reason"):
-                        chunk_metadata["finish_reason"] = event.delta.finish_reason
-                    if hasattr(event.delta, "usage") and hasattr(
-                        event.delta.usage, "tokens"
-                    ):
-                        usage = event.delta.usage.tokens
-                        chunk_metadata["usage"] = usage
-                        # Yield final metadata chunk
-                        final_metadata = MessageMetadata(
-                            id=str(uuid.uuid4()),
-                            timestamp=time.time(),
-                            model=chunk_metadata.get("model"),
-                            tokens=TokenUsage(
-                                prompt_tokens=int(usage.input_tokens)
-                                if hasattr(usage, "input_tokens")
-                                else 0,
-                                completion_tokens=int(usage.output_tokens)
-                                if hasattr(usage, "output_tokens")
-                                else 0,
-                                total_tokens=int(
-                                    usage.input_tokens + usage.output_tokens
-                                )
-                                if hasattr(usage, "input_tokens")
-                                and hasattr(usage, "output_tokens")
-                                else 0,
-                            ),
-                            finish_reason=chunk_metadata.get("finish_reason"),
-                            response_id=chunk_metadata.get("id"),
-                            duration=time.time() - start_time,
-                        )
-                        yield AIMessage(content="", metadata=final_metadata)
+            elif event.type == "message-end" and hasattr(event, "delta"):
+                if hasattr(event.delta, "finish_reason"):
+                    chunk_metadata["finish_reason"] = event.delta.finish_reason
+                if hasattr(event.delta, "usage") and hasattr(
+                    event.delta.usage, "tokens"
+                ):
+                    usage = event.delta.usage.tokens
+                    chunk_metadata["usage"] = usage
+                    # Yield final metadata chunk
+                    final_metadata = MessageMetadata(
+                        id=str(uuid.uuid4()),
+                        timestamp=time.time(),
+                        model=chunk_metadata.get("model"),
+                        tokens=TokenUsage(
+                            prompt_tokens=int(usage.input_tokens)
+                            if hasattr(usage, "input_tokens")
+                            else 0,
+                            completion_tokens=int(usage.output_tokens)
+                            if hasattr(usage, "output_tokens")
+                            else 0,
+                            total_tokens=int(
+                                usage.input_tokens + usage.output_tokens
+                            )
+                            if hasattr(usage, "input_tokens")
+                            and hasattr(usage, "output_tokens")
+                            else 0,
+                        ),
+                        finish_reason=chunk_metadata.get("finish_reason"),
+                        response_id=chunk_metadata.get("id"),
+                        duration=time.time() - start_time,
+                    )
+                    yield AIMessage(content="", metadata=final_metadata)
 
     def _build_request(
         self, messages: list[dict[str, Any]] | list[Any]

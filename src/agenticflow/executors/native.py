@@ -14,7 +14,8 @@ Includes standalone `run()` function for quick execution without Agent class.
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from agenticflow.agent.output import (
     OutputValidationError,
@@ -36,6 +37,7 @@ from agenticflow.core.messages import (
     ToolMessage,
 )
 from agenticflow.core.utils import model_identifier
+from agenticflow.events.bus import EventBus
 from agenticflow.interceptors.base import (
     InterceptContext,
     Interceptor,
@@ -185,7 +187,7 @@ async def run(
 
 
 async def _execute_tool_native(
-    tool_call: dict[str, Any],
+    tool_call: dict[str, object],
     tool_map: dict[str, BaseTool],
 ) -> ToolMessage:
     """Execute a single tool call (returns native ToolMessage)."""
@@ -269,7 +271,7 @@ class NativeExecutor(BaseExecutor):
 
         # Pre-cache everything at construction time
         self._bound_model = None
-        self._tool_map: dict[str, Any] = {}
+        self._tool_map: dict[str, BaseTool] = {}
         self._model_resilience: ModelResilience | None = None
 
         # Setup model resilience
@@ -342,8 +344,8 @@ class NativeExecutor(BaseExecutor):
     async def execute(
         self,
         task: str,
-        context: dict[str, Any] | RunContext | None = None,
-    ) -> Any:
+        context: dict[str, object] | RunContext | None = None,
+    ) -> str:
         """Execute task with observability support.
 
         Uses a tight asyncio loop with parallel tool execution.
@@ -372,7 +374,7 @@ class NativeExecutor(BaseExecutor):
 
         # Normalize context: convert dict to RunContext with metadata
         run_context: RunContext
-        context_dict: dict[str, Any] | None = None
+        context_dict: dict[str, object] | None = None
         if context is None:
             run_context = EMPTY_CONTEXT
         elif isinstance(context, RunContext):
@@ -441,8 +443,8 @@ class NativeExecutor(BaseExecutor):
         *,
         task: str,
         messages: list[BaseMessage],
-        context: dict[str, Any] | RunContext | None = None,
-    ) -> Any:
+        context: dict[str, object] | RunContext | None = None,
+    ) -> str | StructuredResult:
         """Execute using a pre-built message list.
 
         This enables event-driven execution without converting event
@@ -463,7 +465,7 @@ class NativeExecutor(BaseExecutor):
 
         # Normalize context
         run_context: RunContext
-        context_dict: dict[str, Any] | None = None
+        context_dict: dict[str, object] | None = None
         if context is None:
             run_context = EMPTY_CONTEXT
         elif isinstance(context, RunContext):
@@ -528,7 +530,7 @@ class NativeExecutor(BaseExecutor):
     def _build_messages(
         self,
         task: str,
-        context: dict[str, Any] | None,
+        context: dict[str, object] | None,
     ) -> list[BaseMessage]:
         """Build minimal message list.
 
@@ -559,7 +561,7 @@ class NativeExecutor(BaseExecutor):
     def _process_output(
         self,
         raw_content: str,
-    ) -> Any:
+    ) -> str | StructuredResult:
         """Process raw output through structured output schema if configured.
 
         Args:
@@ -605,12 +607,12 @@ class NativeExecutor(BaseExecutor):
     async def _execute_with_structured_output(
         self,
         task: str,
-        context: dict[str, Any] | None,
+        context: dict[str, object] | None,
         messages: list[BaseMessage],
-        event_bus: Any | None,
+        event_bus: EventBus | None,
         agent_name: str,
         run_context: RunContext | None = None,
-    ) -> Any:
+    ) -> str | StructuredResult:
         """Execute with structured output support and retry on validation errors.
 
         This wraps the main execution loop with structured output handling,
@@ -715,9 +717,9 @@ class NativeExecutor(BaseExecutor):
     async def _execute_main_loop(
         self,
         task: str,
-        context: dict[str, Any] | None,
+        context: dict[str, object] | None,
         messages: list[BaseMessage],
-        event_bus: Any | None,
+        event_bus: EventBus | None,
         agent_name: str,
         execution_start: float,
         run_context: RunContext | None = None,
@@ -747,7 +749,7 @@ class NativeExecutor(BaseExecutor):
         interceptors: list[Interceptor] = getattr(self.agent, "_interceptors", [])
 
         # Shared state for interceptors across the execution
-        intercept_state: dict[str, Any] = {}
+        intercept_state: dict[str, object] = {}
 
         # Current tools (can be modified by ToolGate interceptors)
         current_tools = list(self.agent.all_tools) if self.agent.all_tools else []
@@ -761,7 +763,7 @@ class NativeExecutor(BaseExecutor):
         # Helper to create context for a phase
         def make_ctx(
             phase: Phase,
-            **extra: Any,
+            **extra: object,
         ) -> InterceptContext:
             return InterceptContext(
                 agent=self.agent,
@@ -1087,9 +1089,9 @@ class NativeExecutor(BaseExecutor):
 
     async def _execute_tools_with_interceptors(
         self,
-        tool_calls: list[dict[str, Any]],
+        tool_calls: list[dict[str, object]],
         interceptors: list[Interceptor],
-        make_ctx: Any,
+        make_ctx: Callable[..., InterceptContext],
         run_context: RunContext | None = None,
     ) -> list[ToolMessage]:
         """Execute tools with PRE_ACT/POST_ACT interceptor hooks.
@@ -1194,11 +1196,11 @@ class NativeExecutor(BaseExecutor):
     async def _execute_reasoning(
         self,
         task: str,
-        context: dict[str, Any] | None,
+        context: dict[str, object] | None,
         messages: list[BaseMessage],
-        event_bus: Any | None,
+        event_bus: EventBus | None,
         agent_name: str,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Execute reasoning phase before main loop.
 
         Performs a thinking phase where the agent analyzes the task,
@@ -1368,7 +1370,7 @@ class NativeExecutor(BaseExecutor):
 
     async def _execute_tools_parallel(
         self,
-        tool_calls: list[dict[str, Any]],
+        tool_calls: list[dict[str, object]],
         run_context: RunContext | None = None,
     ) -> list[ToolMessage]:
         """Execute all tool calls in parallel using asyncio.gather with concurrency limiting.
@@ -1412,7 +1414,7 @@ class NativeExecutor(BaseExecutor):
 
     async def _run_single_tool(
         self,
-        tool_call: dict[str, Any],
+        tool_call: dict[str, object],
         run_context: RunContext | None = None,
     ) -> ToolMessage:
         """Execute a single tool call.
@@ -1526,8 +1528,8 @@ class SequentialExecutor(NativeExecutor):
     async def execute(
         self,
         task: str,
-        context: dict[str, Any] | None = None,
-    ) -> Any:
+        context: dict[str, object] | None = None,
+    ) -> str:
         """Execute with sequential tool handling.
 
         Args:

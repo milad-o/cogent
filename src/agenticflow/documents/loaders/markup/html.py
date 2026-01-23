@@ -5,7 +5,6 @@ from __future__ import annotations
 import html
 import re
 from pathlib import Path
-from typing import Any
 
 from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
@@ -45,7 +44,7 @@ class HTMLLoader(BaseLoader):
             "header",
         ]
 
-    async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:
+    async def load(self, path: str | Path, **kwargs: object) -> list[Document]:
         """Load an HTML file.
 
         Args:

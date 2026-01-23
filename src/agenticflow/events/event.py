@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.core.utils import generate_id, now_utc
 
@@ -49,7 +49,7 @@ class Event:
     source: str = "system"
     """Who/what emitted this event."""
 
-    data: dict[str, Any] = field(default_factory=dict)
+    data: dict[str, object] = field(default_factory=dict)
     """Event payload."""
 
     id: str = field(default_factory=generate_id)
@@ -61,7 +61,7 @@ class Event:
     timestamp: datetime = field(default_factory=now_utc)
     """Event timestamp."""
 
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
     """Additional context (e.g., flow_id, thread_id)."""
 
     # -------------------------------------------------------------------------
@@ -73,10 +73,10 @@ class Event:
         cls,
         name: str,
         source: str = "system",
-        data: dict[str, Any] | None = None,
+        data: dict[str, object] | None = None,
         *,
         correlation_id: str | None = None,
-        metadata: dict[str, Any] | None = None,
+        metadata: dict[str, object] | None = None,
     ) -> Event:
         """Create an event with optional parameters."""
         return cls(
@@ -94,7 +94,7 @@ class Event:
         output: str,
         *,
         correlation_id: str | None = None,
-        **extra_data: Any,
+        **extra_data: object,
     ) -> Event:
         """Create an 'agent.done' event for successful completion."""
         return cls(
@@ -112,10 +112,10 @@ class Event:
         *,
         correlation_id: str | None = None,
         exception: Exception | None = None,
-        **extra_data: Any,
+        **extra_data: object,
     ) -> Event:
         """Create an 'agent.error' event for failures."""
-        data: dict[str, Any] = {"error": error, **extra_data}
+        data: dict[str, object] = {"error": error, **extra_data}
         if exception:
             data["exception_type"] = type(exception).__name__
         return cls(
@@ -132,7 +132,7 @@ class Event:
         source: str = "user",
         *,
         correlation_id: str | None = None,
-        **extra_data: Any,
+        **extra_data: object,
     ) -> Event:
         """Create a 'task.created' event to start a flow."""
         return cls(
@@ -145,7 +145,7 @@ class Event:
     @classmethod
     def from_response(
         cls,
-        response: Response[Any],
+        response: Response[object],
         name: str,
         source: str,
         *,
@@ -176,7 +176,7 @@ class Event:
             ```
         """
         # Build event data from response
-        event_data: dict[str, Any] = {
+        event_data: dict[str, object] = {
             "content": response.content,
             "success": response.success,
         }
@@ -189,7 +189,7 @@ class Event:
             }
 
         # Build event metadata from response metadata
-        event_metadata: dict[str, Any] = {}
+        event_metadata: dict[str, object] = {}
         if include_metadata and response.metadata:
             event_metadata["response_metadata"] = {
                 "model": response.metadata.model,
@@ -231,7 +231,7 @@ class Event:
             metadata=self.metadata,
         )
 
-    def with_metadata(self, **kwargs: Any) -> Event:
+    def with_metadata(self, **kwargs: object) -> Event:
         """Return a copy with additional metadata."""
         return Event(
             name=self.name,
@@ -243,7 +243,7 @@ class Event:
             metadata={**self.metadata, **kwargs},
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize event to dictionary."""
         return {
             "name": self.name,
@@ -256,7 +256,7 @@ class Event:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> Event:
+    def from_dict(cls, d: dict[str, object]) -> Event:
         """Deserialize event from dictionary."""
         timestamp = d.get("timestamp")
         if isinstance(timestamp, str):
