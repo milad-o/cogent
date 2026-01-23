@@ -21,7 +21,6 @@ from agenticflow.documents.splitters import (
     SentenceSplitter,
     split_text,
 )
-from agenticflow.documents.types import Document
 from agenticflow.models import MockEmbedding
 from agenticflow.retriever.base import (
     BaseRetriever,
