@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from agenticflow.events.event import Event
 from agenticflow.flow.state import CoordinationState
@@ -234,7 +234,7 @@ class SourceFilter:
         )
         ```
     """
-    
+
     def __init__(self, predicate: Callable[[Event], bool]) -> None:
         """Initialize source filter.
         
@@ -242,7 +242,7 @@ class SourceFilter:
             predicate: Function that takes Event and returns bool.
         """
         self._predicate = predicate
-    
+
     def __call__(self, event: Event) -> bool:
         """Evaluate filter on event.
         
@@ -253,7 +253,7 @@ class SourceFilter:
             True if event passes filter, False otherwise.
         """
         return self._predicate(event)
-    
+
     def __and__(self, other: Callable[[Event], bool]) -> SourceFilter:
         """Combine filters with AND logic.
         
@@ -264,7 +264,7 @@ class SourceFilter:
             New filter that passes only if both filters pass.
         """
         return SourceFilter(lambda e: self(e) and other(e))
-    
+
     def __or__(self, other: Callable[[Event], bool]) -> SourceFilter:
         """Combine filters with OR logic.
         
@@ -275,7 +275,7 @@ class SourceFilter:
             New filter that passes if either filter passes.
         """
         return SourceFilter(lambda e: self(e) or other(e))
-    
+
     def __invert__(self) -> SourceFilter:
         """Negate the filter (NOT logic).
         
@@ -283,7 +283,7 @@ class SourceFilter:
             New filter that passes when this filter fails.
         """
         return SourceFilter(lambda e: not self(e))
-    
+
     def __repr__(self) -> str:
         return f"SourceFilter({self._predicate!r})"
 
@@ -324,7 +324,7 @@ def from_source(source: str | list[str], flow: Any = None) -> SourceFilter:
         ```
     """
     from fnmatch import fnmatch
-    
+
     # Handle group reference
     if isinstance(source, str) and source.startswith(":"):
         if flow is None:
@@ -339,7 +339,7 @@ def from_source(source: str | list[str], flow: Any = None) -> SourceFilter:
             return SourceFilter(lambda e: False)
         # Convert to OR filter for all sources in group
         return SourceFilter(lambda e: e.source in sources)
-    
+
     if isinstance(source, str):
         # Wildcard pattern
         if "*" in source or "?" in source:
@@ -442,7 +442,7 @@ class StatefulSourceFilter(SourceFilter):
         flow.register(reducer, on="task.done", when=coordination)
         ```
     """
-    
+
     def __init__(
         self,
         sources: frozenset[str],
@@ -456,16 +456,16 @@ class StatefulSourceFilter(SourceFilter):
         """
         self._sources = sources
         self._timeout = timeout
-        
+
         # Create internal coordination state
         self._state = CoordinationState(
             required_sources=sources,
             timeout_at=None  # Timeout support is future work
         )
-        
+
         # Predicate that checks coordination completion
         super().__init__(self._check_coordination)
-    
+
     def _check_coordination(self, event: Event) -> bool:
         """Check if this event completes the coordination.
         
@@ -480,13 +480,13 @@ class StatefulSourceFilter(SourceFilter):
         """
         # Add source and check if coordination complete
         completed = self._state.add_source(event.source)
-        
+
         # Always auto-reset after completion
         if completed:
             self._state.reset()
-        
+
         return completed
-    
+
     def reset(self) -> None:
         """Manually reset coordination state.
         
@@ -501,22 +501,22 @@ class StatefulSourceFilter(SourceFilter):
             ```
         """
         self._state.reset()
-    
+
     @property
     def completed(self) -> bool:
         """Check if coordination is currently completed."""
         return self._state.completed
-    
+
     @property
     def seen_sources(self) -> set[str]:
         """Get set of sources that have emitted so far."""
         return self._state.seen_sources.copy()
-    
+
     @property
     def remaining_sources(self) -> set[str]:
         """Get set of sources that haven't emitted yet."""
         return set(self._state.required_sources - self._state.seen_sources)
-    
+
     def once(self) -> SourceFilter:
         """Return a one-time version of this filter.
         
@@ -538,7 +538,7 @@ class StatefulSourceFilter(SourceFilter):
             ```
         """
         return OneTimeFilter(self)
-    
+
     def __repr__(self) -> str:
         sources_str = ", ".join(sorted(self._sources))
         return f"StatefulSourceFilter(sources=[{sources_str}])"
@@ -559,7 +559,7 @@ class OneTimeFilter(SourceFilter):
         # All subsequent times: False (even if coordination completes again)
         ```
     """
-    
+
     def __init__(self, wrapped: SourceFilter) -> None:
         """Initialize one-time filter.
         
@@ -569,7 +569,7 @@ class OneTimeFilter(SourceFilter):
         self._wrapped = wrapped
         self._triggered = False
         super().__init__(self._check_once)
-    
+
     def _check_once(self, event: Event) -> bool:
         """Check wrapped filter, but only trigger once.
         
@@ -581,13 +581,13 @@ class OneTimeFilter(SourceFilter):
         """
         if self._triggered:
             return False
-        
+
         if self._wrapped(event):
             self._triggered = True
             return True
-        
+
         return False
-    
+
     def reset(self) -> None:
         """Reset to allow triggering again.
         
@@ -596,12 +596,12 @@ class OneTimeFilter(SourceFilter):
         self._triggered = False
         if hasattr(self._wrapped, 'reset'):
             self._wrapped.reset()
-    
+
     @property
     def triggered(self) -> bool:
         """Check if this filter has already triggered."""
         return self._triggered
-    
+
     def __repr__(self) -> str:
         return f"OneTimeFilter({self._wrapped!r})"
 
@@ -685,7 +685,7 @@ def all_sources(
     """
     if not sources:
         raise ValueError("all_sources() requires at least one source")
-    
+
     return StatefulSourceFilter(
         sources=frozenset(sources),
         timeout=timeout

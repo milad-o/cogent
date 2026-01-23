@@ -146,7 +146,7 @@ class TestGroupReferencesInPatterns:
         # Check patterns extracted correctly
         binding = flow._bindings[0]
         assert "*.done" in binding.patterns
-        
+
         # Check source filter in condition
         assert binding.condition(Event(name="task.done", source="alice")) is True
         assert binding.condition(Event(name="job.done", source="bob")) is True
@@ -163,11 +163,11 @@ class TestGroupReferencesInPatterns:
         flow.register(lambda e: None, on=["task.done@:writers", "review.done@:reviewers"])
 
         binding = flow._bindings[0]
-        
+
         # Check patterns extracted correctly
         assert "task.done" in binding.patterns
         assert "review.done" in binding.patterns
-        
+
         # Check combined source filter (OR logic)
         # Filter should match writers OR reviewers
         assert binding.condition(Event(name="task.done", source="w1")) is True

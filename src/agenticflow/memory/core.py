@@ -457,7 +457,7 @@ class Memory:
             messages_key = f"thread:{thread_id}:_messages"
         else:
             messages_key = "_messages"
-        
+
         async with self._lock:
             messages = await self.recall(messages_key, [])
             messages.append(_message_to_dict(message))
@@ -481,7 +481,7 @@ class Memory:
             messages_key = f"thread:{thread_id}:_messages"
         else:
             messages_key = "_messages"
-        
+
         raw = await self.recall(messages_key, [])
 
         messages = [_dict_to_message(m) for m in raw]

@@ -2,17 +2,16 @@
 Tests for core enums and utilities.
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from agenticflow.core.enums import (
-    TaskStatus,
+    AgentRole,
     AgentStatus,
     Priority,
-    AgentRole,
+    TaskStatus,
 )
-from agenticflow.observability.trace_record import TraceType
 from agenticflow.core.utils import generate_id, now_utc, truncate_string
+from agenticflow.observability.trace_record import TraceType
 
 
 class TestTaskStatus:
@@ -172,7 +171,7 @@ class TestNowUtc:
 
     def test_is_utc(self) -> None:
         result = now_utc()
-        assert result.tzinfo == timezone.utc
+        assert result.tzinfo == UTC
 
 
 class TestTruncateString:

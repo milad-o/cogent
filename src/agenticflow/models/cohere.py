@@ -16,13 +16,13 @@ Usage:
 from __future__ import annotations
 
 import json
-import os
 import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -30,7 +30,6 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
-from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _schema_to_parameter_definitions(schema: dict[str, Any]) -> dict[str, Any]:
@@ -82,7 +81,7 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 def _parse_response(response: Any) -> AIMessage:
     """Parse Cohere chat response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     tool_calls: list[dict[str, Any]] = []
     content_parts: list[str] = []
 
@@ -114,7 +113,7 @@ def _parse_response(response: Any) -> AIMessage:
             })
 
     content = "".join(content_parts) if content_parts else ""
-    
+
     metadata = MessageMetadata(
         model=response.response_id if hasattr(response, 'response_id') else None,
         tokens=TokenUsage(
@@ -125,7 +124,7 @@ def _parse_response(response: Any) -> AIMessage:
         finish_reason=response.finish_reason if hasattr(response, 'finish_reason') else None,
         response_id=response.response_id if hasattr(response, 'response_id') else None,
     )
-    
+
     return AIMessage(content=content, tool_calls=tool_calls, metadata=metadata)
 
 
@@ -210,7 +209,7 @@ class CohereChat(BaseChatModel):
         """
         self._ensure_initialized()
         kwargs = self._build_request(normalize_input(messages))
-        
+
         start_time = time.time()
         chunk_metadata = {
             "id": None,
@@ -218,9 +217,9 @@ class CohereChat(BaseChatModel):
             "finish_reason": None,
             "usage": None,
         }
-        
+
         stream = self._async_client.chat_stream(**kwargs)
-        
+
         async for event in stream:
             # Handle different event types
             if event.type == 'content-delta':
@@ -238,7 +237,7 @@ class CohereChat(BaseChatModel):
                                 duration=time.time() - start_time,
                             )
                             yield AIMessage(content=text, metadata=metadata)
-            
+
             elif event.type == 'message-end':
                 if hasattr(event, 'delta'):
                     if hasattr(event.delta, 'finish_reason'):
@@ -275,11 +274,11 @@ class CohereChat(BaseChatModel):
             kwargs["max_tokens"] = self.max_tokens
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
-        
+
         # Structured output support (if configured)
         if hasattr(self, "_response_format") and self._response_format:
             kwargs["response_format"] = self._response_format
-        
+
         return kwargs
 
 
@@ -310,13 +309,18 @@ class CohereEmbedding(BaseEmbedding):
         """Embed texts synchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         response = self._client.embed(model=self.model, texts=texts, input_type="search_document")
         embeddings = getattr(response, "embeddings", None) or getattr(response, "data", None)
         vectors = [list(vec) for vec in embeddings] if embeddings else []
-        
+
         # Cohere response may have meta with billed_units
         tokens = None
         if hasattr(response, 'meta') and hasattr(response.meta, 'billed_units'):
@@ -326,7 +330,7 @@ class CohereEmbedding(BaseEmbedding):
                     completion_tokens=0,
                     total_tokens=response.meta.billed_units.input_tokens,
                 )
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=tokens,
@@ -334,20 +338,25 @@ class CohereEmbedding(BaseEmbedding):
             dimensions=len(vectors[0]) if vectors else self.dimension,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
         """Embed texts asynchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         response = await self._async_client.embed(model=self.model, texts=texts, input_type="search_document")
         embeddings = getattr(response, "embeddings", None) or getattr(response, "data", None)
         vectors = [list(vec) for vec in embeddings] if embeddings else []
-        
+
         # Cohere response may have meta with billed_units
         tokens = None
         if hasattr(response, 'meta') and hasattr(response.meta, 'billed_units'):
@@ -357,7 +366,7 @@ class CohereEmbedding(BaseEmbedding):
                     completion_tokens=0,
                     total_tokens=response.meta.billed_units.input_tokens,
                 )
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=tokens,
@@ -365,7 +374,7 @@ class CohereEmbedding(BaseEmbedding):
             dimensions=len(vectors[0]) if vectors else self.dimension,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
     @property

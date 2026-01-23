@@ -21,17 +21,21 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import sys
 from pathlib import Path
 from typing import Any
 
-from agenticflow.models import OpenAIEmbedding
 from agenticflow.agent import Agent
 from agenticflow.documents.loaders import PDFMarkdownLoader
 from agenticflow.documents.splitters import RecursiveCharacterSplitter
+from agenticflow.models import OpenAIEmbedding
 from agenticflow.observability.bus import EventBus
 from agenticflow.observability.event import EventType
-from agenticflow.retriever import BM25Retriever, DenseRetriever, EnsembleRetriever, SummaryIndex
+from agenticflow.retriever import (
+    BM25Retriever,
+    DenseRetriever,
+    EnsembleRetriever,
+    SummaryIndex,
+)
 from agenticflow.tools.base import BaseTool
 from agenticflow.vectorstore import Document, VectorStore
 

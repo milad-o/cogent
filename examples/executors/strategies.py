@@ -16,13 +16,10 @@ Requires:
 """
 
 import asyncio
-import sys
 import time
-from pathlib import Path
-
 
 from agenticflow import Agent
-from agenticflow.executors import NativeExecutor, SequentialExecutor
+from agenticflow.executors import SequentialExecutor
 from agenticflow.tools import tool
 
 # Import from examples config
@@ -43,7 +40,7 @@ def calculate(expression: str) -> str:
         # Safe eval for simple math
         allowed = set("0123456789+-*/().% ")
         if not all(c in allowed for c in expression):
-            return f"Error: Invalid characters in expression"
+            return "Error: Invalid characters in expression"
         result = eval(expression)
         return f"{expression} = {result}"
     except Exception as e:
@@ -96,9 +93,9 @@ async def demo_native():
     print("\\n" + "=" * 60)
     print("🚀 NATIVE Executor (Parallel - Default)")
     print("=" * 60)
-    
+
     model = "gpt4"
-    
+
     # By default, Agent uses NativeExecutor (parallel tool execution)
     agent = Agent(
         name="NativeAgent",
@@ -106,7 +103,7 @@ async def demo_native():
         tools=[calculate, get_weather, search_database],
         instructions="You are a helpful assistant. Use tools when appropriate.",
     )
-    
+
     task = """
     I need you to:
     1. Calculate 25 * 4
@@ -115,11 +112,11 @@ async def demo_native():
     
     Give me a summary of all results.
     """
-    
+
     start = time.time()
     result = await agent.run(task)
     elapsed = time.time() - start
-    
+
     print(f"\\n📊 Result:\\n{result}")
     print(f"\\n⏱️  Time: {elapsed:.2f}s (tools run in PARALLEL)")
 
@@ -129,9 +126,9 @@ async def demo_sequential():
     print("\\n" + "=" * 60)
     print("📋 SEQUENTIAL Executor (Ordered Execution)")
     print("=" * 60)
-    
+
     model = "gpt4"
-    
+
     # Create agent
     agent = Agent(
         name="SequentialAgent",
@@ -139,10 +136,10 @@ async def demo_sequential():
         tools=[calculate, get_weather, search_database],
         instructions="You are a helpful assistant. Use tools when appropriate.",
     )
-    
+
     # Use SequentialExecutor directly for ordered execution
     executor = SequentialExecutor(agent)
-    
+
     task = """
     I need you to:
     1. Calculate 25 * 4
@@ -151,11 +148,11 @@ async def demo_sequential():
     
     Give me a summary of all results.
     """
-    
+
     start = time.time()
     result = await executor.execute(task)
     elapsed = time.time() - start
-    
+
     print(f"\\n📊 Result:\\n{result}")
     print(f"\\n⏱️  Time: {elapsed:.2f}s (tools run SEQUENTIALLY)")
 
@@ -165,13 +162,13 @@ async def main():
     print("\\n" + "🎯 " * 20)
     print("AGENTICFLOW EXECUTION STRATEGIES DEMO")
     print("🎯 " * 20)
-    
+
     # Uses LLM_PROVIDER from examples/.env
-    
+
     # Run demos
     await demo_native()
     await demo_sequential()
-    
+
     print("\\n" + "=" * 60)
     print("✅ Demo Complete!")
     print("=" * 60)

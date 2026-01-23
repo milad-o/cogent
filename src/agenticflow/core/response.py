@@ -15,7 +15,6 @@ The Response[T] generic container ensures:
 from __future__ import annotations
 
 import time
-import traceback
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 

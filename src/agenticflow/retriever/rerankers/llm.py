@@ -14,9 +14,9 @@ from agenticflow.retriever.rerankers.base import BaseReranker
 from agenticflow.retriever.utils.llm_adapter import adapt_llm
 
 if TYPE_CHECKING:
+    from agenticflow.core import Document
     from agenticflow.models import Model
     from agenticflow.retriever.utils.llm_adapter import LLMProtocol
-    from agenticflow.core import Document
 
 
 # Default prompt for relevance scoring

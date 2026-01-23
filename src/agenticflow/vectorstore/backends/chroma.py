@@ -154,7 +154,7 @@ class ChromaBackend:
                 from agenticflow.core import DocumentMetadata
                 metadata = DocumentMetadata.from_dict(metadata_dict)
                 metadata.id = doc_id  # Override with stored ID
-                
+
                 doc = Document(
                     text=text,
                     metadata=metadata,
@@ -222,7 +222,7 @@ class ChromaBackend:
                 # Recreate DocumentMetadata from stored dict
                 metadata = DocumentMetadata.from_dict(metadata_dict)
                 metadata.id = doc_id  # Override with stored ID
-                
+
                 documents.append(Document(
                     text=text,
                     metadata=metadata,

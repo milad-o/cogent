@@ -75,15 +75,6 @@ from __future__ import annotations
 
 from typing import Any
 
-# Base classes and utilities
-from agenticflow.models.base import (
-    AIMessage,
-    BaseChatModel,
-    BaseEmbedding,
-    convert_messages,
-    normalize_input,
-)
-
 # Message types and metadata
 from agenticflow.core.messages import (
     BaseMessage,
@@ -98,24 +89,33 @@ from agenticflow.core.messages import (
 
 # All provider models
 from agenticflow.models.anthropic import AnthropicChat
+
+# Base classes and utilities
+from agenticflow.models.base import (
+    AIMessage,
+    BaseChatModel,
+    BaseEmbedding,
+    convert_messages,
+    normalize_input,
+)
 from agenticflow.models.cloudflare import CloudflareChat, CloudflareEmbedding
 from agenticflow.models.cohere import CohereChat, CohereEmbedding
 from agenticflow.models.gemini import GeminiChat, GeminiEmbedding
 from agenticflow.models.groq import GroqChat
-from agenticflow.models.ollama import OllamaChat, OllamaEmbedding
 
 # Mock models for testing
 from agenticflow.models.mock import MockChatModel, MockEmbedding
+from agenticflow.models.ollama import OllamaChat, OllamaEmbedding
 
 # Default models (OpenAI)
 from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
 
 # Model registry for high-level API
 from agenticflow.models.registry import (
-    resolve_model,
-    resolve_and_create_model,
-    list_model_aliases,
     get_provider_for_model,
+    list_model_aliases,
+    resolve_and_create_model,
+    resolve_model,
 )
 
 # Aliases for convenience
@@ -260,14 +260,14 @@ def create_chat(
 
         provider_resolved, model = resolve_model(provider)
         provider = provider_resolved
-    
+
     # Auto-load API key from config if not provided
     if "api_key" not in kwargs:
         from agenticflow.config import get_api_key
         api_key = get_api_key(provider, kwargs.get("api_key"))
         if api_key:
             kwargs["api_key"] = api_key
-    
+
     provider_lower = provider.lower()
     if model is None:
         from agenticflow.config import get_model_override
@@ -415,7 +415,7 @@ def create_embedding(
 
         provider_resolved, model = resolve_model(provider)
         provider = provider_resolved
-    
+
     provider = provider.lower()
 
     if provider == "openai":

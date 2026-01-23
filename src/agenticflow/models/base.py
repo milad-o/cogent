@@ -14,7 +14,7 @@ from enum import Enum
 from typing import Any
 
 # Import AIMessage from core messages - single source of truth
-from agenticflow.core.messages import AIMessage, EmbeddingMetadata, EmbeddingResult
+from agenticflow.core.messages import AIMessage, EmbeddingResult
 
 
 def normalize_input(messages: str | list[Any]) -> list[Any]:

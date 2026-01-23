@@ -4,7 +4,7 @@ ETL Pipeline Runner.
 Orchestrates the ETL process using components from etl.py.
 """
 
-from etl import DataExtractor, DataTransformer, DataLoader
+from etl import DataExtractor, DataLoader, DataTransformer
 
 
 class ETLPipeline:

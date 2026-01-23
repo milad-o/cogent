@@ -1,11 +1,19 @@
 """Tests for flow pattern helpers."""
 
-import pytest
 from unittest.mock import MagicMock
 
-from agenticflow.flow.patterns import pipeline, supervisor, mesh
-from agenticflow.flow.patterns import chain, coordinator, collaborative, brainstorm
+import pytest
+
 from agenticflow.flow.core import Flow
+from agenticflow.flow.patterns import (
+    brainstorm,
+    chain,
+    collaborative,
+    coordinator,
+    mesh,
+    pipeline,
+    supervisor,
+)
 
 
 def make_mock_agent(name: str) -> MagicMock:

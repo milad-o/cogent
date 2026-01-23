@@ -15,12 +15,12 @@ Run: uv run python examples/basics/structured_output.py
 
 import asyncio
 from dataclasses import dataclass
-from pydantic import BaseModel, Field
 from typing import Literal
 
-from agenticflow import Agent
-from agenticflow.agent.output import ResponseSchema, OutputMethod
+from pydantic import BaseModel, Field
 
+from agenticflow import Agent
+from agenticflow.agent.output import OutputMethod, ResponseSchema
 
 # =============================================================================
 # Example 1: Simple Extraction with Pydantic
@@ -28,7 +28,7 @@ from agenticflow.agent.output import ResponseSchema, OutputMethod
 
 class ContactInfo(BaseModel):
     """Contact information extracted from text."""
-    
+
     name: str = Field(description="Person's full name")
     email: str = Field(description="Email address")
     phone: str | None = Field(None, description="Phone number if available")
@@ -40,25 +40,25 @@ async def example_contact_extraction():
     print("=" * 60)
     print("Example 1: Contact Extraction with Pydantic")
     print("=" * 60)
-    
+
     agent = Agent(
         name="ContactExtractor",
         model="gpt4",
         output=ContactInfo,  # Enforce this schema
         instructions="You are an expert at extracting contact information from text.",
     )
-    
+
     # Test texts
     texts = [
         "Hi, I'm John Doe from Acme Corp. You can reach me at john.doe@acme.com or call 555-123-4567.",
         "Contact Sarah at sarah@startup.io for more details.",
         "The manager, Bob Smith (bob@bigco.com), will be in touch.",
     ]
-    
+
     for text in texts:
         print(f"\nInput: {text}")
         result = await agent.run(f"Extract contact info: {text}")
-        
+
         if result.valid:
             contact = result.data
             print(f"  Name: {contact.name}")
@@ -75,7 +75,7 @@ async def example_contact_extraction():
 
 class SentimentAnalysis(BaseModel):
     """Sentiment analysis result."""
-    
+
     sentiment: Literal["positive", "negative", "neutral"]
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score 0-1")
     key_phrases: list[str] = Field(description="Key phrases that indicate sentiment")
@@ -87,24 +87,24 @@ async def example_sentiment_analysis():
     print("\n" + "=" * 60)
     print("Example 2: Sentiment Analysis with Enum")
     print("=" * 60)
-    
+
     agent = Agent(
         name="SentimentAnalyzer",
         model="gpt4",
         output=SentimentAnalysis,
         instructions="You are an expert sentiment analyst. Analyze the sentiment of the given text.",
     )
-    
+
     reviews = [
         "This product is absolutely amazing! Best purchase I've ever made.",
         "Terrible experience. The item broke after one day. Waste of money.",
         "It's okay, nothing special. Does what it says but nothing more.",
     ]
-    
+
     for review in reviews:
         print(f"\nReview: {review[:50]}...")
         result = await agent.run(f"Analyze sentiment: {review}")
-        
+
         if result.valid:
             analysis = result.data
             print(f"  Sentiment: {analysis.sentiment} ({analysis.confidence:.0%} confidence)")
@@ -119,7 +119,7 @@ async def example_sentiment_analysis():
 @dataclass
 class MeetingAction:
     """Action item from a meeting."""
-    
+
     task: str
     assignee: str
     priority: str  # high, medium, low
@@ -131,24 +131,24 @@ async def example_meeting_actions():
     print("\n" + "=" * 60)
     print("Example 3: Meeting Actions with Dataclass")
     print("=" * 60)
-    
+
     agent = Agent(
         name="ActionExtractor",
         model="gpt4",
         output=MeetingAction,
         instructions="Extract the most important action item from meeting notes.",
     )
-    
+
     meeting_notes = """
     Team sync call notes:
     - John needs to update the project timeline by Friday
     - Sarah will prepare the Q4 budget report (urgent!)
     - Bob to schedule client demo next week
     """
-    
+
     print(f"Meeting notes: {meeting_notes[:80]}...")
     result = await agent.run(f"Extract key action: {meeting_notes}")
-    
+
     if result.valid:
         action = result.data
         print(f"\n  Task: {action.task}")
@@ -163,7 +163,7 @@ async def example_meeting_actions():
 
 class ProductReview(BaseModel):
     """Validated product review."""
-    
+
     rating: int = Field(ge=1, le=5, description="Rating from 1 to 5 stars")
     title: str = Field(max_length=100, description="Short review title")
     pros: list[str] = Field(description="List of positive points")
@@ -176,7 +176,7 @@ async def example_advanced_config():
     print("\n" + "=" * 60)
     print("Example 4: Advanced Config with Validation Retry")
     print("=" * 60)
-    
+
     # Full control over structured output behavior
     config = ResponseSchema(
         schema=ProductReview,
@@ -185,14 +185,14 @@ async def example_advanced_config():
         max_retries=2,             # Up to 2 retries
         include_raw=True,          # Include raw response in result
     )
-    
+
     agent = Agent(
         name="ReviewAnalyzer",
         model="gpt4",
         output=config,
         instructions="Parse product reviews into structured format. Be precise with ratings.",
     )
-    
+
     review_text = """
     Amazing headphones! 10/10 would buy again.
     
@@ -207,13 +207,13 @@ async def example_advanced_config():
     
     Overall: Definitely recommend these to anyone!
     """
-    
+
     print(f"Review: {review_text[:60]}...")
     result = await agent.run(f"Parse this review: {review_text}")
-    
+
     print(f"\n  Attempts: {result.attempts}")
     print(f"  Valid: {result.valid}")
-    
+
     if result.valid:
         review = result.data
         print(f"  Rating: {'⭐' * review.rating}")
@@ -221,7 +221,7 @@ async def example_advanced_config():
         print(f"  Pros: {', '.join(review.pros)}")
         print(f"  Cons: {', '.join(review.cons)}")
         print(f"  Recommends: {'Yes' if review.recommendation else 'No'}")
-    
+
     if result.raw:
         print(f"\n  Raw output preview: {result.raw[:100]}...")
 
@@ -235,7 +235,7 @@ async def example_json_schema():
     print("\n" + "=" * 60)
     print("Example 5: Dynamic JSON Schema")
     print("=" * 60)
-    
+
     # Define schema as JSON Schema dict (useful for dynamic schemas)
     event_schema = {
         "type": "object",
@@ -253,19 +253,19 @@ async def example_json_schema():
         },
         "required": ["title", "date", "time"],
     }
-    
+
     agent = Agent(
         name="CalendarParser",
         model="gpt4",
         output=event_schema,
         instructions="Extract calendar event details from natural language.",
     )
-    
+
     text = "Let's have a team lunch tomorrow at noon for about an hour. Invite Alice, Bob, and Carol."
-    
+
     print(f"Input: {text}")
     result = await agent.run(f"Parse event: {text}")
-    
+
     if result.valid:
         event = result.data
         print(f"\n  Event: {event}")
@@ -278,13 +278,13 @@ async def example_json_schema():
 async def main():
     """Run all examples."""
     print("\n🔧 AgenticFlow Structured Output Examples\n")
-    
+
     await example_contact_extraction()
     await example_sentiment_analysis()
     await example_meeting_actions()
     await example_advanced_config()
     await example_json_schema()
-    
+
     print("\n" + "=" * 60)
     print("✅ All examples completed!")
     print("=" * 60)

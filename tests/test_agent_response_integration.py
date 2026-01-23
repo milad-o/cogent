@@ -5,7 +5,6 @@ import pytest
 from agenticflow.agent import Agent
 from agenticflow.core import Response
 from agenticflow.models.mock import MockChatModel
-from agenticflow.tools import tool
 
 
 class TestAgentResponseIntegration:
@@ -145,11 +144,11 @@ class TestAgentResponseIntegration:
 
         # Should have system prompt, user message, and AI response
         assert len(response.messages) >= 2
-        
+
         # Check message types
         has_user_msg = any(hasattr(m, 'role') and m.role == 'user' for m in response.messages)
         has_ai_msg = any(hasattr(m, 'role') and m.role == 'assistant' for m in response.messages)
-        
+
         assert has_user_msg, "Should have user message"
         assert has_ai_msg, "Should have AI message"
 

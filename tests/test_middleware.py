@@ -1,20 +1,20 @@
 """Tests for middleware implementations."""
 
-import pytest
 import time
-from datetime import datetime
 from unittest.mock import MagicMock
+
+import pytest
 
 from agenticflow.events import Event
 from agenticflow.middleware import (
     BaseMiddleware,
-    MiddlewareChain,
     LoggingMiddleware,
-    VerboseMiddleware,
+    MiddlewareChain,
     RetryMiddleware,
+    Span,
     TimeoutMiddleware,
     TracingMiddleware,
-    Span,
+    VerboseMiddleware,
 )
 
 

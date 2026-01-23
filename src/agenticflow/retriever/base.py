@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, overload, runtime_chec
 from agenticflow.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from agenticflow.observability.bus import TraceBus
     from agenticflow.core import Document
+    from agenticflow.observability.bus import TraceBus
 
 
 class FusionStrategy(Enum):

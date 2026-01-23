@@ -138,10 +138,10 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
                         score = f"(relevance: {result.score:.2f})" if hasattr(result, 'score') else ""
                         lines.append(f"- {content} {score}")
                     return "Found (semantic search):\n" + "\n".join(lines)
-            except Exception as e:
+            except Exception:
                 # Fall back to keyword search if semantic fails
                 pass
-        
+
         # Fallback: keyword search over long-term facts
         keys = await memory.keys()
         if not keys:
@@ -200,26 +200,26 @@ def _create_search_conversation_tool(memory: Memory) -> BaseTool:
         """
         # Get current thread_id from memory context
         thread_id = getattr(memory, '_current_thread_id', None)
-        
+
         # Get conversation messages
         messages = await memory.get_messages(thread_id=thread_id)
-        
+
         if not messages:
             return "No conversation history found."
-        
+
         # If vectorstore available, use semantic search
         if memory.vectorstore:
             try:
                 # Search through message content
                 query_lower = query.lower()
                 relevant_messages = []
-                
+
                 for msg in messages:
                     content = msg.content if hasattr(msg, 'content') else str(msg)
                     # Simple relevance check (could be enhanced with embeddings)
                     if query_lower in content.lower():
                         relevant_messages.append(content)
-                
+
                 if relevant_messages:
                     results = relevant_messages[:max_results]
                     return "Relevant messages from conversation:\n" + "\n---\n".join(results)
@@ -227,7 +227,7 @@ def _create_search_conversation_tool(memory: Memory) -> BaseTool:
                     return f"No relevant conversation found for: {query}"
             except Exception:
                 pass
-        
+
         # Fallback: return recent messages
         recent = messages[-max_results:]
         lines = []
@@ -235,9 +235,9 @@ def _create_search_conversation_tool(memory: Memory) -> BaseTool:
             content = msg.content if hasattr(msg, 'content') else str(msg)
             role = getattr(msg, 'role', 'unknown')
             lines.append(f"[{role}] {content[:150]}")
-        
+
         return "Recent conversation context:\n" + "\n".join(lines)
-    
+
     return BaseTool(
         name="search_conversation",
         description="""Search through conversation history for relevant context.

@@ -15,7 +15,7 @@ from agenticflow.graph.backends import (
     GraphvizBackend,
     MermaidBackend,
 )
-from agenticflow.graph.config import GraphConfig, GraphDirection, GraphTheme
+from agenticflow.graph.config import GraphConfig
 from agenticflow.graph.primitives import (
     ClassDef,
     Edge,
@@ -24,12 +24,10 @@ from agenticflow.graph.primitives import (
     Node,
     NodeShape,
     NodeStyle,
-    Subgraph,
 )
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
-    from agenticflow.flow import Flow
 
 
 # Standard role styles (4-role system)
@@ -335,7 +333,7 @@ class GraphView:
             ipy_display(self)
         except ImportError:
             print("IPython not available. Use .html() or .mermaid() instead.")
-    
+
     def render(self, format: str = "auto") -> str | bytes:
         """High-level rendering method with auto-detection.
         
@@ -384,12 +382,12 @@ class GraphView:
         """
         mermaid_code = self.mermaid()
         title = self._config.title if self._config and self._config.title else ""
-        
+
         if title:
             return f"### {title}\n\n```mermaid\n{mermaid_code}\n```"
         else:
             return f"```mermaid\n{mermaid_code}\n```"
-    
+
     def _repr_html_(self) -> str:
         """IPython/Jupyter HTML representation."""
         return self.html()

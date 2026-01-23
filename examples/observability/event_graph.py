@@ -5,10 +5,7 @@ Demonstrates how to use observer.event_graph() to visualize event-driven flows.
 """
 
 import asyncio
-import sys
 from pathlib import Path
-
-
 
 from agenticflow import Agent
 from agenticflow.flow import Flow
@@ -22,20 +19,20 @@ async def demo_basic_graph() -> None:
     print("=" * 80)
 
     model = "gpt4"
-    
+
     # Create agents
     classifier = Agent(
         name="Classifier",
         model="gpt4",
         system_prompt="Classify the task type.",
     )
-    
+
     processor = Agent(
         name="Processor",
         model="gpt4",
         system_prompt="Process the classified task.",
     )
-    
+
     finalizer = Agent(
         name="Finalizer",
         model="gpt4",
@@ -44,7 +41,7 @@ async def demo_basic_graph() -> None:
 
     observer = Observer.trace()
     flow = Flow(observer=observer)
-    
+
     flow.register(classifier, on="task.created", emits="task.classified")
     flow.register(processor, on="task.classified", emits="processing.done")
     flow.register(finalizer, on="processing.done", emits="flow.done")
@@ -66,13 +63,13 @@ async def demo_graph_with_timing() -> None:
     print("=" * 80)
 
     model = "gpt4"
-    
+
     researcher = Agent(
         name="Researcher",
         model="gpt4",
         system_prompt="Research the topic briefly.",
     )
-    
+
     writer = Agent(
         name="Writer",
         model="gpt4",
@@ -81,7 +78,7 @@ async def demo_graph_with_timing() -> None:
 
     observer = Observer.trace()
     flow = Flow(observer=observer)
-    
+
     flow.register(researcher, on="research.start", emits="research.done")
     flow.register(writer, on="research.done", emits="flow.done")
 
@@ -102,26 +99,26 @@ async def demo_complex_flow() -> None:
     print("=" * 80)
 
     model = "gpt4"
-    
+
     # Router that determines priority
     router = Agent(
         name="Router",
         model="gpt4",
         system_prompt="Determine if task is urgent (mention of 'critical', 'urgent', 'emergency') or normal priority. Respond with just 'urgent' or 'normal'.",
     )
-    
+
     urgent_handler = Agent(
         name="UrgentHandler",
         model="gpt4",
         system_prompt="Handle urgent tasks immediately with high priority response.",
     )
-    
+
     normal_handler = Agent(
         name="NormalHandler",
         model="gpt4",
         system_prompt="Process normal priority tasks with standard response.",
     )
-    
+
     reviewer = Agent(
         name="Reviewer",
         model="gpt4",
@@ -130,7 +127,7 @@ async def demo_complex_flow() -> None:
 
     observer = Observer.trace()
     flow = Flow(observer=observer)
-    
+
     # Simple routing flow
     flow.register(router, on="task.created", emits="task.urgent")  # Simplified for demo
     flow.register(urgent_handler, on="task.urgent", emits="task.handled")
@@ -152,17 +149,16 @@ async def demo_export_graph() -> None:
     print("DEMO 4: Export Graph to File")
     print("=" * 80)
 
-    from pathlib import Path
-    
+
     model = "gpt4"
-    
+
     agent1 = Agent(name="Agent1", model="gpt4", system_prompt="Step 1")
     agent2 = Agent(name="Agent2", model="gpt4", system_prompt="Step 2")
     agent3 = Agent(name="Agent3", model="gpt4", system_prompt="Step 3")
 
     observer = Observer.trace()
     flow = Flow(observer=observer)
-    
+
     flow.register(agent1, on="start", emits="step1.done")
     flow.register(agent2, on="step1.done", emits="step2.done")
     flow.register(agent3, on="step2.done", emits="flow.done")
@@ -173,7 +169,7 @@ async def demo_export_graph() -> None:
     graph = observer.event_graph(include_timing=True)
     output_file = Path("flow_graph.mmd")
     output_file.write_text(graph)
-    
+
     print(f"\n✅ Graph exported to: {output_file.absolute()}")
     print("\n💡 You can:")
     print("  1. View in VS Code with Mermaid extension")
@@ -191,7 +187,7 @@ async def main() -> None:
     await demo_graph_with_timing()
     await demo_complex_flow()
     await demo_export_graph()
-    
+
     print("\n\n" + "=" * 80)
     print("✅ All event graph demos completed!")
     print("=" * 80)

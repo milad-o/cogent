@@ -16,14 +16,9 @@ Setup:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent, Flow
-from agenticflow.observability import Observer, ObservabilityLevel, Channel
-
+from agenticflow.observability import Channel, ObservabilityLevel, Observer
 
 # =============================================================================
 # Example 1: Simple Delegation - Coordinator → Specialist
@@ -123,7 +118,7 @@ async def example_2_multi_specialist_team():
         on="task.created",
         can_delegate=["data_analyst", "writer", "researcher"]
     )
-    
+
     # Register specialists
     for agent in [data_analyst, writer, researcher]:
         flow.register(agent, handles=True)
@@ -247,7 +242,7 @@ async def example_4_parallel_delegation():
         on="task.created",
         can_delegate=["security_reviewer", "performance_reviewer", "style_reviewer"]
     )
-    
+
     for agent in [security_reviewer, performance_reviewer, style_reviewer]:
         flow.register(agent, handles=True)
 

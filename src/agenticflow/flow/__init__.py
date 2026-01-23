@@ -65,8 +65,6 @@ from agenticflow.flow.context import (
 from agenticflow.flow.core import (
     # Backward compatibility
     Flow,
-    Flow,
-    Flow,
 )
 
 # Pattern helpers

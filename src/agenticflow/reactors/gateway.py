@@ -132,8 +132,8 @@ class HttpGateway(Gateway):
         """Send HTTP request."""
         try:
             import aiohttp
-        except ImportError:
-            raise ImportError("aiohttp is required for HttpGateway")
+        except ImportError as e:
+            raise ImportError("aiohttp is required for HttpGateway") from e
 
         async with aiohttp.ClientSession() as session, session.request(
             self._method,

@@ -34,7 +34,7 @@ class DataExtractor:
         """Extract records from the source."""
         if not self._connection:
             raise RuntimeError("Not connected")
-        
+
         # Simulated data extraction
         return [
             Record("1", "Widget A", 100.0, "electronics"),

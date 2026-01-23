@@ -30,14 +30,10 @@ Transports:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
 from pathlib import Path
 
 from agenticflow import Agent, Observer
 from agenticflow.capabilities import MCP
-
 
 
 async def demo_research_agent() -> None:
@@ -159,13 +155,13 @@ async def demo_http_transport() -> None:
     print("\n" + "=" * 60)
     print("  Demo 4: HTTP/SSE Transport")
     print("=" * 60)
-    
+
     # Connect to MCP server via HTTP/SSE
     mcp = MCP.sse(
         url="http://127.0.0.1:8765/sse",
         name="search-http",
     )
-    
+
     agent = Agent(
         name="HTTPAgent",
         model="gpt4",
@@ -173,12 +169,12 @@ async def demo_http_transport() -> None:
         capabilities=[mcp],
         observer=Observer.debug(),
     )
-    
+
     try:
         query = "What is the Model Context Protocol?"
         print(f"\n  Query: {query}")
         print("-" * 60)
-        
+
         response = await agent.run(query, max_iterations=3)
         print(f"\n  Response:\n{response}")
     finally:
@@ -190,31 +186,31 @@ async def demo_stdio_subprocess() -> None:
     print("\n" + "=" * 60)
     print("  Demo 5: Stdio Transport (Subprocess)")
     print("=" * 60)
-    
+
     server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
-    
+
     # Stdio transport - AgenticFlow manages the subprocess
     mcp = MCP.stdio(
         command="uv",
         args=["run", "python", str(server_path), "stdio"],
         name="search-subprocess",
     )
-    
+
     agent = Agent(
         name="SubprocessAgent",
         model="gpt4",
         instructions="Use your search tool to answer briefly. Make ONE search only.",
         capabilities=[mcp],
     )
-    
+
     try:
         query = "What is the Model Context Protocol?"
         print(f"\n  Query: {query}")
         print("-" * 60)
-        
+
         response = await agent.run(query, max_iterations=3)
         print(f"\n  Response:\n{response}")
-        
+
     finally:
         await mcp.shutdown()
 
@@ -241,10 +237,10 @@ async def main() -> None:
     await demo_research_agent()
     await demo_news_analyst()
     await demo_fact_checker()
-    
+
     # HTTP demo (shows how to connect to remote server)
     await demo_http_transport()
-    
+
     # Explicit subprocess demo
     await demo_stdio_subprocess()
 

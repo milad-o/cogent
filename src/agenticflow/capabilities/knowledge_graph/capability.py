@@ -160,7 +160,7 @@ class KnowledgeGraph(BaseCapability):
         """
         # Create new backend
         new_graph: GraphBackend
-        
+
         if backend == "memory":
             new_graph = InMemoryGraph(path=path, auto_save=auto_save)
         elif backend == "sqlite":
@@ -183,7 +183,7 @@ class KnowledgeGraph(BaseCapability):
         if migrate:
             # Get all entities and relationships from current backend
             entities = self.graph.get_all_entities()
-            
+
             # Copy entities
             for entity in entities:
                 new_graph.add_entity(
@@ -192,7 +192,7 @@ class KnowledgeGraph(BaseCapability):
                     entity.attributes,
                     entity.source,
                 )
-            
+
             # Copy relationships
             for entity in entities:
                 relationships = self.graph.get_relationships(entity.id, direction="outgoing")
@@ -209,7 +209,7 @@ class KnowledgeGraph(BaseCapability):
         self.graph = new_graph
         self._backend = backend
         self._path = Path(path) if path else None
-        
+
         # Clear tools cache to regenerate with new backend
         self._tools_cache = None
 
@@ -391,20 +391,20 @@ class KnowledgeGraph(BaseCapability):
         """
         if self._tools_cache is None:
             _ = self.tools
-        
+
         # Parse pattern: "source -relation-> target"
         import re
         match = re.match(r'(.+?)\s*-(.+?)->\s*(.+)', pattern)
         if not match:
             return f"Invalid pattern format: {pattern}. Expected: 'source -relation-> target'"
-        
+
         source_str, relation_str, target_str = match.groups()
-        
+
         # Convert ? to None for wildcards
         source = None if source_str.strip() == "?" else source_str.strip()
         relation = None if relation_str.strip() == "?" else relation_str.strip()
         target = None if target_str.strip() == "?" else target_str.strip()
-        
+
         return self._tools_cache["query"].invoke({
             "source": source,
             "relation": relation,
@@ -459,7 +459,7 @@ class KnowledgeGraph(BaseCapability):
                 attrs = attributes
             else:
                 attrs = {}
-                
+
             graph.add_entity(entity, entity_type, attrs)
             return f"Remembered: {entity} ({entity_type}) with {len(attrs)} attributes"
 
@@ -576,7 +576,7 @@ class KnowledgeGraph(BaseCapability):
             r = relation or "?"
             t = target or "?"
             pattern = f"{s} -{r}-> {t}"
-            
+
             results = graph.query(pattern)
 
             if not results:
@@ -982,7 +982,7 @@ class KnowledgeGraph(BaseCapability):
         # Get entities and relationships
         stats = self.graph.stats()
         entities = self.graph.get_all_entities()
-        
+
         # Collect all relationships by iterating through entities
         relationships: list[Relationship] = []
         seen_rels: set[tuple[str, str, str]] = set()
@@ -1012,11 +1012,11 @@ class KnowledgeGraph(BaseCapability):
             for entity_type, type_entities in sorted(entity_types.items()):
                 subgraph_id = f"type_{entity_type.replace(' ', '_')}"
                 subgraph_nodes = []
-                
+
                 for entity in type_entities:
                     node_id = entity.id.replace(" ", "_").replace(".", "_")
                     subgraph_nodes.append(node_id)
-                    
+
                     # Build label
                     if show_attributes and entity.attributes:
                         attr_str = "\\n".join(
@@ -1047,7 +1047,7 @@ class KnowledgeGraph(BaseCapability):
                             css_class=css_class,
                         )
                     )
-                
+
                 # Add subgraph
                 g.add_subgraph(
                     Subgraph(
@@ -1153,7 +1153,7 @@ class KnowledgeGraph(BaseCapability):
         # Create config without title in frontmatter (to avoid redundancy in inline rendering)
         # Title is added separately in HTML rendering
         title = f"Knowledge Graph ({stats['entities']} entities, {stats['relationships']} relationships)"
-        
+
         # Map direction string to GraphDirection enum
         direction_map = {
             "TB": GraphDirection.TOP_DOWN,
@@ -1162,7 +1162,7 @@ class KnowledgeGraph(BaseCapability):
             "RL": GraphDirection.RIGHT_LEFT,
         }
         graph_direction = direction_map.get(direction.upper(), GraphDirection.TOP_DOWN)
-        
+
         config = GraphConfig(
             title=title,
             direction=graph_direction,
@@ -1204,7 +1204,7 @@ class KnowledgeGraph(BaseCapability):
         """
         view = self.visualize(**kwargs)
         return view.mermaid()
-    
+
     def render(self, format: str = "auto", **kwargs) -> str | bytes:
         """Medium-level API: Render to various formats.
         
@@ -1236,7 +1236,7 @@ class KnowledgeGraph(BaseCapability):
         """
         view = self.visualize(**kwargs)
         return view.render(format)
-    
+
     def display(self, **kwargs) -> None:
         """High-level API: Display graph in Jupyter notebook.
         

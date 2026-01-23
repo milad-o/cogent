@@ -41,14 +41,11 @@ Usage:
 """
 
 import asyncio
-import sys
-from pathlib import Path
 
+from agenticflow.documents import RecursiveCharacterSplitter
 from agenticflow.models import OpenAIEmbedding
 from agenticflow.retriever import DenseRetriever, HyDERetriever
-from agenticflow.documents import RecursiveCharacterSplitter
-from agenticflow.vectorstore import VectorStore, Document
-
+from agenticflow.vectorstore import Document, VectorStore
 
 # Sample knowledge base about health and wellness
 KNOWLEDGE_BASE = """
@@ -136,7 +133,7 @@ async def main() -> None:
     # Create retrievers
     base_retriever = DenseRetriever(store)
     hyde_retriever = HyDERetriever(base_retriever, model)
-    
+
     print("\nRetrievers ready:")
     print(f"  - Base: {base_retriever}")
     print(f"  - HyDE: {hyde_retriever}")
@@ -144,11 +141,11 @@ async def main() -> None:
     # =========================================================================
     # Comparison: Regular vs HyDE Retrieval
     # =========================================================================
-    
+
     # Test queries - these are abstract/conceptual questions that benefit from HyDE
     test_queries = [
         "Why should I work out?",  # Abstract query
-        "How can I feel happier?",  # Conceptual query  
+        "How can I feel happier?",  # Conceptual query
         "What helps my brain work better?",  # Indirect query
     ]
 
@@ -163,30 +160,30 @@ async def main() -> None:
         # -------------------------------------------------------------------------
         print("\n┌─ Regular Retrieval (query → embedding → search)")
         results = await base_retriever.retrieve(query, k=2, include_scores=True)
-        
+
         for i, r in enumerate(results, 1):
             print(f"│  [{i}] Score: {r.score:.3f}")
             text = r.document.text[:80].replace("\n", " ")
             print(f"│      {text}...")
-        
+
         # -------------------------------------------------------------------------
         # HyDE retrieval (query → hypothetical doc → embedding → search)
         # -------------------------------------------------------------------------
         print("│")
         print("├─ HyDE Retrieval (query → hypothetical → embedding → search)")
-        
+
         # Show the hypothetical document that gets generated
         hypothetical = await hyde_retriever.generate_hypothetical(query)
         print(f"│  Hypothetical doc: {hypothetical[:100].replace(chr(10), ' ')}...")
         print("│")
-        
+
         results = await hyde_retriever.retrieve(query, k=2, include_scores=True)
-        
+
         for i, r in enumerate(results, 1):
             print(f"│  [{i}] Score: {r.score:.3f}")
             text = r.document.text[:80].replace("\n", " ")
             print(f"│      {text}...")
-        
+
         print("└" + "─" * 68)
 
     # =========================================================================
@@ -211,10 +208,10 @@ and fuses the results using RRF (Reciprocal Rank Fusion) for better recall.
 
     query = "What's the secret to living longer?"
     print(f"Query: {query!r}")
-    print(f"Retriever: n_hypotheticals=3, include_original_query=True\n")
+    print("Retriever: n_hypotheticals=3, include_original_query=True\n")
 
     results = await hyde_ensemble.retrieve(query, k=4, include_scores=True)
-    
+
     print("Results (fused from 4 searches):")
     for i, r in enumerate(results, 1):
         print(f"  [{i}] Score: {r.score:.3f}")
@@ -228,7 +225,7 @@ and fuses the results using RRF (Reciprocal Rank Fusion) for better recall.
     print("═" * 70)
     print("  Custom Prompt Template")
     print("═" * 70)
-    
+
     # Domain-specific prompt for medical/health content
     medical_prompt = """You are a medical textbook. Write a detailed passage that would
 appear in a chapter answering this question. Use technical medical terminology.
@@ -245,12 +242,12 @@ Passage from medical textbook:"""
 
     query = "What happens to your body when you don't sleep?"
     print(f"Query: {query!r}\n")
-    
+
     # Show the hypothetical with custom prompt
     hypothetical = await hyde_medical.generate_hypothetical(query)
     print("Generated hypothetical (medical style):")
     print(f"  {hypothetical[:200].replace(chr(10), ' ')}...\n")
-    
+
     results = await hyde_medical.retrieve(query, k=2, include_scores=True)
     print("Retrieved:")
     for i, r in enumerate(results, 1):

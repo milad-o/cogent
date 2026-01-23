@@ -8,17 +8,12 @@ Tests the working memory system including:
 - Reflections (Reflexion-style memory)
 """
 
-import pytest
 
 from agenticflow.agent.taskboard import (
+    Task,
     TaskBoard,
     TaskBoardConfig,
-    Task,
     TaskStatus,
-    Note,
-    ErrorRecord,
-    LearnedPattern,
-    Reflection,
 )
 
 
@@ -38,7 +33,7 @@ class TestTask:
         """Test completing a task."""
         task = Task(id="task_1", description="Test task")
         task.complete("Task done successfully")
-        
+
         assert task.status == TaskStatus.DONE
         assert task.result == "Task done successfully"
         assert task.completed_at is not None
@@ -47,7 +42,7 @@ class TestTask:
         """Test failing a task."""
         task = Task(id="task_1", description="Test task")
         task.fail("Something went wrong")
-        
+
         assert task.status == TaskStatus.FAILED
         assert task.error == "Something went wrong"
         assert task.completed_at is not None
@@ -68,7 +63,7 @@ class TestTask:
         """Test serializing task to dict."""
         task = Task(id="task_1", description="Test task")
         data = task.to_dict()
-        
+
         assert data["id"] == "task_1"
         assert data["description"] == "Test task"
         assert data["status"] == "pending"
@@ -78,7 +73,7 @@ class TestTask:
         pending = Task(id="t1", description="Pending task")
         done = Task(id="t2", description="Done task")
         done.complete()
-        
+
         assert "○" in str(pending)
         assert "✓" in str(done)
 
@@ -97,7 +92,7 @@ class TestTaskBoard:
         """Test adding a single task."""
         board = TaskBoard()
         task_id = board.add_task("Search for information")
-        
+
         assert task_id.startswith("task_")
         assert len(board.get_all_tasks()) == 1
         assert board.get_pending()[0].description == "Search for information"
@@ -106,7 +101,7 @@ class TestTaskBoard:
         """Test adding multiple tasks at once."""
         board = TaskBoard()
         ids = board.add_tasks(["Task 1", "Task 2", "Task 3"])
-        
+
         assert len(ids) == 3
         assert len(board.get_all_tasks()) == 3
 
@@ -114,9 +109,9 @@ class TestTaskBoard:
         """Test completing task by partial description match."""
         board = TaskBoard()
         board.add_task("Search for Python tutorials")
-        
+
         result = board.complete_task("Python tutorials", "Found 5 articles")
-        
+
         assert result is True
         tasks = board.get_done()
         assert len(tasks) == 1
@@ -126,9 +121,9 @@ class TestTaskBoard:
         """Test failing a task."""
         board = TaskBoard()
         board.add_task("Connect to API")
-        
+
         result = board.fail_task("Connect", "Connection refused")
-        
+
         assert result is True
         failed = board.get_failed()
         assert len(failed) == 1
@@ -138,9 +133,9 @@ class TestTaskBoard:
         """Test starting a task."""
         board = TaskBoard()
         board.add_task("Do something")
-        
+
         result = board.start_task("Do something")
-        
+
         assert result is True
         pending = board.get_pending()
         assert len(pending) == 1
@@ -150,7 +145,7 @@ class TestTaskBoard:
         """Test finding task by ID."""
         board = TaskBoard()
         task_id = board.add_task("My task")
-        
+
         found = board.find_task(task_id)
         assert found is not None
         assert found.description == "My task"
@@ -159,7 +154,7 @@ class TestTaskBoard:
         """Test finding task by partial description."""
         board = TaskBoard()
         board.add_task("Search for Python tutorials")
-        
+
         found = board.find_task("Python")
         assert found is not None
         assert "Python" in found.description
@@ -168,12 +163,12 @@ class TestTaskBoard:
         """Test checking if all tasks are complete."""
         board = TaskBoard()
         board.add_tasks(["Task 1", "Task 2"])
-        
+
         assert board.is_complete() is False
-        
+
         board.complete_task("Task 1")
         assert board.is_complete() is False
-        
+
         board.complete_task("Task 2")
         assert board.is_complete() is True
 
@@ -185,7 +180,7 @@ class TestTaskBoardNotes:
         """Test adding a note."""
         board = TaskBoard()
         note_id = board.add_note("Python is great for data science")
-        
+
         assert note_id.startswith("note_")
         notes = board.get_notes()
         assert len(notes) == 1
@@ -197,11 +192,11 @@ class TestTaskBoardNotes:
         board.add_note("Observation", category="observation")
         board.add_note("Insight", category="insight")
         board.add_note("Question", category="question")
-        
+
         observations = board.get_notes(category="observation")
         insights = board.get_notes(category="insight")
         questions = board.get_notes(category="question")
-        
+
         assert len(observations) == 1
         assert len(insights) == 1
         assert len(questions) == 1
@@ -210,10 +205,10 @@ class TestTaskBoardNotes:
         """Test that notes are trimmed when over limit."""
         config = TaskBoardConfig(max_notes=5)
         board = TaskBoard(config)
-        
+
         for i in range(10):
             board.add_note(f"Note {i}")
-        
+
         notes = board.get_notes()
         assert len(notes) == 5
         assert notes[0].content == "Note 5"  # Oldest kept
@@ -223,7 +218,7 @@ class TestTaskBoardNotes:
         board = TaskBoard()
         for i in range(10):
             board.add_note(f"Note {i}")
-        
+
         recent = board.get_notes(limit=3)
         assert len(recent) == 3
         assert recent[-1].content == "Note 9"
@@ -236,7 +231,7 @@ class TestTaskBoardErrors:
         """Test recording an error."""
         board = TaskBoard()
         board.record_error("search", ValueError("Not found"), {"query": "test"})
-        
+
         # Error should be recorded internally
         assert len(board._errors) == 1
         assert board._errors[0].tool_name == "search"
@@ -246,7 +241,7 @@ class TestTaskBoardErrors:
         """Test that patterns are learned from errors."""
         board = TaskBoard()
         board.record_error("api_call", TimeoutError("Connection timeout"))
-        
+
         patterns = list(board._patterns.values())
         assert len(patterns) == 1
         assert patterns[0].tool_name == "api_call"
@@ -256,7 +251,7 @@ class TestTaskBoardErrors:
         board = TaskBoard()
         board.record_error("api_call", TimeoutError("Rate limit exceeded"))
         board.record_fix("api_call", "Rate limit exceeded", "Add exponential backoff")
-        
+
         fix = board.get_known_fix("api_call", "Rate limit exceeded")
         assert fix == "Add exponential backoff"
 
@@ -275,7 +270,7 @@ class TestTaskBoardReflections:
         board = TaskBoard()
         board.set_goal("Complete data analysis")
         board.add_reflection("Breaking down queries works better", "strategy")
-        
+
         reflections = board.get_reflections()
         assert len(reflections) == 1
         assert reflections[0].content == "Breaking down queries works better"
@@ -287,10 +282,10 @@ class TestTaskBoardReflections:
         board.add_reflection("Query succeeded", "success")
         board.add_reflection("Query failed", "failure")
         board.add_reflection("Try smaller batches", "insight")
-        
+
         successes = board.get_reflections(category="success")
         failures = board.get_reflections(category="failure")
-        
+
         assert len(successes) == 1
         assert len(failures) == 1
 
@@ -300,13 +295,13 @@ class TestTaskBoardReflections:
         board.add_task("Task 1")
         board.add_note("Note 1")
         board.add_reflection("Insight", "insight")
-        
+
         board.clear()
-        
+
         # Tasks and notes gone
         assert len(board.get_all_tasks()) == 0
         assert len(board.get_notes()) == 0
-        
+
         # But reflections persist
         assert len(board.get_reflections()) == 1
 
@@ -315,9 +310,9 @@ class TestTaskBoardReflections:
         board = TaskBoard()
         board.record_error("tool", ValueError("Error"))
         board.add_reflection("Insight", "insight")
-        
+
         board.clear_all()
-        
+
         assert len(board._patterns) == 0
         assert len(board.get_reflections()) == 0
 
@@ -335,7 +330,7 @@ class TestTaskBoardSummary:
         """Test summary includes goal."""
         board = TaskBoard()
         board.set_goal("Complete the analysis")
-        
+
         summary = board.summary()
         assert "Complete the analysis" in summary
 
@@ -344,7 +339,7 @@ class TestTaskBoardSummary:
         board = TaskBoard()
         board.add_tasks(["Task 1", "Task 2", "Task 3"])
         board.complete_task("Task 1")
-        
+
         summary = board.summary()
         assert "1/3" in summary
         assert "Task 1" in summary
@@ -356,9 +351,9 @@ class TestTaskBoardSummary:
         board.add_tasks(["Search", "Analyze"])
         board.complete_task("Search", "Found info")
         board.add_note("Important finding")
-        
+
         context = board.get_context()
-        
+
         assert "Goal" in context
         assert "Progress" in context
 
@@ -366,14 +361,14 @@ class TestTaskBoardSummary:
         """Test completion verification."""
         board = TaskBoard()
         board.add_tasks(["Task 1", "Task 2"])
-        
+
         result = board.verify_completion()
         assert result["complete"] is False
         assert result["pending_count"] == 2
-        
+
         board.complete_task("Task 1", "Done")
         board.complete_task("Task 2", "Done")
-        
+
         result = board.verify_completion()
         assert result["complete"] is True
 
@@ -388,9 +383,9 @@ class TestTaskBoardSerialization:
         board.add_task("Task 1")
         board.add_note("Note 1")
         board.add_reflection("Insight", "insight")
-        
+
         data = board.to_dict()
-        
+
         assert data["goal"] == "Test goal"
         assert len(data["tasks"]) == 1
         assert len(data["notes"]) == 1
@@ -423,8 +418,8 @@ class TestTaskBoardConfig:
         """Test that config is applied to board."""
         config = TaskBoardConfig(max_notes=3)
         board = TaskBoard(config)
-        
+
         for i in range(10):
             board.add_note(f"Note {i}")
-        
+
         assert len(board.get_notes()) == 3

@@ -47,24 +47,24 @@ def find_config_file() -> Path | None:
     project_toml = Path.cwd() / "agenticflow.toml"
     if project_toml.exists():
         return project_toml
-    
+
     if HAS_YAML:
         project_yaml = Path.cwd() / "agenticflow.yaml"
         if project_yaml.exists():
             return project_yaml
-    
+
     # User-level configs
     user_config_dir = Path.home() / ".agenticflow"
-    
+
     user_toml = user_config_dir / "config.toml"
     if user_toml.exists():
         return user_toml
-    
+
     if HAS_YAML:
         user_yaml = user_config_dir / "config.yaml"
         if user_yaml.exists():
             return user_yaml
-    
+
     return None
 
 
@@ -90,7 +90,7 @@ def load_toml(path: Path) -> dict[str, Any]:
                 "TOML support requires Python 3.11+ or 'tomli' package. "
                 "Install with: uv add tomli"
             )
-    
+
     with open(path, "rb") as f:
         return tomllib.load(f)
 
@@ -111,7 +111,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
             "YAML support requires 'pyyaml' package. "
             "Install with: uv add pyyaml"
         )
-    
+
     with open(path) as f:
         return yaml.safe_load(f) or {}
 
@@ -125,7 +125,7 @@ def load_config() -> dict[str, Any]:
     config_path = find_config_file()
     if not config_path:
         return {}
-    
+
     try:
         if config_path.suffix == ".toml":
             return load_toml(config_path)
@@ -158,7 +158,7 @@ def get_api_key(provider: str, explicit_key: str | None = None) -> str | None:
     # 1. Explicit parameter (highest priority)
     if explicit_key:
         return explicit_key
-    
+
     # 2. Environment variable
     env_vars = {
         "openai": ["OPENAI_API_KEY"],
@@ -171,19 +171,19 @@ def get_api_key(provider: str, explicit_key: str | None = None) -> str | None:
         "mistral": ["MISTRAL_API_KEY"],
         "together": ["TOGETHER_API_KEY"],
     }
-    
+
     provider_lower = provider.lower()
     if provider_lower in env_vars:
         for env_var in env_vars[provider_lower]:
             key = os.environ.get(env_var)
             if key:
                 return key
-    
+
     # 3. Config file (lowest priority)
     config = load_config()
     models_config = config.get("models", {})
     provider_config = models_config.get(provider_lower, {})
-    
+
     return provider_config.get("api_key")
 
 
@@ -289,14 +289,14 @@ def get_config_value(
     # 1. Explicit value (highest priority)
     if fallback is not None:
         return fallback
-    
+
     # 2. Environment variables
     if env_vars:
         for env_var in env_vars:
             value = os.environ.get(env_var)
             if value is not None:
                 return value
-    
+
     # 3. Config file (lowest priority)
     config = load_config()
     models_config = config.get("models", {})

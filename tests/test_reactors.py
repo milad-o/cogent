@@ -1,19 +1,18 @@
 """Tests for reactor implementations."""
 
-import pytest
 
 from agenticflow.events import Event
 from agenticflow.reactors import (
-    FunctionReactor,
-    function_reactor,
     Aggregator,
-    FirstWins,
-    WaitAll,
-    Router,
     ConditionalRouter,
-    Transform,
-    MapTransform,
     FanInMode,
+    FirstWins,
+    FunctionReactor,
+    MapTransform,
+    Router,
+    Transform,
+    WaitAll,
+    function_reactor,
 )
 
 

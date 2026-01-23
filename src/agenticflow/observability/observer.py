@@ -1277,13 +1277,13 @@ class Observer:
                 progress_suffix = s.dim(step_text)
 
             base_msg = f"{prefix}{s.agent(formatted_name)} {s.dim('[thinking]')}"
-            
+
             # By default, don't show the prompt we send to LLM
             # The actual AI thoughts are shown in AGENT_REASONING events
             if prompt_preview and self.config.level >= ObservabilityLevel.DETAILED:
                 preview = prompt_preview.strip()
                 base_msg += f" {s.dim(preview)}"
-            
+
             return base_msg + progress_suffix if progress_suffix else base_msg
 
         elif event_type == TraceType.AGENT_REASONING:
@@ -1297,7 +1297,7 @@ class Observer:
             if phase == 'start':
                 formatted_name = _format_agent_name(agent_name)
                 return f"{prefix}{s.agent(formatted_name)} {s.dim('[reasoning started]')}"
-            
+
             # Skip complete phase
             if phase == 'complete':
                 return None
@@ -1340,24 +1340,24 @@ class Observer:
 
             # Response metadata formatting (from Response[T] protocol)
             metadata_parts = []
-            
+
             # Token usage
             if "tokens" in data:
                 tokens = data["tokens"]
                 if isinstance(tokens, dict) and "total" in tokens:
                     total = tokens["total"]
                     metadata_parts.append(s.dim(f"{total} tokens"))
-            
+
             # Tool calls count
             if "tool_calls_count" in data:
                 count = data["tool_calls_count"]
                 if count > 0:
                     metadata_parts.append(s.dim(f"{count} tool{'s' if count > 1 else ''}"))
-            
+
             # Success/error indicator
             if "success" in data and not data["success"]:
                 metadata_parts.append(s.error("failed"))
-            
+
             metadata_str = ""
             if metadata_parts:
                 metadata_str = " • " + " • ".join(metadata_parts)
@@ -2418,7 +2418,7 @@ class Observer:
             "trace_id": self._trace_id,
             "start_time": self._start_time.isoformat() if self._start_time else None,
             "nodes": list(self._nodes.values()),
-            "edges": [{"from": f, "to": t, "label": l} for f, t, l in self._edges],
+            "edges": [{"from": f, "to": t, "label": label} for f, t, label in self._edges],
             "tools": self._tool_calls,
             "spans": self._spans,
             "metrics": dict(self._metrics),
@@ -2615,7 +2615,7 @@ class Observer:
             for observed in self._events
             if observed.event.type.value.startswith("flow")
         ]
-        
+
         # Also collect agent execution traces for timing data
         agent_traces = [
             observed.event
@@ -2634,7 +2634,7 @@ class Observer:
         # Track event emissions and reactor triggers
         event_emissions: dict[str, list[str]] = {}  # event_type -> [source_reactor, ...]
         reactor_timings: dict[str, float] = {}  # reactor_name -> duration_ms
-        
+
         # Collect timing from agent.responded traces (has duration_ms)
         for trace in agent_traces:
             if trace.type.value == "agent.responded":
@@ -2651,7 +2651,7 @@ class Observer:
             if trace_type == TraceType.FLOW_EVENT_EMITTED:
                 event_type = data.get("event_name", data.get("event_type", "unknown"))
                 source = data.get("source", "system")
-                
+
                 if event_type not in event_emissions:
                     event_emissions[event_type] = []
                 if source not in event_emissions[event_type]:
@@ -2720,7 +2720,7 @@ class Observer:
             "  class " + ",".join([n for n in seen_nodes if n.startswith("agent_")]) + " agentNode" if any(n.startswith("agent_") for n in seen_nodes) else "",
         ])
 
-        return "\n".join([l for l in lines if l])  # Remove empty lines
+        return "\n".join([line for line in lines if line])  # Remove empty lines
 
     def summary(self) -> str:
         """

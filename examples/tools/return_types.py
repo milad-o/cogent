@@ -19,15 +19,9 @@ This example shows:
 """
 
 import asyncio
-import json
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent, tool
 from agenticflow.flow import pipeline
-
 
 # =============================================================================
 # Tool Chain: User Profile → Weather → Activity Recommendation
@@ -105,7 +99,7 @@ def recommend_activity(
         and weather_note (str explaining the choice).
     """
     prefs = [p.strip() for p in preferred_activities.split(",")]
-    
+
     # Determine suitable activities based on weather
     if condition == "rainy" or temperature < 45:
         # Indoor activities
@@ -121,7 +115,7 @@ def recommend_activity(
         # Mild weather - most activities work
         suitable = prefs[:3] if prefs else ["sightseeing"]
         weather_note = "Pleasant weather for most activities."
-    
+
     return {
         "recommendation": f"Based on {temperature}°F and {condition} weather",
         "suitable_activities": suitable,
@@ -149,7 +143,7 @@ def create_itinerary(
         and tips (list of str).
     """
     activity_list = activities if isinstance(activities, list) else [activities]
-    
+
     return {
         "title": f"{user_name}'s Day in {city}",
         "morning": f"Start with {activity_list[0] if activity_list else 'breakfast'}",
@@ -208,7 +202,7 @@ def calculate_order_total(
     taxable = subtotal - discount
     tax = taxable * 0.08  # 8% tax
     total = taxable + tax
-    
+
     return {
         "subtotal": round(subtotal, 2),
         "discount": round(discount, 2),
@@ -300,18 +294,18 @@ Always show your reasoning about what data you're extracting from each tool's ou
     print("=" * 70)
     print("Demo 1: User Profile → Weather → Activity Recommendation → Itinerary")
     print("=" * 70)
-    
+
     query1 = """
     Get user_123's profile, then check the weather in their city,
     and recommend activities based on the weather and their preferences.
     Finally, create a day itinerary for them.
     """
-    
+
     print(f"Query: {query1.strip()}")
     print("-" * 70)
-    
+
     result1 = await flow.run(query1)
-    
+
     print()
     print("Result:")
     print(result1.output)
@@ -321,17 +315,17 @@ Always show your reasoning about what data you're extracting from each tool's ou
     print("=" * 70)
     print("Demo 2: Product Lookup → Stock Check → Order Calculation")
     print("=" * 70)
-    
+
     query2 = """
     Look up product SKU-002, check if we have enough stock for 3 units,
     and calculate the order total with a discount applied.
     """
-    
+
     print(f"Query: {query2.strip()}")
     print("-" * 70)
-    
+
     result2 = await flow.run(query2)
-    
+
     print()
     print("Result:")
     print(result2.output)

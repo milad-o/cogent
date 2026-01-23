@@ -67,7 +67,7 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 def _parse_response(response: Any) -> AIMessage:
     """Parse OpenAI-compatible response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     choice = response.choices[0]
     message = choice.message
 
@@ -331,13 +331,18 @@ class CustomEmbedding(BaseEmbedding):
         """Embed texts synchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         all_embeddings: list[list[float]] = []
         total_prompt_tokens = 0
         model_name = None
-        
+
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             response = self._client.embeddings.create(
@@ -346,12 +351,12 @@ class CustomEmbedding(BaseEmbedding):
             )
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-            
+
             if hasattr(response, 'usage') and response.usage:
                 total_prompt_tokens += response.usage.prompt_tokens
             if hasattr(response, 'model') and response.model:
                 model_name = response.model
-        
+
         metadata = EmbeddingMetadata(
             model=model_name or self.model,
             tokens=TokenUsage(
@@ -363,7 +368,7 @@ class CustomEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
@@ -371,7 +376,12 @@ class CustomEmbedding(BaseEmbedding):
         self._ensure_initialized()
         import asyncio
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         total_prompt_tokens = 0
@@ -397,7 +407,7 @@ class CustomEmbedding(BaseEmbedding):
             total_prompt_tokens += tokens
             if model:
                 model_name = model
-        
+
         metadata = EmbeddingMetadata(
             model=model_name or self.model,
             tokens=TokenUsage(
@@ -409,5 +419,5 @@ class CustomEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)

@@ -10,8 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 from agenticflow.core import Document
+from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 
 if TYPE_CHECKING:
     from agenticflow.vectorstore import VectorStore

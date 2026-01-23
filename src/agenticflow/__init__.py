@@ -232,7 +232,32 @@ from agenticflow.flow import (
 from agenticflow.flow import (
     supervisor as flow_supervisor,
 )
+from agenticflow.flow.patterns import (
+    # Mesh
+    brainstorm,
+    # Pipeline
+    chain,
+    collaborative,
+    # Supervisor
+    coordinator,
+    mesh,
+    pipeline,
+    supervisor,
+)
+from agenticflow.flow.skills import (
+    Skill,
+    SkillBuilder,
+    skill,
+)
 
+# Note: Flow, FlowConfig, FlowResult are already exported from agenticflow.flow
+from agenticflow.flow.triggers import (
+    AgentTriggerConfig,
+    Trigger,
+    on,  # Backward compat alias
+    react_to,
+    when,
+)
 from agenticflow.graph import (
     GraphConfig,
     GraphDirection,
@@ -351,32 +376,6 @@ from agenticflow.observability.handlers import (
 
 # Models
 from agenticflow.observability.trace_record import Trace, TraceType
-
-# Note: Flow, FlowConfig, FlowResult are already exported from agenticflow.flow
-from agenticflow.flow.triggers import (
-    AgentTriggerConfig,
-    Trigger,
-    on,  # Backward compat alias
-    react_to,
-    when,
-)
-from agenticflow.flow.patterns import (
-    # Pipeline
-    chain,
-    pipeline,
-    # Supervisor
-    coordinator,
-    supervisor,
-    # Mesh
-    brainstorm,
-    collaborative,
-    mesh,
-)
-from agenticflow.flow.skills import (
-    Skill,
-    SkillBuilder,
-    skill,
-)
 
 # Reactors (event handlers for flows)
 from agenticflow.reactors import (

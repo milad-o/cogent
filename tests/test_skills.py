@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 
 from agenticflow import (
-    skill,
     Skill,
     SkillBuilder,
     Trigger,
-    react_to,
+    skill,
 )
-from agenticflow.observability.trace_record import Trace, TraceType
-
 
 # =============================================================================
 # Fixtures

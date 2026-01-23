@@ -73,7 +73,7 @@ class BaseSplitter(ABC):
         chunks = []
         for doc in documents:
             doc_chunks = self.split_text(doc.text)
-            
+
             # Inherit parent metadata and add chunking info
             total_chunks = len(doc_chunks)
             for i, chunk in enumerate(doc_chunks):
@@ -88,7 +88,7 @@ class BaseSplitter(ABC):
                 # Preserve custom metadata from both parent and chunk
                 if doc.metadata.custom:
                     chunk.metadata.custom = {**doc.metadata.custom, **chunk.metadata.custom}
-                    
+
             chunks.extend(doc_chunks)
         return chunks
 

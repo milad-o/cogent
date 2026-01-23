@@ -16,14 +16,10 @@ Usage:
 """
 
 import asyncio
-import sys
 from pathlib import Path
 
-
-
 from agenticflow import Agent, Observer
-from agenticflow.capabilities import WebSearch, KnowledgeGraph, FileSystem
-
+from agenticflow.capabilities import FileSystem, KnowledgeGraph, WebSearch
 
 # ============================================================
 # API-Level Usage
@@ -34,40 +30,40 @@ def api_usage_example():
     print("\n" + "=" * 60)
     print("API Usage Example: Direct WebSearch Operations")
     print("=" * 60)
-    
+
     ws = WebSearch(max_results=5)
-    
-    print(f"\n✓ WebSearch initialized")
+
+    print("\n✓ WebSearch initialized")
     print(f"  Provider: {ws.provider.name}")
     print(f"  Tools: {[t.name for t in ws.tools]}")
-    
+
     # Web search
-    print(f"\n→ Searching: 'photosynthesis process'")
+    print("\n→ Searching: 'photosynthesis process'")
     results = ws.search("photosynthesis process", max_results=5)
-    
+
     if results:
         print(f"  ✓ Found {len(results)} results")
         print(f"  Top result: {results[0].title}")
     else:
         print("  ⚠ No results found")
-    
+
     # News search
-    print(f"\n→ News search: 'renewable energy'")
+    print("\n→ News search: 'renewable energy'")
     news = ws.search_news("renewable energy", max_results=3)
     print(f"  ✓ Found {len(news)} news articles")
-    
+
     # Fetch a webpage
-    print(f"\n→ Fetching: http://example.com")
+    print("\n→ Fetching: http://example.com")
     page = ws.fetch("http://example.com")
-    
+
     if page.error:
         print(f"  ✗ Error: {page.error}")
     else:
         print(f"  ✓ Title: {page.title}")
         print(f"  ✓ Content: {len(page.content)} chars")
-    
+
     # Cache demonstration
-    print(f"\n→ Testing cache")
+    print("\n→ Testing cache")
     page1 = ws.fetch("http://example.com")
     page2 = ws.fetch("http://example.com")  # Should hit cache
     cleared = ws.clear_cache()
@@ -83,13 +79,13 @@ async def agent_research_example():
     print("\n" + "=" * 60)
     print("Agent Research Example: AI-Powered Web Research")
     print("=" * 60)
-    
+
     model = "gpt4"
-    
+
     # Combine WebSearch with KnowledgeGraph for research + memory
     ws = WebSearch(max_results=5)
     kg = KnowledgeGraph()
-    
+
     # Create agent with verbose observer to see its work
     agent = Agent(
         name="Researcher",
@@ -98,16 +94,16 @@ async def agent_research_example():
         capabilities=[ws, kg],
         verbosity="debug",  # Built-in observability
     )
-    
+
     print(f"\n✓ Agent '{agent.name}' initialized")
     print(f"  Tools: {len(ws.tools + kg.tools)} available")
-    
+
     # Research queries
     queries = [
         "Search the web for solar system planets and remember the 3 largest ones",
         "What did you remember about the largest planets?",
     ]
-    
+
     for query in queries:
         print(f"\n→ Query: {query}")
         print("-" * 60)
@@ -123,25 +119,24 @@ async def agent_research_example():
 async def multi_capability_example():
     """Demonstrate multi-capability research workflow."""
     import tempfile
-    from pathlib import Path
-    
+
     print("\n" + "=" * 60)
     print("Multi-Capability Example: Web + Memory + Files")
     print("=" * 60)
-    
+
     model = "gpt4"
-    
+
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace).resolve()
-        
+
         # Initialize three complementary capabilities
         ws = WebSearch(max_results=3)
         kg = KnowledgeGraph()
         fs = FileSystem(allowed_paths=[str(workspace_path)], allow_write=True)
-        
+
         # Create observer for detailed execution tracing
         observer = Observer.trace()
-        
+
         agent = Agent(
             name="ResearchAssistant",
             model="gpt4",
@@ -153,12 +148,12 @@ async def multi_capability_example():
             capabilities=[ws, kg, fs],
             observer=observer,
         )
-        
+
         all_tools = ws.tools + kg.tools + fs.tools
         print(f"\n✓ Agent '{agent.name}' configured")
         print(f"  Capabilities: WebSearch ({len(ws.tools)}), KnowledgeGraph ({len(kg.tools)}), FileSystem ({len(fs.tools)})")
         print(f"  Total tools: {len(all_tools)}")
-        
+
         # Multi-step research task
         query = (
             "Please do these 3 steps: "
@@ -166,29 +161,29 @@ async def multi_capability_example():
             "2) Remember 2 key facts "
             "3) Write a brief summary to research.txt"
         )
-        
-        print(f"\n→ Task: Multi-step research and file creation")
+
+        print("\n→ Task: Multi-step research and file creation")
         print("-" * 60)
         response = await agent.run(query)
-        
+
         # Verify results
         research_file = workspace_path / "research.txt"
         if research_file.exists():
             content = research_file.read_text()
             print(f"\n✓ Research file created: {research_file.name}")
             print(f"  Size: {len(content)} chars")
-            print(f"\n  Preview:")
+            print("\n  Preview:")
             print(f"  {content[:200]}...")
         else:
-            print(f"\n⚠ Research file was not created")
-            print(f"  Agent may have failed to execute the write_file tool")
-        
+            print("\n⚠ Research file was not created")
+            print("  Agent may have failed to execute the write_file tool")
+
         # Show execution summary
         print("\n" + "=" * 60)
         print("Execution Summary")
         print("=" * 60)
         print(observer.summary())
-        
+
         # Show execution graph
         print("\n" + "=" * 60)
 # Main Entry Point
@@ -199,16 +194,16 @@ async def main() -> None:
     print("\n" + "=" * 70)
     print(" " * 15 + "WEBSEARCH CAPABILITY EXAMPLES")
     print("=" * 70)
-    
+
     # 1. API-level usage (direct interaction)
     api_usage_example()
-    
+
     # 2. Agent-based research
     await agent_research_example()
-    
+
     # 3. Multi-capability workflow
     await multi_capability_example()
-    
+
     print("\n" + "=" * 70)
     print("Summary")
     print("=" * 70)

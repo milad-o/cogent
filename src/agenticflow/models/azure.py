@@ -55,6 +55,7 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -62,7 +63,6 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
-from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
@@ -188,7 +188,7 @@ def _resolve_azure_openai_auth(
 def _parse_response(response: Any) -> AIMessage:
     """Parse Azure OpenAI response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     choice = response.choices[0]
     message = choice.message
 
@@ -411,7 +411,7 @@ class AzureOpenAIChat(BaseChatModel):
         kwargs = self._build_request(messages)
         kwargs["stream"] = True
         kwargs["stream_options"] = {"include_usage": True}
-        
+
         start_time = time.time()
         chunk_metadata = {
             "id": None,
@@ -430,7 +430,7 @@ class AzureOpenAIChat(BaseChatModel):
                 chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
             if hasattr(chunk, 'usage') and chunk.usage:
                 chunk_metadata["usage"] = chunk.usage
-            
+
             # Yield content chunks with partial metadata
             if chunk.choices and chunk.choices[0].delta.content:
                 metadata = MessageMetadata(
@@ -443,7 +443,7 @@ class AzureOpenAIChat(BaseChatModel):
                     duration=time.time() - start_time,
                 )
                 yield AIMessage(content=chunk.choices[0].delta.content, metadata=metadata)
-        
+
         # Yield final metadata chunk
         if chunk_metadata.get("usage") or chunk_metadata.get("finish_reason"):
             metadata = MessageMetadata(
@@ -496,11 +496,11 @@ class AzureOpenAIChat(BaseChatModel):
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
-        
+
         # Structured output support
         if hasattr(self, "_response_format") and self._response_format:
             kwargs["response_format"] = self._response_format
-        
+
         return kwargs
 
 
@@ -591,24 +591,29 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         """Embed texts synchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         all_embeddings: list[list[float]] = []
         total_prompt_tokens = 0
         model_name = None
-        
+
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i : i + self.batch_size]
             response = self._client.embeddings.create(**self._build_request(batch))
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-            
+
             if response.usage:
                 total_prompt_tokens += response.usage.prompt_tokens
             if response.model:
                 model_name = response.model
-        
+
         metadata = EmbeddingMetadata(
             model=model_name or self.deployment,
             tokens=TokenUsage(
@@ -620,7 +625,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
@@ -628,7 +633,12 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         self._ensure_initialized()
         import asyncio
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         total_prompt_tokens = 0
@@ -656,7 +666,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             total_prompt_tokens += tokens
             if model:
                 model_name = model
-        
+
         metadata = EmbeddingMetadata(
             model=model_name or self.deployment,
             tokens=TokenUsage(
@@ -668,7 +678,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     def _build_request(self, texts: list[str]) -> dict[str, Any]:
@@ -1000,7 +1010,7 @@ class AzureAIFoundryChat(BaseChatModel):
                 chunk_metadata["finish_reason"] = update.choices[0].finish_reason
             if hasattr(update, 'usage') and update.usage:
                 chunk_metadata["usage"] = update.usage
-            
+
             # Yield content chunks with partial metadata
             if update.choices and update.choices[0].delta:
                 content = update.choices[0].delta.content
@@ -1015,7 +1025,7 @@ class AzureAIFoundryChat(BaseChatModel):
                         duration=time.time() - start_time,
                     )
                     yield AIMessage(content=content, metadata=metadata)
-        
+
         # Yield final metadata chunk
         if chunk_metadata.get("usage") or chunk_metadata.get("finish_reason"):
             metadata = MessageMetadata(
@@ -1065,7 +1075,7 @@ class AzureAIFoundryChat(BaseChatModel):
                 kwargs["max_tokens"] = self.max_tokens
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
-        
+
         # Structured output support
         if hasattr(self, "_response_format") and self._response_format:
             kwargs["response_format"] = self._response_format

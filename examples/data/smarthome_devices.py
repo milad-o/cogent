@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 
 class DeviceState(Enum):
@@ -57,11 +57,11 @@ class Device:
     capabilities: list[DeviceCapability] = field(default_factory=list)
     attributes: dict[str, Any] = field(default_factory=dict)
     last_seen: datetime | None = None
-    
+
     def is_online(self) -> bool:
         """Check if device is currently online."""
         return self.state == DeviceState.ONLINE
-    
+
     def update_attribute(self, key: str, value: Any) -> None:
         """Update a device attribute."""
         self.attributes[key] = value
@@ -70,22 +70,22 @@ class Device:
 
 class DeviceController(ABC):
     """Abstract base class for device controllers."""
-    
+
     @abstractmethod
     async def connect(self, device: Device) -> bool:
         """Establish connection to the device."""
         pass
-    
+
     @abstractmethod
     async def disconnect(self, device: Device) -> None:
         """Disconnect from the device."""
         pass
-    
+
     @abstractmethod
     async def send_command(self, device: Device, command: str, params: dict) -> dict:
         """Send a command to the device."""
         pass
-    
+
     @abstractmethod
     async def get_state(self, device: Device) -> dict:
         """Get current state of the device."""
@@ -94,18 +94,18 @@ class DeviceController(ABC):
 
 class LightController(DeviceController):
     """Controller for smart lights."""
-    
+
     async def connect(self, device: Device) -> bool:
         """Connect to a light device."""
         if device.device_type != DeviceType.LIGHT:
             raise ValueError(f"Expected LIGHT device, got {device.device_type}")
         device.state = DeviceState.ONLINE
         return True
-    
+
     async def disconnect(self, device: Device) -> None:
         """Disconnect from a light device."""
         device.state = DeviceState.OFFLINE
-    
+
     async def send_command(self, device: Device, command: str, params: dict) -> dict:
         """Send command to light (turn_on, turn_off, set_brightness, set_color)."""
         if command == "turn_on":
@@ -125,7 +125,7 @@ class LightController(DeviceController):
             return {"success": True, "color": color}
         else:
             return {"success": False, "error": f"Unknown command: {command}"}
-    
+
     async def get_state(self, device: Device) -> dict:
         """Get current light state."""
         return {
@@ -137,9 +137,9 @@ class LightController(DeviceController):
 
 class ThermostatController(DeviceController):
     """Controller for smart thermostats."""
-    
+
     MODES = ["heat", "cool", "auto", "off"]
-    
+
     async def connect(self, device: Device) -> bool:
         """Connect to a thermostat device."""
         if device.device_type != DeviceType.THERMOSTAT:
@@ -151,11 +151,11 @@ class ThermostatController(DeviceController):
         device.attributes.setdefault("mode", "auto")
         device.attributes.setdefault("humidity", 45)
         return True
-    
+
     async def disconnect(self, device: Device) -> None:
         """Disconnect from thermostat."""
         device.state = DeviceState.OFFLINE
-    
+
     async def send_command(self, device: Device, command: str, params: dict) -> dict:
         """Send command to thermostat."""
         if command == "set_temperature":
@@ -171,7 +171,7 @@ class ThermostatController(DeviceController):
             return {"success": True, "mode": mode}
         else:
             return {"success": False, "error": f"Unknown command: {command}"}
-    
+
     async def get_state(self, device: Device) -> dict:
         """Get current thermostat state."""
         return {
@@ -184,18 +184,18 @@ class ThermostatController(DeviceController):
 
 class SensorController(DeviceController):
     """Controller for various sensors (motion, door, temperature, etc.)."""
-    
+
     async def connect(self, device: Device) -> bool:
         """Connect to a sensor device."""
         if device.device_type != DeviceType.SENSOR:
             raise ValueError(f"Expected SENSOR device, got {device.device_type}")
         device.state = DeviceState.ONLINE
         return True
-    
+
     async def disconnect(self, device: Device) -> None:
         """Disconnect from sensor."""
         device.state = DeviceState.OFFLINE
-    
+
     async def send_command(self, device: Device, command: str, params: dict) -> dict:
         """Sensors are typically read-only, but some support configuration."""
         if command == "set_sensitivity":
@@ -207,7 +207,7 @@ class SensorController(DeviceController):
             return {"success": True, "calibrated": True}
         else:
             return {"success": False, "error": "Sensors are read-only"}
-    
+
     async def get_state(self, device: Device) -> dict:
         """Get current sensor readings."""
         sensor_type = device.attributes.get("sensor_type", "unknown")

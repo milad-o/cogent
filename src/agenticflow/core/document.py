@@ -189,14 +189,14 @@ class DocumentMetadata:
             "token_count", "char_count", "loader", "created_by",
             "parent_id", "custom"
         }
-        
+
         # Collect unknown fields into custom
         existing_custom = data.get("custom", {})
         custom = existing_custom.copy() if isinstance(existing_custom, dict) else {}
         for key, value in data.items():
             if key not in standard_fields:
                 custom[key] = value
-        
+
         return cls(
             id=data.get("id"),
             timestamp=data.get("timestamp", time.time()),
@@ -328,7 +328,7 @@ class Document:
         """
         # Support both 'text' and 'content' keys
         text = data.get("text") or data.get("content", "")
-        
+
         # Handle metadata (dict or DocumentMetadata)
         metadata_data = data.get("metadata", {})
         if isinstance(metadata_data, DocumentMetadata):
@@ -337,7 +337,7 @@ class Document:
             metadata = DocumentMetadata.from_dict(metadata_data)
         else:
             metadata = DocumentMetadata()
-        
+
         return cls(
             text=text,
             metadata=metadata,

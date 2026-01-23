@@ -27,10 +27,7 @@ Try:
 """
 
 import asyncio
-import sys
 from dataclasses import dataclass
-from pathlib import Path
-
 
 from agenticflow import Agent
 from agenticflow.reactive.core import ReactionType, Trigger
@@ -48,31 +45,31 @@ class ApprovalBreakpoint:
 
 class ConsoleApprovalHandler:
     """Simple console-based approval handler."""
-    
+
     async def request_approval(self, request) -> bool:
         """Prompt user for approval via console."""
         print(f"\n{'='*60}")
         print(f"🛑 Approval Required: {request.agent_name}")
         print(f"{'='*60}")
-        
+
         if hasattr(request, 'breakpoint') and request.breakpoint:
             print(f"\n{request.breakpoint.prompt}\n")
         else:
             print(f"\nAgent '{request.agent_name}' wants to execute an action.")
-        
+
         print(f"Event: {request.event.name}")
         if hasattr(request, 'pending_action'):
             print(f"Action: {request.pending_action.describe()}")
-        
+
         # Get user input
         response = await self._get_input("Approve? (y/n): ")
         approved = response.lower().strip() in ('y', 'yes')
-        
+
         print(f"{'✅ Approved' if approved else '❌ Rejected'}")
         print(f"{'='*60}\n")
-        
+
         return approved
-    
+
     async def _get_input(self, prompt: str) -> str:
         """Get console input in async-compatible way."""
         loop = asyncio.get_event_loop()
@@ -81,16 +78,16 @@ class ConsoleApprovalHandler:
 
 async def main():
     """Run HITL reactive flow example."""
-    
+
     print("\n" + "="*60)
     print("Human-in-the-Loop Reactive Flow Example")
     print("="*60)
     print("\nThis example demonstrates requiring human approval")
     print("for agent actions in a reactive flow.\n")
-    
+
     # Create model
     model = "gpt4"
-    
+
     # Create agents
     analyst = Agent(
         name="analyst",
@@ -100,7 +97,7 @@ async def main():
             "analyze what needs to be done and propose a plan."
         ),
     )
-    
+
     executor = Agent(
         name="executor",
         model="gpt4",
@@ -109,10 +106,10 @@ async def main():
             "Be concise and actionable."
         ),
     )
-    
+
     # Create HITL handler
     handler = ConsoleApprovalHandler()
-    
+
     # Create flow with HITL support
     flow = Flow(
         config=FlowConfig(
@@ -121,13 +118,13 @@ async def main():
         ),
         hitl_handler=handler,
     )
-    
+
     # Register analyst - requires approval before running
     analyst_breakpoint = ApprovalBreakpoint(
         name="analyst_approval",
         prompt="The analyst wants to analyze the task. Approve?",
     )
-    
+
     flow.register(
         analyst,
         [Trigger(
@@ -137,13 +134,13 @@ async def main():
             emits="analyst.completed",
         )]
     )
-    
+
     # Register executor - requires approval before executing
     executor_breakpoint = ApprovalBreakpoint(
         name="executor_approval",
         prompt="The executor wants to implement the plan. Approve?",
     )
-    
+
     flow.register(
         executor,
         [Trigger(
@@ -152,16 +149,16 @@ async def main():
             breakpoint=executor_breakpoint,
         )]
     )
-    
+
     # Run the flow
     print("Starting reactive flow with HITL...")
     print("You will be prompted to approve each agent action.\n")
-    
+
     result = await flow.run(
         task="Analyze our Q4 sales data and create a summary report",
         initial_event="task.created",
     )
-    
+
     # Show results
     print("\n" + "="*60)
     print("Flow Completed")
@@ -169,7 +166,7 @@ async def main():
     print(f"\nEvents processed: {result.events_processed}")
     print(f"Agent reactions: {len(result.reactions)}")
     print(f"Execution time: {result.execution_time_ms:.0f}ms")
-    
+
     print("\n" + "="*60)
     print("Reaction Details")
     print("="*60)
@@ -181,7 +178,7 @@ async def main():
             print(f"   Output: {output_preview}")
         if reaction.emitted_events:
             print(f"   Emitted: {', '.join(reaction.emitted_events)}")
-    
+
     print(f"\n{'='*60}")
     print("Final Output")
     print(f"{'='*60}\n")

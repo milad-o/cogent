@@ -35,13 +35,9 @@ observer = Observer(
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent
-from agenticflow.observability import Observer, ObservabilityLevel
+from agenticflow.observability import ObservabilityLevel, Observer
 
 
 async def main():
@@ -49,21 +45,21 @@ async def main():
     print("="*80)
     print("OBSERVER OUTPUT TRUNCATION - TIERED API")
     print("="*80)
-    
+
     # =========================================================================
     # HIGH LEVEL: Use presets (easiest)
     # =========================================================================
     # observer = Observer.minimal()   # Minimal output
-    # observer = Observer.verbose()   # Verbose output  
+    # observer = Observer.verbose()   # Verbose output
     # observer = Observer.debug()     # Debug, no truncation
     # observer = Observer.trace()     # Full trace, no truncation
-    
+
     # =========================================================================
     # MID LEVEL: Single max_output param (simple)
     # =========================================================================
     # observer = Observer(max_output=500)   # Limit all content to 500 chars
     # observer = Observer(max_output=None)  # No limit (default)
-    
+
     # =========================================================================
     # LOW LEVEL: Fine-grained control (advanced)
     # =========================================================================
@@ -73,15 +69,15 @@ async def main():
         truncate_tool_args=400,    # Override: tool args get less space
         truncate_messages=800,     # Override: messages get more space
     )
-    
+
     print("\n✓ Observer configured:")
     print(f"  • Level: {observer.config.level.name}")
     print(f"  • General content: {observer.config.truncate} chars")
     print(f"  • Tool arguments: {observer.config.truncate_tool_args} chars")
     print(f"  • Tool results: {observer.config.truncate_tool_results} chars")
     print(f"  • Messages: {observer.config.truncate_messages} chars")
-    print(f"\n💡 Tip: Use max_output=500 to limit all, or None for no limit")
-    
+    print("\n💡 Tip: Use max_output=500 to limit all, or None for no limit")
+
     # Create agent with taskboard
     model = "gpt4"
     agent = Agent(
@@ -90,7 +86,7 @@ async def main():
         taskboard=True,
         observer=observer,
     )
-    
+
     task = """
     Create a detailed plan for building a REST API:
     1. Define the core endpoints (list at least 5)
@@ -99,19 +95,19 @@ async def main():
     
     Track your work with tasks and add detailed notes.
     """
-    
+
     print(f"\n📝 Task:\n{task}\n")
     print("="*80)
     print("EXECUTION LOG (with custom truncation)")
     print("="*80 + "\n")
-    
+
     result = await agent.run(task)
-    
+
     print("\n" + "="*80)
     print("RESULT")
     print("="*80)
     print(result)
-    
+
     print("\n" + "="*80)
     print("TASKBOARD")
     print("="*80)

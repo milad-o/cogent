@@ -175,11 +175,12 @@ class MockEmbedding(BaseEmbedding):
             EmbeddingResult with vectors and metadata.
         """
         import time
+
         from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult
 
         start_time = time.time()
         vectors = [self._generate_embedding(text) for text in texts]
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=None,  # Mock doesn't track tokens
@@ -187,7 +188,7 @@ class MockEmbedding(BaseEmbedding):
             dimensions=self.dimensions or 384,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
@@ -200,11 +201,12 @@ class MockEmbedding(BaseEmbedding):
             EmbeddingResult with vectors and metadata.
         """
         import time
+
         from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult
 
         start_time = time.time()
         vectors = [self._generate_embedding(text) for text in texts]
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=None,  # Mock doesn't track tokens
@@ -212,7 +214,7 @@ class MockEmbedding(BaseEmbedding):
             dimensions=self.dimensions or 384,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
     @property

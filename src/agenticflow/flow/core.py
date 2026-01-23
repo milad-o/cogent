@@ -11,7 +11,6 @@ with a single, unified event-driven model.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import fnmatch
 import uuid
 from collections.abc import AsyncIterator, Callable
@@ -21,8 +20,8 @@ from typing import TYPE_CHECKING, Any, Self, TypeVar
 from agenticflow.events import Event, EventBus
 from agenticflow.flow.config import FlowConfig, FlowResult, ReactorBinding
 from agenticflow.flow.state import CoordinationManager
-from agenticflow.reactors.base import Reactor
 from agenticflow.observability.bus import TraceBus
+from agenticflow.reactors.base import Reactor
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
@@ -149,7 +148,7 @@ class Flow:
 
         # Create TraceBus for observability events
         self._trace_bus = TraceBus()
-        
+
         # Attach observer to trace bus if provided
         if self._observer:
             self._observer.attach(self._trace_bus)
@@ -240,7 +239,7 @@ class Flow:
             flow.register_skill(python_skill)
             ```
         """
-        from agenticflow.flow.skills import Skill, SkillBuilder
+        from agenticflow.flow.skills import SkillBuilder
 
         if isinstance(skill, SkillBuilder):
             skill = skill.build()
@@ -249,7 +248,6 @@ class Flow:
 
     def _get_matching_skills(self, event: Event) -> list[Skill]:
         """Get all skills that match an event, sorted by priority."""
-        from agenticflow.flow.skills import Skill
 
         matching = [s for s in self._skills_registry.values() if s.matches(event)]
         return sorted(matching, key=lambda s: -s.priority)
@@ -302,10 +300,10 @@ class Flow:
         """
         if not name or name.startswith(":"):
             raise ValueError("Group name cannot be empty or start with ':'")
-        
+
         self._source_groups[name] = set(sources)
         return self
-    
+
     def get_source_group(self, name: str) -> set[str]:
         """Get sources in a named group.
         
@@ -327,7 +325,7 @@ class Flow:
             ```
         """
         return self._source_groups.get(name, set()).copy()
-    
+
     def reset_coordination(self, binding_id: str) -> Self:
         """Manually reset a coordination point for a specific reactor binding.
         
@@ -501,20 +499,20 @@ class Flow:
             >>> flow._normalize_patterns("*.done@:analysts")
             (frozenset({'*.done'}), SourceFilter(...))
         """
-        from agenticflow.flow.parser import parse_pattern
         from agenticflow.events.patterns import from_source
-        
+        from agenticflow.flow.parser import parse_pattern
+
         if on is None:
             return frozenset(), None
-        
+
         patterns_list = [on] if isinstance(on, str) else on
         event_patterns = []
         source_filter = None
-        
+
         for pattern in patterns_list:
             parsed = parse_pattern(pattern)
             event_patterns.append(parsed.event)
-            
+
             # Combine source filters with OR logic if multiple patterns have sources
             if parsed.source:
                 # Pass self for :group support
@@ -523,7 +521,7 @@ class Flow:
                     source_filter = new_filter
                 else:
                     source_filter = source_filter | new_filter
-        
+
         return frozenset(event_patterns), source_filter
 
     def register(
@@ -611,41 +609,41 @@ class Flow:
         from agenticflow.agent.base import Agent
         if isinstance(reactor, Agent):
             self._source_groups.setdefault("agents", set()).add(reactor.name)
-        
+
         # Parse patterns to extract source filter from event@source syntax
         patterns, pattern_source_filter = self._normalize_patterns(on)
-        
+
         # Validate conflicting parameters
         if after is not None and when is not None:
             raise ValueError(
                 "Cannot specify both 'after' and 'when' parameters. "
                 "Use 'after' for source filtering or 'when' for custom conditions."
             )
-        
+
         if pattern_source_filter is not None and after is not None:
             raise ValueError(
                 "Cannot specify both 'after' parameter and '@source' in pattern. "
                 "Use one approach: either 'after=\"source\"' or 'on=\"event@source\"'."
             )
-        
+
         if pattern_source_filter is not None and when is not None:
             raise ValueError(
                 "Cannot specify both 'when' parameter and '@source' in pattern. "
                 "Use 'when' for custom conditions or '@source' for source filtering, not both."
             )
-        
+
         # Build final condition from available sources
         final_condition = when
-        
+
         # Convert 'after' to condition (pass self for :group support)
         if after is not None:
             from agenticflow.events.patterns import from_source
             final_condition = from_source(after, flow=self)
-        
+
         # Use pattern-extracted source filter if present
         if pattern_source_filter is not None:
             final_condition = pattern_source_filter
-        
+
         # Wrap non-reactor types
         wrapped_reactor = self._wrap_reactor(reactor)
 
@@ -654,7 +652,7 @@ class Flow:
 
         # No initialization needed - StatefulSourceFilter is self-contained!
         # Filters now manage their own state internally.
-        
+
         # Store reactor
         self._reactors[reactor_id] = wrapped_reactor
 
@@ -682,11 +680,11 @@ class Flow:
         # Agent -> AgentReactor (pass trace_bus for observability)
         if hasattr(reactor, "run") and hasattr(reactor, "name"):
             from agenticflow.agent.reactor import AgentReactor
-            
+
             # Connect agent to Flow's trace bus for unified observability
             if hasattr(reactor, "trace_bus") and reactor.trace_bus is None:
                 reactor.trace_bus = self._trace_bus
-            
+
             return AgentReactor(reactor)  # type: ignore
 
         # Callable -> FunctionReactor
@@ -1082,7 +1080,6 @@ class Flow:
                 result = await flow.resume(state)
             ```
         """
-        from agenticflow.flow.checkpointer import FlowState
 
         # Restore flow ID and state
         self._flow_id = state.flow_id

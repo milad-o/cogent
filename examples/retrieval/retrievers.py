@@ -14,44 +14,35 @@ Usage:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING
-
 
 from agenticflow.models import OpenAIEmbedding
-from agenticflow.vectorstore import VectorStore, Document
 from agenticflow.retriever import (
+    AttributeInfo,
+    BM25Retriever,
+    DecayFunction,
     # Core retrievers
     DenseRetriever,
-    BM25Retriever,
-    HybridRetriever,
-    MetadataMatchMode,
     EnsembleRetriever,
     FusionStrategy,
+    HybridRetriever,
+    KeywordTableIndex,
+    # Rerankers
+    LLMReranker,
+    MetadataMatchMode,
+    MultiRepresentationIndex,
     # Contextual retrievers
     ParentDocumentRetriever,
+    SelfQueryRetriever,
     SentenceWindowRetriever,
     # LLM-powered indexes
     SummaryIndex,
-    KeywordTableIndex,
-    SelfQueryRetriever,
-    AttributeInfo,
     # Specialized indexes
     TimeBasedIndex,
     TimeRange,
-    DecayFunction,
-    MultiRepresentationIndex,
-    QueryType,
-    # Rerankers
-    LLMReranker,
     # Utilities
     fuse_results,
-    normalize_scores,
 )
-
+from agenticflow.vectorstore import Document, VectorStore
 
 # =============================================================================
 # Sample Data: Tech Company Knowledge Base
