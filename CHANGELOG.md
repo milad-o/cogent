@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-01-23
+
+### Changed
+- **Provider API Alignment**: Refactored OpenAI and Groq Responses API integration
+  - **Code Consolidation**: Eliminated duplicate `OpenAIResponses` and `GroqResponses` classes (~214 lines of duplication removed)
+  - **Unified API**: Both `OpenAIChat` and `GroqChat` now support Responses API via `use_responses_api=True` parameter
+  - **Cleaner Design**: Single class per provider with toggle parameter instead of separate classes for each API variant
+  - **Better Maintainability**: Changes only need to be made once per provider
+  - **Migration**: `OpenAIResponses(model="gpt-4o")` → `OpenAIChat(model="gpt-4o", use_responses_api=True)`
+  - **Migration**: `GroqResponses(model="llama-3.3-70b-versatile")` → `GroqChat(model="llama-3.3-70b-versatile", use_responses_api=True)`
+
+### Added
+- `use_responses_api: bool = False` parameter to `OpenAIChat` class for toggling between Chat Completions and Responses API
+- `use_responses_api: bool = False` parameter to `GroqChat` class for toggling between Chat Completions and Responses API
+- Example script: `examples/basics/responses_api_demo.py` demonstrating integrated Responses API usage
+
+### Removed
+- **Breaking Change**: `OpenAIResponses` class (use `OpenAIChat(use_responses_api=True)` instead)
+- **Breaking Change**: `GroqResponses` class (use `GroqChat(use_responses_api=True)` instead)
+- Removed exports of `OpenAIResponses` and `GroqResponses` from `agenticflow.models`
+
+### Fixed
+- Type annotation error: Added module-level import of `EmbeddingResult` in `openai.py` for proper Pylance type checking
+
 ## [1.15.0] - 2026-01-22
 
 ### Changed

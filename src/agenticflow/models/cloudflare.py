@@ -189,13 +189,27 @@ class CloudflareChat(BaseChatModel):
             "model": self.model,
             "messages": formatted_messages,
         }
-        if self.temperature is not None:
+
+        model_lower = (self.model or "").lower()
+        supports_temperature = not any(
+            prefix in model_lower
+            for prefix in ("o1", "o3", "gpt-5")
+        )
+        if supports_temperature and self.temperature is not None:
             payload["temperature"] = self.temperature
         if self.max_tokens:
-            payload["max_tokens"] = self.max_tokens
+            if not supports_temperature:
+                payload["max_completion_tokens"] = self.max_tokens
+            else:
+                payload["max_tokens"] = self.max_tokens
         if self._tools:
             payload["tools"] = [t.to_dict() if hasattr(t, "to_dict") else t for t in self._tools]
             payload["parallel_tool_calls"] = self._parallel_tool_calls
+        
+        # Structured output support
+        if hasattr(self, "_response_format") and self._response_format:
+            payload["response_format"] = self._response_format
+        
         return payload
 
 

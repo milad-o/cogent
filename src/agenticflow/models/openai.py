@@ -4,8 +4,12 @@ OpenAI models for AgenticFlow.
 Usage:
     from agenticflow.models.openai import OpenAIChat, OpenAIEmbedding
 
-    # Chat
+    # Chat Completions API
     llm = OpenAIChat(model="gpt-4o")
+    response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
+
+    # Responses API (beta) - optimized for tool use
+    llm = OpenAIChat(model="gpt-4o", use_responses_api=True)
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
 
     # With tools
@@ -24,6 +28,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
+from agenticflow.core.messages import EmbeddingResult
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -101,10 +106,14 @@ class OpenAIChat(BaseChatModel):
     Example:
         from agenticflow.models.openai import OpenAIChat
 
-        # Simple usage
+        # Simple usage (Chat Completions API)
         llm = OpenAIChat()  # Uses gpt-4o-mini by default
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
         print(response.content)
+
+        # Responses API (beta) - optimized for tool use
+        llm = OpenAIChat(use_responses_api=True)
+        response = await llm.ainvoke(messages)
 
         # With custom model
         llm = OpenAIChat(model="gpt-4o", temperature=0.7)
@@ -123,6 +132,7 @@ class OpenAIChat(BaseChatModel):
 
     model: str = "gpt-4o-mini"
     base_url: str = ""
+    use_responses_api: bool = False  # Use beta Responses API instead of Chat Completions
 
     def _init_client(self) -> None:
         """Initialize OpenAI clients."""
@@ -164,6 +174,7 @@ class OpenAIChat(BaseChatModel):
             base_url=self.base_url,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            use_responses_api=self.use_responses_api,
         )
         new_model._tools = tools
         new_model._parallel_tool_calls = parallel_tool_calls
@@ -179,7 +190,11 @@ class OpenAIChat(BaseChatModel):
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
-        response = self._client.chat.completions.create(**self._build_request(normalize_input(messages)))
+        kwargs = self._build_request(normalize_input(messages))
+        if self.use_responses_api:
+            response = self._client.beta.responses.create(**kwargs)
+        else:
+            response = self._client.chat.completions.create(**kwargs)
         return _parse_response(response)
 
     async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
@@ -189,7 +204,11 @@ class OpenAIChat(BaseChatModel):
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
-        response = await self._async_client.chat.completions.create(**self._build_request(normalize_input(messages)))
+        kwargs = self._build_request(normalize_input(messages))
+        if self.use_responses_api:
+            response = await self._async_client.beta.responses.create(**kwargs)
+        else:
+            response = await self._async_client.chat.completions.create(**kwargs)
         return _parse_response(response)
 
     async def astream(self, messages: str | list[dict[str, Any]] | list[Any]) -> AsyncIterator[AIMessage]:
@@ -219,7 +238,12 @@ class OpenAIChat(BaseChatModel):
         }
         has_yielded_final = False
         
-        async for chunk in await self._async_client.chat.completions.create(**kwargs):
+        if self.use_responses_api:
+            stream = await self._async_client.beta.responses.create(**kwargs)
+        else:
+            stream = await self._async_client.chat.completions.create(**kwargs)
+        
+        async for chunk in stream:
             # Accumulate metadata from chunks
             if chunk.id:
                 chunk_metadata["id"] = chunk.id
@@ -296,10 +320,18 @@ class OpenAIChat(BaseChatModel):
             kwargs["temperature"] = self.temperature
 
         if self.max_tokens:
-            kwargs["max_tokens"] = self.max_tokens
+            if not supports_temperature:
+                kwargs["max_completion_tokens"] = self.max_tokens
+            else:
+                kwargs["max_tokens"] = self.max_tokens
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
+        
+        # Structured output support
+        if hasattr(self, "_response_format") and self._response_format:
+            kwargs["response_format"] = self._response_format
+        
         return kwargs
 
 
