@@ -44,8 +44,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-
-
+from agenticflow.models import OpenAIEmbedding
 from agenticflow.retriever import DenseRetriever, HyDERetriever
 from agenticflow.document import RecursiveCharacterSplitter
 from agenticflow.vectorstore import VectorStore, Document
@@ -114,7 +113,7 @@ connections and hobbies also play important roles in stress reduction.
 
 async def main() -> None:
     model = "gpt4"
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
 
     # =========================================================================
     # Setup: Create vectorstore and retrievers

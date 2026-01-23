@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 
+from agenticflow.models import OpenAIEmbedding
 from agenticflow.vectorstore import VectorStore, Document
 from agenticflow.retriever import (
     # Core retrievers
@@ -280,7 +281,7 @@ async def demo_dense_retriever() -> None:
     print("1. DENSE RETRIEVER (Semantic Search)")
     print("=" * 70)
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
@@ -322,7 +323,7 @@ async def demo_hybrid_retriever() -> None:
     print("3. HYBRID RETRIEVER (Metadata + Content)")
     print("=" * 70)
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
@@ -354,7 +355,7 @@ async def demo_ensemble_retriever() -> None:
     print("4. ENSEMBLE RETRIEVER (Multiple Retrievers)")
     print("=" * 70)
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
@@ -387,7 +388,7 @@ async def demo_parent_document_retriever() -> None:
     print("=" * 70)
     print("(Index small chunks, return full documents)")
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     retriever = ParentDocumentRetriever(
@@ -416,7 +417,7 @@ async def demo_sentence_window_retriever() -> None:
     print("=" * 70)
     print("(Index sentences, return with context)")
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     retriever = SentenceWindowRetriever(
@@ -443,7 +444,7 @@ async def demo_summary_index() -> None:
     print("7. SUMMARY INDEX (LLM-Generated Summaries)")
     print("=" * 70)
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
 
@@ -508,7 +509,7 @@ async def demo_self_query_retriever() -> None:
     print("9. SELF-QUERY RETRIEVER (Natural Language → Filters)")
     print("=" * 70)
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
@@ -540,7 +541,7 @@ async def demo_time_based_index() -> None:
     print("10. TIME-BASED INDEX (Recency-Aware Retrieval)")
     print("=" * 70)
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = TimeBasedIndex(
@@ -582,7 +583,7 @@ async def demo_multi_representation_index() -> None:
     print("=" * 70)
     print("(Multiple embeddings per document)")
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
 
@@ -621,7 +622,7 @@ async def demo_reranker() -> None:
     print("=" * 70)
     print("(Improve ranking with LLM scoring)")
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     model = "gpt4"
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
@@ -652,7 +653,7 @@ async def demo_fusion_utilities() -> None:
     print("13. FUSION UTILITIES")
     print("=" * 70)
 
-    embeddings = get_embeddings()
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 

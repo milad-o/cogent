@@ -312,10 +312,11 @@ async def extract_and_query(pdf_path: Path) -> dict[str, tuple[str, bool]]:
     from agenticflow.document.loaders import PDFMarkdownLoader
     from agenticflow.vectorstore import VectorStore
     from agenticflow.retriever import DenseRetriever
+    from agenticflow.models import OpenAIEmbedding
 
     model = "gpt4"
-    embeddings = get_embeddings()
-    print(f"\n📊 Using model: {getattr(model, 'model', model.__class__.__name__)}")
+    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    print(f"\n📊 Using model: {model}")
 
     # Step 1: Extract PDF content
     print("\n🔍 Step 1: Extracting PDF content...")
