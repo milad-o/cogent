@@ -39,7 +39,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.flow.triggers import EventPattern, Trigger, TriggerBuilder
 
@@ -85,10 +85,10 @@ class Skill:
     prompt: str
     """Prompt content injected into agent context when skill activates."""
 
-    tools: tuple[Callable[..., Any], ...] = field(default_factory=tuple)
+    tools: tuple[Callable[..., object], ...] = field(default_factory=tuple)
     """Tools available only when this skill is active."""
 
-    context_enricher: Callable[[Event, dict[str, Any]], dict[str, Any]] | None = None
+    context_enricher: Callable[[Event, dict[str, object]], dict[str, object]] | None = None
     """Optional function to modify context when skill activates.
 
     Receives the triggering event and current context, returns enriched context.
@@ -111,8 +111,8 @@ class Skill:
     def enrich_context(
         self,
         event: Event,
-        context: dict[str, Any],
-    ) -> dict[str, Any]:
+        context: dict[str, object],
+    ) -> dict[str, object]:
         """Apply context enrichment if configured.
 
         Args:
@@ -133,8 +133,8 @@ def skill(
     on: EventPattern,
     prompt: str,
     when: Callable[[Event], bool] | None = None,
-    tools: list[Callable[..., Any]] | None = None,
-    context_enricher: Callable[[Event, dict[str, Any]], dict[str, Any]] | None = None,
+    tools: list[Callable[..., object]] | None = None,
+    context_enricher: Callable[[Event, dict[str, object]], dict[str, object]] | None = None,
     priority: int = 0,
 ) -> Skill:
     """Create a skill with a clean kwargs API.
@@ -206,8 +206,8 @@ class SkillBuilder:
         self._name = name
         self._trigger_builder = TriggerBuilder(pattern)
         self._prompt: str = ""
-        self._tools: list[Callable[..., Any]] = []
-        self._context_enricher: Callable[[Event, dict[str, Any]], dict[str, Any]] | None = None
+        self._tools: list[Callable[..., object]] = []
+        self._context_enricher: Callable[[Event, dict[str, object]], dict[str, object]] | None = None
         self._priority: int = 0
 
     def when(self, condition: Callable[[Event], bool]) -> SkillBuilder:
@@ -218,13 +218,13 @@ class SkillBuilder:
         self._prompt = prompt
         return self
 
-    def with_tools(self, tools: list[Callable[..., Any]]) -> SkillBuilder:
+    def with_tools(self, tools: list[Callable[..., object]]) -> SkillBuilder:
         self._tools = tools
         return self
 
     def with_context_enricher(
         self,
-        enricher: Callable[[Event, dict[str, Any]], dict[str, Any]],
+        enricher: Callable[[Event, dict[str, object]], dict[str, object]],
     ) -> SkillBuilder:
         self._context_enricher = enricher
         return self
