@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/milad-o/agenticflow/releases">
-    <img src="https://img.shields.io/badge/version-1.14.4-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.15.0-blue.svg" alt="Version">
   </a>
   <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
@@ -58,41 +58,48 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.14.5 - January 2026)
+## 🎉 Latest Changes (v1.15.0 - January 2026)
 
-**Embedding API Standardization** 📊
-- ✨ **Standardized API** — Clean, consistent methods across all 9 providers
-- 🎯 **Primary methods** — `embed()` / `aembed()` return `EmbeddingResult` with full metadata
-- 🚀 **Convenience methods** — `embed_one()` / `aembed_one()` for single texts (returns vector only)
-- 🔌 **VectorStore protocol** — `embed_texts()` / `embed_query()` async methods (no metadata)
-- 📊 **Token tracking** — Supported for OpenAI, Cohere, Mistral, Azure OpenAI
-- 🔧 **All providers updated** — OpenAI, Gemini, Cohere, Mistral, Ollama, Cloudflare, Azure, Mock, Custom
+**Document & Metadata Standardization** 📄
+- ✨ **Structured metadata** — `DocumentMetadata` dataclass with 15 typed fields
+- 🎯 **Type safety** — No more dict guessing - autocomplete, validation, clarity
+- 🔧 **Auto-population** — Loaders automatically set source, source_type, timestamps, char_count
+- 🧩 **Chunk tracking** — Built-in parent_id, chunk_index, total_chunks for split documents
+- 🔌 **Backward compatible** — `from_dict()` auto-collects unknown fields into custom dict
+- 🏗️ **Architectural alignment** — Document/DocumentMetadata now in `core/` (like Response/ChatMessage)
 
 ```python
-from agenticflow.models import OpenAIEmbedding
+from agenticflow.core import Document, DocumentMetadata
+from agenticflow.documents import PyPDFLoader
 
-embedder = OpenAIEmbedding(model="text-embedding-3-small")
+# Loaders auto-populate structured metadata
+loader = PyPDFLoader("report.pdf")
+docs = await loader.load()
 
-# Primary API: Full metadata
-result = await embedder.aembed(["Hello world", "AgenticFlow"])
-print(result.embeddings)        # list[list[float]]
-print(result.metadata.tokens)   # TokenUsage(prompt=4, ...)
-print(result.metadata.duration) # 0.181 seconds
+print(docs[0].metadata.source)        # "report.pdf"
+print(docs[0].metadata.source_type)   # "pdf"
+print(docs[0].metadata.page)          # 1
+print(docs[0].metadata.total_pages)   # 42
+print(docs[0].metadata.char_count)    # 3847 (auto-calculated)
+print(docs[0].metadata.created_at)    # datetime.datetime(...)
 
-# Convenience: Single text
-vector = await embedder.aembed_one("Single query")  # list[float]
+# Chunk metadata preserved through splits
+from agenticflow.documents import RecursiveSplitter
+splitter = RecursiveSplitter(chunk_size=1000)
+chunks = splitter.split_documents(docs)
 
-# VectorStore protocol (async, no metadata)
-vectors = await embedder.embed_texts(["Doc1", "Doc2"])
-query_vec = await embedder.embed_query("Search")
+print(chunks[0].metadata.parent_id)   # "original-doc-id"
+print(chunks[0].metadata.chunk_index) # 0
+print(chunks[0].metadata.total_chunks) # 5
+print(chunks[0].metadata.page)        # 1 (inherited from parent)
 ```
 
-**Previous (v1.14.2)** — Streaming Metadata
-- ✨ **Complete observability** — Full metadata in streaming responses for all providers
-- 📊 **Token usage** — Real-time prompt/completion/total token counts during streaming
-- 🏷️ **Model & finish reason** — Track model version and completion status
+**Previous (v1.14.5)** — Embedding API Standardization
+- ✨ **Standardized API** — Clean methods across all 9 providers
+- 🎯 **Primary methods** — `embed()` / `aembed()` with full metadata
+- 📊 **Token tracking** — OpenAI, Cohere, Mistral, Azure OpenAI
 
-See [CHANGELOG.md](CHANGELOG.md) for full version history.
+See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 
 ---
 
