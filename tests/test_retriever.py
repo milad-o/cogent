@@ -15,12 +15,12 @@ from agenticflow.retriever.base import (
 )
 
 # Test both import paths - new document module and backward-compatible retriever imports
-from agenticflow.document import (
+from agenticflow.documents import (
     Document,
     DocumentLoader,
     load_documents,
 )
-from agenticflow.document.splitters import (
+from agenticflow.documents.splitters import (
     CharacterSplitter,
     CodeSplitter,
     MarkdownSplitter,
@@ -28,7 +28,7 @@ from agenticflow.document.splitters import (
     SentenceSplitter,
     split_text,
 )
-from agenticflow.document.types import Document, TextChunk
+from agenticflow.documents.types import Document, TextChunk
 
 from agenticflow.retriever.utils.fusion import (
     deduplicate_results,

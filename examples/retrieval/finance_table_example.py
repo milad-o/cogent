@@ -309,7 +309,7 @@ async def extract_and_query(pdf_path: Path) -> dict[str, tuple[str, bool]]:
     """Extract PDF content and query with RAG-powered agent."""
     from agenticflow import Agent
     from agenticflow.flow import pipeline
-    from agenticflow.document.loaders import PDFMarkdownLoader
+    from agenticflow.documents.loaders import PDFMarkdownLoader
     from agenticflow.vectorstore import VectorStore
     from agenticflow.retriever import DenseRetriever
     from agenticflow.models import OpenAIEmbedding
@@ -431,7 +431,7 @@ async def main() -> None:
     
     if SKIP_QA:
         print("\n📊 Step 2: Extracting content (Q&A validation skipped)...")
-        from agenticflow.document.loaders import PDFMarkdownLoader
+        from agenticflow.documents.loaders import PDFMarkdownLoader
         loader = PDFMarkdownLoader()
         docs = await loader.load(pdf_path)
         print(f"✓ Extracted {len(docs)} pages")

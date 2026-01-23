@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.capabilities.base import BaseCapability
-from agenticflow.document.summarizer import (
+from agenticflow.documents.summarizer import (
     BaseSummarizer,
     HierarchicalSummarizer,
     MapReduceSummarizer,

@@ -8,6 +8,7 @@ For models and embeddings, use native AgenticFlow models:
 """
 
 from agenticflow.core.context import EMPTY_CONTEXT, RunContext
+from agenticflow.core.documents import Document, DocumentMetadata
 from agenticflow.core.enums import (
     AgentRole,
     AgentStatus,
@@ -46,6 +47,9 @@ __all__ = [
     # Context
     "RunContext",
     "EMPTY_CONTEXT",
+    # Documents
+    "Document",
+    "DocumentMetadata",
     # Response Protocol
     "Response",
     "ResponseMetadata",

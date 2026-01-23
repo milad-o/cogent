@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agenticflow.document import (
+from agenticflow.documents import (
     # Types
     Document,
     TextChunk,

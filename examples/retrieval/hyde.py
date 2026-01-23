@@ -46,7 +46,7 @@ from pathlib import Path
 
 from agenticflow.models import OpenAIEmbedding
 from agenticflow.retriever import DenseRetriever, HyDERetriever
-from agenticflow.document import RecursiveCharacterSplitter
+from agenticflow.documents import RecursiveCharacterSplitter
 from agenticflow.vectorstore import VectorStore, Document
 
 

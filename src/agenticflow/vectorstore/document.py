@@ -1,6 +1,6 @@
 """Document class for vector store.
 
-Re-exports the unified Document class from agenticflow.document.
+Re-exports the unified Document class from agenticflow.documents.
 Also provides utility functions for document creation and splitting.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 # Re-export the unified Document class
-from agenticflow.document.types import Document
+from agenticflow.documents.types import Document
 
 __all__ = [
     "Document",
