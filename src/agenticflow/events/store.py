@@ -7,17 +7,17 @@ rebuild state from event history.
 from __future__ import annotations
 
 import json
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from agenticflow.events.event import Event
 
 
-class EventStore(ABC):
-    """Abstract base for event persistence.
+class EventStore(Protocol):
+    """Protocol for event persistence.
 
     Implementations can store events in memory, files, databases, etc.
     Enables event sourcing patterns: replay, audit, state reconstruction.
@@ -37,7 +37,6 @@ class EventStore(ABC):
         ```
     """
 
-    @abstractmethod
     async def append(self, event: Event, flow_id: str) -> None:
         """Append an event to the store.
 
@@ -47,7 +46,6 @@ class EventStore(ABC):
         """
         ...
 
-    @abstractmethod
     async def get_events(
         self,
         flow_id: str,
@@ -69,7 +67,6 @@ class EventStore(ABC):
         """
         ...
 
-    @abstractmethod
     async def replay(
         self,
         flow_id: str,
@@ -86,7 +83,6 @@ class EventStore(ABC):
         """
         ...
 
-    @abstractmethod
     async def get_flow_ids(self, *, limit: int = 100) -> list[str]:
         """Get recent flow IDs.
 
@@ -107,9 +103,7 @@ class EventStore(ABC):
         Default implementation fetches all and yields.
         Subclasses can override for true streaming.
         """
-        events = await self.get_events(flow_id)
-        for event in events:
-            yield event
+        ...
 
 
 class InMemoryEventStore(EventStore):
