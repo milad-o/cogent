@@ -150,6 +150,40 @@ class InMemoryGraph(GraphBackend):
         self._maybe_save()
         return rel
 
+    def add_entities_batch(
+        self,
+        entities: list[tuple[str, str, dict[str, Any] | None]],
+    ) -> int:
+        """
+        Bulk insert entities for high performance.
+
+        Args:
+            entities: List of (entity_id, entity_type, attributes) tuples
+
+        Returns:
+            Number of entities inserted
+        """
+        for entity_id, entity_type, attributes in entities:
+            self.add_entity(entity_id, entity_type, attributes)
+        return len(entities)
+
+    def add_relationships_batch(
+        self,
+        relationships: list[tuple[str, str, str]],
+    ) -> int:
+        """
+        Bulk insert relationships for high performance.
+
+        Args:
+            relationships: List of (source_id, relation, target_id) tuples
+
+        Returns:
+            Number of relationships inserted
+        """
+        for source_id, relation, target_id in relationships:
+            self.add_relationship(source_id, relation, target_id)
+        return len(relationships)
+
     def get_relationships(
         self,
         entity_id: str,
