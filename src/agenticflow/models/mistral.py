@@ -17,7 +17,7 @@ Usage:
 
     # Embeddings
     embedder = MistralEmbedding(model="mistral-embed")
-    result = await embedder.aembed_texts(["Hello", "World"])
+    result = await embedder.embed(["Hello", "World"])
 
 Available chat models:
     - mistral-large-latest: State-of-the-art, best for complex tasks
@@ -406,7 +406,7 @@ class MistralEmbedding(BaseEmbedding):
         from agenticflow.models.mistral import MistralEmbedding
 
         embedder = MistralEmbedding(model="mistral-embed")
-        result = await embedder.aembed_texts(["Hello", "World"])
+        result = await embedder.embed(["Hello", "World"])
         print(f"Generated {len(result.embeddings[0])} dimensional embeddings")
 
     Available models:

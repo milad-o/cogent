@@ -12,7 +12,7 @@ Usage:
 
     # Embeddings
     embedder = OllamaEmbedding(model="nomic-embed-text")
-    result = await embedder.aembed_texts(["Hello", "World"])
+    result = await embedder.embed(["Hello", "World"])
 """
 
 from __future__ import annotations
@@ -308,7 +308,7 @@ class OllamaEmbedding(BaseEmbedding):
         # Custom model
         embedder = OllamaEmbedding(model="mxbai-embed-large")
 
-        result = await embedder.aembed_texts(["Hello", "World"])
+        result = await embedder.embed(["Hello", "World"])
     """
 
     model: str = "nomic-embed-text"

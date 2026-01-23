@@ -271,12 +271,13 @@ model = OpenAIChat(
 embeddings = OpenAIEmbedding(model="text-embedding-3-small")
 
 # Primary API with metadata
-result = await embeddings.aembed(["Hello world"])
+result = await embeddings.embed(["Hello world"])
 print(result.embeddings)  # Vectors
 print(result.metadata)    # Full metadata
 
 # Convenience for single text
-vector = await embeddings.aembed_one("Query")
+result = await embeddings.embed("Query")
+vector = result.embeddings[0]
 ```
 
 **With tools:**
@@ -364,7 +365,7 @@ embeddings = AzureOpenAIEmbedding(
     entra=AzureEntraAuth(method="default"),
 )
 
-result = await embeddings.aembed(["Document text"])
+result = await embeddings.embed(["Document text"])
 ```
 
 **Environment variables:**

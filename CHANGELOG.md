@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.2] - 2026-01-23
+
+### Removed
+- **BREAKING**: Removed all deprecated methods - clean API with no redundancy
+  - **Embedding Methods** (from `BaseEmbedding`):
+    - Removed: `aembed()`, `aembed_one()`, `aembed_texts()`, `aembed_text()`, `embed_one()`, `embed_texts()`, `embed_text()`, `aembed_query_old()`, `aembed_query_vector()`
+    - Migration: Use `embed(texts: str | list[str]) → EmbeddingResult` for all embedding operations
+    - All model implementations and documentation updated to new API
+  - **Agent Methods** (from `Agent`):
+    - Removed: `chat()`, `think_stream()`, `chat_stream()`, `run_turbo()`
+    - Migration:
+      - `chat(message)` → `run(task)`
+      - `chat(message, thread_id="t1")` → `run(task, thread_id="t1")`
+      - `think_stream(prompt)` → `think(prompt, stream=True)`
+      - `chat_stream(message, thread_id="t1")` → `run(task, stream=True, thread_id="t1")`
+      - `run_turbo(task)` → `run(task)` (already optimized)
+  - Refactored internal implementations:
+    - `think()` now uses `_think_stream_impl()` internally (private method)
+    - All agent methods delegate to core `run()` and `think()` APIs
+
+### Changed
+- Updated all tests to use new embedding and agent APIs
+- Updated documentation examples to show modern patterns
+- All model docstrings now reference `embed()` instead of deprecated methods
+
 ## [1.17.1] - 2026-01-23
 
 ### Changed
