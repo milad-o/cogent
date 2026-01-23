@@ -27,16 +27,18 @@ if TYPE_CHECKING:
 
 class DecayFunction(Enum):
     """Time decay functions for scoring."""
+
     EXPONENTIAL = "exponential"  # score * exp(-decay * days)
-    LINEAR = "linear"            # score * max(0, 1 - decay * days)
-    STEP = "step"                # Full score within window, zero outside
+    LINEAR = "linear"  # score * max(0, 1 - decay * days)
+    STEP = "step"  # Full score within window, zero outside
     LOGARITHMIC = "logarithmic"  # score * 1/(1 + log(1 + days))
-    NONE = "none"                # No decay, just filtering
+    NONE = "none"  # No decay, just filtering
 
 
 @dataclass
 class TimeRange:
     """Time range specification."""
+
     start: datetime | None = None
     end: datetime | None = None
 
@@ -142,15 +144,24 @@ class TimeBasedIndex(BaseRetriever):
     # Common date patterns for extraction
     DATE_PATTERNS = [
         # ISO format: 2024-01-15, 2024-01-15T10:30:00
-        (r'\b(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2})?(?:Z|[+-]\d{2}:\d{2})?)\b', "%Y-%m-%d"),
+        (
+            r"\b(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2})?(?:Z|[+-]\d{2}:\d{2})?)\b",
+            "%Y-%m-%d",
+        ),
         # US format: 01/15/2024, 1/15/24
-        (r'\b(\d{1,2}/\d{1,2}/\d{2,4})\b', "%m/%d/%Y"),
+        (r"\b(\d{1,2}/\d{1,2}/\d{2,4})\b", "%m/%d/%Y"),
         # EU format: 15-01-2024, 15.01.2024
-        (r'\b(\d{1,2}[-./]\d{1,2}[-./]\d{2,4})\b', "%d-%m-%Y"),
+        (r"\b(\d{1,2}[-./]\d{1,2}[-./]\d{2,4})\b", "%d-%m-%Y"),
         # Written: January 15, 2024 / Jan 15, 2024
-        (r'\b((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4})\b', "%B %d, %Y"),
+        (
+            r"\b((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4})\b",
+            "%B %d, %Y",
+        ),
         # Written: 15 January 2024
-        (r'\b(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})\b', "%d %B %Y"),
+        (
+            r"\b(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})\b",
+            "%d %B %Y",
+        ),
     ]
 
     def __init__(
@@ -196,7 +207,9 @@ class TimeBasedIndex(BaseRetriever):
         """Get reference date for decay calculation."""
         return self._reference_date or datetime.now(UTC)
 
-    def _extract_timestamp(self, text: str, metadata: dict[str, Any]) -> datetime | None:
+    def _extract_timestamp(
+        self, text: str, metadata: dict[str, Any]
+    ) -> datetime | None:
         """Extract timestamp from text or metadata."""
         # First check metadata
         if self._timestamp_field in metadata:
@@ -210,7 +223,14 @@ class TimeBasedIndex(BaseRetriever):
                     pass
 
         # Check common metadata fields
-        for field in ["date", "created_at", "published_at", "updated_at", "created", "published"]:
+        for field in [
+            "date",
+            "created_at",
+            "published_at",
+            "updated_at",
+            "created",
+            "published",
+        ]:
             if field in metadata:
                 val = metadata[field]
                 if isinstance(val, datetime):
@@ -230,7 +250,9 @@ class TimeBasedIndex(BaseRetriever):
                     try:
                         # Handle various formats
                         if "T" in date_str or "Z" in date_str or "+" in date_str:
-                            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                            return datetime.fromisoformat(
+                                date_str.replace("Z", "+00:00")
+                            )
 
                         # Try the specified format
                         dt = datetime.strptime(date_str, date_format)
@@ -316,11 +338,11 @@ class TimeBasedIndex(BaseRetriever):
 
             # Prepare for vector store
             metadata = {
-                    **(
-                        doc.metadata.to_dict()
-                        if hasattr(doc.metadata, "to_dict")
-                        else dict(doc.metadata)
-                    ),
+                **(
+                    doc.metadata.to_dict()
+                    if hasattr(doc.metadata, "to_dict")
+                    else dict(doc.metadata)
+                ),
                 "doc_id": doc_id,
                 self._timestamp_field: self._timestamps[doc_id].isoformat(),
             }
@@ -373,7 +395,9 @@ class TimeBasedIndex(BaseRetriever):
                 ts_str = sr.document.metadata.get(self._timestamp_field)
                 if ts_str:
                     with contextlib.suppress(ValueError):
-                        timestamp = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                        timestamp = datetime.fromisoformat(
+                            ts_str.replace("Z", "+00:00")
+                        )
 
             # Apply time range filter
             if time_range and timestamp:
@@ -389,17 +413,21 @@ class TimeBasedIndex(BaseRetriever):
                 decay = 1.0
                 adjusted_score = original_score
 
-            results.append(RetrievalResult(
-                document=sr.document,
-                score=adjusted_score,
-                retriever_name=self.name,
-                metadata={
-                    "original_score": original_score,
-                    "decay_factor": decay,
-                    "timestamp": timestamp.isoformat() if timestamp else None,
-                    "age_days": self._get_age_days(timestamp) if timestamp else None,
-                },
-            ))
+            results.append(
+                RetrievalResult(
+                    document=sr.document,
+                    score=adjusted_score,
+                    retriever_name=self.name,
+                    metadata={
+                        "original_score": original_score,
+                        "decay_factor": decay,
+                        "timestamp": timestamp.isoformat() if timestamp else None,
+                        "age_days": self._get_age_days(timestamp)
+                        if timestamp
+                        else None,
+                    },
+                )
+            )
 
         # Sort by adjusted score
         results.sort(key=lambda r: r.score, reverse=True)
@@ -548,8 +576,16 @@ class TimeBasedIndex(BaseRetriever):
             if allow_time_range and (time_start or time_end):
                 from datetime import datetime
 
-                start = datetime.fromisoformat(time_start.replace("Z", "+00:00")) if time_start else None
-                end = datetime.fromisoformat(time_end.replace("Z", "+00:00")) if time_end else None
+                start = (
+                    datetime.fromisoformat(time_start.replace("Z", "+00:00"))
+                    if time_start
+                    else None
+                )
+                end = (
+                    datetime.fromisoformat(time_end.replace("Z", "+00:00"))
+                    if time_end
+                    else None
+                )
 
                 if start or end:
                     time_range = TimeRange(start=start, end=end)

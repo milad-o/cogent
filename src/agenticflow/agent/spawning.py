@@ -214,7 +214,10 @@ class SpawnManager:
         if self._total_spawns >= self._config.max_total_spawns:
             return False, f"Max total spawns ({self._config.max_total_spawns}) reached"
         if self.active_count >= self._config.max_concurrent:
-            return False, f"Max concurrent spawns ({self._config.max_concurrent}) reached"
+            return (
+                False,
+                f"Max concurrent spawns ({self._config.max_concurrent}) reached",
+            )
         return True, "OK"
 
     async def spawn(
@@ -358,15 +361,14 @@ class SpawnManager:
         Returns:
             List of results in same order as tasks.
         """
+
         async def _spawn_one(role: str, task: str) -> str:
             try:
                 return await self.spawn(role, task)
             except Exception as e:
                 return f"Error: {e}"
 
-        return await asyncio.gather(*[
-            _spawn_one(role, task) for role, task in tasks
-        ])
+        return await asyncio.gather(*[_spawn_one(role, task) for role, task in tasks])
 
     async def parallel_map(
         self,
@@ -394,10 +396,7 @@ class SpawnManager:
             )
             ```
         """
-        tasks = [
-            (role, task_template.format(item=item))
-            for item in items
-        ]
+        tasks = [(role, task_template.format(item=item)) for item in items]
         return await self.spawn_many(tasks)
 
     async def _emit_spawn_event(
@@ -408,19 +407,24 @@ class SpawnManager:
         """Emit spawning-related event."""
         event_bus = getattr(self._parent, "event_bus", None)
         if event_bus:
-            await event_bus.publish(event_type.value, {
-                "parent_agent": self._parent.name,
-                "parent_id": self._parent.id,
-                "spawn_id": info.id,
-                "role": info.role,
-                "task": info.task[:200] if info.task else "",
-                "depth": info.depth,
-                "status": info.status,
-                "result_preview": (info.result or "")[:200] if info.result else None,
-                "error": info.error,
-                "active_spawns": self.active_count,
-                "total_spawns": self.total_spawns,
-            })
+            await event_bus.publish(
+                event_type.value,
+                {
+                    "parent_agent": self._parent.name,
+                    "parent_id": self._parent.id,
+                    "spawn_id": info.id,
+                    "role": info.role,
+                    "task": info.task[:200] if info.task else "",
+                    "depth": info.depth,
+                    "status": info.status,
+                    "result_preview": (info.result or "")[:200]
+                    if info.result
+                    else None,
+                    "error": info.error,
+                    "active_spawns": self.active_count,
+                    "total_spawns": self.total_spawns,
+                },
+            )
 
     def get_summary(self) -> dict[str, Any]:
         """Get summary of spawning activity."""

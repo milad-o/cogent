@@ -100,8 +100,7 @@ class FlashRankReranker(BaseReranker):
             from flashrank import RerankRequest
         except ImportError as e:
             raise ImportError(
-                "FlashRankReranker requires flashrank. "
-                "Install with: uv add flashrank"
+                "FlashRankReranker requires flashrank. Install with: uv add flashrank"
             ) from e
 
         ranker = self._get_ranker()
@@ -137,9 +136,7 @@ class FlashRankReranker(BaseReranker):
         for result in rerank_results:
             # Find the original document
             doc_idx = next(
-                (i for i, d in enumerate(documents)
-                 if d.text == result["text"]),
-                None
+                (i for i, d in enumerate(documents) if d.text == result["text"]), None
             )
 
             if doc_idx is not None:
@@ -147,6 +144,7 @@ class FlashRankReranker(BaseReranker):
             else:
                 # Fallback: create new document from result
                 from agenticflow.core import Document as DocClass
+
                 doc = DocClass(
                     text=result["text"],
                     metadata=result.get("meta", {}),

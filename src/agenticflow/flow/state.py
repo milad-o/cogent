@@ -13,11 +13,11 @@ from threading import Lock
 @dataclass
 class CoordinationState:
     """Tracks completion state for a single coordination point.
-    
+
     A coordination point waits for events from all required sources before
     completing. Once all sources have emitted, the coordination is marked
     as completed and can optionally auto-reset for the next cycle.
-    
+
     Attributes:
         required_sources: Immutable set of source names that must all emit.
         seen_sources: Mutable set of sources that have emitted so far.
@@ -32,14 +32,14 @@ class CoordinationState:
 
     def add_source(self, source: str) -> bool:
         """Add a source to the seen set.
-        
+
         Args:
             source: Name of the source that emitted an event.
-        
+
         Returns:
             True if this source completes the coordination (all sources now seen),
             False otherwise.
-        
+
         Note:
             If the source is not in required_sources, it is ignored.
             If the coordination is already completed, returns False.
@@ -52,7 +52,7 @@ class CoordinationState:
 
     def reset(self) -> None:
         """Clear state for reuse in the next coordination cycle.
-        
+
         This resets both the seen_sources set and the completed flag,
         allowing the coordination to trigger again when all sources
         emit in the next cycle.
@@ -63,11 +63,11 @@ class CoordinationState:
 
 class CoordinationManager:
     """Manages all coordination states for a Flow instance.
-    
+
     This class provides thread-safe management of multiple independent
     coordination points. Each coordination is identified by a unique
     binding_id (generated per reactor registration).
-    
+
     Thread Safety:
         All public methods are thread-safe via a single lock.
         The lock is held for minimal duration (just state updates).
@@ -79,18 +79,15 @@ class CoordinationManager:
         self._lock = Lock()
 
     def register_coordination(
-        self,
-        binding_id: str,
-        sources: frozenset[str],
-        timeout: float | None = None
+        self, binding_id: str, sources: frozenset[str], timeout: float | None = None
     ) -> None:
         """Register a new coordination point for a reactor binding.
-        
+
         Args:
             binding_id: Unique identifier for the reactor binding.
             sources: Set of source names that must all emit.
             timeout: Optional timeout in seconds (for future timeout support).
-        
+
         Raises:
             ValueError: If sources is empty.
         """
@@ -99,29 +96,28 @@ class CoordinationManager:
 
         with self._lock:
             self._coordinations[binding_id] = CoordinationState(
-                required_sources=sources,
-                timeout_at=timeout
+                required_sources=sources, timeout_at=timeout
             )
 
     def check_coordination(self, binding_id: str, source: str) -> bool:
         """Check if an event from a source completes the coordination.
-        
+
         This is the core method called on each event to determine if
         the coordination point should trigger.
-        
+
         Args:
             binding_id: Unique identifier for the reactor binding.
             source: Name of the source that emitted the event.
-        
+
         Returns:
             True if this event completes the coordination (all required
             sources have now emitted), False otherwise.
-        
+
         Note:
             - Returns False if binding_id is unknown (coordination not registered)
             - Returns False if coordination is already completed this cycle
             - Returns True only once per cycle (when last required source emits)
-        
+
         Thread Safety:
             This method is thread-safe. Multiple threads can call it concurrently
             without causing race conditions.
@@ -136,14 +132,14 @@ class CoordinationManager:
 
     def reset_coordination(self, binding_id: str) -> None:
         """Manually reset a coordination point.
-        
+
         This clears the seen sources and allows the coordination to
         trigger again in the next cycle. Typically used when auto-reset
         is disabled (reset_after=False).
-        
+
         Args:
             binding_id: Unique identifier for the reactor binding.
-        
+
         Note:
             Silently ignores unknown binding_id (no error raised).
         """
@@ -153,13 +149,13 @@ class CoordinationManager:
 
     def remove_coordination(self, binding_id: str) -> None:
         """Remove a coordination point (cleanup).
-        
+
         This should be called when a reactor is unregistered to prevent
         memory leaks from accumulating coordination state.
-        
+
         Args:
             binding_id: Unique identifier for the reactor binding.
-        
+
         Note:
             Silently ignores unknown binding_id (no error raised).
         """
@@ -168,13 +164,13 @@ class CoordinationManager:
 
     def get_coordination_state(self, binding_id: str) -> CoordinationState | None:
         """Get the current state of a coordination point (for debugging/observability).
-        
+
         Args:
             binding_id: Unique identifier for the reactor binding.
-        
+
         Returns:
             The CoordinationState for this binding, or None if not found.
-        
+
         Warning:
             The returned state is a reference to the internal state.
             Do not modify it directly. This method is primarily for

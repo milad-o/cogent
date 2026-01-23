@@ -60,7 +60,7 @@ class RetryMiddleware(BaseMiddleware):
 
     def _calculate_delay(self, attempt: int) -> float:
         """Calculate delay for the given attempt number."""
-        delay = self.base_delay * 2 ** attempt if self.exponential else self.base_delay
+        delay = self.base_delay * 2**attempt if self.exponential else self.base_delay
 
         delay = min(delay, self.max_delay)
 

@@ -179,8 +179,7 @@ class RateLimiter(Interceptor):
 
         if self.per_tool:
             result["per_tool"] = {
-                name: len(times)
-                for name, times in self._tool_times.items()
+                name: len(times) for name, times in self._tool_times.items()
             }
 
         return result

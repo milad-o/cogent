@@ -302,7 +302,9 @@ class SQLiteGraph(GraphBackend):
                 results.append(
                     {
                         "source": rel.source_id,
-                        "source_type": source_entity.type if source_entity else "unknown",
+                        "source_type": source_entity.type
+                        if source_entity
+                        else "unknown",
                         "relation": rel.relation,
                         "target": target,
                     }
@@ -317,11 +319,15 @@ class SQLiteGraph(GraphBackend):
                         "entity": entity.to_dict(),
                         "outgoing": [
                             r.to_dict()
-                            for r in self.get_relationships(pattern, direction="outgoing")
+                            for r in self.get_relationships(
+                                pattern, direction="outgoing"
+                            )
                         ],
                         "incoming": [
                             r.to_dict()
-                            for r in self.get_relationships(pattern, direction="incoming")
+                            for r in self.get_relationships(
+                                pattern, direction="incoming"
+                            )
                         ],
                     }
                 )

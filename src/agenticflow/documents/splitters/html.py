@@ -25,8 +25,24 @@ class HTMLSplitter(BaseSplitter):
     """
 
     DEFAULT_SPLIT_TAGS = [
-        "article", "section", "div", "p", "h1", "h2", "h3", "h4", "h5", "h6",
-        "ul", "ol", "li", "table", "tr", "blockquote", "pre", "code",
+        "article",
+        "section",
+        "div",
+        "p",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "li",
+        "table",
+        "tr",
+        "blockquote",
+        "pre",
+        "code",
     ]
 
     def __init__(
@@ -43,6 +59,7 @@ class HTMLSplitter(BaseSplitter):
         """Split HTML by tags."""
         # Try to use BeautifulSoup if available
         import importlib.util
+
         if importlib.util.find_spec("bs4") is not None:
             return self._split_with_bs4(text)
         else:
@@ -77,19 +94,19 @@ class HTMLSplitter(BaseSplitter):
         """Fallback regex-based splitting."""
         # Build pattern for tags
         tag_pattern = "|".join(self.tags_to_split_on)
-        pattern = rf'<({tag_pattern})[^>]*>(.*?)</\1>'
+        pattern = rf"<({tag_pattern})[^>]*>(.*?)</\1>"
 
         sections = []
         for match in re.finditer(pattern, text, re.IGNORECASE | re.DOTALL):
-            content = re.sub(r'<[^>]+>', ' ', match.group(2))
-            content = re.sub(r'\s+', ' ', content).strip()
+            content = re.sub(r"<[^>]+>", " ", match.group(2))
+            content = re.sub(r"\s+", " ", content).strip()
             if content:
                 sections.append(content)
 
         if not sections:
             # Just strip all tags and split
-            plain_text = re.sub(r'<[^>]+>', ' ', text)
-            plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+            plain_text = re.sub(r"<[^>]+>", " ", text)
+            plain_text = re.sub(r"\s+", " ", plain_text).strip()
             sections = [plain_text]
 
         return self._merge_splits(sections, "\n\n")

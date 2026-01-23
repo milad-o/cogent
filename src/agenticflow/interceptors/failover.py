@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 
 class FailoverTrigger(Enum):
     """Triggers that activate model fallback."""
+
     RATE_LIMIT = "rate_limit"
     TIMEOUT = "timeout"
     ERROR = "error"
@@ -49,6 +50,7 @@ class FailoverTrigger(Enum):
 @dataclass
 class FailoverState:
     """Tracks failover state across the execution."""
+
     current_model_index: int = 0
     errors: list[tuple[str, Exception]] = field(default_factory=list)
     triggered: bool = False
@@ -102,7 +104,9 @@ class Failover(Interceptor):
             on_fallback: Callback(from_model, to_model, error) when switching.
         """
         self.fallbacks = fallbacks
-        self.triggers = {FailoverTrigger(t) for t in (on or ["rate_limit", "timeout", "error"])}
+        self.triggers = {
+            FailoverTrigger(t) for t in (on or ["rate_limit", "timeout", "error"])
+        }
         self.max_retries_per_model = max_retries_per_model
         self.on_fallback = on_fallback
         self._resolved_models: list[Any] | None = None
@@ -123,11 +127,13 @@ class Failover(Interceptor):
             if isinstance(fb, str):
                 # Create model from name
                 from agenticflow.models import create_chat
+
                 try:
                     resolved.append(create_chat(fb))
                 except Exception:
                     # If creation fails, try OpenAI directly
                     from agenticflow.models.openai import OpenAIChat
+
                     resolved.append(OpenAIChat(model=fb))
             else:
                 resolved.append(fb)
@@ -142,13 +148,21 @@ class Failover(Interceptor):
 
         for trigger in self.triggers:
             if trigger == FailoverTrigger.RATE_LIMIT:
-                if "rate" in error_str or "429" in error_str or "ratelimit" in error_type:
+                if (
+                    "rate" in error_str
+                    or "429" in error_str
+                    or "ratelimit" in error_type
+                ):
                     return True
             elif trigger == FailoverTrigger.TIMEOUT:
                 if "timeout" in error_str or "timeout" in error_type:
                     return True
             elif trigger == FailoverTrigger.CONTEXT_LENGTH:
-                if "context" in error_str or "token" in error_str or "length" in error_str:
+                if (
+                    "context" in error_str
+                    or "token" in error_str
+                    or "length" in error_str
+                ):
                     return True
             elif trigger == FailoverTrigger.ERROR:
                 # Generic error trigger

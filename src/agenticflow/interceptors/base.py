@@ -34,6 +34,7 @@ class Phase(Enum):
     6. POST_RUN: After agent.run() completes
     7. ON_ERROR: When an error occurs
     """
+
     PRE_RUN = "pre_run"
     PRE_THINK = "pre_think"
     POST_THINK = "post_think"
@@ -64,6 +65,7 @@ class InterceptContext:
         error: Exception if ON_ERROR phase.
         model_response: Model response (only in POST_THINK).
     """
+
     agent: Agent
     phase: Phase
     task: str
@@ -109,6 +111,7 @@ class InterceptResult:
         final_response: If stopping, use this as final response.
         metadata: Optional metadata to attach to result.
     """
+
     proceed: bool = True
     modified_messages: list[dict[str, Any]] | None = None
     modified_task: str | None = None

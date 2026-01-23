@@ -159,6 +159,7 @@ class Browser(BaseCapability):
 
         # Check for playwright
         import importlib.util
+
         self._has_playwright = importlib.util.find_spec("playwright") is not None
 
     def _require_playwright(self) -> None:
@@ -204,11 +205,15 @@ class Browser(BaseCapability):
 
         # Launch browser
         if self.browser_type == "firefox":
-            self._browser = await self._playwright.firefox.launch(headless=self.headless)
+            self._browser = await self._playwright.firefox.launch(
+                headless=self.headless
+            )
         elif self.browser_type == "webkit":
             self._browser = await self._playwright.webkit.launch(headless=self.headless)
         else:
-            self._browser = await self._playwright.chromium.launch(headless=self.headless)
+            self._browser = await self._playwright.chromium.launch(
+                headless=self.headless
+            )
 
         # Create context with options
         context_options = {}
@@ -319,7 +324,7 @@ class Browser(BaseCapability):
                 text: el.innerText.trim().substring(0, 100),
                 href: el.href,
                 title: el.title || ''
-            }))"""
+            }))""",
         )
 
         return links

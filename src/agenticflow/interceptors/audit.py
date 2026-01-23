@@ -24,6 +24,7 @@ from agenticflow.interceptors.base import (
 
 class AuditTraceType(Enum):
     """Types of audit events."""
+
     RUN_START = "run_start"
     RUN_END = "run_end"
     MODEL_REQUEST = "model_request"
@@ -46,6 +47,7 @@ class AuditEvent:
         data: Additional event data.
         duration_ms: Duration in milliseconds (for response events).
     """
+
     timestamp: str
     event_type: AuditTraceType
     agent_name: str
@@ -125,6 +127,7 @@ class Auditor(Interceptor):
 
         # Compile redaction patterns
         import re
+
         self._redact_compiled = [
             re.compile(p, re.IGNORECASE) for p in self.redact_patterns
         ]
@@ -136,6 +139,7 @@ class Auditor(Interceptor):
     def _now_mono(self) -> float:
         """Get monotonic time for duration calculations."""
         import time
+
         return time.monotonic()
 
     def _redact(self, text: str) -> str:
@@ -148,7 +152,7 @@ class Auditor(Interceptor):
     def _truncate(self, text: str) -> str:
         """Truncate text to max length."""
         if len(text) > self.max_content_length:
-            return text[:self.max_content_length] + "..."
+            return text[: self.max_content_length] + "..."
         return text
 
     def _log_event(self, event: AuditEvent) -> None:
@@ -226,8 +230,12 @@ class Auditor(Interceptor):
             if tool_calls:
                 data["tool_calls"] = [
                     {
-                        "name": tc.get("name", "unknown") if isinstance(tc, dict) else getattr(tc, "name", "unknown"),
-                        "id": tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", ""),
+                        "name": tc.get("name", "unknown")
+                        if isinstance(tc, dict)
+                        else getattr(tc, "name", "unknown"),
+                        "id": tc.get("id", "")
+                        if isinstance(tc, dict)
+                        else getattr(tc, "id", ""),
                     }
                     for tc in tool_calls
                 ]

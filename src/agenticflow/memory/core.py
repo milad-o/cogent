@@ -138,7 +138,7 @@ class Memory:
             vectorstore: VectorStore for semantic search. Optional.
             namespace: Key prefix for isolation.
             event_bus: TraceBus for observability. Optional.
-        
+
         Memory is always agentic - it automatically exposes tools to agents.
         When an Agent receives a Memory instance, tools are auto-added.
         """
@@ -189,6 +189,7 @@ class Memory:
         """
         if self._tools_cache is None:
             from agenticflow.memory.tools import create_memory_tools
+
             self._tools_cache = create_memory_tools(self)
 
         return self._tools_cache
@@ -197,10 +198,14 @@ class Memory:
         """Emit an event if event_bus is configured."""
         if self._event_bus:
             from agenticflow.observability.trace_record import TraceType
-            await self._event_bus.publish(TraceType(event_type), {
-                "namespace": self._namespace,
-                **data,
-            })
+
+            await self._event_bus.publish(
+                TraceType(event_type),
+                {
+                    "namespace": self._namespace,
+                    **data,
+                },
+            )
 
     def _key(self, key: str) -> str:
         """Prefix key with namespace."""
@@ -228,11 +233,14 @@ class Memory:
         """
         start = time.perf_counter()
         await self._store.set(self._key(key), value, ttl=ttl)
-        await self._emit("memory.write", {
-            "key": key,
-            "ttl": ttl,
-            "duration_ms": (time.perf_counter() - start) * 1000,
-        })
+        await self._emit(
+            "memory.write",
+            {
+                "key": key,
+                "ttl": ttl,
+                "duration_ms": (time.perf_counter() - start) * 1000,
+            },
+        )
 
     async def recall(self, key: str, default: Any = None) -> Any:
         """Retrieve a value from memory.
@@ -247,11 +255,14 @@ class Memory:
         start = time.perf_counter()
         result = await self._store.get(self._key(key))
         found = result is not None
-        await self._emit("memory.read", {
-            "key": key,
-            "found": found,
-            "duration_ms": (time.perf_counter() - start) * 1000,
-        })
+        await self._emit(
+            "memory.read",
+            {
+                "key": key,
+                "found": found,
+                "duration_ms": (time.perf_counter() - start) * 1000,
+            },
+        )
         return result if found else default
 
     async def forget(self, key: str) -> bool:
@@ -264,10 +275,13 @@ class Memory:
             True if key was deleted.
         """
         deleted = await self._store.delete(self._key(key))
-        await self._emit("memory.delete", {
-            "key": key,
-            "deleted": deleted,
-        })
+        await self._emit(
+            "memory.delete",
+            {
+                "key": key,
+                "deleted": deleted,
+            },
+        )
         return deleted
 
     async def clear(self) -> None:
@@ -350,15 +364,16 @@ class Memory:
             results = await self._store.get_many(namespaced_keys)
             # Un-namespace the keys in result
             return {
-                k: (results.get(self._key(k)) if results.get(self._key(k)) is not None else default)
+                k: (
+                    results.get(self._key(k))
+                    if results.get(self._key(k)) is not None
+                    else default
+                )
                 for k in keys
             }
         else:
             # Fallback to individual gets
-            return {
-                k: (await self._store.get(self._key(k)) or default)
-                for k in keys
-            }
+            return {k: (await self._store.get(self._key(k)) or default) for k in keys}
 
     # -------------------------------------------------------------------------
     # Semantic Search (VectorStore integration)
@@ -386,12 +401,16 @@ class Memory:
             RuntimeError: If no VectorStore is configured.
         """
         if not self._vectorstore:
-            raise RuntimeError("No vectorstore configured. Pass vectorstore= to Memory().")
+            raise RuntimeError(
+                "No vectorstore configured. Pass vectorstore= to Memory()."
+            )
 
         doc_id = doc_id or str(uuid.uuid4())
         full_metadata = {"namespace": self._namespace, **(metadata or {})}
 
-        await self._vectorstore.add_texts([text], metadatas=[full_metadata], ids=[doc_id])
+        await self._vectorstore.add_texts(
+            [text], metadatas=[full_metadata], ids=[doc_id]
+        )
         return doc_id
 
     async def search(
@@ -416,7 +435,9 @@ class Memory:
             RuntimeError: If no VectorStore is configured.
         """
         if not self._vectorstore:
-            raise RuntimeError("No vectorstore configured. Pass vectorstore= to Memory().")
+            raise RuntimeError(
+                "No vectorstore configured. Pass vectorstore= to Memory()."
+            )
 
         start = time.perf_counter()
 
@@ -430,12 +451,15 @@ class Memory:
             filter=combined_filter if combined_filter else None,
         )
 
-        await self._emit("memory.search", {
-            "query": query[:100],  # Truncate for logging
-            "k": k,
-            "results_count": len(results),
-            "duration_ms": (time.perf_counter() - start) * 1000,
-        })
+        await self._emit(
+            "memory.search",
+            {
+                "query": query[:100],  # Truncate for logging
+                "k": k,
+                "results_count": len(results),
+                "duration_ms": (time.perf_counter() - start) * 1000,
+            },
+        )
 
         return results
 
@@ -453,21 +477,20 @@ class Memory:
         """
         # Use thread-specific key if thread_id provided, else default key
         # NOTE: Use "_messages" (with underscore) consistently
-        if thread_id:
-            messages_key = f"thread:{thread_id}:_messages"
-        else:
-            messages_key = "_messages"
+        messages_key = f"thread:{thread_id}:_messages" if thread_id else "_messages"
 
         async with self._lock:
             messages = await self.recall(messages_key, [])
             messages.append(_message_to_dict(message))
             await self.remember(messages_key, messages)
 
-    async def get_messages(self, thread_id: str | None = None, limit: int | None = None) -> list[Message]:
+    async def get_messages(
+        self, thread_id: str | None = None, limit: int | None = None
+    ) -> list[Message]:
         """Get conversation history.
 
         Args:
-            thread_id: Thread identifier for the conversation. If None, uses "_messages" 
+            thread_id: Thread identifier for the conversation. If None, uses "_messages"
                       (suitable for scoped Memory instances or direct storage).
             limit: Maximum messages to return. None = all.
 
@@ -477,10 +500,7 @@ class Memory:
         # Use thread-specific key if thread_id provided, else default key
         # (When Memory is scoped via .thread(), thread_id will be None)
         # NOTE: Use "_messages" (with underscore) to match what add_message uses
-        if thread_id:
-            messages_key = f"thread:{thread_id}:_messages"
-        else:
-            messages_key = "_messages"
+        messages_key = f"thread:{thread_id}:_messages" if thread_id else "_messages"
 
         raw = await self.recall(messages_key, [])
 
@@ -493,7 +513,7 @@ class Memory:
 
     async def clear_messages(self, thread_id: str | None = None) -> None:
         """Clear conversation history for a thread.
-        
+
         Args:
             thread_id: Thread identifier for the conversation. If None, clears _messages.
         """
@@ -709,7 +729,9 @@ class InMemoryStore:
     """
 
     def __init__(self) -> None:
-        self._data: dict[str, tuple[Any, float | None]] = {}  # key -> (value, expiry_time)
+        self._data: dict[
+            str, tuple[Any, float | None]
+        ] = {}  # key -> (value, expiry_time)
 
     async def get(self, key: str, default: Any = None) -> Any | None:
         """Get value, checking expiry."""
@@ -765,9 +787,7 @@ class InMemoryStore:
         """Get multiple values by keys."""
         return {key: await self.get(key) for key in keys}
 
-    async def set_many(
-        self, items: dict[str, Any], ttl: int | None = None
-    ) -> None:
+    async def set_many(self, items: dict[str, Any], ttl: int | None = None) -> None:
         """Set multiple values."""
         for key, value in items.items():
             await self.set(key, value, ttl=ttl)

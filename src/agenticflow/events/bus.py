@@ -83,6 +83,7 @@ class EventBus:
 
                 # Subscribe and store subscription ID
                 import asyncio
+
                 try:
                     # Fire-and-forget subscription for transport layer
                     asyncio.create_task(
@@ -107,7 +108,9 @@ class EventBus:
         self._handlers.clear()
         self._global_handlers.clear()
 
-    async def publish(self, event: Event | str, data: dict[str, Any] | None = None) -> Event:
+    async def publish(
+        self, event: Event | str, data: dict[str, Any] | None = None
+    ) -> Event:
         """Publish an event.
 
         Supports:

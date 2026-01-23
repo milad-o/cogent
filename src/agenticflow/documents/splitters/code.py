@@ -27,61 +27,61 @@ class CodeSplitter(BaseSplitter):
     # Language-specific split patterns
     LANGUAGE_PATTERNS: dict[str, list[str]] = {
         "python": [
-            r'\nclass\s+\w+',           # Class definitions
-            r'\ndef\s+\w+',             # Function definitions
-            r'\nasync\s+def\s+\w+',     # Async functions
-            r'\n@\w+',                  # Decorators
-            r'\n\n',                    # Double newlines
+            r"\nclass\s+\w+",  # Class definitions
+            r"\ndef\s+\w+",  # Function definitions
+            r"\nasync\s+def\s+\w+",  # Async functions
+            r"\n@\w+",  # Decorators
+            r"\n\n",  # Double newlines
         ],
         "javascript": [
-            r'\nclass\s+\w+',
-            r'\nfunction\s+\w+',
-            r'\nconst\s+\w+\s*=\s*(?:async\s+)?\(',
-            r'\nlet\s+\w+\s*=\s*(?:async\s+)?\(',
-            r'\nexport\s+',
-            r'\n\n',
+            r"\nclass\s+\w+",
+            r"\nfunction\s+\w+",
+            r"\nconst\s+\w+\s*=\s*(?:async\s+)?\(",
+            r"\nlet\s+\w+\s*=\s*(?:async\s+)?\(",
+            r"\nexport\s+",
+            r"\n\n",
         ],
         "typescript": [
-            r'\nclass\s+\w+',
-            r'\ninterface\s+\w+',
-            r'\ntype\s+\w+',
-            r'\nfunction\s+\w+',
-            r'\nconst\s+\w+\s*=\s*(?:async\s+)?\(',
-            r'\nexport\s+',
-            r'\n\n',
+            r"\nclass\s+\w+",
+            r"\ninterface\s+\w+",
+            r"\ntype\s+\w+",
+            r"\nfunction\s+\w+",
+            r"\nconst\s+\w+\s*=\s*(?:async\s+)?\(",
+            r"\nexport\s+",
+            r"\n\n",
         ],
         "java": [
-            r'\npublic\s+class\s+\w+',
-            r'\nprivate\s+class\s+\w+',
-            r'\nprotected\s+class\s+\w+',
-            r'\npublic\s+\w+\s+\w+\s*\(',
-            r'\nprivate\s+\w+\s+\w+\s*\(',
-            r'\n\n',
+            r"\npublic\s+class\s+\w+",
+            r"\nprivate\s+class\s+\w+",
+            r"\nprotected\s+class\s+\w+",
+            r"\npublic\s+\w+\s+\w+\s*\(",
+            r"\nprivate\s+\w+\s+\w+\s*\(",
+            r"\n\n",
         ],
         "go": [
-            r'\nfunc\s+',
-            r'\ntype\s+\w+\s+struct',
-            r'\ntype\s+\w+\s+interface',
-            r'\n\n',
+            r"\nfunc\s+",
+            r"\ntype\s+\w+\s+struct",
+            r"\ntype\s+\w+\s+interface",
+            r"\n\n",
         ],
         "rust": [
-            r'\nfn\s+\w+',
-            r'\nimpl\s+',
-            r'\nstruct\s+\w+',
-            r'\nenum\s+\w+',
-            r'\ntrait\s+\w+',
-            r'\n\n',
+            r"\nfn\s+\w+",
+            r"\nimpl\s+",
+            r"\nstruct\s+\w+",
+            r"\nenum\s+\w+",
+            r"\ntrait\s+\w+",
+            r"\n\n",
         ],
         "cpp": [
-            r'\nclass\s+\w+',
-            r'\nstruct\s+\w+',
-            r'\n\w+\s+\w+\s*\([^)]*\)\s*{',  # Function definitions
-            r'\n\n',
+            r"\nclass\s+\w+",
+            r"\nstruct\s+\w+",
+            r"\n\w+\s+\w+\s*\([^)]*\)\s*{",  # Function definitions
+            r"\n\n",
         ],
         "c": [
-            r'\nstruct\s+\w+',
-            r'\n\w+\s+\w+\s*\([^)]*\)\s*{',
-            r'\n\n',
+            r"\nstruct\s+\w+",
+            r"\n\w+\s+\w+\s*\([^)]*\)\s*{",
+            r"\n\n",
         ],
     }
 
@@ -96,7 +96,7 @@ class CodeSplitter(BaseSplitter):
         self.language = language.lower()
         self.patterns = self.LANGUAGE_PATTERNS.get(
             self.language,
-            [r'\n\n', r'\n']  # Default fallback
+            [r"\n\n", r"\n"],  # Default fallback
         )
 
     def split_text(self, text: str) -> list[Document]:
@@ -120,7 +120,7 @@ class CodeSplitter(BaseSplitter):
 
     def _split_by_pattern(self, text: str, pattern: str) -> list[str]:
         """Split text by regex pattern, keeping the matched delimiter."""
-        splits = re.split(f'({pattern})', text)
+        splits = re.split(f"({pattern})", text)
 
         # Recombine: each split starts with its delimiter
         sections = []

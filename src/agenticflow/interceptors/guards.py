@@ -39,6 +39,7 @@ from agenticflow.interceptors.base import (
 @dataclass
 class ToolRetryState:
     """Tracks retry state for a tool call."""
+
     tool_name: str
     attempts: int = 0
     last_error: Exception | None = None
@@ -122,15 +123,22 @@ class ToolGuard(Interceptor):
             return isinstance(error, self.retry_on)
 
         # Default: retry on common transient errors
-        return isinstance(error, (
-            TimeoutError,
-            ConnectionError,
-            OSError,
-        )) or "timeout" in str(error).lower() or "connection" in str(error).lower()
+        return (
+            isinstance(
+                error,
+                (
+                    TimeoutError,
+                    ConnectionError,
+                    OSError,
+                ),
+            )
+            or "timeout" in str(error).lower()
+            or "connection" in str(error).lower()
+        )
 
     def _calculate_delay(self, attempt: int) -> float:
         """Calculate delay for given attempt number."""
-        delay = self.initial_delay * (self.backoff ** attempt)
+        delay = self.initial_delay * (self.backoff**attempt)
         return min(delay, self.max_delay)
 
     async def pre_act(self, ctx: InterceptContext) -> InterceptResult:
@@ -279,9 +287,7 @@ class CircuitBreaker(Interceptor):
                 circuits[ctx.tool_name] = circuit
             else:
                 # Block the call
-                return InterceptResult.stop(
-                    f"Circuit breaker open for {ctx.tool_name}"
-                )
+                return InterceptResult.stop(f"Circuit breaker open for {ctx.tool_name}")
 
         return InterceptResult.ok()
 

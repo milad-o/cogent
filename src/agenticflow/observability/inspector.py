@@ -152,15 +152,15 @@ class TaskInspector:
             "running": len(running),
             "completed": len(completed),
             "failed": len(failed),
-            "completion_rate": (
-                len(completed) / len(tasks) * 100 if tasks else 0
-            ),
+            "completion_rate": (len(completed) / len(tasks) * 100 if tasks else 0),
         }
 
         # Check for issues
         if len(pending) > 50:
             issues.append(f"Large task backlog: {len(pending)} pending")
-            recommendations.append("Consider adding more agents or reducing task creation rate")
+            recommendations.append(
+                "Consider adding more agents or reducing task creation rate"
+            )
 
         if len(failed) > len(completed) and len(tasks) > 5:
             issues.append("High failure rate")
@@ -367,7 +367,8 @@ class SystemInspector:
         if self._task_manager:
             total_components += 1
             failed = sum(
-                1 for t in self._task_manager.tasks.values()
+                1
+                for t in self._task_manager.tasks.values()
                 if t.status == TaskStatus.FAILED
             )
             if failed == 0:

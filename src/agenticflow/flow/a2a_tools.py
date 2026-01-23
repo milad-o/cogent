@@ -12,7 +12,9 @@ if TYPE_CHECKING:
     from agenticflow.flow.core import Flow
 
 
-def create_delegate_tool(flow: Flow, from_agent: str, allowed_specialists: list[str]) -> object:
+def create_delegate_tool(
+    flow: Flow, from_agent: str, allowed_specialists: list[str]
+) -> object:
     """Create a delegation tool for a coordinator agent.
 
     This tool is automatically injected based on can_delegate configuration.
@@ -68,7 +70,7 @@ def create_delegate_tool(flow: Flow, from_agent: str, allowed_specialists: list[
         return f"✓ Task delegated to {specialist}"
 
     # Customize docstring with allowed specialists
-    specialists_list = ', '.join(allowed_specialists)
+    specialists_list = ", ".join(allowed_specialists)
     delegate_to.__doc__ = f"""Delegate a task to a specialist agent.
 
 Available specialists you can delegate to: {specialists_list}
@@ -84,7 +86,7 @@ Returns:
 
 Example:
     delegate_to(
-        specialist="{allowed_specialists[0] if allowed_specialists else 'specialist_name'}",
+        specialist="{allowed_specialists[0] if allowed_specialists else "specialist_name"}",
         task="Analyze Q4 sales data and identify trends"
     )
 """

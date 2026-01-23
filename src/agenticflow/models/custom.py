@@ -33,6 +33,12 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
+from agenticflow.core.messages import (
+    EmbeddingMetadata,
+    EmbeddingResult,
+    MessageMetadata,
+    TokenUsage,
+)
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -51,14 +57,16 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
             formatted.append(tool.to_openai())
         elif hasattr(tool, "name") and hasattr(tool, "description"):
             schema = getattr(tool, "args_schema", {}) or {}
-            formatted.append({
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description or "",
-                    "parameters": schema,
-                },
-            })
+            formatted.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description or "",
+                        "parameters": schema,
+                    },
+                }
+            )
         elif isinstance(tool, dict):
             formatted.append(tool)
     return formatted
@@ -66,7 +74,6 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 
 def _parse_response(response: Any) -> AIMessage:
     """Parse OpenAI-compatible response into AIMessage with metadata."""
-    from agenticflow.core.messages import MessageMetadata, TokenUsage
 
     choice = response.choices[0]
     message = choice.message
@@ -77,21 +84,33 @@ def _parse_response(response: Any) -> AIMessage:
             args = tc.function.arguments
             if isinstance(args, str):
                 args = __import__("json").loads(args)
-            tool_calls.append({
-                "id": tc.id,
-                "name": tc.function.name,
-                "args": args,
-            })
+            tool_calls.append(
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "args": args,
+                }
+            )
 
     metadata = MessageMetadata(
-        model=response.model if hasattr(response, 'model') else None,
+        model=response.model if hasattr(response, "model") else None,
         tokens=TokenUsage(
-            prompt_tokens=response.usage.prompt_tokens if hasattr(response, 'usage') and response.usage else 0,
-            completion_tokens=response.usage.completion_tokens if hasattr(response, 'usage') and response.usage else 0,
-            total_tokens=response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0,
-        ) if hasattr(response, 'usage') and response.usage else None,
-        finish_reason=choice.finish_reason if hasattr(choice, 'finish_reason') else None,
-        response_id=response.id if hasattr(response, 'id') else None,
+            prompt_tokens=response.usage.prompt_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            completion_tokens=response.usage.completion_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            total_tokens=response.usage.total_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+        )
+        if hasattr(response, "usage") and response.usage
+        else None,
+        finish_reason=choice.finish_reason
+        if hasattr(choice, "finish_reason")
+        else None,
+        response_id=response.id if hasattr(response, "id") else None,
     )
 
     return AIMessage(
@@ -206,17 +225,23 @@ class CustomChat(BaseChatModel):
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
-        response = self._client.chat.completions.create(**self._build_request(normalize_input(messages)))
+        response = self._client.chat.completions.create(
+            **self._build_request(normalize_input(messages))
+        )
         return _parse_response(response)
 
-    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+    async def ainvoke(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AIMessage:
         """Invoke asynchronously.
 
         Args:
             messages: Can be a string, list of dicts, or list of message objects.
         """
         self._ensure_initialized()
-        response = await self._async_client.chat.completions.create(**self._build_request(normalize_input(messages)))
+        response = await self._async_client.chat.completions.create(
+            **self._build_request(normalize_input(messages))
+        )
         return _parse_response(response)
 
     async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
@@ -229,7 +254,9 @@ class CustomChat(BaseChatModel):
             if chunk.choices and chunk.choices[0].delta.content:
                 yield AIMessage(content=chunk.choices[0].delta.content)
 
-    def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
+    def _build_request(
+        self, messages: list[dict[str, Any]] | list[Any]
+    ) -> dict[str, Any]:
         """Build API request.
 
         Args:
@@ -291,7 +318,7 @@ class CustomEmbedding(BaseEmbedding):
             model="togethercomputer/m2-bert-80M-8k-retrieval",
         )
 
-        vectors = await embedder.aembed(["Hello", "World"])
+        result = await embedder.aembed_texts(["Hello", "World"])
     """
 
     model: str = "text-embedding-3-small"
@@ -327,78 +354,51 @@ class CustomEmbedding(BaseEmbedding):
             max_retries=self.max_retries,
         )
 
-    def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts synchronously with metadata."""
-        self._ensure_initialized()
-        import time
+    async def embed(self, texts: str | list[str]) -> EmbeddingResult:
+        """Embed texts asynchronously with metadata.
 
-        from agenticflow.core.messages import (
-            EmbeddingMetadata,
-            EmbeddingResult,
-            TokenUsage,
-        )
+        Args:
+            texts: A single string or list of strings to embed.
 
-        start_time = time.time()
-        all_embeddings: list[list[float]] = []
-        total_prompt_tokens = 0
-        model_name = None
-
-        for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
-            response = self._client.embeddings.create(
-                model=self.model,
-                input=batch,
-            )
-            sorted_data = sorted(response.data, key=lambda x: x.index)
-            all_embeddings.extend([d.embedding for d in sorted_data])
-
-            if hasattr(response, 'usage') and response.usage:
-                total_prompt_tokens += response.usage.prompt_tokens
-            if hasattr(response, 'model') and response.model:
-                model_name = response.model
-
-        metadata = EmbeddingMetadata(
-            model=model_name or self.model,
-            tokens=TokenUsage(
-                prompt_tokens=total_prompt_tokens,
-                completion_tokens=0,
-                total_tokens=total_prompt_tokens,
-            ) if total_prompt_tokens > 0 else None,
-            duration=time.time() - start_time,
-            dimensions=len(all_embeddings[0]) if all_embeddings else None,
-            num_texts=len(texts),
-        )
-
-        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
-
-    async def aembed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts asynchronously with metadata."""
+        Returns:
+            EmbeddingResult with embeddings and metadata.
+        """
         self._ensure_initialized()
         import asyncio
         import time
 
         from agenticflow.core.messages import (
-            EmbeddingMetadata,
             EmbeddingResult,
-            TokenUsage,
         )
+
+        # Normalize input
+        texts_list = [texts] if isinstance(texts, str) else texts
 
         start_time = time.time()
         total_prompt_tokens = 0
         model_name = None
 
-        async def embed_batch(batch: list[str]) -> tuple[list[list[float]], int, str | None]:
+        async def embed_batch(
+            batch: list[str],
+        ) -> tuple[list[list[float]], int, str | None]:
             response = await self._async_client.embeddings.create(
                 model=self.model,
                 input=batch,
             )
             sorted_data = sorted(response.data, key=lambda x: x.index)
             embeddings = [d.embedding for d in sorted_data]
-            tokens = response.usage.prompt_tokens if hasattr(response, 'usage') and response.usage else 0
-            model = response.model if hasattr(response, 'model') else None
+            tokens = (
+                response.usage.prompt_tokens
+                if hasattr(response, "usage") and response.usage
+                else 0
+            )
+            model = response.model if hasattr(response, "model") else None
             return embeddings, tokens, model
 
-        batches = [texts[i:i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        batches = [
+            texts_list[i : i + self.batch_size]
+            for i in range(0, len(texts_list), self.batch_size)
+        ]
         results = await asyncio.gather(*[embed_batch(b) for b in batches])
 
         all_embeddings: list[list[float]] = []
@@ -414,10 +414,12 @@ class CustomEmbedding(BaseEmbedding):
                 prompt_tokens=total_prompt_tokens,
                 completion_tokens=0,
                 total_tokens=total_prompt_tokens,
-            ) if total_prompt_tokens > 0 else None,
+            )
+            if total_prompt_tokens > 0
+            else None,
             duration=time.time() - start_time,
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
-            num_texts=len(texts),
+            num_texts=len(texts_list),
         )
 
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)

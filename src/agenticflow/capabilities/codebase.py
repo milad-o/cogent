@@ -239,7 +239,10 @@ class CodebaseAnalyzer(BaseCapability):
                 self._process_method(item, class_id, file_path)
 
     def _process_function(
-        self, node: ast.FunctionDef | ast.AsyncFunctionDef, parent_id: str, file_path: Path
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        parent_id: str,
+        file_path: Path,
     ) -> None:
         """Process a function definition."""
         func_id = f"function:{node.name}"
@@ -281,7 +284,10 @@ class CodebaseAnalyzer(BaseCapability):
         self._process_calls(node, func_id)
 
     def _process_method(
-        self, node: ast.FunctionDef | ast.AsyncFunctionDef, class_id: str, file_path: Path
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        class_id: str,
+        file_path: Path,
     ) -> None:
         """Process a method definition."""
         method_id = f"method:{class_id.split(':')[1]}.{node.name}"
@@ -524,12 +530,14 @@ class CodebaseAnalyzer(BaseCapability):
                 for rel in rels:
                     source = self._kg.get_entity(rel.source)
                     if source:
-                        usages.append({
-                            "used_in": source.id,
-                            "type": source.type,
-                            "relationship": rel.relation,
-                            "file": source.attributes.get("file_path", "unknown"),
-                        })
+                        usages.append(
+                            {
+                                "used_in": source.id,
+                                "type": source.type,
+                                "relationship": rel.relation,
+                                "file": source.attributes.get("file_path", "unknown"),
+                            }
+                        )
 
         return usages
 
@@ -569,7 +577,8 @@ class CodebaseAnalyzer(BaseCapability):
         imports = self._kg.get_entities("Import")
         if module_name:
             imports = [
-                i for i in imports
+                i
+                for i in imports
                 if module_name.lower() in i.attributes.get("from_module", "").lower()
                 or module_name.lower() in i.attributes.get("name", "").lower()
             ]

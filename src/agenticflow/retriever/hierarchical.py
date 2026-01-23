@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 class HierarchyLevel(Enum):
     """Hierarchy levels in document structure."""
+
     DOCUMENT = "document"
     SECTION = "section"
     SUBSECTION = "subsection"
@@ -94,18 +95,20 @@ class HierarchicalIndex(BaseRetriever):
     _name: str = "hierarchical"
 
     # Markdown header pattern
-    MD_HEADER_PATTERN = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
+    MD_HEADER_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
 
     # HTML header pattern
-    HTML_HEADER_PATTERN = re.compile(r'<h([1-6])[^>]*>(.+?)</h\1>', re.IGNORECASE | re.DOTALL)
+    HTML_HEADER_PATTERN = re.compile(
+        r"<h([1-6])[^>]*>(.+?)</h\1>", re.IGNORECASE | re.DOTALL
+    )
 
-    SUMMARIZE_SECTION_PROMPT = '''Summarize this section in 1-2 sentences, capturing the main topic.
+    SUMMARIZE_SECTION_PROMPT = """Summarize this section in 1-2 sentences, capturing the main topic.
 
 Section Title: {title}
 Content:
 {text}
 
-Summary:'''
+Summary:"""
 
     def __init__(
         self,
@@ -146,7 +149,7 @@ Summary:'''
         self._nodes: dict[str, HierarchyNode] = {}
         self._documents: dict[str, Document] = {}
         self._section_nodes: list[str] = []  # For section-level search
-        self._chunk_nodes: list[str] = []     # For chunk-level search
+        self._chunk_nodes: list[str] = []  # For chunk-level search
 
         if name:
             self._name = name
@@ -227,10 +230,12 @@ Summary:'''
 
         for match in self.HTML_HEADER_PATTERN.finditer(text):
             level = int(match.group(1))
-            title = re.sub(r'<[^>]+>', '', match.group(2)).strip()
+            title = re.sub(r"<[^>]+>", "", match.group(2)).strip()
             pos = match.start()
 
-            hier_level = HierarchyLevel.SECTION if level <= 2 else HierarchyLevel.SUBSECTION
+            hier_level = (
+                HierarchyLevel.SECTION if level <= 2 else HierarchyLevel.SUBSECTION
+            )
 
             node_id = self._generate_id(f"{doc_id}_{title}_{pos}", "sec")
             node = HierarchyNode(
@@ -261,22 +266,24 @@ Summary:'''
                 for sep in [". ", ".\n", "\n\n", "\n"]:
                     last_sep = chunk_text.rfind(sep)
                     if last_sep > self._chunk_size // 2:
-                        chunk_text = chunk_text[:last_sep + len(sep)]
+                        chunk_text = chunk_text[: last_sep + len(sep)]
                         break
 
             if chunk_text.strip():
                 chunk_id = self._generate_id(f"{node_id}_chunk_{chunk_idx}", "chunk")
-                chunks.append(HierarchyNode(
-                    node_id=chunk_id,
-                    level=HierarchyLevel.CHUNK,
-                    title=f"Chunk {chunk_idx}",
-                    text=chunk_text.strip(),
-                    parent_id=node_id,
-                    start_pos=start,
-                    end_pos=start + len(chunk_text),
-                    depth=99,  # Leaf level
-                    metadata={"doc_id": doc_id, "chunk_idx": chunk_idx},
-                ))
+                chunks.append(
+                    HierarchyNode(
+                        node_id=chunk_id,
+                        level=HierarchyLevel.CHUNK,
+                        title=f"Chunk {chunk_idx}",
+                        text=chunk_text.strip(),
+                        parent_id=node_id,
+                        start_pos=start,
+                        end_pos=start + len(chunk_text),
+                        depth=99,  # Leaf level
+                        metadata={"doc_id": doc_id, "chunk_idx": chunk_idx},
+                    )
+                )
                 chunk_idx += 1
 
             start += len(chunk_text) - self._chunk_overlap
@@ -334,15 +341,17 @@ Summary:'''
                 section_nodes = self._parse_html_structure(doc.text, doc_id)
             else:
                 # No structure - treat as single section
-                section_nodes = [HierarchyNode(
-                    node_id=self._generate_id(doc_id, "sec"),
-                    level=HierarchyLevel.SECTION,
-                    title="Content",
-                    text=doc.text,
-                    parent_id=doc_id,
-                    depth=1,
-                    metadata={"doc_id": doc_id},
-                )]
+                section_nodes = [
+                    HierarchyNode(
+                        node_id=self._generate_id(doc_id, "sec"),
+                        level=HierarchyLevel.SECTION,
+                        title="Content",
+                        text=doc.text,
+                        parent_id=doc_id,
+                        depth=1,
+                        metadata={"doc_id": doc_id},
+                    )
+                ]
 
             # Add section nodes and generate summaries
             for section in section_nodes:
@@ -442,23 +451,29 @@ Summary:'''
                     if chunk_node.parent_id in relevant_section_ids:
                         section_node = self._nodes.get(chunk_node.parent_id)
 
-                        results.append(RetrievalResult(
-                            document=Document(
-                                text=chunk_node.text,
+                        results.append(
+                            RetrievalResult(
+                                document=Document(
+                                    text=chunk_node.text,
+                                    metadata={
+                                        **chunk_node.metadata,
+                                        "node_id": node_id,
+                                    },
+                                ),
+                                score=cr.score,
+                                retriever_name=self.name,
                                 metadata={
-                                    **chunk_node.metadata,
-                                    "node_id": node_id,
+                                    "section_title": section_node.title
+                                    if section_node
+                                    else "",
+                                    "section_summary": section_node.summary
+                                    if section_node
+                                    else "",
+                                    "hierarchy_path": self._get_hierarchy_path(node_id),
+                                    "level": "chunk",
                                 },
-                            ),
-                            score=cr.score,
-                            retriever_name=self.name,
-                            metadata={
-                                "section_title": section_node.title if section_node else "",
-                                "section_summary": section_node.summary if section_node else "",
-                                "hierarchy_path": self._get_hierarchy_path(node_id),
-                                "level": "chunk",
-                            },
-                        ))
+                            )
+                        )
 
                         if len(results) >= k:
                             break
@@ -468,15 +483,19 @@ Summary:'''
             chunk_results = await self._vectorstore.search(query, k=k)
             for cr in chunk_results:
                 node_id = cr.document.metadata.get("node_id")
-                results.append(RetrievalResult(
-                    document=cr.document,
-                    score=cr.score,
-                    retriever_name=self.name,
-                    metadata={
-                        "hierarchy_path": self._get_hierarchy_path(node_id) if node_id else [],
-                        "level": cr.document.metadata.get("level", "unknown"),
-                    },
-                ))
+                results.append(
+                    RetrievalResult(
+                        document=cr.document,
+                        score=cr.score,
+                        retriever_name=self.name,
+                        metadata={
+                            "hierarchy_path": self._get_hierarchy_path(node_id)
+                            if node_id
+                            else [],
+                            "level": cr.document.metadata.get("level", "unknown"),
+                        },
+                    )
+                )
 
         return results[:k]
 
@@ -489,6 +508,7 @@ Summary:'''
         Returns:
             Nested dictionary representing document hierarchy.
         """
+
         def build_tree(node_id: str) -> dict[str, Any]:
             node = self._nodes.get(node_id)
             if not node:

@@ -87,7 +87,10 @@ class BaseSplitter(ABC):
                 chunk.metadata.chunk_index = i
                 # Preserve custom metadata from both parent and chunk
                 if doc.metadata.custom:
-                    chunk.metadata.custom = {**doc.metadata.custom, **chunk.metadata.custom}
+                    chunk.metadata.custom = {
+                        **doc.metadata.custom,
+                        **chunk.metadata.custom,
+                    }
 
             chunks.extend(doc_chunks)
         return chunks
@@ -141,7 +144,9 @@ class BaseSplitter(ABC):
                     current_length -= self.length_function(popped)
                     if current_chunk:
                         current_length -= self.length_function(separator)
-                    overlap_start += self.length_function(popped) + self.length_function(separator)
+                    overlap_start += self.length_function(
+                        popped
+                    ) + self.length_function(separator)
 
                 current_start = overlap_start
 

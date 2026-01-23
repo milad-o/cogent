@@ -26,15 +26,15 @@ class RecursiveCharacterSplitter(BaseSplitter):
     """
 
     DEFAULT_SEPARATORS = [
-        "\n\n",      # Paragraphs
-        "\n",        # Lines
-        ". ",        # Sentences (with space)
-        "! ",        # Exclamations
-        "? ",        # Questions
-        "; ",        # Semicolons
-        ", ",        # Clauses
-        " ",         # Words
-        "",          # Characters
+        "\n\n",  # Paragraphs
+        "\n",  # Lines
+        ". ",  # Sentences (with space)
+        "! ",  # Exclamations
+        "? ",  # Questions
+        "; ",  # Semicolons
+        ", ",  # Clauses
+        " ",  # Words
+        "",  # Characters
     ]
 
     def __init__(
@@ -72,7 +72,9 @@ class RecursiveCharacterSplitter(BaseSplitter):
                 # Recombine: pair each content with its separator
                 merged = []
                 for i in range(0, len(splits) - 1, 2):
-                    merged.append(splits[i] + (splits[i + 1] if i + 1 < len(splits) else ""))
+                    merged.append(
+                        splits[i] + (splits[i + 1] if i + 1 < len(splits) else "")
+                    )
                 if len(splits) % 2 == 1:
                     merged.append(splits[-1])
                 splits = merged
@@ -95,7 +97,9 @@ class RecursiveCharacterSplitter(BaseSplitter):
                 # First, save current accumulated parts
                 if current_parts:
                     chunks.extend(
-                        self._merge_splits(current_parts, separator if self.keep_separator else "")
+                        self._merge_splits(
+                            current_parts, separator if self.keep_separator else ""
+                        )
                     )
                     current_parts = []
                     current_length = 0
@@ -106,10 +110,12 @@ class RecursiveCharacterSplitter(BaseSplitter):
                     chunks.extend(sub_chunks)
                 else:
                     # Can't split further, just add as is
-                    chunks.append(Document(
-                        text=split,
-                        metadata={"chunk_index": len(chunks)},
-                    ))
+                    chunks.append(
+                        Document(
+                            text=split,
+                            metadata={"chunk_index": len(chunks)},
+                        )
+                    )
                 continue
 
             # Check if we need to start a new chunk
@@ -120,7 +126,9 @@ class RecursiveCharacterSplitter(BaseSplitter):
             if total_length > self.chunk_size and current_parts:
                 # Create chunk from accumulated parts
                 chunks.extend(
-                    self._merge_splits(current_parts, separator if self.keep_separator else "")
+                    self._merge_splits(
+                        current_parts, separator if self.keep_separator else ""
+                    )
                 )
 
                 # Start new chunk with overlap
@@ -143,7 +151,9 @@ class RecursiveCharacterSplitter(BaseSplitter):
         # Handle remaining parts
         if current_parts:
             chunks.extend(
-                self._merge_splits(current_parts, separator if self.keep_separator else "")
+                self._merge_splits(
+                    current_parts, separator if self.keep_separator else ""
+                )
             )
 
         # Renumber chunk indices
@@ -180,7 +190,9 @@ class CharacterSplitter(BaseSplitter):
         """Split text by separator."""
         splits = text.split(self.separator) if self.separator else list(text)
 
-        return self._merge_splits(splits, self.separator if self.keep_separator else " ")
+        return self._merge_splits(
+            splits, self.separator if self.keep_separator else " "
+        )
 
 
 __all__ = ["RecursiveCharacterSplitter", "CharacterSplitter"]

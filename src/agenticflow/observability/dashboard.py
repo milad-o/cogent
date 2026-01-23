@@ -150,10 +150,12 @@ class Dashboard:
         Args:
             event: Event data.
         """
-        self._events.append({
-            **event,
-            "dashboard_received": now_utc().isoformat(),
-        })
+        self._events.append(
+            {
+                **event,
+                "dashboard_received": now_utc().isoformat(),
+            }
+        )
 
         # Trim old events
         max_events = 1000
@@ -188,13 +190,15 @@ class Dashboard:
         # Collect spans from all tracers
         all_spans: list[dict[str, Any]] = []
         for tracer in self._tracers:
-            for span in tracer.finished_spans[-self.config.max_spans_display:]:
+            for span in tracer.finished_spans[-self.config.max_spans_display :]:
                 all_spans.append(span.to_dict())
 
         # Collect logs from all loggers
         all_logs: list[dict[str, Any]] = []
         for logger in self._loggers:
-            for entry in logger.get_entries(since=history_start)[-self.config.max_logs_display:]:
+            for entry in logger.get_entries(since=history_start)[
+                -self.config.max_logs_display :
+            ]:
                 all_logs.append(entry.to_dict())
 
         # Aggregate metrics
@@ -276,21 +280,25 @@ class Dashboard:
         for tracer in self._tracers:
             for span in tracer.finished_spans:
                 if span.attributes.get("agent_id") == agent_id:
-                    activities.append({
-                        "type": "span",
-                        "time": span.start_time,
-                        "data": span.to_dict(),
-                    })
+                    activities.append(
+                        {
+                            "type": "span",
+                            "time": span.start_time,
+                            "data": span.to_dict(),
+                        }
+                    )
 
         # Find logs for this agent
         for logger in self._loggers:
             for entry in logger.entries:
                 if entry.context.get("agent_id") == agent_id:
-                    activities.append({
-                        "type": "log",
-                        "time": entry.timestamp.timestamp(),
-                        "data": entry.to_dict(),
-                    })
+                    activities.append(
+                        {
+                            "type": "log",
+                            "time": entry.timestamp.timestamp(),
+                            "data": entry.to_dict(),
+                        }
+                    )
 
         # Sort by time
         activities.sort(key=lambda a: a["time"])
@@ -308,8 +316,7 @@ class Dashboard:
             "agents": {
                 "total": len(snapshot.agents),
                 "active": sum(
-                    1 for a in snapshot.agents.values()
-                    if a.get("status") == "active"
+                    1 for a in snapshot.agents.values() if a.get("status") == "active"
                 ),
             },
             "tasks": {

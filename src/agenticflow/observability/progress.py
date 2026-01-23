@@ -34,36 +34,37 @@ from agenticflow.core.utils import generate_id, now_utc
 # Enums and Configuration
 # ============================================================
 
+
 class Verbosity(IntEnum):
     """Output verbosity levels."""
 
-    SILENT = 0      # No output
-    MINIMAL = 1     # Only final results
-    NORMAL = 2      # Key milestones
-    VERBOSE = 3     # Detailed progress
-    DEBUG = 4       # Everything including internals
-    TRACE = 5       # Maximum detail
+    SILENT = 0  # No output
+    MINIMAL = 1  # Only final results
+    NORMAL = 2  # Key milestones
+    VERBOSE = 3  # Detailed progress
+    DEBUG = 4  # Everything including internals
+    TRACE = 5  # Maximum detail
 
 
 class OutputFormat(Enum):
     """Output format types."""
 
-    TEXT = "text"           # Plain text
-    RICH = "rich"           # Rich formatting (colors, Unicode)
-    JSON = "json"           # JSON lines
+    TEXT = "text"  # Plain text
+    RICH = "rich"  # Rich formatting (colors, Unicode)
+    JSON = "json"  # JSON lines
     STRUCTURED = "structured"  # Structured data (for programmatic use)
-    MINIMAL = "minimal"     # Minimal output
+    MINIMAL = "minimal"  # Minimal output
 
 
 class ProgressStyle(Enum):
     """Progress indicator styles."""
 
-    SPINNER = "spinner"     # Spinning indicator
-    BAR = "bar"            # Progress bar
-    DOTS = "dots"          # Dot sequence
-    STEPS = "steps"        # Step counter
-    PERCENT = "percent"    # Percentage
-    NONE = "none"          # No progress indicator
+    SPINNER = "spinner"  # Spinning indicator
+    BAR = "bar"  # Progress bar
+    DOTS = "dots"  # Dot sequence
+    STEPS = "steps"  # Step counter
+    PERCENT = "percent"  # Percentage
+    NONE = "none"  # No progress indicator
 
 
 class Theme(Enum):
@@ -177,6 +178,7 @@ class OutputConfig:
 # ============================================================
 # Color and Styling
 # ============================================================
+
 
 class Colors:
     """ANSI color codes."""
@@ -307,10 +309,14 @@ class Styler:
         return getattr(Symbols, f"ASCII_{name}", "?")
 
     def check(self) -> str:
-        return self.success(self.sym("CHECK") if self._use_unicode else Symbols.ASCII_CHECK)
+        return self.success(
+            self.sym("CHECK") if self._use_unicode else Symbols.ASCII_CHECK
+        )
 
     def cross(self) -> str:
-        return self.error(self.sym("CROSS") if self._use_unicode else Symbols.ASCII_CROSS)
+        return self.error(
+            self.sym("CROSS") if self._use_unicode else Symbols.ASCII_CROSS
+        )
 
     def arrow(self) -> str:
         return self.sym("ARROW") if self._use_unicode else Symbols.ASCII_ARROW
@@ -319,6 +325,7 @@ class Styler:
 # ============================================================
 # Event Types for Progress Tracking
 # ============================================================
+
 
 @dataclass
 class ProgressEvent:
@@ -348,6 +355,7 @@ class ProgressEvent:
 # ============================================================
 # Base Renderer
 # ============================================================
+
 
 class BaseRenderer(ABC):
     """Base class for output renderers."""
@@ -444,8 +452,11 @@ class RichRenderer(BaseRenderer):
             agent = data.get("agent", "Unknown")
             parts.append(s.agent(f"[{agent}]"))
             result = data.get("result", "")
-            if self.config.truncate_results and len(result) > self.config.truncate_results:
-                result = result[:self.config.truncate_results] + "..."
+            if (
+                self.config.truncate_results
+                and len(result) > self.config.truncate_results
+            ):
+                result = result[: self.config.truncate_results] + "..."
             parts.append(result)
 
         elif event_type == "tool_call":
@@ -461,8 +472,11 @@ class RichRenderer(BaseRenderer):
             if tool:
                 parts.append(s.tool(tool))
             result = str(data.get("result", ""))
-            if self.config.truncate_results and len(result) > self.config.truncate_results:
-                result = result[:self.config.truncate_results] + "..."
+            if (
+                self.config.truncate_results
+                and len(result) > self.config.truncate_results
+            ):
+                result = result[: self.config.truncate_results] + "..."
             parts.append(s.dim(result))
 
         elif event_type == "wave_start":
@@ -576,6 +590,7 @@ class MinimalRenderer(BaseRenderer):
 # Progress Tracker
 # ============================================================
 
+
 class ProgressTracker:
     """
     Main progress tracking class.
@@ -682,7 +697,9 @@ class ProgressTracker:
         )
         self._emit(event)
 
-    def error(self, message: str, exception: Exception | None = None, **kwargs: Any) -> None:
+    def error(
+        self, message: str, exception: Exception | None = None, **kwargs: Any
+    ) -> None:
         """Report an error.
 
         Args:
@@ -781,7 +798,9 @@ class ProgressTracker:
             )
             self._emit(event)
 
-    def tool_call(self, tool: str, args: dict[str, Any] | None = None, **kwargs: Any) -> None:
+    def tool_call(
+        self, tool: str, args: dict[str, Any] | None = None, **kwargs: Any
+    ) -> None:
         """Report tool being called.
 
         Args:
@@ -967,7 +986,9 @@ class ProgressTracker:
             )
             self._emit(event)
 
-    def wave_start(self, wave: int, total_waves: int, parallel_calls: int, **kwargs: Any) -> None:
+    def wave_start(
+        self, wave: int, total_waves: int, parallel_calls: int, **kwargs: Any
+    ) -> None:
         """Report DAG wave starting.
 
         Args:
@@ -1071,6 +1092,7 @@ class ProgressTracker:
                     time.sleep(0.1)
 
             import threading
+
             thread = threading.Thread(target=spin, daemon=True)
             thread.start()
 
@@ -1079,7 +1101,9 @@ class ProgressTracker:
             finally:
                 done = True
                 thread.join(timeout=0.2)
-                self.config.stream.write(f"\r{self._renderer.styler.check()} {message}\n")
+                self.config.stream.write(
+                    f"\r{self._renderer.styler.check()} {message}\n"
+                )
                 self.config.stream.flush()
         else:
             yield
@@ -1152,7 +1176,12 @@ class ProgressTracker:
             else:
                 symbol = "•"
 
-            desc = event.data.get("title") or event.data.get("agent") or event.data.get("tool") or event.event_type
+            desc = (
+                event.data.get("title")
+                or event.data.get("agent")
+                or event.data.get("tool")
+                or event.event_type
+            )
             lines.append(f"  {time_str:>8} {symbol} {desc}")
 
         return "\n".join(lines)
@@ -1181,6 +1210,7 @@ class ProgressTracker:
 # ============================================================
 # Callback Adapters
 # ============================================================
+
 
 def create_on_step_callback(
     tracker: ProgressTracker,
@@ -1226,6 +1256,7 @@ def create_executor_callback(
     Returns:
         Callback function for agent.run(on_step=...).
     """
+
     def callback(step_type: str, data: Any) -> None:
         if step_type == "planning_dag":
             tracker.update("Building execution DAG...")
@@ -1244,7 +1275,9 @@ def create_executor_callback(
         elif step_type == "strategy_selected":
             tracker.update(f"Strategy: {data.get('strategy', 'unknown')}")
         else:
-            tracker.custom(step_type, **data if isinstance(data, dict) else {"value": data})
+            tracker.custom(
+                step_type, **data if isinstance(data, dict) else {"value": data}
+            )
 
     return callback
 
@@ -1301,6 +1334,7 @@ def configure_output(
 # DAG Visualization
 # ============================================================
 
+
 def render_dag_ascii(
     nodes: list[str],
     edges: list[tuple[str, str]],
@@ -1335,10 +1369,7 @@ def render_dag_ascii(
 
     while remaining:
         # Find nodes with no incomplete dependencies
-        level = [
-            n for n in remaining
-            if all(dep in completed for dep in incoming[n])
-        ]
+        level = [n for n in remaining if all(dep in completed for dep in incoming[n])]
         if not level:
             break
         levels.append(level)

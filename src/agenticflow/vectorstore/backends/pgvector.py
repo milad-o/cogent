@@ -183,11 +183,13 @@ class PgVectorBackend:
                 metadata=row[2] or {},
                 id=row[0],
             )
-            results.append(SearchResult(
-                document=doc,
-                score=float(row[3]),
-                id=row[0],
-            ))
+            results.append(
+                SearchResult(
+                    document=doc,
+                    score=float(row[3]),
+                    id=row[0],
+                )
+            )
 
         return results
 
@@ -224,10 +226,7 @@ class PgVectorBackend:
             )
             rows = cur.fetchall()
 
-        return [
-            Document(text=row[1], metadata=row[2] or {}, id=row[0])
-            for row in rows
-        ]
+        return [Document(text=row[1], metadata=row[2] or {}, id=row[0]) for row in rows]
 
     def count(self) -> int:
         """Return the number of documents in the store."""

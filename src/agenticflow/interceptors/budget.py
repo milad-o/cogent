@@ -19,8 +19,9 @@ from agenticflow.interceptors.base import (
 
 class ExitBehavior(Enum):
     """What to do when budget is exhausted."""
-    STOP = "stop"      # Stop execution, return final response
-    ERROR = "error"    # Raise an exception
+
+    STOP = "stop"  # Stop execution, return final response
+    ERROR = "error"  # Raise an exception
 
 
 @dataclass
@@ -55,7 +56,7 @@ class BudgetGuard(Interceptor):
     """
 
     model_calls: int = 0  # 0 = unlimited
-    tool_calls: int = 0   # 0 = unlimited
+    tool_calls: int = 0  # 0 = unlimited
     exit_behavior: ExitBehavior | str = ExitBehavior.STOP
     warning_threshold: float = 0.8
 
@@ -153,6 +154,7 @@ class BudgetGuard(Interceptor):
     def _warn(self, call_type: str, current: int, limit: int) -> None:
         """Emit warning when approaching limit."""
         import warnings
+
         remaining = limit - current
         warnings.warn(
             f"BudgetGuard: {remaining} {call_type} calls remaining "
@@ -168,8 +170,7 @@ class BudgetGuard(Interceptor):
     ) -> InterceptResult:
         """Handle when a limit is reached."""
         message = (
-            f"Budget exhausted: {call_type} call limit reached "
-            f"({current}/{limit})"
+            f"Budget exhausted: {call_type} call limit reached ({current}/{limit})"
         )
 
         if self.exit_behavior == ExitBehavior.ERROR:

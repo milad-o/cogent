@@ -99,6 +99,7 @@ class LLMReranker(BaseReranker):
             try:
                 # Extract first number from response
                 import re
+
                 match = re.search(r"(\d+(?:\.\d+)?)", response.strip())
                 if match:
                     score = float(match.group(1))
@@ -130,10 +131,7 @@ class LLMReranker(BaseReranker):
         # Score all documents concurrently with rate limiting
         semaphore = asyncio.Semaphore(self._max_concurrent)
 
-        tasks = [
-            self._score_document(query, doc, semaphore)
-            for doc in documents
-        ]
+        tasks = [self._score_document(query, doc, semaphore) for doc in documents]
 
         scores = await asyncio.gather(*tasks)
 
@@ -219,11 +217,11 @@ class ListwiseLLMReranker(BaseReranker):
             return []
 
         # Limit to max documents
-        docs_to_rank = documents[:self._max_documents]
+        docs_to_rank = documents[: self._max_documents]
 
         # Build prompt with numbered documents
         doc_list = "\n\n".join(
-            f"[{i+1}] {doc.text[:500]}"  # Truncate for token limits
+            f"[{i + 1}] {doc.text[:500]}"  # Truncate for token limits
             for i, doc in enumerate(docs_to_rank)
         )
 
@@ -241,6 +239,7 @@ Format: comma-separated numbers (e.g., 3,1,5,2,4)"""
 
         # Parse ranking
         import re
+
         numbers = re.findall(r"\d+", response)
 
         # Build ordered results

@@ -46,13 +46,15 @@ class MarkdownSplitter(BaseSplitter):
         if self.return_each_section:
             chunks = []
             for section in sections:
-                chunks.append(Document(
-                    text=section["content"],
-                    metadata={
-                        "headers": section["headers"],
-                        "chunk_index": len(chunks),
-                    }
-                ))
+                chunks.append(
+                    Document(
+                        text=section["content"],
+                        metadata={
+                            "headers": section["headers"],
+                            "chunk_index": len(chunks),
+                        },
+                    )
+                )
             return chunks
 
         # Merge sections into appropriately sized chunks
@@ -69,13 +71,15 @@ class MarkdownSplitter(BaseSplitter):
             if section_length > self.chunk_size:
                 # Save current chunk first
                 if current_content:
-                    chunks.append(Document(
-                        text="\n\n".join(current_content),
-                        metadata={
-                            "headers": dict(current_headers),
-                            "chunk_index": len(chunks),
-                        }
-                    ))
+                    chunks.append(
+                        Document(
+                            text="\n\n".join(current_content),
+                            metadata={
+                                "headers": dict(current_headers),
+                                "chunk_index": len(chunks),
+                            },
+                        )
+                    )
                     current_content = []
                     current_length = 0
 
@@ -96,13 +100,16 @@ class MarkdownSplitter(BaseSplitter):
             # Check if we need to start new chunk
             if current_length + section_length > self.chunk_size and current_content:
                 from agenticflow.core import DocumentMetadata
-                chunks.append(Document(
-                    text="\n\n".join(current_content),
-                    metadata=DocumentMetadata(
-                        chunk_index=len(chunks),
-                        custom={"headers": dict(current_headers)}
+
+                chunks.append(
+                    Document(
+                        text="\n\n".join(current_content),
+                        metadata=DocumentMetadata(
+                            chunk_index=len(chunks),
+                            custom={"headers": dict(current_headers)},
+                        ),
                     )
-                ))
+                )
                 current_content = []
                 current_length = 0
 
@@ -113,19 +120,22 @@ class MarkdownSplitter(BaseSplitter):
         # Add final chunk
         if current_content:
             from agenticflow.core import DocumentMetadata
-            chunks.append(Document(
-                text="\n\n".join(current_content),
-                metadata=DocumentMetadata(
-                    chunk_index=len(chunks),
-                    custom={"headers": dict(current_headers)}
+
+            chunks.append(
+                Document(
+                    text="\n\n".join(current_content),
+                    metadata=DocumentMetadata(
+                        chunk_index=len(chunks),
+                        custom={"headers": dict(current_headers)},
+                    ),
                 )
-            ))
+            )
 
         return chunks
 
     def _split_by_headers(self, text: str) -> list[dict[str, Any]]:
         """Split markdown into sections by headers."""
-        header_pattern = r'^(#{1,6})\s+(.+)$'
+        header_pattern = r"^(#{1,6})\s+(.+)$"
 
         lines = text.split("\n")
         sections: list[dict[str, Any]] = []
@@ -140,10 +150,12 @@ class MarkdownSplitter(BaseSplitter):
                 if current_content:
                     content_text = "\n".join(current_content).strip()
                     if content_text:
-                        sections.append({
-                            "headers": dict(current_headers),
-                            "content": content_text,
-                        })
+                        sections.append(
+                            {
+                                "headers": dict(current_headers),
+                                "content": content_text,
+                            }
+                        )
                     current_content = []
 
                 # Update header hierarchy
@@ -167,10 +179,12 @@ class MarkdownSplitter(BaseSplitter):
         if current_content:
             content_text = "\n".join(current_content).strip()
             if content_text:
-                sections.append({
-                    "headers": dict(current_headers),
-                    "content": content_text,
-                })
+                sections.append(
+                    {
+                        "headers": dict(current_headers),
+                        "content": content_text,
+                    }
+                )
 
         return sections
 

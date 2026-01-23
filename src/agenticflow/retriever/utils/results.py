@@ -147,7 +147,9 @@ def format_context(
 
         # Source info
         if include_source:
-            source = r.document.metadata.get("source") or r.document.metadata.get("filename")
+            source = r.document.metadata.get("source") or r.document.metadata.get(
+                "filename"
+            )
             if source:
                 parts.append(f"[Source: {source}]")
 

@@ -24,7 +24,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agenticflow.flow.config import FlowConfig
 from agenticflow.flow.core import Flow

@@ -48,21 +48,119 @@ class EnricherConfig:
 
 
 # Common English stop words for keyword extraction
-STOP_WORDS = frozenset({
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
-    "has", "he", "in", "is", "it", "its", "of", "on", "that", "the",
-    "to", "was", "were", "will", "with", "this", "but", "they",
-    "have", "had", "what", "when", "where", "who", "which", "why", "how",
-    "all", "each", "every", "both", "few", "more", "most", "other",
-    "some", "such", "no", "nor", "not", "only", "own", "same", "so",
-    "than", "too", "very", "can", "just", "should", "now", "or", "if",
-    "about", "into", "through", "during", "before", "after", "above",
-    "below", "between", "under", "again", "further", "then", "once",
-    "here", "there", "any", "because", "been", "being", "could", "did",
-    "do", "does", "doing", "down", "get", "got", "him", "his",
-    "her", "hers", "herself", "himself", "i", "me", "my", "myself",
-    "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
-})
+STOP_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "he",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "that",
+        "the",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
+        "this",
+        "but",
+        "they",
+        "have",
+        "had",
+        "what",
+        "when",
+        "where",
+        "who",
+        "which",
+        "why",
+        "how",
+        "all",
+        "each",
+        "every",
+        "both",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "can",
+        "just",
+        "should",
+        "now",
+        "or",
+        "if",
+        "about",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "any",
+        "because",
+        "been",
+        "being",
+        "could",
+        "did",
+        "do",
+        "does",
+        "doing",
+        "down",
+        "get",
+        "got",
+        "him",
+        "his",
+        "her",
+        "hers",
+        "herself",
+        "himself",
+        "i",
+        "me",
+        "my",
+        "myself",
+        "we",
+        "our",
+        "ours",
+        "ourselves",
+        "you",
+        "your",
+        "yours",
+        "yourself",
+    }
+)
 
 
 class MetadataEnricher:
@@ -245,13 +343,10 @@ class MetadataEnricher:
         Uses simple word frequency after filtering stop words.
         """
         # Tokenize: lowercase, keep only alphanumeric
-        words = re.findall(r'\b[a-z]{3,}\b', text.lower())
+        words = re.findall(r"\b[a-z]{3,}\b", text.lower())
 
         # Filter stop words and count
-        word_counts = Counter(
-            word for word in words
-            if word not in self._stop_words
-        )
+        word_counts = Counter(word for word in words if word not in self._stop_words)
 
         # Return top keywords
         return [word for word, _ in word_counts.most_common(count)]
@@ -260,6 +355,7 @@ class MetadataEnricher:
         """Detect document language using langdetect."""
         try:
             from langdetect import detect
+
             return detect(text[:1000])  # Use first 1000 chars for speed
         except ImportError:
             return None
@@ -270,15 +366,15 @@ class MetadataEnricher:
         """Extract date patterns from text."""
         patterns = [
             # ISO format: 2024-01-15
-            r'\b\d{4}-\d{2}-\d{2}\b',
+            r"\b\d{4}-\d{2}-\d{2}\b",
             # US format: 01/15/2024 or 1/15/2024
-            r'\b\d{1,2}/\d{1,2}/\d{4}\b',
+            r"\b\d{1,2}/\d{1,2}/\d{4}\b",
             # Written: January 15, 2024
-            r'\b(?:January|February|March|April|May|June|July|August|'
-            r'September|October|November|December)\s+\d{1,2},?\s+\d{4}\b',
+            r"\b(?:January|February|March|April|May|June|July|August|"
+            r"September|October|November|December)\s+\d{1,2},?\s+\d{4}\b",
             # Short written: Jan 15, 2024
-            r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-            r'\s+\d{1,2},?\s+\d{4}\b',
+            r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+            r"\s+\d{1,2},?\s+\d{4}\b",
         ]
 
         dates = []
@@ -289,7 +385,7 @@ class MetadataEnricher:
 
     def _extract_emails(self, text: str) -> list[str]:
         """Extract email addresses from text."""
-        pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
         emails = re.findall(pattern, text)
         return list(set(emails))[:10]
 

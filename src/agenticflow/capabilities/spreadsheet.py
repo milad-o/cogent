@@ -140,6 +140,7 @@ class Spreadsheet(BaseCapability):
 
         # Check for optional dependencies
         import importlib.util
+
         self._has_openpyxl = importlib.util.find_spec("openpyxl") is not None
         self._has_pandas = importlib.util.find_spec("pandas") is not None
 
@@ -387,16 +388,39 @@ class Spreadsheet(BaseCapability):
                 if isinstance(condition, dict):
                     # Complex condition
                     for op, target in condition.items():
-                        if op == "$gt" and not (value is not None and value > target) or op == "$gte" and not (value is not None and value >= target) or op == "$lt" and not (value is not None and value < target) or op == "$lte" and not (value is not None and value <= target) or op == "$ne" and value == target or op == "$in" and value not in target or op == "$nin" and value in target:
+                        if (
+                            op == "$gt"
+                            and not (value is not None and value > target)
+                            or op == "$gte"
+                            and not (value is not None and value >= target)
+                            or op == "$lt"
+                            and not (value is not None and value < target)
+                            or op == "$lte"
+                            and not (value is not None and value <= target)
+                            or op == "$ne"
+                            and value == target
+                            or op == "$in"
+                            and value not in target
+                            or op == "$nin"
+                            and value in target
+                        ):
                             match = False
                         elif op == "$contains":
-                            if not (value and str(target).lower() in str(value).lower()):
+                            if not (
+                                value and str(target).lower() in str(value).lower()
+                            ):
                                 match = False
                         elif op == "$startswith":
-                            if not (value and str(value).lower().startswith(str(target).lower())):
+                            if not (
+                                value
+                                and str(value).lower().startswith(str(target).lower())
+                            ):
                                 match = False
                         elif op == "$endswith":
-                            if not (value and str(value).lower().endswith(str(target).lower())):
+                            if not (
+                                value
+                                and str(value).lower().endswith(str(target).lower())
+                            ):
                                 match = False
                 else:
                     # Exact match
@@ -452,7 +476,9 @@ class Spreadsheet(BaseCapability):
                 if func == "sum":
                     result_row[f"{col}_sum"] = sum(numeric) if numeric else 0
                 elif func == "avg":
-                    result_row[f"{col}_avg"] = sum(numeric) / len(numeric) if numeric else 0
+                    result_row[f"{col}_avg"] = (
+                        sum(numeric) / len(numeric) if numeric else 0
+                    )
                 elif func == "min":
                     result_row[f"{col}_min"] = min(numeric) if numeric else None
                 elif func == "max":
@@ -610,7 +636,11 @@ class Spreadsheet(BaseCapability):
 
             # Apply simple filter
             if filter_column and filter_value:
-                data = [row for row in data if str(row.get(filter_column, "")) == str(filter_value)]
+                data = [
+                    row
+                    for row in data
+                    if str(row.get(filter_column, "")) == str(filter_value)
+                ]
 
             # Parse columns string
             col_list = None

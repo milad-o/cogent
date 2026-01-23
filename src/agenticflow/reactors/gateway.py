@@ -145,12 +145,15 @@ class HttpGateway(Gateway):
         except ImportError as e:
             raise ImportError("aiohttp is required for HttpGateway") from e
 
-        async with aiohttp.ClientSession() as session, session.request(
-            self._method,
-            self._url,
-            json=event.data,
-            headers=self._headers,
-        ) as resp:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.request(
+                self._method,
+                self._url,
+                json=event.data,
+                headers=self._headers,
+            ) as resp,
+        ):
             resp.raise_for_status()
             return await resp.json()
 

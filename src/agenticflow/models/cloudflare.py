@@ -16,7 +16,12 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from agenticflow.core.messages import MessageMetadata, TokenUsage
+from agenticflow.core.messages import (
+    EmbeddingMetadata,
+    EmbeddingResult,
+    MessageMetadata,
+    TokenUsage,
+)
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -34,24 +39,38 @@ def _parse_response(response: Any) -> AIMessage:
     tool_calls = []
     if getattr(message, "tool_calls", None):
         for tc in message.tool_calls:
-            tool_calls.append({
-                "id": tc.id,
-                "name": tc.function.name,
-                "args": __import__("json").loads(tc.function.arguments),
-            })
+            tool_calls.append(
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "args": __import__("json").loads(tc.function.arguments),
+                }
+            )
 
     metadata = MessageMetadata(
-        model=response.model if hasattr(response, 'model') else None,
+        model=response.model if hasattr(response, "model") else None,
         tokens=TokenUsage(
-            prompt_tokens=response.usage.prompt_tokens if hasattr(response, 'usage') and response.usage else 0,
-            completion_tokens=response.usage.completion_tokens if hasattr(response, 'usage') and response.usage else 0,
-            total_tokens=response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0,
-        ) if hasattr(response, 'usage') and response.usage else None,
-        finish_reason=choice.finish_reason if hasattr(choice, 'finish_reason') else None,
-        response_id=response.id if hasattr(response, 'id') else None,
+            prompt_tokens=response.usage.prompt_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            completion_tokens=response.usage.completion_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            total_tokens=response.usage.total_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+        )
+        if hasattr(response, "usage") and response.usage
+        else None,
+        finish_reason=choice.finish_reason
+        if hasattr(choice, "finish_reason")
+        else None,
+        response_id=response.id if hasattr(response, "id") else None,
     )
 
-    return AIMessage(content=message.content or "", tool_calls=tool_calls, metadata=metadata)
+    return AIMessage(
+        content=message.content or "", tool_calls=tool_calls, metadata=metadata
+    )
 
 
 @dataclass
@@ -66,7 +85,9 @@ class CloudflareChat(BaseChatModel):
         try:
             from openai import AsyncOpenAI, OpenAI
         except ImportError as exc:
-            raise ImportError("openai package required. Install with: uv add openai") from exc
+            raise ImportError(
+                "openai package required. Install with: uv add openai"
+            ) from exc
 
         from agenticflow.config import get_api_key, get_config_value
 
@@ -77,7 +98,10 @@ class CloudflareChat(BaseChatModel):
         if not account_id:
             raise ValueError("Cloudflare account_id is required")
 
-        base_url = self.base_url or f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"
+        base_url = (
+            self.base_url
+            or f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"
+        )
 
         kwargs: dict[str, Any] = {
             "api_key": api_key,
@@ -119,12 +143,14 @@ class CloudflareChat(BaseChatModel):
 
     async def ainvoke(self, messages: list[dict[str, Any]]) -> AIMessage:
         self._ensure_initialized()
-        response = await self._async_client.chat.completions.create(**self._build_request(messages))
+        response = await self._async_client.chat.completions.create(
+            **self._build_request(messages)
+        )
         return _parse_response(response)
 
     async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously with metadata.
-        
+
         Yields:
             AIMessage objects with incremental content and metadata.
         """
@@ -143,13 +169,13 @@ class CloudflareChat(BaseChatModel):
 
         async for chunk in await self._async_client.chat.completions.create(**kwargs):
             # Accumulate metadata
-            if hasattr(chunk, 'id') and chunk.id:
+            if hasattr(chunk, "id") and chunk.id:
                 chunk_metadata["id"] = chunk.id
-            if hasattr(chunk, 'model') and chunk.model:
+            if hasattr(chunk, "model") and chunk.model:
                 chunk_metadata["model"] = chunk.model
             if chunk.choices and chunk.choices[0].finish_reason:
                 chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
-            if hasattr(chunk, 'usage') and chunk.usage:
+            if hasattr(chunk, "usage") and chunk.usage:
                 chunk_metadata["usage"] = chunk.usage
 
             # Yield content chunks with partial metadata
@@ -163,7 +189,9 @@ class CloudflareChat(BaseChatModel):
                     response_id=chunk_metadata["id"],
                     duration=time.time() - start_time,
                 )
-                yield AIMessage(content=chunk.choices[0].delta.content, metadata=metadata)
+                yield AIMessage(
+                    content=chunk.choices[0].delta.content, metadata=metadata
+                )
 
         # Yield final metadata chunk if we have usage or finish_reason
         if chunk_metadata.get("usage") or chunk_metadata.get("finish_reason"):
@@ -172,17 +200,27 @@ class CloudflareChat(BaseChatModel):
                 timestamp=time.time(),
                 model=chunk_metadata["model"],
                 tokens=TokenUsage(
-                    prompt_tokens=chunk_metadata["usage"].prompt_tokens if chunk_metadata.get("usage") else 0,
-                    completion_tokens=chunk_metadata["usage"].completion_tokens if chunk_metadata.get("usage") else 0,
-                    total_tokens=chunk_metadata["usage"].total_tokens if chunk_metadata.get("usage") else 0,
-                ) if chunk_metadata.get("usage") else None,
+                    prompt_tokens=chunk_metadata["usage"].prompt_tokens
+                    if chunk_metadata.get("usage")
+                    else 0,
+                    completion_tokens=chunk_metadata["usage"].completion_tokens
+                    if chunk_metadata.get("usage")
+                    else 0,
+                    total_tokens=chunk_metadata["usage"].total_tokens
+                    if chunk_metadata.get("usage")
+                    else 0,
+                )
+                if chunk_metadata.get("usage")
+                else None,
                 finish_reason=chunk_metadata["finish_reason"],
                 response_id=chunk_metadata["id"],
                 duration=time.time() - start_time,
             )
             yield AIMessage(content="", metadata=metadata)
 
-    def _build_request(self, messages: list[dict[str, Any]] | list[Any]) -> dict[str, Any]:
+    def _build_request(
+        self, messages: list[dict[str, Any]] | list[Any]
+    ) -> dict[str, Any]:
         formatted_messages = convert_messages(messages)
         payload: dict[str, Any] = {
             "model": self.model,
@@ -191,8 +229,7 @@ class CloudflareChat(BaseChatModel):
 
         model_lower = (self.model or "").lower()
         supports_temperature = not any(
-            prefix in model_lower
-            for prefix in ("o1", "o3", "gpt-5")
+            prefix in model_lower for prefix in ("o1", "o3", "gpt-5")
         )
         if supports_temperature and self.temperature is not None:
             payload["temperature"] = self.temperature
@@ -202,7 +239,9 @@ class CloudflareChat(BaseChatModel):
             else:
                 payload["max_tokens"] = self.max_tokens
         if self._tools:
-            payload["tools"] = [t.to_dict() if hasattr(t, "to_dict") else t for t in self._tools]
+            payload["tools"] = [
+                t.to_dict() if hasattr(t, "to_dict") else t for t in self._tools
+            ]
             payload["parallel_tool_calls"] = self._parallel_tool_calls
 
         # Structured output support
@@ -224,7 +263,9 @@ class CloudflareEmbedding(BaseEmbedding):
         try:
             from openai import AsyncOpenAI, OpenAI
         except ImportError as exc:
-            raise ImportError("openai package required. Install with: uv add openai") from exc
+            raise ImportError(
+                "openai package required. Install with: uv add openai"
+            ) from exc
 
         from agenticflow.config import get_api_key, get_config_value
 
@@ -235,7 +276,10 @@ class CloudflareEmbedding(BaseEmbedding):
         if not account_id:
             raise ValueError("Cloudflare account_id is required")
 
-        base_url = self.base_url or f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"
+        base_url = (
+            self.base_url
+            or f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"
+        )
 
         kwargs: dict[str, Any] = {
             "api_key": api_key,
@@ -246,54 +290,38 @@ class CloudflareEmbedding(BaseEmbedding):
         self._client = OpenAI(**kwargs)
         self._async_client = AsyncOpenAI(**kwargs)
 
-    def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts synchronously with metadata."""
-        self._ensure_initialized()
-        import time
+    async def embed(self, texts: str | list[str]) -> EmbeddingResult:
+        """Embed one or more texts asynchronously with metadata.
 
-        from agenticflow.core.messages import (
-            EmbeddingMetadata,
-            EmbeddingResult,
-        )
+        Args:
+            texts: Single text or list of texts to embed.
 
-        start_time = time.time()
-        all_embeddings: list[list[float]] = []
-
-        for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
-            response = self._client.embeddings.create(**self._build_request(batch))
-            sorted_data = sorted(response.data, key=lambda x: x.index)
-            all_embeddings.extend([d.embedding for d in sorted_data])
-
-        metadata = EmbeddingMetadata(
-            model=self.model,
-            tokens=None,  # Cloudflare typically doesn't track token usage
-            duration=time.time() - start_time,
-            dimensions=len(all_embeddings[0]) if all_embeddings else self.dimension,
-            num_texts=len(texts),
-        )
-
-        return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
-
-    async def aembed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed texts asynchronously with metadata."""
+        Returns:
+            EmbeddingResult with vectors and metadata.
+        """
         self._ensure_initialized()
         import asyncio
         import time
 
         from agenticflow.core.messages import (
-            EmbeddingMetadata,
             EmbeddingResult,
         )
 
+        # Normalize input
+        texts_list = [texts] if isinstance(texts, str) else texts
         start_time = time.time()
 
         async def embed_batch(batch: list[str]) -> list[list[float]]:
-            response = await self._async_client.embeddings.create(**self._build_request(batch))
+            response = await self._async_client.embeddings.create(
+                **self._build_request(batch)
+            )
             sorted_data = sorted(response.data, key=lambda x: x.index)
             return [d.embedding for d in sorted_data]
 
-        batches = [texts[i:i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        batches = [
+            texts_list[i : i + self.batch_size]
+            for i in range(0, len(texts_list), self.batch_size)
+        ]
         results = await asyncio.gather(*[embed_batch(b) for b in batches])
         all_embeddings: list[list[float]] = []
         for res in results:
@@ -304,7 +332,7 @@ class CloudflareEmbedding(BaseEmbedding):
             tokens=None,  # Cloudflare typically doesn't track token usage
             duration=time.time() - start_time,
             dimensions=len(all_embeddings[0]) if all_embeddings else self.dimension,
-            num_texts=len(texts),
+            num_texts=len(texts_list),
         )
 
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)

@@ -108,11 +108,13 @@ class Span:
             name: Event name.
             attributes: Optional event attributes.
         """
-        self.events.append({
-            "name": name,
-            "timestamp": time.time(),
-            "attributes": attributes or {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "timestamp": time.time(),
+                "attributes": attributes or {},
+            }
+        )
 
     def finish(self, status: str = "ok", error: str | None = None) -> None:
         """Finish the span.
@@ -277,7 +279,9 @@ class Tracer:
         self._active_spans[span_id] = span
         return span
 
-    def finish_span(self, span: Span, status: str = "ok", error: str | None = None) -> None:
+    def finish_span(
+        self, span: Span, status: str = "ok", error: str | None = None
+    ) -> None:
         """Finish a manually started span.
 
         Args:
@@ -316,10 +320,7 @@ class Tracer:
         Returns:
             List of spans in the trace.
         """
-        return [
-            s for s in self._finished_spans
-            if s.context.trace_id == trace_id
-        ]
+        return [s for s in self._finished_spans if s.context.trace_id == trace_id]
 
     def clear_finished(self) -> None:
         """Clear finished spans from memory."""

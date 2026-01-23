@@ -90,7 +90,9 @@ class PendingAction:
             agent_name=data["agent_name"],
             reason=InterruptReason(data.get("reason", "tool_approval")),
             context=data.get("context", {}),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else datetime.now(UTC),
+            timestamp=datetime.fromisoformat(data["timestamp"])
+            if isinstance(data.get("timestamp"), str)
+            else datetime.now(UTC),
             metadata=data.get("metadata", {}),
         )
 
@@ -148,13 +150,17 @@ class HumanDecision:
             feedback=data.get("feedback"),
             guidance=data.get("guidance"),
             response=data.get("response"),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if isinstance(data.get("timestamp"), str) else datetime.now(UTC),
+            timestamp=datetime.fromisoformat(data["timestamp"])
+            if isinstance(data.get("timestamp"), str)
+            else datetime.now(UTC),
         )
 
     @classmethod
     def approve(cls, action_id: str, feedback: str | None = None) -> HumanDecision:
         """Create an approval decision."""
-        return cls(action_id=action_id, decision=DecisionType.APPROVE, feedback=feedback)
+        return cls(
+            action_id=action_id, decision=DecisionType.APPROVE, feedback=feedback
+        )
 
     @classmethod
     def reject(cls, action_id: str, feedback: str | None = None) -> HumanDecision:
@@ -162,9 +168,16 @@ class HumanDecision:
         return cls(action_id=action_id, decision=DecisionType.REJECT, feedback=feedback)
 
     @classmethod
-    def edit(cls, action_id: str, modified_args: dict[str, Any], feedback: str | None = None) -> HumanDecision:
+    def edit(
+        cls, action_id: str, modified_args: dict[str, Any], feedback: str | None = None
+    ) -> HumanDecision:
         """Create an edit decision with modified arguments."""
-        return cls(action_id=action_id, decision=DecisionType.EDIT, modified_args=modified_args, feedback=feedback)
+        return cls(
+            action_id=action_id,
+            decision=DecisionType.EDIT,
+            modified_args=modified_args,
+            feedback=feedback,
+        )
 
     @classmethod
     def skip(cls, action_id: str, feedback: str | None = None) -> HumanDecision:
@@ -177,7 +190,9 @@ class HumanDecision:
         return cls(action_id=action_id, decision=DecisionType.ABORT, feedback=feedback)
 
     @classmethod
-    def guide(cls, action_id: str, guidance: str, feedback: str | None = None) -> HumanDecision:
+    def guide(
+        cls, action_id: str, guidance: str, feedback: str | None = None
+    ) -> HumanDecision:
         """
         Create a guidance decision - tells the agent to reconsider with new instructions.
 
@@ -199,10 +214,17 @@ class HumanDecision:
             )
             ```
         """
-        return cls(action_id=action_id, decision=DecisionType.GUIDE, guidance=guidance, feedback=feedback)
+        return cls(
+            action_id=action_id,
+            decision=DecisionType.GUIDE,
+            guidance=guidance,
+            feedback=feedback,
+        )
 
     @classmethod
-    def respond(cls, action_id: str, response: Any, feedback: str | None = None) -> HumanDecision:
+    def respond(
+        cls, action_id: str, response: Any, feedback: str | None = None
+    ) -> HumanDecision:
         """
         Create a direct response - provides a value the agent requested.
 
@@ -223,7 +245,12 @@ class HumanDecision:
             )
             ```
         """
-        return cls(action_id=action_id, decision=DecisionType.RESPOND, response=response, feedback=feedback)
+        return cls(
+            action_id=action_id,
+            decision=DecisionType.RESPOND,
+            response=response,
+            feedback=feedback,
+        )
 
 
 @dataclass
@@ -270,10 +297,14 @@ class InterruptedState:
         """Deserialize from storage."""
         return cls(
             thread_id=data["thread_id"],
-            pending_actions=[PendingAction.from_dict(a) for a in data.get("pending_actions", [])],
+            pending_actions=[
+                PendingAction.from_dict(a) for a in data.get("pending_actions", [])
+            ],
             agent_state=data.get("agent_state", {}),
             conversation_history=data.get("conversation_history", []),
-            interrupt_reason=InterruptReason(data.get("interrupt_reason", "tool_approval")),
+            interrupt_reason=InterruptReason(
+                data.get("interrupt_reason", "tool_approval")
+            ),
             metadata=data.get("metadata", {}),
         )
 
@@ -341,6 +372,7 @@ def should_interrupt(
 
 class HITLException(Exception):
     """Base exception for HITL operations."""
+
     pass
 
 
@@ -351,7 +383,11 @@ class InterruptedException(HITLException):
     Contains the interrupted state needed for resumption.
     """
 
-    def __init__(self, state: InterruptedState, message: str = "Execution interrupted for human input"):
+    def __init__(
+        self,
+        state: InterruptedState,
+        message: str = "Execution interrupted for human input",
+    ):
         super().__init__(message)
         self.state = state
 
@@ -368,7 +404,9 @@ class AbortedException(HITLException):
     """Raised when human aborts the workflow."""
 
     def __init__(self, decision: HumanDecision):
-        super().__init__(f"Workflow aborted by human: {decision.feedback or 'No reason provided'}")
+        super().__init__(
+            f"Workflow aborted by human: {decision.feedback or 'No reason provided'}"
+        )
         self.decision = decision
 
 

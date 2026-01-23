@@ -129,7 +129,9 @@ class TraceType(Enum):
     SUMMARY_INDEX_DOCUMENT_SUMMARIZED = (
         "retrieval.summary_index.document_summarized"  # One document/page summarized
     )
-    SUMMARY_INDEX_COMPLETE = "retrieval.summary_index.complete"  # Summary indexing finished
+    SUMMARY_INDEX_COMPLETE = (
+        "retrieval.summary_index.complete"  # Summary indexing finished
+    )
     SUMMARY_INDEX_ERROR = "retrieval.summary_index.error"  # Summary indexing failed
 
     # MCP (Model Context Protocol) events

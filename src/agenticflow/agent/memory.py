@@ -43,6 +43,7 @@ if TYPE_CHECKING:
 # Protocols for Memory Backends
 # ============================================================
 
+
 @runtime_checkable
 class MemorySaver(Protocol):
     """Protocol for persistence backend interface.
@@ -110,6 +111,7 @@ class MemoryStore(Protocol):
 # Memory State Types
 # ============================================================
 
+
 @dataclass
 class MemorySnapshot:
     """Snapshot of agent memory state."""
@@ -148,7 +150,9 @@ class MemorySnapshot:
         }
 
     @classmethod
-    def from_checkpoint_format(cls, data: dict, thread_id: str | None = None) -> MemorySnapshot:
+    def from_checkpoint_format(
+        cls, data: dict, thread_id: str | None = None
+    ) -> MemorySnapshot:
         """Create from checkpoint format."""
         channel_values = data.get("channel_values", {})
         return cls(
@@ -197,6 +201,7 @@ class ThreadConfig:
 # ============================================================
 # Memory Manager
 # ============================================================
+
 
 class AgentMemory:
     """Memory manager for agents.
@@ -319,7 +324,7 @@ class AgentMemory:
         """
         # Trim to max history
         if len(messages) > self.max_history:
-            messages = messages[-self.max_history:]
+            messages = messages[-self.max_history :]
 
         snapshot = MemorySnapshot(
             thread_id=thread_id,
@@ -493,7 +498,7 @@ class AgentMemory:
         self._version_counters.pop(thread_id, None)
 
         # Clear from backend if supported
-        if self._backend and hasattr(self._backend, 'adelete_thread'):
+        if self._backend and hasattr(self._backend, "adelete_thread"):
             try:
                 await self._backend.adelete_thread(thread_id)
             except Exception:
@@ -644,6 +649,7 @@ class AgentMemory:
 # ============================================================
 # Built-in In-Memory Backend (for testing/dev)
 # ============================================================
+
 
 class InMemorySaver:
     """Simple in-memory persistence backend for testing.

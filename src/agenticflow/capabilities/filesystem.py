@@ -110,9 +110,7 @@ class FileSystem(BaseCapability):
 
         # Resolve and normalize allowed paths
         if allowed_paths:
-            self._allowed_paths = [
-                Path(p).resolve() for p in allowed_paths
-            ]
+            self._allowed_paths = [Path(p).resolve() for p in allowed_paths]
         else:
             # Default to current working directory
             self._allowed_paths = [Path.cwd()]
@@ -215,9 +213,7 @@ class FileSystem(BaseCapability):
             )
 
         if self._is_path_denied(path):
-            raise PermissionError(
-                f"Path '{path}' matches a denied pattern"
-            )
+            raise PermissionError(f"Path '{path}' matches a denied pattern")
 
         if must_exist and not path.exists():
             raise FileNotFoundError(f"Path does not exist: {path}")
@@ -503,12 +499,14 @@ class FileSystem(BaseCapability):
         ]
 
         if self._allow_write:
-            tools.extend([
-                self._write_file_tool(),
-                self._create_directory_tool(),
-                self._copy_file_tool(),
-                self._move_file_tool(),
-            ])
+            tools.extend(
+                [
+                    self._write_file_tool(),
+                    self._create_directory_tool(),
+                    self._copy_file_tool(),
+                    self._move_file_tool(),
+                ]
+            )
 
         if self._allow_delete:
             tools.append(self._delete_file_tool())
@@ -531,7 +529,7 @@ class FileSystem(BaseCapability):
             """
             try:
                 content = fs.read(path)
-                lines = content.count('\n') + 1
+                lines = content.count("\n") + 1
                 return f"[File: {path} ({lines} lines)]\n\n{content}"
             except Exception as e:
                 return f"Error reading file: {e}"
@@ -565,7 +563,9 @@ class FileSystem(BaseCapability):
         fs = self
 
         @tool
-        def list_directory(path: str = ".", pattern: str = "", recursive: bool = False) -> str:
+        def list_directory(
+            path: str = ".", pattern: str = "", recursive: bool = False
+        ) -> str:
             """
             List contents of a directory.
 

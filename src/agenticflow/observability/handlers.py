@@ -359,8 +359,12 @@ class MetricsEventHandler:
             "error_rate": self.error_count / total_events if total_events > 0 else 0,
             "tasks_completed": len(self.task_durations),
             "avg_task_duration_ms": avg_duration,
-            "min_task_duration_ms": min(self.task_durations) if self.task_durations else 0,
-            "max_task_duration_ms": max(self.task_durations) if self.task_durations else 0,
+            "min_task_duration_ms": min(self.task_durations)
+            if self.task_durations
+            else 0,
+            "max_task_duration_ms": max(self.task_durations)
+            if self.task_durations
+            else 0,
             "uptime_seconds": (datetime.now(UTC) - self.start_time).total_seconds(),
         }
 

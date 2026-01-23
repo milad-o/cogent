@@ -38,7 +38,11 @@ class HTMLLoader(BaseLoader):
         """
         super().__init__(encoding)
         self.remove_elements = remove_elements or [
-            "script", "style", "nav", "footer", "header"
+            "script",
+            "style",
+            "nav",
+            "footer",
+            "header",
         ]
 
     async def load(self, path: str | Path, **kwargs: Any) -> list[Document]:

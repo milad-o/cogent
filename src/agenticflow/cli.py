@@ -18,7 +18,8 @@ def main() -> None:
 
     # Version command
     parser.add_argument(
-        "--version", "-v",
+        "--version",
+        "-v",
         action="store_true",
         help="Show version",
     )
@@ -26,12 +27,14 @@ def main() -> None:
     # Serve command
     serve_parser = subparsers.add_parser("serve", help="Start servers")
     serve_parser.add_argument(
-        "--websocket", "-ws",
+        "--websocket",
+        "-ws",
         action="store_true",
         help="Start WebSocket server",
     )
     serve_parser.add_argument(
-        "--port", "-p",
+        "--port",
+        "-p",
         type=int,
         default=8765,
         help="Server port (default: 8765)",
@@ -50,6 +53,7 @@ def main() -> None:
 
     if args.version:
         from agenticflow import __version__
+
         print(f"AgenticFlow v{__version__}")
         return
 

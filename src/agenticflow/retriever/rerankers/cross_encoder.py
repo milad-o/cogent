@@ -104,6 +104,7 @@ class CrossEncoderReranker(BaseReranker):
 
         # Get scores (run in thread pool to not block async)
         import asyncio
+
         loop = asyncio.get_event_loop()
         scores = await loop.run_in_executor(
             None,
@@ -120,6 +121,7 @@ class CrossEncoderReranker(BaseReranker):
 
         # Normalize scores to 0-1 using sigmoid
         import math
+
         def sigmoid(x: float) -> float:
             return 1 / (1 + math.exp(-x))
 

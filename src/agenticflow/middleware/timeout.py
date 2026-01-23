@@ -24,9 +24,7 @@ class TimeoutError(Exception):
     def __init__(self, reactor_name: str, timeout: float) -> None:
         self.reactor_name = reactor_name
         self.timeout = timeout
-        super().__init__(
-            f"Reactor '{reactor_name}' timed out after {timeout}s"
-        )
+        super().__init__(f"Reactor '{reactor_name}' timed out after {timeout}s")
 
 
 @dataclass

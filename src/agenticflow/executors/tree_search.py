@@ -29,11 +29,12 @@ from agenticflow.executors.base import BaseExecutor
 
 class NodeState(Enum):
     """State of a search tree node."""
-    PENDING = "pending"      # Not yet expanded
-    EXPANDED = "expanded"    # Children generated
-    TERMINAL = "terminal"    # Reached final answer or max depth
-    FAILED = "failed"        # This path failed
-    SUCCESS = "success"      # Found correct answer
+
+    PENDING = "pending"  # Not yet expanded
+    EXPANDED = "expanded"  # Children generated
+    TERMINAL = "terminal"  # Reached final answer or max depth
+    FAILED = "failed"  # This path failed
+    SUCCESS = "success"  # Found correct answer
 
 
 @dataclass
@@ -55,6 +56,7 @@ class SearchNode:
         depth: Depth in the tree (root = 0).
         reflection: Self-reflection if this path failed.
     """
+
     id: str
     parent: SearchNode | None = None
     action: dict[str, Any] = field(default_factory=dict)
@@ -145,6 +147,7 @@ class TreeSearchResult:
         iterations: Number of MCTS iterations.
         reflections: Reflections generated during search.
     """
+
     answer: str
     success: bool
     best_path: list[SearchNode]
@@ -192,14 +195,14 @@ class TreeSearchExecutor(BaseExecutor):
     """
 
     # MCTS parameters
-    max_depth: int = 5              # Maximum tree depth
-    num_candidates: int = 3         # Number of actions to generate per expansion
+    max_depth: int = 5  # Maximum tree depth
+    num_candidates: int = 3  # Number of actions to generate per expansion
     exploration_weight: float = 1.414  # UCB1 exploration constant
-    value_threshold: float = 0.3    # Minimum value to continue exploring
+    value_threshold: float = 0.3  # Minimum value to continue exploring
 
     # Reflection settings
     enable_reflection: bool = True  # Generate reflections on failures
-    max_reflections: int = 5        # Maximum reflections to store
+    max_reflections: int = 5  # Maximum reflections to store
 
     async def execute(
         self,
@@ -285,7 +288,10 @@ class TreeSearchExecutor(BaseExecutor):
                             child.state = NodeState.FAILED
 
                             # 5. REFLECT on failure
-                            if self.enable_reflection and len(reflections) < self.max_reflections:
+                            if (
+                                self.enable_reflection
+                                and len(reflections) < self.max_reflections
+                            ):
                                 reflection = await self._reflect(child, task)
                                 if reflection:
                                     reflections.append(reflection)
@@ -301,11 +307,14 @@ class TreeSearchExecutor(BaseExecutor):
                 # Max depth reached
                 node.state = NodeState.TERMINAL
 
-        self._emit_step("tree_search_complete", {
-            "nodes_explored": nodes_explored,
-            "iterations": self.max_iterations,
-            "found_success": best_terminal is not None,
-        })
+        self._emit_step(
+            "tree_search_complete",
+            {
+                "nodes_explored": nodes_explored,
+                "iterations": self.max_iterations,
+                "found_success": best_terminal is not None,
+            },
+        )
 
         # Return best result
         if best_terminal and best_terminal.state == NodeState.SUCCESS:
@@ -456,12 +465,14 @@ ACTION 3:
             # Check for FINAL ANSWER
             if "FINAL ANSWER:" in part.upper():
                 idx = part.upper().index("FINAL ANSWER:")
-                answer = part[idx + 13:].strip()
-                actions.append({
-                    "type": "final_answer",
-                    "answer": answer,
-                    "reasoning": part[:idx].strip(),
-                })
+                answer = part[idx + 13 :].strip()
+                actions.append(
+                    {
+                        "type": "final_answer",
+                        "answer": answer,
+                        "reasoning": part[:idx].strip(),
+                    }
+                )
                 continue
 
             # Check for TOOL call
@@ -480,20 +491,22 @@ ACTION 3:
                     if not isinstance(args, dict):
                         args = {"input": args}
                 except json.JSONDecodeError:
-                    args = {"input": args_str.strip('\'"')}
+                    args = {"input": args_str.strip("'\"")}
 
                 # Extract reasoning (text before TOOL:)
                 tool_idx = part.upper().index("TOOL:")
                 reasoning = part[:tool_idx].strip()
 
-                actions.append({
-                    "type": "tool_call",
-                    "tool": tool_name,
-                    "args": args,
-                    "reasoning": reasoning,
-                })
+                actions.append(
+                    {
+                        "type": "tool_call",
+                        "tool": tool_name,
+                        "args": args,
+                        "reasoning": reasoning,
+                    }
+                )
 
-        return actions[:self.num_candidates]  # Limit to num_candidates
+        return actions[: self.num_candidates]  # Limit to num_candidates
 
     async def _simulate(self, node: SearchNode, task: str) -> str:
         """Simulate executing an action at a node.
@@ -514,10 +527,13 @@ ACTION 3:
             tool_name = action.get("tool", "")
             args = action.get("args", {})
 
-            self._emit_step("simulate_tool", {
-                "node_id": node.id,
-                "tool": tool_name,
-            })
+            self._emit_step(
+                "simulate_tool",
+                {
+                    "node_id": node.id,
+                    "tool": tool_name,
+                },
+            )
 
             self._track_tool_call(tool_name, args)
 
@@ -705,12 +721,16 @@ Be specific and actionable. Start with "Instead of..." or "The problem was..."."
 
             action = node.action
             if action.get("type") == "tool_call":
-                lines.append(f"Step {i}: Called {action.get('tool')}({action.get('args')})")
+                lines.append(
+                    f"Step {i}: Called {action.get('tool')}({action.get('args')})"
+                )
                 if node.observation:
                     obs = node.observation[:200]
                     lines.append(f"  Result: {obs}")
             elif action.get("type") == "final_answer":
-                lines.append(f"Step {i}: Proposed answer: {action.get('answer', '')[:200]}")
+                lines.append(
+                    f"Step {i}: Proposed answer: {action.get('answer', '')[:200]}"
+                )
 
         return "\n".join(lines) if lines else "No actions taken yet."
 
@@ -732,11 +752,17 @@ Be specific and actionable. Start with "Instead of..." or "The problem was..."."
         """
         # Find the highest-value leaf
         best_node = self._find_best_node(root)
-        path_context = self._format_path(best_node.get_path()) if best_node else "No exploration completed."
+        path_context = (
+            self._format_path(best_node.get_path())
+            if best_node
+            else "No exploration completed."
+        )
 
         reflection_context = ""
         if reflections:
-            reflection_context = "\n\nLessons learned:\n" + "\n".join(f"- {r}" for r in reflections)
+            reflection_context = "\n\nLessons learned:\n" + "\n".join(
+                f"- {r}" for r in reflections
+            )
 
         prompt = f"""The tree search did not find a definitive answer. Synthesize the best possible answer from what was learned.
 

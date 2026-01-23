@@ -115,9 +115,12 @@ async def run(
     # Setup resilience for LLM calls
     model_resilience = None
     if resilience:
+
         def on_retry(attempt: int, error: Exception, delay: float) -> None:
             if verbose:
-                print(f"⏳ LLM retry {attempt}: {str(error)[:80]}... (waiting {delay:.1f}s)")
+                print(
+                    f"⏳ LLM retry {attempt}: {str(error)[:80]}... (waiting {delay:.1f}s)"
+                )
 
         def on_error(error: Exception, attempts: int) -> None:
             if verbose:
@@ -154,7 +157,10 @@ async def run(
         # Check per-turn tool limit
         num_tool_calls = len(response.tool_calls)
         if num_tool_calls > max_tool_calls_per_turn:
-            return response.content or f"Tool call limit exceeded: {num_tool_calls} tools requested, max {max_tool_calls_per_turn} per turn"
+            return (
+                response.content
+                or f"Tool call limit exceeded: {num_tool_calls} tools requested, max {max_tool_calls_per_turn} per turn"
+            )
 
         # Execute tools with concurrency limiting
         semaphore = asyncio.Semaphore(20)  # Max 20 concurrent
@@ -193,7 +199,9 @@ async def _execute_tool_native(
 
     try:
         result = await tool.ainvoke(args)
-        return ToolMessage(str(result) if result is not None else "", tool_call_id=tool_id)
+        return ToolMessage(
+            str(result) if result is not None else "", tool_call_id=tool_id
+        )
     except Exception as e:
         return ToolMessage(f"Error: {e}", tool_call_id=tool_id)
 
@@ -232,7 +240,13 @@ class NativeExecutor(BaseExecutor):
         result = await executor.execute("Research ACME Corp and calculate metrics")
     """
 
-    __slots__ = ("_bound_model", "_tool_map", "_max_tool_calls_per_turn", "_max_concurrent_tools", "_model_resilience")
+    __slots__ = (
+        "_bound_model",
+        "_tool_map",
+        "_max_tool_calls_per_turn",
+        "_max_concurrent_tools",
+        "_model_resilience",
+    )
 
     def __init__(
         self,
@@ -265,7 +279,9 @@ class NativeExecutor(BaseExecutor):
             # fast-fail or tighter timeouts.
             agent_resilience_cfg = None
             try:
-                agent_resilience_cfg = getattr(getattr(self.agent, "config", None), "resilience_config", None)
+                agent_resilience_cfg = getattr(
+                    getattr(self.agent, "config", None), "resilience_config", None
+                )
             except Exception:
                 agent_resilience_cfg = None
 
@@ -281,15 +297,20 @@ class NativeExecutor(BaseExecutor):
                 event_bus = getattr(self.agent, "event_bus", None)
                 if event_bus:
                     from agenticflow.observability.trace_record import TraceType
-                    await event_bus.publish(TraceType.AGENT_THINKING.value, {
-                        "agent": self.agent.name or "agent",
-                        "agent_name": self.agent.name or "agent",
-                        "message": f"⏳ LLM retry {attempt}: {str(error)[:60]}... (waiting {delay:.1f}s)",
-                    })
+
+                    await event_bus.publish(
+                        TraceType.AGENT_THINKING.value,
+                        {
+                            "agent": self.agent.name or "agent",
+                            "agent_name": self.agent.name or "agent",
+                            "message": f"⏳ LLM retry {attempt}: {str(error)[:60]}... (waiting {delay:.1f}s)",
+                        },
+                    )
 
             def on_retry_sync(attempt: int, error: Exception, delay: float) -> None:
                 """Sync wrapper that prints retry info."""
                 import sys
+
                 print(
                     f"⏳ LLM retry {attempt}: {str(error)[:80]}... (waiting {delay:.1f}s)",
                     file=sys.stderr,
@@ -363,7 +384,7 @@ class NativeExecutor(BaseExecutor):
             context_dict = context
 
         # Get observability components
-        event_bus = getattr(self.agent, 'trace_bus', None)
+        event_bus = getattr(self.agent, "trace_bus", None)
         agent_name = self.agent.name or "agent"
 
         # Update resilience tracker if we have one
@@ -375,18 +396,21 @@ class NativeExecutor(BaseExecutor):
 
         # Emit agent invoked event (not USER_INPUT - that's for user-facing input)
         if event_bus:
-            await event_bus.publish(TraceType.AGENT_INVOKED.value, {
-                "agent": agent_name,
-                "agent_name": agent_name,
-                "task": task[:200] + "..." if len(task) > 200 else task,
-            })
+            await event_bus.publish(
+                TraceType.AGENT_INVOKED.value,
+                {
+                    "agent": agent_name,
+                    "agent_name": agent_name,
+                    "task": task[:200] + "..." if len(task) > 200 else task,
+                },
+            )
 
         # Build messages once
         messages = self._build_messages(task, context_dict)
 
         # === REASONING PHASE ===
         # If reasoning is enabled, think through the problem first
-        reasoning_config = getattr(self.agent, '_reasoning_config', None)
+        reasoning_config = getattr(self.agent, "_reasoning_config", None)
         if reasoning_config is not None:
             await self._execute_reasoning(
                 task, context_dict, messages, event_bus, agent_name
@@ -394,7 +418,7 @@ class NativeExecutor(BaseExecutor):
 
         # === STRUCTURED OUTPUT ===
         # If structured output is configured, use specialized execution with retry
-        output_config = getattr(self.agent, '_output_config', None)
+        output_config = getattr(self.agent, "_output_config", None)
         if output_config is not None:
             return await self._execute_with_structured_output(
                 task, context_dict, messages, event_bus, agent_name, run_context
@@ -403,7 +427,13 @@ class NativeExecutor(BaseExecutor):
         # === STANDARD EXECUTION ===
         # No structured output - use main loop directly
         return await self._execute_main_loop(
-            task, context_dict, messages, event_bus, agent_name, execution_start, run_context
+            task,
+            context_dict,
+            messages,
+            event_bus,
+            agent_name,
+            execution_start,
+            run_context,
         )
 
     async def execute_messages(
@@ -451,7 +481,7 @@ class NativeExecutor(BaseExecutor):
         if sys_prompt and not isinstance(messages[0], SystemMessage):
             messages = [SystemMessage(content=sys_prompt), *messages]
 
-        event_bus = getattr(self.agent, 'trace_bus', None)
+        event_bus = getattr(self.agent, "trace_bus", None)
         agent_name = self.agent.name or "agent"
 
         if self._model_resilience and hasattr(self, "tracker"):
@@ -460,19 +490,24 @@ class NativeExecutor(BaseExecutor):
         execution_start = time.perf_counter()
 
         if event_bus:
-            await event_bus.publish(TraceType.AGENT_INVOKED.value, {
-                "agent": agent_name,
-                "agent_name": agent_name,
-                "task": task[:200] + "..." if len(task) > 200 else task,
-            })
+            await event_bus.publish(
+                TraceType.AGENT_INVOKED.value,
+                {
+                    "agent": agent_name,
+                    "agent_name": agent_name,
+                    "task": task[:200] + "..." if len(task) > 200 else task,
+                },
+            )
 
         # If reasoning is enabled, run it against the provided messages context.
-        reasoning_config = getattr(self.agent, '_reasoning_config', None)
+        reasoning_config = getattr(self.agent, "_reasoning_config", None)
         if reasoning_config is not None:
-            await self._execute_reasoning(task, context_dict, messages, event_bus, agent_name)
+            await self._execute_reasoning(
+                task, context_dict, messages, event_bus, agent_name
+            )
 
         # Structured output path: keep existing behavior for now.
-        output_config = getattr(self.agent, '_output_config', None)
+        output_config = getattr(self.agent, "_output_config", None)
         if output_config is not None:
             # Reuse the structured output executor; it rebuilds messages from an effective task.
             # This preserves correctness, even though it doesn't preserve custom message shapes.
@@ -481,7 +516,13 @@ class NativeExecutor(BaseExecutor):
             )
 
         return await self._execute_main_loop(
-            task, context_dict, messages, event_bus, agent_name, execution_start, run_context
+            task,
+            context_dict,
+            messages,
+            event_bus,
+            agent_name,
+            execution_start,
+            run_context,
         )
 
     def _build_messages(
@@ -528,7 +569,7 @@ class NativeExecutor(BaseExecutor):
             If output schema configured: StructuredResult with parsed data.
             Otherwise: The raw content string.
         """
-        output_config = getattr(self.agent, '_output_config', None)
+        output_config = getattr(self.agent, "_output_config", None)
         if output_config is None:
             return raw_content
 
@@ -590,16 +631,26 @@ class NativeExecutor(BaseExecutor):
 
         from agenticflow.observability.trace_record import TraceType
 
-        output_config: ResponseSchema | None = getattr(self.agent, '_output_config', None)
+        output_config: ResponseSchema | None = getattr(
+            self.agent, "_output_config", None
+        )
         if output_config is None:
             # No structured output - delegate to normal flow
             # This should not be called, but handle gracefully
             return await self._execute_main_loop(
-                task, context, messages, event_bus, agent_name, time.perf_counter(), run_context
+                task,
+                context,
+                messages,
+                event_bus,
+                agent_name,
+                time.perf_counter(),
+                run_context,
             )
 
         # Structured output enabled
-        max_attempts = output_config.max_retries + 1 if output_config.retry_on_error else 1
+        max_attempts = (
+            output_config.max_retries + 1 if output_config.retry_on_error else 1
+        )
         last_error: str | None = None
 
         for attempt in range(1, max_attempts + 1):
@@ -615,8 +666,13 @@ class NativeExecutor(BaseExecutor):
 
             # Execute main loop
             raw_result = await self._execute_main_loop(
-                effective_task, context, structured_messages,
-                event_bus, agent_name, time.perf_counter(), run_context
+                effective_task,
+                context,
+                structured_messages,
+                event_bus,
+                agent_name,
+                time.perf_counter(),
+                run_context,
             )
 
             # Try to validate
@@ -632,12 +688,15 @@ class NativeExecutor(BaseExecutor):
             except OutputValidationError as e:
                 last_error = str(e)
                 if event_bus:
-                    await event_bus.publish(TraceType.AGENT_ERROR.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "error": f"Structured output validation failed (attempt {attempt}): {last_error}",
-                        "error_type": "validation",
-                    })
+                    await event_bus.publish(
+                        TraceType.AGENT_ERROR.value,
+                        {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "error": f"Structured output validation failed (attempt {attempt}): {last_error}",
+                            "error_type": "validation",
+                        },
+                    )
 
                 if attempt >= max_attempts:
                     # Return failed result
@@ -685,7 +744,7 @@ class NativeExecutor(BaseExecutor):
         model_calls = 0
 
         # Get interceptors from agent
-        interceptors: list[Interceptor] = getattr(self.agent, '_interceptors', [])
+        interceptors: list[Interceptor] = getattr(self.agent, "_interceptors", [])
 
         # Shared state for interceptors across the execution
         intercept_state: dict[str, Any] = {}
@@ -708,7 +767,13 @@ class NativeExecutor(BaseExecutor):
                 agent=self.agent,
                 phase=phase,
                 task=task,
-                messages=[{"role": getattr(m, "role", "unknown"), "content": getattr(m, "content", "")} for m in messages],
+                messages=[
+                    {
+                        "role": getattr(m, "role", "unknown"),
+                        "content": getattr(m, "content", ""),
+                    }
+                    for m in messages
+                ],
                 state=intercept_state,
                 run_context=run_context,
                 tools=current_tools,
@@ -741,9 +806,13 @@ class NativeExecutor(BaseExecutor):
             # PRE_THINK interceptors
             if interceptors:
                 try:
-                    result = await run_interceptors(interceptors, make_ctx(Phase.PRE_THINK))
+                    result = await run_interceptors(
+                        interceptors, make_ctx(Phase.PRE_THINK)
+                    )
                     if not result.proceed:
-                        return result.final_response or "Execution stopped by interceptor"
+                        return (
+                            result.final_response or "Execution stopped by interceptor"
+                        )
                     # Apply message modification if set
                     if result.modified_messages is not None:
                         # Convert dict messages to LangChain messages
@@ -765,7 +834,9 @@ class NativeExecutor(BaseExecutor):
                     if result.modified_model is not None:
                         current_model = result.modified_model
                         if current_tools:
-                            current_model = current_model.bind_tools(current_tools, parallel_tool_calls=True)
+                            current_model = current_model.bind_tools(
+                                current_tools, parallel_tool_calls=True
+                            )
                     # Apply prompt modification if set
                     if result.modified_prompt is not None:
                         current_prompt = result.modified_prompt
@@ -776,24 +847,40 @@ class NativeExecutor(BaseExecutor):
 
             # Emit thinking event
             if event_bus:
-                await event_bus.publish(TraceType.AGENT_THINKING.value, {
-                    "agent": agent_name,
-                    "agent_name": agent_name,
-                    "iteration": iteration + 1,
-                })
+                await event_bus.publish(
+                    TraceType.AGENT_THINKING.value,
+                    {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "iteration": iteration + 1,
+                    },
+                )
 
             # Emit LLM request event (for deep observability)
             if event_bus:
-                await event_bus.publish(TraceType.LLM_REQUEST.value, {
-                    "agent_name": agent_name,
-                    "model": model_identifier(self.agent.model),
-                    "messages": [{"role": getattr(m, "role", "unknown"), "content": str(getattr(m, "content", ""))[:500]} for m in messages],
-                    "message_count": len(messages),
-                    "system_prompt": (current_prompt or "")[:300] if current_prompt else "",
-                    "tools_available": [t.name for t in current_tools] if current_tools else [],
-                    "prompt": task,
-                    "iteration": iteration + 1,
-                })
+                await event_bus.publish(
+                    TraceType.LLM_REQUEST.value,
+                    {
+                        "agent_name": agent_name,
+                        "model": model_identifier(self.agent.model),
+                        "messages": [
+                            {
+                                "role": getattr(m, "role", "unknown"),
+                                "content": str(getattr(m, "content", ""))[:500],
+                            }
+                            for m in messages
+                        ],
+                        "message_count": len(messages),
+                        "system_prompt": (current_prompt or "")[:300]
+                        if current_prompt
+                        else "",
+                        "tools_available": [t.name for t in current_tools]
+                        if current_tools
+                        else [],
+                        "prompt": task,
+                        "iteration": iteration + 1,
+                    },
+                )
 
             loop_start = time.perf_counter()
 
@@ -804,13 +891,16 @@ class NativeExecutor(BaseExecutor):
                 )
                 if not exec_result.success:
                     if event_bus:
-                        await event_bus.publish(TraceType.AGENT_ERROR.value, {
-                            "agent": agent_name,
-                            "agent_name": agent_name,
-                            "error": str(exec_result.error),
-                            "error_type": exec_result.error_type,
-                            "attempts": exec_result.attempts,
-                        })
+                        await event_bus.publish(
+                            TraceType.AGENT_ERROR.value,
+                            {
+                                "agent": agent_name,
+                                "agent_name": agent_name,
+                                "error": str(exec_result.error),
+                                "error_type": exec_result.error_type,
+                                "attempts": exec_result.attempts,
+                            },
+                        )
                     raise exec_result.error or RuntimeError(
                         f"LLM call failed after {exec_result.attempts} attempts"
                     )
@@ -831,28 +921,41 @@ class NativeExecutor(BaseExecutor):
                 if isinstance(tc, dict) and not tc.get("id"):
                     tc["id"] = f"call_{iteration + 1}_{i}"
             if event_bus:
-                await event_bus.publish(TraceType.LLM_RESPONSE.value, {
-                    "agent_name": agent_name,
-                    "iteration": iteration + 1,
-                    "content": (response.content or "")[:500],
-                    "content_length": len(response.content or ""),
-                    "tool_calls": [
-                        {"name": tc.get("name", "?"), "args": str(tc.get("args", {}))[:100]}
-                        for tc in tool_calls[:5]
-                    ] if tool_calls else [],
-                    "has_tool_calls": bool(tool_calls),
-                    "finish_reason": "tool_calls" if tool_calls else "stop",
-                    "duration_ms": loop_duration_ms,
-                })
+                await event_bus.publish(
+                    TraceType.LLM_RESPONSE.value,
+                    {
+                        "agent_name": agent_name,
+                        "iteration": iteration + 1,
+                        "content": (response.content or "")[:500],
+                        "content_length": len(response.content or ""),
+                        "tool_calls": [
+                            {
+                                "name": tc.get("name", "?"),
+                                "args": str(tc.get("args", {}))[:100],
+                            }
+                            for tc in tool_calls[:5]
+                        ]
+                        if tool_calls
+                        else [],
+                        "has_tool_calls": bool(tool_calls),
+                        "finish_reason": "tool_calls" if tool_calls else "stop",
+                        "duration_ms": loop_duration_ms,
+                    },
+                )
 
             # Emit tool decision event if tools were selected
             if tool_calls and event_bus:
-                await event_bus.publish(TraceType.LLM_TOOL_DECISION.value, {
-                    "agent_name": agent_name,
-                    "iteration": iteration + 1,
-                    "tools_selected": [tc.get("name", "?") for tc in tool_calls],
-                    "reasoning": (response.content or "")[:200] if response.content else "",
-                })
+                await event_bus.publish(
+                    TraceType.LLM_TOOL_DECISION.value,
+                    {
+                        "agent_name": agent_name,
+                        "iteration": iteration + 1,
+                        "tools_selected": [tc.get("name", "?") for tc in tool_calls],
+                        "reasoning": (response.content or "")[:200]
+                        if response.content
+                        else "",
+                    },
+                )
 
             # POST_THINK interceptors
             if interceptors:
@@ -862,7 +965,9 @@ class NativeExecutor(BaseExecutor):
                         make_ctx(Phase.POST_THINK, model_response=response),
                     )
                     if not result.proceed:
-                        return result.final_response or "Execution stopped by interceptor"
+                        return (
+                            result.final_response or "Execution stopped by interceptor"
+                        )
                 except StopExecution as e:
                     return e.response
 
@@ -879,49 +984,66 @@ class NativeExecutor(BaseExecutor):
                         pass  # Already completing, ignore stop
 
                 if event_bus:
-                    await event_bus.publish(TraceType.AGENT_RESPONDED.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "response": final_output,
-                        "response_preview": final_output[:500] if len(final_output) > 500 else final_output,
-                        "thought": final_output,
-                        "content": final_output,
-                        "duration_ms": duration_ms,
-                        "iteration": iteration + 1,
-                    })
-                    await event_bus.publish(TraceType.OUTPUT_GENERATED.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "output": final_output,
-                        "content": final_output,
-                        "duration_ms": duration_ms,
-                    })
+                    await event_bus.publish(
+                        TraceType.AGENT_RESPONDED.value,
+                        {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "response": final_output,
+                            "response_preview": final_output[:500]
+                            if len(final_output) > 500
+                            else final_output,
+                            "thought": final_output,
+                            "content": final_output,
+                            "duration_ms": duration_ms,
+                            "iteration": iteration + 1,
+                        },
+                    )
+                    await event_bus.publish(
+                        TraceType.OUTPUT_GENERATED.value,
+                        {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "output": final_output,
+                            "content": final_output,
+                            "duration_ms": duration_ms,
+                        },
+                    )
                 return final_output
 
             # Emit tool call events
             if event_bus:
                 for tc in response.tool_calls:
                     tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(TraceType.TOOL_CALLED.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "tool": tool_name,
-                        "tool_name": tool_name,
-                        "args": tc.get("args", {}),
-                    })
+                    await event_bus.publish(
+                        TraceType.TOOL_CALLED.value,
+                        {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "tool": tool_name,
+                            "tool_name": tool_name,
+                            "args": tc.get("args", {}),
+                        },
+                    )
 
             # Check per-turn tool call limit
             num_calls = len(response.tool_calls)
             if num_calls > self._max_tool_calls_per_turn:
-                limit_output = response.content or f"Tool call limit exceeded: {num_calls} tools in one turn, max {self._max_tool_calls_per_turn} per turn"
+                limit_output = (
+                    response.content
+                    or f"Tool call limit exceeded: {num_calls} tools in one turn, max {self._max_tool_calls_per_turn} per turn"
+                )
                 if event_bus:
-                    await event_bus.publish(TraceType.OUTPUT_GENERATED.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "output": limit_output,
-                        "content": limit_output,
-                        "limited": True,
-                    })
+                    await event_bus.publish(
+                        TraceType.OUTPUT_GENERATED.value,
+                        {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "output": limit_output,
+                            "content": limit_output,
+                            "limited": True,
+                        },
+                    )
                 return limit_output
 
             # Execute tools with PRE_ACT/POST_ACT interceptors
@@ -939,13 +1061,18 @@ class NativeExecutor(BaseExecutor):
                 for i, result in enumerate(tool_results):
                     tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
                     tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(TraceType.TOOL_RESULT.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "tool": tool_name,
-                        "tool_name": tool_name,
-                        "result": result.content[:500] if len(result.content) > 500 else result.content,
-                    })
+                    await event_bus.publish(
+                        TraceType.TOOL_RESULT.value,
+                        {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "tool": tool_name,
+                            "tool_name": tool_name,
+                            "result": result.content[:500]
+                            if len(result.content) > 500
+                            else result.content,
+                        },
+                    )
 
         # Max iterations reached - POST_RUN
         if interceptors:
@@ -999,25 +1126,31 @@ class NativeExecutor(BaseExecutor):
                 )
                 if not pre_result.proceed:
                     # Tool blocked by interceptor
-                    results.append(ToolMessage(
-                        content=pre_result.final_response or "Tool call blocked",
-                        tool_call_id=tool_id,
-                    ))
+                    results.append(
+                        ToolMessage(
+                            content=pre_result.final_response or "Tool call blocked",
+                            tool_call_id=tool_id,
+                        )
+                    )
                     continue
                 if pre_result.skip_action:
-                    results.append(ToolMessage(
-                        content="Tool call skipped",
-                        tool_call_id=tool_id,
-                    ))
+                    results.append(
+                        ToolMessage(
+                            content="Tool call skipped",
+                            tool_call_id=tool_id,
+                        )
+                    )
                     continue
                 # Apply modified args if any
                 if pre_result.modified_tool_args:
                     tool_args = pre_result.modified_tool_args
             except StopExecution as e:
-                results.append(ToolMessage(
-                    content=e.response,
-                    tool_call_id=tool_id,
-                ))
+                results.append(
+                    ToolMessage(
+                        content=e.response,
+                        tool_call_id=tool_id,
+                    )
+                )
                 continue
 
             # Execute the tool
@@ -1049,10 +1182,12 @@ class NativeExecutor(BaseExecutor):
             except StopExecution:
                 pass  # Ignore stop in POST_ACT
 
-            results.append(ToolMessage(
-                content=result_str,
-                tool_call_id=tool_id,
-            ))
+            results.append(
+                ToolMessage(
+                    content=result_str,
+                    tool_call_id=tool_id,
+                )
+            )
 
         return results
 
@@ -1091,7 +1226,7 @@ class NativeExecutor(BaseExecutor):
         )
         from agenticflow.observability.trace_record import TraceType
 
-        config: ReasoningConfig = getattr(self.agent, '_reasoning_config', None)
+        config: ReasoningConfig = getattr(self.agent, "_reasoning_config", None)
         if config is None:
             return {}
 
@@ -1106,15 +1241,18 @@ class NativeExecutor(BaseExecutor):
 
         # Emit reasoning event (start)
         if event_bus:
-            await event_bus.publish(TraceType.AGENT_REASONING.value, {
-                "agent": agent_name,
-                "agent_name": agent_name,
-                "phase": "start",
-                "reasoning_type": "analysis",
-                "round": 0,
-                "style": config.style.value,
-                "thought_preview": f"Beginning {config.style.value} reasoning...",
-            })
+            await event_bus.publish(
+                TraceType.AGENT_REASONING.value,
+                {
+                    "agent": agent_name,
+                    "agent_name": agent_name,
+                    "phase": "start",
+                    "reasoning_type": "analysis",
+                    "round": 0,
+                    "style": config.style.value,
+                    "thought_preview": f"Beginning {config.style.value} reasoning...",
+                },
+            )
 
         # Create reasoning messages
         reasoning_messages: list[BaseMessage] = [
@@ -1159,31 +1297,39 @@ class NativeExecutor(BaseExecutor):
 
                 # Emit reasoning event (step)
                 if event_bus:
-                    await event_bus.publish(TraceType.AGENT_REASONING.value, {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "phase": "thinking",
-                        "reasoning_type": step.reasoning_type,
-                        "round": round_num,
-                        "thought_preview": thinking,  # Full thought, no truncation
-                        "confidence": confidence,
-                    })
+                    await event_bus.publish(
+                        TraceType.AGENT_REASONING.value,
+                        {
+                            "agent": agent_name,
+                            "agent_name": agent_name,
+                            "phase": "thinking",
+                            "reasoning_type": step.reasoning_type,
+                            "round": round_num,
+                            "thought_preview": thinking,  # Full thought, no truncation
+                            "confidence": confidence,
+                        },
+                    )
 
                 # Check if AI signaled it's ready to proceed
                 if is_ready:
                     break
 
                 # Also check confidence threshold if configured
-                if config.require_confidence and confidence >= config.require_confidence:
+                if (
+                    config.require_confidence
+                    and confidence >= config.require_confidence
+                ):
                     break
 
                 # Add thinking to messages for next round (if doing multiple rounds)
                 if round_num < config.max_thinking_rounds:
                     reasoning_messages.append(response)
-                    reasoning_messages.append(HumanMessage(
-                        content="Good analysis. Can you refine your approach further? "
-                        "Consider edge cases or alternative approaches."
-                    ))
+                    reasoning_messages.append(
+                        HumanMessage(
+                            content="Good analysis. Can you refine your approach further? "
+                            "Consider edge cases or alternative approaches."
+                        )
+                    )
             else:
                 # No <thinking> block found, use content as final plan
                 final_thinking = content[:500]
@@ -1191,21 +1337,28 @@ class NativeExecutor(BaseExecutor):
 
         # Emit reasoning event (complete)
         if event_bus:
-            await event_bus.publish(TraceType.AGENT_REASONING.value, {
-                "agent": agent_name,
-                "agent_name": agent_name,
-                "phase": "complete",
-                "reasoning_type": "reflection",
-                "round": len(thinking_steps),
-                "thinking_rounds": len(thinking_steps),
-                "final_confidence": thinking_steps[-1].confidence if thinking_steps else None,
-                "thought_preview": f"✓ Reasoning complete ({len(thinking_steps)} rounds)",
-            })
+            await event_bus.publish(
+                TraceType.AGENT_REASONING.value,
+                {
+                    "agent": agent_name,
+                    "agent_name": agent_name,
+                    "phase": "complete",
+                    "reasoning_type": "reflection",
+                    "round": len(thinking_steps),
+                    "thinking_rounds": len(thinking_steps),
+                    "final_confidence": thinking_steps[-1].confidence
+                    if thinking_steps
+                    else None,
+                    "thought_preview": f"✓ Reasoning complete ({len(thinking_steps)} rounds)",
+                },
+            )
 
         # Inject reasoning context into main messages
         if final_thinking and config.show_thinking:
             # Add thinking as an assistant message so the LLM sees it
-            messages.append(AIMessage(content=f"<thinking>\n{final_thinking}\n</thinking>"))
+            messages.append(
+                AIMessage(content=f"<thinking>\n{final_thinking}\n</thinking>")
+            )
 
         return {
             "thinking_steps": thinking_steps,
@@ -1246,10 +1399,12 @@ class NativeExecutor(BaseExecutor):
             tool_id = tc.get("id", "")
 
             if isinstance(result, Exception):
-                messages.append(ToolMessage(
-                    content=f"Error: {result}",
-                    tool_call_id=tool_id,
-                ))
+                messages.append(
+                    ToolMessage(
+                        content=f"Error: {result}",
+                        tool_call_id=tool_id,
+                    )
+                )
             else:
                 messages.append(result)
 
@@ -1284,15 +1439,17 @@ class NativeExecutor(BaseExecutor):
         tool = self._tool_map.get(tool_name)
         if tool is None:
             # Track failed tool call in agent state
-            if hasattr(self.agent, 'state'):
-                self.agent.state.tool_calls.append(ToolCall(
-                    tool_name=tool_name,
-                    arguments=args,
-                    result=None,
-                    duration=0.0,
-                    success=False,
-                    error=f"Unknown tool '{tool_name}'",
-                ))
+            if hasattr(self.agent, "state"):
+                self.agent.state.tool_calls.append(
+                    ToolCall(
+                        tool_name=tool_name,
+                        arguments=args,
+                        result=None,
+                        duration=0.0,
+                        success=False,
+                        error=f"Unknown tool '{tool_name}'",
+                    )
+                )
 
             return ToolMessage(
                 content=f"Error: Unknown tool '{tool_name}'",
@@ -1312,15 +1469,17 @@ class NativeExecutor(BaseExecutor):
             self._track_tool_result(tool_name, result, 0)
 
             # Track successful tool call in agent state
-            if hasattr(self.agent, 'state'):
-                self.agent.state.tool_calls.append(ToolCall(
-                    tool_name=tool_name,
-                    arguments=args,
-                    result=result,
-                    duration=duration,
-                    success=True,
-                    error=None,
-                ))
+            if hasattr(self.agent, "state"):
+                self.agent.state.tool_calls.append(
+                    ToolCall(
+                        tool_name=tool_name,
+                        arguments=args,
+                        result=result,
+                        duration=duration,
+                        success=True,
+                        error=None,
+                    )
+                )
 
             return ToolMessage(
                 content=str(result) if result is not None else "",
@@ -1332,15 +1491,17 @@ class NativeExecutor(BaseExecutor):
             self._track_tool_error(tool_name, str(e))
 
             # Track failed tool call in agent state
-            if hasattr(self.agent, 'state'):
-                self.agent.state.tool_calls.append(ToolCall(
-                    tool_name=tool_name,
-                    arguments=args,
-                    result=None,
-                    duration=duration,
-                    success=False,
-                    error=str(e),
-                ))
+            if hasattr(self.agent, "state"):
+                self.agent.state.tool_calls.append(
+                    ToolCall(
+                        tool_name=tool_name,
+                        arguments=args,
+                        result=None,
+                        duration=duration,
+                        success=False,
+                        error=str(e),
+                    )
+                )
 
             return ToolMessage(
                 content=f"Error: {e}",
@@ -1398,7 +1559,10 @@ class SequentialExecutor(NativeExecutor):
 
             # Check per-turn limit
             if len(response.tool_calls) > self._max_tool_calls_per_turn:
-                return response.content or f"Tool call limit exceeded: {len(response.tool_calls)} tools in one turn, max {self._max_tool_calls_per_turn} per turn"
+                return (
+                    response.content
+                    or f"Tool call limit exceeded: {len(response.tool_calls)} tools in one turn, max {self._max_tool_calls_per_turn} per turn"
+                )
 
             # Execute tools sequentially
             for tc in response.tool_calls:

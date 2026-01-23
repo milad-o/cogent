@@ -310,7 +310,7 @@ class FileCheckpointer:
     async def _prune_flow(self, flow_id: str) -> None:
         """Remove old checkpoints beyond the limit."""
         checkpoints = await self.list_checkpoints(flow_id)
-        for checkpoint_id in checkpoints[self._max_per_flow:]:
+        for checkpoint_id in checkpoints[self._max_per_flow :]:
             await self.delete(checkpoint_id)
 
 

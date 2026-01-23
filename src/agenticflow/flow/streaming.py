@@ -49,8 +49,6 @@ Example:
 
 from __future__ import annotations
 
-from __future__ import annotations
-
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
@@ -62,7 +60,9 @@ if TYPE_CHECKING:
 class AgentProtocol(Protocol):
     """Protocol for agent-like objects that can think/stream."""
 
-    async def think(self, task: str, *, stream: bool = False, **context: object) -> AsyncIterator[object]:
+    async def think(
+        self, task: str, *, stream: bool = False, **context: object
+    ) -> AsyncIterator[object]:
         """Think about a task and optionally stream the response."""
         ...
 

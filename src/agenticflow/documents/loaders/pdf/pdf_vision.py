@@ -145,11 +145,15 @@ class PDFVisionLoader(BaseLoader):
             dpi=int(kwargs.pop("dpi", self.default_dpi)),
             pages=kwargs.pop("pages", None),
             max_pages=kwargs.pop("max_pages", None),
-            output_format=_parse_output_format(kwargs.pop("output_format", self.default_output_format)),
+            output_format=_parse_output_format(
+                kwargs.pop("output_format", self.default_output_format)
+            ),
             include_headers=bool(kwargs.pop("include_headers", False)),
             include_footers=bool(kwargs.pop("include_footers", False)),
             include_pdf_page_number=bool(kwargs.pop("include_pdf_page_number", True)),
-            include_printed_page_number=bool(kwargs.pop("include_printed_page_number", False)),
+            include_printed_page_number=bool(
+                kwargs.pop("include_printed_page_number", False)
+            ),
             extract_metadata=bool(kwargs.pop("extract_metadata", True)),
             extract_toc=bool(kwargs.pop("extract_toc", True)),
             toc_max_pages=int(kwargs.pop("toc_max_pages", 5)),
@@ -184,7 +188,9 @@ class PDFVisionLoader(BaseLoader):
         if options.pages is not None:
             # Validate and preserve order while removing duplicates.
             if not isinstance(options.pages, list) or not options.pages:
-                raise ValueError("pages must be a non-empty list of 1-based page numbers")
+                raise ValueError(
+                    "pages must be a non-empty list of 1-based page numbers"
+                )
             normalized: list[int] = []
             seen: set[int] = set()
             for p in options.pages:
@@ -193,7 +199,9 @@ class PDFVisionLoader(BaseLoader):
                 except Exception as e:
                     raise ValueError(f"Invalid page number in pages: {p!r}") from e
                 if page_num < 1 or page_num > total_pages:
-                    raise ValueError(f"Page number out of range: {page_num} (valid: 1..{total_pages})")
+                    raise ValueError(
+                        f"Page number out of range: {page_num} (valid: 1..{total_pages})"
+                    )
                 if page_num not in seen:
                     normalized.append(page_num)
                     seen.add(page_num)
@@ -252,14 +260,20 @@ class PDFVisionLoader(BaseLoader):
 
         # Log start of extraction
         if self.verbose:
-            print(f"[PDFVisionLoader] Extracting {len(selected_pages)} pages from {pdf_path.name}...")
+            print(
+                f"[PDFVisionLoader] Extracting {len(selected_pages)} pages from {pdf_path.name}..."
+            )
 
         for idx, page_number in enumerate(selected_pages, 1):
             page_index = page_number - 1
             page = doc.load_page(page_index)
 
             if self.verbose:
-                print(f"  [{idx}/{len(selected_pages)}] Processing page {page_number}...", end="", flush=True)
+                print(
+                    f"  [{idx}/{len(selected_pages)}] Processing page {page_number}...",
+                    end="",
+                    flush=True,
+                )
 
             t_render = time.monotonic()
             png_bytes = _render_page_png(page, dpi=options.dpi)
@@ -294,8 +308,13 @@ class PDFVisionLoader(BaseLoader):
                 "loader": "PDFVisionLoader",
                 "output_format": options.output_format.value,
             }
-            if options.include_printed_page_number and extracted.get("printed_page_number") is not None:
-                page_metadata["printed_page_number"] = extracted.get("printed_page_number")
+            if (
+                options.include_printed_page_number
+                and extracted.get("printed_page_number") is not None
+            ):
+                page_metadata["printed_page_number"] = extracted.get(
+                    "printed_page_number"
+                )
             if options.include_headers and extracted.get("header") is not None:
                 page_metadata["header"] = extracted.get("header")
             if options.include_footers and extracted.get("footer") is not None:
@@ -311,7 +330,9 @@ class PDFVisionLoader(BaseLoader):
                     timing["total_ms"] = (time.monotonic() - t0) * 1000.0
                     page_metadata["timing"] = timing
 
-            documents.append(self._create_document(extracted["content"], pdf_path, **page_metadata))
+            documents.append(
+                self._create_document(extracted["content"], pdf_path, **page_metadata)
+            )
 
         with contextlib.suppress(Exception):
             doc.close()
@@ -335,7 +356,9 @@ def _data_url_for_png(png_bytes: bytes) -> str:
     return f"data:image/png;base64,{b64}"
 
 
-def _build_page_prompt(*, page_number: int, total_pages: int, options: PDFVisionOptions) -> str:
+def _build_page_prompt(
+    *, page_number: int, total_pages: int, options: PDFVisionOptions
+) -> str:
     parts: list[str] = []
     parts.append(
         "You are a document extraction engine. Read the provided PDF page image and extract content faithfully."
@@ -375,7 +398,9 @@ def _build_page_prompt(*, page_number: int, total_pages: int, options: PDFVision
     if options.include_footers:
         parts.append("If there is a repeated footer, extract it into footer.")
     if options.include_printed_page_number:
-        parts.append("If a printed page number is visible on the page, extract it into printed_page_number.")
+        parts.append(
+            "If a printed page number is visible on the page, extract it into printed_page_number."
+        )
 
     if options.include_pdf_page_number:
         parts.append(f"This is PDF page {page_number} of {total_pages}.")
@@ -393,21 +418,28 @@ async def _extract_page_with_vision(
 ) -> dict[str, Any]:
     """Call a vision model to extract a single page."""
 
-    prompt = _build_page_prompt(page_number=page_number, total_pages=total_pages, options=options)
+    prompt = _build_page_prompt(
+        page_number=page_number, total_pages=total_pages, options=options
+    )
 
     messages: list[dict[str, Any]] = [
         {
             "role": "user",
             "content": [
                 {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": _data_url_for_png(png_bytes)}},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": _data_url_for_png(png_bytes)},
+                },
             ],
         }
     ]
 
     try:
         if options.model_timeout_s is not None:
-            resp = await asyncio.wait_for(model.ainvoke(messages), timeout=float(options.model_timeout_s))
+            resp = await asyncio.wait_for(
+                model.ainvoke(messages), timeout=float(options.model_timeout_s)
+            )
         else:
             resp = await model.ainvoke(messages)
     except TimeoutError:
@@ -447,7 +479,12 @@ async def _extract_page_with_vision(
             parsed = json.loads(raw)
         except Exception:
             # Best-effort fallback: wrap raw in JSON envelope
-            parsed = {"content": raw, "header": None, "footer": None, "printed_page_number": None}
+            parsed = {
+                "content": raw,
+                "header": None,
+                "footer": None,
+                "printed_page_number": None,
+            }
         # Ensure required keys exist
         parsed.setdefault("content", "")
         parsed.setdefault("header", None)
@@ -524,10 +561,10 @@ async def _extract_toc_with_vision(
             "TOC entries often look like: 'Section Title .......... 12' or '1.2 Subsection 7'.\n"
             "Rules:\n"
             "- Output STRICT JSON only (no markdown fences, no prose).\n"
-            "- Schema: {\"is_toc_page\": true|false, \"entries\": [{\"level\": number, \"title\": string, \"page\": number}]}\n"
+            '- Schema: {"is_toc_page": true|false, "entries": [{"level": number, "title": string, "page": number}]}\n'
             "- 'level' should be 1 for top-level, 2 for indented/subsections, etc (best effort).\n"
             "- 'page' must be a number (omit entries you can't parse a page number for).\n"
-            "If it is NOT a TOC page, output: {\"is_toc_page\": false, \"entries\": []}."
+            'If it is NOT a TOC page, output: {"is_toc_page": false, "entries": []}.'
         )
 
         messages: list[dict[str, Any]] = [
@@ -535,7 +572,10 @@ async def _extract_toc_with_vision(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": _data_url_for_png(png_bytes)}},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": _data_url_for_png(png_bytes)},
+                    },
                 ],
             }
         ]
@@ -543,7 +583,9 @@ async def _extract_toc_with_vision(
         t_model = time.monotonic()
         try:
             if timeout_s is not None:
-                resp = await asyncio.wait_for(model.ainvoke(messages), timeout=float(timeout_s))
+                resp = await asyncio.wait_for(
+                    model.ainvoke(messages), timeout=float(timeout_s)
+                )
             else:
                 resp = await model.ainvoke(messages)
         except TimeoutError:
@@ -633,7 +675,11 @@ async def _extract_toc_with_vision(
     seen: set[tuple[int, str, int]] = set()
     normalized: list[dict[str, Any]] = []
     for entry in merged_entries:
-        key = (int(entry.get("level", 1)), str(entry.get("title", "")), int(entry.get("page", 0)))
+        key = (
+            int(entry.get("level", 1)),
+            str(entry.get("title", "")),
+            int(entry.get("page", 0)),
+        )
         if key in seen:
             continue
         seen.add(key)

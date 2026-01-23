@@ -64,11 +64,11 @@ class CohereReranker(BaseReranker):
                 import cohere
             except ImportError as e:
                 raise ImportError(
-                    "CohereReranker requires cohere. "
-                    "Install with: uv add cohere"
+                    "CohereReranker requires cohere. Install with: uv add cohere"
                 ) from e
 
             import os
+
             api_key = self._api_key or os.environ.get("COHERE_API_KEY")
             if not api_key:
                 raise ValueError(

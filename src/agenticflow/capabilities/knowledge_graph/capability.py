@@ -149,10 +149,10 @@ class KnowledgeGraph(BaseCapability):
             # Start with in-memory
             kg = KnowledgeGraph()
             kg.remember("Alice", "Person", {"role": "Engineer"})
-            
+
             # Switch to SQLite with migration
             kg.set_backend("sqlite", path="knowledge.db", migrate=True)
-            
+
             # Data is now persisted in SQLite
             # Switch to JSON
             kg.set_backend("json", path="knowledge.json", migrate=True)
@@ -195,7 +195,9 @@ class KnowledgeGraph(BaseCapability):
 
             # Copy relationships
             for entity in entities:
-                relationships = self.graph.get_relationships(entity.id, direction="outgoing")
+                relationships = self.graph.get_relationships(
+                    entity.id, direction="outgoing"
+                )
                 for rel in relationships:
                     new_graph.add_relationship(
                         rel.source_id,
@@ -330,9 +332,7 @@ class KnowledgeGraph(BaseCapability):
 
     @property
     def description(self) -> str:
-        return (
-            "Persistent knowledge graph for storing and querying entities and relationships"
-        )
+        return "Persistent knowledge graph for storing and querying entities and relationships"
 
     @property
     def tools(self) -> list[BaseTool]:
@@ -384,7 +384,7 @@ class KnowledgeGraph(BaseCapability):
 
     def query(self, pattern: str) -> str:
         """Query the knowledge graph with a pattern.
-        
+
         Args:
             pattern: Pattern string like "Alice -works_at-> ?" or "? -reports_to-> Bob"
                      Use ? for wildcards to find unknowns.
@@ -394,7 +394,8 @@ class KnowledgeGraph(BaseCapability):
 
         # Parse pattern: "source -relation-> target"
         import re
-        match = re.match(r'(.+?)\s*-(.+?)->\s*(.+)', pattern)
+
+        match = re.match(r"(.+?)\s*-(.+?)->\s*(.+)", pattern)
         if not match:
             return f"Invalid pattern format: {pattern}. Expected: 'source -relation-> target'"
 
@@ -405,11 +406,9 @@ class KnowledgeGraph(BaseCapability):
         relation = None if relation_str.strip() == "?" else relation_str.strip()
         target = None if target_str.strip() == "?" else target_str.strip()
 
-        return self._tools_cache["query"].invoke({
-            "source": source,
-            "relation": relation,
-            "target": target
-        })
+        return self._tools_cache["query"].invoke(
+            {"source": source, "relation": relation, "target": target}
+        )
 
     def forget(self, entity: str) -> str:
         """Remove an entity from the graph."""
@@ -629,9 +628,7 @@ class KnowledgeGraph(BaseCapability):
 
             lines = [f"Knowledge graph ({len(entities)} entities):"]
             for e in entities:
-                attrs = ", ".join(
-                    f"{k}={v}" for k, v in list(e.attributes.items())[:3]
-                )
+                attrs = ", ".join(f"{k}={v}" for k, v in list(e.attributes.items())[:3])
                 lines.append(f"  - {e.id} ({e.type}){': ' + attrs if attrs else ''}")
 
             return "\n".join(lines)
@@ -1020,7 +1017,8 @@ class KnowledgeGraph(BaseCapability):
                     # Build label
                     if show_attributes and entity.attributes:
                         attr_str = "\\n".join(
-                            f"{k}: {str(v)[:20]}" for k, v in list(entity.attributes.items())[:3]
+                            f"{k}: {str(v)[:20]}"
+                            for k, v in list(entity.attributes.items())[:3]
                         )
                         label = f"{entity.id}\\n<small>{attr_str}</small>"
                     else:
@@ -1064,7 +1062,8 @@ class KnowledgeGraph(BaseCapability):
                 # Build label
                 if show_attributes and entity.attributes:
                     attr_str = "\\n".join(
-                        f"{k}: {str(v)[:20]}" for k, v in list(entity.attributes.items())[:3]
+                        f"{k}: {str(v)[:20]}"
+                        for k, v in list(entity.attributes.items())[:3]
                     )
                     label = f"{entity.id}\\n<small><i>{entity.type}</i></small>\\n<small>{attr_str}</small>"
                 else:
@@ -1104,7 +1103,9 @@ class KnowledgeGraph(BaseCapability):
                 # Determine edge type based on relation
                 if "parent" in rel.relation.lower() or "child" in rel.relation.lower():
                     edge_type = EdgeType.ARROW
-                elif "knows" in rel.relation.lower() or "friend" in rel.relation.lower():
+                elif (
+                    "knows" in rel.relation.lower() or "friend" in rel.relation.lower()
+                ):
                     edge_type = EdgeType.BIDIRECTIONAL
                 else:
                     edge_type = EdgeType.ARROW
@@ -1176,27 +1177,27 @@ class KnowledgeGraph(BaseCapability):
 
     def mermaid(self, **kwargs) -> str:
         """Low-level API: Get Mermaid diagram code.
-        
+
         This is the simplest API - just returns the raw Mermaid code string.
         Use this when you want to copy/paste the diagram or save it to a file.
-        
+
         Args:
             **kwargs: Visualization options (direction, show_attributes, etc.)
-            
+
         Returns:
             Mermaid diagram code as a string.
-            
+
         Example:
             ```python
             kg = KnowledgeGraph()
             kg.remember("Alice", "Person")
             kg.remember("Bob", "Person")
             kg.connect("Alice", "knows", "Bob")
-            
+
             # Get mermaid code
             code = kg.mermaid()
             print(code)
-            
+
             # Save to file
             with open("graph.mmd", "w") as f:
                 f.write(kg.mermaid())
@@ -1207,28 +1208,28 @@ class KnowledgeGraph(BaseCapability):
 
     def render(self, format: str = "auto", **kwargs) -> str | bytes:
         """Medium-level API: Render to various formats.
-        
+
         Choose from multiple output formats. Good for when you need
         flexibility but don't want to deal with GraphView directly.
-        
+
         Args:
             format: Output format - "auto", "mermaid", "ascii", "html", "png", "svg"
             **kwargs: Visualization options (direction, show_attributes, etc.)
-            
+
         Returns:
             Rendered content (string or bytes for images).
-            
+
         Example:
             ```python
             kg = KnowledgeGraph()
             # ... add entities ...
-            
+
             # Get different formats
             mermaid_code = kg.render("mermaid")
             ascii_art = kg.render("ascii")
             html = kg.render("html")
             png_bytes = kg.render("png")
-            
+
             # Save PNG
             with open("graph.png", "wb") as f:
                 f.write(kg.render("png"))
@@ -1239,13 +1240,13 @@ class KnowledgeGraph(BaseCapability):
 
     def display(self, **kwargs) -> None:
         """High-level API: Display graph in Jupyter notebook.
-        
+
         This is the easiest way to visualize in Jupyter - just call display()
         and the graph will render inline with proper styling.
-        
+
         Args:
             **kwargs: Visualization options (direction, show_attributes, etc.)
-            
+
         Example:
             ```python
             # In Jupyter notebook:
@@ -1253,13 +1254,13 @@ class KnowledgeGraph(BaseCapability):
             kg.remember("Alice", "Person", {"role": "Engineer"})
             kg.remember("TechCorp", "Company")
             kg.connect("Alice", "works_at", "TechCorp")
-            
+
             # Display inline
             kg.display()
-            
+
             # Or with options
             kg.display(direction="TB", show_attributes=True)
-            
+
             # Alternative: just call the object in Jupyter
             view = kg.visualize()
             view  # Automatically renders

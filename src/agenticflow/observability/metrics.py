@@ -48,7 +48,9 @@ class Counter:
         self.name = name
         self.description = description
         self._value: float = 0
-        self._labels_values: dict[tuple[tuple[str, str], ...], float] = defaultdict(float)
+        self._labels_values: dict[tuple[tuple[str, str], ...], float] = defaultdict(
+            float
+        )
 
     def inc(self, amount: float = 1, labels: dict[str, str] | None = None) -> None:
         """Increment counter.
@@ -114,7 +116,9 @@ class Gauge:
         self.name = name
         self.description = description
         self._value: float = 0
-        self._labels_values: dict[tuple[tuple[str, str], ...], float] = defaultdict(float)
+        self._labels_values: dict[tuple[tuple[str, str], ...], float] = defaultdict(
+            float
+        )
 
     def set(self, value: float, labels: dict[str, str] | None = None) -> None:
         """Set gauge value.
@@ -427,12 +431,8 @@ class MetricsCollector:
             Dictionary with all metric values.
         """
         return {
-            "counters": {
-                name: c.value for name, c in self._counters.items()
-            },
-            "gauges": {
-                name: g.value for name, g in self._gauges.items()
-            },
+            "counters": {name: c.value for name, c in self._counters.items()},
+            "gauges": {name: g.value for name, g in self._gauges.items()},
             "histograms": {
                 name: {
                     "count": h.count,

@@ -10,7 +10,7 @@ Usage:
     # Standard completions
     llm = GroqChat(model="llama-3.3-70b-versatile")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
-    
+
     # Responses API (optimized for tool use)
     llm = GroqChat(model="llama-3.3-70b-versatile", use_responses_api=True)
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
@@ -38,14 +38,16 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
             formatted.append(tool.to_openai())
         elif hasattr(tool, "name") and hasattr(tool, "description"):
             schema = getattr(tool, "args_schema", {}) or {}
-            formatted.append({
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description or "",
-                    "parameters": schema,
-                },
-            })
+            formatted.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description or "",
+                        "parameters": schema,
+                    },
+                }
+            )
         elif isinstance(tool, dict):
             formatted.append(tool)
     return formatted
@@ -83,12 +85,18 @@ def _convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
             if hasattr(msg, "tool_calls") and msg.tool_calls:
                 msg_dict["tool_calls"] = [
                     {
-                        "id": tc.get("id", f"call_{i}") if isinstance(tc, dict) else getattr(tc, "id", f"call_{i}"),
+                        "id": tc.get("id", f"call_{i}")
+                        if isinstance(tc, dict)
+                        else getattr(tc, "id", f"call_{i}"),
                         "type": "function",
                         "function": {
-                            "name": tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", ""),
+                            "name": tc.get("name", "")
+                            if isinstance(tc, dict)
+                            else getattr(tc, "name", ""),
                             "arguments": __import__("json").dumps(
-                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+                                tc.get("args", {})
+                                if isinstance(tc, dict)
+                                else getattr(tc, "args", {})
                             ),
                         },
                     }
@@ -118,22 +126,35 @@ def _parse_response(response: Any) -> AIMessage:
     tool_calls = []
     if message.tool_calls:
         for tc in message.tool_calls:
-            tool_calls.append({
-                "id": tc.id,
-                "name": tc.function.name,
-                "args": __import__("json").loads(tc.function.arguments)
-                    if isinstance(tc.function.arguments, str) else tc.function.arguments,
-            })
+            tool_calls.append(
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "args": __import__("json").loads(tc.function.arguments)
+                    if isinstance(tc.function.arguments, str)
+                    else tc.function.arguments,
+                }
+            )
 
     metadata = MessageMetadata(
-        model=response.model if hasattr(response, 'model') else None,
+        model=response.model if hasattr(response, "model") else None,
         tokens=TokenUsage(
-            prompt_tokens=response.usage.prompt_tokens if hasattr(response, 'usage') and response.usage else 0,
-            completion_tokens=response.usage.completion_tokens if hasattr(response, 'usage') and response.usage else 0,
-            total_tokens=response.usage.total_tokens if hasattr(response, 'usage') and response.usage else 0,
-        ) if hasattr(response, 'usage') and response.usage else None,
-        finish_reason=choice.finish_reason if hasattr(choice, 'finish_reason') else None,
-        response_id=response.id if hasattr(response, 'id') else None,
+            prompt_tokens=response.usage.prompt_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            completion_tokens=response.usage.completion_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+            total_tokens=response.usage.total_tokens
+            if hasattr(response, "usage") and response.usage
+            else 0,
+        )
+        if hasattr(response, "usage") and response.usage
+        else None,
+        finish_reason=choice.finish_reason
+        if hasattr(choice, "finish_reason")
+        else None,
+        response_id=response.id if hasattr(response, "id") else None,
     )
 
     return AIMessage(
@@ -245,7 +266,9 @@ class GroqChat(BaseChatModel):
             response = self._client.chat.completions.create(**kwargs)
         return _parse_response(response)
 
-    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+    async def ainvoke(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AIMessage:
         """Invoke asynchronously.
 
         Args:
@@ -262,7 +285,7 @@ class GroqChat(BaseChatModel):
 
     async def astream(self, messages: list[dict[str, Any]]) -> AsyncIterator[AIMessage]:
         """Stream response asynchronously with metadata.
-        
+
         Yields:
             AIMessage objects with incremental content and metadata.
         """
@@ -292,7 +315,7 @@ class GroqChat(BaseChatModel):
                 chunk_metadata["model"] = chunk.model
             if chunk.choices and chunk.choices[0].finish_reason:
                 chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
-            if hasattr(chunk, 'usage') and chunk.usage:
+            if hasattr(chunk, "usage") and chunk.usage:
                 chunk_metadata["usage"] = chunk.usage
                 # Yield final metadata chunk
                 metadata = MessageMetadata(
@@ -321,7 +344,9 @@ class GroqChat(BaseChatModel):
                     response_id=chunk_metadata["id"],
                     duration=time.time() - start_time,
                 )
-                yield AIMessage(content=chunk.choices[0].delta.content, metadata=metadata)
+                yield AIMessage(
+                    content=chunk.choices[0].delta.content, metadata=metadata
+                )
 
     def _build_request(self, messages: list[Any]) -> dict[str, Any]:
         """Build API request, converting messages to dict format."""
@@ -335,8 +360,7 @@ class GroqChat(BaseChatModel):
 
         model_lower = (self.model or "").lower()
         supports_temperature = not any(
-            prefix in model_lower
-            for prefix in ("o1", "o3", "gpt-5")
+            prefix in model_lower for prefix in ("o1", "o3", "gpt-5")
         )
         if supports_temperature and self.temperature is not None:
             kwargs["temperature"] = self.temperature
@@ -355,6 +379,3 @@ class GroqChat(BaseChatModel):
             kwargs["response_format"] = self._response_format
 
         return kwargs
-
-
-

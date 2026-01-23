@@ -60,8 +60,12 @@ class CommandResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "command": self.command,
-            "stdout": self.stdout[:10000] + "..." if len(self.stdout) > 10000 else self.stdout,
-            "stderr": self.stderr[:2000] + "..." if len(self.stderr) > 2000 else self.stderr,
+            "stdout": self.stdout[:10000] + "..."
+            if len(self.stdout) > 10000
+            else self.stdout,
+            "stderr": self.stderr[:2000] + "..."
+            if len(self.stderr) > 2000
+            else self.stderr,
             "return_code": self.return_code,
             "duration_ms": self.duration_ms,
             "success": self.success,
@@ -73,6 +77,7 @@ class CommandResult:
 
 class SecurityError(Exception):
     """Raised when a command violates security constraints."""
+
     pass
 
 
@@ -140,7 +145,7 @@ class Shell(BaseCapability):
         r"dd\s+if=/dev/zero",
         r"chmod\s+-R\s+777\s+/",
         r":\(\)\s*\{",  # Fork bomb pattern
-        r"\|\s*sh\b",   # Pipe to shell
+        r"\|\s*sh\b",  # Pipe to shell
         r"\|\s*bash\b",
         r"eval\s+",
         r"`.*`",  # Backtick command substitution (can be dangerous)
@@ -149,16 +154,35 @@ class Shell(BaseCapability):
 
     # Default blocked commands
     DEFAULT_BLOCKED = {
-        "sudo", "su", "doas",  # Privilege escalation
-        "rm", "rmdir", "unlink",  # Deletion (can be allowed explicitly)
-        "mkfs", "fdisk", "parted",  # Disk operations
-        "shutdown", "reboot", "poweroff", "halt",  # System control
-        "kill", "killall", "pkill",  # Process control
-        "iptables", "ufw", "firewall-cmd",  # Firewall
-        "useradd", "userdel", "usermod", "passwd",  # User management
+        "sudo",
+        "su",
+        "doas",  # Privilege escalation
+        "rm",
+        "rmdir",
+        "unlink",  # Deletion (can be allowed explicitly)
+        "mkfs",
+        "fdisk",
+        "parted",  # Disk operations
+        "shutdown",
+        "reboot",
+        "poweroff",
+        "halt",  # System control
+        "kill",
+        "killall",
+        "pkill",  # Process control
+        "iptables",
+        "ufw",
+        "firewall-cmd",  # Firewall
+        "useradd",
+        "userdel",
+        "usermod",
+        "passwd",  # User management
         "crontab",  # Scheduled tasks
-        "nc", "netcat", "ncat",  # Network tools (can be used maliciously)
-        "curl", "wget",  # Network downloads (use WebSearch capability instead)
+        "nc",
+        "netcat",
+        "ncat",  # Network tools (can be used maliciously)
+        "curl",
+        "wget",  # Network downloads (use WebSearch capability instead)
     }
 
     def __init__(
@@ -177,9 +201,13 @@ class Shell(BaseCapability):
         allow_background: bool = False,
     ) -> None:
         self.allowed_commands = set(allowed_commands) if allowed_commands else set()
-        self.blocked_commands = set(blocked_commands) if blocked_commands else self.DEFAULT_BLOCKED.copy()
+        self.blocked_commands = (
+            set(blocked_commands) if blocked_commands else self.DEFAULT_BLOCKED.copy()
+        )
         self.allowed_paths = [Path(p).resolve() for p in (allowed_paths or [])]
-        self.blocked_paths = [Path(p).resolve() for p in (blocked_paths or ["/", "/etc", "/var", "/usr"])]
+        self.blocked_paths = [
+            Path(p).resolve() for p in (blocked_paths or ["/", "/etc", "/var", "/usr"])
+        ]
         self.timeout_seconds = timeout_seconds
         self.max_output_size = max_output_size
         self.working_dir = Path(working_dir).resolve() if working_dir else Path.cwd()
@@ -220,7 +248,17 @@ class Shell(BaseCapability):
                 if blocked == Path("/"):
                     # Special case: / blocks system directories but not user paths
                     # Only block if path is exactly / or is a system directory
-                    if path == Path("/") or path.parts[1:2] in (("etc",), ("var",), ("usr",), ("bin",), ("sbin",), ("lib",), ("dev",), ("proc",), ("sys",)):
+                    if path == Path("/") or path.parts[1:2] in (
+                        ("etc",),
+                        ("var",),
+                        ("usr",),
+                        ("bin",),
+                        ("sbin",),
+                        ("lib",),
+                        ("dev",),
+                        ("proc",),
+                        ("sys",),
+                    ):
                         msg = f"Path {path} is a system directory"
                         raise SecurityError(msg)
                 else:
@@ -258,7 +296,11 @@ class Shell(BaseCapability):
             msg = "Redirect operations are not allowed"
             raise SecurityError(msg)
 
-        if not self.allow_background and "&" in command and not command.strip().endswith("&&"):
+        if (
+            not self.allow_background
+            and "&" in command
+            and not command.strip().endswith("&&")
+        ):
             # Check for background operator (but not &&)
             if re.search(r"[^&]&[^&]|[^&]&$", command):
                 msg = "Background operations are not allowed"
@@ -371,8 +413,12 @@ class Shell(BaseCapability):
             duration_ms = (time.time() - start_time) * 1000
 
             # Decode output
-            stdout_str = stdout.decode("utf-8", errors="replace")[:self.max_output_size]
-            stderr_str = stderr.decode("utf-8", errors="replace")[:self.max_output_size]
+            stdout_str = stdout.decode("utf-8", errors="replace")[
+                : self.max_output_size
+            ]
+            stderr_str = stderr.decode("utf-8", errors="replace")[
+                : self.max_output_size
+            ]
 
             return CommandResult(
                 command=command,
@@ -620,9 +666,13 @@ class Shell(BaseCapability):
                 Dictionary with allowed/blocked commands and paths
             """
             return {
-                "allowed_commands": list(self.allowed_commands) if self.allowed_commands else "all (except blocked)",
+                "allowed_commands": list(self.allowed_commands)
+                if self.allowed_commands
+                else "all (except blocked)",
                 "blocked_commands": list(self.blocked_commands),
-                "allowed_paths": [str(p) for p in self.allowed_paths] if self.allowed_paths else "all (except blocked)",
+                "allowed_paths": [str(p) for p in self.allowed_paths]
+                if self.allowed_paths
+                else "all (except blocked)",
                 "blocked_paths": [str(p) for p in self.blocked_paths],
                 "allow_pipes": self.allow_pipes,
                 "allow_redirects": self.allow_redirects,

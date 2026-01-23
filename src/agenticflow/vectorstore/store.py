@@ -117,16 +117,20 @@ class VectorStore:
         doc_ids = [doc.id for doc in documents]
 
         # Generate embeddings using protocol method
-        embeddings = await self.embeddings.embed_texts(texts)  # type: ignore
+        result = await self.embeddings.embed_documents(texts)  # type: ignore
+        embeddings = result.embeddings
 
         # Store in backend
         await self.backend.add(doc_ids, embeddings, documents)  # type: ignore
 
         # Emit event
-        await _emit_event("vectorstore.add", {
-            "count": len(doc_ids),
-            "ids": doc_ids[:5],  # First 5 IDs for brevity
-        })
+        await _emit_event(
+            "vectorstore.add",
+            {
+                "count": len(doc_ids),
+                "ids": doc_ids[:5],  # First 5 IDs for brevity
+            },
+        )
 
         return doc_ids
 
@@ -158,9 +162,12 @@ class VectorStore:
         # Generate missing embeddings
         if docs_needing_embeddings:
             texts = [doc.text for _, doc in docs_needing_embeddings]
-            new_embeddings = await self.embeddings.embed_texts(texts)  # type: ignore
+            result = await self.embeddings.embed_documents(texts)  # type: ignore
+            new_embeddings = result.embeddings
 
-            for (idx, _), embedding in zip(docs_needing_embeddings, new_embeddings, strict=False):
+            for (idx, _), embedding in zip(
+                docs_needing_embeddings, new_embeddings, strict=False
+            ):
                 embeddings[idx] = embedding
 
         # Store
@@ -168,11 +175,14 @@ class VectorStore:
         await self.backend.add(doc_ids, embeddings, documents)  # type: ignore
 
         # Emit event
-        await _emit_event("vectorstore.add", {
-            "count": len(doc_ids),
-            "ids": doc_ids[:5],  # First 5 IDs for brevity
-            "embedded": len(docs_needing_embeddings),
-        })
+        await _emit_event(
+            "vectorstore.add",
+            {
+                "count": len(doc_ids),
+                "ids": doc_ids[:5],  # First 5 IDs for brevity
+                "embedded": len(docs_needing_embeddings),
+            },
+        )
 
         return doc_ids
 
@@ -198,18 +208,22 @@ class VectorStore:
             ...     print(f"{r.score:.2f}: {r.document.text[:50]}")
         """
         # Generate query embedding using protocol method
-        query_embedding = await self.embeddings.embed_query(query)  # type: ignore
+        result = await self.embeddings.embed_query(query)  # type: ignore
+        query_embedding = result.embeddings[0]
 
         # Search backend
         results = await self.backend.search(query_embedding, k, filter)  # type: ignore
 
         # Emit event
-        await _emit_event("vectorstore.search", {
-            "query": query[:100],  # Truncate long queries
-            "k": k,
-            "results": len(results),
-            "top_score": results[0].score if results else None,
-        })
+        await _emit_event(
+            "vectorstore.search",
+            {
+                "query": query[:100],  # Truncate long queries
+                "k": k,
+                "results": len(results),
+                "top_score": results[0].score if results else None,
+            },
+        )
 
         return results
 
@@ -244,11 +258,14 @@ class VectorStore:
         result = await self.backend.delete(ids)  # type: ignore
 
         # Emit event
-        await _emit_event("vectorstore.delete", {
-            "count": len(ids),
-            "ids": ids[:5],  # First 5 IDs for brevity
-            "success": result,
-        })
+        await _emit_event(
+            "vectorstore.delete",
+            {
+                "count": len(ids),
+                "ids": ids[:5],  # First 5 IDs for brevity
+                "success": result,
+            },
+        )
 
         return result
 
@@ -258,11 +275,14 @@ class VectorStore:
         await self.backend.clear()  # type: ignore
 
         # Emit event
-        await _emit_event("vectorstore.delete", {
-            "count": count,
-            "clear": True,
-            "success": True,
-        })
+        await _emit_event(
+            "vectorstore.delete",
+            {
+                "count": count,
+                "clear": True,
+                "success": True,
+            },
+        )
 
     async def get(self, ids: list[str]) -> list[Document]:
         """Get documents by ID.
@@ -367,6 +387,7 @@ class VectorStore:
 # ============================================================
 # Convenience Functions
 # ============================================================
+
 
 async def create_vectorstore(
     texts: list[str] | None = None,

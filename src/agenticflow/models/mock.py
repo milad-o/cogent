@@ -8,7 +8,7 @@ Usage:
 
     # Create mock embeddings
     embeddings = MockEmbedding(dimensions=384)
-    vectors = embeddings.embed(["Hello", "World"])
+    result = embeddings.embed_texts(["Hello", "World"])
 
     # Create mock chat model
     model = MockChatModel(responses=["Hello!", "How can I help?"])
@@ -22,7 +22,11 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
-from agenticflow.core.messages import AIMessage
+from agenticflow.core.messages import (
+    AIMessage,
+    EmbeddingMetadata,
+    EmbeddingResult,
+)
 from agenticflow.models.base import BaseChatModel, BaseEmbedding, normalize_input
 
 
@@ -67,7 +71,9 @@ class MockChatModel(BaseChatModel):
         self._response_index += 1
         return response
 
-    def invoke(self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any) -> AIMessage:
+    def invoke(
+        self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any
+    ) -> AIMessage:
         """Generate mock response synchronously.
 
         Args:
@@ -85,7 +91,9 @@ class MockChatModel(BaseChatModel):
             tool_calls=self.mock_tool_calls or [],
         )
 
-    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any) -> AIMessage:
+    async def ainvoke(
+        self, messages: str | list[dict[str, Any]] | list[Any], **kwargs: Any
+    ) -> AIMessage:
         """Generate mock response asynchronously.
 
         Args:
@@ -128,11 +136,11 @@ class MockEmbedding(BaseEmbedding):
     Example:
         >>> from agenticflow.models.mock import MockEmbedding
         >>> embeddings = MockEmbedding(dimensions=128)
-        >>> vectors = embeddings.embed(["Hello", "World"])
-        >>> len(vectors[0])
+        >>> result = embeddings.embed_texts(["Hello", "World"])
+        >>> len(result.embeddings[0])
         128
         >>> # Same text = same embedding
-        >>> embeddings.embed(["Hello"])[0] == embeddings.embed(["Hello"])[0]
+        >>> embeddings.embed_texts(["Hello"]).embeddings[0] == embeddings.embed_texts(["Hello"]).embeddings[0]
         True
     """
 
@@ -154,7 +162,7 @@ class MockEmbedding(BaseEmbedding):
         embedding = []
         for i in range(self.dimensions or 384):
             byte_idx = i % 32
-            byte_val = int(text_hash[byte_idx * 2:(byte_idx + 1) * 2], 16)
+            byte_val = int(text_hash[byte_idx * 2 : (byte_idx + 1) * 2], 16)
             val = (byte_val / 127.5 - 1) * math.cos(i * 0.1)
             embedding.append(val)
 
@@ -165,54 +173,31 @@ class MockEmbedding(BaseEmbedding):
 
         return embedding
 
-    def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Generate mock embeddings synchronously with metadata.
-
-        Args:
-            texts: List of texts to embed.
-
-        Returns:
-            EmbeddingResult with vectors and metadata.
-        """
-        import time
-
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult
-
-        start_time = time.time()
-        vectors = [self._generate_embedding(text) for text in texts]
-
-        metadata = EmbeddingMetadata(
-            model=self.model,
-            tokens=None,  # Mock doesn't track tokens
-            duration=time.time() - start_time,
-            dimensions=self.dimensions or 384,
-            num_texts=len(texts),
-        )
-
-        return EmbeddingResult(embeddings=vectors, metadata=metadata)
-
-    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+    async def embed(self, texts: str | list[str]) -> EmbeddingResult:
         """Generate mock embeddings asynchronously with metadata.
 
         Args:
-            texts: List of texts to embed.
+            texts: Single text or list of texts to embed.
 
         Returns:
             EmbeddingResult with vectors and metadata.
         """
         import time
 
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult
+        from agenticflow.core.messages import EmbeddingResult
+
+        # Normalize input
+        texts_list = [texts] if isinstance(texts, str) else texts
 
         start_time = time.time()
-        vectors = [self._generate_embedding(text) for text in texts]
+        vectors = [self._generate_embedding(text) for text in texts_list]
 
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=None,  # Mock doesn't track tokens
             duration=time.time() - start_time,
             dimensions=self.dimensions or 384,
-            num_texts=len(texts),
+            num_texts=len(texts_list),
         )
 
         return EmbeddingResult(embeddings=vectors, metadata=metadata)

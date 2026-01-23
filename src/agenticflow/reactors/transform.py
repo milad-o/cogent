@@ -108,6 +108,7 @@ class Transform(BaseReactor):
             mapping: Old key -> new key mapping
             emit: Event name to emit
         """
+
         def rename_fn(data: dict[str, Any]) -> dict[str, Any]:
             result = {}
             for k, v in data.items():
@@ -130,6 +131,7 @@ class Transform(BaseReactor):
             emit: Event name to emit
             prefix: Prefix for flattened keys
         """
+
         def flatten_fn(data: dict[str, Any], _prefix: str = prefix) -> dict[str, Any]:
             result = {}
             for k, v in data.items():
@@ -184,12 +186,14 @@ class MapTransform(BaseReactor):
         for transform_fn, emit_name in self._transforms:
             try:
                 transformed = transform_fn(event.data)
-                results.append(Event(
-                    name=emit_name,
-                    source=self.name,
-                    data=transformed,
-                    correlation_id=event.correlation_id,
-                ))
+                results.append(
+                    Event(
+                        name=emit_name,
+                        source=self.name,
+                        data=transformed,
+                        correlation_id=event.correlation_id,
+                    )
+                )
             except Exception:
                 # Skip failed transforms
                 continue

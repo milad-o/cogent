@@ -104,8 +104,7 @@ class Neo4jGraph(GraphBackend):
             from neo4j import GraphDatabase
         except ImportError:
             raise ImportError(
-                "neo4j package required for Neo4j backend. "
-                "Install with: uv add neo4j"
+                "neo4j package required for Neo4j backend. Install with: uv add neo4j"
             )
 
         self._driver = GraphDatabase.driver(
@@ -207,10 +206,12 @@ class Neo4jGraph(GraphBackend):
             label = etype.replace(" ", "_")
             if label not in by_type:
                 by_type[label] = []
-            by_type[label].append({
-                "id": eid,
-                "attrs": attrs or {},
-            })
+            by_type[label].append(
+                {
+                    "id": eid,
+                    "attrs": attrs or {},
+                }
+            )
 
         count = 0
         with self._session() as session:
@@ -286,8 +287,12 @@ class Neo4jGraph(GraphBackend):
                 id=entity_id,
                 type=labels[0] if labels else "Entity",
                 attributes=props,
-                created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
-                updated_at=datetime.fromisoformat(updated_at) if updated_at else datetime.now(UTC),
+                created_at=datetime.fromisoformat(created_at)
+                if created_at
+                else datetime.now(UTC),
+                updated_at=datetime.fromisoformat(updated_at)
+                if updated_at
+                else datetime.now(UTC),
                 source=source,
             )
 
@@ -359,14 +364,18 @@ class Neo4jGraph(GraphBackend):
                     props = dict(record["props"])
                     created_at = props.pop("created_at", None)
                     source = props.pop("source", None)
-                    results.append(Relationship(
-                        source_id=entity_id,
-                        relation=record["rel"].lower().replace("_", " "),
-                        target_id=record["target"],
-                        attributes=props,
-                        created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
-                        source=source,
-                    ))
+                    results.append(
+                        Relationship(
+                            source_id=entity_id,
+                            relation=record["rel"].lower().replace("_", " "),
+                            target_id=record["target"],
+                            attributes=props,
+                            created_at=datetime.fromisoformat(created_at)
+                            if created_at
+                            else datetime.now(UTC),
+                            source=source,
+                        )
+                    )
 
             if direction in ("incoming", "both"):
                 if relation:
@@ -384,14 +393,18 @@ class Neo4jGraph(GraphBackend):
                     props = dict(record["props"])
                     created_at = props.pop("created_at", None)
                     source = props.pop("source", None)
-                    results.append(Relationship(
-                        source_id=record["source"],
-                        relation=record["rel"].lower().replace("_", " "),
-                        target_id=entity_id,
-                        attributes=props,
-                        created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
-                        source=source,
-                    ))
+                    results.append(
+                        Relationship(
+                            source_id=record["source"],
+                            relation=record["rel"].lower().replace("_", " "),
+                            target_id=entity_id,
+                            attributes=props,
+                            created_at=datetime.fromisoformat(created_at)
+                            if created_at
+                            else datetime.now(UTC),
+                            source=source,
+                        )
+                    )
 
         return results
 
@@ -415,15 +428,19 @@ class Neo4jGraph(GraphBackend):
             source = parts[0].strip()
             relation = parts[1].replace("-> ?", "").strip()
 
-            for rel in self.get_relationships(source, relation if relation != "?" else None, "outgoing"):
+            for rel in self.get_relationships(
+                source, relation if relation != "?" else None, "outgoing"
+            ):
                 target = self.get_entity(rel.target_id)
-                results.append({
-                    "source": source,
-                    "relation": rel.relation,
-                    "target": rel.target_id,
-                    "target_type": target.type if target else "unknown",
-                    "target_attributes": target.attributes if target else {},
-                })
+                results.append(
+                    {
+                        "source": source,
+                        "relation": rel.relation,
+                        "target": rel.target_id,
+                        "target_type": target.type if target else "unknown",
+                        "target_attributes": target.attributes if target else {},
+                    }
+                )
 
         # Pattern: ? -relation-> entity_id
         elif "? -" in pattern and "-> " in pattern:
@@ -431,24 +448,42 @@ class Neo4jGraph(GraphBackend):
             target = parts[1].strip()
             relation = parts[0].replace("? -", "").strip()
 
-            for rel in self.get_relationships(target, relation if relation != "?" else None, "incoming"):
+            for rel in self.get_relationships(
+                target, relation if relation != "?" else None, "incoming"
+            ):
                 source_entity = self.get_entity(rel.source_id)
-                results.append({
-                    "source": rel.source_id,
-                    "source_type": source_entity.type if source_entity else "unknown",
-                    "relation": rel.relation,
-                    "target": target,
-                })
+                results.append(
+                    {
+                        "source": rel.source_id,
+                        "source_type": source_entity.type
+                        if source_entity
+                        else "unknown",
+                        "relation": rel.relation,
+                        "target": target,
+                    }
+                )
 
         # Simple entity lookup
         else:
             entity = self.get_entity(pattern)
             if entity:
-                results.append({
-                    "entity": entity.to_dict(),
-                    "outgoing": [r.to_dict() for r in self.get_relationships(pattern, direction="outgoing")],
-                    "incoming": [r.to_dict() for r in self.get_relationships(pattern, direction="incoming")],
-                })
+                results.append(
+                    {
+                        "entity": entity.to_dict(),
+                        "outgoing": [
+                            r.to_dict()
+                            for r in self.get_relationships(
+                                pattern, direction="outgoing"
+                            )
+                        ],
+                        "incoming": [
+                            r.to_dict()
+                            for r in self.get_relationships(
+                                pattern, direction="incoming"
+                            )
+                        ],
+                    }
+                )
 
         return results
 
@@ -503,14 +538,20 @@ class Neo4jGraph(GraphBackend):
                 updated_at = props.pop("updated_at", None)
                 source = props.pop("source", None)
 
-                results.append(Entity(
-                    id=entity_id,
-                    type=labels[0] if labels else "Entity",
-                    attributes=props,
-                    created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
-                    updated_at=datetime.fromisoformat(updated_at) if updated_at else datetime.now(UTC),
-                    source=source,
-                ))
+                results.append(
+                    Entity(
+                        id=entity_id,
+                        type=labels[0] if labels else "Entity",
+                        attributes=props,
+                        created_at=datetime.fromisoformat(created_at)
+                        if created_at
+                        else datetime.now(UTC),
+                        updated_at=datetime.fromisoformat(updated_at)
+                        if updated_at
+                        else datetime.now(UTC),
+                        source=source,
+                    )
+                )
 
             return results
 
@@ -527,8 +568,12 @@ class Neo4jGraph(GraphBackend):
     def stats(self) -> dict[str, int]:
         """Get graph statistics."""
         with self._session() as session:
-            node_count = session.run("MATCH (n) RETURN count(n) as count").single()["count"]
-            rel_count = session.run("MATCH ()-[r]->() RETURN count(r) as count").single()["count"]
+            node_count = session.run("MATCH (n) RETURN count(n) as count").single()[
+                "count"
+            ]
+            rel_count = session.run(
+                "MATCH ()-[r]->() RETURN count(r) as count"
+            ).single()["count"]
             return {
                 "entities": node_count,
                 "relationships": rel_count,

@@ -464,9 +464,7 @@ class TaskManager:
             return {}
 
         tree = task.to_dict()
-        tree["subtasks"] = [
-            self.get_task_tree(sub_id) for sub_id in task.subtask_ids
-        ]
+        tree["subtasks"] = [self.get_task_tree(sub_id) for sub_id in task.subtask_ids]
         return tree
 
     def get_stats(self) -> dict:

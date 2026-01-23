@@ -201,6 +201,7 @@ class OutputValidationError(Exception):
 # Schema Utilities
 # =============================================================================
 
+
 def get_schema_name(schema: type | dict[str, Any]) -> str:
     """Get the name of a schema.
 
@@ -233,6 +234,7 @@ def is_pydantic_model(obj: Any) -> bool:
     """Check if object is a Pydantic model class."""
     try:
         from pydantic import BaseModel
+
         return isinstance(obj, type) and issubclass(obj, BaseModel)
     except ImportError:
         return False
@@ -384,6 +386,7 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
     # Literal
     try:
         from typing import Literal
+
         if origin is Literal:
             return {"enum": list(args)}
     except ImportError:
@@ -416,6 +419,7 @@ def _is_optional_type(py_type: type) -> bool:
 # =============================================================================
 # Parsing and Validation
 # =============================================================================
+
 
 def parse_json_output(raw: str) -> dict[str, Any]:
     """Parse JSON from LLM output, handling common formats.
@@ -585,6 +589,7 @@ def build_structured_prompt(
 # =============================================================================
 # Provider Support Detection
 # =============================================================================
+
 
 def supports_native_structured_output(model: Any) -> bool:
     """Check if a model supports native structured output.

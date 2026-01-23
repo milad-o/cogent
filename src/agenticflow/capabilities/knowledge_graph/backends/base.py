@@ -60,7 +60,9 @@ class GraphBackend(ABC):
         pass
 
     @abstractmethod
-    def find_path(self, source_id: str, target_id: str, max_depth: int = 3) -> list[list[str]] | None:
+    def find_path(
+        self, source_id: str, target_id: str, max_depth: int = 3
+    ) -> list[list[str]] | None:
         """Find paths between two entities."""
         pass
 

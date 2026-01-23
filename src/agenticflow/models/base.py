@@ -6,6 +6,7 @@ All chat and embedding models inherit from these base classes.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
@@ -37,6 +38,7 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
     Handles both dict messages and message objects (SystemMessage, HumanMessage, etc.).
     This is a shared utility used by all model providers.
     """
+
     def _is_multimodal_content(value: Any) -> bool:
         """Return True if `content` is already in provider multimodal format.
 
@@ -114,12 +116,18 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
             if hasattr(msg, "tool_calls") and getattr(msg, "tool_calls", None):
                 msg_dict["tool_calls"] = [
                     {
-                        "id": tc.get("id", f"call_{i}") if isinstance(tc, dict) else getattr(tc, "id", f"call_{i}"),
+                        "id": tc.get("id", f"call_{i}")
+                        if isinstance(tc, dict)
+                        else getattr(tc, "id", f"call_{i}"),
                         "type": "function",
                         "function": {
-                            "name": tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", ""),
+                            "name": tc.get("name", "")
+                            if isinstance(tc, dict)
+                            else getattr(tc, "name", ""),
                             "arguments": json.dumps(
-                                tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {}),
+                                tc.get("args", {})
+                                if isinstance(tc, dict)
+                                else getattr(tc, "args", {}),
                                 default=str,
                             ),
                         },
@@ -146,7 +154,9 @@ def convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
     # - Ensure assistant tool_calls all have stable, non-empty string ids
     # - Ensure tool messages have a tool_call_id that matches a prior tool_call
     # - If a tool message cannot be paired, we drop it to avoid a hard 400
-    def _sanitize_tool_messages(formatted: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _sanitize_tool_messages(
+        formatted: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         # Tracks ids for the *most recent* assistant tool_calls message.
         # OpenAI/Azure require tool messages to follow that assistant message
         # (possibly with other tool messages in between, but no other role).
@@ -278,10 +288,8 @@ class BaseChatModel(ABC):
     def _ensure_initialized(self) -> None:
         """Lazily initialize clients on first use."""
         if not self._initialized:
-            try:
+            with contextlib.suppress(Exception):
                 __import__("agenticflow.config")
-            except Exception:
-                pass
             self._init_client()
             self._initialized = True
 
@@ -307,7 +315,9 @@ class BaseChatModel(ABC):
         ...
 
     @abstractmethod
-    async def ainvoke(self, messages: str | list[dict[str, Any]] | list[Any]) -> AIMessage:
+    async def ainvoke(
+        self, messages: str | list[dict[str, Any]] | list[Any]
+    ) -> AIMessage:
         """Invoke the model asynchronously.
 
         Args:
@@ -401,170 +411,183 @@ class BaseEmbedding(ABC):
         ...
 
     @abstractmethod
-    def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed multiple texts synchronously with metadata.
+    async def embed(self, texts: str | list[str]) -> EmbeddingResult:
+        """Embed one or more texts asynchronously with metadata.
 
-        Primary method for batch embedding. Returns full metadata including
-        token usage, duration, and model information.
+        Primary method for embedding. Accepts single text or batch.
+        Returns full metadata including token usage, duration, and model information.
 
         Args:
-            texts: List of texts to embed.
+            texts: Single text or list of texts to embed.
 
         Returns:
             EmbeddingResult with vectors and metadata.
 
         Example:
-            result = embedder.embed(["Hello", "World"])
-            vectors = result.embeddings
-            print(f"Model: {result.metadata.model}")
-        """
-        ...
+            # Single text
+            result = await embedder.embed("Hello world")
+            vector = result.embeddings[0]
 
-    @abstractmethod
-    async def aembed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed multiple texts asynchronously with metadata.
-
-        Primary async method for batch embedding. Returns full metadata including
-        token usage, duration, and model information.
-
-        Args:
-            texts: List of texts to embed.
-
-        Returns:
-            EmbeddingResult with vectors and metadata.
-
-        Example:
-            result = await embedder.aembed(["Hello", "World"])
+            # Multiple texts
+            result = await embedder.embed(["Hello", "World"])
             vectors = result.embeddings
             print(f"Tokens used: {result.metadata.tokens}")
         """
         ...
 
-    def embed_one(self, text: str) -> list[float]:
-        """Embed a single text synchronously.
+    # VectorStore protocol methods (semantic distinction for specialized use)
+    async def embed_documents(self, texts: str | list[str]) -> EmbeddingResult:
+        """Embed documents for VectorStore.
 
-        Convenience method for embedding a single text. Returns only the vector
-        without metadata. Use embed() if you need metadata.
+        Protocol method with semantic meaning for document embedding.
+        Some models may optimize differently for documents vs queries.
 
         Args:
-            text: Text to embed.
+            texts: Single document or list of documents to embed.
 
         Returns:
-            Embedding vector.
+            EmbeddingResult with vectors and metadata.
 
         Example:
-            vector = embedder.embed_one("Hello world")
+            result = await embedder.embed_documents(["Doc 1", "Doc 2"])
+            vectors = result.embeddings
         """
-        result = self.embed([text])
+        return await self.embed(texts)
+
+    async def embed_query(self, query: str) -> EmbeddingResult:
+        """Embed a search query for VectorStore.
+
+        Protocol method with semantic meaning for query embedding.
+        Some models (e.g., Cohere) embed queries differently than documents.
+
+        Args:
+            query: Query text to embed.
+
+        Returns:
+            EmbeddingResult with vector and metadata.
+
+        Example:
+            result = await embedder.embed_query("search query")
+            vector = result.embeddings[0]
+        """
+        return await self.embed(query)
+
+    # Deprecated aliases for backward compatibility
+    async def aembed(self, texts: list[str]) -> EmbeddingResult:
+        """Deprecated: Use embed() instead."""
+        import warnings
+
+        warnings.warn(
+            "aembed() is deprecated, use embed() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.embed(texts)
+
+    def embed_one(self, text: str) -> list[float]:
+        """Deprecated: Use embed() and extract .embeddings[0] instead."""
+        import asyncio
+        import warnings
+
+        warnings.warn(
+            "embed_one() is deprecated, use embed() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        result = asyncio.run(self.embed(text))
         return result.embeddings[0]
 
     async def aembed_one(self, text: str) -> list[float]:
-        """Embed a single text asynchronously.
+        """Deprecated: Use embed() and extract .embeddings[0] instead."""
+        import warnings
 
-        Convenience method for embedding a single text. Returns only the vector
-        without metadata. Use aembed() if you need metadata.
-
-        Args:
-            text: Text to embed.
-
-        Returns:
-            Embedding vector.
-
-        Example:
-            vector = await embedder.aembed_one("Hello world")
-        """
-        result = await self.aembed([text])
+        warnings.warn(
+            "aembed_one() is deprecated, use embed() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        result = await self.embed(text)
         return result.embeddings[0]
 
-    # VectorStore protocol compatibility (async, no metadata)
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts for VectorStore compatibility.
+    async def aembed_query_old(self, text: str) -> EmbeddingResult:
+        """Deprecated: Use embed_query() instead."""
+        import warnings
 
-        Async method that returns only vectors without metadata.
-        Required by the EmbeddingProvider protocol.
+        warnings.warn(
+            "aembed_query_old() is deprecated, use embed_query() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.embed_query(text)
 
-        Args:
-            texts: List of texts to embed.
+    async def aembed_query_vector(self, text: str) -> list[float]:
+        """Deprecated: Use embed_query() and extract .embeddings[0] instead."""
+        import warnings
 
-        Returns:
-            List of embedding vectors.
-        """
-        result = await self.aembed(texts)
-        return result.embeddings
+        warnings.warn(
+            "aembed_query_vector() is deprecated, use embed_query() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        result = await self.embed_query(text)
+        return result.embeddings[0]
 
-    async def embed_query(self, text: str) -> list[float]:
-        """Embed query for VectorStore compatibility.
+    async def aembed_texts(self, texts: list[str]) -> EmbeddingResult:
+        """Deprecated: Use embed() instead."""
+        import warnings
 
-        Async method that returns only the vector without metadata.
-        Required by the EmbeddingProvider protocol.
+        warnings.warn(
+            "aembed_texts() is deprecated, use embed() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.embed(texts)
 
-        Args:
-            text: Query text to embed.
+    async def aembed_text(self, text: str) -> EmbeddingResult:
+        """Deprecated: Use embed() instead."""
+        import warnings
 
-        Returns:
-            Embedding vector.
-        """
-        return await self.aembed_one(text)
+        warnings.warn(
+            "aembed_text() is deprecated, use embed() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.embed(text)
 
-    @property
-    def dimension(self) -> int:
-        """Return the embedding dimension. Override in subclasses."""
-        return self.dimensions or 1536  # Default to OpenAI dimension
+    def embed_texts(self, texts: list[str]) -> EmbeddingResult:
+        """Deprecated sync version. Use async embed() instead."""
+        import warnings
 
+        warnings.warn(
+            "embed_texts() is deprecated and sync, use async embed() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        import asyncio
 
-# Message helper functions for easy message creation
-def system(content: str) -> dict[str, str]:
-    """Create a system message.
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                raise RuntimeError(
+                    "Cannot use sync embed_texts() in async context. Use embed() instead."
+                )
+            return loop.run_until_complete(self.embed(texts))
+        except RuntimeError:
+            return asyncio.run(self.embed(texts))
 
-    Example:
-        messages = [system("You are helpful"), user("Hello")]
-    """
-    return {"role": "system", "content": content}
+    def embed_text(self, text: str) -> EmbeddingResult:
+        """Deprecated sync version. Use async embed() instead."""
+        import warnings
 
-
-def user(content: str) -> dict[str, str]:
-    """Create a user message.
-
-    Example:
-        messages = [user("What is 2+2?")]
-    """
-    return {"role": "user", "content": content}
-
-
-def assistant(content: str, tool_calls: list[dict] | None = None) -> dict[str, Any]:
-    """Create an assistant message.
-
-    Example:
-        messages = [assistant("The answer is 4")]
-    """
-    msg: dict[str, Any] = {"role": "assistant", "content": content}
-    if tool_calls:
-        msg["tool_calls"] = tool_calls
-    return msg
-
-
-def tool_result(content: str, tool_call_id: str) -> dict[str, str]:
-    """Create a tool result message.
-
-    Example:
-        messages = [tool_result("42", "call_123")]
-    """
-    return {"role": "tool", "content": content, "tool_call_id": tool_call_id}
+        warnings.warn(
+            "embed_text() is deprecated and sync, use async embed() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.embed_texts([text])
 
 
-# Default model names by provider
-DEFAULT_CHAT_MODELS: dict[ModelProvider, str] = {
-    ModelProvider.OPENAI: "gpt-4o-mini",
-    ModelProvider.COHERE: "command-r-plus",
-    ModelProvider.CLOUDFLARE: "@cf/meta/llama-3.3-70b-instruct",
-    ModelProvider.AZURE: "gpt-4o-mini",
-    ModelProvider.ANTHROPIC: "claude-3-5-sonnet-20241022",
-    ModelProvider.GOOGLE: "gemini-2.0-flash-exp",
-    ModelProvider.GROQ: "llama-3.3-70b-versatile",
-    ModelProvider.OLLAMA: "llama3.2",
-    ModelProvider.CUSTOM: "gpt-4o-mini",
-}
-
+# Common default embedding models per provider
 DEFAULT_EMBEDDING_MODELS: dict[ModelProvider, str] = {
     ModelProvider.OPENAI: "text-embedding-3-small",
     ModelProvider.COHERE: "embed-english-v3.0",

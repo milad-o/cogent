@@ -35,7 +35,7 @@ class ParsedQuery:
     filter: dict[str, Any] | None = None
 
 
-DEFAULT_PARSE_PROMPT = '''You are a query parser. Given a user query and available attributes, extract:
+DEFAULT_PARSE_PROMPT = """You are a query parser. Given a user query and available attributes, extract:
 1. A semantic search query (the main topic/content to search for)
 2. Metadata filters based on the attributes
 
@@ -55,7 +55,7 @@ Rules:
 - For numeric comparisons, use: {{"attr": {{"$gt": value}}}} or {{"$lt": value}}
 - For string matching, use exact values
 - If no filter is needed, set filter to null
-- The semantic_query should capture the meaning/topic, not filtering criteria'''
+- The semantic_query should capture the meaning/topic, not filtering criteria"""
 
 
 class SelfQueryRetriever(BaseRetriever):
@@ -139,7 +139,7 @@ class SelfQueryRetriever(BaseRetriever):
         import re
 
         # Extract JSON from response
-        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        json_match = re.search(r"\{.*\}", response, re.DOTALL)
         if not json_match:
             # Fallback: use original query, no filter
             return ParsedQuery(semantic_query=query, filter=None)

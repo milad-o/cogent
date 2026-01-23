@@ -253,7 +253,11 @@ class WeightedRetriever(BaseRetriever):
                 document=r.document,
                 score=r.score * self._weight,
                 retriever_name=self.name,
-                metadata={**r.metadata, "original_score": r.score, "weight": self._weight},
+                metadata={
+                    **r.metadata,
+                    "original_score": r.score,
+                    "weight": self._weight,
+                },
             )
             for r in results
         ]

@@ -95,16 +95,19 @@ class Transport(Protocol):
 
 class TransportError(Exception):
     """Base exception for transport errors."""
+
     pass
 
 
 class ConnectionError(TransportError):
     """Failed to connect to transport backend."""
+
     pass
 
 
 class PublishError(TransportError):
     """Failed to publish event."""
+
     pass
 
 
@@ -305,6 +308,7 @@ try:
             channel = f"{self._channel_prefix}:{event.name}"
             # Serialize event as dict
             from dataclasses import asdict
+
             payload = json.dumps(asdict(event), default=str)
 
             try:
@@ -365,10 +369,17 @@ try:
             """Handle incoming Redis message."""
             try:
                 from dataclasses import fields
+
                 payload = json.loads(message["data"])
 
                 # Reconstruct Event from dict
-                event = Event(**{k: payload.get(k) for k in [f.name for f in fields(Event)] if k in payload})
+                event = Event(
+                    **{
+                        k: payload.get(k)
+                        for k in [f.name for f in fields(Event)]
+                        if k in payload
+                    }
+                )
 
                 # Call matching handlers
                 for pattern, handler in self._subscriptions.values():
@@ -396,8 +407,8 @@ except ImportError:
 
         Install with: uv add redis
         """
+
         def __init__(self, *args, **kwargs):
             raise ImportError(
-                "RedisTransport requires redis package. "
-                "Install with: uv add redis"
+                "RedisTransport requires redis package. Install with: uv add redis"
             )

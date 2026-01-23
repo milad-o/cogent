@@ -144,6 +144,7 @@ Respond with ONLY JSON:
 
             # Parse the verification response
             import re
+
             json_match = re.search(r"\{[\s\S]*\}", response)
             if json_match:
                 data = json.loads(json_match.group())
@@ -157,7 +158,9 @@ Respond with ONLY JSON:
             pass
 
         # Default to complete if verification fails
-        return CompletionCheck(is_complete=True, confidence=0.5, summary="Verification inconclusive")
+        return CompletionCheck(
+            is_complete=True, confidence=0.5, summary="Verification inconclusive"
+        )
 
     async def _address_missing_elements(
         self,
@@ -213,7 +216,9 @@ Integrate the additions naturally into a complete response."""
         if self.tracker:
             self.tracker.tool_call(tool, args, agent=self.agent.name)
 
-    def _track_tool_result(self, tool: str, result: object, duration_ms: float = 0) -> None:
+    def _track_tool_result(
+        self, tool: str, result: object, duration_ms: float = 0
+    ) -> None:
         """Track tool result via progress tracker if available.
 
         Args:

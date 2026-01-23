@@ -465,12 +465,16 @@ def extract_tool_calls(msg: AIMessage) -> list[ToolCallChunk]:
     # Check tool_calls list
     if msg.tool_calls:
         for i, tc in enumerate(msg.tool_calls):
-            tool_calls.append(ToolCallChunk(
-                id=tc.get("id"),
-                name=tc.get("name"),
-                args=str(tc.get("args", {})) if isinstance(tc.get("args"), dict) else tc.get("args", ""),
-                index=i,
-            ))
+            tool_calls.append(
+                ToolCallChunk(
+                    id=tc.get("id"),
+                    name=tc.get("name"),
+                    args=str(tc.get("args", {}))
+                    if isinstance(tc.get("args"), dict)
+                    else tc.get("args", ""),
+                    index=i,
+                )
+            )
 
     return tool_calls
 
@@ -601,7 +605,10 @@ class ObserverStreamCallback:
             # Import here to avoid circular imports
             try:
                 from agenticflow.observability.observer import ObservabilityLevel
-                self.show_tokens = self.observer.config.level >= ObservabilityLevel.DETAILED
+
+                self.show_tokens = (
+                    self.observer.config.level >= ObservabilityLevel.DETAILED
+                )
             except (ImportError, AttributeError):
                 self.show_tokens = True
 
@@ -617,6 +624,7 @@ class ObserverStreamCallback:
         # Emit token event to observer
         if self.emit_events and hasattr(self.observer, "_emit"):
             from agenticflow.observability.trace_record import TraceType
+
             self.observer._emit(
                 TraceType.TOKEN_STREAMED,
                 agent_name=self.agent_name,
@@ -629,6 +637,7 @@ class ObserverStreamCallback:
         """Handle stream start."""
         if self.emit_events and hasattr(self.observer, "_emit"):
             from agenticflow.observability.trace_record import TraceType
+
             self.observer._emit(
                 TraceType.STREAM_START,
                 agent_name=self.agent_name,
@@ -643,10 +652,13 @@ class ObserverStreamCallback:
 
         if self.emit_events and hasattr(self.observer, "_emit"):
             from agenticflow.observability.trace_record import TraceType
+
             self.observer._emit(
                 TraceType.STREAM_END,
                 agent_name=self.agent_name,
-                response_preview=full_response[:500] if len(full_response) > 500 else full_response,
+                response_preview=full_response[:500]
+                if len(full_response) > 500
+                else full_response,
                 total_tokens=self._token_count,
             )
 
@@ -657,6 +669,7 @@ class ObserverStreamCallback:
 
         if self.emit_events and hasattr(self.observer, "_emit"):
             from agenticflow.observability.trace_record import TraceType
+
             self.observer._emit(
                 TraceType.STREAM_TOOL_CALL,
                 agent_name=self.agent_name,
@@ -671,6 +684,7 @@ class ObserverStreamCallback:
 
         if self.emit_events and hasattr(self.observer, "_emit"):
             from agenticflow.observability.trace_record import TraceType
+
             self.observer._emit(
                 TraceType.STREAM_ERROR,
                 agent_name=self.agent_name,

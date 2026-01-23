@@ -147,7 +147,10 @@ class RetryPolicy:
             delay = self.base_delay
         elif self.strategy == RetryStrategy.LINEAR:
             delay = self.base_delay * attempt
-        elif self.strategy in (RetryStrategy.EXPONENTIAL, RetryStrategy.EXPONENTIAL_JITTER):
+        elif self.strategy in (
+            RetryStrategy.EXPONENTIAL,
+            RetryStrategy.EXPONENTIAL_JITTER,
+        ):
             delay = self.base_delay * (2 ** (attempt - 1))
         else:
             delay = self.base_delay
@@ -194,7 +197,10 @@ class RetryPolicy:
         error_type = type(exception).__name__.lower()
 
         # Check for rate limit and server error patterns
-        if any(pattern in error_msg or pattern in error_type for pattern in self.retryable_patterns):
+        if any(
+            pattern in error_msg or pattern in error_type
+            for pattern in self.retryable_patterns
+        ):
             return True
 
         # Default: retry most runtime errors, but check for non-retryable patterns
@@ -450,7 +456,9 @@ class FailureMemory:
 
     _records: list[FailureRecord] = field(default_factory=list, repr=False)
     _tool_stats: dict[str, dict[str, int]] = field(default_factory=dict, repr=False)
-    _pattern_failures: dict[str, int] = field(default_factory=dict, repr=False)  # tool:error_type -> count
+    _pattern_failures: dict[str, int] = field(
+        default_factory=dict, repr=False
+    )  # tool:error_type -> count
 
     def record_failure(
         self,
@@ -477,7 +485,7 @@ class FailureMemory:
 
         # Trim old records
         if len(self._records) > self.max_records:
-            self._records = self._records[-self.max_records:]
+            self._records = self._records[-self.max_records :]
 
         # Update stats
         if tool_name not in self._tool_stats:
@@ -486,7 +494,9 @@ class FailureMemory:
 
         # Track error patterns
         pattern_key = f"{tool_name}:{error_type}"
-        self._pattern_failures[pattern_key] = self._pattern_failures.get(pattern_key, 0) + 1
+        self._pattern_failures[pattern_key] = (
+            self._pattern_failures.get(pattern_key, 0) + 1
+        )
 
     def record_success(self, tool_name: str) -> None:
         """Record a successful call."""
@@ -537,10 +547,9 @@ class FailureMemory:
 
         # Count recent failures with same tool and args pattern
         recent_failures = sum(
-            1 for r in self._records[-100:]  # Check last 100 records
-            if r.tool_name == tool_name
-            and r.args_hash == args_hash
-            and not r.recovered
+            1
+            for r in self._records[-100:]  # Check last 100 records
+            if r.tool_name == tool_name and r.args_hash == args_hash and not r.recovered
         )
 
         return recent_failures >= self.learning_threshold
@@ -588,7 +597,7 @@ class FailureMemory:
         parts = []
         for k, v in sorted(args.items()):
             if isinstance(v, str):
-                parts.append(f"{k}:str:{len(v)//100}")  # Bucket by length
+                parts.append(f"{k}:str:{len(v) // 100}")  # Bucket by length
             elif isinstance(v, (int, float)):
                 parts.append(f"{k}:num")
             elif isinstance(v, (list, tuple)):
@@ -610,7 +619,9 @@ class FallbackConfig:
 
     primary_tool: str
     fallback_tools: list[str]  # Ordered list of fallbacks to try
-    transform_args: Callable[[str, dict], dict] | None = None  # Transform args for fallback
+    transform_args: Callable[[str, dict], dict] | None = (
+        None  # Transform args for fallback
+    )
 
 
 class FallbackRegistry:
@@ -898,9 +909,7 @@ class ToolResilience:
                     f"↩️ Falling back: {data.get('from_tool', '?')} → {data.get('to_tool', '?')}"
                 )
             elif event_type == "recovery":
-                self.tracker.update(
-                    f"✅ Recovered via {data.get('method', 'retry')}"
-                )
+                self.tracker.update(f"✅ Recovered via {data.get('method', 'retry')}")
 
     async def execute(
         self,
@@ -931,10 +940,13 @@ class ToolResilience:
             breaker = self._get_circuit_breaker(tool_name)
             if breaker.is_open:
                 result.circuit_state = breaker.state
-                self._emit("circuit_open", {
-                    "tool": tool_name,
-                    "reset_timeout": breaker.reset_timeout,
-                })
+                self._emit(
+                    "circuit_open",
+                    {
+                        "tool": tool_name,
+                        "reset_timeout": breaker.reset_timeout,
+                    },
+                )
 
                 # Try fallback if circuit is open
                 if self.config.fallback_enabled and fallback_fn:
@@ -950,11 +962,14 @@ class ToolResilience:
         if self.failure_memory and self.failure_memory.should_avoid(tool_name, args):
             # Try fallback for known bad patterns
             if self.config.fallback_enabled and fallback_fn:
-                self._emit("fallback", {
-                    "from_tool": tool_name,
-                    "to_tool": "alternative",
-                    "reason": "known_failure_pattern",
-                })
+                self._emit(
+                    "fallback",
+                    {
+                        "from_tool": tool_name,
+                        "to_tool": "alternative",
+                        "reason": "known_failure_pattern",
+                    },
+                )
                 return await self._try_fallbacks(
                     tool_name, args, fallback_fn, result, start_time
                 )
@@ -988,12 +1003,16 @@ class ToolResilience:
                     self.failure_memory.record_success(tool_name)
                     if attempt > 0:
                         self.failure_memory.record_recovery(tool_name, "retry")
-                        self._emit("recovery", {"method": "retry", "attempts": attempt + 1})
+                        self._emit(
+                            "recovery", {"method": "retry", "attempts": attempt + 1}
+                        )
 
                 return result
 
             except TimeoutError:
-                last_error = TimeoutError(f"Tool {tool_name} timed out after {timeout}s")
+                last_error = TimeoutError(
+                    f"Tool {tool_name} timed out after {timeout}s"
+                )
             except Exception as e:
                 last_error = e
 
@@ -1011,13 +1030,16 @@ class ToolResilience:
             # Check if we should retry
             if last_error and retry_policy.should_retry(last_error, attempt + 1):
                 delay = retry_policy.get_delay(attempt + 1)
-                self._emit("retry", {
-                    "tool": tool_name,
-                    "attempt": attempt + 1,
-                    "max_retries": retry_policy.max_retries,
-                    "delay": delay,
-                    "error": str(last_error),
-                })
+                self._emit(
+                    "retry",
+                    {
+                        "tool": tool_name,
+                        "attempt": attempt + 1,
+                        "max_retries": retry_policy.max_retries,
+                        "delay": delay,
+                        "error": str(last_error),
+                    },
+                )
                 await asyncio.sleep(delay)
             else:
                 break
@@ -1072,11 +1094,14 @@ class ToolResilience:
         fallbacks = self.fallback_registry.get_all_fallbacks(primary_tool)
 
         for i, fallback_name in enumerate(fallbacks):
-            self._emit("fallback", {
-                "from_tool": primary_tool,
-                "to_tool": fallback_name,
-                "attempt": i + 1,
-            })
+            self._emit(
+                "fallback",
+                {
+                    "from_tool": primary_tool,
+                    "to_tool": fallback_name,
+                    "attempt": i + 1,
+                },
+            )
 
             result.fallback_chain.append(fallback_name)
 
@@ -1105,12 +1130,17 @@ class ToolResilience:
                 result.total_time_ms = (time.time() - start_time) * 1000
 
                 if self.failure_memory:
-                    self.failure_memory.record_recovery(primary_tool, f"fallback:{fallback_name}")
+                    self.failure_memory.record_recovery(
+                        primary_tool, f"fallback:{fallback_name}"
+                    )
 
-                self._emit("recovery", {
-                    "method": "fallback",
-                    "tool": fallback_name,
-                })
+                self._emit(
+                    "recovery",
+                    {
+                        "method": "fallback",
+                        "tool": fallback_name,
+                    },
+                )
 
                 return result
 
@@ -1244,13 +1274,18 @@ class ModelResilience:
         error_str = str(error).lower()
         error_type = type(error).__name__.lower()
 
-        if any(p in error_str or p in error_type for p in ["rate", "429", "resourceexhausted", "quota"]):
+        if any(
+            p in error_str or p in error_type
+            for p in ["rate", "429", "resourceexhausted", "quota"]
+        ):
             return "rate_limit"
         if any(p in error_str for p in ["timeout", "timed out"]):
             return "timeout"
         if any(p in error_str for p in ["connection", "network"]):
             return "connection"
-        if any(p in error_str for p in ["500", "502", "503", "server error", "unavailable"]):
+        if any(
+            p in error_str for p in ["500", "502", "503", "server error", "unavailable"]
+        ):
             return "server_error"
         if any(p in error_str for p in ["invalid", "malformed"]):
             return "invalid_request"
@@ -1282,9 +1317,7 @@ class ModelResilience:
         elif event_type == "success":
             attempts = data.get("attempts", 1)
             if attempts > 1:
-                self.tracker.update(
-                    f"✅ LLM succeeded after {attempts} attempts"
-                )
+                self.tracker.update(f"✅ LLM succeeded after {attempts} attempts")
 
     async def execute(
         self,
@@ -1357,13 +1390,16 @@ class ModelResilience:
                 if self.on_retry:
                     self.on_retry(attempt + 1, last_error, delay)
 
-                self._emit("retry", {
-                    "attempt": attempt + 1,
-                    "max_retries": self.retry_policy.max_retries,
-                    "delay": delay,
-                    "error": str(last_error)[:100],
-                    "error_type": error_type,
-                })
+                self._emit(
+                    "retry",
+                    {
+                        "attempt": attempt + 1,
+                        "max_retries": self.retry_policy.max_retries,
+                        "delay": delay,
+                        "error": str(last_error)[:100],
+                        "error_type": error_type,
+                    },
+                )
 
                 await asyncio.sleep(delay)
             else:
@@ -1379,10 +1415,13 @@ class ModelResilience:
         if self.on_error:
             self.on_error(last_error, result.attempts)
 
-        self._emit("error", {
-            "attempts": result.attempts,
-            "error_type": result.error_type,
-        })
+        self._emit(
+            "error",
+            {
+                "attempts": result.attempts,
+                "error_type": result.error_type,
+            },
+        )
 
         return result
 

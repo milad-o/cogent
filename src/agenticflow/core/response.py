@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from agenticflow.events import Event
@@ -138,7 +138,7 @@ class ResponseMetadata:
 
 
 @dataclass
-class Response(Generic[T]):
+class Response[T]:
     """Unified response container for all agent/tool operations.
 
     This is the canonical response type used throughout AgenticFlow:
@@ -170,7 +170,7 @@ class Response(Generic[T]):
         # Check success
         if response.success:
             print(f"Used {response.metadata.tokens.total_tokens} tokens")
-        
+
         # Inspect conversation
         for msg in response.messages:
             print(f"{msg.role}: {msg.content[:100]}")
@@ -180,7 +180,9 @@ class Response(Generic[T]):
     metadata: ResponseMetadata
     tool_calls: list[ToolCall] = field(default_factory=list)
     events: list[Any] = field(default_factory=list)  # Will be list[Event] at runtime
-    messages: list[Any] = field(default_factory=list)  # Will be list[BaseMessage] at runtime
+    messages: list[Any] = field(
+        default_factory=list
+    )  # Will be list[BaseMessage] at runtime
     error: ErrorInfo | None = None
 
     @property
@@ -233,7 +235,9 @@ class Response(Generic[T]):
             "metadata": self.metadata.to_dict(),
             "tool_calls": [tc.to_dict() for tc in self.tool_calls],
             "events": [e.to_dict() for e in self.events],
-            "messages": [m.to_dict() if hasattr(m, 'to_dict') else str(m) for m in self.messages],
+            "messages": [
+                m.to_dict() if hasattr(m, "to_dict") else str(m) for m in self.messages
+            ],
             "error": self.error.to_dict() if self.error else None,
             "success": self.success,
         }

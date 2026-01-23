@@ -95,7 +95,9 @@ class WebhookSource(EventSource):
             try:
                 data = await request.json()
             except json.JSONDecodeError:
-                data = {"raw_body": (await request.body()).decode("utf-8", errors="replace")}
+                data = {
+                    "raw_body": (await request.body()).decode("utf-8", errors="replace")
+                }
 
             # Determine event name
             name = request.headers.get(self.event_name_header, self.event_name)

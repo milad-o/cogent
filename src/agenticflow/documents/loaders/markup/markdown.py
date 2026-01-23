@@ -83,7 +83,12 @@ class MarkdownLoader(BaseLoader):
                 value = value.strip()
 
                 # Handle quoted strings
-                if value.startswith('"') and value.endswith('"') or value.startswith("'") and value.endswith("'"):
+                if (
+                    value.startswith('"')
+                    and value.endswith('"')
+                    or value.startswith("'")
+                    and value.endswith("'")
+                ):
                     value = value[1:-1]
 
                 # Handle lists (simple single-line format)

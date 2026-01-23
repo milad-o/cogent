@@ -17,7 +17,7 @@ class InMemoryGraph(GraphBackend):
     def __init__(self, path: str | Path | None = None, auto_save: bool = False) -> None:
         """
         Initialize in-memory graph.
-        
+
         Args:
             path: Optional file path for auto-save persistence
             auto_save: If True and path provided, automatically save after each modification
@@ -76,7 +76,10 @@ class InMemoryGraph(GraphBackend):
             entity = Entity(
                 id=entity_id,
                 type=entity_type,
-                attributes={**(existing.attributes if existing else {}), **(attributes or {})},
+                attributes={
+                    **(existing.attributes if existing else {}),
+                    **(attributes or {}),
+                },
                 created_at=existing.created_at if existing else now,
                 updated_at=now,
                 source=source or (existing.source if existing else None),
@@ -234,7 +237,9 @@ class InMemoryGraph(GraphBackend):
                 results.append(
                     {
                         "source": rel.source_id,
-                        "source_type": source_entity.type if source_entity else "unknown",
+                        "source_type": source_entity.type
+                        if source_entity
+                        else "unknown",
                         "relation": rel.relation,
                         "target": target,
                     }
@@ -249,11 +254,15 @@ class InMemoryGraph(GraphBackend):
                         "entity": entity.to_dict(),
                         "outgoing": [
                             r.to_dict()
-                            for r in self.get_relationships(pattern, direction="outgoing")
+                            for r in self.get_relationships(
+                                pattern, direction="outgoing"
+                            )
                         ],
                         "incoming": [
                             r.to_dict()
-                            for r in self.get_relationships(pattern, direction="incoming")
+                            for r in self.get_relationships(
+                                pattern, direction="incoming"
+                            )
                         ],
                     }
                 )

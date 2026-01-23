@@ -48,14 +48,15 @@ class TokenSplitter(BaseSplitter):
         if self._tokenizer is None:
             try:
                 import tiktoken
+
                 self._tokenizer = tiktoken.encoding_for_model(self._model_name)
             except ImportError:
                 raise ImportError(
-                    "Token splitting requires 'tiktoken'. "
-                    "Install with: uv add tiktoken"
+                    "Token splitting requires 'tiktoken'. Install with: uv add tiktoken"
                 )
             except KeyError:
                 import tiktoken
+
                 self._tokenizer = tiktoken.get_encoding("cl100k_base")
         return self._tokenizer
 

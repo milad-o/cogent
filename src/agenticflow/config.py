@@ -19,6 +19,7 @@ from typing import Any
 # Auto-load .env file if it exists
 try:
     from dotenv import load_dotenv
+
     load_dotenv()  # Load from .env in current directory
 except ImportError:
     pass  # dotenv not installed, rely on system env vars
@@ -26,6 +27,7 @@ except ImportError:
 # Try to import yaml, but make it optional
 try:
     import yaml
+
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
@@ -33,13 +35,13 @@ except ImportError:
 
 def find_config_file() -> Path | None:
     """Find configuration file in standard locations.
-    
+
     Checks in order:
     1. ./agenticflow.toml
     2. ./agenticflow.yaml (if pyyaml installed)
     3. ~/.agenticflow/config.toml
     4. ~/.agenticflow/config.yaml (if pyyaml installed)
-    
+
     Returns:
         Path to config file or None if not found
     """
@@ -70,12 +72,12 @@ def find_config_file() -> Path | None:
 
 def load_toml(path: Path) -> dict[str, Any]:
     """Load TOML configuration file.
-    
+
     Uses built-in tomllib (Python 3.11+).
-    
+
     Args:
         path: Path to TOML file
-        
+
     Returns:
         Configuration dictionary
     """
@@ -97,19 +99,18 @@ def load_toml(path: Path) -> dict[str, Any]:
 
 def load_yaml(path: Path) -> dict[str, Any]:
     """Load YAML configuration file.
-    
+
     Requires pyyaml package.
-    
+
     Args:
         path: Path to YAML file
-        
+
     Returns:
         Configuration dictionary
     """
     if not HAS_YAML:
         raise ImportError(
-            "YAML support requires 'pyyaml' package. "
-            "Install with: uv add pyyaml"
+            "YAML support requires 'pyyaml' package. Install with: uv add pyyaml"
         )
 
     with open(path) as f:
@@ -118,7 +119,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 def load_config() -> dict[str, Any]:
     """Load configuration from file.
-    
+
     Returns:
         Configuration dictionary or empty dict if no config found
     """
@@ -136,22 +137,23 @@ def load_config() -> dict[str, Any]:
     except Exception as e:
         # Don't fail if config can't be loaded, just warn
         import warnings
-        warnings.warn(f"Failed to load config from {config_path}: {e}")
+
+        warnings.warn(f"Failed to load config from {config_path}: {e}", stacklevel=2)
         return {}
 
 
 def get_api_key(provider: str, explicit_key: str | None = None) -> str | None:
     """Get API key for provider with priority handling.
-    
+
     Priority:
     1. Explicit key parameter (highest)
     2. Environment variable
     3. Config file (lowest)
-    
+
     Args:
         provider: Provider name (openai, anthropic, gemini, etc.)
         explicit_key: Explicitly provided API key
-        
+
     Returns:
         API key or None
     """
@@ -189,10 +191,10 @@ def get_api_key(provider: str, explicit_key: str | None = None) -> str | None:
 
 def get_provider_config(provider: str) -> dict[str, Any]:
     """Get full configuration for provider from config file.
-    
+
     Args:
         provider: Provider name
-        
+
     Returns:
         Provider configuration dictionary
     """
@@ -255,7 +257,7 @@ def get_model_override(provider: str, kind: str) -> str | None:
 
 def get_default_model() -> str | None:
     """Get default model from config file.
-    
+
     Returns:
         Default model string or None
     """
@@ -271,18 +273,18 @@ def get_config_value(
     env_vars: list[str] | None = None,
 ) -> Any:
     """Get configuration value from env or config file.
-    
+
     Priority:
     1. Explicit fallback value (if provided)
     2. Environment variables
     3. Config file
-    
+
     Args:
         provider: Provider name (cloudflare, ollama, etc.)
         key: Config key name (e.g., "account_id", "host")
         fallback: Explicit value to use first
         env_vars: List of env var names to check (in order)
-        
+
     Returns:
         Configuration value or None
     """

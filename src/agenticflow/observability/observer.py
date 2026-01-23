@@ -100,6 +100,7 @@ if TYPE_CHECKING:
 # Formatting Utilities - Consistent output formatting
 # =============================================================================
 
+
 def _format_agent_name(name: str) -> str:
     """Format agent name with brackets (no truncation)."""
     return f"[{name}]"
@@ -110,7 +111,7 @@ def _format_duration(duration_ms: float) -> str:
     if duration_ms < 1000:
         return f"({duration_ms:.0f}ms)"
     elif duration_ms < 60000:
-        return f"({duration_ms/1000:.1f}s)"
+        return f"({duration_ms / 1000:.1f}s)"
     else:
         mins = int(duration_ms / 60000)
         secs = (duration_ms % 60000) / 1000
@@ -124,7 +125,7 @@ def _truncate_smart(text: str, max_chars: int = 500) -> str:
 
     # Find last space before max_chars
     truncated = text[:max_chars]
-    last_space = truncated.rfind(' ')
+    last_space = truncated.rfind(" ")
 
     # Use the space if it's reasonably close to the limit
     if last_space > max_chars * 0.8:
@@ -390,9 +391,11 @@ class ObserverConfig:
     # Callbacks
     on_event: Callable[[Trace], None] | None = None
     on_agent: Callable[[str, str, dict], None] | None = None  # name, action, data
-    on_tool: Callable[[str, str, dict], None] | None = None   # name, action, data
+    on_tool: Callable[[str, str, dict], None] | None = None  # name, action, data
     on_message: Callable[[str, str, str], None] | None = None  # from, to, content
-    on_stream: Callable[[str, str, dict], None] | None = None  # agent, token/action, data
+    on_stream: Callable[[str, str, dict], None] | None = (
+        None  # agent, token/action, data
+    )
     on_error: Callable[[str, Exception | str], None] | None = None
 
     # Filtering
@@ -541,9 +544,15 @@ class Observer:
         # Resolve truncation: low-level overrides mid-level, default is 0 (no limit)
         base_limit = max_output if max_output is not None else 0
         final_truncate = truncate if truncate is not None else base_limit
-        final_truncate_tool_args = truncate_tool_args if truncate_tool_args is not None else base_limit
-        final_truncate_tool_results = truncate_tool_results if truncate_tool_results is not None else base_limit
-        final_truncate_messages = truncate_messages if truncate_messages is not None else base_limit
+        final_truncate_tool_args = (
+            truncate_tool_args if truncate_tool_args is not None else base_limit
+        )
+        final_truncate_tool_results = (
+            truncate_tool_results if truncate_tool_results is not None else base_limit
+        )
+        final_truncate_messages = (
+            truncate_messages if truncate_messages is not None else base_limit
+        )
 
         self.config = ObserverConfig(
             level=level,
@@ -577,10 +586,12 @@ class Observer:
         self._events: list[ObservedEvent] = []
         self._start_time: datetime | None = None
         self._metrics: dict[str, Any] = defaultdict(int)
-        self._styler = Styler(OutputConfig(
-            use_colors=use_colors,
-            format=format,
-        ))
+        self._styler = Styler(
+            OutputConfig(
+                use_colors=use_colors,
+                format=format,
+            )
+        )
         self._attached_bus: TraceBus | None = None
 
         # === Deep Tracing (integrated - no separate tracer needed!) ===
@@ -600,48 +611,58 @@ class Observer:
         self._span_stack: list[dict] = []
 
         # Streaming state tracking
-        self._streaming_agents: dict[str, dict] = {}  # agent_name -> {tokens, start_time, ...}
+        self._streaming_agents: dict[
+            str, dict
+        ] = {}  # agent_name -> {tokens, start_time, ...}
         self._stream_buffer: dict[str, str] = {}  # agent_name -> accumulated content
 
         # Thinking event deduplication - track iteration count per agent
         self._agent_thinking_count: dict[str, int] = {}  # agent_name -> iteration count
 
         # Token usage tracking
-        self._token_usage: dict[str, dict[str, int]] = defaultdict(lambda: {"input": 0, "output": 0, "total": 0})  # agent_name -> token counts
+        self._token_usage: dict[str, dict[str, int]] = defaultdict(
+            lambda: {"input": 0, "output": 0, "total": 0}
+        )  # agent_name -> token counts
         self._total_tokens: dict[str, int] = {"input": 0, "output": 0, "total": 0}
 
         # Progress step tracking
-        self._progress_steps: dict[str, dict[str, Any]] = {}  # agent_name -> {current: int, total: int, description: str}
+        self._progress_steps: dict[
+            str, dict[str, Any]
+        ] = {}  # agent_name -> {current: int, total: int, description: str}
 
         # State change tracking (for diff visualization)
-        self._state_snapshots: dict[str, dict[str, Any]] = {}  # entity_id -> latest state
+        self._state_snapshots: dict[
+            str, dict[str, Any]
+        ] = {}  # entity_id -> latest state
 
         # Error context enhancement
-        self._error_suggestions: dict[str, list[str]] = {  # error_pattern -> suggestions
+        self._error_suggestions: dict[
+            str, list[str]
+        ] = {  # error_pattern -> suggestions
             "permission denied": [
                 "Check file/directory permissions",
                 "Verify the process has necessary access rights",
-                "Consider running with elevated permissions if appropriate"
+                "Consider running with elevated permissions if appropriate",
             ],
             "connection refused": [
                 "Verify the target service is running",
                 "Check network connectivity",
-                "Confirm the port number is correct"
+                "Confirm the port number is correct",
             ],
             "timeout": [
                 "Check network connectivity",
                 "Verify the service is responding",
-                "Consider increasing timeout duration"
+                "Consider increasing timeout duration",
             ],
             "not found": [
                 "Verify the resource exists",
                 "Check the path or identifier is correct",
-                "Ensure required dependencies are installed"
+                "Ensure required dependencies are installed",
             ],
             "invalid credentials": [
                 "Verify API keys and secrets are correct",
                 "Check credentials haven't expired",
-                "Ensure environment variables are set"
+                "Ensure environment variables are set",
             ],
         }
 
@@ -707,10 +728,18 @@ class Observer:
         return cls(
             level=ObservabilityLevel.DEBUG,
             channels=[
-                Channel.AGENTS, Channel.TOOLS, Channel.MESSAGES,
-                Channel.TASKS, Channel.STREAMING, Channel.MEMORY,
-                Channel.RETRIEVAL, Channel.DOCUMENTS, Channel.MCP,
-                Channel.FLOW, Channel.SYSTEM, Channel.RESILIENCE,
+                Channel.AGENTS,
+                Channel.TOOLS,
+                Channel.MESSAGES,
+                Channel.TASKS,
+                Channel.STREAMING,
+                Channel.MEMORY,
+                Channel.RETRIEVAL,
+                Channel.DOCUMENTS,
+                Channel.MCP,
+                Channel.FLOW,
+                Channel.SYSTEM,
+                Channel.RESILIENCE,
             ],
             show_timestamps=True,
             show_duration=True,
@@ -739,10 +768,18 @@ class Observer:
         return cls(
             level=ObservabilityLevel.TRACE,
             channels=[
-                Channel.AGENTS, Channel.TOOLS, Channel.MESSAGES,
-                Channel.TASKS, Channel.STREAMING, Channel.MEMORY,
-                Channel.RETRIEVAL, Channel.DOCUMENTS, Channel.MCP,
-                Channel.FLOW, Channel.SYSTEM, Channel.RESILIENCE,
+                Channel.AGENTS,
+                Channel.TOOLS,
+                Channel.MESSAGES,
+                Channel.TASKS,
+                Channel.STREAMING,
+                Channel.MEMORY,
+                Channel.RETRIEVAL,
+                Channel.DOCUMENTS,
+                Channel.MCP,
+                Channel.FLOW,
+                Channel.SYSTEM,
+                Channel.RESILIENCE,
             ],
             show_timestamps=True,
             show_duration=True,
@@ -825,7 +862,9 @@ class Observer:
             ```
         """
         return cls(
-            level=ObservabilityLevel.DEBUG if show_tokens else ObservabilityLevel.DETAILED,
+            level=ObservabilityLevel.DEBUG
+            if show_tokens
+            else ObservabilityLevel.DETAILED,
             channels=[Channel.AGENTS, Channel.STREAMING, Channel.TASKS],
             show_timestamps=True,
             show_duration=True,
@@ -894,7 +933,10 @@ class Observer:
         # Check agent filters
         agent_name = event.data.get("agent_name") or event.data.get("agent")
         if agent_name:
-            if self.config.include_agents and agent_name not in self.config.include_agents:
+            if (
+                self.config.include_agents
+                and agent_name not in self.config.include_agents
+            ):
                 return False, None
             if self.config.exclude_agents and agent_name in self.config.exclude_agents:
                 return False, None
@@ -1075,8 +1117,12 @@ class Observer:
 
         # Agent callback
         if self.config.on_agent and channel == Channel.AGENTS:
-            agent_name = event.data.get("agent_name") or event.data.get("agent", "unknown")
-            action = event.type.value.split(".")[-1]  # e.g., "thinking" from "agent.thinking"
+            agent_name = event.data.get("agent_name") or event.data.get(
+                "agent", "unknown"
+            )
+            action = event.type.value.split(".")[
+                -1
+            ]  # e.g., "thinking" from "agent.thinking"
             self.config.on_agent(agent_name, action, event.data)
 
         # Tool callback
@@ -1094,19 +1140,32 @@ class Observer:
 
         # Error callback
         if self.config.on_error:
-            if event.type in {TraceType.AGENT_ERROR, TraceType.TOOL_ERROR, TraceType.TASK_FAILED, TraceType.STREAM_ERROR}:
-                source = event.data.get("agent_name") or event.data.get("tool") or "unknown"
-                error = event.data.get("error") or event.data.get("message", "Unknown error")
+            if event.type in {
+                TraceType.AGENT_ERROR,
+                TraceType.TOOL_ERROR,
+                TraceType.TASK_FAILED,
+                TraceType.STREAM_ERROR,
+            }:
+                source = (
+                    event.data.get("agent_name") or event.data.get("tool") or "unknown"
+                )
+                error = event.data.get("error") or event.data.get(
+                    "message", "Unknown error"
+                )
                 self.config.on_error(source, error)
 
         # Streaming callback
         if self.config.on_stream and channel == Channel.STREAMING:
-            agent_name = event.data.get("agent_name") or event.data.get("agent", "unknown")
+            agent_name = event.data.get("agent_name") or event.data.get(
+                "agent", "unknown"
+            )
             if event.type == TraceType.TOKEN_STREAMED:
                 token = event.data.get("token", event.data.get("content", ""))
                 self.config.on_stream(agent_name, token, event.data)
             else:
-                action = event.type.value.split(".")[-1]  # "start", "end", "tool_call", "error"
+                action = event.type.value.split(".")[
+                    -1
+                ]  # "start", "end", "tool_call", "error"
                 self.config.on_stream(agent_name, action, event.data)
 
     def _format_event(self, event: Trace) -> str | None:
@@ -1125,7 +1184,9 @@ class Observer:
                 parts: list[str] = []
                 for item in content:
                     if isinstance(item, dict):
-                        parts.append(item.get("text", "") or item.get("content", "") or str(item))
+                        parts.append(
+                            item.get("text", "") or item.get("content", "") or str(item)
+                        )
                     else:
                         parts.append(str(item))
                 return " ".join(p for p in parts if p)
@@ -1178,7 +1239,9 @@ class Observer:
         if event_type == TraceType.USER_INPUT:
             content = _normalize_content(data.get("content", data.get("input", "")))
             data.get("source", "user")
-            content = _truncate_smart(content.replace("\n", " ").strip(), self.config.truncate)
+            content = _truncate_smart(
+                content.replace("\n", " ").strip(), self.config.truncate
+            )
             formatted_name = _format_agent_name("User")
             return f"{prefix}{s.info(formatted_name)} {s.dim('[input]')}: {content}"
 
@@ -1188,7 +1251,9 @@ class Observer:
             formatted_name = _format_agent_name("User")
             if decision:
                 return f"{prefix}{s.info(formatted_name)} {s.dim('[feedback]')}: {decision}"
-            feedback = _truncate_smart(str(feedback).replace("\n", " ").strip(), self.config.truncate)
+            feedback = _truncate_smart(
+                str(feedback).replace("\n", " ").strip(), self.config.truncate
+            )
             return f"{prefix}{s.info(formatted_name)} {s.dim('[feedback]')}: {feedback}"
 
         elif event_type == TraceType.OUTPUT_GENERATED:
@@ -1199,7 +1264,7 @@ class Observer:
             # Duration if available
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                duration_str = " " + _format_duration(data['duration_ms'])
+                duration_str = " " + _format_duration(data["duration_ms"])
 
             # Format: [Agent] [output] OR [flow-name] [flow-output] (no duration - shown in completed)
             #         content wrapped and indented
@@ -1214,7 +1279,9 @@ class Observer:
                 header = f"{prefix}{s.dim('[output]')}"
 
             if content:
-                content_clean = _truncate_smart(content.replace("\n", " ").strip(), self.config.truncate)
+                content_clean = _truncate_smart(
+                    content.replace("\n", " ").strip(), self.config.truncate
+                )
                 indent = " " * 2
                 wrapped = _wrap_content(content_clean, indent)
                 return f"{header}\n{wrapped}"
@@ -1237,18 +1304,18 @@ class Observer:
         # ═══════════════════════════════════════════════════════════
 
         elif event_type == TraceType.AGENT_INVOKED:
-            agent_name = data.get('agent_name', '?')
+            agent_name = data.get("agent_name", "?")
             formatted_name = _format_agent_name(agent_name)
             return f"{prefix}{s.agent(formatted_name)} {s.dim('[starting]')}"
 
         elif event_type == TraceType.AGENT_THINKING:
-            agent_name = data.get('agent_name', '?')
-            prompt_preview = data.get('prompt_preview', '')
-            data.get('iteration', 1)
-            data.get('max_iterations', 0)
-            current_step = data.get('current_step', 0)
-            total_steps = data.get('total_steps', 0)
-            step_description = data.get('step_description', '')
+            agent_name = data.get("agent_name", "?")
+            prompt_preview = data.get("prompt_preview", "")
+            data.get("iteration", 1)
+            data.get("max_iterations", 0)
+            current_step = data.get("current_step", 0)
+            total_steps = data.get("total_steps", 0)
+            step_description = data.get("step_description", "")
 
             # Track thinking iterations per agent to reduce noise
             if agent_name not in self._agent_thinking_count:
@@ -1261,7 +1328,7 @@ class Observer:
                 self._progress_steps[agent_name] = {
                     "current": current_step,
                     "total": total_steps,
-                    "description": step_description
+                    "description": step_description,
                 }
 
             # Show thinking event with prompt preview
@@ -1272,7 +1339,7 @@ class Observer:
             if self.config.show_progress_steps and agent_name in self._progress_steps:
                 progress = self._progress_steps[agent_name]
                 step_text = f" Step {progress['current']}/{progress['total']}"
-                if progress['description']:
+                if progress["description"]:
                     step_text += f": {progress['description']}"
                 progress_suffix = s.dim(step_text)
 
@@ -1287,19 +1354,21 @@ class Observer:
             return base_msg + progress_suffix if progress_suffix else base_msg
 
         elif event_type == TraceType.AGENT_REASONING:
-            agent_name = data.get('agent_name', '?')
-            round_num = data.get('round', 1)
-            reasoning_type = data.get('reasoning_type', 'thinking')
-            thought_preview = data.get('thought_preview', '')
-            phase = data.get('phase', 'thinking')
+            agent_name = data.get("agent_name", "?")
+            round_num = data.get("round", 1)
+            data.get("reasoning_type", "thinking")
+            thought_preview = data.get("thought_preview", "")
+            phase = data.get("phase", "thinking")
 
             # For start phase, just show a simple indicator
-            if phase == 'start':
+            if phase == "start":
                 formatted_name = _format_agent_name(agent_name)
-                return f"{prefix}{s.agent(formatted_name)} {s.dim('[reasoning started]')}"
+                return (
+                    f"{prefix}{s.agent(formatted_name)} {s.dim('[reasoning started]')}"
+                )
 
             # Skip complete phase
-            if phase == 'complete':
+            if phase == "complete":
                 return None
 
             formatted_name = _format_agent_name(agent_name)
@@ -1313,20 +1382,24 @@ class Observer:
                 lines.append(header)
                 preview = str(thought_preview)
                 indent = " " * (len(formatted_name) + 1)
-                for line in preview.split('\n'):
+                for line in preview.split("\n"):
                     lines.append(f"{indent}{s.dim(line)}")
                 return "\n".join(lines)
             else:
                 return header
 
         elif event_type == TraceType.AGENT_ACTING:
-            agent_name = data.get('agent_name', '?')
+            agent_name = data.get("agent_name", "?")
             formatted_name = _format_agent_name(agent_name)
             return f"{prefix}{s.agent(formatted_name)} {s.dim('[acting]')}"
 
         elif event_type == TraceType.AGENT_RESPONDED:
-            agent_name = data.get('agent_name', '?')
-            result = data.get("response_preview") or data.get("response") or data.get("result_preview", "")
+            agent_name = data.get("agent_name", "?")
+            result = (
+                data.get("response_preview")
+                or data.get("response")
+                or data.get("result_preview", "")
+            )
             result = _normalize_content(result)
 
             # Reset thinking count for this agent
@@ -1336,7 +1409,7 @@ class Observer:
             # Duration formatting
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                duration_str = " " + _format_duration(data['duration_ms'])
+                duration_str = " " + _format_duration(data["duration_ms"])
 
             # Response metadata formatting (from Response[T] protocol)
             metadata_parts = []
@@ -1352,7 +1425,9 @@ class Observer:
             if "tool_calls_count" in data:
                 count = data["tool_calls_count"]
                 if count > 0:
-                    metadata_parts.append(s.dim(f"{count} tool{'s' if count > 1 else ''}"))
+                    metadata_parts.append(
+                        s.dim(f"{count} tool{'s' if count > 1 else ''}")
+                    )
 
             # Success/error indicator
             if "success" in data and not data["success"]:
@@ -1367,13 +1442,15 @@ class Observer:
             return f"{prefix}{s.agent(formatted_name)} {s.success('[completed]')}{s.success(duration_str)}{metadata_str}"
 
         elif event_type == TraceType.AGENT_ERROR:
-            agent_name = data.get('agent_name', '?')
-            error = data.get('error', 'Unknown error')
+            agent_name = data.get("agent_name", "?")
+            error = data.get("error", "Unknown error")
             error_str = str(error)
             formatted_name = _format_agent_name(agent_name)
 
             # Build error message with context
-            error_lines = [f"{prefix}{s.agent(formatted_name)} {s.error('[error]')} {s.error(error_str)}"]
+            error_lines = [
+                f"{prefix}{s.agent(formatted_name)} {s.error('[error]')} {s.error(error_str)}"
+            ]
 
             # Add error suggestions if pattern matches
             error_lower = error_str.lower()
@@ -1410,10 +1487,10 @@ class Observer:
 
         elif event_type == TraceType.AGENT_STATUS_CHANGED:
             # State change diff visualization
-            agent_name = data.get('agent_name', '?')
-            entity_id = data.get('entity_id', agent_name)
-            old_state = data.get('old_state', {})
-            new_state = data.get('new_state', {})
+            agent_name = data.get("agent_name", "?")
+            entity_id = data.get("entity_id", agent_name)
+            old_state = data.get("old_state", {})
+            new_state = data.get("new_state", {})
             formatted_name = _format_agent_name(agent_name)
 
             # Track state snapshots
@@ -1421,7 +1498,9 @@ class Observer:
                 self._state_snapshots[entity_id] = new_state.copy()
 
             # Build diff visualization
-            diff_lines = [f"{prefix}{s.agent(formatted_name)} {s.dim('[state-change]')}"]
+            diff_lines = [
+                f"{prefix}{s.agent(formatted_name)} {s.dim('[state-change]')}"
+            ]
 
             # Show at DETAILED level or higher
             if self.config.level >= ObservabilityLevel.DETAILED:
@@ -1456,7 +1535,9 @@ class Observer:
                         diff_lines.append(f"{indent}{change}")
 
                     if len(changes) > 5:
-                        diff_lines.append(f"{indent}{s.dim(f'... and {len(changes) - 5} more changes')}")
+                        diff_lines.append(
+                            f"{indent}{s.dim(f'... and {len(changes) - 5} more changes')}"
+                        )
                 else:
                     diff_lines.append(f"{indent}{s.dim('(no changes detected)')}")
 
@@ -1478,7 +1559,9 @@ class Observer:
             args_str = ""
             if args and self.config.level >= ObservabilityLevel.DETAILED:
                 args_preview = str(args)
-                args_preview = _truncate_smart(args_preview, self.config.truncate_tool_args)
+                args_preview = _truncate_smart(
+                    args_preview, self.config.truncate_tool_args
+                )
                 indent = " " * (len(formatted_name) + 3)  # Align under tool name
                 args_str = f"\n{indent}{s.dim(args_preview)}"
 
@@ -1494,10 +1577,12 @@ class Observer:
             # Duration
             duration_str = ""
             if self.config.show_duration and "duration_ms" in data:
-                duration_str = " " + _format_duration(data['duration_ms'])
+                duration_str = " " + _format_duration(data["duration_ms"])
 
             # Truncate result - show inline preview if short enough
-            result_str = _truncate_smart(str(result), max_chars=self.config.truncate_tool_results)
+            result_str = _truncate_smart(
+                str(result), max_chars=self.config.truncate_tool_results
+            )
             result_clean = result_str.replace("\n", " ").strip()
 
             # Format: [Agent] [tool-result] tool_name (duration) ⮕ result
@@ -1519,7 +1604,9 @@ class Observer:
             formatted_name = _format_agent_name(agent_name) if agent_name else " " * 12
 
             # Build error message
-            error_lines = [f"{prefix}{s.agent(formatted_name)} {s.error('[tool-error]')} {s.tool(tool_name)}: {s.error(error_str)}"]
+            error_lines = [
+                f"{prefix}{s.agent(formatted_name)} {s.error('[tool-error]')} {s.tool(tool_name)}: {s.error(error_str)}"
+            ]
 
             # Add error suggestions if pattern matches
             error_lower = error_str.lower()
@@ -1567,7 +1654,7 @@ class Observer:
             return f"{prefix}{s.success(f'✓ completed{duration_str}')}"
 
         elif event_type == TraceType.TASK_FAILED:
-            error = data.get('error', 'unknown')
+            error = data.get("error", "unknown")
             error_truncated = _truncate_smart(str(error), max_chars=100)
             return f"{prefix}{s.error(f'✗ failed: {error_truncated}')}"
 
@@ -1588,7 +1675,10 @@ class Observer:
             sender = data.get("sender_id", "?")
             receiver = data.get("receiver_id", "?")
             content = _normalize_content(data.get("content", ""))
-            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=self.config.truncate_messages)
+            content_preview = _truncate_smart(
+                content.replace("\n", " ").strip(),
+                max_chars=self.config.truncate_messages,
+            )
             content_str = f': "{content_preview}"' if content_preview else ""
             return f"{prefix}{s.dim('📤')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
 
@@ -1596,7 +1686,10 @@ class Observer:
             receiver = data.get("agent_name", data.get("agent", "?"))
             sender = data.get("from", "?")
             content = _normalize_content(data.get("content", ""))
-            content_preview = _truncate_smart(content.replace("\n", " ").strip(), max_chars=self.config.truncate_messages)
+            content_preview = _truncate_smart(
+                content.replace("\n", " ").strip(),
+                max_chars=self.config.truncate_messages,
+            )
             content_str = f': "{content_preview}"' if content_preview else ""
             return f"{prefix}{s.dim('📥')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
 
@@ -1647,8 +1740,12 @@ class Observer:
             formatted_name = _format_agent_name(agent_name)
             tool_name = data.get("tool_name", data.get("tool", "?"))
             tool_args = data.get("args", {})
-            args_preview = _truncate_smart(str(tool_args), max_chars=100) if tool_args else ""
-            args_part = f"\n               {s.dim(args_preview)}" if args_preview else ""
+            args_preview = (
+                _truncate_smart(str(tool_args), max_chars=100) if tool_args else ""
+            )
+            args_part = (
+                f"\n               {s.dim(args_preview)}" if args_preview else ""
+            )
             return f"{prefix}{s.agent(formatted_name)}    {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{args_part}"
 
         elif event_type == TraceType.STREAM_END:
@@ -1663,10 +1760,12 @@ class Observer:
                 if "start_time" in stream_info and self.config.show_duration:
                     start = stream_info["start_time"]
                     duration_ms = (event.timestamp - start).total_seconds() * 1000
-                    tokens_per_sec = token_count / (duration_ms / 1000) if duration_ms > 0 else 0
+                    tokens_per_sec = (
+                        token_count / (duration_ms / 1000) if duration_ms > 0 else 0
+                    )
                     duration_str = f" {_format_duration(duration_ms)}"
                     if tokens_per_sec > 0:
-                        duration_str = f" {s.success(f'({duration_ms/1000:.1f}s, {tokens_per_sec:.0f} tok/s)')}"
+                        duration_str = f" {s.success(f'({duration_ms / 1000:.1f}s, {tokens_per_sec:.0f} tok/s)')}"
                 # Clean up
                 del self._streaming_agents[agent_name]
 
@@ -1719,10 +1818,14 @@ class Observer:
                 if system_prompt or prompt:
                     lines.append(header)
                     if system_prompt:
-                        sys_preview = _truncate_text(system_prompt.replace("\n", " ").strip())
+                        sys_preview = _truncate_text(
+                            system_prompt.replace("\n", " ").strip()
+                        )
                         lines.append(f"      {s.dim(f'System: {sys_preview}')}")
                     if prompt:
-                        prompt_preview = _truncate_text(prompt.replace("\n", " ").strip())
+                        prompt_preview = _truncate_text(
+                            prompt.replace("\n", " ").strip()
+                        )
                         lines.append(f"      {s.dim(f'Prompt: {prompt_preview}')}")
                     return "\n".join(lines)
             return header
@@ -1735,7 +1838,9 @@ class Observer:
 
             # Token usage tracking
             input_tokens = data.get("input_tokens", 0) or data.get("prompt_tokens", 0)
-            output_tokens = data.get("output_tokens", 0) or data.get("completion_tokens", 0)
+            output_tokens = data.get("output_tokens", 0) or data.get(
+                "completion_tokens", 0
+            )
             total_tokens = data.get("total_tokens", 0) or (input_tokens + output_tokens)
 
             # Track tokens if enabled
@@ -1788,14 +1893,18 @@ class Observer:
                     tools_str += f" (+{len(tools_selected) - 3})"
                 header = f"{prefix}{s.agent(formatted_name)} {s.dim('[tool-decision]')} {s.tool(tools_str)}"
             else:
-                header = f"{prefix}{s.agent(formatted_name)} {s.dim('[tool-decision] none')}"
+                header = (
+                    f"{prefix}{s.agent(formatted_name)} {s.dim('[tool-decision] none')}"
+                )
 
             # Show reasoning only at TRACE level
             if self.config.level >= ObservabilityLevel.TRACE:
                 reasoning = data.get("reasoning", "")
                 if reasoning:
                     lines.append(header)
-                    reasoning_preview = _truncate_text(str(reasoning).replace("\n", " ").strip())
+                    reasoning_preview = _truncate_text(
+                        str(reasoning).replace("\n", " ").strip()
+                    )
                     lines.append(f"      {s.dim('Reasoning:')} {reasoning_preview}")
                     return "\n".join(lines)
 
@@ -1821,7 +1930,9 @@ class Observer:
             lines.append(header)
             if task:
                 lines.append(f"{prefix}{indent}   {s.dim('Task:')} {s.dim(task)}")
-            lines.append(f"{prefix}{indent}   {s.dim(f'Active: {active}, Total: {total}, Depth: {depth}')}")
+            lines.append(
+                f"{prefix}{indent}   {s.dim(f'Active: {active}, Total: {total}, Depth: {depth}')}"
+            )
             return "\n".join(lines)
 
         elif event_type == TraceType.AGENT_SPAWN_COMPLETED:
@@ -1965,7 +2076,7 @@ class Observer:
 
             duration_str = ""
             if execution_time_ms > 1000:
-                duration_str = s.success(f" in {execution_time_ms/1000:.1f}s")
+                duration_str = s.success(f" in {execution_time_ms / 1000:.1f}s")
             else:
                 duration_str = s.dim(f" in {execution_time_ms:.0f}ms")
 
@@ -1978,7 +2089,9 @@ class Observer:
 
         elif event_type == TraceType.FLOW_EVENT_EMITTED:
             event_name = data.get("event_name", "?")
-            return f"{prefix}{s.dim('[Trace]')} {s.dim('[emitted]')} {s.info(event_name)}"
+            return (
+                f"{prefix}{s.dim('[Trace]')} {s.dim('[emitted]')} {s.info(event_name)}"
+            )
 
         elif event_type == TraceType.FLOW_EVENT_PROCESSED:
             # This can be very chatty. Keep it for DETAILED+ but suppress in
@@ -2015,7 +2128,9 @@ class Observer:
             if self.config.level < ObservabilityLevel.DEBUG:
                 return None
             event_name = data.get("event_name", "?")
-            return f"{prefix}{s.dim('[Trace]')} {s.dim('[no-match]')} {s.dim(event_name)}"
+            return (
+                f"{prefix}{s.dim('[Trace]')} {s.dim('[no-match]')} {s.dim(event_name)}"
+            )
 
         elif event_type == TraceType.FLOW_ROUND_STARTED:
             if self.config.level <= ObservabilityLevel.PROGRESS:
@@ -2080,15 +2195,17 @@ class Observer:
             if event_name:
                 agent = data.get("agent", "")
                 # Common domain IDs (e.g. case_id/scan_id) for event-driven apps
-                meta = _kv_preview([
-                    "case_id",
-                    "job_id",
-                    "scan_id",
-                    "customer_id",
-                    "category",
-                    "priority",
-                    "decision",
-                ])
+                meta = _kv_preview(
+                    [
+                        "case_id",
+                        "job_id",
+                        "scan_id",
+                        "customer_id",
+                        "category",
+                        "priority",
+                        "decision",
+                    ]
+                )
                 if agent:
                     return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}{meta} {s.dim('from')} {s.agent(f'[{agent}]')}"
                 return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}{meta}"
@@ -2158,12 +2275,12 @@ class Observer:
                 response = data.get("response_preview") or data.get("response", "")
                 if len(response) > 150:
                     response = response[:150] + "..."
-                first_line = response.split('\n')[0]
+                first_line = response.split("\n")[0]
                 lines.append(f"    response: {first_line}")
 
             if "duration_ms" in data:
                 ms = data["duration_ms"]
-                dur_str = f"{ms/1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
+                dur_str = f"{ms / 1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
                 lines.append(f"    duration: {s.success(dur_str)}")
 
             if "error" in data:
@@ -2183,7 +2300,7 @@ class Observer:
 
             if "duration_ms" in data:
                 ms = data["duration_ms"]
-                dur_str = f"{ms/1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
+                dur_str = f"{ms / 1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
                 lines.append(f"    duration: {s.success(dur_str)}")
 
             if "error" in data:
@@ -2196,7 +2313,7 @@ class Observer:
 
             if "duration_ms" in data:
                 ms = data["duration_ms"]
-                dur_str = f"{ms/1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
+                dur_str = f"{ms / 1000:.1f}s" if ms > 1000 else f"{ms:.0f}ms"
                 lines.append(f"    duration: {s.success(dur_str)}")
 
             if "error" in data:
@@ -2242,7 +2359,8 @@ class Observer:
 
                 # Add edge from previous completed agent
                 prev_completed = [
-                    n for n in self._nodes.values()
+                    n
+                    for n in self._nodes.values()
                     if n["type"] == "agent" and n["status"] == "completed"
                 ]
                 if prev_completed:
@@ -2257,7 +2375,9 @@ class Observer:
                     node = self._nodes[node_id]
                     node["status"] = "completed"
                     node["end_time"] = ts
-                    node["output"] = data.get("response_preview") or data.get("response", "")[:200]
+                    node["output"] = (
+                        data.get("response_preview") or data.get("response", "")[:200]
+                    )
                     if node["start_time"]:
                         delta = (ts - node["start_time"]).total_seconds() * 1000
                         node["duration_ms"] = delta
@@ -2306,7 +2426,9 @@ class Observer:
                 tool_record = self._current_tools[tool_name]
                 tool_record["status"] = "completed"
                 tool_record["end_time"] = ts
-                tool_record["result"] = data.get("result_preview") or str(data.get("result", ""))[:200]
+                tool_record["result"] = (
+                    data.get("result_preview") or str(data.get("result", ""))[:200]
+                )
                 if tool_record["start_time"]:
                     delta = (ts - tool_record["start_time"]).total_seconds() * 1000
                     tool_record["duration_ms"] = delta
@@ -2359,16 +2481,32 @@ class Observer:
 
         # Agent nodes
         for node in self._nodes.values():
-            status_icon = "✓" if node["status"] == "completed" else "✗" if node["status"] == "failed" else "⋯"
-            duration = f" {node.get('duration_ms', 0):.0f}ms" if "duration_ms" in node else ""
+            status_icon = (
+                "✓"
+                if node["status"] == "completed"
+                else "✗"
+                if node["status"] == "failed"
+                else "⋯"
+            )
+            duration = (
+                f" {node.get('duration_ms', 0):.0f}ms" if "duration_ms" in node else ""
+            )
             label = f"{node['name']} {status_icon}{duration}"
             css_class = "error" if node["status"] == "failed" else "agent"
             lines.append(f"    {node['id']}[{label}]:::{css_class}")
 
         # Tool nodes
         for tool in self._tool_calls:
-            status_icon = "✓" if tool["status"] == "completed" else "✗" if tool["status"] == "failed" else "⋯"
-            duration = f" {tool.get('duration_ms', 0):.0f}ms" if "duration_ms" in tool else ""
+            status_icon = (
+                "✓"
+                if tool["status"] == "completed"
+                else "✗"
+                if tool["status"] == "failed"
+                else "⋯"
+            )
+            duration = (
+                f" {tool.get('duration_ms', 0):.0f}ms" if "duration_ms" in tool else ""
+            )
             label = f"🔧 {tool['name']} {status_icon}{duration}"
             css_class = "error" if tool["status"] == "failed" else "tool"
             lines.append(f"    {tool['id']}[{label}]:::{css_class}")
@@ -2388,8 +2526,18 @@ class Observer:
         lines = ["Execution Graph:", "─" * 50]
 
         for node in self._nodes.values():
-            status = "✓" if node["status"] == "completed" else "✗" if node["status"] == "failed" else "…"
-            duration = f" ({node.get('duration_ms', 0):.0f}ms)" if "duration_ms" in node else ""
+            status = (
+                "✓"
+                if node["status"] == "completed"
+                else "✗"
+                if node["status"] == "failed"
+                else "…"
+            )
+            duration = (
+                f" ({node.get('duration_ms', 0):.0f}ms)"
+                if "duration_ms" in node
+                else ""
+            )
             lines.append(f"  [{status}] {node['name']}{duration}")
 
             # Show tools called by this agent
@@ -2397,7 +2545,11 @@ class Observer:
                 tool = next((t for t in self._tool_calls if t["id"] == tool_id), None)
                 if tool:
                     t_status = "✓" if tool["status"] == "completed" else "✗"
-                    t_duration = f" ({tool.get('duration_ms', 0):.0f}ms)" if "duration_ms" in tool else ""
+                    t_duration = (
+                        f" ({tool.get('duration_ms', 0):.0f}ms)"
+                        if "duration_ms" in tool
+                        else ""
+                    )
                     lines.append(f"      └─ 🔧 {tool['name']} [{t_status}]{t_duration}")
 
         return "\n".join(lines)
@@ -2418,7 +2570,9 @@ class Observer:
             "trace_id": self._trace_id,
             "start_time": self._start_time.isoformat() if self._start_time else None,
             "nodes": list(self._nodes.values()),
-            "edges": [{"from": f, "to": t, "label": label} for f, t, label in self._edges],
+            "edges": [
+                {"from": f, "to": t, "label": label} for f, t, label in self._edges
+            ],
             "tools": self._tool_calls,
             "spans": self._spans,
             "metrics": dict(self._metrics),
@@ -2488,34 +2642,47 @@ class Observer:
             for node in self._nodes.values():
                 # Start event
                 if node.get("start_time"):
-                    all_items.append((
-                        node["start_time"],
-                        "start",
-                        f"[{node['name']}] started"
-                    ))
+                    all_items.append(
+                        (node["start_time"], "start", f"[{node['name']}] started")
+                    )
 
                     # Show tools called (if detailed)
                     if detailed:
                         for tool_id in node.get("tools_called", []):
-                            tool = next((t for t in self._tool_calls if t["id"] == tool_id), None)
+                            tool = next(
+                                (t for t in self._tool_calls if t["id"] == tool_id),
+                                None,
+                            )
                             if tool and tool.get("start_time"):
-                                t_dur = f" ({tool.get('duration_ms', 0):.0f}ms)" if "duration_ms" in tool else ""
+                                t_dur = (
+                                    f" ({tool.get('duration_ms', 0):.0f}ms)"
+                                    if "duration_ms" in tool
+                                    else ""
+                                )
                                 status = "✓" if tool["status"] == "completed" else "✗"
-                                all_items.append((
-                                    tool["start_time"],
-                                    "tool",
-                                    f"└─ 🔧 {tool['name']} {status}{t_dur}"
-                                ))
+                                all_items.append(
+                                    (
+                                        tool["start_time"],
+                                        "tool",
+                                        f"└─ 🔧 {tool['name']} {status}{t_dur}",
+                                    )
+                                )
 
                 # End event
                 if node.get("end_time"):
                     status = "✓" if node["status"] == "completed" else "✗"
-                    duration = f" ({node.get('duration_ms', 0):.0f}ms)" if "duration_ms" in node else ""
-                    all_items.append((
-                        node["end_time"],
-                        "end",
-                        f"[{node['name']}] {node['status']}{duration}"
-                    ))
+                    duration = (
+                        f" ({node.get('duration_ms', 0):.0f}ms)"
+                        if "duration_ms" in node
+                        else ""
+                    )
+                    all_items.append(
+                        (
+                            node["end_time"],
+                            "end",
+                            f"[{node['name']}] {node['status']}{duration}",
+                        )
+                    )
 
             # Sort by timestamp
             all_items.sort(key=lambda x: x[0])
@@ -2576,12 +2743,12 @@ class Observer:
             ```python
             observer = Observer.trace()
             flow = Flow(observer=observer)
-            
+
             flow.on("start", handler1, emits="processing")
             flow.on("processing", handler2, emits="complete")
-            
+
             await flow.run("task")
-            
+
             # Generate Mermaid diagram
             print(observer.event_graph())
             # Output:
@@ -2590,7 +2757,7 @@ class Observer:
             #   handler1 --> processing[\"processing"/]
             #   processing --> handler2["handler2"]
             #   handler2 --> complete[\"complete"/]
-            
+
             # With timing annotations
             print(observer.event_graph(include_timing=True))
             # Output includes execution times on reactor nodes
@@ -2607,7 +2774,9 @@ class Observer:
             traces are not included in the event graph.
         """
         if format != "mermaid":
-            raise ValueError(f"Unsupported format: {format}. Only 'mermaid' is currently supported.")
+            raise ValueError(
+                f"Unsupported format: {format}. Only 'mermaid' is currently supported."
+            )
 
         # Extract flow events
         flow_events = [
@@ -2624,7 +2793,7 @@ class Observer:
         ]
 
         if not flow_events:
-            return "graph LR\n  START[\"No flow events captured\"]"
+            return 'graph LR\n  START["No flow events captured"]'
 
         # Build graph structure
         lines = ["graph LR"]
@@ -2632,13 +2801,17 @@ class Observer:
         edges: list[tuple[str, str, str | None]] = []  # (from, to, label)
 
         # Track event emissions and reactor triggers
-        event_emissions: dict[str, list[str]] = {}  # event_type -> [source_reactor, ...]
+        event_emissions: dict[
+            str, list[str]
+        ] = {}  # event_type -> [source_reactor, ...]
         reactor_timings: dict[str, float] = {}  # reactor_name -> duration_ms
 
         # Collect timing from agent.responded traces (has duration_ms)
         for trace in agent_traces:
             if trace.type.value == "agent.responded":
-                agent_name = trace.data.get("agent_name", trace.data.get("agent", "unknown"))
+                agent_name = trace.data.get(
+                    "agent_name", trace.data.get("agent", "unknown")
+                )
                 duration = trace.data.get("duration_ms", 0)
                 if duration > 0:
                     reactor_timings[agent_name] = duration
@@ -2669,11 +2842,14 @@ class Observer:
             if trace.type == TraceType.FLOW_AGENT_TRIGGERED:
                 data = trace.data
                 agent_name = data.get("agent", "unknown")
-                trigger_event = data.get("trigger_event", data.get("event_type", "unknown"))
+                trigger_event = data.get(
+                    "trigger_event", data.get("event_type", "unknown")
+                )
 
                 # Find what events this agent emits
                 emitted_events = [
-                    evt for evt, sources in event_emissions.items()
+                    evt
+                    for evt, sources in event_emissions.items()
                     if agent_name in sources and evt != trigger_event
                 ]
 
@@ -2689,7 +2865,9 @@ class Observer:
                 if agent_id not in seen_nodes:
                     if include_timing and agent_name in reactor_timings:
                         timing = reactor_timings[agent_name]
-                        lines.append(f'  {agent_id}["{agent_name}<br/>({timing:.0f}ms)"]')
+                        lines.append(
+                            f'  {agent_id}["{agent_name}<br/>({timing:.0f}ms)"]'
+                        )
                     else:
                         lines.append(f'  {agent_id}["{agent_name}"]')
                     seen_nodes.add(agent_id)
@@ -2712,13 +2890,23 @@ class Observer:
                 lines.append(f"  {from_node} --> {to_node}")
 
         # Add styling
-        lines.extend([
-            "",
-            "  classDef eventNode fill:#e1f5ff,stroke:#01579b,stroke-width:2px",
-            "  classDef agentNode fill:#fff3e0,stroke:#e65100,stroke-width:2px",
-            "  class " + ",".join([n for n in seen_nodes if n.startswith("evt_")]) + " eventNode" if any(n.startswith("evt_") for n in seen_nodes) else "",
-            "  class " + ",".join([n for n in seen_nodes if n.startswith("agent_")]) + " agentNode" if any(n.startswith("agent_") for n in seen_nodes) else "",
-        ])
+        lines.extend(
+            [
+                "",
+                "  classDef eventNode fill:#e1f5ff,stroke:#01579b,stroke-width:2px",
+                "  classDef agentNode fill:#fff3e0,stroke:#e65100,stroke-width:2px",
+                "  class "
+                + ",".join([n for n in seen_nodes if n.startswith("evt_")])
+                + " eventNode"
+                if any(n.startswith("evt_") for n in seen_nodes)
+                else "",
+                "  class "
+                + ",".join([n for n in seen_nodes if n.startswith("agent_")])
+                + " agentNode"
+                if any(n.startswith("agent_") for n in seen_nodes)
+                else "",
+            ]
+        )
 
         return "\n".join([line for line in lines if line])  # Remove empty lines
 
@@ -2750,7 +2938,9 @@ class Observer:
 
         # Agent stats
         if self._nodes:
-            completed = sum(1 for n in self._nodes.values() if n["status"] == "completed")
+            completed = sum(
+                1 for n in self._nodes.values() if n["status"] == "completed"
+            )
             failed = sum(1 for n in self._nodes.values() if n["status"] == "failed")
             lines.append("")
             lines.append("Agents:")
@@ -2761,7 +2951,11 @@ class Observer:
             # Show each agent's timing
             for node in self._nodes.values():
                 status = "✓" if node["status"] == "completed" else "✗"
-                duration = f" ({node.get('duration_ms', 0):.0f}ms)" if "duration_ms" in node else ""
+                duration = (
+                    f" ({node.get('duration_ms', 0):.0f}ms)"
+                    if "duration_ms" in node
+                    else ""
+                )
                 lines.append(f"    [{status}] {node['name']}{duration}")
 
         # Tool stats
@@ -2787,9 +2981,13 @@ class Observer:
             if len(self._token_usage) > 1:
                 lines.append("")
                 lines.append("  By agent:")
-                for agent_name, tokens in sorted(self._token_usage.items(), key=lambda x: x[1]["total"], reverse=True):
+                for agent_name, tokens in sorted(
+                    self._token_usage.items(), key=lambda x: x[1]["total"], reverse=True
+                ):
                     if tokens["total"] > 0:
-                        lines.append(f"    {agent_name}: {tokens['total']:,} ({tokens['input']:,} in, {tokens['output']:,} out)")
+                        lines.append(
+                            f"    {agent_name}: {tokens['total']:,} ({tokens['input']:,} in, {tokens['output']:,} out)"
+                        )
 
         # Channel breakdown
         if "by_channel" in m and m["by_channel"]:
@@ -2904,7 +3102,9 @@ class Observer:
                     writer.writerow(row)
 
         else:
-            raise ValueError(f"Unsupported export format: {format}. Use 'jsonl', 'json', or 'csv'.")
+            raise ValueError(
+                f"Unsupported export format: {format}. Use 'jsonl', 'json', or 'csv'."
+            )
 
     def clear(self) -> None:
         """Clear all observed events, metrics, and trace data."""

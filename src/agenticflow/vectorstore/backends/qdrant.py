@@ -68,6 +68,7 @@ class QdrantBackend:
         """Initialize Qdrant client and collection."""
         try:
             from qdrant_client import QdrantClient, models
+
             self._models = models
         except ImportError as e:
             msg = "Qdrant client not installed. Install with: pip install qdrant-client"
@@ -142,11 +143,13 @@ class QdrantBackend:
                 **doc.metadata.to_dict(),
             }
 
-            points.append(models.PointStruct(
-                id=doc_id,
-                vector=embedding,
-                payload=payload,
-            ))
+            points.append(
+                models.PointStruct(
+                    id=doc_id,
+                    vector=embedding,
+                    payload=payload,
+                )
+            )
 
         # Upsert points
         self._client.upsert(
@@ -195,11 +198,13 @@ class QdrantBackend:
                 id=str(result.id),
             )
 
-            search_results.append(SearchResult(
-                document=doc,
-                score=float(result.score),
-                id=str(result.id),
-            ))
+            search_results.append(
+                SearchResult(
+                    document=doc,
+                    score=float(result.score),
+                    id=str(result.id),
+                )
+            )
 
         return search_results
 
@@ -252,11 +257,13 @@ class QdrantBackend:
             payload = result.payload or {}
             text = payload.pop("text", "")
 
-            documents.append(Document(
-                text=text,
-                metadata=payload,
-                id=str(result.id),
-            ))
+            documents.append(
+                Document(
+                    text=text,
+                    metadata=payload,
+                    id=str(result.id),
+                )
+            )
 
         return documents
 
@@ -287,36 +294,48 @@ class QdrantBackend:
                 # Handle operator-style filters
                 for op, val in value.items():
                     if op == "$gt":
-                        conditions.append(models.FieldCondition(
-                            key=key,
-                            range=models.Range(gt=val),
-                        ))
+                        conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                range=models.Range(gt=val),
+                            )
+                        )
                     elif op == "$gte":
-                        conditions.append(models.FieldCondition(
-                            key=key,
-                            range=models.Range(gte=val),
-                        ))
+                        conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                range=models.Range(gte=val),
+                            )
+                        )
                     elif op == "$lt":
-                        conditions.append(models.FieldCondition(
-                            key=key,
-                            range=models.Range(lt=val),
-                        ))
+                        conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                range=models.Range(lt=val),
+                            )
+                        )
                     elif op == "$lte":
-                        conditions.append(models.FieldCondition(
-                            key=key,
-                            range=models.Range(lte=val),
-                        ))
+                        conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                range=models.Range(lte=val),
+                            )
+                        )
                     elif op == "$in":
-                        conditions.append(models.FieldCondition(
-                            key=key,
-                            match=models.MatchAny(any=val),
-                        ))
+                        conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                match=models.MatchAny(any=val),
+                            )
+                        )
             else:
                 # Simple equality match
-                conditions.append(models.FieldCondition(
-                    key=key,
-                    match=models.MatchValue(value=value),
-                ))
+                conditions.append(
+                    models.FieldCondition(
+                        key=key,
+                        match=models.MatchValue(value=value),
+                    )
+                )
 
         if len(conditions) == 1:
             return models.Filter(must=conditions)

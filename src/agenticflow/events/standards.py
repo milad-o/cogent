@@ -13,7 +13,7 @@ from enum import StrEnum
 
 class TaskEvents(StrEnum):
     """Standard task lifecycle events.
-    
+
     Use these for work item tracking and coordination.
     """
 
@@ -38,7 +38,7 @@ class TaskEvents(StrEnum):
 
 class AgentEvents(StrEnum):
     """Standard agent lifecycle events.
-    
+
     Emitted automatically by AgentReactor.
     """
 

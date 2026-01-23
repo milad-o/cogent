@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 class MetadataMatchMode(Enum):
     """How to match metadata filters."""
 
-    ALL = "all"      # All filters must match (AND)
-    ANY = "any"      # Any filter can match (OR)
+    ALL = "all"  # All filters must match (AND)
+    ANY = "any"  # Any filter can match (OR)
     BOOST = "boost"  # Metadata matches boost score, don't filter
 
 
@@ -157,9 +157,7 @@ class HybridRetriever(BaseRetriever):
                     score += mw.weight
             else:
                 # Partial match - count matching terms
-                matching_terms = sum(
-                    1 for term in query_terms if term in field_str
-                )
+                matching_terms = sum(1 for term in query_terms if term in field_str)
                 if matching_terms > 0:
                     score += mw.weight * (matching_terms / len(query_terms))
 
@@ -253,23 +251,25 @@ class HybridRetriever(BaseRetriever):
 
             # Combine scores
             combined_score = (
-                self._content_weight * content_score +
-                self._metadata_weight * metadata_score
+                self._content_weight * content_score
+                + self._metadata_weight * metadata_score
             )
 
-            hybrid_results.append(RetrievalResult(
-                document=doc,
-                score=combined_score,
-                retriever_name=self.name,
-                metadata={
-                    "content_score": content_score,
-                    "metadata_score": metadata_score,
-                    "content_weight": self._content_weight,
-                    "metadata_weight": self._metadata_weight,
-                    "mode": self._mode.value,
-                    **result.metadata,
-                },
-            ))
+            hybrid_results.append(
+                RetrievalResult(
+                    document=doc,
+                    score=combined_score,
+                    retriever_name=self.name,
+                    metadata={
+                        "content_score": content_score,
+                        "metadata_score": metadata_score,
+                        "content_weight": self._content_weight,
+                        "metadata_weight": self._metadata_weight,
+                        "mode": self._mode.value,
+                        **result.metadata,
+                    },
+                )
+            )
 
         # Sort by combined score and limit
         hybrid_results.sort(key=lambda r: r.score, reverse=True)
