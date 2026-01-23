@@ -88,7 +88,7 @@ class LLMReranker(BaseReranker):
     ) -> float:
         """Score a single document's relevance."""
         async with semaphore:
-            prompt = self._prompt.format(
+            prompt = f"{self._prompt}".format(
                 query=query,
                 document=document.text[:2000],  # Truncate for token limits
             )

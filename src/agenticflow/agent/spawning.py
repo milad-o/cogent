@@ -396,7 +396,7 @@ class SpawnManager:
             )
             ```
         """
-        tasks = [(role, task_template.format(item=item)) for item in items]
+        tasks = [(role, f"{task_template}".format(item=item)) for item in items]
         return await self.spawn_many(tasks)
 
     async def _emit_spawn_event(

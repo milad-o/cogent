@@ -1235,7 +1235,7 @@ class NativeExecutor(BaseExecutor):
 
         # Build reasoning-enhanced system prompt
         style_instructions = STYLE_INSTRUCTIONS.get(config.style, "")
-        reasoning_system = REASONING_SYSTEM_PROMPT.format(
+        reasoning_system = f"{REASONING_SYSTEM_PROMPT}".format(
             style_instructions=style_instructions
         )
 

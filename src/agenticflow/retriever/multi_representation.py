@@ -215,29 +215,29 @@ Category (one word):"""
 
     async def _generate_summary(self, text: str) -> str:
         """Generate conceptual summary."""
-        prompt = self.SUMMARY_PROMPT.format(text=text[:4000])
+        prompt = f"{self.SUMMARY_PROMPT}".format(text=text[:4000])
         return await self._llm.generate(prompt)
 
     async def _generate_detailed(self, text: str) -> str:
         """Generate technical details."""
-        prompt = self.DETAILED_PROMPT.format(text=text[:4000])
+        prompt = f"{self.DETAILED_PROMPT}".format(text=text[:4000])
         return await self._llm.generate(prompt)
 
     async def _generate_keywords(self, text: str) -> list[str]:
         """Generate keyword list."""
-        prompt = self.KEYWORDS_PROMPT.format(text=text[:4000])
+        prompt = f"{self.KEYWORDS_PROMPT}".format(text=text[:4000])
         response = await self._llm.generate(prompt)
         return [kw.strip() for kw in response.split(",") if kw.strip()]
 
     async def _generate_questions(self, text: str) -> list[str]:
         """Generate hypothetical questions."""
-        prompt = self.QUESTIONS_PROMPT.format(text=text[:4000])
+        prompt = f"{self.QUESTIONS_PROMPT}".format(text=text[:4000])
         response = await self._llm.generate(prompt)
         return [q.strip() for q in response.strip().split("\n") if q.strip()]
 
     async def _generate_entities(self, text: str) -> list[str]:
         """Generate entity list."""
-        prompt = self.ENTITIES_PROMPT.format(text=text[:4000])
+        prompt = f"{self.ENTITIES_PROMPT}".format(text=text[:4000])
         response = await self._llm.generate(prompt)
         return [e.strip() for e in response.split(",") if e.strip()]
 
@@ -246,7 +246,7 @@ Category (one word):"""
         if not self._auto_route:
             return QueryType.AUTO
 
-        prompt = self.QUERY_CLASSIFICATION_PROMPT.format(query=query)
+        prompt = f"{self.QUERY_CLASSIFICATION_PROMPT}".format(query=query)
         response = await self._llm.generate(prompt)
 
         response = response.strip().upper()

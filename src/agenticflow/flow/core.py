@@ -15,7 +15,7 @@ import fnmatch
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self, TypeVar
+from typing import TYPE_CHECKING, Self
 
 from agenticflow.events import Event, EventBus
 from agenticflow.flow.config import FlowConfig, FlowResult, ReactorBinding
@@ -30,9 +30,6 @@ if TYPE_CHECKING:
     from agenticflow.flow.streaming import StreamChunk
     from agenticflow.middleware.base import Middleware
     from agenticflow.observability.observer import Observer
-
-
-T = TypeVar("T")
 
 
 def _generate_id() -> str:

@@ -214,7 +214,7 @@ class ContextCompressor(Interceptor):
         history: str,
     ) -> str:
         """Get summary from the agent's model."""
-        prompt = self.summary_prompt.format(history=history)
+        prompt = f"{self.summary_prompt}".format(history=history)
 
         # Use the agent's model directly
         try:
