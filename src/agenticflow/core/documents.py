@@ -141,7 +141,8 @@ class DocumentMetadata:
         }
         
         # Collect unknown fields into custom
-        custom = data.get("custom", {}).copy() if data.get("custom") else {}
+        existing_custom = data.get("custom", {})
+        custom = existing_custom.copy() if isinstance(existing_custom, dict) else {}
         for key, value in data.items():
             if key not in standard_fields:
                 custom[key] = value

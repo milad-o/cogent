@@ -138,7 +138,7 @@ class ChromaBackend:
         if results["ids"] and results["ids"][0]:
             for i, doc_id in enumerate(results["ids"][0]):
                 text = results["documents"][0][i] if results["documents"] else ""
-                metadata = results["metadatas"][0][i] if results["metadatas"] else {}
+                metadata_dict = results["metadatas"][0][i] if results["metadatas"] else {}
                 distance = results["distances"][0][i] if results["distances"] else 0
 
                 # Convert distance to similarity score
@@ -150,10 +150,14 @@ class ChromaBackend:
                 else:  # ip (inner product)
                     score = distance  # Already a similarity
 
+                # Recreate DocumentMetadata from stored dict
+                from agenticflow.core import DocumentMetadata
+                metadata = DocumentMetadata.from_dict(metadata_dict)
+                metadata.id = doc_id  # Override with stored ID
+                
                 doc = Document(
                     text=text,
                     metadata=metadata,
-                    id=doc_id,
                 )
 
                 search_results.append(SearchResult(
@@ -210,14 +214,18 @@ class ChromaBackend:
 
         documents = []
         if results["ids"]:
+            from agenticflow.core import DocumentMetadata
             for i, doc_id in enumerate(results["ids"]):
                 text = results["documents"][i] if results["documents"] else ""
-                metadata = results["metadatas"][i] if results["metadatas"] else {}
+                metadata_dict = results["metadatas"][i] if results["metadatas"] else {}
 
+                # Recreate DocumentMetadata from stored dict
+                metadata = DocumentMetadata.from_dict(metadata_dict)
+                metadata.id = doc_id  # Override with stored ID
+                
                 documents.append(Document(
                     text=text,
                     metadata=metadata,
-                    id=doc_id,
                 ))
 
         return documents

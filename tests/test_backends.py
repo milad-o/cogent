@@ -355,15 +355,15 @@ class TestFAISSBackend:
         """Test deleting documents."""
         pytest.importorskip("faiss")
         from agenticflow.vectorstore.backends import FAISSBackend
-        from agenticflow.vectorstore.document import Document
+        from agenticflow.vectorstore.document import Document, DocumentMetadata
 
         backend = FAISSBackend(dimension=4)
 
         ids = ["doc1", "doc2"]
         embeddings = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
         documents = [
-            Document(text="Document A", metadata={"type": "a"}),
-            Document(text="Document B", metadata={"type": "b"}),
+            Document(text="Document A", metadata=DocumentMetadata(custom={"type": "a"})),
+            Document(text="Document B", metadata=DocumentMetadata(custom={"type": "b"})),
         ]
 
         await backend.add(ids, embeddings, documents)
@@ -377,7 +377,7 @@ class TestFAISSBackend:
         """Test search with metadata filter."""
         pytest.importorskip("faiss")
         from agenticflow.vectorstore.backends import FAISSBackend
-        from agenticflow.vectorstore.document import Document
+        from agenticflow.vectorstore.document import Document, DocumentMetadata
 
         backend = FAISSBackend(dimension=4)
 
@@ -388,9 +388,9 @@ class TestFAISSBackend:
             [0.8, 0.2, 0.0, 0.0],
         ]
         documents = [
-            Document(text="Doc tech", metadata={"category": "tech"}),
-            Document(text="Doc science", metadata={"category": "science"}),
-            Document(text="Doc tech 2", metadata={"category": "tech"}),
+            Document(text="Doc tech", metadata=DocumentMetadata(custom={"category": "tech"})),
+            Document(text="Doc science", metadata=DocumentMetadata(custom={"category": "science"})),
+            Document(text="Doc tech 2", metadata=DocumentMetadata(custom={"category": "tech"})),
         ]
 
         await backend.add(ids, embeddings, documents)
@@ -429,7 +429,7 @@ class TestChromaBackend:
         """Test adding and searching documents."""
         pytest.importorskip("chromadb")
         from agenticflow.vectorstore.backends import ChromaBackend
-        from agenticflow.vectorstore.document import Document
+        from agenticflow.vectorstore.document import Document, DocumentMetadata
 
         backend = ChromaBackend(
             collection_name="test_collection",
@@ -439,8 +439,8 @@ class TestChromaBackend:
         ids = ["doc1", "doc2"]
         embeddings = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
         documents = [
-            Document(text="Document one", metadata={"source": "a"}),
-            Document(text="Document two", metadata={"source": "b"}),
+            Document(text="Document one", metadata=DocumentMetadata(source="a")),
+            Document(text="Document two", metadata=DocumentMetadata(source="b")),
         ]
 
         await backend.add(ids, embeddings, documents)
@@ -454,7 +454,7 @@ class TestChromaBackend:
         """Test deleting documents."""
         pytest.importorskip("chromadb")
         from agenticflow.vectorstore.backends import ChromaBackend
-        from agenticflow.vectorstore.document import Document
+        from agenticflow.vectorstore.document import Document, DocumentMetadata
 
         backend = ChromaBackend(
             collection_name="test_delete",
@@ -464,8 +464,8 @@ class TestChromaBackend:
         ids = ["doc1", "doc2"]
         embeddings = [[1.0, 0.0], [0.0, 1.0]]
         documents = [
-            Document(text="Document one", metadata={"x": 1}),
-            Document(text="Document two", metadata={"x": 2}),
+            Document(text="Document one", metadata=DocumentMetadata(custom={"x": 1})),
+            Document(text="Document two", metadata=DocumentMetadata(custom={"x": 2})),
         ]
 
         await backend.add(ids, embeddings, documents)
@@ -479,7 +479,7 @@ class TestChromaBackend:
         """Test getting document by ID."""
         pytest.importorskip("chromadb")
         from agenticflow.vectorstore.backends import ChromaBackend
-        from agenticflow.vectorstore.document import Document
+        from agenticflow.vectorstore.document import Document, DocumentMetadata
 
         backend = ChromaBackend(
             collection_name="test_get",
@@ -488,13 +488,15 @@ class TestChromaBackend:
 
         ids = ["doc1"]
         embeddings = [[1.0, 0.0, 0.0]]
-        documents = [Document(text="Document one", metadata={"key": "value"})]
+        # Note: Chroma sanitizes metadata to only allow str/int/float/bool, so we store directly in metadata
+        documents = [Document(text="Document one", metadata=DocumentMetadata(source="test.txt", page=1))]
 
         await backend.add(ids, embeddings, documents)
 
         docs = await backend.get(["doc1"])
         assert len(docs) == 1
-        assert docs[0].metadata["key"] == "value"
+        assert docs[0].metadata.source == "test.txt"
+        assert docs[0].metadata.page == 1
 
 
 class TestQdrantBackend:
