@@ -9,12 +9,88 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, TypedDict
 
 from agenticflow.core import now_utc
 from agenticflow.observability.logger import ObservabilityLogger
 from agenticflow.observability.metrics import MetricsCollector
 from agenticflow.observability.tracer import Tracer
+
+
+class AgentData(TypedDict, total=False):
+    """Agent state data structure."""
+
+    status: str
+    last_updated: str
+
+
+class TaskData(TypedDict, total=False):
+    """Task state data structure."""
+
+    status: str
+    last_updated: str
+
+
+class EventData(TypedDict, total=False):
+    """Event data structure."""
+
+    dashboard_received: str
+
+
+class ActivityItem(TypedDict):
+    """Activity timeline item."""
+
+    type: str
+    time: float
+    data: dict[str, Any]
+
+
+class TraceView(TypedDict):
+    """Trace view data structure."""
+
+    trace_id: str
+    span_count: int
+    duration_ms: float | None
+    spans: list[dict[str, Any]]
+
+
+class StatusCount(TypedDict):
+    """Status count structure."""
+
+    total: int
+    by_status: dict[str, int]
+
+
+class AgentSummary(TypedDict):
+    """Agent summary structure."""
+
+    total: int
+    active: int
+
+
+class SpanSummary(TypedDict):
+    """Span summary structure."""
+
+    total: int
+    by_kind: dict[str, int]
+
+
+class LogSummary(TypedDict):
+    """Log summary structure."""
+
+    total: int
+    by_level: dict[str, int]
+
+
+class SystemSummary(TypedDict):
+    """System summary data structure."""
+
+    agents: AgentSummary
+    tasks: StatusCount
+    spans: SpanSummary
+    logs: LogSummary
+    events_count: int
+    timestamp: str
 
 
 @dataclass
@@ -44,13 +120,13 @@ class DashboardSnapshot:
     """
 
     timestamp: datetime
-    agents: dict[str, dict[str, Any]]
-    tasks: dict[str, dict[str, Any]]
-    events: list[dict[str, Any]]
-    spans: list[dict[str, Any]]
-    logs: list[dict[str, Any]]
-    metrics: dict[str, Any]
-    topology_state: dict[str, Any] | None = None
+    agents: dict[str, AgentData]
+    tasks: dict[str, TaskData]
+    events: list[EventData]
+    spans: list[dict[str, Any]]  # Span serialization format is external
+    logs: list[dict[str, Any]]  # Log serialization format is external
+    metrics: dict[str, Any]  # Metrics are dynamic and external
+    topology_state: dict[str, Any] | None = None  # Topology format is external
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -90,10 +166,10 @@ class Dashboard:
         self._tracers: list[Tracer] = []
         self._metrics_collectors: list[MetricsCollector] = []
         self._loggers: list[ObservabilityLogger] = []
-        self._agents: dict[str, dict[str, Any]] = {}
-        self._tasks: dict[str, dict[str, Any]] = {}
-        self._events: list[dict[str, Any]] = []
-        self._topology_state: dict[str, Any] | None = None
+        self._agents: dict[str, AgentData] = {}
+        self._tasks: dict[str, TaskData] = {}
+        self._events: list[EventData] = []
+        self._topology_state: dict[str, Any] | None = None  # External format
         self._update_callbacks: list[Callable[[DashboardSnapshot], None]] = []
 
     def register_tracer(self, tracer: Tracer) -> None:
@@ -125,36 +201,36 @@ class Dashboard:
 
         Args:
             agent_id: Agent identifier.
-            data: Agent state data.
+            data: Agent state data (flexible input).
         """
-        self._agents[agent_id] = {
+        self._agents[agent_id] = AgentData(
             **data,
-            "last_updated": now_utc().isoformat(),
-        }
+            last_updated=now_utc().isoformat(),
+        )
 
     def update_task(self, task_id: str, data: dict[str, Any]) -> None:
         """Update task state in dashboard.
 
         Args:
             task_id: Task identifier.
-            data: Task state data.
+            data: Task state data (flexible input).
         """
-        self._tasks[task_id] = {
+        self._tasks[task_id] = TaskData(
             **data,
-            "last_updated": now_utc().isoformat(),
-        }
+            last_updated=now_utc().isoformat(),
+        )
 
     def add_event(self, event: dict[str, Any]) -> None:
         """Add event to dashboard.
 
         Args:
-            event: Event data.
+            event: Event data (flexible input).
         """
         self._events.append(
-            {
+            EventData(
                 **event,
-                "dashboard_received": now_utc().isoformat(),
-            }
+                dashboard_received=now_utc().isoformat(),
+            )
         )
 
         # Trim old events
@@ -233,7 +309,7 @@ class Dashboard:
             except Exception:
                 pass  # Don't let callback errors break the dashboard
 
-    def get_trace_view(self, trace_id: str) -> dict[str, Any]:
+    def get_trace_view(self, trace_id: str) -> TraceView:
         """Get detailed view of a specific trace.
 
         Args:
@@ -258,14 +334,14 @@ class Dashboard:
         else:
             duration_ms = None
 
-        return {
-            "trace_id": trace_id,
-            "span_count": len(spans),
-            "duration_ms": duration_ms,
-            "spans": spans,
-        }
+        return TraceView(
+            trace_id=trace_id,
+            span_count=len(spans),
+            duration_ms=duration_ms,
+            spans=spans,
+        )
 
-    def get_agent_timeline(self, agent_id: str) -> list[dict[str, Any]]:
+    def get_agent_timeline(self, agent_id: str) -> list[ActivityItem]:
         """Get activity timeline for an agent.
 
         Args:
@@ -274,18 +350,18 @@ class Dashboard:
         Returns:
             List of agent activities.
         """
-        activities: list[dict[str, Any]] = []
+        activities: list[ActivityItem] = []
 
         # Find spans for this agent
         for tracer in self._tracers:
             for span in tracer.finished_spans:
                 if span.attributes.get("agent_id") == agent_id:
                     activities.append(
-                        {
-                            "type": "span",
-                            "time": span.start_time,
-                            "data": span.to_dict(),
-                        }
+                        ActivityItem(
+                            type="span",
+                            time=span.start_time,
+                            data=span.to_dict(),
+                        )
                     )
 
         # Find logs for this agent
@@ -293,18 +369,18 @@ class Dashboard:
             for entry in logger.entries:
                 if entry.context.get("agent_id") == agent_id:
                     activities.append(
-                        {
-                            "type": "log",
-                            "time": entry.timestamp.timestamp(),
-                            "data": entry.to_dict(),
-                        }
+                        ActivityItem(
+                            type="log",
+                            time=entry.timestamp.timestamp(),
+                            data=entry.to_dict(),
+                        )
                     )
 
         # Sort by time
         activities.sort(key=lambda a: a["time"])
         return activities
 
-    def summary(self) -> dict[str, Any]:
+    def summary(self) -> SystemSummary:
         """Get high-level summary of system state.
 
         Returns:
@@ -312,34 +388,34 @@ class Dashboard:
         """
         snapshot = self.snapshot()
 
-        return {
-            "agents": {
-                "total": len(snapshot.agents),
-                "active": sum(
+        return SystemSummary(
+            agents=AgentSummary(
+                total=len(snapshot.agents),
+                active=sum(
                     1 for a in snapshot.agents.values() if a.get("status") == "active"
                 ),
-            },
-            "tasks": {
-                "total": len(snapshot.tasks),
-                "by_status": self._count_by_key(snapshot.tasks, "status"),
-            },
-            "spans": {
-                "total": len(snapshot.spans),
-                "by_kind": self._count_by_key(
+            ),
+            tasks=StatusCount(
+                total=len(snapshot.tasks),
+                by_status=self._count_by_key(snapshot.tasks, "status"),
+            ),
+            spans=SpanSummary(
+                total=len(snapshot.spans),
+                by_kind=self._count_by_key(
                     {str(i): s for i, s in enumerate(snapshot.spans)},
                     "kind",
                 ),
-            },
-            "logs": {
-                "total": len(snapshot.logs),
-                "by_level": self._count_by_key(
-                    {str(i): l for i, l in enumerate(snapshot.logs)},
+            ),
+            logs=LogSummary(
+                total=len(snapshot.logs),
+                by_level=self._count_by_key(
+                    {str(i): log_entry for i, log_entry in enumerate(snapshot.logs)},
                     "level",
                 ),
-            },
-            "events_count": len(snapshot.events),
-            "timestamp": snapshot.timestamp.isoformat(),
-        }
+            ),
+            events_count=len(snapshot.events),
+            timestamp=snapshot.timestamp.isoformat(),
+        )
 
     @staticmethod
     def _count_by_key(items: dict[str, dict[str, Any]], key: str) -> dict[str, int]:
