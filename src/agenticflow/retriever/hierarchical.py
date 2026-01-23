@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 from agenticflow.retriever.utils.llm_adapter import adapt_llm
-from agenticflow.vectorstore import Document
+from agenticflow.core import Document
 
 if TYPE_CHECKING:
     from agenticflow.models import Model

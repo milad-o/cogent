@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 
 if TYPE_CHECKING:
-    from agenticflow.vectorstore import Document, VectorStore
+    from agenticflow.core import Document, VectorStore
     from agenticflow.vectorstore.base import EmbeddingProvider
 
 

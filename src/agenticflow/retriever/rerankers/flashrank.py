@@ -13,7 +13,7 @@ from agenticflow.retriever.base import RetrievalResult
 from agenticflow.retriever.rerankers.base import BaseReranker
 
 if TYPE_CHECKING:
-    from agenticflow.vectorstore import Document
+    from agenticflow.core import Document
 
 
 class FlashRankReranker(BaseReranker):
@@ -146,7 +146,7 @@ class FlashRankReranker(BaseReranker):
                 doc = documents[doc_idx]
             else:
                 # Fallback: create new document from result
-                from agenticflow.vectorstore import Document as DocClass
+                from agenticflow.core import Document as DocClass
                 doc = DocClass(
                     text=result["text"],
                     metadata=result.get("meta", {}),

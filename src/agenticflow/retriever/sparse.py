@@ -13,8 +13,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
+from agenticflow.core import Document, DocumentMetadata
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
-from agenticflow.vectorstore import Document
 
 
 @dataclass
@@ -113,8 +113,9 @@ class BM25Index:
 
             # Apply metadata filter
             if filter:
+                metadata_dict = doc.metadata.to_dict()
                 match = all(
-                    doc.metadata.get(k) == v
+                    metadata_dict.get(k) == v
                     for k, v in filter.items()
                 )
                 if not match:
@@ -258,7 +259,10 @@ class BM25Retriever(BaseRetriever):
         """
         metadatas = metadatas or [{}] * len(texts)
         documents = [
-            Document(text=text, metadata=meta)
+            Document(
+                text=text,
+                metadata=DocumentMetadata.from_dict(meta) if meta else DocumentMetadata(),
+            )
             for text, meta in zip(texts, metadatas, strict=False)
         ]
         self._index.add_documents(documents)

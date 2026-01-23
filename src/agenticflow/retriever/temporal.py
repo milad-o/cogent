@@ -19,7 +19,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from agenticflow.retriever.base import BaseRetriever, RetrievalResult
-from agenticflow.vectorstore import Document
+from agenticflow.core import Document
 
 if TYPE_CHECKING:
     from agenticflow.vectorstore import VectorStore
