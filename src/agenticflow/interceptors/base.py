@@ -76,7 +76,7 @@ class InterceptContext:
     # Phase-specific data
     tool_name: str | None = None
     tool_args: dict[str, Any] | None = None
-    tool_result: Any = None
+    tool_result: object | None = None
     error: Exception | None = None
     model_response: Any = None
 

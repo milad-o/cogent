@@ -48,7 +48,7 @@ from typing import (
 from agenticflow.core.messages import AIMessage
 
 if TYPE_CHECKING:
-    pass
+    from agenticflow.observability.observer import Observer
 
 
 class StreamTraceType(StrEnum):
@@ -110,7 +110,7 @@ class StreamChunk:
     token_count: int | None = None
     """Number of tokens in this chunk."""
 
-    raw: Any = None
+    raw: object | None = None
     """The raw chunk from the provider (AIMessage)."""
 
     def __str__(self) -> str:
@@ -194,7 +194,7 @@ class StreamEvent:
     tool_name: str | None = None
     """Tool name (convenience for TOOL_CALL events)."""
 
-    tool_result: Any = None
+    tool_result: object | None = None
     """Tool execution result for TOOL_RESULT events."""
 
     error: str | None = None
@@ -580,7 +580,7 @@ class ObserverStreamCallback:
         emit_events: Emit streaming events to observer (default: True).
     """
 
-    observer: Any  # Observer, but we avoid circular import
+    observer: Observer  # Observer, but we avoid circular import
     """The Observer to integrate with."""
 
     agent_name: str = "agent"
