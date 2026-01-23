@@ -7,23 +7,49 @@ Get up and running with AgenticFlow in minutes.
 ## Installation
 
 ```bash
-# Install from GitHub
+# Minimal installation (core only)
 pip install git+https://github.com/milad-o/agenticflow.git
 
 # Or with uv (recommended)
 uv add git+https://github.com/milad-o/agenticflow.git
-
-# With optional dependencies
-pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 ```
 
-**Optional dependencies:**
+**Optional dependency groups:**
 
-- `[web]` — Web search, browser automation
-- `[anthropic]` — Anthropic Claude models
-- `[azure]` — Azure OpenAI support
-- `[gemini]` — Google Gemini models
-- `[all]` — All optional dependencies
+Choose what you need:
+
+```bash
+# Vector stores (FAISS, Qdrant)
+uv add "agenticflow[vector-stores] @ git+https://github.com/milad-o/agenticflow.git"
+
+# Retrieval (BM25, rerankers)
+uv add "agenticflow[retrieval] @ git+https://github.com/milad-o/agenticflow.git"
+
+# Database backends (SQLAlchemy + drivers)
+uv add "agenticflow[database] @ git+https://github.com/milad-o/agenticflow.git"
+
+# Infrastructure (Redis)
+uv add "agenticflow[infrastructure] @ git+https://github.com/milad-o/agenticflow.git"
+
+# Web tools (search, scraping)
+uv add "agenticflow[web] @ git+https://github.com/milad-o/agenticflow.git"
+
+# LLM providers (Anthropic, Azure, Cohere, Groq)
+uv add "agenticflow[all-providers] @ git+https://github.com/milad-o/agenticflow.git"
+
+# All backends
+uv add "agenticflow[all-backend] @ git+https://github.com/milad-o/agenticflow.git"
+
+# Everything
+uv add "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
+```
+
+**Development installation:**
+
+```bash
+# Development + testing
+uv add --dev agenticflow[dev,test,test-backends,docs]
+```
 
 ---
 

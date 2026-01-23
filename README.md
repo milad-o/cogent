@@ -397,17 +397,56 @@ view.save("diagram.png")
 ## Installation
 
 ```bash
-# Install from GitHub
+# Minimal installation (core only)
 uv add git+https://github.com/milad-o/agenticflow.git
 
-# Or with pip
-pip install git+https://github.com/milad-o/agenticflow.git
+# With vector stores & retrieval
+uv add "agenticflow[vector-stores,retrieval] @ git+https://github.com/milad-o/agenticflow.git"
 
-# With optional dependencies
-uv add "agenticflow[web] @ git+https://github.com/milad-o/agenticflow.git"
-uv add "agenticflow[anthropic] @ git+https://github.com/milad-o/agenticflow.git"
-uv add "agenticflow[azure] @ git+https://github.com/milad-o/agenticflow.git"
+# With database backends
+uv add "agenticflow[database] @ git+https://github.com/milad-o/agenticflow.git"
+
+# With all backends (vector stores, retrieval, database, redis)
+uv add "agenticflow[all-backend] @ git+https://github.com/milad-o/agenticflow.git"
+
+# Full installation with all providers & capabilities
 uv add "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
+```
+
+**Optional dependency groups:**
+
+| Group | Purpose | Includes |
+|-------|---------|----------|
+| `vector-stores` | Vector databases | FAISS, Qdrant |
+| `retrieval` | Retrieval libraries | BM25, sentence-transformers |
+| `database` | SQL databases | SQLAlchemy, aiosqlite, psycopg2 |
+| `infrastructure` | Infrastructure | Redis |
+| `web` | Web tools | BeautifulSoup4, DuckDuckGo search |
+| `browser` | Browser automation | Playwright |
+| `document` | Document processing | PDF, Word, Markdown loaders |
+| `api` | API framework | FastAPI, Uvicorn |
+| `anthropic` | Claude models | Anthropic SDK |
+| `azure` | Azure models | Azure OpenAI, Azure Identity |
+| `cohere` | Cohere models | Cohere SDK |
+| `groq` | Groq models | Groq SDK |
+| `all-providers` | All LLM providers | All anthropic, azure, cohere, groq |
+| `all-backend` | All backends | vector-stores, retrieval, database, infrastructure |
+| `all` | Everything | All above |
+
+**Development installation:**
+
+```bash
+# Core dev tools (linting, type checking)
+uv add --dev agenticflow[dev]
+
+# Add testing
+uv add --dev agenticflow[dev,test]
+
+# Add backend tests (vector stores, databases)
+uv add --dev agenticflow[dev,test,test-backends]
+
+# Add documentation
+uv add --dev agenticflow[dev,test,test-backends,docs]
 ```
 
 ## Core Architecture
