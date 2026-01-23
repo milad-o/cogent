@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.1] - 2026-01-23
+
+### Changed
+- **Python Syntax Modernization**: Updated codebase to modern Python 3.12+/3.13 standards
+  - **Type Parameters**: Replaced old-style `TypeVar("T")` with PEP 695 inline type parameters
+    - Removed 3 unused `TypeVar` declarations (already using new `[T]` syntax)
+    - Files updated: `flow/core.py`, `agent/output.py`, `core/response.py`
+  - **String Formatting**: Converted 34 `.format()` calls to f-strings across 13 files
+    - Better performance and readability
+    - Files updated: retrievers (hyde, multi_representation, self_query, hierarchical, summary, utils/results, rerankers/llm), documents (summarizer), agents (output, reasoning, spawning), executors (native), interceptors (prompt, context)
+  - Already using modern syntax: `|` instead of `Union[]`, `| None` instead of `Optional[]`, lowercase built-in generics (`list[]`, `dict[]`, etc.)
+
 ## [1.17.0] - 2026-01-23
 
 ### Changed

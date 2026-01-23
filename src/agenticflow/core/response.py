@@ -16,12 +16,10 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from agenticflow.events import Event
-
-T = TypeVar("T")
 
 
 @dataclass

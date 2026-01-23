@@ -90,7 +90,7 @@ def add_citations(
     cited: list[RetrievalResult] = []
 
     for i, r in enumerate(results):
-        marker = marker_format.format(n=i + start_index)
+        marker = f"{marker_format}".format(n=i + start_index)
         new_metadata = {**r.metadata, "citation": marker}
 
         cited.append(

@@ -37,15 +37,11 @@ from dataclasses import fields as dataclass_fields
 from enum import Enum
 from typing import (
     Any,
-    TypeVar,
     Union,
     get_args,
     get_origin,
     get_type_hints,
 )
-
-# Type variable for schema
-T = TypeVar("T")
 
 
 class OutputMethod(str, Enum):
@@ -581,7 +577,7 @@ def build_structured_prompt(
         error_msg = config.error_message or "Previous attempt failed: {error}"
         prompt_parts.append(f"\n\n⚠️ {error_msg.format(error=error_context)}")
 
-    prompt_parts.append(STRUCTURED_OUTPUT_PROMPT.format(schema=schema_json))
+    prompt_parts.append(f"{STRUCTURED_OUTPUT_PROMPT}".format(schema=schema_json))
 
     return "\n".join(prompt_parts)
 

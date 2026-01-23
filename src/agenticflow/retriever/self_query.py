@@ -127,7 +127,7 @@ class SelfQueryRetriever(BaseRetriever):
 
     async def _parse_query(self, query: str) -> ParsedQuery:
         """Use LLM to parse query into semantic query and filters."""
-        prompt = self._prompt_template.format(
+        prompt = f"{self._prompt_template}".format(
             attributes=self._format_attributes(),
             query=query,
         )

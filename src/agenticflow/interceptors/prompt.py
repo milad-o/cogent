@@ -139,7 +139,7 @@ class ContextPrompt(PromptAdapter):
                     context_data[key] = value
 
         try:
-            context_str = self.template.format(**context_data)
+            context_str = f"{self.template}".format(**context_data)
         except KeyError:
             # Missing keys - try with available data only
             context_str = self.template

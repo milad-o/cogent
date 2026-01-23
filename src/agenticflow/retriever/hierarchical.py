@@ -297,7 +297,7 @@ Summary:"""
         if not self._llm:
             return node.text[:200]
 
-        prompt = self.SUMMARIZE_SECTION_PROMPT.format(
+        prompt = f"{self.SUMMARIZE_SECTION_PROMPT}".format(
             title=node.title,
             text=node.text[:3000],
         )

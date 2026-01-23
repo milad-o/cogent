@@ -265,7 +265,7 @@ class MapReduceSummarizer(BaseSummarizer):
 
     async def _summarize_chunk(self, chunk: str, index: int) -> str:
         """Summarize a single chunk."""
-        prompt = self.CHUNK_SUMMARY_PROMPT.format(text=chunk)
+        prompt = f"{self.CHUNK_SUMMARY_PROMPT}".format(text=chunk)
         summary = await self._call_model(prompt)
 
         self._log.debug(
@@ -305,7 +305,7 @@ class MapReduceSummarizer(BaseSummarizer):
         if context:
             context_instruction = f"This is a {context}. "
 
-        prompt = self.FINAL_SUMMARY_PROMPT.format(
+        prompt = f"{self.FINAL_SUMMARY_PROMPT}".format(
             context_instruction=context_instruction,
             content=combined_text,
         )
@@ -494,7 +494,7 @@ class RefineSummarizer(BaseSummarizer):
         if original_length <= self._chunk_size:
             self._log.info("Document fits in single chunk, direct summarization")
             context_instruction = f"This is a {context}. " if context else ""
-            prompt = self.FINAL_SUMMARY_PROMPT.format(
+            prompt = f"{self.FINAL_SUMMARY_PROMPT}".format(
                 context_instruction=context_instruction,
                 content=text,
             )
@@ -526,7 +526,7 @@ class RefineSummarizer(BaseSummarizer):
 
         # Initial summary from first chunk
         current_summary = await self._call_model(
-            self.CHUNK_SUMMARY_PROMPT.format(text=chunks[0])
+            f"{self.CHUNK_SUMMARY_PROMPT}".format(text=chunks[0])
         )
         intermediate_summaries.append(current_summary)
 
@@ -535,7 +535,7 @@ class RefineSummarizer(BaseSummarizer):
 
         # Refine with each subsequent chunk
         for i, chunk in enumerate(chunks[1:], start=2):
-            prompt = self.REFINE_PROMPT.format(
+            prompt = f"{self.REFINE_PROMPT}".format(
                 existing_summary=current_summary,
                 new_content=chunk,
             )
@@ -556,7 +556,7 @@ class RefineSummarizer(BaseSummarizer):
             print("🔄 Final polish...")
 
         context_instruction = f"This is a {context}. " if context else ""
-        final_prompt = self.FINAL_SUMMARY_PROMPT.format(
+        final_prompt = f"{self.FINAL_SUMMARY_PROMPT}".format(
             context_instruction=context_instruction,
             content=current_summary,
         )
@@ -648,7 +648,7 @@ class HierarchicalSummarizer(BaseSummarizer):
     async def _summarize_group(self, texts: list[str], level: int) -> str:
         """Summarize a group of texts into one."""
         combined = "\n\n---\n\n".join(texts)
-        prompt = self.COMBINE_SUMMARIES_PROMPT.format(summaries=combined)
+        prompt = f"{self.COMBINE_SUMMARIES_PROMPT}".format(summaries=combined)
         return await self._call_model(prompt)
 
     async def summarize(
@@ -665,7 +665,7 @@ class HierarchicalSummarizer(BaseSummarizer):
         if original_length <= self._chunk_size:
             self._log.info("Document fits in single chunk, direct summarization")
             context_instruction = f"This is a {context}. " if context else ""
-            prompt = self.FINAL_SUMMARY_PROMPT.format(
+            prompt = f"{self.FINAL_SUMMARY_PROMPT}".format(
                 context_instruction=context_instruction,
                 content=text,
             )
@@ -740,7 +740,7 @@ class HierarchicalSummarizer(BaseSummarizer):
             print("🔄 Final polish...")
 
         context_instruction = f"This is a {context}. " if context else ""
-        final_prompt = self.FINAL_SUMMARY_PROMPT.format(
+        final_prompt = f"{self.FINAL_SUMMARY_PROMPT}".format(
             context_instruction=context_instruction,
             content=current_level[0] if current_level else "",
         )

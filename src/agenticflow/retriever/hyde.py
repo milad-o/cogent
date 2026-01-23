@@ -109,7 +109,7 @@ class HyDERetriever(BaseRetriever):
         Returns:
             A hypothetical document passage.
         """
-        prompt = self.prompt_template.format(query=query)
+        prompt = f"{self.prompt_template}".format(query=query)
         return await self._llm.generate(prompt)
 
     async def retrieve_with_scores(

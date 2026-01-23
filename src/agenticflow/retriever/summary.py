@@ -170,7 +170,7 @@ Respond in JSON format:
         doc_id = doc.id or self._generate_doc_id(doc.text)
 
         if self._extract_entities:
-            prompt = self.SUMMARY_WITH_ENTITIES_PROMPT.format(text=doc.text[:8000])
+            prompt = f"{self.SUMMARY_WITH_ENTITIES_PROMPT}".format(text=doc.text[:8000])
             response = await self._llm.generate(prompt)
 
             try:
@@ -191,7 +191,7 @@ Respond in JSON format:
                     metadata=doc.metadata,
                 )
         else:
-            prompt = self.SUMMARY_PROMPT.format(text=doc.text[:8000])
+            prompt = f"{self.SUMMARY_PROMPT}".format(text=doc.text[:8000])
             response = await self._llm.generate(prompt)
 
             return DocumentSummary(
@@ -599,7 +599,7 @@ Summary:"""
 
                 # Generate summary
                 combined = "\n\n---\n\n".join(child_texts)
-                prompt = self.SUMMARIZE_PROMPT.format(texts=combined[:6000])
+                prompt = f"{self.SUMMARIZE_PROMPT}".format(texts=combined[:6000])
                 summary = await self._llm.generate(prompt)
 
                 # Create parent node
@@ -839,7 +839,7 @@ Keywords (JSON array):"""
     async def _extract_keywords(self, doc: Document) -> list[str]:
         """Extract keywords from document."""
         if self._use_llm and self._llm:
-            prompt = self.EXTRACT_KEYWORDS_PROMPT.format(text=doc.text[:4000])
+            prompt = f"{self.EXTRACT_KEYWORDS_PROMPT}".format(text=doc.text[:4000])
             response = await self._llm.generate(prompt)
 
             try:
@@ -1069,7 +1069,7 @@ Extract all meaningful entities and relationships:"""
         self, text: str, doc_id: str
     ) -> tuple[list[dict], list[dict]]:
         """Extract entities and relationships from text."""
-        prompt = self.EXTRACT_TRIPLETS_PROMPT.format(text=text[:4000])
+        prompt = f"{self.EXTRACT_TRIPLETS_PROMPT}".format(text=text[:4000])
         response = await self._llm.generate(prompt)
 
         try:

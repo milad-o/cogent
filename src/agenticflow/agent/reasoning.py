@@ -320,7 +320,8 @@ def build_reasoning_prompt(
     """
     style_instructions = STYLE_INSTRUCTIONS.get(config.style, "")
 
-    REASONING_SYSTEM_PROMPT.format(style_instructions=style_instructions)
+    # Note: REASONING_SYSTEM_PROMPT used elsewhere
+    f"{REASONING_SYSTEM_PROMPT}".format(style_instructions=style_instructions)
 
     prompt_parts = [
         f"Task: {task}",
