@@ -30,7 +30,6 @@ dependencies = [
     "azure-ai-inference>=1.0.0b9",
     "google-genai>=1.57.0",
     "openai>=1.0.0",
-    "redis>=7.1.0",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +38,26 @@ anthropic = ["anthropic>=0.40.0"]
 azure = ["azure-identity>=1.25.1"]
 cohere = ["cohere>=5.20.0"]
 groq = ["groq>=0.15.0"]
+
+# --- Vector Stores & Retrieval ---
+vector-stores = [
+    "faiss-cpu>=1.13.2",
+    "qdrant-client>=1.16.2",
+]
+retrieval = [
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=5.2.0",
+]
+
+# --- Database & Infrastructure ---
+database = [
+    "sqlalchemy>=2.0.44",
+    "aiosqlite>=0.21.0",
+    "psycopg2-binary>=2.9.11",
+]
+infrastructure = [
+    "redis>=5.0.0",
+]
 
 # --- Capabilities ---
 analytics = ["pyarrow>=22.0.0"]
@@ -55,45 +74,58 @@ document = [
 mcp = ["mcp>=1.22.0", "websockets>=15.0.1"]
 web = ["beautifulsoup4>=4.14.2", "ddgs>=9.9.1"]
 
-# --- Distributed & Infrastructure ---
-redis = ["redis>=5.0.0"]
-distributed = ["redis>=5.0.0"]  # Can extend with nats-py in future
-
-# --- Bundles ---
+# --- Bundles for Easy Installation ---
 all-providers = [
     "agenticflow[anthropic,azure,cohere,groq]",
 ]
+all-backend = [
+    "agenticflow[vector-stores,retrieval,database,infrastructure]",
+]
 all = [
-    "agenticflow[all-providers,analytics,api,browser,document,mcp,web,distributed]",
+    "agenticflow[all-providers,all-backend,analytics,api,browser,document,mcp,web]",
 ]
 
-# --- Benchmarking (for comparisons, not production) ---
+# --- Benchmarking (comparisons only, not for production) ---
 benchmark = ["crewai>=1.6.0", "openai-agents>=0.6.1"]
 
 [dependency-groups]
+# --- Core Development Tools ---
 dev = [
-    # Testing
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+]
+
+# --- Testing Tools ---
+test = [
     "pytest>=9.0.1",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=5.0.0",
-    # Linting & type-checking
-    "mypy>=1.13.0",
-    "ruff>=0.7.0",
-    # Database (for tests)
-    "aiosqlite>=0.21.0",
-    "greenlet>=3.2.4",
+]
+
+# --- Backend/Infrastructure Tests (optional dependencies for testing) ---
+test-backends = [
+    # Database backends
     "sqlalchemy>=2.0.44",
-    "mkdocs-material>=9.7.1",
-    "pymdown-extensions>=10.20",
-    "mkdocs-redirects>=1.2.2",
-    "ipykernel>=7.1.0",
+    "aiosqlite>=0.21.0",
+    "psycopg2-binary>=2.9.11",
+    # Vector stores
     "faiss-cpu>=1.13.2",
     "qdrant-client>=1.16.2",
-    "psycopg2-binary>=2.9.11",
-    "redis>=7.1.0",
+    # Retrieval
     "rank-bm25>=0.2.2",
     "sentence-transformers>=5.2.0",
+    # Infrastructure
+    "redis>=5.0.0",
+    # Web
     "beautifulsoup4>=4.14.2",
+]
+
+# --- Documentation Tools ---
+docs = [
+    "mkdocs-material>=9.7.1",
+    "mkdocs-redirects>=1.2.2",
+    "pymdown-extensions>=10.20",
+    "ipykernel>=7.1.0",
 ]
 
 [project.scripts]
