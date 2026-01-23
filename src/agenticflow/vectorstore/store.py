@@ -116,8 +116,8 @@ class VectorStore:
         documents = create_documents(texts, metadatas, ids)
         doc_ids = [doc.id for doc in documents]
 
-        # Generate embeddings
-        embeddings = await self.embeddings.aembed_texts(texts)  # type: ignore
+        # Generate embeddings using protocol method
+        embeddings = await self.embeddings.embed_texts(texts)  # type: ignore
 
         # Store in backend
         await self.backend.add(doc_ids, embeddings, documents)  # type: ignore
@@ -158,7 +158,7 @@ class VectorStore:
         # Generate missing embeddings
         if docs_needing_embeddings:
             texts = [doc.text for _, doc in docs_needing_embeddings]
-            new_embeddings = await self.embeddings.aembed_texts(texts)  # type: ignore
+            new_embeddings = await self.embeddings.embed_texts(texts)  # type: ignore
 
             for (idx, _), embedding in zip(docs_needing_embeddings, new_embeddings, strict=False):
                 embeddings[idx] = embedding
@@ -197,8 +197,8 @@ class VectorStore:
             >>> for r in results:
             ...     print(f"{r.score:.2f}: {r.document.text[:50]}")
         """
-        # Generate query embedding
-        query_embedding = await self.embeddings.aembed_query(query)  # type: ignore
+        # Generate query embedding using protocol method
+        query_embedding = await self.embeddings.embed_query(query)  # type: ignore
 
         # Search backend
         results = await self.backend.search(query_embedding, k, filter)  # type: ignore

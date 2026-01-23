@@ -71,37 +71,93 @@ results = await store.search(
 
 ## Embedding Providers
 
+All embedding providers support a **standardized API**:
+
+**Primary Methods (with metadata):**
+- `embed(texts)` / `aembed(texts)` → Returns `EmbeddingResult` with metadata
+- `embed_one(text)` / `aembed_one(text)` → Returns vector only
+
+**VectorStore Protocol Methods (async, no metadata):**
+- `embed_texts(texts)` → Returns `list[list[float]]` 
+- `embed_query(text)` → Returns `list[float]`
+
 ### OpenAI (Default)
 
 ```python
-from agenticflow.vectorstore import VectorStore, OpenAIEmbeddings
+from agenticflow.vectorstore import VectorStore
+from agenticflow.models import OpenAIEmbedding
 
 # Uses text-embedding-3-small by default
 store = VectorStore()
 
 # Or specify model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+embeddings = OpenAIEmbedding(model="text-embedding-3-large")
 store = VectorStore(embeddings=embeddings)
+
+# Use embeddings directly
+result = await embeddings.aembed(["Hello", "World"])
+print(result.metadata.tokens)  # Track token usage
 ```
 
 ### Ollama (Local)
 
 ```python
-from agenticflow.vectorstore import VectorStore, OllamaEmbeddings
+from agenticflow.models import OllamaEmbedding
 
-embeddings = OllamaEmbeddings(
+embeddings = OllamaEmbedding(
     model="nomic-embed-text",
-    base_url="http://localhost:11434",
+    host="http://localhost:11434",
 )
 store = VectorStore(embeddings=embeddings)
+```
+
+### Other Providers
+
+```python
+from agenticflow.models import (
+    GeminiEmbedding,
+    CohereEmbedding,
+    MistralEmbedding,
+    AzureOpenAIEmbedding,
+    CloudflareEmbedding,
+    CustomEmbedding,
+)
+
+# Gemini
+embeddings = GeminiEmbedding(model="text-embedding-004")
+
+# Cohere
+embeddings = CohereEmbedding(model="embed-english-v3.0")
+
+# Mistral
+embeddings = MistralEmbedding(model="mistral-embed")
+
+# Azure OpenAI
+from agenticflow.models.azure import AzureEntraAuth
+embeddings = AzureOpenAIEmbedding(
+    azure_endpoint="https://your-resource.openai.azure.com",
+    deployment="text-embedding-ada-002",
+)
+
+# Cloudflare Workers AI
+embeddings = CloudflareEmbedding(
+    model="@cf/baai/bge-base-en-v1.5",
+    account_id="your-account-id",
+)
+
+# Custom OpenAI-compatible
+embeddings = CustomEmbedding(
+    base_url="http://localhost:8000/v1",
+    model="custom-model",
+)
 ```
 
 ### Mock (Testing)
 
 ```python
-from agenticflow.vectorstore import VectorStore, MockEmbeddings
+from agenticflow.models import MockEmbedding
 
-embeddings = MockEmbeddings(dimension=384)
+embeddings = MockEmbedding(dimensions=384)
 store = VectorStore(embeddings=embeddings)
 
 # Fast, deterministic embeddings for tests
@@ -436,11 +492,37 @@ await store.add_texts(
 
 ### Embedding Providers
 
-| Class | Provider |
-|-------|----------|
-| `OpenAIEmbeddings` | OpenAI API |
-| `OllamaEmbeddings` | Local Ollama |
-| `MockEmbeddings` | Testing |
+All embedding providers implement the `EmbeddingProvider` protocol:
+
+```python
+from agenticflow.vectorstore.base import EmbeddingProvider
+
+class EmbeddingProvider(Protocol):
+    """Protocol for embedding providers used by VectorStore."""
+    
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension."""
+    
+    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Generate embeddings for multiple texts."""
+    
+    async def embed_query(self, text: str) -> list[float]:
+        """Generate embedding for a query text."""
+```
+
+**Available providers:**
+- `OpenAIEmbedding` - OpenAI API (default)
+- `AzureOpenAIEmbedding` - Azure OpenAI
+- `OllamaEmbedding` - Local Ollama
+- `GeminiEmbedding` - Google Gemini
+- `CohereEmbedding` - Cohere
+- `MistralEmbedding` - Mistral AI
+- `CloudflareEmbedding` - Cloudflare Workers AI
+- `CustomEmbedding` - Custom OpenAI-compatible APIs
+- `MockEmbedding` - Testing
+
+All providers are imported from `agenticflow.models`.
 
 ### Backends
 

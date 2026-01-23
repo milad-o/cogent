@@ -54,39 +54,50 @@ class EmbeddingResult:
 class EmbeddingProvider(Protocol):
     """Protocol for embedding providers.
 
-    Implementations must provide:
-    - embed_texts: Generate embeddings for multiple texts
-    - embed_query: Generate embedding for a single query (may differ from document embedding)
-    - dimension: The dimension of embeddings produced
+    Defines the interface that all embedding providers must implement for
+    compatibility with VectorStore backends.
+
+    Required methods:
+    - embed_texts: Generate embeddings for multiple texts (async)
+    - embed_query: Generate embedding for a single query (async)
+    - dimension: The dimension of embeddings produced (property)
+
+    All methods are async and return vectors without metadata for efficiency.
+    For metadata (tokens, duration, model info), use the primary embed()/aembed()
+    methods on concrete embedding classes.
     """
 
     @property
     def dimension(self) -> int:
-        """Return the dimension of embeddings."""
+        """Return the dimension of embeddings.
+
+        Returns:
+            Embedding vector dimension (e.g., 1536 for OpenAI ada-002).
+        """
         ...
 
     async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for multiple texts.
+        """Generate embeddings for multiple texts asynchronously.
 
         Args:
             texts: List of texts to embed.
 
         Returns:
-            List of embedding vectors.
+            List of embedding vectors (no metadata).
         """
         ...
 
     async def embed_query(self, text: str) -> list[float]:
-        """Generate embedding for a query.
+        """Generate embedding for a single query text asynchronously.
 
-        Some models use different embeddings for queries vs documents.
-        Default implementation calls embed_texts with a single text.
+        Some models may use different embeddings for queries vs documents.
+        Most implementations treat this the same as embed_texts([text])[0].
 
         Args:
             text: Query text to embed.
 
         Returns:
-            Embedding vector.
+            Embedding vector (no metadata).
         """
         ...
 

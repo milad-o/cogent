@@ -402,69 +402,109 @@ class BaseEmbedding(ABC):
 
     @abstractmethod
     def embed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed multiple texts synchronously.
+        """Embed multiple texts synchronously with metadata.
+
+        Primary method for batch embedding. Returns full metadata including
+        token usage, duration, and model information.
 
         Args:
             texts: List of texts to embed.
 
         Returns:
             EmbeddingResult with vectors and metadata.
+
+        Example:
+            result = embedder.embed(["Hello", "World"])
+            vectors = result.embeddings
+            print(f"Model: {result.metadata.model}")
         """
         ...
 
     @abstractmethod
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
-        """Embed multiple texts asynchronously.
+        """Embed multiple texts asynchronously with metadata.
+
+        Primary async method for batch embedding. Returns full metadata including
+        token usage, duration, and model information.
 
         Args:
             texts: List of texts to embed.
 
         Returns:
             EmbeddingResult with vectors and metadata.
+
+        Example:
+            result = await embedder.aembed(["Hello", "World"])
+            vectors = result.embeddings
+            print(f"Tokens used: {result.metadata.tokens}")
         """
         ...
 
-    def embed_query(self, text: str) -> list[float]:
-        """Embed a single query text.
+    def embed_one(self, text: str) -> list[float]:
+        """Embed a single text synchronously.
+
+        Convenience method for embedding a single text. Returns only the vector
+        without metadata. Use embed() if you need metadata.
 
         Args:
             text: Text to embed.
 
         Returns:
             Embedding vector.
+
+        Example:
+            vector = embedder.embed_one("Hello world")
         """
         result = self.embed([text])
         return result.embeddings[0]
 
-    async def aembed_query(self, text: str) -> list[float]:
-        """Embed a single query text asynchronously.
+    async def aembed_one(self, text: str) -> list[float]:
+        """Embed a single text asynchronously.
+
+        Convenience method for embedding a single text. Returns only the vector
+        without metadata. Use aembed() if you need metadata.
 
         Args:
             text: Text to embed.
 
         Returns:
             Embedding vector.
+
+        Example:
+            vector = await embedder.aembed_one("Hello world")
         """
         result = await self.aembed([text])
         return result.embeddings[0]
 
-    # Aliases for common interface compatibility
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts (alias for embed)."""
-        return self.embed(texts).embeddings
+    # VectorStore protocol compatibility (async, no metadata)
+    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        """Embed texts for VectorStore compatibility.
 
-    async def aembed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Embed texts async (alias for aembed)."""
+        Async method that returns only vectors without metadata.
+        Required by the EmbeddingProvider protocol.
+
+        Args:
+            texts: List of texts to embed.
+
+        Returns:
+            List of embedding vectors.
+        """
         result = await self.aembed(texts)
         return result.embeddings
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Embed documents (alias for embed)."""
-        return self.embed(texts).embeddings
+    async def embed_query(self, text: str) -> list[float]:
+        """Embed query for VectorStore compatibility.
 
-    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Embed documents async (alias for aembed)."""
-        return await self.aembed(texts)
+        Async method that returns only the vector without metadata.
+        Required by the EmbeddingProvider protocol.
+
+        Args:
+            text: Query text to embed.
+
+        Returns:
+            Embedding vector.
+        """
+        return await self.aembed_one(text)
 
     @property
     def dimension(self) -> int:
