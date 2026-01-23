@@ -10,7 +10,7 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from agenticflow.observability.progress import ProgressTracker
 
 
-class ExecutionStrategy(Enum):
+class ExecutionStrategy(StrEnum):
     """Available execution strategies.
 
     Choose based on task complexity:

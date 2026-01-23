@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from agenticflow.core.context import RunContext
 
 
-class Phase(Enum):
+class Phase(StrEnum):
     """Execution phase where interceptor runs.
 
     The agent execution loop has these phases:

@@ -47,13 +47,13 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import IntEnum, StrEnum
 from typing import Any, TextIO
 
 from agenticflow.core.utils import generate_id, now_utc
 
 
-class TraceLevel(Enum):
+class TraceLevel(IntEnum):
     """Trace detail levels."""
 
     MINIMAL = 1  # Only final results
@@ -75,7 +75,7 @@ class TraceLevel(Enum):
         return self.value < other.value
 
 
-class NodeType(Enum):
+class NodeType(StrEnum):
     """Types of execution nodes."""
 
     START = "start"
@@ -88,7 +88,7 @@ class NodeType(Enum):
     SUBGRAPH = "subgraph"
 
 
-class NodeStatus(Enum):
+class NodeStatus(StrEnum):
     """Node execution status."""
 
     PENDING = "pending"

@@ -20,14 +20,14 @@ import random
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from agenticflow.observability.progress import ProgressTracker
 
 
-class RetryStrategy(Enum):
+class RetryStrategy(StrEnum):
     """Retry backoff strategies."""
 
     NONE = "none"  # No retry
@@ -37,7 +37,7 @@ class RetryStrategy(Enum):
     EXPONENTIAL_JITTER = "exponential_jitter"  # Exponential with random jitter (best)
 
 
-class CircuitState(Enum):
+class CircuitState(StrEnum):
     """Circuit breaker states."""
 
     CLOSED = "closed"  # Normal operation, requests pass through
@@ -45,7 +45,7 @@ class CircuitState(Enum):
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
-class RecoveryAction(Enum):
+class RecoveryAction(StrEnum):
     """Actions to take on failure."""
 
     RETRY = "retry"  # Retry the same tool

@@ -7,7 +7,7 @@ then by content within matching documents. Can wrap any retriever.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from agenticflow.retriever.base import Retriever
 
 
-class MetadataMatchMode(Enum):
+class MetadataMatchMode(StrEnum):
     """How to match metadata filters."""
 
     ALL = "all"  # All filters must match (AND)

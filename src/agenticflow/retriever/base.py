@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, Protocol, overload, runtime_checkable
 
 from agenticflow.tools.base import BaseTool
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from agenticflow.observability.bus import TraceBus
 
 
-class FusionStrategy(Enum):
+class FusionStrategy(StrEnum):
     """Strategies for combining results from multiple retrievers.
 
     RRF: Reciprocal Rank Fusion - robust, parameter-free fusion based on ranks

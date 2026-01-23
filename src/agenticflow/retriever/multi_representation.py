@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from agenticflow.vectorstore import VectorStore
 
 
-class RepresentationType(Enum):
+class RepresentationType(StrEnum):
     """Types of document representations."""
 
     ORIGINAL = "original"  # Raw document text
@@ -38,7 +38,7 @@ class RepresentationType(Enum):
     ENTITIES = "entities"  # Named entities and relationships
 
 
-class QueryType(Enum):
+class QueryType(StrEnum):
     """Types of queries for routing."""
 
     BROAD = "broad"  # General, conceptual queries

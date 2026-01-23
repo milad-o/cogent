@@ -25,7 +25,7 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from typing import Any, TextIO
 
 from agenticflow.core.utils import generate_id, now_utc
@@ -46,7 +46,7 @@ class Verbosity(IntEnum):
     TRACE = 5  # Maximum detail
 
 
-class OutputFormat(Enum):
+class OutputFormat(StrEnum):
     """Output format types."""
 
     TEXT = "text"  # Plain text
@@ -56,7 +56,7 @@ class OutputFormat(Enum):
     MINIMAL = "minimal"  # Minimal output
 
 
-class ProgressStyle(Enum):
+class ProgressStyle(StrEnum):
     """Progress indicator styles."""
 
     SPINNER = "spinner"  # Spinning indicator
@@ -67,7 +67,7 @@ class ProgressStyle(Enum):
     NONE = "none"  # No progress indicator
 
 
-class Theme(Enum):
+class Theme(StrEnum):
     """Color themes for rich output."""
 
     DEFAULT = "default"

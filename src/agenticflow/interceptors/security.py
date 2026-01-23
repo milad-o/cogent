@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from agenticflow.interceptors.base import (
@@ -20,7 +20,7 @@ from agenticflow.interceptors.base import (
 )
 
 
-class PIIAction(Enum):
+class PIIAction(StrEnum):
     """Action to take when PII is detected."""
 
     MASK = "mask"  # Replace PII with [REDACTED]

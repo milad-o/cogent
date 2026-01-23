@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from agenticflow.vectorstore import VectorStore
 
 
-class HierarchyLevel(Enum):
+class HierarchyLevel(StrEnum):
     """Hierarchy levels in document structure."""
 
     DOCUMENT = "document"

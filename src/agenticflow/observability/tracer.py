@@ -10,13 +10,13 @@ import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from agenticflow.core import generate_id
 
 
-class SpanKind(Enum):
+class SpanKind(StrEnum):
     """Type of operation being traced."""
 
     AGENT = "agent"

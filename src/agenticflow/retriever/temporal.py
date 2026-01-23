@@ -15,7 +15,7 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from agenticflow.core import Document
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from agenticflow.vectorstore import VectorStore
 
 
-class DecayFunction(Enum):
+class DecayFunction(StrEnum):
     """Time decay functions for scoring."""
 
     EXPONENTIAL = "exponential"  # score * exp(-decay * days)

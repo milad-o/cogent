@@ -38,7 +38,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     pass
 
 
-class StreamTraceType(Enum):
+class StreamTraceType(StrEnum):
     """Types of streaming events."""
 
     STREAM_START = "stream_start"

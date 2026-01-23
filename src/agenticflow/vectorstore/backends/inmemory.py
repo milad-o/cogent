@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from agenticflow.vectorstore.base import SearchResult
 from agenticflow.vectorstore.document import Document
 
 
-class SimilarityMetric(Enum):
+class SimilarityMetric(StrEnum):
     """Similarity metrics for vector search.
 
     COSINE: Cosine similarity (default) - measures angle between vectors.

@@ -2,10 +2,10 @@
 Enums for AgenticFlow - defines status types and roles.
 """
 
-from enum import Enum
+from enum import Enum, IntEnum, StrEnum
 
 
-class TaskStatus(Enum):
+class TaskStatus(StrEnum):
     """Task lifecycle states."""
 
     PENDING = "pending"
@@ -26,7 +26,7 @@ class TaskStatus(Enum):
         return self in (TaskStatus.RUNNING, TaskStatus.SPAWNING)
 
 
-class AgentStatus(Enum):
+class AgentStatus(StrEnum):
     """Agent lifecycle states."""
 
     IDLE = "idle"
@@ -45,7 +45,7 @@ class AgentStatus(Enum):
         return self in (AgentStatus.THINKING, AgentStatus.ACTING)
 
 
-class TraceType(Enum):
+class TraceType(StrEnum):
     """All event types in the system."""
 
     # System events
@@ -175,7 +175,7 @@ class TraceType(Enum):
         return self.value.split(".")[0]
 
 
-class Priority(Enum):
+class Priority(IntEnum):
     """Task priority levels."""
 
     LOW = 1
@@ -204,7 +204,7 @@ class Priority(Enum):
         return NotImplemented
 
 
-class AgentRole(Enum):
+class AgentRole(StrEnum):
     """
     Agent roles define CAPABILITIES, not job titles.
 

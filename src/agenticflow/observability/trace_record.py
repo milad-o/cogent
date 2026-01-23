@@ -7,12 +7,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from agenticflow.core.utils import generate_id, now_utc
 
 
-class TraceType(Enum):
+class TraceType(StrEnum):
     """All event types in the system."""
 
     # System events
