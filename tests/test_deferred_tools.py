@@ -368,12 +368,14 @@ class TestDeferredWaiter:
 
         # Simulate event arrival in background
         async def trigger_event():
-            await asyncio.sleep(0.05)
+            # Wait for subscribe_all to be called (since wait_for is a string)
+            while mock_event_bus.subscribe_all.call_args is None:
+                await asyncio.sleep(0.01)
             # Get the callback that was registered
-            callback = mock_event_bus.subscribe.call_args[0][1]
+            callback = mock_event_bus.subscribe_all.call_args[0][0]
             # Create mock event
             mock_event = MagicMock()
-            mock_event.data = {"job_id": "test-4", "result": "success!"}
+            mock_event.data = {"event_name": "custom", "job_id": "test-4", "result": "success!"}
             callback(mock_event)
 
         asyncio.create_task(trigger_event())
@@ -393,19 +395,21 @@ class TestDeferredWaiter:
         waiter = DeferredWaiter(deferred=deferred, event_bus=mock_event_bus)
 
         async def trigger_events():
-            await asyncio.sleep(0.05)
-            callback = mock_event_bus.subscribe.call_args[0][1]
+            # Wait for subscribe_all to be called (since wait_for is a string)
+            while mock_event_bus.subscribe_all.call_args is None:
+                await asyncio.sleep(0.01)
+            callback = mock_event_bus.subscribe_all.call_args[0][0]
 
             # Non-matching event (wrong request_id)
             wrong_event = MagicMock()
-            wrong_event.data = {"request_id": "xyz", "type": "complete", "result": "wrong"}
+            wrong_event.data = {"event_name": "custom", "request_id": "xyz", "type": "complete", "result": "wrong"}
             callback(wrong_event)
 
             await asyncio.sleep(0.02)
 
             # Matching event
             correct_event = MagicMock()
-            correct_event.data = {"request_id": "abc123", "type": "complete", "result": "correct!"}
+            correct_event.data = {"event_name": "custom", "request_id": "abc123", "type": "complete", "result": "correct!"}
             callback(correct_event)
 
         asyncio.create_task(trigger_events())
