@@ -679,7 +679,7 @@ class ProgressTracker:
         self._emit(event)
         return self._trace_id
 
-    def complete(self, result: Any = None, **kwargs: Any) -> None:
+    def complete(self, result: object | None = None, **kwargs: Any) -> None:
         """Mark operation as complete.
 
         Args:
@@ -816,7 +816,7 @@ class ProgressTracker:
             )
             self._emit(event)
 
-    def tool_result(self, tool: str, result: Any, **kwargs: Any) -> None:
+    def tool_result(self, tool: str, result: object, **kwargs: Any) -> None:
         """Report tool result.
 
         Args:
@@ -1257,7 +1257,7 @@ def create_executor_callback(
         Callback function for agent.run(on_step=...).
     """
 
-    def callback(step_type: str, data: Any) -> None:
+    def callback(step_type: str, data: object) -> None:
         if step_type == "planning_dag":
             tracker.update("Building execution DAG...")
         elif step_type == "dag_waves":
