@@ -5,7 +5,6 @@ Defines the interface all storage backends must implement.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Protocol
 
 from agenticflow.capabilities.knowledge_graph.models import Entity, Relationship

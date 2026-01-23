@@ -417,8 +417,7 @@ class Spreadsheet(BaseCapability):
                             ):
                                 match = False
                         elif op == "$endswith" and not (
-                            value
-                            and str(value).lower().endswith(str(target).lower())
+                            value and str(value).lower().endswith(str(target).lower())
                         ):
                             match = False
                 else:

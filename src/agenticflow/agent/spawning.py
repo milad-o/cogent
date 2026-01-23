@@ -43,7 +43,7 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from agenticflow.core.utils import generate_id, now_utc
 from agenticflow.observability.trace_record import TraceType
@@ -51,6 +51,17 @@ from agenticflow.tools.base import BaseTool, tool
 
 if TYPE_CHECKING:
     from agenticflow.agent.base import Agent
+
+
+class SpawnSummary(TypedDict):
+    """Summary of spawning activity."""
+
+    active_count: int
+    total_spawns: int
+    completed: int
+    failed: int
+    current_depth: int
+    max_depth: int
 
 
 @dataclass

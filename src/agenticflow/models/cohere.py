@@ -292,9 +292,7 @@ class CohereChat(BaseChatModel):
                             completion_tokens=int(usage.output_tokens)
                             if hasattr(usage, "output_tokens")
                             else 0,
-                            total_tokens=int(
-                                usage.input_tokens + usage.output_tokens
-                            )
+                            total_tokens=int(usage.input_tokens + usage.output_tokens)
                             if hasattr(usage, "input_tokens")
                             and hasattr(usage, "output_tokens")
                             else 0,
