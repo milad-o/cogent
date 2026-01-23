@@ -77,7 +77,7 @@ class Task:
     depends_on: list[str] = field(default_factory=list)
 
     # Results
-    result: Any = None
+    result: object | None = None
     error: str | None = None
 
     # Timestamps (full audit trail)

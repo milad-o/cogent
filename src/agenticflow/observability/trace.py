@@ -105,7 +105,7 @@ class ToolTrace:
     id: str = field(default_factory=generate_id)
     tool_name: str = ""
     args: dict[str, Any] = field(default_factory=dict)
-    result: Any = None
+    result: object | None = None
     error: str | None = None
 
     # Timing
@@ -609,7 +609,7 @@ class ExecutionTracer:
     def end_tool(
         self,
         trace: ToolTrace,
-        result: Any = None,
+        result: object | None = None,
         error: str | None = None,
     ) -> None:
         """End a tool trace.
