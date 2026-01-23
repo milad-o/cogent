@@ -2,7 +2,7 @@
 
 import pytest
 
-from agenticflow.memory import Memory, InMemoryStore
+from agenticflow.memory import InMemoryStore, Memory
 from agenticflow.memory.tools import create_memory_tools, format_memory_context
 
 
@@ -286,7 +286,7 @@ class TestAgenticMemory:
         """Memory always provides tools (no agentic parameter)."""
         memory = Memory()
         tools = memory.tools
-        
+
         assert len(tools) == 5  # remember, recall, forget, search_memories, search_conversation
         tool_names = {t.name for t in tools}
         assert "remember" in tool_names
@@ -300,7 +300,7 @@ class TestAgenticMemory:
         memory = Memory()
         tools1 = memory.tools
         tools2 = memory.tools
-        
+
         # Should return same list instance (cached)
         assert tools1 is tools2
 
@@ -309,14 +309,14 @@ class TestAgenticMemory:
         """Memory tools function correctly."""
         memory = Memory()
         tools = memory.tools
-        
+
         # Find remember and recall tools
         remember = next(t for t in tools if t.name == "remember")
         recall = next(t for t in tools if t.name == "recall")
-        
+
         # Use them
         result = await remember.func(key="name", value="Alice")
         assert "Remembered" in result or "name" in result
-        
+
         result = await recall.func(key="name")
         assert "Alice" in result

@@ -32,13 +32,13 @@ Available embedding models:
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -46,7 +46,6 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
-from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -75,7 +74,7 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 def _parse_response(response: Any) -> AIMessage:
     """Parse Mistral response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     choice = response.choices[0]
     message = choice.message
 
@@ -299,7 +298,7 @@ class MistralChat(BaseChatModel):
             "finish_reason": None,
             "usage": None,
         }
-        
+
         stream = await self._async_client.chat.completions.create(**params)
 
         async for chunk in stream:
@@ -327,7 +326,7 @@ class MistralChat(BaseChatModel):
                     duration=time.time() - start_time,
                 )
                 yield AIMessage(content="", metadata=metadata)
-            
+
             # Yield content chunks
             if chunk.choices and chunk.choices[0].delta.content:
                 metadata = MessageMetadata(
@@ -429,24 +428,29 @@ class MistralEmbedding(BaseEmbedding):
         """Embed texts synchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         all_embeddings: list[list[float]] = []
         total_prompt_tokens = 0
         model_name = None
-        
+
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             response = self._client.embeddings.create(**self._build_request(batch))
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-            
+
             if response.usage:
                 total_prompt_tokens += response.usage.prompt_tokens
             if response.model:
                 model_name = response.model
-        
+
         metadata = EmbeddingMetadata(
             model=model_name or self.model,
             tokens=TokenUsage(
@@ -458,7 +462,7 @@ class MistralEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
@@ -466,7 +470,12 @@ class MistralEmbedding(BaseEmbedding):
         self._ensure_initialized()
         import asyncio
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         total_prompt_tokens = 0
@@ -489,7 +498,7 @@ class MistralEmbedding(BaseEmbedding):
             total_prompt_tokens += tokens
             if model:
                 model_name = model
-        
+
         metadata = EmbeddingMetadata(
             model=model_name or self.model,
             tokens=TokenUsage(
@@ -501,7 +510,7 @@ class MistralEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     def _build_request(self, texts: list[str]) -> dict[str, Any]:

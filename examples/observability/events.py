@@ -20,14 +20,9 @@ Usage:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
 from collections import defaultdict
 
-
-from agenticflow import tool
-from agenticflow import Agent, Observer, ObservabilityLevel, EventBus
+from agenticflow import Agent, EventBus, ObservabilityLevel, Observer, tool
 from agenticflow.flow import mesh, pipeline
 from agenticflow.observability.event import EventType
 
@@ -55,36 +50,36 @@ async def example_basic_events():
     print("\n" + "=" * 60)
     print("  Example 1: Basic Event Collection")
     print("=" * 60)
-    
+
     model = "gpt4"
     events_by_category: dict[str, list[str]] = defaultdict(list)
-    
+
     def collect_event(event):
         category = event.type.value.split(".")[0]
         events_by_category[category].append(event.type.value)
-    
+
     observer = Observer(
         level=ObservabilityLevel.OFF,  # Silent - we handle output
         on_event=collect_event,
     )
-    
+
     agent = create_agent_with_observer(
         observer,
         name="Assistant",
         model="gpt4",
         instructions="You are a helpful assistant. Be concise.",
     )
-    
+
     # Run a simple task
     print("\nRunning: 'What is 2+2?'")
     result = await agent.run("What is 2+2?")
-    
+
     print(f"\nResult: {result[:100]}...")
     print("\n📊 Events by Category:")
     for category, events in sorted(events_by_category.items()):
         unique = list(dict.fromkeys(events))  # Preserve order, remove dupes
         print(f"  {category}: {unique}")
-    
+
     print(f"\n  Total events: {sum(len(e) for e in events_by_category.values())}")
 
 
@@ -96,32 +91,32 @@ async def example_user_output_events():
     print("\n" + "=" * 60)
     print("  Example 2: User Input & Output Events")
     print("=" * 60)
-    
+
     model = "gpt4"
     user_events = []
     output_events = []
-    
+
     def track_io(event):
         if event.type == EventType.USER_INPUT:
             user_events.append(event.data)
         elif event.type == EventType.OUTPUT_GENERATED:
             output_events.append(event.data)
-    
+
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_io)
-    
+
     planner = Agent(name="Planner", model="gpt4", instructions="Create brief plans.")
     executor = Agent(name="Executor", model="gpt4", instructions="Execute plans briefly.")
-    
+
     flow = pipeline([planner, executor], observer=observer)
-    
+
     print("\nRunning pipeline flow...")
     result = await flow.run("Plan a 10-minute workout")
-    
+
     print("\n👤 USER_INPUT Events:")
     for data in user_events:
         input_text = data.get("input", "")[:80]
         print(f"  → {input_text}...")
-    
+
     print("\n📝 OUTPUT_GENERATED Events:")
     for data in output_events:
         output_text = data.get("output", "")[:80]
@@ -136,10 +131,10 @@ async def example_agent_lifecycle():
     print("\n" + "=" * 60)
     print("  Example 3: Agent Lifecycle Events")
     print("=" * 60)
-    
+
     model = "gpt4"
     lifecycle_events = []
-    
+
     # Agent lifecycle event types
     agent_events = {
         EventType.AGENT_INVOKED,
@@ -148,22 +143,22 @@ async def example_agent_lifecycle():
         EventType.AGENT_RESPONDED,
         EventType.AGENT_ERROR,
     }
-    
+
     def track_lifecycle(event):
         if event.type in agent_events:
             agent = event.data.get("agent_name", "unknown")
             lifecycle_events.append((event.type.value, agent))
-    
+
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_lifecycle)
-    
+
     researcher = Agent(name="Researcher", model="gpt4", instructions="Research topics briefly.")
     writer = Agent(name="Writer", model="gpt4", instructions="Write content briefly.")
-    
+
     flow = pipeline([researcher, writer], observer=observer)
-    
+
     print("\nRunning 2-agent pipeline...")
     await flow.run("Write about Python")
-    
+
     print("\n🔄 Agent Lifecycle Timeline:")
     for event_type, agent in lifecycle_events:
         symbol = {
@@ -184,7 +179,7 @@ async def example_tool_events():
     print("\n" + "=" * 60)
     print("  Example 4: Tool Execution Events")
     print("=" * 60)
-    
+
     @tool
     def calculate(expression: str) -> str:
         """Calculate a math expression."""
@@ -193,28 +188,28 @@ async def example_tool_events():
             return f"Result: {result}"
         except Exception as e:
             return f"Error: {e}"
-    
+
     @tool
     def get_weather(city: str) -> str:
         """Get weather for a city."""
         return f"Weather in {city}: Sunny, 72°F"
-    
+
     model = "gpt4"
     tool_events = []
-    
+
     tool_event_types = {
         EventType.TOOL_CALLED,
         EventType.TOOL_RESULT,
         EventType.TOOL_ERROR,
         EventType.LLM_TOOL_DECISION,
     }
-    
+
     def track_tools(event):
         if event.type in tool_event_types:
             tool_events.append((event.type.value, event.data))
-    
+
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_tools)
-    
+
     agent = create_agent_with_observer(
         observer,
         name="Calculator",
@@ -222,10 +217,10 @@ async def example_tool_events():
         tools=[calculate, get_weather],
         instructions="Use tools to answer questions. Be concise.",
     )
-    
+
     print("\nRunning agent with tools...")
     result = await agent.run("What is 15 * 7? Also, what's the weather in Paris?")
-    
+
     print("\n🔧 Tool Events:")
     for event_type, data in tool_events:
         if event_type == "tool.called":
@@ -235,7 +230,7 @@ async def example_tool_events():
             print(f"  📥 TOOL_RESULT: {data.get('tool_name')} → {result_preview}")
         elif event_type == "llm.tool_decision":
             print(f"  🎯 LLM_TOOL_DECISION: {data.get('tools_selected')}")
-    
+
     print(f"\n  Total tool events: {len(tool_events)}")
 
 
@@ -247,31 +242,31 @@ async def example_llm_tracing():
     print("\n" + "=" * 60)
     print("  Example 5: LLM Deep Tracing")
     print("=" * 60)
-    
+
     model = "gpt4"
     llm_events = []
-    
+
     llm_event_types = {
         EventType.LLM_REQUEST,
         EventType.LLM_RESPONSE,
     }
-    
+
     def track_llm(event):
         if event.type in llm_event_types:
             llm_events.append((event.type.value, event.data))
-    
+
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_llm)
-    
+
     agent = create_agent_with_observer(
         observer,
         name="Analyst",
         model="gpt4",
         instructions="You analyze data. Be concise.",
     )
-    
+
     print("\nRunning agent (tracking LLM calls)...")
     await agent.run("Analyze the number 42")
-    
+
     print("\n📡 LLM Request/Response Events:")
     for event_type, data in llm_events:
         if event_type == "llm.request":
@@ -296,31 +291,31 @@ async def example_message_events():
     print("\n" + "=" * 60)
     print("  Example 6: Message Passing Events")
     print("=" * 60)
-    
+
     model = "gpt4"
     message_events = []
-    
+
     message_event_types = {
         EventType.MESSAGE_SENT,
         EventType.MESSAGE_RECEIVED,
     }
-    
+
     def track_messages(event):
         if event.type in message_event_types:
             message_events.append((event.type.value, event.data))
-    
+
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_messages)
-    
+
     # Mesh pattern has agents communicating with each other
     agent1 = Agent(name="Alice", model="gpt4", instructions="You are Alice. Collaborate briefly.")
     agent2 = Agent(name="Bob", model="gpt4", instructions="You are Bob. Collaborate briefly.")
     agent3 = Agent(name="Charlie", model="gpt4", instructions="You are Charlie. Synthesize briefly.")
-    
+
     flow = mesh([agent1, agent2, agent3], max_rounds=1, observer=observer)
-    
+
     print("\nRunning mesh flow (agents exchange messages)...")
     await flow.run("What is the best programming language?")
-    
+
     print("\n💬 Message Events:")
     for event_type, data in message_events[:10]:  # Show first 10
         if event_type == "message.sent":
@@ -332,7 +327,7 @@ async def example_message_events():
             receiver = data.get("to", "?")
             sender = data.get("from", "?")
             print(f"  📥 {receiver} ← {sender}")
-    
+
     if len(message_events) > 10:
         print(f"  ... and {len(message_events) - 10} more")
 
@@ -345,32 +340,32 @@ async def example_task_events():
     print("\n" + "=" * 60)
     print("  Example 7: Task Lifecycle Events")
     print("=" * 60)
-    
+
     model = "gpt4"
     task_events = []
-    
+
     task_event_types = {
         EventType.TASK_CREATED,
         EventType.TASK_STARTED,
         EventType.TASK_COMPLETED,
         EventType.TASK_FAILED,
     }
-    
+
     def track_tasks(event):
         if event.type in task_event_types:
             task_events.append((event.type.value, event.data))
-    
+
     observer = Observer(level=ObservabilityLevel.OFF, on_event=track_tasks)
-    
+
     step1 = Agent(name="Step1", model="gpt4", instructions="First step. Be brief.")
     step2 = Agent(name="Step2", model="gpt4", instructions="Second step. Be brief.")
     step3 = Agent(name="Step3", model="gpt4", instructions="Third step. Be brief.")
-    
+
     flow = pipeline([step1, step2, step3], observer=observer)
-    
+
     print("\nRunning 3-step pipeline...")
     await flow.run("Process this data")
-    
+
     print("\n📋 Task Events:")
     for event_type, data in task_events:
         agent = data.get("agent", data.get("agent_name", "?"))
@@ -391,20 +386,20 @@ async def example_all_events_summary():
     print("\n" + "=" * 60)
     print("  Example 8: Complete Event Timeline")
     print("=" * 60)
-    
+
     @tool
     def lookup(topic: str) -> str:
         """Look up information about a topic."""
         return f"Information about {topic}: It's interesting!"
-    
+
     model = "gpt4"
     all_events = []
-    
+
     def collect_all(event):
         all_events.append((event.type.value, event.timestamp, event.data))
-    
+
     observer = Observer(level=ObservabilityLevel.OFF, on_event=collect_all)
-    
+
     agent = create_agent_with_observer(
         observer,
         name="ResearchBot",
@@ -412,18 +407,18 @@ async def example_all_events_summary():
         tools=[lookup],
         instructions="Use the lookup tool to research topics. Be concise.",
     )
-    
+
     print("\nRunning agent with tool (capturing all events)...")
     await agent.run("Research quantum computing")
-    
+
     print("\n📊 Complete Event Timeline:")
     print("-" * 50)
-    
+
     # Group by category for cleaner display
     categories_seen = set()
     for event_type, timestamp, data in all_events:
         category = event_type.split(".")[0]
-        
+
         # Visual indicators
         symbols = {
             "user": "👤",
@@ -438,24 +433,24 @@ async def example_all_events_summary():
             "retrieval": "🔍",
         }
         symbol = symbols.get(category, "·")
-        
+
         # Show each unique category once with all its events
         if category not in categories_seen:
             categories_seen.add(category)
-        
+
         # Format event display
         time_str = timestamp.strftime("%H:%M:%S.%f")[:-3]
         print(f"  {time_str} {symbol} {event_type}")
-    
+
     print("-" * 50)
     print(f"  Total: {len(all_events)} events")
-    
+
     # Summary by category
     category_counts = defaultdict(int)
     for event_type, _, _ in all_events:
         category = event_type.split(".")[0]
         category_counts[category] += 1
-    
+
     print("\n  By Category:")
     for cat, count in sorted(category_counts.items(), key=lambda x: -x[1]):
         print(f"    {cat}: {count}")
@@ -471,7 +466,7 @@ async def main():
     print("=" * 60)
     print("\nThis demo showcases all event types with practical examples.")
     print("Events enable observability, debugging, and monitoring.")
-    
+
     # Run examples
     await example_basic_events()
     await example_user_output_events()
@@ -481,7 +476,7 @@ async def main():
     await example_message_events()
     await example_task_events()
     await example_all_events_summary()
-    
+
     print("\n" + "=" * 60)
     print("  Event Categories Reference")
     print("=" * 60)

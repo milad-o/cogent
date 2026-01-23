@@ -11,10 +11,6 @@ The example shows:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent, Flow
 from agenticflow.events import Event, any_source, from_source, not_from_source

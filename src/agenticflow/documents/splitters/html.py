@@ -5,8 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from agenticflow.documents.splitters.base import BaseSplitter
 from agenticflow.core import Document
+from agenticflow.documents.splitters.base import BaseSplitter
 
 
 class HTMLSplitter(BaseSplitter):

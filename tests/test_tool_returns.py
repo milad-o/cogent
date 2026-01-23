@@ -2,11 +2,8 @@
 Tests for tool return type extraction and schema generation.
 """
 
-import pytest
 from agenticflow.tools import tool
 from agenticflow.tools.base import (
-    BaseTool,
-    _extract_return_info,
     _type_to_readable_string,
 )
 

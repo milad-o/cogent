@@ -2,12 +2,13 @@
 Tests for TaskManager.
 """
 
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
 from agenticflow.core.enums import Priority, TaskStatus
-from agenticflow.observability.trace_record import TraceType
 from agenticflow.observability.bus import TraceBus
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.tasks.manager import TaskManager
 
 

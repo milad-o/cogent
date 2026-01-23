@@ -17,20 +17,19 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
     BaseEmbedding,
     convert_messages,
 )
-from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -59,7 +58,7 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 def _parse_response(response: Any) -> AIMessage:
     """Parse Ollama response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     choice = response.choices[0]
     message = choice.message
 
@@ -202,7 +201,7 @@ class OllamaChat(BaseChatModel):
             "finish_reason": None,
             "usage": None,
         }
-        
+
         async for chunk in await self._async_client.chat.completions.create(**kwargs):
             # Accumulate metadata
             if hasattr(chunk, 'id') and chunk.id:
@@ -228,7 +227,7 @@ class OllamaChat(BaseChatModel):
                     duration=time.time() - start_time,
                 )
                 yield AIMessage(content="", metadata=metadata)
-            
+
             # Yield content chunks
             if chunk.choices and chunk.choices[0].delta.content:
                 metadata = MessageMetadata(
@@ -320,11 +319,15 @@ class OllamaEmbedding(BaseEmbedding):
         """Embed texts synchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+        )
 
         start_time = time.time()
         all_embeddings: list[list[float]] = []
-        
+
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             response = self._client.embeddings.create(
@@ -333,7 +336,7 @@ class OllamaEmbedding(BaseEmbedding):
             )
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=None,  # Ollama typically doesn't return token counts for embeddings
@@ -341,7 +344,7 @@ class OllamaEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
@@ -349,7 +352,11 @@ class OllamaEmbedding(BaseEmbedding):
         self._ensure_initialized()
         import asyncio
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+        )
 
         start_time = time.time()
 
@@ -367,7 +374,7 @@ class OllamaEmbedding(BaseEmbedding):
         all_embeddings: list[list[float]] = []
         for batch_result in results:
             all_embeddings.extend(batch_result)
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=None,  # Ollama typically doesn't return token counts for embeddings
@@ -375,5 +382,5 @@ class OllamaEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)

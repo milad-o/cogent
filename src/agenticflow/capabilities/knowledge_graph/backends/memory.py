@@ -24,7 +24,7 @@ class InMemoryGraph(GraphBackend):
         """
         self._path = Path(path) if path else None
         self._auto_save = auto_save and path is not None
-        
+
         try:
             import networkx as nx
 
@@ -35,11 +35,11 @@ class InMemoryGraph(GraphBackend):
             self._nx = None
             self._entities: dict[str, Entity] = {}
             self._relationships: list[Relationship] = []
-        
+
         # Load from file if path exists
         if self._path and self._path.exists():
             self.load(self._path)
-    
+
     def _maybe_save(self) -> None:
         """Auto-save if enabled."""
         if self._auto_save and self._path:

@@ -46,7 +46,7 @@ async def demo_memory_discovery():
     await memory.remember("job_title", "Senior Developer")
     await memory.remember("team", "AI Research")
     await memory.remember("email", "alice@example.com")
-    
+
     print("  Stored keys:")
     keys = await memory.keys()
     for key in keys:
@@ -84,19 +84,19 @@ async def demo_memory_discovery():
     # Show direct search vs recall
     print("\n  💡 Key Discovery Mechanism:")
     search_tool = next(t for t in memory.tools if t.name == "search_memories")
-    
+
     # Search finds keys even with fuzzy queries
     result = await search_tool.func(query="language")
     print(f"    search_memories('language') → {result}")
-    
+
     result = await search_tool.func(query="work")
     print(f"    search_memories('work') → {result}")
-    
+
     # Recall needs exact key
     recall_tool = next(t for t in memory.tools if t.name == "recall")
     result = await recall_tool.func(key="favorite_language")
     print(f"    recall('favorite_language') → {result}")
-    
+
     result = await recall_tool.func(key="occupation")  # Wrong key
     print(f"    recall('occupation') → {result} ❌")
 
@@ -106,7 +106,7 @@ async def demo_conversation_memory():
     print("\n--- Conversation Memory (Thread-Based) ---")
 
     model = "gpt4"
-    
+
     # Memory is always agentic - tools are automatically available
     memory = Memory()
 

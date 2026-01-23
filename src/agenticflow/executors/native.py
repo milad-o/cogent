@@ -158,11 +158,11 @@ async def run(
 
         # Execute tools with concurrency limiting
         semaphore = asyncio.Semaphore(20)  # Max 20 concurrent
-        
+
         async def execute_with_limit(tc):
             async with semaphore:
                 return await _execute_tool_native(tc, tool_map)
-        
+
         tool_results = await asyncio.gather(
             *[execute_with_limit(tc) for tc in response.tool_calls],
             return_exceptions=True,
@@ -1086,8 +1086,8 @@ class NativeExecutor(BaseExecutor):
             ThinkingStep,
             build_reasoning_prompt,
             estimate_confidence,
-            extract_thinking,
             extract_ready,
+            extract_thinking,
         )
         from agenticflow.observability.trace_record import TraceType
 
@@ -1144,7 +1144,7 @@ class NativeExecutor(BaseExecutor):
             # Extract thinking and ready signal from response
             thinking, cleaned = extract_thinking(content)
             is_ready = extract_ready(content)
-            
+
             if thinking:
                 final_thinking = thinking
                 confidence = estimate_confidence(thinking)
@@ -1229,11 +1229,11 @@ class NativeExecutor(BaseExecutor):
         """
         # Semaphore to limit concurrent tool execution
         semaphore = asyncio.Semaphore(self._max_concurrent_tools)
-        
+
         async def execute_with_limit(tc):
             async with semaphore:
                 return await self._run_single_tool(tc, run_context)
-        
+
         # Execute all tools with concurrency limiting
         results = await asyncio.gather(
             *(execute_with_limit(tc) for tc in tool_calls),
@@ -1270,8 +1270,9 @@ class NativeExecutor(BaseExecutor):
             ToolMessage with the result.
         """
         import time
+
         from agenticflow.core import ToolCall
-        
+
         tool_name = tool_call.get("name", "")
         args = tool_call.get("args", {})
         tool_id = tool_call.get("id", "")
@@ -1292,7 +1293,7 @@ class NativeExecutor(BaseExecutor):
                     success=False,
                     error=f"Unknown tool '{tool_name}'",
                 ))
-            
+
             return ToolMessage(
                 content=f"Error: Unknown tool '{tool_name}'",
                 tool_call_id=tool_id,
@@ -1329,7 +1330,7 @@ class NativeExecutor(BaseExecutor):
         except Exception as e:
             duration = time.time() - start_time
             self._track_tool_error(tool_name, str(e))
-            
+
             # Track failed tool call in agent state
             if hasattr(self.agent, 'state'):
                 self.agent.state.tool_calls.append(ToolCall(
@@ -1340,7 +1341,7 @@ class NativeExecutor(BaseExecutor):
                     success=False,
                     error=str(e),
                 ))
-            
+
             return ToolMessage(
                 content=f"Error: {e}",
                 tool_call_id=tool_id,

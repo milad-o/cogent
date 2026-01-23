@@ -22,7 +22,7 @@ def create_delegate_tool(flow: Any, from_agent: str) -> Any:
     Returns:
         Tool function for delegating to specialists
     """
-    
+
     @tool
     async def delegate_to(
         specialist: str,
@@ -46,21 +46,21 @@ def create_delegate_tool(flow: Any, from_agent: str) -> Any:
             )
         """
         from agenticflow.reactive.a2a import create_request
-        
+
         # Create agent request
         request = create_request(
             from_agent=from_agent,
             to_agent=specialist,
             task=task,
         )
-        
+
         # Emit agent.request event to trigger the specialist
         await flow.emit("agent.request", request.to_event())
-        
+
         return f"Task delegated to {specialist}"
-    
+
     # Add metadata about available specialists
-    available = [name for name, (_, cfg) in flow._agents_registry.items() 
+    available = [name for name, (_, cfg) in flow._agents_registry.items()
                  if any(t.on == "agent.request" for t in cfg.triggers)]
     delegate_to.__doc__ = f"""Delegate a task to a specialist agent.
     
@@ -75,7 +75,7 @@ Args:
 Returns:
     Confirmation that the task was delegated
 """
-    
+
     return delegate_to
 
 
@@ -92,7 +92,7 @@ def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
     Returns:
         Tool function for replying with results
     """
-    
+
     @tool
     async def reply_with_result(
         result: str,
@@ -116,7 +116,7 @@ def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
             )
         """
         from agenticflow.reactive.a2a import AgentResponse
-        
+
         # Create response (correlation_id will be extracted from current event context)
         response = AgentResponse(
             from_agent=specialist_agent,
@@ -127,11 +127,11 @@ def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
             success=success,
             error=None if success else "Task failed",
         )
-        
+
         # Emit agent.response event
         await flow.emit("agent.response", response.to_event())
-        
+
         return "Result sent back to coordinator"
-    
+
     return reply_with_result
 

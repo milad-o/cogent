@@ -124,7 +124,7 @@ class TestAgentFactoryMethods:
         """Agent with role=WORKER creates WORKER role."""
         model = ChatModel(model="gpt-4o-mini")
         agent = Agent(name="TestWorker", model=model, role=AgentRole.WORKER)
-        
+
         assert agent.role == AgentRole.WORKER
         assert agent.can_use_tools is True
         assert agent.can_finish is False
@@ -139,7 +139,7 @@ class TestAgentFactoryMethods:
             role=AgentRole.SUPERVISOR,
             workers=["worker1", "worker2"]
         )
-        
+
         assert agent.role == AgentRole.SUPERVISOR
         assert agent.can_use_tools is False
         assert agent.can_finish is True
@@ -149,7 +149,7 @@ class TestAgentFactoryMethods:
         """Agent with role=REVIEWER creates REVIEWER role."""
         model = ChatModel(model="gpt-4o-mini")
         agent = Agent(name="TestReviewer", model=model, role=AgentRole.REVIEWER)
-        
+
         assert agent.role == AgentRole.REVIEWER
         assert agent.can_use_tools is False
         assert agent.can_finish is True
@@ -159,7 +159,7 @@ class TestAgentFactoryMethods:
         """Agent without explicit role defaults to WORKER."""
         model = ChatModel(model="gpt-4o-mini")
         agent = Agent(name="TestAgent", model=model)
-        
+
         assert agent.role == AgentRole.WORKER
         assert agent.can_use_tools is True
         assert agent.can_finish is False
@@ -237,10 +237,10 @@ class TestRoleEnforcement:
     def test_agent_inherits_role_capabilities(self):
         """Agent instances correctly inherit their role's capabilities."""
         model = ChatModel(model="gpt-4o-mini")
-        
+
         for role in AgentRole:
             agent = Agent(name=f"Test{role.value}", model=model, role=role)
-            
+
             # Agent capabilities should match role capabilities
             assert agent.can_use_tools == role.can_use_tools()
             assert agent.can_finish == role.can_finish()
@@ -250,7 +250,7 @@ class TestRoleEnforcement:
         """RoleBehavior and AgentRole capabilities stay in sync."""
         for role in AgentRole:
             behavior = get_role_behavior(role)
-            
+
             # Behavior should match role enum methods
             assert behavior.can_use_tools == role.can_use_tools()
             assert behavior.can_finish == role.can_finish()

@@ -24,12 +24,12 @@ class CoordinationState:
         completed: Whether all required sources have emitted.
         timeout_at: Optional timeout deadline (for future timeout support).
     """
-    
+
     required_sources: frozenset[str]
     seen_sources: set[str] = field(default_factory=set)
     completed: bool = False
     timeout_at: float | None = None
-    
+
     def add_source(self, source: str) -> bool:
         """Add a source to the seen set.
         
@@ -49,7 +49,7 @@ class CoordinationState:
             self.completed = self.seen_sources == self.required_sources
             return self.completed
         return False
-    
+
     def reset(self) -> None:
         """Clear state for reuse in the next coordination cycle.
         
@@ -72,12 +72,12 @@ class CoordinationManager:
         All public methods are thread-safe via a single lock.
         The lock is held for minimal duration (just state updates).
     """
-    
+
     def __init__(self) -> None:
         """Initialize an empty coordination manager."""
         self._coordinations: dict[str, CoordinationState] = {}
         self._lock = Lock()
-    
+
     def register_coordination(
         self,
         binding_id: str,
@@ -96,13 +96,13 @@ class CoordinationManager:
         """
         if not sources:
             raise ValueError("Coordination requires at least one source")
-        
+
         with self._lock:
             self._coordinations[binding_id] = CoordinationState(
                 required_sources=sources,
                 timeout_at=timeout
             )
-    
+
     def check_coordination(self, binding_id: str, source: str) -> bool:
         """Check if an event from a source completes the coordination.
         
@@ -133,7 +133,7 @@ class CoordinationManager:
             if coordination.completed:
                 return False  # Already completed this cycle
             return coordination.add_source(source)
-    
+
     def reset_coordination(self, binding_id: str) -> None:
         """Manually reset a coordination point.
         
@@ -150,7 +150,7 @@ class CoordinationManager:
         with self._lock:
             if binding_id in self._coordinations:
                 self._coordinations[binding_id].reset()
-    
+
     def remove_coordination(self, binding_id: str) -> None:
         """Remove a coordination point (cleanup).
         
@@ -165,7 +165,7 @@ class CoordinationManager:
         """
         with self._lock:
             self._coordinations.pop(binding_id, None)
-    
+
     def get_coordination_state(self, binding_id: str) -> CoordinationState | None:
         """Get the current state of a coordination point (for debugging/observability).
         

@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from agenticflow.core import Document
 from agenticflow.documents.splitters.base import BaseSplitter
 from agenticflow.documents.splitters.character import RecursiveCharacterSplitter
-from agenticflow.core import Document
 
 
 class MarkdownSplitter(BaseSplitter):

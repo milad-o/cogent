@@ -10,10 +10,6 @@ Requires: uv add playwright && playwright install chromium
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent, Flow
 from agenticflow.capabilities import Browser

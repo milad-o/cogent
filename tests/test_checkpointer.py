@@ -2,24 +2,18 @@
 
 from __future__ import annotations
 
-import asyncio
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from agenticflow import (
-    Flow,
-)
 from agenticflow.flow.checkpointer import (
+    FileCheckpointer,
     FlowState,
     MemoryCheckpointer,
-    FileCheckpointer,
     generate_checkpoint_id,
     generate_flow_id,
 )
-
 
 # =============================================================================
 # FlowState Tests
@@ -39,9 +33,9 @@ class TestFlowState:
             last_output="Hello",
             round=3,
         )
-        
+
         data = state.to_dict()
-        
+
         assert data["flow_id"] == "test-flow"
         assert data["checkpoint_id"] == "cp-123"
         assert data["task"] == "Test task"
@@ -62,9 +56,9 @@ class TestFlowState:
             "round": 5,
             "timestamp": "2024-01-01T00:00:00+00:00",
         }
-        
+
         state = FlowState.from_dict(data)
-        
+
         assert state.flow_id == "test-flow"
         assert state.checkpoint_id == "cp-456"
         assert state.task == "Another task"
@@ -86,9 +80,9 @@ class TestFlowState:
             last_output="Result",
             round=7,
         )
-        
+
         restored = FlowState.from_dict(original.to_dict())
-        
+
         assert restored.flow_id == original.flow_id
         assert restored.checkpoint_id == original.checkpoint_id
         assert restored.task == original.task
@@ -116,10 +110,10 @@ class TestMemoryCheckpointer:
             checkpoint_id="cp1",
             task="Test",
         )
-        
+
         await checkpointer.save(state)
         loaded = await checkpointer.load("cp1")
-        
+
         assert loaded is not None
         assert loaded.flow_id == "f1"
         assert loaded.checkpoint_id == "cp1"
@@ -128,13 +122,13 @@ class TestMemoryCheckpointer:
     async def test_load_latest(self) -> None:
         """Can load the latest checkpoint for a flow."""
         checkpointer = MemoryCheckpointer()
-        
+
         await checkpointer.save(FlowState(flow_id="f1", checkpoint_id="cp1", task="T", round=1))
         await checkpointer.save(FlowState(flow_id="f1", checkpoint_id="cp2", task="T", round=2))
         await checkpointer.save(FlowState(flow_id="f1", checkpoint_id="cp3", task="T", round=3))
-        
+
         latest = await checkpointer.load_latest("f1")
-        
+
         assert latest is not None
         assert latest.checkpoint_id == "cp3"
         assert latest.round == 3
@@ -143,13 +137,13 @@ class TestMemoryCheckpointer:
     async def test_list_checkpoints(self) -> None:
         """Can list checkpoints for a flow."""
         checkpointer = MemoryCheckpointer()
-        
+
         await checkpointer.save(FlowState(flow_id="f1", checkpoint_id="cp1", task="T"))
         await checkpointer.save(FlowState(flow_id="f1", checkpoint_id="cp2", task="T"))
         await checkpointer.save(FlowState(flow_id="f2", checkpoint_id="cp3", task="T"))
-        
+
         f1_checkpoints = await checkpointer.list_checkpoints("f1")
-        
+
         assert len(f1_checkpoints) == 2
         assert "cp2" in f1_checkpoints
         assert "cp1" in f1_checkpoints
@@ -159,11 +153,11 @@ class TestMemoryCheckpointer:
         """Can delete a checkpoint."""
         checkpointer = MemoryCheckpointer()
         state = FlowState(flow_id="f1", checkpoint_id="cp1", task="T")
-        
+
         await checkpointer.save(state)
         deleted = await checkpointer.delete("cp1")
         loaded = await checkpointer.load("cp1")
-        
+
         assert deleted is True
         assert loaded is None
 
@@ -171,16 +165,16 @@ class TestMemoryCheckpointer:
     async def test_max_checkpoints_pruning(self) -> None:
         """Old checkpoints are pruned when limit reached."""
         checkpointer = MemoryCheckpointer(max_checkpoints_per_flow=3)
-        
+
         for i in range(5):
             await checkpointer.save(FlowState(
                 flow_id="f1",
                 checkpoint_id=f"cp{i}",
                 task="T",
             ))
-        
+
         checkpoints = await checkpointer.list_checkpoints("f1")
-        
+
         assert len(checkpoints) == 3
         # Oldest (cp0, cp1) should be pruned
         assert "cp0" not in checkpoints
@@ -207,10 +201,10 @@ class TestFileCheckpointer:
                 task="Test",
                 last_output="Result",
             )
-            
+
             await checkpointer.save(state)
             loaded = await checkpointer.load("cp1")
-            
+
             assert loaded is not None
             assert loaded.flow_id == "f1"
             assert loaded.last_output == "Result"
@@ -220,9 +214,9 @@ class TestFileCheckpointer:
         """Loading nonexistent checkpoint returns None."""
         with tempfile.TemporaryDirectory() as tmpdir:
             checkpointer = FileCheckpointer(Path(tmpdir))
-            
+
             loaded = await checkpointer.load("does-not-exist")
-            
+
             assert loaded is None
 
     @pytest.mark.asyncio
@@ -231,11 +225,11 @@ class TestFileCheckpointer:
         with tempfile.TemporaryDirectory() as tmpdir:
             checkpointer = FileCheckpointer(Path(tmpdir))
             state = FlowState(flow_id="f1", checkpoint_id="cp1", task="T")
-            
+
             await checkpointer.save(state)
             deleted = await checkpointer.delete("cp1")
             loaded = await checkpointer.load("cp1")
-            
+
             assert deleted is True
             assert loaded is None
 
@@ -252,7 +246,7 @@ class TestIdGeneration:
         """Checkpoint IDs are unique and prefixed."""
         id1 = generate_checkpoint_id()
         id2 = generate_checkpoint_id()
-        
+
         assert id1.startswith("cp_")
         assert id2.startswith("cp_")
         assert id1 != id2
@@ -261,7 +255,7 @@ class TestIdGeneration:
         """Flow IDs are unique and prefixed."""
         id1 = generate_flow_id()
         id2 = generate_flow_id()
-        
+
         assert id1.startswith("flow_")
         assert id2.startswith("flow_")
         assert id1 != id2

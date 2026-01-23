@@ -50,11 +50,11 @@ def create_documents(
     for i, text in enumerate(texts):
         # Create DocumentMetadata from dict (backward compatible)
         metadata = DocumentMetadata.from_dict(metadatas[i]) if metadatas else DocumentMetadata()
-        
+
         # Override ID if provided
         if ids:
             metadata.id = ids[i]
-            
+
         doc = Document(text=text, metadata=metadata)
         documents.append(doc)
 

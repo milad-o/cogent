@@ -9,9 +9,9 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from agenticflow.core import Document
 from agenticflow.documents.loaders.base import BaseLoader
 from agenticflow.documents.loaders.registry import get_loader, register_loader
-from agenticflow.core import Document
 
 
 class DocumentLoader:

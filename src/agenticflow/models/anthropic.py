@@ -10,20 +10,19 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
     convert_messages,
     normalize_input,
 )
-from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _messages_to_anthropic(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
@@ -97,7 +96,7 @@ def _tools_to_anthropic(tools: list[Any]) -> list[dict[str, Any]]:
 def _parse_response(response: Any) -> AIMessage:
     """Parse Anthropic response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     content = ""
     tool_calls = []
 
@@ -243,7 +242,7 @@ class AnthropicChat(BaseChatModel):
             "finish_reason": None,
             "usage": None,
         }
-        
+
         async with self._async_client.messages.stream(**kwargs) as stream:
             async for text in stream.text_stream:
                 # Accumulate metadata from the stream
@@ -257,7 +256,7 @@ class AnthropicChat(BaseChatModel):
                         chunk_metadata["finish_reason"] = msg.stop_reason
                     if hasattr(msg, 'usage') and msg.usage:
                         chunk_metadata["usage"] = msg.usage
-                
+
                 metadata = MessageMetadata(
                     id=str(uuid.uuid4()),
                     timestamp=time.time(),
@@ -268,7 +267,7 @@ class AnthropicChat(BaseChatModel):
                     duration=time.time() - start_time,
                 )
                 yield AIMessage(content=text, metadata=metadata)
-            
+
             # Yield final metadata chunk with complete usage
             if hasattr(stream, 'current_message_snapshot'):
                 msg = stream.current_message_snapshot

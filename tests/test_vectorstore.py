@@ -25,7 +25,6 @@ from agenticflow.vectorstore import (
 )
 from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
 
-
 # ============================================================
 # Document Tests
 # ============================================================
@@ -195,7 +194,7 @@ class TestSplitDocuments:
             Document(text="A" * 200, metadata=DocumentMetadata(source="test.txt")),
         ]
         chunks = split_documents(docs, chunk_size=50, chunk_overlap=10)
-        
+
         assert len(chunks) > 1
         # Metadata should be preserved
         assert all(c.metadata.source == "test.txt" for c in chunks)
@@ -223,7 +222,7 @@ class TestInMemoryBackend:
         docs = [Document(text="Test")]
         embeddings = [[0.1, 0.2, 0.3]]
         ids = ["doc-1"]
-        
+
         await backend.add(ids, embeddings, docs)
         assert backend.count() == 1
 
@@ -233,7 +232,7 @@ class TestInMemoryBackend:
         docs = [Document(text=f"Doc {i}") for i in range(5)]
         embeddings = [[0.1 * i, 0.2 * i, 0.3 * i] for i in range(5)]
         ids = [f"doc-{i}" for i in range(5)]
-        
+
         await backend.add(ids, embeddings, docs)
         assert backend.count() == 5
 
@@ -249,12 +248,12 @@ class TestInMemoryBackend:
             [0.0, 1.0, 0.0],
         ]
         ids = ["python", "javascript"]
-        
+
         await backend.add(ids, embeddings, docs)
-        
+
         # Search with embedding similar to Python
         results = await backend.search([0.9, 0.1, 0.0], k=2)
-        
+
         assert len(results) == 2
         assert results[0].id == "python"  # Should be most similar
         assert results[0].score > results[1].score
@@ -269,12 +268,12 @@ class TestInMemoryBackend:
         ]
         embeddings = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         ids = ["py", "js", "rs"]
-        
+
         await backend.add(ids, embeddings, docs)
-        
+
         # Filter for only Python
         results = await backend.search([0.5, 0.5, 0.5], k=10, filter={"custom": {"lang": "python"}})
-        
+
         assert len(results) == 1
         assert results[0].document.metadata.custom["lang"] == "python"
 
@@ -289,7 +288,7 @@ class TestInMemoryBackend:
         """Test deleting documents."""
         docs = [Document(text="Test")]
         await backend.add(["doc-1"], [[0.1, 0.2, 0.3]], docs)
-        
+
         assert backend.count() == 1
         result = await backend.delete(["doc-1"])
         assert result is True
@@ -307,10 +306,10 @@ class TestInMemoryBackend:
         docs = [Document(text=f"Doc {i}") for i in range(3)]
         embeddings = [[0.1, 0.2, 0.3]] * 3
         ids = [f"doc-{i}" for i in range(3)]
-        
+
         await backend.add(ids, embeddings, docs)
         assert backend.count() == 3
-        
+
         await backend.clear()
         assert backend.count() == 0
 
@@ -319,7 +318,7 @@ class TestInMemoryBackend:
         """Test getting documents by ID."""
         docs = [Document(text="Test", metadata=DocumentMetadata(id="doc-1"))]
         await backend.add(["doc-1"], [[0.1, 0.2, 0.3]], docs)
-        
+
         retrieved = await backend.get(["doc-1"])
         assert len(retrieved) == 1
         assert retrieved[0].text == "Test"
@@ -353,9 +352,9 @@ class TestSimilarityMetrics:
     async def test_cosine_similarity(self) -> None:
         """Test cosine similarity metric (default)."""
         from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
-        
+
         backend = InMemoryBackend(metric=SimilarityMetric.COSINE)
-        
+
         docs = [
             Document(text="Aligned"),
             Document(text="Opposite"),
@@ -366,12 +365,12 @@ class TestSimilarityMetrics:
             [-1.0, 0.0, 0.0],  # Opposite direction
         ]
         ids = ["aligned", "opposite"]
-        
+
         await backend.add(ids, embeddings, docs)
-        
+
         # Query in same direction as "aligned"
         results = await backend.search([1.0, 0.0, 0.0], k=2)
-        
+
         assert results[0].id == "aligned"
         assert results[0].score > 0.99  # Nearly 1.0
         assert results[1].id == "opposite"
@@ -381,9 +380,9 @@ class TestSimilarityMetrics:
     async def test_euclidean_metric(self) -> None:
         """Test euclidean distance metric."""
         from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
-        
+
         backend = InMemoryBackend(metric=SimilarityMetric.EUCLIDEAN)
-        
+
         docs = [
             Document(text="Close"),
             Document(text="Far"),
@@ -393,12 +392,12 @@ class TestSimilarityMetrics:
             [10.0, 0.0, 0.0],  # Far away
         ]
         ids = ["close", "far"]
-        
+
         await backend.add(ids, embeddings, docs)
-        
+
         # Query close to first doc
         results = await backend.search([0.9, 0.0, 0.0], k=2)
-        
+
         assert results[0].id == "close"
         assert results[0].score > results[1].score  # Closer = higher score
 
@@ -406,9 +405,9 @@ class TestSimilarityMetrics:
     async def test_manhattan_metric(self) -> None:
         """Test manhattan distance metric."""
         from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
-        
+
         backend = InMemoryBackend(metric=SimilarityMetric.MANHATTAN)
-        
+
         docs = [
             Document(text="Close"),
             Document(text="Far"),
@@ -418,12 +417,12 @@ class TestSimilarityMetrics:
             [5.0, 5.0, 5.0],
         ]
         ids = ["close", "far"]
-        
+
         await backend.add(ids, embeddings, docs)
-        
+
         # Query close to first doc
         results = await backend.search([1.0, 1.0, 1.0], k=2)
-        
+
         assert results[0].id == "close"
         assert results[0].score == 1.0  # Exact match = 1/(1+0) = 1.0
 
@@ -431,10 +430,10 @@ class TestSimilarityMetrics:
     async def test_dot_product_metric(self) -> None:
         """Test dot product metric."""
         from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
-        
+
         # Disable normalization to see raw dot product differences
         backend = InMemoryBackend(metric=SimilarityMetric.DOT_PRODUCT, normalize=False)
-        
+
         docs = [
             Document(text="High magnitude"),
             Document(text="Low magnitude"),
@@ -444,12 +443,12 @@ class TestSimilarityMetrics:
             [0.5, 0.5, 0.5],
         ]
         ids = ["high", "low"]
-        
+
         await backend.add(ids, embeddings, docs)
-        
+
         # With raw dot product, higher magnitude matters
         results = await backend.search([1.0, 1.0, 1.0], k=2)
-        
+
         # High magnitude should have higher dot product (2*1 + 2*1 + 2*1 = 6 vs 0.5*3 = 1.5)
         assert results[0].id == "high"
         assert results[0].score > results[1].score
@@ -458,7 +457,7 @@ class TestSimilarityMetrics:
     async def test_metric_from_string(self) -> None:
         """Test creating backend with string metric."""
         backend = InMemoryBackend(metric="euclidean")
-        
+
         from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
         assert backend.metric == SimilarityMetric.EUCLIDEAN
 
@@ -513,11 +512,11 @@ class TestMockEmbeddings:
     async def test_normalized(self, embeddings: MockEmbeddings) -> None:
         """Test that embeddings are normalized."""
         import math
-        
+
         vector = await embeddings.aembed_one("Test")
         magnitude = math.sqrt(sum(x * x for x in vector))
         assert abs(magnitude - 1.0) < 0.01  # Should be ~1
-    
+
     def test_sync_embed(self, embeddings: MockEmbeddings) -> None:
         """Test synchronous embedding."""
         result = embeddings.embed(["Hello", "World"])
@@ -552,7 +551,7 @@ class TestVectorStore:
             texts=["Hello", "World"],
             metadatas=[{"idx": 0}, {"idx": 1}],
         )
-        
+
         docs = await store.get(ids)
         assert docs[0].metadata.custom["idx"] == 0
         assert docs[1].metadata.custom["idx"] == 1
@@ -564,7 +563,7 @@ class TestVectorStore:
             Document(text="Doc 1", metadata=DocumentMetadata(custom={"type": "a"})),
             Document(text="Doc 2", metadata=DocumentMetadata(custom={"type": "b"})),
         ]
-        
+
         ids = await store.add_documents(docs)
         assert len(ids) == 2
         assert store.count() == 2
@@ -577,7 +576,7 @@ class TestVectorStore:
             "JavaScript runs in browsers",
             "Rust is memory safe",
         ])
-        
+
         results = await store.search("programming", k=2)
         assert len(results) == 2
         assert all(isinstance(r, SearchResult) for r in results)
@@ -594,7 +593,7 @@ class TestVectorStore:
                 {"category": "systems"},
             ],
         )
-        
+
         results = await store.search("language", k=10, filter={"custom": {"category": "systems"}})
         assert len(results) == 1
         assert results[0].document.metadata.custom["category"] == "systems"
@@ -603,7 +602,7 @@ class TestVectorStore:
     async def test_similarity_search(self, store: VectorStore) -> None:
         """Test similarity_search returns documents."""
         await store.add_texts(["Hello", "World"])
-        
+
         docs = await store.similarity_search("greeting", k=1)
         assert len(docs) == 1
         assert isinstance(docs[0], Document)
@@ -613,7 +612,7 @@ class TestVectorStore:
         """Test deleting documents."""
         ids = await store.add_texts(["To delete"])
         assert store.count() == 1
-        
+
         await store.delete(ids)
         assert store.count() == 0
 
@@ -622,7 +621,7 @@ class TestVectorStore:
         """Test clearing store."""
         await store.add_texts(["A", "B", "C"])
         assert store.count() == 3
-        
+
         await store.clear()
         assert store.count() == 0
 
@@ -630,7 +629,7 @@ class TestVectorStore:
     async def test_get(self, store: VectorStore) -> None:
         """Test getting documents by ID."""
         ids = await store.add_texts(["Test document"])
-        
+
         docs = await store.get(ids)
         assert len(docs) == 1
         assert docs[0].text == "Test document"
@@ -662,7 +661,7 @@ class TestCreateVectorstore:
             metadatas=[{"x": 1}, {"x": 2}],
             embeddings=MockEmbeddings(),
         )
-        
+
         results = await store.search("test", k=10)
         metadatas = [r.document.metadata.to_dict() for r in results]
         # Metadata includes auto-added source and custom dict
@@ -677,62 +676,62 @@ class TestVectorStoreWithMockEmbeddings:
     async def test_semantic_similarity(self) -> None:
         """Test that similar texts are more similar."""
         store = VectorStore.with_mock_embeddings()
-        
+
         await store.add_texts([
             "The quick brown fox",
             "A fast brown fox",  # Similar
             "Hello world",  # Different
         ])
-        
+
         results = await store.search("The quick brown fox", k=3)
-        
+
         # First result should be exact match (if deduplicated) or very similar
         # Just verify we get results and they're sorted by score
         assert len(results) == 3
         assert results[0].score >= results[1].score >= results[2].score
-    
+
     @pytest.mark.asyncio
     async def test_as_retriever(self) -> None:
         """Test converting VectorStore to DenseRetriever."""
         from agenticflow.retriever.dense import DenseRetriever
-        
+
         store = VectorStore.with_mock_embeddings()
         await store.add_texts([
             "Python is a programming language",
             "JavaScript is popular for web development",
             "Machine learning is a subset of AI",
         ])
-        
+
         # Convert to retriever
         retriever = store.as_retriever()
-        
+
         # Verify it's a DenseRetriever
         assert isinstance(retriever, DenseRetriever)
         assert retriever.vectorstore is store
-        
+
         # Verify it works
         docs = await retriever.retrieve("programming", k=2)
         assert len(docs) <= 2
         assert all(isinstance(d, Document) for d in docs)
-    
+
     @pytest.mark.asyncio
     async def test_as_retriever_with_params(self) -> None:
         """Test as_retriever with custom parameters."""
         from agenticflow.retriever.dense import DenseRetriever
-        
+
         store = VectorStore.with_mock_embeddings()
         await store.add_texts(["Test document"])
-        
+
         # With custom name and threshold
         retriever = store.as_retriever(
             name="custom_retriever",
             score_threshold=0.5,
         )
-        
+
         assert isinstance(retriever, DenseRetriever)
         assert retriever.name == "custom_retriever"
         assert retriever.score_threshold == 0.5
-    
+
     @pytest.mark.asyncio
     async def test_as_retriever_chained_with_as_tool(self) -> None:
         """Test chaining as_retriever().as_tool()."""
@@ -741,13 +740,13 @@ class TestVectorStoreWithMockEmbeddings:
             "Python is great",
             "JavaScript rocks",
         ])
-        
+
         # Chain as_retriever() and as_tool()
         tool = store.as_retriever().as_tool(
             name="search_docs",
             description="Search documentation",
         )
-        
+
         # Verify tool works
         results = await tool.ainvoke({"query": "programming", "k": 2})
         assert isinstance(results, list)
@@ -762,7 +761,7 @@ class TestSearchResult:
         """Test creating a search result."""
         doc = Document(text="Test", metadata=DocumentMetadata(id="doc-1"))
         result = SearchResult(document=doc, score=0.95)
-        
+
         assert result.document == doc
         assert result.score == 0.95
         assert result.id == "doc-1"  # Auto-populated from document
@@ -771,5 +770,5 @@ class TestSearchResult:
         """Test result with explicit ID."""
         doc = Document(text="Test", metadata=DocumentMetadata(id="doc-1"))
         result = SearchResult(document=doc, score=0.9, id="custom-id")
-        
+
         assert result.id == "custom-id"

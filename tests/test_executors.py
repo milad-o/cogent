@@ -7,25 +7,23 @@ Tests the execution strategies including:
 - TreeSearchExecutor (LATS-style tree search)
 """
 
-import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
-from agenticflow.executors import (
-    ExecutionStrategy,
-    ExecutionPlan,
-    ToolCall,
-    BaseExecutor,
-    NativeExecutor,
-    SequentialExecutor,
-    TreeSearchExecutor,
-    SearchNode,
-    NodeState,
-    create_executor,
-)
+import pytest
+
 from agenticflow.agent import Agent, AgentConfig
 from agenticflow.agent.taskboard import TaskBoard
+from agenticflow.executors import (
+    ExecutionPlan,
+    ExecutionStrategy,
+    NativeExecutor,
+    NodeState,
+    SearchNode,
+    SequentialExecutor,
+    ToolCall,
+    TreeSearchExecutor,
+    create_executor,
+)
 
 
 class TestToolCall:
@@ -85,7 +83,7 @@ class TestExecutionPlan:
         plan = ExecutionPlan()
         id1 = plan.add_call("search", {"query": "test"})
         id2 = plan.add_call("process", {"data": "$call_0"}, depends_on=[id1])
-        
+
         assert len(plan) == 2
         assert id1 == "call_0"
         assert id2 == "call_1"
@@ -97,7 +95,7 @@ class TestExecutionPlan:
         plan.add_call("search_a", {"q": "A"})
         plan.add_call("search_b", {"q": "B"})
         plan.add_call("combine", {}, depends_on=["call_0", "call_1"])
-        
+
         ready = plan.get_ready_calls(set())
         assert len(ready) == 2
         assert ready[0].tool_name == "search_a"
@@ -109,9 +107,9 @@ class TestExecutionPlan:
         plan.add_call("search_a", {})  # call_0, no deps
         plan.add_call("search_b", {})  # call_1, no deps
         plan.add_call("combine", {}, depends_on=["call_0", "call_1"])  # call_2
-        
+
         waves = plan.get_execution_order()
-        
+
         assert len(waves) == 2
         assert set(waves[0]) == {"call_0", "call_1"}  # Parallel
         assert waves[1] == ["call_2"]  # Sequential
@@ -250,7 +248,7 @@ class TestSearchNode:
         """Test leaf node detection."""
         node = SearchNode(id="node_1")
         assert node.is_leaf() is True
-        
+
         child = SearchNode(id="node_2", parent=node)
         node.children.append(child)
         assert node.is_leaf() is False
@@ -259,10 +257,10 @@ class TestSearchNode:
         """Test terminal node detection."""
         node = SearchNode(id="node_1")
         assert node.is_terminal() is False
-        
+
         node.state = NodeState.SUCCESS
         assert node.is_terminal() is True
-        
+
         node.state = NodeState.FAILED
         assert node.is_terminal() is True
 
@@ -275,10 +273,10 @@ class TestSearchNode:
         """Test UCB1 score for visited node."""
         parent = SearchNode(id="parent")
         parent.visits = 10
-        
+
         node = SearchNode(id="node_1", parent=parent, value=0.7)
         node.visits = 5
-        
+
         score = node.ucb1_score()
         # Should be value + exploration bonus
         assert score > 0.7  # Greater than just exploitation
@@ -289,14 +287,14 @@ class TestSearchNode:
         root = SearchNode(id="root")
         child = SearchNode(id="child", parent=root)
         grandchild = SearchNode(id="grandchild", parent=child)
-        
+
         # Backpropagate a value
         grandchild.backpropagate(0.8)
-        
+
         assert grandchild.visits == 1
         assert child.visits == 1
         assert root.visits == 1
-        
+
         # Values should be updated
         assert grandchild.value == 0.8  # First visit, takes the value directly
 
@@ -305,7 +303,7 @@ class TestSearchNode:
         root = SearchNode(id="root")
         child = SearchNode(id="child", parent=root)
         grandchild = SearchNode(id="grandchild", parent=child)
-        
+
         path = grandchild.get_path()
         assert len(path) == 3
         assert path[0].id == "root"
@@ -322,7 +320,7 @@ class TestSearchNode:
             value=0.9,
             visits=3,
         )
-        
+
         data = node.to_dict()
         assert data["id"] == "node_1"
         assert data["state"] == "success"
@@ -359,7 +357,7 @@ class TestTreeSearchExecutor:
         executor.max_depth = 3
         executor.num_candidates = 5
         executor.exploration_weight = 2.0
-        
+
         assert executor.max_depth == 3
         assert executor.num_candidates == 5
         assert executor.exploration_weight == 2.0
@@ -367,7 +365,7 @@ class TestTreeSearchExecutor:
     def test_parse_candidate_actions(self, mock_agent: MagicMock) -> None:
         """Test parsing candidate actions from LLM response."""
         executor = TreeSearchExecutor(mock_agent)
-        
+
         response = """
 ACTION 1:
 First approach reasoning
@@ -381,19 +379,19 @@ ACTION 3:
 Third approach
 TOOL: process({"data": "input"})
 """
-        
+
         actions = executor._parse_candidate_actions(response)
-        
+
         assert len(actions) == 3
-        
+
         # First action is tool call
         assert actions[0]["type"] == "tool_call"
         assert actions[0]["tool"] == "search"
-        
+
         # Second action is final answer
         assert actions[1]["type"] == "final_answer"
         assert "42" in actions[1]["answer"]
-        
+
         # Third action is tool call
         assert actions[2]["type"] == "tool_call"
         assert actions[2]["tool"] == "process"
@@ -401,29 +399,29 @@ TOOL: process({"data": "input"})
     def test_select_ucb1(self, mock_agent: MagicMock) -> None:
         """Test UCB1-based node selection."""
         executor = TreeSearchExecutor(mock_agent)
-        
+
         # Create a simple tree
         root = SearchNode(id="root", state=NodeState.EXPANDED)
         root.visits = 10
-        
+
         child1 = SearchNode(id="child1", parent=root, value=0.8)
         child1.visits = 5
-        
+
         child2 = SearchNode(id="child2", parent=root, value=0.3)
         child2.visits = 1  # Less visited, higher exploration bonus
-        
+
         root.children = [child1, child2]
-        
+
         # Selection should favor less-visited node due to exploration
         selected = executor._select(root)
-        
+
         # Should select one of the children (both are leaves)
         assert selected in [child1, child2]
 
     def test_format_path(self, mock_agent: MagicMock) -> None:
         """Test path formatting for prompts."""
         executor = TreeSearchExecutor(mock_agent)
-        
+
         root = SearchNode(id="root", action={"type": "root", "task": "Test"})
         child = SearchNode(
             id="child",
@@ -432,9 +430,9 @@ TOOL: process({"data": "input"})
             observation="Found result",
             depth=1,
         )
-        
+
         path = child.get_path()
         formatted = executor._format_path(path)
-        
+
         assert "search" in formatted
         assert "Found result" in formatted

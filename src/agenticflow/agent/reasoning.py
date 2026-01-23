@@ -379,7 +379,7 @@ def extract_ready(response: str) -> bool:
     if match:
         value = match.group(1).strip().lower()
         return value == "true"
-    
+
     return False  # Default to not ready if tag not found
 
 def estimate_confidence(thinking: str) -> float:

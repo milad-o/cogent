@@ -37,11 +37,11 @@ def search_docs(query: str) -> str:
         "asyncio": "asyncio is the standard library for async programming",
         "patterns": "Common patterns: gather, create_task, TaskGroup",
     }
-    
+
     for key, value in results.items():
         if key in query.lower():
             return f"📚 Found: {value}"
-    
+
     return "No results found."
 
 
@@ -70,9 +70,9 @@ async def demo_basic_taskboard():
     print("Demo 1: Basic TaskBoard - Agent Plans and Tracks Work")
     print("=" * 70)
     print()
-    
+
     model = "gpt4"
-    
+
     # Enable taskboard with default configuration
     agent = Agent(
         name="Researcher",
@@ -80,32 +80,32 @@ async def demo_basic_taskboard():
         tools=[search_docs, run_code],
         taskboard=True,  # ← Adds task management tools
     )
-    
+
     print(f"✅ Agent '{agent.name}' created with TaskBoard enabled")
     print(f"   Tools available: {[t.name for t in agent.all_tools]}")
     print()
-    
+
     # The agent will naturally use taskboard tools to:
     # 1. plan_tasks() - Break down work
     # 2. update_task() - Track progress
     # 3. check_progress() - Monitor status
     # 4. verify_done() - Confirm completion
-    
+
     task = "Research Python async/await patterns and provide 3 key concepts with examples"
-    
+
     print(f"Task: {task}")
     print()
     print("Agent working...")
     print("-" * 70)
-    
+
     result = await agent.run(task)
-    
+
     print("-" * 70)
     print()
     print("Final Answer:")
     print(result)
     print()
-    
+
     # Inspect what the agent tracked
     print("=" * 70)
     print("TaskBoard Summary:")
@@ -120,9 +120,9 @@ async def demo_taskboard_with_verification():
     print("Demo 2: TaskBoard with Auto-Verification")
     print("=" * 70)
     print()
-    
+
     model = "gpt4"
-    
+
     # Configure taskboard to require verification
     agent = Agent(
         name="CodeReviewer",
@@ -134,19 +134,19 @@ async def demo_taskboard_with_verification():
             track_errors=True,
         ),
     )
-    
+
     print(f"✅ Agent '{agent.name}' created with auto-verification")
     print()
-    
+
     task = "Write and test async function to fetch 3 URLs concurrently"
-    
+
     print(f"Task: {task}")
     print()
     print("Agent working (will verify before finishing)...")
     print("-" * 70)
-    
+
     result = await agent.run(task)
-    
+
     print("-" * 70)
     print()
     print("Final Answer:")
@@ -163,50 +163,50 @@ async def demo_taskboard_inspection():
     print("Demo 3: TaskBoard Inspection - Direct Access")
     print("=" * 70)
     print()
-    
+
     model = "gpt4"
-    
+
     agent = Agent(
         name="Analyst",
         model="gpt4",
         tools=[search_docs],
         taskboard=True,
     )
-    
+
     task = "Compare async vs threading for I/O-bound tasks"
-    
+
     print(f"Task: {task}")
     print()
-    
+
     result = await agent.run(task)
-    
+
     print("Result:", result)
     print()
-    
+
     # Direct inspection of taskboard state
     print("=" * 70)
     print("TaskBoard Detailed Inspection:")
     print("=" * 70)
     print()
-    
+
     # Goal
     goal = agent.taskboard.get_goal()
     if goal:
         print(f"🎯 Goal: {goal}")
         print()
-    
+
     # Tasks breakdown
     all_tasks = agent.taskboard.get_all_tasks()
     done = agent.taskboard.get_done()
     pending = agent.taskboard.get_pending()
     failed = agent.taskboard.get_failed()
-    
+
     print(f"📋 Tasks: {len(all_tasks)} total")
     print(f"   ✓ Done: {len(done)}")
     print(f"   ○ Pending: {len(pending)}")
     print(f"   ✗ Failed: {len(failed)}")
     print()
-    
+
     if all_tasks:
         print("Task Details:")
         for task in all_tasks:
@@ -214,7 +214,7 @@ async def demo_taskboard_inspection():
             if task.result:
                 print(f"    → Result: {task.result}")
         print()
-    
+
     # Notes
     notes = agent.taskboard.get_notes()
     if notes:
@@ -223,7 +223,7 @@ async def demo_taskboard_inspection():
             icon = {"observation": "•", "insight": "💡", "question": "❓"}.get(note.category, "•")
             print(f"  {icon} [{note.category}] {note.content}")
         print()
-    
+
     # Verification
     verification = agent.taskboard.verify_completion()
     print("✓ Verification:")
@@ -243,36 +243,36 @@ async def demo_taskboard_serialization():
     print("Demo 4: TaskBoard Serialization - Export State")
     print("=" * 70)
     print()
-    
+
     model = "gpt4"
-    
+
     agent = Agent(
         name="Worker",
         model="gpt4",
         tools=[search_docs],
         taskboard=True,
     )
-    
+
     task = "Find 2 use cases for Python asyncio"
-    
+
     print(f"Task: {task}")
     print()
-    
+
     await agent.run(task)
-    
+
     # Export taskboard state as dict
     state = agent.taskboard.to_dict()
-    
+
     print("=" * 70)
     print("TaskBoard State (JSON-serializable):")
     print("=" * 70)
     print()
-    
+
     import json
     print(json.dumps(state, indent=2, default=str))
     print()
-    
-    print(f"✅ TaskBoard state can be saved/restored")
+
+    print("✅ TaskBoard state can be saved/restored")
     print(f"   - Goal: {state.get('goal')}")
     print(f"   - Tasks: {len(state.get('tasks', []))}")
     print(f"   - Notes: {len(state.get('notes', []))}")
@@ -285,28 +285,28 @@ async def main():
     print()
     print("🎯 TaskBoard Examples - Agent Working Memory")
     print()
-    
+
     # Demo 1: Basic usage
     await demo_basic_taskboard()
-    
+
     input("Press Enter to continue to Demo 2...")
     print()
-    
+
     # Demo 2: With verification
     await demo_taskboard_with_verification()
-    
+
     input("Press Enter to continue to Demo 3...")
     print()
-    
+
     # Demo 3: Detailed inspection
     await demo_taskboard_inspection()
-    
+
     input("Press Enter to continue to Demo 4...")
     print()
-    
+
     # Demo 4: Serialization
     await demo_taskboard_serialization()
-    
+
     print("=" * 70)
     print("✅ All TaskBoard demos completed!")
     print("=" * 70)

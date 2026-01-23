@@ -18,15 +18,14 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from agenticflow.models.base import AIMessage, BaseChatModel, normalize_input
 from agenticflow.core.messages import MessageMetadata, TokenUsage
+from agenticflow.models.base import AIMessage, BaseChatModel, normalize_input
 
 
 def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
@@ -112,7 +111,7 @@ def _convert_messages(messages: list[Any]) -> list[dict[str, Any]]:
 def _parse_response(response: Any) -> AIMessage:
     """Parse Groq response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     choice = response.choices[0]
     message = choice.message
 
@@ -279,12 +278,12 @@ class GroqChat(BaseChatModel):
             "finish_reason": None,
             "usage": None,
         }
-        
+
         if self.use_responses_api:
             stream = await self._async_client.beta.responses.create(**kwargs)
         else:
             stream = await self._async_client.chat.completions.create(**kwargs)
-        
+
         async for chunk in stream:
             # Accumulate metadata
             if chunk.id:
@@ -310,7 +309,7 @@ class GroqChat(BaseChatModel):
                     duration=time.time() - start_time,
                 )
                 yield AIMessage(content="", metadata=metadata)
-            
+
             # Yield content chunks
             if chunk.choices and chunk.choices[0].delta.content:
                 metadata = MessageMetadata(
@@ -350,11 +349,11 @@ class GroqChat(BaseChatModel):
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
-        
+
         # Structured output support
         if hasattr(self, "_response_format") and self._response_format:
             kwargs["response_format"] = self._response_format
-        
+
         return kwargs
 
 

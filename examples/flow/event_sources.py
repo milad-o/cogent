@@ -16,16 +16,12 @@ Run with:
 """
 
 import asyncio
-import sys
 import tempfile
 from pathlib import Path
 
-
-from agenticflow import Agent, tool
-from agenticflow.flow import Flow  # Has source/sink methods
-from agenticflow import react_to, Observer
+from agenticflow import Agent, Observer, react_to, tool
 from agenticflow.events import EventSink
-
+from agenticflow.flow import Flow  # Has source/sink methods
 
 # =============================================================================
 # Define tools for file processing
@@ -154,13 +150,13 @@ async def demo_file_processing():
 
         # Note: FileWatcherSource is for production use with real-time file watching.
         # For this demo, we'll emit file events directly to show the processing flow.
-        
+
         print("\n🔄 Processing files...")
 
         # Process each file by emitting an event
-        for filename in files.keys():
+        for filename in files:
             filepath = watch_dir / filename
-            
+
             result = await flow.run(
                 f"Analyze the file: {filename}",
                 initial_event="file.created",
@@ -170,7 +166,7 @@ async def demo_file_processing():
                     "extension": filepath.suffix,
                 },
             )
-            
+
             print(f"\n--- {filename} ---")
             if result.reactions:
                 for reaction in result.reactions:
@@ -184,7 +180,7 @@ async def demo_file_processing():
 
 
 # =============================================================================
-# Demo: Event Sinks for Notifications  
+# Demo: Event Sinks for Notifications
 # =============================================================================
 
 
@@ -200,15 +196,15 @@ async def demo_notification_sink():
 
     # Create a logging sink (in production, use WebhookSink)
     received_events = []
-    
+
     class NotificationSink(EventSink):
         """Mock sink that logs notifications (simulates Slack/email/webhook)."""
-        
+
         async def send(self, event) -> None:
             received_events.append(event)
             print(f"   � Notification: {event.name}")
             print(f"      Agent: {event.data.get('agent', 'unknown')}")
-        
+
         @property
         def name(self) -> str:
             return "NotificationSink"

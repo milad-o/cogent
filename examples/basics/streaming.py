@@ -28,7 +28,6 @@ Run:
 
 import asyncio
 
-
 # =============================================================================
 # Demo 1: Basic Streaming
 # =============================================================================
@@ -38,32 +37,31 @@ async def basic_streaming():
     print("\n" + "=" * 70)
     print("Demo 1: Basic Streaming")
     print("=" * 70)
-    
-    from agenticflow import Agent
-    from agenticflow import Flow, react_to
-    
+
+    from agenticflow import Agent, Flow, react_to
+
     # Create agent with streaming-capable model
     assistant = Agent(
         name="assistant",
         model="gpt4",
         system_prompt="You are a helpful assistant. Be concise.",
     )
-    
+
     # Create reactive flow
     flow = Flow()
     flow.register(assistant, [react_to("task.created")])
-    
+
     print("\n📝 Task: Explain streaming in 2 sentences")
     print("-" * 70)
     print()
-    
+
     # Stream execution - tokens arrive in real-time
     async for chunk in flow.run_streaming("Explain streaming in 2 sentences"):
         print(chunk.content, end="", flush=True)
-        
+
         if chunk.is_final:
             print()  # Newline after completion
-    
+
     print()
     print("✅ Streaming complete!")
 
@@ -77,33 +75,32 @@ async def multi_agent_streaming():
     print("\n" + "=" * 70)
     print("Demo 2: Multi-Agent Streaming")
     print("=" * 70)
-    
-    from agenticflow import Agent
-    from agenticflow import Flow, react_to
-    
+
+    from agenticflow import Agent, Flow, react_to
+
     # Create multiple agents
     researcher = Agent(
         name="researcher",
         model="gpt4",
         system_prompt="You research topics. Provide 2-3 key facts.",
     )
-    
+
     writer = Agent(
         name="writer",
         model="gpt4",
         system_prompt="You write engaging summaries. Keep it to 2 sentences.",
     )
-    
+
     # Create flow with chained agents
     flow = Flow()
     flow.register(researcher, [react_to("task.created").emits("researcher.completed")])
     flow.register(writer, [react_to("researcher.completed")])
-    
+
     print("\n📝 Task: Research and summarize quantum computing")
     print("-" * 70)
-    
+
     current_agent = None
-    
+
     async for chunk in flow.run_streaming("Research and summarize quantum computing"):
         # Show agent name when it changes
         if chunk.agent_name != current_agent:
@@ -111,12 +108,12 @@ async def multi_agent_streaming():
                 print()  # Newline before new agent
             print(f"\n🤖 [{chunk.agent_name}]:", end=" ")
             current_agent = chunk.agent_name
-        
+
         print(chunk.content, end="", flush=True)
-        
+
         if chunk.is_final:
             print()  # Newline after agent completes
-    
+
     print()
     print("✅ Multi-agent streaming complete!")
 
@@ -130,56 +127,55 @@ async def streaming_with_progress():
     print("\n" + "=" * 70)
     print("Demo 3: Streaming with Progress Indicators")
     print("=" * 70)
-    
-    from agenticflow import Agent
-    from agenticflow import Flow, react_to
-    
+
+    from agenticflow import Agent, Flow, react_to
+
     # Create agents for a 3-stage pipeline
     analyzer = Agent(
         name="analyzer",
         model="gpt4",
         system_prompt="Analyze the problem. List 2 key points.",
     )
-    
+
     planner = Agent(
         name="planner",
         model="gpt4",
         system_prompt="Create a solution plan. 2-3 steps.",
     )
-    
+
     executor = Agent(
         name="executor",
         model="gpt4",
         system_prompt="Provide final solution. Be concise.",
     )
-    
+
     # Create pipeline flow
     flow = Flow()
     flow.register(analyzer, [react_to("task.created").emits("analyzed")])
     flow.register(planner, [react_to("analyzed").emits("planned")])
     flow.register(executor, [react_to("planned")])
-    
+
     print("\n📝 Task: Build a web scraper")
     print("-" * 70)
-    
+
     # Track progress
     agents_completed = 0
     total_agents = 3
     current_agent = None
-    
+
     async for chunk in flow.run_streaming("Build a web scraper"):
         # Update progress when agent changes
         if chunk.agent_name != current_agent:
             if current_agent is not None:
                 agents_completed += 1
-            
+
             current_agent = chunk.agent_name
             progress = f"[{agents_completed + 1}/{total_agents}]"
             print(f"\n\n{progress} 🤖 {chunk.agent_name}:")
             print("-" * 70)
-        
+
         print(chunk.content, end="", flush=True)
-    
+
     print("\n")
     print("=" * 70)
     print("✅ Pipeline streaming complete!")
@@ -194,29 +190,28 @@ async def conditional_streaming():
     print("\n" + "=" * 70)
     print("Demo 4: Conditional Streaming (Event-Driven Routing)")
     print("=" * 70)
-    
-    from agenticflow import Agent
-    from agenticflow import Flow, react_to
-    
+
+    from agenticflow import Agent, Flow, react_to
+
     # Create specialized agents
     python_expert = Agent(
         name="python_expert",
         model="gpt4",
         system_prompt="You are a Python expert. Provide Python advice.",
     )
-    
+
     js_expert = Agent(
         name="js_expert",
         model="gpt4",
         system_prompt="You are a JavaScript expert. Provide JS advice.",
     )
-    
+
     general_agent = Agent(
         name="general",
         model="gpt4",
         system_prompt="You are a general programming assistant.",
     )
-    
+
     # Create flow with conditional triggers
     flow = Flow()
     flow.register(
@@ -230,22 +225,22 @@ async def conditional_streaming():
     flow.register(
         general_agent,
         [react_to("question.asked").when(
-            lambda e: "python" not in str(e.data).lower() 
+            lambda e: "python" not in str(e.data).lower()
             and "javascript" not in str(e.data).lower()
         )],
     )
-    
+
     # Test multiple questions
     questions = [
         ("How do I use list comprehensions in Python?", {"language": "python"}),
         ("What are JavaScript promises?", {"language": "javascript"}),
         ("What is version control?", {"language": "general"}),
     ]
-    
+
     for question, data in questions:
         print(f"\n📝 Question: {question}")
         print("-" * 70)
-        
+
         async for chunk in flow.run_streaming(
             question,
             initial_event="question.asked",
@@ -253,9 +248,9 @@ async def conditional_streaming():
         ):
             if chunk.content:  # Skip empty chunks
                 print(chunk.content, end="", flush=True)
-        
+
         print("\n")
-    
+
     print("✅ Conditional streaming complete!")
 
 
@@ -268,37 +263,36 @@ async def streaming_error_handling():
     print("\n" + "=" * 70)
     print("Demo 5: Error Handling in Streaming")
     print("=" * 70)
-    
-    from agenticflow import Agent
-    from agenticflow import Flow, react_to
-    
+
+    from agenticflow import Agent, Flow, react_to
+
     # Create agent that might fail
     assistant = Agent(
         name="assistant",
         model="gpt4",
         system_prompt="You are a helpful assistant.",
     )
-    
+
     flow = Flow()
     flow.register(assistant, [react_to("task.created")])
-    
+
     print("\n📝 Task: Streaming with potential errors")
     print("-" * 70)
-    
+
     try:
         async for chunk in flow.run_streaming("Explain error handling"):
             print(chunk.content, end="", flush=True)
-            
+
             # Check for errors in metadata
             if chunk.metadata and chunk.metadata.get("error"):
                 print(f"\n⚠️  Error detected: {chunk.metadata['error']}")
-            
+
             if chunk.is_final:
                 if chunk.finish_reason == "error":
                     print("\n❌ Streaming ended with error")
                 else:
                     print("\n✅ Streaming completed successfully")
-    
+
     except Exception as e:
         print(f"\n❌ Exception during streaming: {e}")
 
@@ -312,29 +306,29 @@ async def main():
     print("\n" + "=" * 70)
     print("Streaming Reactions in Flow")
     print("=" * 70)
-    
+
     try:
         await basic_streaming()
         await asyncio.sleep(1)
-        
+
         await multi_agent_streaming()
         await asyncio.sleep(1)
-        
+
         await streaming_with_progress()
         await asyncio.sleep(1)
-        
+
         await conditional_streaming()
         await asyncio.sleep(1)
-        
+
         await streaming_error_handling()
-        
+
     except KeyboardInterrupt:
         print("\n\n⚠️  Interrupted by user")
     except Exception as e:
         print(f"\n\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
-    
+
     print("\n" + "=" * 70)
     print("All demos complete!")
     print("=" * 70)

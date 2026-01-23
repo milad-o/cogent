@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from agenticflow.core import Document
 from agenticflow.retriever.base import (
     BaseRetriever,
     FusionStrategy,
@@ -15,7 +16,6 @@ from agenticflow.retriever.base import (
     Retriever,
 )
 from agenticflow.retriever.utils.fusion import fuse_results, normalize_scores
-from agenticflow.core import Document
 
 
 class EnsembleRetriever(BaseRetriever):

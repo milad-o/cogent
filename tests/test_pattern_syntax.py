@@ -2,7 +2,7 @@
 
 import pytest
 
-from agenticflow.events import Event, parse_pattern, ParsedPattern
+from agenticflow.events import Event, ParsedPattern, parse_pattern
 from agenticflow.flow import Flow
 
 
@@ -99,7 +99,7 @@ class TestFlowPatternSyntax:
         # Should match
         assert binding.condition(Event(name="task.done", source="agent1")) is True
         assert binding.condition(Event(name="job.done", source="agent1")) is True
-        
+
         # Should not match (different source)
         assert binding.condition(Event(name="task.done", source="agent2")) is False
 
@@ -147,7 +147,7 @@ class TestFlowPatternSyntax:
         # This is expected behavior - pattern matching happens at event level first
         assert binding.condition(Event(name="task.done", source="agent2")) is True  # Matches OR condition
         assert binding.condition(Event(name="job.done", source="agent1")) is True   # Matches OR condition
-        
+
         # But sources not in the list won't match
         assert binding.condition(Event(name="task.done", source="agent3")) is False
         assert binding.condition(Event(name="job.done", source="agent3")) is False
@@ -243,7 +243,7 @@ class TestPatternSyntaxEdgeCases:
         flow.register(lambda e: None, on="task@worker_?")
 
         binding = flow._bindings[0]
-        
+
         # Should match single character
         assert binding.condition(Event(name="task", source="worker_1")) is True
         assert binding.condition(Event(name="task", source="worker_a")) is True
@@ -258,7 +258,7 @@ class TestPatternSyntaxEdgeCases:
         flow.register(lambda e: None, on="agent.*.done@agent_*_v?")
 
         binding = flow._bindings[0]
-        
+
         # Should match
         assert binding.condition(Event(name="agent.task.done", source="agent_special_v1")) is True
         assert binding.condition(Event(name="agent.job.done", source="agent_worker_v2")) is True

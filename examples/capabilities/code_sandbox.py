@@ -15,9 +15,6 @@ Features:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
 
 from agenticflow import Agent
 from agenticflow.capabilities import CodeSandbox
@@ -36,14 +33,14 @@ def separator(title: str) -> None:
 def basic_execution_demo():
     """Demonstrate basic code execution."""
     separator("Basic Code Execution")
-    
+
     sandbox = CodeSandbox()
-    
+
     # Simple arithmetic
     result = sandbox.execute("result = 2 + 3 * 4")
     print(f"2 + 3 * 4 = {result.return_value}")
     print(f"Execution time: {result.execution_time_ms:.2f}ms")
-    
+
     # With print statements
     result = sandbox.execute("""
 numbers = [1, 2, 3, 4, 5]
@@ -54,7 +51,7 @@ result = {"sum": total, "average": average}
 """)
     print(f"Output: {result.output.strip()}")
     print(f"Return value: {result.return_value}")
-    
+
     # List comprehension
     result = sandbox.execute("""
 squares = [x**2 for x in range(10)]
@@ -70,9 +67,9 @@ result = squares
 def function_execution_demo():
     """Demonstrate function execution with arguments."""
     separator("Function Execution")
-    
+
     sandbox = CodeSandbox()
-    
+
     # Define and call a function
     code = """
 def fibonacci(n):
@@ -83,20 +80,20 @@ def fibonacci(n):
         a, b = b, a + b
     return b
 """
-    
+
     # Execute function with different arguments
     for n in [5, 10, 20]:
         result = sandbox.execute_function(code, "fibonacci", args=[n])
         print(f"fibonacci({n}) = {result.return_value}")
-    
+
     # Function with kwargs
     code_with_kwargs = """
 def greet(name, greeting="Hello", punctuation="!"):
     return f"{greeting}, {name}{punctuation}"
 """
-    
+
     result = sandbox.execute_function(
-        code_with_kwargs, 
+        code_with_kwargs,
         "greet",
         args=["World"],
         kwargs={"greeting": "Hi", "punctuation": "?"}
@@ -111,10 +108,10 @@ def greet(name, greeting="Hello", punctuation="!"):
 def imports_demo():
     """Demonstrate safe imports."""
     separator("Safe Imports")
-    
+
     # Create sandbox with imports enabled
     sandbox = CodeSandbox(allow_imports=True)
-    
+
     # Math operations
     result = sandbox.execute("""
 import math
@@ -128,7 +125,7 @@ result = {
     print("Math results:")
     for key, value in result.return_value.items():
         print(f"  {key}: {value:.6f}" if isinstance(value, float) else f"  {key}: {value}")
-    
+
     # JSON processing
     result = sandbox.execute("""
 import json
@@ -136,7 +133,7 @@ data = {"name": "AgenticFlow", "version": "0.1.0", "features": ["agents", "tools
 result = json.dumps(data, indent=2)
 """)
     print(f"\nJSON output:\n{result.return_value}")
-    
+
     # Datetime
     result = sandbox.execute("""
 import datetime
@@ -144,7 +141,7 @@ now = datetime.datetime.now()
 result = now.strftime("%Y-%m-%d %H:%M:%S")
 """)
     print(f"\nCurrent datetime: {result.return_value}")
-    
+
     # Statistics
     result = sandbox.execute("""
 import statistics
@@ -165,9 +162,9 @@ result = {
 def security_demo():
     """Demonstrate security restrictions."""
     separator("Security Restrictions")
-    
+
     sandbox = CodeSandbox()
-    
+
     # Try blocked operations
     blocked_operations = [
         ("File access", "open('test.txt', 'w')"),
@@ -177,15 +174,15 @@ def security_demo():
         ("Exec", "exec('print(1)')"),
         ("Compile", "compile('print(1)', '', 'exec')"),
     ]
-    
+
     for name, code in blocked_operations:
         result = sandbox.execute(code)
         status = "✓ BLOCKED" if not result.success else "✗ ALLOWED (unexpected)"
         print(f"{name}: {status}")
-    
+
     # Even with imports enabled, dangerous modules are blocked
     sandbox_with_imports = CodeSandbox(allow_imports=True)
-    
+
     print("\nWith imports enabled:")
     for name, code in blocked_operations[:3]:  # File, os, subprocess
         result = sandbox_with_imports.execute(code)
@@ -200,11 +197,11 @@ def security_demo():
 def resource_limits_demo():
     """Demonstrate resource limits."""
     separator("Resource Limits")
-    
+
     # Timeout - need allow_imports to access time module
     sandbox = CodeSandbox(timeout=1, allow_imports=True)
     print("Testing timeout (1 second limit)...")
-    
+
     result = sandbox.execute("""
 import time
 time.sleep(2)  # This will timeout
@@ -213,11 +210,11 @@ result = "completed"
     print(f"Timeout test: {'✓ Timed out' if not result.success else '✗ Completed'}")
     if result.error:
         print(f"Error: {result.error.split(chr(10))[0]}")
-    
+
     # Output truncation
     sandbox = CodeSandbox(max_output_length=100)
     result = sandbox.execute("print('x' * 500)")
-    print(f"\nOutput truncation test:")
+    print("\nOutput truncation test:")
     print(f"  Output length: {len(result.output)}")
     print(f"  Truncated: {'✓ Yes' if 'truncated' in result.output.lower() else '✗ No'}")
 
@@ -229,9 +226,9 @@ result = "completed"
 def history_demo():
     """Demonstrate execution history."""
     separator("Execution History")
-    
+
     sandbox = CodeSandbox()
-    
+
     # Execute several pieces of code
     codes = [
         "result = 1 + 1",
@@ -239,14 +236,14 @@ def history_demo():
         "result = 10 / 2",
         "result = 2 ** 10",
     ]
-    
+
     for code in codes:
         sandbox.execute(code)
-    
+
     print(f"Execution history ({len(sandbox.history)} items):")
     for i, entry in enumerate(sandbox.history, 1):
         print(f"  {i}. success={entry.success}, result={entry.return_value}, time={entry.execution_time_ms:.2f}ms")
-    
+
     # Clear history
     sandbox.clear_history()
     print(f"\nAfter clear: {len(sandbox.history)} items")
@@ -259,16 +256,16 @@ def history_demo():
 def tools_demo():
     """Demonstrate using sandbox as tools."""
     separator("CodeSandbox Tools")
-    
+
     sandbox = CodeSandbox(allow_imports=True)
     tools = sandbox.tools
-    
+
     print(f"Available tools: {[t.name for t in tools]}")
     print()
-    
+
     # Find execute_python tool
     execute_tool = next(t for t in tools if t.name == "execute_python")
-    
+
     # Use the tool directly
     tool_result = execute_tool.invoke({"code": """
 import math
@@ -279,7 +276,7 @@ for n in range(2, 50):
 print(f"Found {len(primes)} primes: {primes}")
 result = primes
 """})
-    
+
     print(f"Tool result:\n{tool_result}")
 
 
@@ -290,11 +287,11 @@ result = primes
 async def agent_demo():
     """Demonstrate agent using CodeSandbox for computation."""
     separator("Agent with CodeSandbox")
-    
-    
+
+
     sandbox = CodeSandbox(allow_imports=True, timeout=5)
     model = "gpt4"
-    
+
     agent = Agent(
         name="Compute Agent",
         model="gpt4",
@@ -305,14 +302,14 @@ Always show your code and explain the results clearly.
 Safe imports available: math, json, datetime, statistics, random, decimal, fractions, itertools, functools, collections.""",
         capabilities=[sandbox],
     )
-    
+
     # Test computation
     print("Asking agent to calculate prime factors...")
-    
+
     response = await agent.run(
         "Calculate and list all prime factors of 360. Show the code you use."
     )
-    
+
     print(f"\nAgent response:\n{response}")
 
 
@@ -329,6 +326,6 @@ if __name__ == "__main__":
     resource_limits_demo()
     history_demo()
     tools_demo()
-    
+
     # Async agent demo with LLM
     asyncio.run(agent_demo())

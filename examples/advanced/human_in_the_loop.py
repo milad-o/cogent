@@ -14,23 +14,15 @@ Human-in-the-Loop is essential for:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
-
-from agenticflow.tools.base import tool
 
 # Import HITL components
 from agenticflow import (
+    AbortedException,
     Agent,
-    # HITL types
     HumanDecision,
     InterruptedException,
-    AbortedException,
-    DecisionType,
 )
-
+from agenticflow.tools.base import tool
 
 # =============================================================================
 # Define Tools (some dangerous, some safe)
@@ -75,10 +67,10 @@ async def demo_basic_approval():
     print("\n" + "="*60)
     print("Demo 1: Basic Tool Approval")
     print("="*60)
-    
+
     # Get LLM model
     model = "gpt4"
-    
+
     # Create agent with interrupt_on rules
     agent = Agent(
         name="FileManager",
@@ -92,12 +84,12 @@ async def demo_basic_approval():
             "read_file": False,   # Auto-approve reads
         },
     )
-    
+
     # Safe operation - auto-approved
     print("\n1. Reading a file (auto-approved)...")
     result = await agent.act("read_file", {"path": "/data/readme.txt"})
     print(f"   Result: {result}")
-    
+
     # Dangerous operation - requires approval
     print("\n2. Trying to delete a file (requires approval)...")
     try:
@@ -107,14 +99,14 @@ async def demo_basic_approval():
         print(f"   ⏸️  Interrupted! Pending: {pending.describe()}")
         print(f"   Agent: {pending.agent_name}")
         print(f"   Reason: {pending.reason.value}")
-        
+
         # Simulate human approval
         print("\n   [Human decides to APPROVE]")
         decision = HumanDecision.approve(pending.action_id, feedback="Verified safe to delete")
-        
+
         result = await agent.resume_action(decision)
         print(f"   Result after approval: {result}")
-    
+
     # Dangerous operation - human rejects
     print("\n3. Trying to delete another file (human rejects)...")
     try:
@@ -122,11 +114,11 @@ async def demo_basic_approval():
     except InterruptedException as e:
         pending = e.state.pending_actions[0]
         print(f"   ⏸️  Interrupted! Pending: {pending.describe()}")
-        
+
         # Human rejects
         print("\n   [Human decides to REJECT]")
         decision = HumanDecision.reject(pending.action_id, feedback="Too dangerous!")
-        
+
         result = await agent.resume_action(decision)
         print(f"   Result after rejection: {result}")  # None
 
@@ -140,7 +132,7 @@ async def demo_dynamic_rules():
     print("\n" + "="*60)
     print("Demo 2: Dynamic Approval Rules")
     print("="*60)
-    
+
     # Dynamic rule: only require approval for external emails
     def require_external_email_approval(tool_name: str, args: dict) -> bool:
         """Require approval for emails to non-company addresses."""
@@ -149,9 +141,9 @@ async def demo_dynamic_rules():
         if is_external:
             print(f"   📧 External email detected: {to}")
         return is_external
-    
+
     model = "gpt4"
-    
+
     agent = Agent(
         name="EmailAssistant",
         model="gpt4",
@@ -162,7 +154,7 @@ async def demo_dynamic_rules():
             "search_web": False,  # Always auto-approve
         },
     )
-    
+
     # Internal email - auto-approved
     print("\n1. Sending internal email (auto-approved)...")
     result = await agent.act("send_email", {
@@ -171,7 +163,7 @@ async def demo_dynamic_rules():
         "body": "See you at 3pm"
     })
     print(f"   Result: {result}")
-    
+
     # External email - requires approval
     print("\n2. Sending external email (requires approval)...")
     try:
@@ -183,7 +175,7 @@ async def demo_dynamic_rules():
     except InterruptedException as e:
         pending = e.state.pending_actions[0]
         print(f"   ⏸️  Interrupted! {pending.describe()}")
-        
+
         # Human edits the email
         print("\n   [Human decides to EDIT - changing subject]")
         modified_args = {
@@ -192,7 +184,7 @@ async def demo_dynamic_rules():
             "body": "Please review the attached contract"
         }
         decision = HumanDecision.edit(pending.action_id, modified_args)
-        
+
         result = await agent.resume_action(decision)
         print(f"   Result after edit: {result}")
 
@@ -206,9 +198,9 @@ async def demo_abort():
     print("\n" + "="*60)
     print("Demo 3: Abort Workflow")
     print("="*60)
-    
+
     model = "gpt4"
-    
+
     agent = Agent(
         name="DangerousAgent",
         model="gpt4",
@@ -218,18 +210,18 @@ async def demo_abort():
             "*": True,  # Wildcard: require approval for ALL tools
         },
     )
-    
+
     print("\n1. Attempting dangerous operation...")
     try:
         await agent.act("delete_file", {"path": "/root/.bashrc"})
     except InterruptedException as e:
         pending = e.state.pending_actions[0]
         print(f"   ⏸️  Interrupted! {pending.describe()}")
-        
+
         # Human aborts
         print("\n   [Human decides to ABORT - too risky!]")
         decision = HumanDecision.abort(pending.action_id, feedback="Operation too dangerous, stopping workflow")
-        
+
         try:
             await agent.resume_action(decision)
         except AbortedException as abort:
@@ -245,9 +237,9 @@ async def demo_interactive():
     print("\n" + "="*60)
     print("Demo 4: Interactive Approval Loop")
     print("="*60)
-    
+
     model = "gpt4"
-    
+
     agent = Agent(
         name="SystemAdmin",
         model="gpt4",
@@ -258,30 +250,30 @@ async def demo_interactive():
             "write_file": True,
         },
     )
-    
+
     # Simulated user input queue
     user_decisions = ["y", "n", "e", "s"]  # approve, reject, edit, skip
     decision_idx = 0
-    
+
     async def run_with_approval(tool_name: str, args: dict) -> str | None:
         """Run a tool with interactive approval."""
         nonlocal decision_idx
-        
+
         try:
             return await agent.act(tool_name, args)
         except InterruptedException as e:
             pending = e.state.pending_actions[0]
             print(f"\n   ⏸️  Approval required: {pending.describe()}")
-            
+
             # Simulate user input
             if decision_idx < len(user_decisions):
                 user_input = user_decisions[decision_idx]
                 decision_idx += 1
             else:
                 user_input = "y"
-            
+
             print(f"   [Simulated user input: '{user_input}']")
-            
+
             if user_input == "y":
                 decision = HumanDecision.approve(pending.action_id)
             elif user_input == "n":
@@ -294,9 +286,9 @@ async def demo_interactive():
                 decision = HumanDecision.edit(pending.action_id, new_args)
             else:  # "s" for skip
                 decision = HumanDecision.skip(pending.action_id)
-            
+
             return await agent.resume_action(decision)
-    
+
     # Run operations
     operations = [
         ("delete_file", {"path": "/tmp/old_logs.txt"}),
@@ -304,7 +296,7 @@ async def demo_interactive():
         ("write_file", {"path": "/etc/config.yml", "content": "new_setting: true"}),
         ("write_file", {"path": "/tmp/test.txt", "content": "test data"}),
     ]
-    
+
     print("\n   Running batch operations with approval...")
     for tool_name, args in operations:
         print(f"\n   → {tool_name}({args})")
@@ -323,11 +315,11 @@ async def demo_guidance():
     print("\n" + "="*60)
     print("Demo 5: Guidance and Response")
     print("="*60)
-    
+
     from agenticflow.agent.hitl import GuidanceResult, HumanResponse
-    
+
     model = "gpt4"
-    
+
     agent = Agent(
         name="FileAssistant",
         model="gpt4",
@@ -338,14 +330,14 @@ async def demo_guidance():
             "write_file": True,
         },
     )
-    
+
     print("\n1. Agent wants to delete - human provides guidance...")
     try:
         result = await agent.act("delete_file", {"path": "/important/data.csv"})
     except InterruptedException as e:
         pending = e.state.pending_actions[0]
         print(f"   ⏸️  Pending: {pending.describe()}")
-        
+
         # Human provides guidance instead of yes/no
         guidance = HumanDecision.guide(
             pending.action_id,
@@ -353,26 +345,26 @@ async def demo_guidance():
                      "verify the backup is complete, then delete the original.",
             feedback="Critical data - be careful"
         )
-        
+
         result = await agent.resume_action(guidance)
-        
+
         if isinstance(result, GuidanceResult):
-            print(f"   💡 Guidance received!")
+            print("   💡 Guidance received!")
             print(f"   📝 Instructions: {result.guidance}")
             print(f"   📋 Original action: {result.original_action.describe()}")
             print(f"   🔄 Should retry: {result.should_retry}")
-            print(f"\n   Agent message format:")
+            print("\n   Agent message format:")
             print(f"   {result.to_message()}")
-    
+
     print("\n2. Agent asks a question - human responds directly...")
     try:
         # Simulating an agent asking "what should I name the output file?"
         result = await agent.act("write_file", {"path": "?", "content": "report data"})
     except InterruptedException as e:
         pending = e.state.pending_actions[0]
-        print(f"   ⏸️  Agent asks: What path should I use for the file?")
+        print("   ⏸️  Agent asks: What path should I use for the file?")
         print(f"   (Pending: {pending.describe()})")
-        
+
         # Human provides a direct response
         response = HumanDecision.respond(
             pending.action_id,
@@ -383,14 +375,14 @@ async def demo_guidance():
             },
             feedback="Use this naming convention for all reports"
         )
-        
+
         result = await agent.resume_action(response)
-        
+
         if isinstance(result, HumanResponse):
-            print(f"   💬 Response received!")
+            print("   💬 Response received!")
             print(f"   📦 Data: {result.response}")
             print(f"   📝 Feedback: {result.feedback}")
-    
+
     print("\n3. Comparison of decision types:")
     print("""
    Decision Types:
@@ -417,13 +409,13 @@ async def main():
     print("="*60)
     print("Human-in-the-Loop (HITL) Demonstration")
     print("="*60)
-    
+
     await demo_basic_approval()
     await demo_dynamic_rules()
     await demo_abort()
     await demo_interactive()
     await demo_guidance()
-    
+
     print("\n✅ All HITL demos completed!")
 
 

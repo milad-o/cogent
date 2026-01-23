@@ -19,7 +19,6 @@ from agenticflow.graph.primitives import (
     Node,
     NodeShape,
     NodeStyle,
-    Subgraph,
 )
 
 if TYPE_CHECKING:

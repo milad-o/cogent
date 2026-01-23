@@ -32,8 +32,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from agenticflow.documents.loaders.base import BaseLoader
 from agenticflow.core import Document
+from agenticflow.documents.loaders.base import BaseLoader
 from agenticflow.models.base import BaseChatModel
 from agenticflow.observability import ObservabilityLogger
 

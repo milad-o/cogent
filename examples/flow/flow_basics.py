@@ -14,15 +14,15 @@ API Levels:
 import asyncio
 import random
 
-from agenticflow import Agent, tool
 from agenticflow import (
+    Agent,
     Flow,
     FlowConfig,
     Observer,
+    tool,
 )
 from agenticflow.flow.patterns import pipeline
 from agenticflow.reactors import WaitAll
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TOOLS - Specialized functions for each agent type
@@ -77,7 +77,7 @@ def analyze_data(data: str, analysis_type: str = "summary") -> str:
     """Analyze data and extract insights."""
     word_count = len(data.split())
     lines = len(data.strip().split("\n"))
-    
+
     if analysis_type == "sentiment":
         sentiment = random.choice(["positive", "neutral", "mixed"])
         return f"Sentiment: {sentiment}\nConfidence: {random.randint(70, 95)}%"
@@ -197,11 +197,11 @@ async def parallel_search_and_aggregate() -> None:
 
     # Manual flow construction for FanOut
     flow = Flow(observer=observer)
-    
+
     # Register parallel agents trigger on same event
     flow.register(web_searcher, on="task.created", emits="search.web.done")
     flow.register(db_searcher, on="task.created", emits="search.db.done")
-    
+
     # Wait for both to finish before triggering aggregator
     # We use a WaitAll reactor to synchronize
     waiter = WaitAll(
@@ -209,7 +209,7 @@ async def parallel_search_and_aggregate() -> None:
         emit="all.search.done",
     )
     flow.register(waiter, on=["search.web.done", "search.db.done"])
-    
+
     # Aggregator triggers when watcher completes
     flow.register(aggregator, on="all.search.done", emits="flow.done")
 
@@ -249,20 +249,20 @@ async def smart_routing() -> None:
     )
 
     flow = Flow(observer=observer)
-    
+
     # Register agents with conditional triggers
     flow.register(
-        analyst, 
+        analyst,
         on="task.created",
         when=lambda e: any(k in e.data.get("task", "").lower() for k in ["analyze", "data", "chart"])
     )
     flow.register(
-        coder, 
+        coder,
         on="task.created",
         when=lambda e: any(k in e.data.get("task", "").lower() for k in ["calculate", "math", "code"])
     )
     flow.register(
-        communicator, 
+        communicator,
         on="task.created",
         when=lambda e: any(k in e.data.get("task", "").lower() for k in ["notify", "send", "alert"])
     )
@@ -314,7 +314,7 @@ async def event_driven_pipeline() -> None:
     )
 
     flow = Flow(observer=observer)
-    
+
     # Register agents with their triggers and emissions
     flow.register(collector, on="task.created", emits="collector.completed")
     flow.register(analyzer, on="collector.completed", emits="analyzer.completed")

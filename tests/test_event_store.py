@@ -1,11 +1,11 @@
 """Tests for event store implementations."""
 
-import pytest
 import tempfile
-from pathlib import Path
+
+import pytest
 
 from agenticflow.events import Event
-from agenticflow.events.store import InMemoryEventStore, FileEventStore
+from agenticflow.events.store import FileEventStore, InMemoryEventStore
 
 
 class TestInMemoryEventStore:

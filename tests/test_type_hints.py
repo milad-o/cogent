@@ -9,10 +9,10 @@ This file demonstrates that IDE autocomplete now works for:
 """
 
 from agenticflow import Agent
-from agenticflow.models import ChatModel
-from agenticflow.observability import Observer
 from agenticflow.agent.reasoning import ReasoningConfig
 from agenticflow.agent.spawning import SpawningConfig
+from agenticflow.models import ChatModel
+from agenticflow.observability import Observer
 from agenticflow.tools import tool
 
 
@@ -25,7 +25,7 @@ def search(query: str) -> str:
 def test_role_autocomplete():
     """Role parameter should show autocomplete for: 'worker', 'supervisor', 'reviewer', 'autonomous'."""
     model = ChatModel(model="gpt-4o-mini")
-    
+
     # Pylance should suggest: "worker", "supervisor", "reviewer", "autonomous"
     agent = Agent(
         name="Test",
@@ -37,7 +37,7 @@ def test_role_autocomplete():
 def test_verbose_autocomplete():
     """Verbosity parameter should show autocomplete for: False, True, 'verbose', 'debug', 'trace'."""
     model = ChatModel(model="gpt-4o-mini")
-    
+
     # Pylance should suggest: False, True, "verbose", "debug", "trace"
     agent = Agent(
         name="Test",
@@ -49,7 +49,7 @@ def test_verbose_autocomplete():
 def test_config_object_types():
     """Config objects should show proper type hints and autocomplete."""
     model = ChatModel(model="gpt-4o-mini")
-    
+
     # These should all have proper type hints
     agent = Agent(
         name="Test",
@@ -70,7 +70,7 @@ def test_config_object_types():
 def test_tools_parameter():
     """Tools parameter should accept BaseTool, string, or callable."""
     model = ChatModel(model="gpt-4o-mini")
-    
+
     # All these should be valid
     agent = Agent(
         name="Test",
@@ -86,7 +86,7 @@ def test_tools_parameter():
 def test_all_parameters_visible():
     """All Agent parameters should be visible in IDE autocomplete."""
     model = ChatModel(model="gpt-4o-mini")
-    
+
     # When typing Agent( and pressing Ctrl+Space, all these should appear:
     agent = Agent(
         name="Test",

@@ -12,13 +12,13 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from agenticflow.core.messages import MessageMetadata, TokenUsage
 from agenticflow.models.base import (
     AIMessage,
     BaseChatModel,
@@ -26,7 +26,6 @@ from agenticflow.models.base import (
     convert_messages,
     normalize_input,
 )
-from agenticflow.core.messages import MessageMetadata, TokenUsage
 
 
 def _messages_to_gemini(messages: list[dict[str, Any]], types: Any) -> tuple[str | None, list[Any]]:
@@ -213,7 +212,7 @@ def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
 def _parse_response(response: Any) -> AIMessage:
     """Parse Gemini response into AIMessage with metadata."""
     from agenticflow.core.messages import MessageMetadata, TokenUsage
-    
+
     content = ""
     tool_calls = []
 
@@ -221,7 +220,7 @@ def _parse_response(response: Any) -> AIMessage:
     candidate = response.candidates[0] if response.candidates else None
     if not candidate:
         return AIMessage(content="")
-    
+
     # Gemini can return None for content when blocked or failed
     if not candidate.content or not hasattr(candidate.content, 'parts'):
         return AIMessage(content="")
@@ -237,7 +236,7 @@ def _parse_response(response: Any) -> AIMessage:
                 # fc.args is a google.protobuf.Struct, convert to dict
                 for key, value in fc.args.items():
                     args_dict[key] = value
-            
+
             tool_calls.append({
                 "id": f"call_{fc.name}",  # Gemini doesn't provide IDs
                 "name": fc.name,
@@ -366,7 +365,7 @@ class GeminiChat(BaseChatModel):
                         mode=FunctionCallingConfigMode.AUTO
                     )
                 )
-        
+
         # Structured output support
         if hasattr(self, "_response_schema") and self._response_schema:
             config_kwargs["response_schema"] = self._response_schema
@@ -435,7 +434,7 @@ class GeminiChat(BaseChatModel):
             "finish_reason": None,
             "usage": None,
         }
-        
+
         stream = await self._client.aio.models.generate_content_stream(
             model=self.model,
             contents=gemini_messages,
@@ -450,7 +449,7 @@ class GeminiChat(BaseChatModel):
                     chunk_metadata["finish_reason"] = str(chunk.candidates[0].finish_reason)
             if hasattr(chunk, 'usage_metadata') and chunk.usage_metadata:
                 chunk_metadata["usage"] = chunk.usage_metadata
-            
+
             # Yield content chunks
             if chunk.text:
                 metadata = MessageMetadata(
@@ -466,7 +465,7 @@ class GeminiChat(BaseChatModel):
                     duration=time.time() - start_time,
                 )
                 yield AIMessage(content=chunk.text, metadata=metadata)
-        
+
         # Yield final metadata chunk if we have complete metadata
         if chunk_metadata["usage"] or chunk_metadata["finish_reason"]:
             final_metadata = MessageMetadata(
@@ -519,7 +518,11 @@ class GeminiEmbedding(BaseEmbedding):
         """Embed texts synchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+        )
 
         start_time = time.time()
         result = self._client.models.embed_content(
@@ -529,7 +532,7 @@ class GeminiEmbedding(BaseEmbedding):
         # Handle both single and multiple embeddings
         embeddings = result.embeddings
         vectors = [emb.values for emb in embeddings] if embeddings else []
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=None,  # Gemini doesn't provide token counts for embeddings
@@ -537,14 +540,18 @@ class GeminiEmbedding(BaseEmbedding):
             dimensions=len(vectors[0]) if vectors else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=vectors, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
         """Embed texts asynchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+        )
 
         start_time = time.time()
         result = await self._client.aio.models.embed_content(
@@ -554,7 +561,7 @@ class GeminiEmbedding(BaseEmbedding):
         # Handle both single and multiple embeddings
         embeddings = result.embeddings
         vectors = [emb.values for emb in embeddings] if embeddings else []
-        
+
         metadata = EmbeddingMetadata(
             model=self.model,
             tokens=None,  # Gemini doesn't provide token counts for embeddings
@@ -562,5 +569,5 @@ class GeminiEmbedding(BaseEmbedding):
             dimensions=len(vectors[0]) if vectors else None,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=vectors, metadata=metadata)

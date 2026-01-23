@@ -9,18 +9,15 @@ Run with:
 """
 
 import asyncio
-import sys
-from pathlib import Path
 
-
-from agenticflow import Agent, tool
 from agenticflow import (
+    Agent,
     Flow,
     Observer,
     react_to,
     skill,
+    tool,
 )
-
 
 # =============================================================================
 # Define tools that will be available to skills

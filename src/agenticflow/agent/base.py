@@ -530,7 +530,7 @@ class Agent:
                 - 4/"debug": Everything including internal events
                 - 5/"trace": Maximum detail + execution graph
         """
-        from agenticflow.observability import Observer, ObservabilityLevel
+        from agenticflow.observability import ObservabilityLevel, Observer
 
         # Create an event bus if agent doesn't have one (standalone usage)
         if self.trace_bus is None:
@@ -559,7 +559,7 @@ class Agent:
             if level is None:
                 raise ValueError(
                     f"Invalid verbosity level: {verbosity!r}. "
-                    f"Use: {', '.join(repr(k) for k in level_map.keys())}"
+                    f"Use: {', '.join(repr(k) for k in level_map)}"
                 )
         else:
             # Assume it's already an ObservabilityLevel enum
@@ -681,7 +681,7 @@ class Agent:
                     completion_tokens=getattr(usage, "completion_tokens", 0),
                     total_tokens=getattr(usage, "total_tokens", 0),
                 )
-        
+
         # Check for usage_metadata (Anthropic/some providers)
         if hasattr(result, "usage_metadata"):
             metadata = result.usage_metadata
@@ -691,7 +691,7 @@ class Agent:
                     completion_tokens=metadata.get("output_tokens", 0),
                     total_tokens=metadata.get("input_tokens", 0) + metadata.get("output_tokens", 0),
                 )
-        
+
         return None
 
     def _setup_output(self, output: type | dict | ResponseSchema | None) -> None:
@@ -1608,7 +1608,7 @@ class Agent:
         Returns dictionary with response metadata suitable for event data.
         """
         metadata: dict[str, Any] = {}
-        
+
         # Add token usage if available
         if response.metadata and response.metadata.tokens:
             metadata["tokens"] = {
@@ -1616,14 +1616,14 @@ class Agent:
                 "completion": response.metadata.tokens.completion_tokens,
                 "total": response.metadata.tokens.total_tokens,
             }
-        
+
         # Add duration
         if response.metadata:
             metadata["duration"] = response.metadata.duration
             metadata["model"] = response.metadata.model
             if response.metadata.correlation_id:
                 metadata["correlation_id"] = response.metadata.correlation_id
-        
+
         # Add tool call count
         if response.tool_calls:
             metadata["tool_calls_count"] = len(response.tool_calls)
@@ -1635,13 +1635,13 @@ class Agent:
                 }
                 for tc in response.tool_calls
             ]
-        
+
         # Add success/error info
         metadata["success"] = response.success
         if response.error:
             metadata["error"] = response.error.message
             metadata["error_type"] = response.error.type
-        
+
         return metadata
 
     def think(
@@ -1712,7 +1712,7 @@ class Agent:
     ) -> Response[str]:
         """Internal implementation of non-streaming think."""
         import traceback as tb
-        
+
         if not self.model:
             raise RuntimeError(f"Agent {self.name} has no model configured")
 
@@ -1843,7 +1843,7 @@ class Agent:
                 },
                 correlation_id,
             )
-            
+
             # Return Response with error instead of raising
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
             metadata = ResponseMetadata(
@@ -3056,6 +3056,7 @@ class Agent:
     ) -> Response[Any]:
         """Internal implementation of non-streaming run()."""
         import traceback as tb
+
         from agenticflow.executors import create_executor
 
         if not self.model:
@@ -3074,7 +3075,7 @@ class Agent:
             # Set current thread on memory for tools to access
             if self._memory_manager and hasattr(self._memory_manager, '_current_thread_id'):
                 self._memory_manager._current_thread_id = thread_id
-            
+
             if self._memory_manager:
                 history = await self._memory_manager.get_thread_messages(thread_id)
             else:
@@ -3086,7 +3087,7 @@ class Agent:
         # Apply reasoning override for this call
         original_reasoning = self._reasoning_config
         start_time = now_utc()
-        
+
         try:
             if reasoning is not None:
                 # Override reasoning for this call
@@ -3138,7 +3139,7 @@ class Agent:
             )
 
             return response_obj
-            
+
         except Exception as e:
             # Build Response with error
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
@@ -3265,7 +3266,7 @@ class Agent:
             # Set current thread on memory for tools to access
             if self._memory_manager and hasattr(self._memory_manager, '_current_thread_id'):
                 self._memory_manager._current_thread_id = thread_id
-            
+
             if self._memory_manager:
                 history = await self._memory_manager.get_thread_messages(thread_id)
             else:

@@ -51,9 +51,6 @@ Example:
 # Core types (re-exported from core for convenience)
 from agenticflow.core import Document, DocumentMetadata
 
-# Types
-from agenticflow.documents.types import FileType, SplitterType
-
 # Enricher
 from agenticflow.documents.enricher import (
     EnricherConfig,
@@ -103,6 +100,9 @@ from agenticflow.documents.splitters import (
     TokenSplitter,
     split_text,
 )
+
+# Types
+from agenticflow.documents.types import FileType, SplitterType
 
 __all__ = [
     # Types

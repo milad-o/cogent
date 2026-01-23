@@ -7,13 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from agenticflow.retriever.base import (
-    BaseRetriever,
-    FusionStrategy,
-    RetrievalResult,
-    Retriever,
-)
-
 # Test both import paths - new document module and backward-compatible retriever imports
 from agenticflow.documents import (
     Document,
@@ -29,15 +22,18 @@ from agenticflow.documents.splitters import (
     split_text,
 )
 from agenticflow.documents.types import Document
-
+from agenticflow.models import MockEmbedding
+from agenticflow.retriever.base import (
+    BaseRetriever,
+    FusionStrategy,
+    RetrievalResult,
+)
 from agenticflow.retriever.utils.fusion import (
     deduplicate_results,
     fuse_results,
     normalize_scores,
 )
 from agenticflow.vectorstore import Document as VectorStoreDocument
-from agenticflow.models import MockEmbedding
-
 
 # ============================================================================
 # Test Fixtures
@@ -519,7 +515,7 @@ class TestSplitTextFunction:
 
 class TestRetrievalResult:
     """Tests for RetrievalResult dataclass."""
-    
+
     def test_create_result(self) -> None:
         """Test creating a retrieval result."""
         doc = VectorStoreDocument(text="test", metadata={"key": "value"})
@@ -528,12 +524,12 @@ class TestRetrievalResult:
             score=0.85,
             retriever_name="dense",
         )
-        
+
         assert result.document == doc
         assert result.score == 0.85
         assert result.retriever_name == "dense"
         assert result.metadata == {}
-    
+
     def test_result_with_metadata(self) -> None:
         """Test result with custom metadata."""
         doc = VectorStoreDocument(text="test", metadata={})
@@ -543,21 +539,21 @@ class TestRetrievalResult:
             retriever_name="hybrid",
             metadata={"fusion": "rrf", "rank": 1},
         )
-        
+
         assert result.metadata["fusion"] == "rrf"
         assert result.metadata["rank"] == 1
 
 
 class TestFusionStrategy:
     """Tests for FusionStrategy enum."""
-    
+
     def test_all_strategies_exist(self) -> None:
         """Test that all expected strategies are defined."""
         assert FusionStrategy.RRF is not None
         assert FusionStrategy.LINEAR is not None
         assert FusionStrategy.MAX is not None
         assert FusionStrategy.VOTING is not None
-    
+
     def test_strategy_values(self) -> None:
         """Test strategy string values."""
         assert FusionStrategy.RRF.value == "rrf"
@@ -566,16 +562,16 @@ class TestFusionStrategy:
 
 class TestBaseRetriever:
     """Tests for BaseRetriever base class."""
-    
+
     def test_base_retriever_name(self) -> None:
         """Test that BaseRetriever has a name property."""
-        
+
         class TestRetriever(BaseRetriever):
             _name = "test_retriever"
-            
+
             async def retrieve(self, query, k=None, filter=None):
                 return []
-        
+
         retriever = TestRetriever()
         assert retriever.name == "test_retriever"
 
@@ -600,22 +596,24 @@ class TestBaseRetriever:
         assert isinstance(result, list)
         assert result[0]["text"].startswith("doc for python")
         assert result[0]["score"] == 0.9
-    
+
     @pytest.mark.asyncio
     async def test_multi_representation_as_tool(self) -> None:
         """Test MultiRepresentationIndex.as_tool() with custom parameters."""
-        from agenticflow.retriever.multi_representation import MultiRepresentationIndex, QueryType
-        from agenticflow.vectorstore import VectorStore
         from agenticflow.models import MockChatModel
-        
+        from agenticflow.retriever.multi_representation import (
+            MultiRepresentationIndex,
+        )
+        from agenticflow.vectorstore import VectorStore
+
         model = MockChatModel()
         vs = VectorStore(embeddings=MockEmbedding())
         index = MultiRepresentationIndex(llm=model, vectorstore=vs)
-        
+
         # Add a test document
         docs = [VectorStoreDocument(text="Python is a programming language", metadata={})]
         await index.add_documents(docs)
-        
+
         # Create tool with custom parameters
         tool = index.as_tool(
             name="search_multi",
@@ -624,14 +622,14 @@ class TestBaseRetriever:
             allow_query_type=True,
             allow_search_all=True,
         )
-        
+
         # Verify schema includes multi-representation parameters
         assert tool.name == "search_multi"
         assert "query" in tool.args_schema
         assert "query_type" in tool.args_schema
         assert "search_all" in tool.args_schema
         assert tool.args_schema["query_type"]["enum"] == ["broad", "specific", "keyword", "question", "entity", "auto"]
-        
+
         # Invoke with query_type parameter
         result = await tool.ainvoke({
             "query": "programming",
@@ -639,22 +637,22 @@ class TestBaseRetriever:
             "query_type": "broad",
             "search_all": False,
         })
-        
+
         assert isinstance(result, list)
         assert len(result) > 0
         assert "text" in result[0]
         assert "score" in result[0]
-    
+
     @pytest.mark.asyncio
     async def test_time_based_index_as_tool(self) -> None:
         """Test TimeBasedIndex.as_tool() with time-aware parameters."""
+
         from agenticflow.retriever.temporal import TimeBasedIndex
         from agenticflow.vectorstore import VectorStore
-        from datetime import datetime, timezone
-        
+
         vs = VectorStore(embeddings=MockEmbedding())
         index = TimeBasedIndex(vectorstore=vs)
-        
+
         # Add documents with timestamps
         docs = [
             VectorStoreDocument(
@@ -667,7 +665,7 @@ class TestBaseRetriever:
             ),
         ]
         await index.add_documents(docs)
-        
+
         # Create tool with time parameters
         tool = index.as_tool(
             name="search_temporal",
@@ -676,7 +674,7 @@ class TestBaseRetriever:
             allow_time_range=True,
             allow_decay_control=True,
         )
-        
+
         # Verify schema includes time parameters
         assert tool.name == "search_temporal"
         assert "query" in tool.args_schema
@@ -684,7 +682,7 @@ class TestBaseRetriever:
         assert "time_end" in tool.args_schema
         assert "apply_decay" in tool.args_schema
         assert tool.args_schema["apply_decay"]["default"] is True
-        
+
         # Invoke with time range
         result = await tool.ainvoke({
             "query": "news",
@@ -693,7 +691,7 @@ class TestBaseRetriever:
             "time_end": "2024-12-31T23:59:59Z",
             "apply_decay": True,
         })
-        
+
         assert isinstance(result, list)
         assert len(result) > 0
         assert "text" in result[0]
@@ -707,22 +705,22 @@ class TestBaseRetriever:
 
 class TestNormalizeScores:
     """Tests for score normalization."""
-    
+
     def test_normalize_basic(self, sample_results: list[RetrievalResult]) -> None:
         """Test basic score normalization."""
         normalized = normalize_scores(sample_results)
-        
+
         # Highest should be 1.0
         assert normalized[0].score == 1.0
         # Others should be scaled
         assert 0 < normalized[1].score < 1.0
         assert 0 <= normalized[2].score <= 1.0
-    
+
     def test_normalize_empty(self) -> None:
         """Test normalizing empty list."""
         normalized = normalize_scores([])
         assert normalized == []
-    
+
     def test_normalize_single(self) -> None:
         """Test normalizing single result."""
         result = RetrievalResult(
@@ -736,7 +734,7 @@ class TestNormalizeScores:
 
 class TestDeduplicateResults:
     """Tests for result deduplication."""
-    
+
     def test_deduplicate_by_text(self) -> None:
         """Test deduplication by document text."""
         results = [
@@ -756,14 +754,14 @@ class TestDeduplicateResults:
                 retriever_name="r1",
             ),
         ]
-        
+
         deduped = deduplicate_results(results)
-        
+
         # Should keep 2 unique documents
         assert len(deduped) == 2
         # Should keep higher scored duplicate
         assert deduped[0].score == 0.9
-    
+
     def test_deduplicate_by_id(self) -> None:
         """Test deduplication by document ID."""
         results = [
@@ -778,20 +776,20 @@ class TestDeduplicateResults:
                 retriever_name="r2",
             ),
         ]
-        
+
         deduped = deduplicate_results(results)
         assert len(deduped) == 1
 
 
 class TestFuseResults:
     """Tests for result fusion strategies."""
-    
+
     def test_rrf_fusion(self) -> None:
         """Test RRF (Reciprocal Rank Fusion)."""
         # Use same document ID for merging
         doc_a = VectorStoreDocument("A", {"id": "doc_a"})
         doc_b = VectorStoreDocument("B", {"id": "doc_b"})
-        
+
         results_list = [
             [
                 RetrievalResult(doc_a, 0.9, "r1"),
@@ -802,14 +800,14 @@ class TestFuseResults:
                 RetrievalResult(VectorStoreDocument("A", {"id": "doc_a"}), 0.7, "r2"),
             ],
         ]
-        
+
         fused = fuse_results(results_list, strategy=FusionStrategy.RRF)
-        
+
         # Both docs should be present
         texts = [r.document.text for r in fused]
         assert "A" in texts
         assert "B" in texts
-    
+
     def test_linear_fusion(self) -> None:
         """Test linear weighted fusion with score normalization."""
         # Use same document ID for merging
@@ -817,7 +815,7 @@ class TestFuseResults:
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.8, "r1")],
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.6, "r2")],
         ]
-        
+
         # Test WITHOUT normalization first
         fused = fuse_results(
             results_list,
@@ -825,12 +823,12 @@ class TestFuseResults:
             weights=[0.7, 0.3],
             normalize_output=False,  # Disable normalization to test raw scores
         )
-        
+
         # Should have combined score
         assert len(fused) == 1
         expected_score = 0.7 * 0.8 + 0.3 * 0.6
         assert abs(fused[0].score - expected_score) < 0.01
-        
+
         # Test WITH normalization (default)
         fused_norm = fuse_results(
             results_list,
@@ -839,7 +837,7 @@ class TestFuseResults:
         )
         # Single result normalizes to 1.0
         assert fused_norm[0].score == 1.0
-    
+
     def test_max_fusion(self) -> None:
         """Test max score fusion with score normalization."""
         # Use same document ID for merging
@@ -847,20 +845,20 @@ class TestFuseResults:
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.6, "r1")],
             [RetrievalResult(VectorStoreDocument("A", {"id": "shared"}), 0.9, "r2")],
         ]
-        
+
         # Test WITHOUT normalization
         fused = fuse_results(results_list, strategy=FusionStrategy.MAX, normalize_output=False)
-        
+
         assert len(fused) == 1
         assert fused[0].score == 0.9
         # Raw score preserved in metadata
         assert fused[0].metadata.get("raw_score") is None  # No raw_score when not normalizing
-        
+
         # Test WITH normalization (default) - single result = 1.0
         fused_norm = fuse_results(results_list, strategy=FusionStrategy.MAX)
         assert fused_norm[0].score == 1.0
         assert fused_norm[0].metadata.get("raw_score") == 0.9
-    
+
     def test_voting_fusion(self) -> None:
         """Test voting fusion."""
         # Use same document IDs for merging
@@ -877,9 +875,9 @@ class TestFuseResults:
                 RetrievalResult(VectorStoreDocument("A", {"id": "a"}), 0.5, "r3"),
             ],
         ]
-        
+
         fused = fuse_results(results_list, strategy=FusionStrategy.VOTING)
-        
+
         # A should be ranked highest (appears in all 3)
         assert fused[0].document.text == "A"
         # Score is normalized vote count (1.0 for A since all 3 retrievers found it)
@@ -892,19 +890,19 @@ class TestFuseResults:
 
 class TestDenseRetriever:
     """Tests for DenseRetriever."""
-    
+
     @pytest.fixture
     def mock_vectorstore(self, sample_documents: list[Document]):
         """Create a mock vector store."""
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(
             embeddings=MockEmbedding(dimensions=64),
             backend=InMemoryBackend(),
         )
         return vs
-    
+
     @pytest.mark.asyncio
     async def test_dense_retriever_basic(
         self,
@@ -913,17 +911,17 @@ class TestDenseRetriever:
     ) -> None:
         """Test basic dense retrieval."""
         from agenticflow.retriever.dense import DenseRetriever
-        
+
         # Add documents
         await mock_vectorstore.add_documents(sample_documents)
-        
+
         retriever = DenseRetriever(mock_vectorstore)
-        
+
         results = await retriever.retrieve("Python programming", k=3)
-        
+
         assert len(results) <= 3
         assert all(isinstance(r, VectorStoreDocument) for r in results)
-    
+
     @pytest.mark.asyncio
     async def test_dense_retriever_with_scores(
         self,
@@ -932,12 +930,12 @@ class TestDenseRetriever:
     ) -> None:
         """Test dense retrieval with scores."""
         from agenticflow.retriever.dense import DenseRetriever
-        
+
         await mock_vectorstore.add_documents(sample_documents)
         retriever = DenseRetriever(mock_vectorstore)
-        
+
         results = await retriever.retrieve_with_scores("machine learning", k=2)
-        
+
         assert len(results) <= 2
         assert all(isinstance(r, RetrievalResult) for r in results)
         assert all(r.retriever_name == "dense" for r in results)
@@ -950,91 +948,91 @@ class TestDenseRetriever:
 
 class TestBM25Retriever:
     """Tests for BM25Retriever (sparse retrieval)."""
-    
+
     @pytest.mark.asyncio
     async def test_bm25_basic(self, sample_documents: list[Document]) -> None:
         """Test basic BM25 retrieval."""
         pytest.importorskip("rank_bm25")
         from agenticflow.retriever.sparse import BM25Retriever
-        
+
         retriever = BM25Retriever(k=3)
         await retriever.index_documents(sample_documents)
-        
+
         results = await retriever.retrieve("Python programming language")
-        
+
         assert len(results) <= 3
         # Should find Python-related docs
         texts = [r.text for r in results]
         assert any("Python" in t for t in texts)
-    
+
     @pytest.mark.asyncio
     async def test_bm25_with_scores(self, sample_documents: list[Document]) -> None:
         """Test BM25 with scores."""
         pytest.importorskip("rank_bm25")
         from agenticflow.retriever.sparse import BM25Retriever
-        
+
         retriever = BM25Retriever()
         await retriever.index_documents(sample_documents)
-        
+
         results = await retriever.retrieve_with_scores("machine learning")
-        
+
         assert all(isinstance(r, RetrievalResult) for r in results)
         # Scores should be non-negative
         assert all(r.score >= 0 for r in results)
-    
+
     @pytest.mark.asyncio
     async def test_bm25_tokenizer(self, sample_documents: list[Document]) -> None:
         """Test BM25 with different tokenizers."""
         pytest.importorskip("rank_bm25")
         from agenticflow.retriever.sparse import BM25Retriever
-        
+
         # Simple tokenizer
         retriever = BM25Retriever(tokenizer="simple")
         await retriever.index_documents(sample_documents)
-        
+
         results = await retriever.retrieve("PYTHON")  # Uppercase
-        
+
         # Should still find Python docs (case-insensitive)
         texts = [r.text.lower() for r in results]
         assert any("python" in t for t in texts)
-    
+
     @pytest.mark.asyncio
     async def test_bm25_with_keywords(self, sample_documents: list[Document]) -> None:
         """Test BM25 with explicit keywords instead of query."""
         from agenticflow.retriever.sparse import BM25Retriever
-        
+
         retriever = BM25Retriever()
         await retriever.index_documents(sample_documents)
-        
+
         # Search using explicit keywords
         results = await retriever.retrieve(keywords=["python", "programming"])
-        
+
         assert len(results) > 0
         texts = [r.text.lower() for r in results]
         assert any("python" in t for t in texts)
-    
+
     @pytest.mark.asyncio
     async def test_bm25_as_tool_with_keywords(self, sample_documents: list[Document]) -> None:
         """Test BM25 as_tool() exposes keywords parameter."""
         from agenticflow.retriever.sparse import BM25Retriever
-        
+
         retriever = BM25Retriever()
         await retriever.index_documents(sample_documents)
-        
+
         # Create tool with keywords support
         tool = retriever.as_tool(
             name="search_bm25",
             include_scores=True,
             allow_keywords=True,
         )
-        
+
         # Verify schema includes keywords parameter
         assert "keywords" in tool.args_schema
         assert tool.args_schema["keywords"]["type"] == "array"
-        
+
         # Invoke with explicit keywords
         results = await tool.ainvoke({"keywords": ["python", "language"], "k": 2})
-        
+
         assert isinstance(results, list)
         assert len(results) > 0
         assert "text" in results[0]
@@ -1048,7 +1046,7 @@ class TestBM25Retriever:
 
 class TestHybridRetriever:
     """Tests for HybridRetriever (metadata + content search)."""
-    
+
     @pytest.mark.asyncio
     async def test_hybrid_basic(self, sample_documents: list[Document]) -> None:
         """Test basic hybrid retrieval with metadata fields."""
@@ -1056,32 +1054,32 @@ class TestHybridRetriever:
         from agenticflow.retriever.hybrid import HybridRetriever, MetadataMatchMode
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         # Add metadata to documents
         docs_with_meta = [
             Document(text="Python is a programming language", metadata={"category": "programming", "author": "guido"}),
             Document(text="JavaScript runs in browsers", metadata={"category": "programming", "author": "brendan"}),
             Document(text="Machine learning uses algorithms", metadata={"category": "ml", "author": "andrew"}),
         ]
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(docs_with_meta)
-        
+
         dense = DenseRetriever(vs)
         hybrid = HybridRetriever(
             retriever=dense,
             metadata_fields=["category", "author"],
             mode=MetadataMatchMode.BOOST,
         )
-        
+
         results = await hybrid.retrieve("Python programming", k=3, include_scores=True)
-        
+
         assert len(results) <= 3
         # Results should have enriched metadata (in result.metadata, not document.metadata)
         if results:
             assert "content_score" in results[0].metadata
             assert "metadata_score" in results[0].metadata
-    
+
     @pytest.mark.asyncio
     async def test_hybrid_weights(self, sample_documents: list[Document]) -> None:
         """Test hybrid with different weight configurations."""
@@ -1089,17 +1087,17 @@ class TestHybridRetriever:
         from agenticflow.retriever.hybrid import HybridRetriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         docs_with_meta = [
             Document(text="Python is great", metadata={"category": "python"}),
             Document(text="Java is verbose", metadata={"category": "java"}),
         ]
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(docs_with_meta)
-        
+
         dense = DenseRetriever(vs)
-        
+
         # Heavy on content
         hybrid_content = HybridRetriever(
             retriever=dense,
@@ -1108,7 +1106,7 @@ class TestHybridRetriever:
             metadata_weight=0.1,
         )
         results_content = await hybrid_content.retrieve("Python", k=3)
-        
+
         # Heavy on metadata
         hybrid_meta = HybridRetriever(
             retriever=dense,
@@ -1117,7 +1115,7 @@ class TestHybridRetriever:
             metadata_weight=0.9,
         )
         results_meta = await hybrid_meta.retrieve("python", k=3)
-        
+
         # Both should return results
         assert len(results_content) > 0
         assert len(results_meta) > 0
@@ -1130,7 +1128,7 @@ class TestHybridRetriever:
 
 class TestEnsembleRetriever:
     """Tests for EnsembleRetriever."""
-    
+
     @pytest.mark.asyncio
     async def test_ensemble_basic(self, sample_documents: list[Document]) -> None:
         """Test basic ensemble retrieval."""
@@ -1140,19 +1138,19 @@ class TestEnsembleRetriever:
         from agenticflow.retriever.sparse import BM25Retriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
-        
+
         dense = DenseRetriever(vs)
         sparse = BM25Retriever()
         await sparse.index_documents(sample_documents)
-        
+
         ensemble = EnsembleRetriever(
             retrievers=[dense, sparse],
             weights=[0.5, 0.5],
         )
-        
+
         results = await ensemble.retrieve("Python", k=3)
         assert len(results) <= 3
 
@@ -1165,28 +1163,28 @@ class TestEnsembleRetriever:
         from agenticflow.retriever.sparse import BM25Retriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
-        
+
         dense = DenseRetriever(vs)
         sparse = BM25Retriever()
         await sparse.index_documents(sample_documents)
-        
+
         # Test RRF
         ensemble_rrf = EnsembleRetriever(
             retrievers=[dense, sparse],
             fusion_strategy=FusionStrategy.RRF,
         )
         results_rrf = await ensemble_rrf.retrieve("Python", k=3)
-        
+
         # Test MAX
         ensemble_max = EnsembleRetriever(
             retrievers=[dense, sparse],
             fusion_strategy=FusionStrategy.MAX,
         )
         results_max = await ensemble_max.retrieve("Python", k=3)
-        
+
         assert len(results_rrf) > 0
         assert len(results_max) > 0
 
@@ -1198,37 +1196,37 @@ class TestEnsembleRetriever:
 
 class TestParentDocumentRetriever:
     """Tests for ParentDocumentRetriever."""
-    
+
     @pytest.mark.asyncio
     async def test_parent_retriever_basic(self) -> None:
         """Test basic parent document retrieval."""
         from agenticflow.retriever.contextual import ParentDocumentRetriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
-        
+
         # Large parent document
         parent_doc = VectorStoreDocument(
             text="This is a long document about Python. " * 50 +
                  "Python is great for machine learning. " * 50,
             metadata={"id": "parent1", "topic": "python"},
         )
-        
+
         retriever = ParentDocumentRetriever(
             vs,
             chunk_size=100,
             chunk_overlap=20,
         )
-        
+
         await retriever.add_documents([parent_doc])
-        
+
         results = await retriever.retrieve("Python machine learning", k=1)
-        
+
         assert len(results) == 1
         # Should return the full parent, not a chunk
         assert len(results[0].text) > 100
-    
+
     @pytest.mark.asyncio
     @pytest.mark.skip(reason="Flaky test - investigate async issue")
     async def test_parent_retriever_with_scores(self) -> None:
@@ -1236,46 +1234,46 @@ class TestParentDocumentRetriever:
         from agenticflow.retriever.contextual import ParentDocumentRetriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
-        
+
         docs = [
             VectorStoreDocument(text="Long document A. " * 20, metadata={"id": "1"}),
             VectorStoreDocument(text="Long document B. " * 20, metadata={"id": "2"}),
         ]
-        
+
         retriever = ParentDocumentRetriever(vs, chunk_size=50)
         await retriever.add_documents(docs)
-        
+
         results = await retriever.retrieve_with_scores("document", k=2)
-        
+
         assert all(isinstance(r, RetrievalResult) for r in results)
         assert "matching_chunks" in results[0].metadata
 
 
 class TestSentenceWindowRetriever:
     """Tests for SentenceWindowRetriever."""
-    
+
     @pytest.mark.asyncio
     async def test_sentence_window_basic(self) -> None:
         """Test basic sentence window retrieval."""
         from agenticflow.retriever.contextual import SentenceWindowRetriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
-        
+
         doc = VectorStoreDocument(
             text="First sentence. Second sentence about Python. Third sentence. "
                  "Fourth sentence. Fifth sentence.",
             metadata={"id": "1"},
         )
-        
+
         retriever = SentenceWindowRetriever(vs, window_size=1)
         await retriever.add_documents([doc])
-        
+
         results = await retriever.retrieve("Python", k=1)
-        
+
         # Should return a result with surrounding context (window)
         # Note: MockEmbedding uses hash-based embeddings, not semantic
         assert len(results) >= 1
@@ -1289,28 +1287,28 @@ class TestSentenceWindowRetriever:
 
 class TestSelfQueryRetriever:
     """Tests for SelfQueryRetriever."""
-    
+
     @pytest.fixture
     def mock_llm(self):
         """Create a mock LLM for query parsing."""
-        
+
         class MockLLM:
             async def generate(self, prompt: str) -> str:
                 # Return mock parsed query
                 return '{"semantic_query": "programming tutorials", "filter": {"topic": "python"}}'
-        
+
         return MockLLM()
-    
+
     @pytest.mark.asyncio
     async def test_self_query_basic(self, mock_llm, sample_documents: list[Document]) -> None:
         """Test basic self-query retrieval."""
         from agenticflow.retriever.self_query import AttributeInfo, SelfQueryRetriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
-        
+
         retriever = SelfQueryRetriever(
             vectorstore=vs,
             llm=mock_llm,
@@ -1318,22 +1316,22 @@ class TestSelfQueryRetriever:
                 AttributeInfo("topic", "Document topic", "string"),
             ],
         )
-        
+
         results = await retriever.retrieve("Python tutorials about programming")
-        
+
         # Should return some results
         assert isinstance(results, list)
-    
+
     @pytest.mark.asyncio
     async def test_self_query_verbose(self, mock_llm, sample_documents: list[Document]) -> None:
         """Test self-query with verbose output."""
         from agenticflow.retriever.self_query import AttributeInfo, SelfQueryRetriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
-        
+
         retriever = SelfQueryRetriever(
             vectorstore=vs,
             llm=mock_llm,
@@ -1341,9 +1339,9 @@ class TestSelfQueryRetriever:
                 AttributeInfo("topic", "Document topic", "string"),
             ],
         )
-        
+
         results, parsed = await retriever.retrieve_verbose("Python tutorials")
-        
+
         assert parsed.semantic_query == "programming tutorials"
         assert parsed.filter == {"topic": "python"}
 
@@ -1355,23 +1353,23 @@ class TestSelfQueryRetriever:
 
 class TestCrossEncoderReranker:
     """Tests for CrossEncoderReranker."""
-    
+
     @pytest.mark.asyncio
     async def test_cross_encoder_basic(self, sample_documents: list[Document]) -> None:
         """Test basic cross-encoder reranking."""
         pytest.importorskip("sentence_transformers")
         from agenticflow.retriever.rerankers import CrossEncoderReranker
-        
+
         reranker = CrossEncoderReranker(
             model="cross-encoder/ms-marco-MiniLM-L-6-v2",
         )
-        
+
         results = await reranker.rerank(
             "Python programming",
             sample_documents[:3],
             top_n=2,
         )
-        
+
         assert len(results) == 2
         assert all(isinstance(r, RetrievalResult) for r in results)
         # Should be sorted by score
@@ -1381,22 +1379,22 @@ class TestCrossEncoderReranker:
 
 class TestLLMReranker:
     """Tests for LLM-based rerankers."""
-    
+
     @pytest.fixture
     def mock_model(self):
         """Create a mock LLM model."""
-        
+
         class MockModel:
             model = "mock-model"
-            
+
             async def generate(self, prompt: str) -> str:
                 # Return a score based on "Python" presence
                 if "Python" in prompt:
                     return "8"
                 return "5"
-        
+
         return MockModel()
-    
+
     @pytest.mark.asyncio
     async def test_llm_reranker_basic(
         self,
@@ -1405,39 +1403,39 @@ class TestLLMReranker:
     ) -> None:
         """Test basic LLM reranking."""
         from agenticflow.retriever.rerankers import LLMReranker
-        
+
         reranker = LLMReranker(model=mock_model, max_concurrent=2)
-        
+
         results = await reranker.rerank(
             "Python programming",
             sample_documents[:3],
             top_n=2,
         )
-        
+
         assert len(results) == 2
         # Python docs should score higher
         assert results[0].score >= results[1].score
-    
+
     @pytest.mark.asyncio
     async def test_listwise_reranker(self, sample_documents: list[Document]) -> None:
         """Test listwise LLM reranking."""
         from agenticflow.retriever.rerankers import ListwiseLLMReranker
-        
+
         class MockModel:
             model = "mock"
-            
+
             async def generate(self, prompt: str) -> str:
                 # Return ordering: Python docs first
                 return "1,5,2,3,4"
-        
+
         reranker = ListwiseLLMReranker(model=MockModel())
-        
+
         results = await reranker.rerank(
             "Python",
             sample_documents,
             top_n=3,
         )
-        
+
         assert len(results) == 3
         # First result should be doc index 0 (1 in 1-indexed)
         assert results[0].document.text == sample_documents[0].text
@@ -1450,17 +1448,17 @@ class TestLLMReranker:
 
 class TestModuleExports:
     """Tests for module-level exports."""
-    
+
     def test_main_exports(self) -> None:
         """Test that main retriever module exports all components."""
         from agenticflow import retriever
-        
+
         # Core
         assert hasattr(retriever, "Retriever")
         assert hasattr(retriever, "BaseRetriever")
         assert hasattr(retriever, "RetrievalResult")
         assert hasattr(retriever, "FusionStrategy")
-        
+
         # Retrievers
         assert hasattr(retriever, "DenseRetriever")
         assert hasattr(retriever, "BM25Retriever")
@@ -1470,21 +1468,21 @@ class TestModuleExports:
         assert hasattr(retriever, "SentenceWindowRetriever")
         assert hasattr(retriever, "SelfQueryRetriever")
         assert hasattr(retriever, "HyDERetriever")
-        
+
         # Rerankers
         assert hasattr(retriever, "Reranker")
         assert hasattr(retriever, "CrossEncoderReranker")
         assert hasattr(retriever, "CohereReranker")
         assert hasattr(retriever, "LLMReranker")
-        
+
         # Utilities
         assert hasattr(retriever, "fuse_results")
         assert hasattr(retriever, "normalize_scores")
-    
+
     def test_rerankers_submodule(self) -> None:
         """Test rerankers submodule exports."""
         from agenticflow.retriever import rerankers
-        
+
         assert hasattr(rerankers, "Reranker")
         assert hasattr(rerankers, "BaseReranker")
         assert hasattr(rerankers, "CrossEncoderReranker")
@@ -1500,7 +1498,7 @@ class TestModuleExports:
 
 class TestHyDERetriever:
     """Tests for HyDERetriever."""
-    
+
     @pytest.fixture
     def mock_model(self):
         """Create a mock chat model for hypothesis generation."""
@@ -1510,140 +1508,140 @@ class TestHyDERetriever:
             "data science, machine learning, and automation. It features clean syntax "
             "and a vast ecosystem of libraries.",
         ])
-    
+
     @pytest.fixture
     async def base_retriever(self, sample_documents: list[Document]):
         """Create a base dense retriever."""
         from agenticflow.retriever import DenseRetriever
         from agenticflow.vectorstore import VectorStore
         from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
-        
+
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
         return DenseRetriever(vs)
-    
+
     @pytest.mark.asyncio
     async def test_hyde_basic_retrieval(self, mock_model, base_retriever) -> None:
         """Test basic HyDE retrieval."""
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         hyde = HyDERetriever(base_retriever, mock_model)
-        
+
         results = await hyde.retrieve("What is Python?", k=3)
-        
+
         assert isinstance(results, list)
         assert len(results) <= 3
         # Should return Document objects
         assert all(hasattr(doc, "text") for doc in results)
-    
+
     @pytest.mark.asyncio
     async def test_hyde_with_scores(self, mock_model, base_retriever) -> None:
         """Test HyDE retrieval with scores."""
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         hyde = HyDERetriever(base_retriever, mock_model)
-        
+
         results = await hyde.retrieve("What is Python?", k=3, include_scores=True)
-        
+
         assert isinstance(results, list)
         assert all(isinstance(r, RetrievalResult) for r in results)
         # Retriever name should be updated
         for r in results:
             assert r.retriever_name == "hyde"
-    
+
     @pytest.mark.asyncio
     async def test_hyde_generate_hypothetical(self, mock_model, base_retriever) -> None:
         """Test hypothetical document generation."""
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         hyde = HyDERetriever(base_retriever, mock_model)
-        
+
         hypothetical = await hyde.generate_hypothetical("What is Python?")
-        
+
         assert isinstance(hypothetical, str)
         assert len(hypothetical) > 0
         # Should contain the mock response content
         assert "Python" in hypothetical
-    
+
     @pytest.mark.asyncio
     async def test_hyde_custom_prompt(self, mock_model, base_retriever) -> None:
         """Test HyDE with custom prompt template."""
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         custom_prompt = "Write a technical explanation for: {query}"
-        
+
         hyde = HyDERetriever(
             base_retriever,
             mock_model,
             prompt_template=custom_prompt,
         )
-        
+
         results = await hyde.retrieve("programming", k=2)
-        
+
         assert isinstance(results, list)
-    
+
     @pytest.mark.asyncio
     async def test_hyde_multiple_hypotheticals(self, base_retriever) -> None:
         """Test HyDE with multiple hypothetical documents."""
         from agenticflow.models.mock import MockChatModel
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         # Model that returns different responses
         model = MockChatModel(responses=[
             "Python is great for beginners and experts alike.",
             "Python powers data science and machine learning.",
             "Python is used in web development with Django and Flask.",
         ])
-        
+
         hyde = HyDERetriever(
             base_retriever,
             model,
             n_hypotheticals=3,
         )
-        
+
         results = await hyde.retrieve("Why use Python?", k=3, include_scores=True)
-        
+
         assert isinstance(results, list)
         assert len(results) <= 3
-    
+
     @pytest.mark.asyncio
     async def test_hyde_include_original_query(self, mock_model, base_retriever) -> None:
         """Test HyDE with original query included in search."""
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         hyde = HyDERetriever(
             base_retriever,
             mock_model,
             include_original_query=True,
         )
-        
+
         results = await hyde.retrieve("Python programming", k=3, include_scores=True)
-        
+
         assert isinstance(results, list)
-    
+
     @pytest.mark.asyncio
     async def test_hyde_custom_name(self, mock_model, base_retriever) -> None:
         """Test HyDE with custom name."""
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         hyde = HyDERetriever(
             base_retriever,
             mock_model,
             name="my-hyde-retriever",
         )
-        
+
         assert hyde.name == "my-hyde-retriever"
-        
+
         results = await hyde.retrieve("test", k=1, include_scores=True)
         for r in results:
             assert r.retriever_name == "my-hyde-retriever"
-    
+
     def test_hyde_repr(self, mock_model, base_retriever) -> None:
         """Test HyDE string representation."""
         from agenticflow.retriever.hyde import HyDERetriever
-        
+
         hyde = HyDERetriever(base_retriever, mock_model, n_hypotheticals=2)
-        
+
         repr_str = repr(hyde)
         assert "HyDERetriever" in repr_str
         assert "dense" in repr_str  # base retriever name
@@ -1657,81 +1655,81 @@ class TestHyDERetriever:
 
 class TestLLMAdapter:
     """Tests for ChatModelAdapter and adapt_llm utility."""
-    
+
     @pytest.mark.asyncio
     async def test_chat_model_adapter(self) -> None:
         """Test ChatModelAdapter wraps chat models correctly."""
         from agenticflow.models import MockChatModel
         from agenticflow.retriever.utils.llm_adapter import ChatModelAdapter
-        
+
         chat_model = MockChatModel()
         adapter = ChatModelAdapter(chat_model)
-        
+
         # Test .generate() interface
         response = await adapter.generate("Hello, world!")
         assert isinstance(response, str)
         assert len(response) > 0
-    
+
     @pytest.mark.asyncio
     async def test_adapt_llm_with_chat_model(self) -> None:
         """Test adapt_llm auto-wraps chat models."""
         from agenticflow.models import MockChatModel
-        from agenticflow.retriever.utils.llm_adapter import adapt_llm, LLMProtocol
-        
+        from agenticflow.retriever.utils.llm_adapter import LLMProtocol, adapt_llm
+
         chat_model = MockChatModel()
         adapted = adapt_llm(chat_model)
-        
+
         # Should be wrapped in adapter
         assert isinstance(adapted, LLMProtocol)
-        
+
         # Should have .generate() method
         response = await adapted.generate("Test prompt")
         assert isinstance(response, str)
-    
+
     @pytest.mark.asyncio
     async def test_adapt_llm_with_generate_model(self) -> None:
         """Test adapt_llm leaves models with .generate() as-is."""
         from agenticflow.retriever.utils.llm_adapter import adapt_llm
-        
+
         class MockGenerateModel:
             async def generate(self, prompt: str) -> str:
                 return f"Generated: {prompt}"
-        
+
         model = MockGenerateModel()
         adapted = adapt_llm(model)
-        
+
         # Should return as-is (already has .generate())
         assert adapted is model
-        
+
         response = await adapted.generate("Test")
         assert response == "Generated: Test"
-    
+
     def test_adapt_llm_invalid_model(self) -> None:
         """Test adapt_llm raises error for invalid models."""
         from agenticflow.retriever.utils.llm_adapter import adapt_llm
-        
+
         class InvalidModel:
             pass
-        
+
         with pytest.raises(TypeError, match="must have either .generate"):
             adapt_llm(InvalidModel())
-    
+
     @pytest.mark.asyncio
     async def test_summary_index_auto_adapts_chat_model(self) -> None:
         """Test SummaryIndex automatically adapts chat models."""
         from agenticflow.models import MockChatModel
         from agenticflow.retriever import SummaryIndex
-        from agenticflow.vectorstore import VectorStore, Document
-        
+        from agenticflow.vectorstore import Document, VectorStore
+
         # Create index with chat model (no manual adapter needed)
         model = MockChatModel()
         vs = VectorStore(embeddings=MockEmbedding())
         index = SummaryIndex(llm=model, vectorstore=vs)
-        
+
         # Should work without error (adapter created internally)
         docs = [Document(text="Test document about machine learning and AI.")]
         await index.add_documents(docs)
-        
+
         # Verify summaries were created
         assert len(index.summaries) == 1
 

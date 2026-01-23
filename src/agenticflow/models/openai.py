@@ -22,7 +22,6 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -40,8 +39,11 @@ from agenticflow.models.base import (
 
 def _parse_response(response: Any) -> AIMessage:
     """Parse OpenAI response into AIMessage with metadata."""
-    from agenticflow.core.messages import MessageMetadata, TokenUsage, EmbeddingMetadata, EmbeddingResult
-    
+    from agenticflow.core.messages import (
+        MessageMetadata,
+        TokenUsage,
+    )
+
     choice = response.choices[0]
     message = choice.message
 
@@ -222,13 +224,14 @@ class OpenAIChat(BaseChatModel):
             will have empty content but complete metadata (finish_reason and token usage).
         """
         import time
+
         from ..core.messages import MessageMetadata, TokenUsage
-        
+
         self._ensure_initialized()
         kwargs = self._build_request(normalize_input(messages))
         kwargs["stream"] = True
         kwargs["stream_options"] = {"include_usage": True}  # Request usage in final chunk
-        
+
         start_time = time.time()
         chunk_metadata = {
             "id": None,
@@ -237,23 +240,23 @@ class OpenAIChat(BaseChatModel):
             "usage": None,
         }
         has_yielded_final = False
-        
+
         if self.use_responses_api:
             stream = await self._async_client.beta.responses.create(**kwargs)
         else:
             stream = await self._async_client.chat.completions.create(**kwargs)
-        
+
         async for chunk in stream:
             # Accumulate metadata from chunks
             if chunk.id:
                 chunk_metadata["id"] = chunk.id
             if chunk.model:
                 chunk_metadata["model"] = chunk.model
-            
+
             # Check for finish_reason (comes in second-to-last chunk)
             if chunk.choices and chunk.choices[0].finish_reason:
                 chunk_metadata["finish_reason"] = chunk.choices[0].finish_reason
-            
+
             # Check for usage (comes in final chunk with stream_options)
             if hasattr(chunk, 'usage') and chunk.usage:
                 chunk_metadata["usage"] = chunk.usage
@@ -274,7 +277,7 @@ class OpenAIChat(BaseChatModel):
                 # Yield final metadata-only chunk
                 yield AIMessage(content="", metadata=metadata)
                 has_yielded_final = True
-            
+
             # Yield content chunks with partial metadata
             if chunk.choices and chunk.choices[0].delta.content:
                 metadata = MessageMetadata(
@@ -286,7 +289,7 @@ class OpenAIChat(BaseChatModel):
                     response_id=chunk_metadata["id"],
                     duration=time.time() - start_time,
                 )
-                
+
                 yield AIMessage(
                     content=chunk.choices[0].delta.content,
                     metadata=metadata,
@@ -327,11 +330,11 @@ class OpenAIChat(BaseChatModel):
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls
-        
+
         # Structured output support
         if hasattr(self, "_response_format") and self._response_format:
             kwargs["response_format"] = self._response_format
-        
+
         return kwargs
 
 
@@ -384,25 +387,30 @@ class OpenAIEmbedding(BaseEmbedding):
         """Embed texts synchronously with metadata."""
         self._ensure_initialized()
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         all_embeddings: list[list[float]] = []
         total_prompt_tokens = 0
         model_name = None
-        
+
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             response = self._client.embeddings.create(**self._build_request(batch))
             sorted_data = sorted(response.data, key=lambda x: x.index)
             all_embeddings.extend([d.embedding for d in sorted_data])
-            
+
             # Accumulate metadata
             if response.usage:
                 total_prompt_tokens += response.usage.prompt_tokens
             if response.model:
                 model_name = response.model
-        
+
         # Build metadata
         metadata = EmbeddingMetadata(
             model=model_name or self.model,
@@ -415,7 +423,7 @@ class OpenAIEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     async def aembed(self, texts: list[str]) -> EmbeddingResult:
@@ -423,7 +431,12 @@ class OpenAIEmbedding(BaseEmbedding):
         self._ensure_initialized()
         import asyncio
         import time
-        from agenticflow.core.messages import EmbeddingMetadata, EmbeddingResult, TokenUsage
+
+        from agenticflow.core.messages import (
+            EmbeddingMetadata,
+            EmbeddingResult,
+            TokenUsage,
+        )
 
         start_time = time.time()
         total_prompt_tokens = 0
@@ -446,7 +459,7 @@ class OpenAIEmbedding(BaseEmbedding):
             total_prompt_tokens += tokens
             if model:
                 model_name = model
-        
+
         # Build metadata
         metadata = EmbeddingMetadata(
             model=model_name or self.model,
@@ -459,7 +472,7 @@ class OpenAIEmbedding(BaseEmbedding):
             dimensions=len(all_embeddings[0]) if all_embeddings else self.dimensions,
             num_texts=len(texts),
         )
-        
+
         return EmbeddingResult(embeddings=all_embeddings, metadata=metadata)
 
     def _build_request(self, texts: list[str]) -> dict[str, Any]:

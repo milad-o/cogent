@@ -14,13 +14,9 @@ the agent's internal task planning and progress.
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent
-from agenticflow.observability import Observer, ObservabilityLevel
+from agenticflow.observability import ObservabilityLevel, Observer
 
 
 async def main():
@@ -28,13 +24,13 @@ async def main():
     print("="*80)
     print("COMPREHENSIVE AGENT + TASKBOARD OBSERVABILITY")
     print("="*80)
-    
+
     # Create model
     model = "gpt4"
-    
+
     # Use standard observer to show consistent formatting
     observer = Observer(level=ObservabilityLevel.DEBUG)
-    
+
     # Create agent with taskboard and observability
     print("\n✓ Creating agent with taskboard and event tracking...")
     agent = Agent(
@@ -43,7 +39,7 @@ async def main():
         taskboard=True,  # Enable taskboard with tools
         observer=observer,
     )
-    
+
     # Define a multi-step task
     task = """
     Research Python async programming and create a summary:
@@ -53,21 +49,21 @@ async def main():
     
     Track your progress using tasks and notes.
     """
-    
+
     print(f"\n📝 Task:\n{task}\n")
     print("="*80)
     print("EXECUTION LOG (Real-time Events)")
     print("="*80 + "\n")
-    
+
     # Run the agent
     result = await agent.run(task)
-    
+
     # Print result
     print("\n" + "="*80)
     print("AGENT RESULT")
     print("="*80)
     print(result)
-    
+
     # Show taskboard state
     print("\n" + "="*80)
     print("TASKBOARD STATE")

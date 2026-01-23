@@ -18,8 +18,8 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 from agenticflow.core import Document
+from agenticflow.retriever.base import BaseRetriever, RetrievalResult
 
 if TYPE_CHECKING:
     from agenticflow.vectorstore import VectorStore

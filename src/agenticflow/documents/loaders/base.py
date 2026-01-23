@@ -121,7 +121,7 @@ class BaseLoader(ABC):
             "ts": "typescript",
         }
         source_type = source_type_map.get(ext, ext or "unknown")
-        
+
         custom = dict(extra_metadata) if extra_metadata else {}
         custom.setdefault("file_type", path.suffix.lower())
 

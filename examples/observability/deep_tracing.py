@@ -19,13 +19,9 @@ Run with different observability levels:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent, Flow
-from agenticflow.observability import Observer, ObservabilityLevel, Channel
+from agenticflow.observability import Channel, ObservabilityLevel, Observer
 from agenticflow.tools import tool
 
 

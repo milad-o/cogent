@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from agenticflow.documents.loaders.base import BaseLoader
 from agenticflow.core import Document
+from agenticflow.documents.loaders.base import BaseLoader
 
 # Map extensions to language names
 EXTENSION_TO_LANGUAGE: dict[str, str] = {

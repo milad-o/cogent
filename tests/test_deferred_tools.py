@@ -8,10 +8,7 @@ and the agent waits for an event to signal completion.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from datetime import timedelta
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -25,7 +22,6 @@ from agenticflow.tools.deferred import (
     is_deferred,
 )
 
-
 # ==============================================================================
 # DeferredResult Tests
 # ==============================================================================
@@ -37,7 +33,7 @@ class TestDeferredResult:
     def test_default_values(self) -> None:
         """Test default field values."""
         deferred = DeferredResult()
-        
+
         assert deferred.job_id is not None
         assert len(deferred.job_id) > 0
         assert deferred.wait_for is None
@@ -61,7 +57,7 @@ class TestDeferredResult:
             on_timeout="default_value",
             metadata={"user": "test"},
         )
-        
+
         assert deferred.job_id == "custom-123"
         assert deferred.wait_for == "webhook.complete"
         assert deferred.match == {"request_id": "abc"}
@@ -72,12 +68,12 @@ class TestDeferredResult:
     def test_complete(self) -> None:
         """Test completing a deferred result."""
         deferred = DeferredResult(job_id="test-1")
-        
+
         assert deferred.is_pending
         assert not deferred.is_completed
-        
+
         deferred.complete({"data": "result"})
-        
+
         assert not deferred.is_pending
         assert deferred.is_completed
         assert deferred.result == {"data": "result"}
@@ -86,9 +82,9 @@ class TestDeferredResult:
     def test_fail(self) -> None:
         """Test failing a deferred result."""
         deferred = DeferredResult(job_id="test-2")
-        
+
         deferred.fail("Something went wrong")
-        
+
         assert deferred.status == DeferredStatus.FAILED
         assert deferred.error == "Something went wrong"
         assert deferred._completed_at is not None
@@ -96,37 +92,37 @@ class TestDeferredResult:
     def test_timeout_reached(self) -> None:
         """Test timeout status."""
         deferred = DeferredResult(job_id="test-3")
-        
+
         deferred.timeout_reached()
-        
+
         assert deferred.status == DeferredStatus.TIMEOUT
         assert deferred._completed_at is not None
 
     def test_cancel(self) -> None:
         """Test cancellation."""
         deferred = DeferredResult(job_id="test-4")
-        
+
         deferred.cancel()
-        
+
         assert deferred.status == DeferredStatus.CANCELLED
         assert deferred._completed_at is not None
 
     def test_elapsed_seconds(self) -> None:
         """Test elapsed time calculation."""
         deferred = DeferredResult()
-        
+
         # Should be very small (just created)
         assert deferred.elapsed_seconds < 1.0
 
     def test_is_timed_out(self) -> None:
         """Test timeout detection."""
         import time
-        
+
         # Short timeout - wait a tiny bit to ensure it's expired
         deferred = DeferredResult(timeout=0.001)
         time.sleep(0.01)  # Wait 10ms to ensure timeout
         assert deferred.is_timed_out
-        
+
         # Long timeout
         deferred2 = DeferredResult(timeout=3600.0)
         assert not deferred2.is_timed_out
@@ -137,7 +133,7 @@ class TestDeferredResult:
             wait_for=TraceType.CUSTOM,
             match={"event_name": "my_event"},
         )
-        
+
         assert deferred.wait_for == TraceType.CUSTOM
 
 
@@ -153,19 +149,19 @@ class TestDeferredRetry:
             timeout=120.0,
             metadata={"attempt": 1},
         )
-        
+
         retry = DeferredRetry(original)
         new = retry.new_deferred()
-        
+
         # Should have new job_id
         assert new.job_id != original.job_id
-        
+
         # Should preserve other fields
         assert new.wait_for == original.wait_for
         assert new.match == original.match
         assert new.timeout == original.timeout
         assert new.metadata == original.metadata
-        
+
         # Should be fresh (pending)
         assert new.is_pending
 
@@ -221,20 +217,20 @@ class TestDeferredManager:
     def test_init(self, mock_event_bus: MagicMock) -> None:
         """Test manager initialization."""
         manager = DeferredManager(event_bus=mock_event_bus)
-        
+
         assert manager.pending_count == 0
         assert manager.pending_jobs == []
 
     def test_register(self, mock_event_bus: MagicMock) -> None:
         """Test registering deferred results."""
         manager = DeferredManager(event_bus=mock_event_bus)
-        
+
         deferred1 = DeferredResult(job_id="job-1")
         deferred2 = DeferredResult(job_id="job-2")
-        
+
         manager.register(deferred1)
         manager.register(deferred2)
-        
+
         assert manager.pending_count == 2
         assert "job-1" in manager.pending_jobs
         assert "job-2" in manager.pending_jobs
@@ -242,25 +238,25 @@ class TestDeferredManager:
     def test_get(self, mock_event_bus: MagicMock) -> None:
         """Test getting deferred by ID."""
         manager = DeferredManager(event_bus=mock_event_bus)
-        
+
         deferred = DeferredResult(job_id="job-1", metadata={"test": True})
         manager.register(deferred)
-        
+
         result = manager.get("job-1")
         assert result is deferred
-        
+
         result = manager.get("nonexistent")
         assert result is None
 
     def test_cancel(self, mock_event_bus: MagicMock) -> None:
         """Test cancelling a deferred."""
         manager = DeferredManager(event_bus=mock_event_bus)
-        
+
         deferred = DeferredResult(job_id="job-1")
         manager.register(deferred)
-        
+
         result = manager.cancel("job-1")
-        
+
         assert result is True
         assert deferred.status == DeferredStatus.CANCELLED
         assert manager.pending_count == 0
@@ -268,32 +264,32 @@ class TestDeferredManager:
     def test_cancel_nonexistent(self, mock_event_bus: MagicMock) -> None:
         """Test cancelling nonexistent deferred."""
         manager = DeferredManager(event_bus=mock_event_bus)
-        
+
         result = manager.cancel("nonexistent")
         assert result is False
 
     def test_cancel_all(self, mock_event_bus: MagicMock) -> None:
         """Test cancelling all pending."""
         manager = DeferredManager(event_bus=mock_event_bus)
-        
+
         for i in range(5):
             manager.register(DeferredResult(job_id=f"job-{i}"))
-        
+
         count = manager.cancel_all()
-        
+
         assert count == 5
         assert manager.pending_count == 0
 
     def test_get_summary(self, mock_event_bus: MagicMock) -> None:
         """Test getting summary."""
         manager = DeferredManager(event_bus=mock_event_bus)
-        
+
         # Register some
         for i in range(3):
             manager.register(DeferredResult(job_id=f"job-{i}"))
-        
+
         summary = manager.get_summary()
-        
+
         assert summary["pending"] == 3
         assert len(summary["pending_jobs"]) == 3
 
@@ -324,9 +320,9 @@ class TestDeferredWaiter:
             timeout=0.1,  # Very short
             on_timeout="error",
         )
-        
+
         waiter = DeferredWaiter(deferred=deferred, event_bus=mock_event_bus)
-        
+
         with pytest.raises(TimeoutError):
             await waiter.wait()
 
@@ -338,10 +334,10 @@ class TestDeferredWaiter:
             timeout=0.1,
             on_timeout={"default": True},
         )
-        
+
         waiter = DeferredWaiter(deferred=deferred, event_bus=mock_event_bus)
         result = await waiter.wait()
-        
+
         assert result == {"default": True}
 
     async def test_timeout_retry(self, mock_event_bus: MagicMock) -> None:
@@ -352,10 +348,10 @@ class TestDeferredWaiter:
             timeout=0.1,
             on_timeout="retry",
         )
-        
+
         waiter = DeferredWaiter(deferred=deferred, event_bus=mock_event_bus)
         result = await waiter.wait()
-        
+
         assert isinstance(result, DeferredRetry)
         assert result.original is deferred
 
@@ -367,9 +363,9 @@ class TestDeferredWaiter:
             match={"job_id": "test-4"},
             timeout=5.0,
         )
-        
+
         waiter = DeferredWaiter(deferred=deferred, event_bus=mock_event_bus)
-        
+
         # Simulate event arrival in background
         async def trigger_event():
             await asyncio.sleep(0.05)
@@ -379,10 +375,10 @@ class TestDeferredWaiter:
             mock_event = MagicMock()
             mock_event.data = {"job_id": "test-4", "result": "success!"}
             callback(mock_event)
-        
+
         asyncio.create_task(trigger_event())
         result = await waiter.wait()
-        
+
         assert result == "success!"
 
     async def test_event_match_filter(self, mock_event_bus: MagicMock) -> None:
@@ -393,28 +389,28 @@ class TestDeferredWaiter:
             match={"request_id": "abc123", "type": "complete"},
             timeout=5.0,
         )
-        
+
         waiter = DeferredWaiter(deferred=deferred, event_bus=mock_event_bus)
-        
+
         async def trigger_events():
             await asyncio.sleep(0.05)
             callback = mock_event_bus.subscribe.call_args[0][1]
-            
+
             # Non-matching event (wrong request_id)
             wrong_event = MagicMock()
             wrong_event.data = {"request_id": "xyz", "type": "complete", "result": "wrong"}
             callback(wrong_event)
-            
+
             await asyncio.sleep(0.02)
-            
+
             # Matching event
             correct_event = MagicMock()
             correct_event.data = {"request_id": "abc123", "type": "complete", "result": "correct!"}
             callback(correct_event)
-        
+
         asyncio.create_task(trigger_events())
         result = await waiter.wait()
-        
+
         assert result == "correct!"
 
 
@@ -436,9 +432,9 @@ class TestDeferredToolIntegration:
                 match={"webhook_id": "webhook-123"},
                 timeout=60.0,
             )
-        
+
         result = await webhook_tool("https://example.com/api")
-        
+
         assert is_deferred(result)
         assert result.job_id == "webhook-123"
         assert result.wait_for == "webhook.complete"
@@ -448,9 +444,9 @@ class TestDeferredToolIntegration:
         mock_bus = MagicMock()
         mock_bus.subscribe = MagicMock()
         mock_bus.unsubscribe = MagicMock()
-        
+
         manager = DeferredManager(event_bus=mock_bus)
-        
+
         # Create deferred with very short timeout
         deferred = DeferredResult(
             job_id="flow-test",
@@ -458,10 +454,10 @@ class TestDeferredToolIntegration:
             timeout=0.2,
             on_timeout={"status": "timed_out", "default": True},
         )
-        
+
         # Wait for it (will timeout and return default)
         result = await manager.wait_for(deferred)
-        
+
         assert result == {"status": "timed_out", "default": True}
         assert manager.pending_count == 0  # Should be moved to completed
 
@@ -470,33 +466,33 @@ class TestDeferredToolIntegration:
         mock_bus = MagicMock()
         mock_bus.subscribe = MagicMock()
         mock_bus.unsubscribe = MagicMock()
-        
+
         manager = DeferredManager(event_bus=mock_bus)
-        
+
         deferred = DeferredResult(
             job_id="cancel-test",
             wait_for=TraceType.CUSTOM,
             timeout=10.0,  # Long timeout
         )
-        
+
         # Start waiting in background
         async def wait_task():
             try:
                 await manager.wait_for(deferred)
             except Exception:
                 pass
-        
+
         task = asyncio.create_task(wait_task())
-        
+
         # Give it a moment to start
         await asyncio.sleep(0.05)
-        
+
         # Cancel it
         manager.cancel("cancel-test")
-        
+
         # Wait for task to finish
         await asyncio.sleep(0.1)
-        
+
         assert deferred.status == DeferredStatus.CANCELLED
 
 

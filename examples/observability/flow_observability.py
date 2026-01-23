@@ -9,13 +9,10 @@ Run with:
 
 import asyncio
 import json
-import sys
 from pathlib import Path
-
 
 from agenticflow import Agent, Flow
 from agenticflow.observability import Observer, TraceType
-
 
 # =============================================================================
 # Demo 1: Observer Levels
@@ -61,7 +58,7 @@ async def demo_observer_levels():
             initial_event="task.created",
         )
 
-        print(f"\n✅ Flow completed")
+        print("\n✅ Flow completed")
         print(f"Output length: {len(result.output)} chars")
 
 
@@ -119,7 +116,7 @@ async def demo_trace_filtering():
         if observed.event.type == TraceType.FLOW_ROUND_COMPLETED
     ]
     print(f"   Total rounds: {len(rounds)}")
-    
+
     total_events = len([
         observed for observed in observer.events()
         if observed.event.type == TraceType.FLOW_EVENT_PROCESSED
@@ -153,7 +150,7 @@ async def demo_performance_analysis():
     print("=" * 80)
 
     model = "gpt4"
-    
+
     # Create a multi-stage pipeline
     agents = [
         Agent(name=f"stage_{i}", model="gpt4", system_prompt=f"Stage {i} processor")
@@ -188,7 +185,7 @@ async def demo_performance_analysis():
     total_time = sum(agent_times.values())
     print(f"\n⏱️  Total Agent Time: {total_time:.0f}ms")
     print("\n📊 Breakdown:")
-    
+
     for agent, duration in sorted(agent_times.items(), key=lambda x: x[1], reverse=True):
         percent = (duration / total_time * 100) if total_time > 0 else 0
         bar = "█" * int(percent / 5)
@@ -221,7 +218,7 @@ async def demo_debugging_unmatched():
     flow.register(agent, on="task.started", emits="flow.done")  # Wrong pattern!
 
     print("\n⚠️  Attempting to run with mismatched event pattern...")
-    
+
     result = await flow.run(
         "Do some work",
         initial_event="task.created",  # This won't match!
@@ -244,7 +241,7 @@ async def demo_debugging_unmatched():
             available = observed.event.data.get("available_reactors", [])
             print(f"\n   Event: {event_type}")
             print(f"   Available reactors: {available}")
-            print(f"   ⚠️  This event didn't trigger any reactors!")
+            print("   ⚠️  This event didn't trigger any reactors!")
             print(f"   💡 Fix: Register a reactor for '{event_type}'")
 
 
@@ -293,17 +290,17 @@ async def demo_export_traces():
     output_file.write_text(json.dumps(flow_traces, indent=2))
 
     print(f"\n✅ Exported {len(flow_traces)} traces to {output_file}")
-    print(f"\nTrace types included:")
-    
+    print("\nTrace types included:")
+
     trace_types = {}
     for trace in flow_traces:
         trace_type = trace["type"]
         trace_types[trace_type] = trace_types.get(trace_type, 0) + 1
-    
+
     for trace_type, count in sorted(trace_types.items()):
         print(f"   {trace_type}: {count}")
 
-    print(f"\n💡 You can now analyze these traces offline or share them for debugging")
+    print("\n💡 You can now analyze these traces offline or share them for debugging")
 
 
 # =============================================================================

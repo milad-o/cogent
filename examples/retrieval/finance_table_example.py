@@ -20,10 +20,7 @@ Prerequisites:
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
-
-
 
 # =============================================================================
 # Ground Truth Values (for validation)
@@ -308,11 +305,11 @@ def create_complex_finance_pdf(output_path: Path) -> None:
 async def extract_and_query(pdf_path: Path) -> dict[str, tuple[str, bool]]:
     """Extract PDF content and query with RAG-powered agent."""
     from agenticflow import Agent
-    from agenticflow.flow import pipeline
     from agenticflow.documents.loaders import PDFMarkdownLoader
-    from agenticflow.vectorstore import VectorStore
-    from agenticflow.retriever import DenseRetriever
+    from agenticflow.flow import pipeline
     from agenticflow.models import OpenAIEmbedding
+    from agenticflow.retriever import DenseRetriever
+    from agenticflow.vectorstore import VectorStore
 
     model = "gpt4"
     embeddings = OpenAIEmbedding(model="text-embedding-3-small")
@@ -326,7 +323,7 @@ async def extract_and_query(pdf_path: Path) -> dict[str, tuple[str, bool]]:
 
     # Show a preview
     combined = "\n\n".join([d.text for d in docs])
-    print(f"\n📄 Content Preview (first 1000 chars):")
+    print("\n📄 Content Preview (first 1000 chars):")
     print("-" * 60)
     print(combined[:1000])
     print("-" * 60)
@@ -428,14 +425,14 @@ async def main() -> None:
 
     # Optional: Skip slow Q&A validation
     SKIP_QA = False  # Set to True to skip Q&A
-    
+
     if SKIP_QA:
         print("\n📊 Step 2: Extracting content (Q&A validation skipped)...")
         from agenticflow.documents.loaders import PDFMarkdownLoader
         loader = PDFMarkdownLoader()
         docs = await loader.load(pdf_path)
         print(f"✓ Extracted {len(docs)} pages")
-        
+
         combined = "\n\n---\n\n".join(
             [f"## Page {i + 1}\n\n{d.text}" for i, d in enumerate(docs)]
         )

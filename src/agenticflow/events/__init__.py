@@ -28,20 +28,11 @@ from agenticflow.events.patterns import (
     any_source,
     from_source,
     has_data,
-    matching_sources,
     matches,
     matches_event,
+    matching_sources,
     not_,
     not_from_source,
-)
-from agenticflow.events.standards import (
-    AgentEvents,
-    BatchEvents,
-    DeploymentEvents,
-    FlowEvents,
-    IncidentEvents,
-    ReviewEvents,
-    TaskEvents,
 )
 from agenticflow.events.sinks import (
     EventSink,
@@ -52,6 +43,15 @@ from agenticflow.events.sources import (
     FileWatcherSource,
     RedisStreamSource,
     WebhookSource,
+)
+from agenticflow.events.standards import (
+    AgentEvents,
+    BatchEvents,
+    DeploymentEvents,
+    FlowEvents,
+    IncidentEvents,
+    ReviewEvents,
+    TaskEvents,
 )
 from agenticflow.events.store import (
     EventStore,

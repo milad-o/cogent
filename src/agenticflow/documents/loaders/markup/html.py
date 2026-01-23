@@ -7,8 +7,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from agenticflow.documents.loaders.base import BaseLoader
 from agenticflow.core import Document
+from agenticflow.documents.loaders.base import BaseLoader
 
 
 class HTMLLoader(BaseLoader):

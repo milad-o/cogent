@@ -13,11 +13,7 @@ Use cases:
 """
 
 import asyncio
-import sys
 from pathlib import Path
-
-from pathlib import Path
-
 
 
 def demo_programmatic():
@@ -37,7 +33,7 @@ def demo_programmatic():
     print(f"\n📁 Loading ETL project from: {etl_path}")
 
     stats = analyzer.load_directory(etl_path)
-    print(f"\n📊 Loaded:")
+    print("\n📊 Loaded:")
     print(f"   Files:     {stats['files']}")
     print(f"   Classes:   {stats['classes']}")
     print(f"   Functions: {stats['functions']}")
@@ -61,7 +57,7 @@ def demo_programmatic():
     if pipeline:
         print(f"   File: {Path(pipeline.attributes.get('file_path', '')).name}")
         print(f"   Line: {pipeline.attributes.get('lineno')}")
-        
+
         methods = analyzer.get_class_methods("ETLPipeline")
         print(f"   Methods: {[m.attributes['name'] for m in methods]}")
 
@@ -84,7 +80,7 @@ def demo_programmatic():
     print("\n" + "-" * 40)
     kg_stats = analyzer.kg.stats()
     print(f"📊 Knowledge Graph: {kg_stats['entities']} entities, {kg_stats['relationships']} relationships")
-    
+
     return analyzer
 
 

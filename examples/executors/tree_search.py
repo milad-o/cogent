@@ -26,16 +26,11 @@ Requires:
 """
 
 import asyncio
-import sys
 import time
-from pathlib import Path
-
 
 from agenticflow import Agent
 from agenticflow.executors import TreeSearchExecutor
 from agenticflow.tools import tool
-
-
 
 # =============================================================================
 # Tools for the agent
@@ -51,7 +46,7 @@ def calculate(expression: str) -> str:
     try:
         allowed = set("0123456789+-*/().% ")
         if not all(c in allowed for c in expression):
-            return f"Error: Invalid characters in expression"
+            return "Error: Invalid characters in expression"
         result = eval(expression)
         return f"{expression} = {result}"
     except Exception as e:
@@ -84,9 +79,9 @@ async def demo_tree_search():
     print("\n" + "=" * 70)
     print("🌳 TREE SEARCH (LATS) EXECUTOR DEMO")
     print("=" * 70)
-    
+
     model = "gpt4"
-    
+
     # Create agent without execution_strategy (we'll use executor directly)
     agent = Agent(
         name="ReasoningAgent",
@@ -96,14 +91,14 @@ async def demo_tree_search():
 Break down problems step by step and verify your work.
 Use the calculate tool for arithmetic.""",
     )
-    
+
     # Create tree search executor with custom settings
     executor = TreeSearchExecutor(agent)
     executor.max_iterations = 5      # Number of MCTS iterations
     executor.max_depth = 4           # Maximum tree depth
     executor.num_candidates = 2      # Actions to generate per expansion
     executor.enable_reflection = True  # Learn from failures
-    
+
     # Complex reasoning task
     task = """
     Word problem:
@@ -116,12 +111,12 @@ Use the calculate tool for arithmetic.""",
     
     Show step-by-step calculations using the calculate tool.
     """
-    
+
     print(f"\n📋 Task:\n{task.strip()}")
     print("\n" + "-" * 70)
     print("🔍 Tree Search Progress:")
     print("-" * 70)
-    
+
     # Track events
     def on_step(step_type: str, data: dict):
         if step_type == "mcts_iteration":
@@ -131,22 +126,22 @@ Use the calculate tool for arithmetic.""",
         elif step_type == "simulate_tool":
             print(f"       └─ Calling {data.get('tool')}")
         elif step_type == "reflect":
-            print(f"    💭 Reflecting on failure...")
-    
+            print("    💭 Reflecting on failure...")
+
     executor.on_step = on_step
-    
+
     start = time.time()
-    
+
     try:
         result = await executor.execute(task)
         elapsed = time.time() - start
-        
+
         print("\n" + "=" * 70)
         print("✅ RESULT:")
         print("=" * 70)
         print(result)
         print(f"\n⏱️  Time: {elapsed:.2f}s")
-        
+
     except Exception as e:
         elapsed = time.time() - start
         print(f"\n❌ Error after {elapsed:.2f}s: {e}")
@@ -159,20 +154,20 @@ async def demo_comparison():
     print("\n" + "=" * 70)
     print("📊 COMPARING EXECUTORS: Native vs Tree Search")
     print("=" * 70)
-    
+
     model = "gpt4"
-    
+
     agent = Agent(
         name="ComparisonAgent",
         model=model,
         tools=[calculate],
         instructions="You are a helpful math assistant. Use tools when needed.",
     )
-    
+
     task = "What is 25 factorial divided by 24 factorial? (Hint: think about the relationship)"
-    
+
     print(f"\n📋 Task: {task}\n")
-    
+
     # Native execution
     print("🚀 Native Execution (single path):")
     start = time.time()
@@ -180,19 +175,19 @@ async def demo_comparison():
     native_time = time.time() - start
     print(f"   Result: {native_result[:200]}...")
     print(f"   Time: {native_time:.2f}s\n")
-    
+
     # Tree search execution
     print("🌳 Tree Search (explores alternatives):")
     executor = TreeSearchExecutor(agent)
     executor.max_iterations = 3
     executor.num_candidates = 2
-    
+
     start = time.time()
     tree_result = await executor.execute(task)
     tree_time = time.time() - start
     print(f"   Result: {tree_result[:200]}...")
     print(f"   Time: {tree_time:.2f}s\n")
-    
+
     print(f"📈 Tree search took {tree_time/native_time:.1f}x longer but explored more reasoning paths")
 
 
@@ -201,7 +196,7 @@ async def main():
     print("\n" + "🌳 " * 20)
     print("AGENTICFLOW TREE SEARCH (LATS) DEMO")
     print("🌳 " * 20)
-    
+
     print("""
 Tree Search (LATS) is a Monte Carlo Tree Search algorithm for LLMs.
 It explores multiple reasoning paths and backtracks on failures.
@@ -211,9 +206,9 @@ Best for:
 - Tasks where initial attempts may fail
 - Problems requiring exploration
 """)
-    
+
     await demo_tree_search()
-    
+
     print("\n" + "=" * 70)
     print("✅ Demo Complete!")
     print("=" * 70)

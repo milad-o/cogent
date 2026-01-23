@@ -366,17 +366,17 @@ class MermaidBackend(Backend):
             HTML string with embedded Mermaid diagram and styling.
         """
         cfg = config or GraphConfig()
-        
+
         # Render without frontmatter to avoid double title in Jupyter
         code = self.render(graph, config, include_frontmatter=False)
-        
+
         # No title in HTML wrapper - title is handled by _repr_markdown_() in GraphView
         theme = cfg.theme.value if cfg.theme else "default"
-        
+
         # Generate unique ID for this diagram
         import random
         diagram_id = f"mermaid-{random.randint(1000, 9999)}"
-        
+
         # Use traditional script loading approach for better Jupyter compatibility
         return f"""<div style="margin: 10px 0; padding: 15px; background: #f9f9f9; border-radius: 8px; border: 1px solid #ddd;">
 <div id="{diagram_id}" style="display: flex; justify-content: center; background: white; padding: 20px; border-radius: 4px;"></div>

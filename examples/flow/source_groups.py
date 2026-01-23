@@ -11,13 +11,8 @@ Run: uv run python examples/flow/source_groups.py
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent, Flow
-
 
 # -----------------------------------------------------------------------------
 # Example 1: Basic Source Groups

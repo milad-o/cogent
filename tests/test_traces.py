@@ -2,12 +2,12 @@
 Tests for TraceBus.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock
 
-from agenticflow.observability.trace_record import TraceType
+import pytest
+
 from agenticflow.observability.bus import TraceBus, get_trace_bus, set_trace_bus
-from agenticflow.observability.trace_record import Trace
+from agenticflow.observability.trace_record import Trace, TraceType
 
 
 class TestTraceBus:

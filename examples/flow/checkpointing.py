@@ -15,20 +15,18 @@ Usage:
 """
 
 import asyncio
-import sys
 from pathlib import Path
 
-
-from agenticflow import Agent, tool
 from agenticflow import (
+    Agent,
+    FileCheckpointer,
     Flow,
     FlowConfig,
     MemoryCheckpointer,
-    FileCheckpointer,
     Observer,
     react_to,
+    tool,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TOOLS - Simulated external services
@@ -89,7 +87,7 @@ async def basic_checkpointing() -> None:
 
     observer = Observer.trace()
     checkpointer = MemoryCheckpointer()
-    
+
     config = FlowConfig(
         checkpoint_every=1,  # Save after every round
         flow_id="etl-pipeline-001",
@@ -102,21 +100,21 @@ async def basic_checkpointing() -> None:
         system_prompt="You extract and fetch batch data. Use the fetch tool to get data.",
         tools=[fetch_batch_data],
     )
-    
+
     validator = Agent(
-        name="validator", 
+        name="validator",
         model="gpt4",
         system_prompt="You validate data quality. Use the validate tool to check records.",
         tools=[validate_records],
     )
-    
+
     transformer = Agent(
         name="transformer",
         model="gpt4",
         system_prompt="You transform data into reports. Use the transform tool.",
         tools=[transform_to_report],
     )
-    
+
     notifier = Agent(
         name="notifier",
         model="gpt4",
@@ -126,7 +124,7 @@ async def basic_checkpointing() -> None:
 
     # Create flow with checkpointing
     flow = Flow(config=config, checkpointer=checkpointer, observer=observer)
-    
+
     # Register agents with event triggers
     flow.register(extractor, [react_to("task.created")])
     flow.register(validator, [react_to("extractor.completed")])
@@ -140,7 +138,7 @@ async def basic_checkpointing() -> None:
         initial_data={"batch_id": "B-001"},
     )
 
-    print(f"\n✓ Pipeline completed")
+    print("\n✓ Pipeline completed")
     print(f"  Flow ID: {result.flow_id}")
     print(f"  Last checkpoint: {result.checkpoint_id}")
     print(f"  Events processed: {result.events_processed}")
@@ -160,10 +158,10 @@ async def crash_recovery_simulation() -> None:
 
     observer = Observer.trace()
     checkpointer = MemoryCheckpointer()
-    
+
     # First, create a checkpoint manually (simulating a previous run)
     from agenticflow.flow.checkpointer import FlowState
-    
+
     saved_state = FlowState(
         flow_id="data-sync-job",
         checkpoint_id="cp-before-crash",
@@ -188,7 +186,7 @@ async def crash_recovery_simulation() -> None:
         model="gpt4",
         system_prompt="You handle data synchronization. Report completion status.",
     )
-    
+
     finalizer = Agent(
         name="finalizer",
         model="gpt4",
@@ -207,7 +205,7 @@ async def crash_recovery_simulation() -> None:
     state = await checkpointer.load("cp-before-crash")
     if state:
         result = await flow.resume(state)
-        print(f"\n✓ Flow resumed and completed")
+        print("\n✓ Flow resumed and completed")
         print(f"  Started from round: {saved_state.round}")
         print(f"  Final events processed: {result.events_processed}")
         print(f"  New reactions: {len(result.reactions)}")
@@ -223,11 +221,11 @@ async def file_based_checkpointing() -> None:
     import tempfile
 
     observer = Observer.trace()
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         checkpoint_dir = Path(tmpdir)
         checkpointer = FileCheckpointer(checkpoint_dir)
-        
+
         config = FlowConfig(
             checkpoint_every=1,
             flow_id="file-backed-flow",
@@ -239,7 +237,7 @@ async def file_based_checkpointing() -> None:
             system_prompt="You process data batches. Report results briefly.",
             tools=[fetch_batch_data, validate_records],
         )
-        
+
         reporter = Agent(
             name="reporter",
             model="gpt4",
@@ -259,7 +257,7 @@ async def file_based_checkpointing() -> None:
 
         # Show saved checkpoint files
         checkpoint_files = list(checkpoint_dir.glob("*.json"))
-        print(f"\n✓ Flow completed with file-based checkpoints")
+        print("\n✓ Flow completed with file-based checkpoints")
         print(f"  Checkpoint directory: {checkpoint_dir}")
         print(f"  Checkpoint files: {len(checkpoint_files)}")
         for f in checkpoint_files:
@@ -289,16 +287,16 @@ async def multi_flow_coordination() -> None:
             checkpoint_every=1,
             flow_id=flow_name,
         )
-        
+
         agent = Agent(
             name="worker",
             model="gpt4",
             system_prompt="You process tasks efficiently. Be concise.",
         )
-        
+
         flow = Flow(config=config, checkpointer=checkpointer, observer=observer)
         flow.register(agent, [react_to("task.created")])
-        
+
         result = await flow.run(task, initial_event="task.created")
         checkpoints = await checkpointer.list_checkpoints(flow_name)
         print(f"  {flow_name}: {len(checkpoints)} checkpoints")

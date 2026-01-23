@@ -27,13 +27,13 @@ MODEL_ALIASES: dict[str, str] = {
     "o3-mini": "o3-mini",
     "o4": "o4-mini",
     "o4-mini": "o4-mini",
-    
+
     # Anthropic
     "claude": "claude-sonnet-4-20250514",
     "claude-sonnet": "claude-sonnet-4-20250514",
     "claude-opus": "claude-opus-4-20250514",
     "claude-haiku": "claude-haiku-4-20250323",
-    
+
     # Google Gemini
     "gemini": "gemini-2.5-flash",
     "gemini-flash": "gemini-2.5-flash",
@@ -42,18 +42,18 @@ MODEL_ALIASES: dict[str, str] = {
     "gemini3": "gemini-3-pro",
     "gemini-3": "gemini-3-pro",
     "gemini-3-flash": "gemini-3-flash",
-    
+
     # Groq (fast inference)
     "llama": "llama-3.3-70b-versatile",
     "llama-70b": "llama-3.3-70b-versatile",
     "llama-8b": "llama-3.1-8b-instant",
     "mixtral": "mixtral-8x7b-32768",
     "qwen": "qwen-2.5-72b-versatile",
-    
+
     # Ollama (local)
     "ollama": "llama3.2",
     "ollama-llama": "llama3.2",
-    
+
     # Mistral
     "mistral": "mistral-large-latest",
     "mistral-large": "mistral-large-latest",
@@ -65,7 +65,7 @@ MODEL_ALIASES: dict[str, str] = {
     "magistral": "magistral-medium-1.2",
     "codestral": "codestral",
     "devstral": "devstral-2",
-    
+
     # Cohere
     "command": "command-a-03-2025",
     "command-a": "command-a-03-2025",
@@ -96,10 +96,10 @@ MODEL_PROVIDERS: dict[str, str] = {
     "tts-": "openai",
     "davinci-": "openai",
     "babbage-": "openai",
-    
+
     # Anthropic
     "claude-": "anthropic",
-    
+
     # Google Gemini
     "gemini-": "gemini",
     "gemini-flash": "gemini",
@@ -108,7 +108,7 @@ MODEL_PROVIDERS: dict[str, str] = {
     "models/gemini": "gemini",
     "nano-banana": "gemini",
     "text-embedding-": "gemini",  # Gemini also has text-embedding models
-    
+
     # Groq
     "llama-": "groq",
     "llama3": "groq",
@@ -131,10 +131,10 @@ MODEL_PROVIDERS: dict[str, str] = {
     "devstral-": "mistral",
     "voxtral-": "mistral",
     "ocr-": "mistral",  # Mistral OCR models
-    
+
     # Cloudflare Workers AI
     "@cf/": "cloudflare",
-    
+
     # Cohere
     "command-": "cohere",
     "command": "cohere",
@@ -176,13 +176,13 @@ def resolve_model(model_str: str) -> tuple[str, str]:
     """
     if not model_str or not isinstance(model_str, str):
         raise ValueError(f"Invalid model string: {model_str!r}")
-    
+
     model_str = model_str.strip()
     model_lower = model_str.lower()
 
     if model_lower in {"ollama", "ollama-llama"}:
         return "ollama", MODEL_ALIASES[model_lower]
-    
+
     # Handle provider:model syntax
     if ":" in model_str:
         parts = model_str.split(":", 1)
@@ -190,29 +190,29 @@ def resolve_model(model_str: str) -> tuple[str, str]:
             provider, model_name = parts
             provider = provider.strip().lower()
             model_name = model_name.strip()
-            
+
             # Resolve model alias if present
             if model_name.lower() in MODEL_ALIASES:
                 model_name = MODEL_ALIASES[model_name.lower()]
-            
+
             return provider, model_name
-    
+
     # Check if it's an alias
     model_lower = model_str.lower()
     if model_lower in MODEL_ALIASES:
         resolved_model = MODEL_ALIASES[model_lower]
         # Now detect provider for the resolved model
         model_str = resolved_model
-    
+
     # Auto-detect provider from model name patterns
     for pattern, provider in MODEL_PROVIDERS.items():
         if model_str.startswith(pattern):
             return provider, model_str
-    
+
     # Special case: if it's just "o1" or "o3" (exact match)
     if model_str in ["o1", "o1-mini", "o3", "o3-mini"]:
         return "openai", model_str
-    
+
     # Cannot auto-detect provider - raise error
     raise ValueError(
         f"Cannot auto-detect provider for model: {model_str!r}. "
@@ -242,7 +242,7 @@ def resolve_and_create_model(
         >>> llm = resolve_and_create_model("gemini", temperature=0.7)
     """
     from agenticflow.models import create_chat
-    
+
     provider, model_name = resolve_model(model_str)
     return create_chat(provider, model_name, **kwargs)
 
