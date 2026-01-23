@@ -8,7 +8,7 @@ For models and embeddings, use native AgenticFlow models:
 """
 
 from agenticflow.core.context import EMPTY_CONTEXT, RunContext
-from agenticflow.core.documents import Document, DocumentMetadata
+from agenticflow.core.document import Document, DocumentMetadata
 from agenticflow.core.enums import (
     AgentRole,
     AgentStatus,
