@@ -35,6 +35,7 @@ from agenticflow.vectorstore.base import (
 )
 from agenticflow.vectorstore.document import (
     Document,
+    DocumentMetadata,
     create_documents,
     split_documents,
     split_text,
@@ -50,6 +51,7 @@ __all__ = [
     # Core
     "VectorStore",
     "Document",
+    "DocumentMetadata",
     "SearchResult",
     # Factory
     "create_vectorstore",

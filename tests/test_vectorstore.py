@@ -14,6 +14,7 @@ import pytest
 
 from agenticflow.vectorstore import (
     Document,
+    DocumentMetadata,
     MockEmbeddings,
     SearchResult,
     VectorStore,
@@ -37,7 +38,7 @@ class TestDocument:
         """Test basic document creation."""
         doc = Document(text="Hello world")
         assert doc.text == "Hello world"
-        assert doc.metadata == {"source": "unknown"}  # Auto-added
+        assert doc.metadata.source == "unknown"  # Auto-added
         assert doc.embedding is None
         assert doc.id.startswith("doc_")
 
@@ -45,10 +46,10 @@ class TestDocument:
         """Test document with metadata."""
         doc = Document(
             text="Test content",
-            metadata={"source": "test.txt", "page": 1},
+            metadata=DocumentMetadata(source="test.txt", page=1),
         )
-        assert doc.metadata["source"] == "test.txt"
-        assert doc.metadata["page"] == 1
+        assert doc.metadata.source == "test.txt"
+        assert doc.metadata.page == 1
 
     def test_document_with_embedding(self) -> None:
         """Test document with pre-computed embedding."""
@@ -58,31 +59,29 @@ class TestDocument:
 
     def test_document_with_custom_id(self) -> None:
         """Test document with custom ID."""
-        doc = Document(text="Test", id="custom-id-123")
+        doc = Document(text="Test", metadata=DocumentMetadata(id="custom-id-123"))
         assert doc.id == "custom-id-123"
 
     def test_document_to_dict(self) -> None:
         """Test document serialization."""
         doc = Document(
             text="Test",
-            metadata={"key": "value"},
-            id="test-id",
+            metadata=DocumentMetadata(id="test-id", custom={"key": "value"}),
         )
         data = doc.to_dict()
         assert data["text"] == "Test"
-        assert data["metadata"]["key"] == "value"
-        assert data["id"] == "test-id"
+        assert data["metadata"]["custom"]["key"] == "value"
+        assert data["metadata"]["id"] == "test-id"
 
     def test_document_from_dict(self) -> None:
         """Test document deserialization."""
         data = {
             "text": "Test content",
-            "metadata": {"source": "file.txt"},
-            "id": "doc-123",
+            "metadata": {"source": "file.txt", "id": "doc-123"},
         }
         doc = Document.from_dict(data)
         assert doc.text == "Test content"
-        assert doc.metadata["source"] == "file.txt"
+        assert doc.metadata.source == "file.txt"
         assert doc.id == "doc-123"
 
     def test_document_len(self) -> None:
@@ -92,7 +91,7 @@ class TestDocument:
 
     def test_document_repr(self) -> None:
         """Test document string representation."""
-        doc = Document(text="Short text", id="test-id")
+        doc = Document(text="Short text", metadata=DocumentMetadata(id="test-id"))
         repr_str = repr(doc)
         assert "test-id" in repr_str
         assert "Short text" in repr_str
@@ -121,8 +120,8 @@ class TestCreateDocuments:
             texts=["A", "B"],
             metadatas=[{"idx": 0}, {"idx": 1}],
         )
-        assert docs[0].metadata["idx"] == 0
-        assert docs[1].metadata["idx"] == 1
+        assert docs[0].metadata.custom["idx"] == 0
+        assert docs[1].metadata.custom["idx"] == 1
 
     def test_create_with_ids(self) -> None:
         """Test creating documents with custom IDs."""
@@ -193,16 +192,16 @@ class TestSplitDocuments:
     def test_split_documents(self) -> None:
         """Test splitting documents into chunks."""
         docs = [
-            Document(text="A" * 200, metadata={"source": "test.txt"}),
+            Document(text="A" * 200, metadata=DocumentMetadata(source="test.txt")),
         ]
         chunks = split_documents(docs, chunk_size=50, chunk_overlap=10)
         
         assert len(chunks) > 1
         # Metadata should be preserved
-        assert all(c.metadata["source"] == "test.txt" for c in chunks)
+        assert all(c.metadata.source == "test.txt" for c in chunks)
         # Chunk metadata should be added
-        assert all("_chunk_index" in c.metadata for c in chunks)
-        assert all("_parent_id" in c.metadata for c in chunks)
+        assert all(c.metadata.chunk_index is not None for c in chunks)
+        assert all(c.metadata.parent_id is not None for c in chunks)
 
 
 # ============================================================
@@ -264,9 +263,9 @@ class TestInMemoryBackend:
     async def test_search_with_filter(self, backend: InMemoryBackend) -> None:
         """Test search with metadata filter."""
         docs = [
-            Document(text="Python", metadata={"lang": "python"}),
-            Document(text="JavaScript", metadata={"lang": "javascript"}),
-            Document(text="Rust", metadata={"lang": "rust"}),
+            Document(text="Python", metadata=DocumentMetadata(custom={"lang": "python"})),
+            Document(text="JavaScript", metadata=DocumentMetadata(custom={"lang": "javascript"})),
+            Document(text="Rust", metadata=DocumentMetadata(custom={"lang": "rust"})),
         ]
         embeddings = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         ids = ["py", "js", "rs"]
@@ -274,10 +273,10 @@ class TestInMemoryBackend:
         await backend.add(ids, embeddings, docs)
         
         # Filter for only Python
-        results = await backend.search([0.5, 0.5, 0.5], k=10, filter={"lang": "python"})
+        results = await backend.search([0.5, 0.5, 0.5], k=10, filter={"custom": {"lang": "python"}})
         
         assert len(results) == 1
-        assert results[0].document.metadata["lang"] == "python"
+        assert results[0].document.metadata.custom["lang"] == "python"
 
     @pytest.mark.asyncio
     async def test_search_empty_store(self, backend: InMemoryBackend) -> None:
@@ -318,7 +317,7 @@ class TestInMemoryBackend:
     @pytest.mark.asyncio
     async def test_get(self, backend: InMemoryBackend) -> None:
         """Test getting documents by ID."""
-        docs = [Document(text="Test", id="doc-1")]
+        docs = [Document(text="Test", metadata=DocumentMetadata(id="doc-1"))]
         await backend.add(["doc-1"], [[0.1, 0.2, 0.3]], docs)
         
         retrieved = await backend.get(["doc-1"])
@@ -555,15 +554,15 @@ class TestVectorStore:
         )
         
         docs = await store.get(ids)
-        assert docs[0].metadata["idx"] == 0
-        assert docs[1].metadata["idx"] == 1
+        assert docs[0].metadata.custom["idx"] == 0
+        assert docs[1].metadata.custom["idx"] == 1
 
     @pytest.mark.asyncio
     async def test_add_documents(self, store: VectorStore) -> None:
         """Test adding Document objects."""
         docs = [
-            Document(text="Doc 1", metadata={"type": "a"}),
-            Document(text="Doc 2", metadata={"type": "b"}),
+            Document(text="Doc 1", metadata=DocumentMetadata(custom={"type": "a"})),
+            Document(text="Doc 2", metadata=DocumentMetadata(custom={"type": "b"})),
         ]
         
         ids = await store.add_documents(docs)
@@ -596,9 +595,9 @@ class TestVectorStore:
             ],
         )
         
-        results = await store.search("language", k=10, filter={"category": "systems"})
+        results = await store.search("language", k=10, filter={"custom": {"category": "systems"}})
         assert len(results) == 1
-        assert results[0].document.metadata["category"] == "systems"
+        assert results[0].document.metadata.custom["category"] == "systems"
 
     @pytest.mark.asyncio
     async def test_similarity_search(self, store: VectorStore) -> None:
@@ -665,10 +664,10 @@ class TestCreateVectorstore:
         )
         
         results = await store.search("test", k=10)
-        metadatas = [r.document.metadata for r in results]
-        # Metadata includes auto-added source
-        assert any(m.get("x") == 1 for m in metadatas)
-        assert any(m.get("x") == 2 for m in metadatas)
+        metadatas = [r.document.metadata.to_dict() for r in results]
+        # Metadata includes auto-added source and custom dict
+        assert any(m.get("custom", {}).get("x") == 1 for m in metadatas)
+        assert any(m.get("custom", {}).get("x") == 2 for m in metadatas)
 
 
 class TestVectorStoreWithMockEmbeddings:
@@ -761,7 +760,7 @@ class TestSearchResult:
 
     def test_create_result(self) -> None:
         """Test creating a search result."""
-        doc = Document(text="Test", id="doc-1")
+        doc = Document(text="Test", metadata=DocumentMetadata(id="doc-1"))
         result = SearchResult(document=doc, score=0.95)
         
         assert result.document == doc
@@ -770,7 +769,7 @@ class TestSearchResult:
 
     def test_result_with_explicit_id(self) -> None:
         """Test result with explicit ID."""
-        doc = Document(text="Test", id="doc-1")
+        doc = Document(text="Test", metadata=DocumentMetadata(id="doc-1"))
         result = SearchResult(document=doc, score=0.9, id="custom-id")
         
         assert result.id == "custom-id"
