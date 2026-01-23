@@ -193,7 +193,7 @@ class AnthropicChat(BaseChatModel):
         except ImportError:
             raise ImportError(
                 "anthropic package required. Install with: uv add anthropic"
-            )
+            ) from None
 
         from agenticflow.config import get_api_key
 

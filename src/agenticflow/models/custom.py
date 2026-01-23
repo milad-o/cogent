@@ -166,7 +166,9 @@ class CustomChat(BaseChatModel):
         try:
             from openai import AsyncOpenAI, OpenAI
         except ImportError:
-            raise ImportError("openai package required. Install with: uv add openai")
+            raise ImportError(
+                "openai package required. Install with: uv add openai"
+            ) from None
 
         # Support various env var patterns
         api_key = self.api_key
@@ -329,7 +331,9 @@ class CustomEmbedding(BaseEmbedding):
         try:
             from openai import AsyncOpenAI, OpenAI
         except ImportError:
-            raise ImportError("openai package required. Install with: uv add openai")
+            raise ImportError(
+                "openai package required. Install with: uv add openai"
+            ) from None
 
         api_key = self.api_key
         if not api_key:

@@ -61,7 +61,7 @@ class WordLoader(BaseLoader):
             raise ImportError(
                 "Word document loading requires 'python-docx'. "
                 "Install with: uv add python-docx"
-            )
+            ) from None
 
         doc = DocxDocument(str(path))
 

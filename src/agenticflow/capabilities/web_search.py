@@ -112,7 +112,9 @@ class DuckDuckGoProvider(SearchProvider):
 
                 self._ddgs = DDGS(timeout=self._timeout)
             except ImportError:
-                raise ImportError("ddgs package required. Install with: uv add ddgs")
+                raise ImportError(
+                    "ddgs package required. Install with: uv add ddgs"
+                ) from None
         return self._ddgs
 
     def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
@@ -194,7 +196,9 @@ class BraveSearchProvider(SearchProvider):
         try:
             import httpx
         except ImportError:
-            raise ImportError("httpx required for Brave Search. Install: uv add httpx")
+            raise ImportError(
+                "httpx required for Brave Search. Install: uv add httpx"
+            ) from None
 
         results = []
         try:
@@ -230,7 +234,9 @@ class BraveSearchProvider(SearchProvider):
         try:
             import httpx
         except ImportError:
-            raise ImportError("httpx required for Brave Search. Install: uv add httpx")
+            raise ImportError(
+                "httpx required for Brave Search. Install: uv add httpx"
+            ) from None
 
         results = []
         try:
@@ -304,7 +310,9 @@ class TavilyProvider(SearchProvider):
         try:
             import httpx
         except ImportError:
-            raise ImportError("httpx required for Tavily. Install: uv add httpx")
+            raise ImportError(
+                "httpx required for Tavily. Install: uv add httpx"
+            ) from None
 
         results = []
         try:
@@ -341,7 +349,9 @@ class TavilyProvider(SearchProvider):
         try:
             import httpx
         except ImportError:
-            raise ImportError("httpx required for Tavily. Install: uv add httpx")
+            raise ImportError(
+                "httpx required for Tavily. Install: uv add httpx"
+            ) from None
 
         results = []
         try:
@@ -413,7 +423,9 @@ class SerpAPIProvider(SearchProvider):
         try:
             import httpx
         except ImportError:
-            raise ImportError("httpx required for SerpAPI. Install: uv add httpx")
+            raise ImportError(
+                "httpx required for SerpAPI. Install: uv add httpx"
+            ) from None
 
         results = []
         try:
@@ -450,7 +462,9 @@ class SerpAPIProvider(SearchProvider):
         try:
             import httpx
         except ImportError:
-            raise ImportError("httpx required for SerpAPI. Install: uv add httpx")
+            raise ImportError(
+                "httpx required for SerpAPI. Install: uv add httpx"
+            ) from None
 
         results = []
         try:
@@ -710,7 +724,7 @@ class WebSearch(BaseCapability):
             raise ImportError(
                 "beautifulsoup4 required for HTML parsing. "
                 "Install with: uv add 'agenticflow[web]'"
-            )
+            ) from None
 
         soup = BeautifulSoup(html, "html.parser")
 

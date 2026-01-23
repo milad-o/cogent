@@ -495,7 +495,7 @@ def validate_and_parse[T](
                 f"Failed to parse JSON: {e}",
                 schema=schema,
                 raw_output=raw if isinstance(raw, str) else str(raw),
-            )
+            ) from e
     else:
         data = raw
 
@@ -513,7 +513,7 @@ def validate_and_parse[T](
                 schema=schema,
                 raw_output=raw if isinstance(raw, str) else json.dumps(data),
                 validation_errors=[str(e)],
-            )
+            ) from e
 
     if is_dataclass(schema):
         try:
@@ -524,7 +524,7 @@ def validate_and_parse[T](
                 schema=schema,
                 raw_output=raw if isinstance(raw, str) else json.dumps(data),
                 validation_errors=[str(e)],
-            )
+            ) from e
 
     if is_typed_dict(schema):
         # TypedDict - return dict (no runtime validation)
