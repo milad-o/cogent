@@ -1,17 +1,13 @@
 """
-Example 31: Context Layer
+Context Layer
 
-Demonstrates AgenticFlow's Context Layer for runtime injection and
-dynamic behavior control.
-
-Key features:
+AgenticFlow's Context Layer for runtime injection and dynamic behavior control:
 - RunContext: Pass invocation-scoped data to tools/interceptors
 - ToolGate: Dynamic tool filtering based on permissions/stage
-- Failover: Automatic model fallback on errors
 - ToolGuard/CircuitBreaker: Tool retry and failure protection
 - PromptAdapter: Dynamic system prompt modification
 
-Run: uv run python examples/advanced/context_layer.py
+Usage: uv run python examples/advanced/context_layer.py
 """
 
 import asyncio
@@ -19,42 +15,29 @@ from dataclasses import dataclass, field
 
 from agenticflow import Agent, RunContext
 from agenticflow.interceptors import (
-    CircuitBreaker,
     ContextPrompt,
     ConversationGate,
-    ConversationPrompt,
     InterceptContext,
     LambdaPrompt,
     PermissionGate,
-    ToolGate,
     ToolGuard,
 )
 from agenticflow.tools.base import tool
 
-# =============================================================================
-# Custom RunContext for our app
-# =============================================================================
 
 @dataclass
 class AppContext(RunContext):
     """Application-specific context passed to agent.run()."""
     user_id: str = ""
-    user_role: str = "guest"  # guest, user, admin
-    session_id: str = ""
+    user_role: str = "guest"
     department: str = ""
-
-    # For accumulating metadata
     metadata: dict = field(default_factory=dict)
 
-
-# =============================================================================
-# Tools for demonstration
-# =============================================================================
 
 @tool
 def search(query: str) -> str:
     """Search for information."""
-    return f"Results for '{query}': Found 3 relevant articles."
+    return f"Results for '{query}': Found 3 articles."
 
 
 @tool
@@ -76,145 +59,88 @@ def admin_delete(table: str) -> str:
 
 
 @tool
-def send_email(to: str, subject: str) -> str:
-    """Send an email."""
-    return f"Sent email to {to}: {subject}"
-
-
-@tool
-def generate_report(report_type: str) -> str:
-    """Generate a detailed report."""
-    return f"Generated {report_type} report with 50 pages of analysis."
-
-
-# =============================================================================
-# Example 1: RunContext - Pass Data to Tools
-# =============================================================================
-
-@tool
 def get_user_profile(ctx: RunContext) -> str:
     """Get the current user's profile. Uses RunContext for user info."""
-    # The tool receives the RunContext automatically!
     if isinstance(ctx, AppContext):
         return f"Profile for {ctx.user_id}: role={ctx.user_role}, dept={ctx.department}"
     return "No user context available"
 
 
-@tool
-def log_action(action: str, ctx: RunContext) -> str:
-    """Log an action with user context."""
-    if isinstance(ctx, AppContext):
-        return f"Logged: {action} by user {ctx.user_id} (session: {ctx.session_id})"
-    return f"Logged: {action} (no user context)"
-
-
-async def example_run_context():
-    """Pass context data to tools via RunContext."""
+async def demo_run_context():
+    """Pass data to tools via RunContext."""
+    print("\n" + "=" * 60)
+    print("1. RunContext - Pass Data to Tools")
     print("=" * 60)
-    print("Example 1: RunContext - Pass Data to Tools")
-    print("=" * 60)
-
-    model = "gpt4"
 
     agent = Agent(
-        name="ContextAwareBot",
+        name="ProfileBot",
         model="gpt4",
-        tools=[get_user_profile, log_action, search],
-        instructions="Help users with their requests. Use get_user_profile to personalize.",
+        tools=[get_user_profile],
+        instructions="Help users with their profiles.",
     )
 
-    # Create context for this invocation
-    ctx = AppContext(
-        user_id="alice123",
-        user_role="admin",
-        session_id="sess-abc-123",
-        department="Engineering",
-    )
+    ctx = AppContext(user_id="alice123", user_role="admin", department="Engineering")
 
-    print(f"\nRunning with context: user={ctx.user_id}, role={ctx.user_role}")
-    result = await agent.run(
-        "What's my profile? Then log that I viewed it.",
-        context=ctx,
-    )
+    print(f"\nContext: {ctx.user_id} ({ctx.user_role})")
+    result = await agent.run("What's my profile?", context=ctx)
+    print(f"Result: {result.unwrap()[:200]}...")
 
-    text = result.unwrap()
-    print(f"\nResult: {str(text)[:300]}...")
-
-
-# =============================================================================
-# Example 2: PermissionGate - Role-Based Tool Access
-# =============================================================================
 
 class RoleBasedGate(PermissionGate):
-    """Filter tools based on user role from RunContext."""
+    """Filter tools based on user role."""
 
     ROLE_PERMISSIONS = {
-        "guest": ["search"],
-        "user": ["search", "read_data", "send_email"],
         "admin": ["*"],  # All tools
+        "user": ["search", "read_data"],
+        "guest": ["search"],
     }
 
-    def allowed_tools(self, ctx: InterceptContext) -> list[str]:
+    async def check(self, tool_name: str, ctx: InterceptContext) -> bool:
+        role = "guest"
         if ctx.run_context and isinstance(ctx.run_context, AppContext):
             role = ctx.run_context.user_role
-            return self.ROLE_PERMISSIONS.get(role, ["search"])
-        return ["search"]  # Default for no context
+
+        allowed = self.ROLE_PERMISSIONS.get(role, [])
+        is_allowed = "*" in allowed or tool_name in allowed
+        print(f"  🔒 {tool_name}: {'✓ allowed' if is_allowed else '✗ denied'} for {role}")
+        return is_allowed
 
 
-async def example_permission_gate():
-    """Filter tools based on user role."""
+async def demo_permission_gate():
+    """Filter tools by user role."""
     print("\n" + "=" * 60)
-    print("Example 2: PermissionGate - Role-Based Tool Access")
+    print("2. PermissionGate - Role-Based Tool Access")
     print("=" * 60)
-
-    model = "gpt4"
 
     agent = Agent(
         name="SecureBot",
         model="gpt4",
         tools=[search, read_data, write_data, admin_delete],
-        instructions="Help with data tasks. Use available tools.",
+        instructions="Help with data tasks using available tools.",
         intercept=[RoleBasedGate()],
     )
 
-    # Guest user - limited access
-    print("\n--- Guest user (limited tools) ---")
+    print("\n--- Guest user (limited access) ---")
     guest_ctx = AppContext(user_id="guest1", user_role="guest")
-    result = await agent.run(
-        "Search for Python tutorials",
-        context=guest_ctx,
-    )
-    text = result.unwrap()
-    print(f"Result: {str(text)[:200]}...")
+    result = await agent.run("Search for database info", context=guest_ctx)
+    print(f"Result: {result.unwrap()[:150]}...")
 
-    # Admin user - full access
-    print("\n--- Admin user (all tools) ---")
+    print("\n--- Admin user (full access) ---")
     admin_ctx = AppContext(user_id="admin1", user_role="admin")
-    result = await agent.run(
-        "Read data from the users table",
-        context=admin_ctx,
-    )
-    text = result.unwrap()
-    print(f"Result: {str(text)[:200]}...")
+    result = await agent.run("Delete test_table", context=admin_ctx)
+    print(f"Result: {result.unwrap()[:150]}...")
 
 
-# =============================================================================
-# Example 3: ConversationGate - Progressive Tool Unlock
-# =============================================================================
-
-async def example_conversation_gate():
+async def demo_conversation_gate():
     """Unlock more tools as conversation progresses."""
     print("\n" + "=" * 60)
-    print("Example 3: ConversationGate - Progressive Tool Unlock")
+    print("3. ConversationGate - Progressive Tool Unlock")
     print("=" * 60)
 
-    model = "gpt4"
-
-    # Start with basic tools, unlock more as conversation grows
     gate = ConversationGate(stages={
-        0: ["search"],                    # Start: only search
-        3: ["search", "read_data"],       # After 3 messages: add read
-        6: ["search", "read_data", "write_data"],  # After 6: add write
+        0: ["search"],
+        3: ["search", "read_data"],
+        6: ["search", "read_data", "write_data"],
     })
 
     agent = Agent(
@@ -225,99 +151,31 @@ async def example_conversation_gate():
         intercept=[gate],
     )
 
-    print("\n--- First message (only search available) ---")
+    print("\nFirst message (only search available)...")
     result = await agent.run("Search for database best practices")
-    text = result.unwrap()
-    print(f"Result: {str(text)[:150]}...")
-
+    print(f"Result: {result.unwrap()[:150]}...")
     print("\nNote: More tools unlock as message history grows!")
 
 
-# =============================================================================
-# Example 4: Custom ToolGate - Department-Based Access
-# =============================================================================
-
-class DepartmentGate(ToolGate):
-    """Filter tools based on department."""
-
-    DEPT_TOOLS = {
-        "Engineering": ["search", "read_data", "write_data"],
-        "Marketing": ["search", "send_email", "generate_report"],
-        "HR": ["search", "read_data"],
-    }
-
-    async def filter(self, tools, ctx: InterceptContext):
-        dept = "Engineering"  # Default
-        if ctx.run_context and isinstance(ctx.run_context, AppContext):
-            dept = ctx.run_context.department or "Engineering"
-
-        allowed = self.DEPT_TOOLS.get(dept, ["search"])
-        print(f"  🏢 Department '{dept}' has access to: {allowed}")
-
-        return [t for t in tools if t.name in allowed or "*" in allowed]
-
-
-async def example_department_gate():
-    """Filter tools by department."""
-    print("\n" + "=" * 60)
-    print("Example 4: Custom ToolGate - Department-Based Access")
-    print("=" * 60)
-
-    model = "gpt4"
-
-    agent = Agent(
-        name="DeptBot",
-        model="gpt4",
-        tools=[search, read_data, write_data, send_email, generate_report],
-        instructions="Help with department tasks.",
-        intercept=[DepartmentGate()],
-    )
-
-    # Marketing department
-    print("\n--- Marketing department ---")
-    mkt_ctx = AppContext(user_id="mark1", department="Marketing")
-    result = await agent.run(
-        "Generate a sales report",
-        context=mkt_ctx,
-    )
-    text = result.unwrap()
-    print(f"Result: {str(text)[:150]}...")
-
-    # Engineering department
-    print("\n--- Engineering department ---")
-    eng_ctx = AppContext(user_id="eng1", department="Engineering")
-    result = await agent.run(
-        "Read data from the metrics table",
-        context=eng_ctx,
-    )
-    text = result.unwrap()
-    print(f"Result: {str(text)[:150]}...")
-
-
-# =============================================================================
-# Example 5: ToolGuard - Retry Failed Tools
-# =============================================================================
-
-# Simulated flaky tool
 _call_count = 0
+
 
 @tool
 def flaky_api(query: str) -> str:
     """A flaky API that sometimes fails."""
     global _call_count
     _call_count += 1
-    if _call_count % 3 != 0:  # Fail 2 out of 3 times
+    if _call_count % 3 != 0:
         raise TimeoutError(f"API timeout on attempt {_call_count}")
     return f"API success for: {query}"
 
 
-async def example_tool_guard():
+async def demo_tool_guard():
     """Automatic retry for failed tool calls."""
     print("\n" + "=" * 60)
-    print("Example 5: ToolGuard - Retry Failed Tools")
+    print("4. ToolGuard - Retry Failed Tools")
     print("=" * 60)
 
-    model = "gpt4"
     global _call_count
     _call_count = 0
 
@@ -334,63 +192,22 @@ async def example_tool_guard():
     agent = Agent(
         name="ResilientBot",
         model="gpt4",
-        tools=[flaky_api, search],
+        tools=[flaky_api],
         instructions="Use the flaky_api tool to answer queries.",
         intercept=[guard],
     )
 
     print("\nCalling flaky API (will retry on failures)...")
     result = await agent.run("Query the flaky API for weather data")
-    print(f"\nResult: {result[:200]}...")
+    print(f"\nResult: {result.unwrap()[:200]}...")
 
 
-# =============================================================================
-# Example 6: CircuitBreaker - Prevent Cascading Failures
-# =============================================================================
-
-async def example_circuit_breaker():
-    """Circuit breaker to protect against failing tools."""
-    print("\n" + "=" * 60)
-    print("Example 6: CircuitBreaker - Prevent Cascading Failures")
-    print("=" * 60)
-
-    model = "gpt4"
-
-    breaker = CircuitBreaker(
-        failure_threshold=3,   # Open after 3 failures
-        reset_timeout=10.0,    # Try again after 10 seconds
-        tools=["flaky_api"],   # Only protect this tool
-    )
-
-    agent = Agent(
-        name="ProtectedBot",
-        model="gpt4",
-        tools=[search],  # Using safe tools for demo
-        instructions="Help with searches.",
-        intercept=[breaker],
-    )
-
-    print("\nCircuit breaker configured:")
-    print(f"  - Failure threshold: {breaker.failure_threshold}")
-    print(f"  - Reset timeout: {breaker.reset_timeout}s")
-
-    result = await agent.run("Search for circuit breaker patterns")
-    print(f"\nResult: {result[:200]}...")
-
-
-# =============================================================================
-# Example 7: LambdaPrompt - Simple Prompt Customization
-# =============================================================================
-
-async def example_lambda_prompt():
+async def demo_lambda_prompt():
     """Quick prompt customization with lambda."""
     print("\n" + "=" * 60)
-    print("Example 7: LambdaPrompt - Simple Prompt Customization")
+    print("5. LambdaPrompt - Simple Prompt Customization")
     print("=" * 60)
 
-    model = "gpt4"
-
-    # Add user name and role to every prompt
     adapter = LambdaPrompt(
         adapter_fn=lambda prompt, ctx: (
             f"{prompt}\n\n"
@@ -402,7 +219,6 @@ async def example_lambda_prompt():
     agent = Agent(
         name="PersonalizedBot",
         model="gpt4",
-        tools=[search],
         instructions="You are a helpful assistant.",
         intercept=[adapter],
     )
@@ -411,20 +227,14 @@ async def example_lambda_prompt():
 
     print("\nPrompt will include user context...")
     result = await agent.run("Hello, who am I?", context=ctx)
-    print(f"\nResult: {result[:300]}...")
+    print(f"\nResult: {result.unwrap()[:300]}...")
 
 
-# =============================================================================
-# Example 8: ContextPrompt - Template-Based Injection
-# =============================================================================
-
-async def example_context_prompt():
+async def demo_context_prompt():
     """Inject RunContext data via template."""
     print("\n" + "=" * 60)
-    print("Example 8: ContextPrompt - Template-Based Injection")
+    print("6. ContextPrompt - Template-Based Injection")
     print("=" * 60)
-
-    model = "gpt4"
 
     adapter = ContextPrompt(
         template="User Details:\n- ID: {user_id}\n- Department: {department}\n- Role: {user_role}",
@@ -433,130 +243,61 @@ async def example_context_prompt():
     agent = Agent(
         name="TemplateBot",
         model="gpt4",
-        tools=[search],
         instructions="Help users with their department-specific needs.",
         intercept=[adapter],
     )
 
-    ctx = AppContext(
-        user_id="bob456",
-        user_role="user",
-        department="Sales",
-    )
+    ctx = AppContext(user_id="bob456", user_role="user", department="Sales")
 
-    print(f"\nInjecting context: {ctx}")
+    print(f"\nInjecting context: {ctx.user_id} ({ctx.user_role})")
     result = await agent.run("What resources are available for my team?", context=ctx)
-    print(f"\nResult: {result[:300]}...")
+    print(f"\nResult: {result.unwrap()[:300]}...")
 
 
-# =============================================================================
-# Example 9: ConversationPrompt - Stage-Based Instructions
-# =============================================================================
-
-async def example_conversation_prompt():
-    """Change instructions based on conversation length."""
-    print("\n" + "=" * 60)
-    print("Example 9: ConversationPrompt - Stage-Based Instructions")
-    print("=" * 60)
-
-    model = "gpt4"
-
-    adapter = ConversationPrompt(
-        stages={
-            0: "This is a new conversation. Be welcoming and introduce yourself.",
-            5: "The conversation is progressing. Be more detailed in responses.",
-            10: "This is a long conversation. Be concise to avoid repetition.",
-        }
-    )
-
-    agent = Agent(
-        name="AdaptiveBot",
-        model="gpt4",
-        instructions="You are a helpful assistant.",
-        intercept=[adapter],
-    )
-
-    print("\nFirst message (short conversation)...")
-    result = await agent.run("Hi there!")
-    print(f"\nResult: {result[:200]}...")
-
-    print("\nNote: Instructions change as conversation grows!")
-
-
-# =============================================================================
-# Example 10: Combined Context Layer
-# =============================================================================
-
-async def example_combined():
+async def demo_combined():
     """Combine multiple context layer features."""
     print("\n" + "=" * 60)
-    print("Example 10: Combined Context Layer")
+    print("7. Combined Context Layer")
     print("=" * 60)
 
-    model = "gpt4"
-
-    # Create a fully-featured agent
     agent = Agent(
         name="EnterpriseBot",
         model="gpt4",
-        tools=[search, read_data, write_data, send_email, generate_report],
+        tools=[search, read_data, write_data],
         instructions="Help enterprise users with their tasks.",
         intercept=[
-            # 1. Permission-based tool filtering
             RoleBasedGate(),
-
-            # 2. Personalized prompts
             LambdaPrompt(
                 adapter_fn=lambda p, ctx: (
                     f"{p}\n\nUser: {getattr(ctx.run_context, 'user_id', 'unknown')}"
                 )
             ),
-
-            # 3. Conversation-aware instructions
-            ConversationPrompt(stages={
-                0: "Start with a greeting.",
-                5: "Be more detailed.",
-            }),
         ],
     )
 
-    # Simulate enterprise user
-    ctx = AppContext(
-        user_id="enterprise_user",
-        user_role="user",
-        department="Operations",
-        session_id="sess-xyz-789",
-    )
+    ctx = AppContext(user_id="enterprise_user", user_role="user", department="Operations")
 
     print(f"\nEnterprise context: {ctx.user_id} ({ctx.user_role})")
-    result = await agent.run(
-        "Search for operational best practices",
-        context=ctx,
-    )
-    print(f"\nResult: {result[:300]}...")
+    result = await agent.run("Search for operational best practices", context=ctx)
+    print(f"\nResult: {result.unwrap()[:300]}...")
 
-
-# =============================================================================
-# Main
-# =============================================================================
 
 async def main():
     """Run all context layer examples."""
-    print("\n🔌 AgenticFlow Context Layer Examples\n")
+    print("\n" + "=" * 60)
+    print("AGENTICFLOW CONTEXT LAYER EXAMPLES")
+    print("=" * 60)
 
-    await example_run_context()
-    await example_permission_gate()
-    await example_conversation_gate()
-    await example_department_gate()
-    await example_tool_guard()
-    await example_circuit_breaker()
-    await example_lambda_prompt()
-    await example_context_prompt()
-    await example_conversation_prompt()
-    await example_combined()
+    await demo_run_context()
+    await demo_permission_gate()
+    await demo_conversation_gate()
+    await demo_tool_guard()
+    await demo_lambda_prompt()
+    await demo_context_prompt()
+    await demo_combined()
 
     print("\n" + "=" * 60)
-    print("✅ All context layer examples completed!")
+    print("✓ All examples completed")
     print("=" * 60)
 
 

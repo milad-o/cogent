@@ -39,7 +39,7 @@ from agenticflow.tools import tool
 @tool
 def calculate(expression: str) -> str:
     """Evaluate a mathematical expression.
-    
+
     Args:
         expression: A math expression like '2 + 2' or '150 - 50'
     """
@@ -56,7 +56,7 @@ def calculate(expression: str) -> str:
 @tool
 def lookup_fraction(fraction: str) -> str:
     """Convert a fraction to decimal.
-    
+
     Args:
         fraction: A fraction like '1/3' or '2/5'
     """
@@ -102,13 +102,13 @@ Use the calculate tool for arithmetic.""",
     # Complex reasoning task
     task = """
     Word problem:
-    
+
     A farmer has 150 apples. He gives away 1/3 of them to his neighbor.
     Then he sells 20 apples at the market.
     Finally, he picks 35 more apples from his orchard.
-    
+
     How many apples does the farmer have now?
-    
+
     Show step-by-step calculations using the calculate tool.
     """
 

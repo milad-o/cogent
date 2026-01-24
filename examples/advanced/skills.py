@@ -10,14 +10,8 @@ Run with:
 
 import asyncio
 
-from agenticflow import (
-    Agent,
-    Flow,
-    Observer,
-    react_to,
-    skill,
-    tool,
-)
+from agenticflow import Agent, Flow, Observer, skill, tool
+from agenticflow.events import has_data
 
 # =============================================================================
 # Define tools that will be available to skills
@@ -51,8 +45,6 @@ def inspect_vars(var_name: str) -> str:
 # =============================================================================
 # Define skills with the clean kwargs API
 # =============================================================================
-
-from agenticflow.events import has_data
 
 # Python expert skill: activates on code.write events for Python
 python_skill = skill(

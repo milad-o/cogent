@@ -21,10 +21,10 @@ from agenticflow import Agent
 
 def search_web(query: str) -> str:
     """Search the web for information.
-    
+
     Args:
         query: Search query
-        
+
     Returns:
         Mock search results
     """

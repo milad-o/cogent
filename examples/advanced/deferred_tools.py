@@ -8,7 +8,14 @@ For async tool execution patterns, see examples/basics/tools.py
 For event-driven patterns, see examples/flow/event_sources.py
 """
 
+import asyncio
 import sys
+from datetime import datetime
+from uuid import uuid4
+
+from agenticflow import Agent, tool
+from agenticflow.events import EventBus
+from agenticflow.tools.deferred import DeferredResult
 
 print("⚠️  This example is deprecated and uses old API.")
 print("See examples/basics/tools.py and examples/flow/event_sources.py for current patterns.")
@@ -22,7 +29,7 @@ sys.exit(0)
 async def process_video(video_url: str) -> DeferredResult:
     """
     Submit video for processing and wait for webhook callback.
-    
+
     The video processing service will call our webhook endpoint
     when processing is complete. This tool returns immediately
     but the agent will wait for the completion event.
@@ -72,7 +79,7 @@ async def request_payment_approval(
 ) -> DeferredResult:
     """
     Request human approval for a payment.
-    
+
     Sends notification to approver and waits for their response.
     The agent will pause until approval or rejection is received.
     """
@@ -109,7 +116,7 @@ async def run_ml_training(
 ) -> DeferredResult:
     """
     Start ML model training with polling for completion.
-    
+
     For APIs that don't support webhooks, we can poll a status
     endpoint until the job completes.
     """
@@ -136,7 +143,7 @@ async def run_ml_training(
 async def simulate_webhook_server(event_bus: EventBus):
     """
     Simulate external services sending webhook callbacks.
-    
+
     In production, this would be an HTTP endpoint receiving
     webhooks from external services.
     """
@@ -186,7 +193,6 @@ async def demo_end_to_end_agent_deferred() -> None:
     print("=" * 40)
 
     event_bus = EventBus()
-    model = "gpt4"
     agent = Agent(
         name="DeferredE2EAgent",
         system_prompt="You can run tools. Some tools complete later.",
@@ -201,8 +207,8 @@ async def demo_end_to_end_agent_deferred() -> None:
         # Important: don't publish completion *inside* TOOL_DEFERRED handler.
         # The agent only starts subscribing for the completion event after it
         # emits TOOL_DEFERRED_WAITING; otherwise we'd race and miss the event.
-        if event.type != EventType.TOOL_DEFERRED_WAITING:
-            return
+        # Note: EventType enum no longer exists in current API
+        return
 
         tool_name = event.data.get("tool_name")
         job_id = event.data.get("job_id")
@@ -229,7 +235,7 @@ async def demo_end_to_end_agent_deferred() -> None:
 
         asyncio.create_task(publish_completion())
 
-    event_bus.subscribe(EventType.TOOL_DEFERRED_WAITING, auto_complete_when_waiting)
+    # event_bus.subscribe(EventType.TOOL_DEFERRED_WAITING, auto_complete_when_waiting)
 
     print("Calling tool via agent.act('process_video', ...) — it should wait then resume...")
     result = await agent.act(
@@ -264,7 +270,6 @@ async def demo_deferred_tools():
     # Create event bus
     event_bus = EventBus()
 
-    model = "gpt4"
 
     # Create agent with deferred tool capabilities
     agent = Agent(

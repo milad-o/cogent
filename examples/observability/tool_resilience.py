@@ -80,7 +80,6 @@ async def demo_default_resilience():
     global _api_call_attempts
     _api_call_attempts = 0
 
-    model = "gpt4"
 
     # Add observer to see resilience events
     observer = Observer(
@@ -121,7 +120,6 @@ async def demo_aggressive_resilience():
     global _flaky_search_attempts
     _flaky_search_attempts = 0
 
-    model = "gpt4"
     aggressive_config = ResilienceConfig.aggressive()
 
     observer = Observer(
@@ -165,7 +163,6 @@ async def demo_custom_retry_policy():
     global _api_call_attempts
     _api_call_attempts = 0
 
-    model = "gpt4"
     custom_policy = RetryPolicy(
         max_retries=5,
         strategy=RetryStrategy.EXPONENTIAL,
@@ -213,7 +210,6 @@ async def demo_fallback_tools():
     print("Demo 4: Fallback Tool Chains")
     print("=" * 80)
 
-    model = "gpt4"
 
     observer = Observer(
         level=ObservabilityLevel.DETAILED,
@@ -266,7 +262,6 @@ async def demo_fast_fail():
     print("Demo 5: Fast-Fail Config")
     print("=" * 80)
 
-    model = "gpt4"
     fast_fail_config = ResilienceConfig.fast_fail()
 
     print(f"Config: max_retries={fast_fail_config.retry_policy.max_retries}, "

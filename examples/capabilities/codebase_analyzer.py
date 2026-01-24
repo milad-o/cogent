@@ -92,7 +92,6 @@ async def demo_agent(analyzer):
     print("🤖 Agent with CodebaseAnalyzer Demo")
     print("=" * 60)
 
-    model = "gpt4"
 
     agent = Agent(
         name="CodeExpert",

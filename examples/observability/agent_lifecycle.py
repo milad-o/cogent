@@ -17,18 +17,17 @@ import asyncio
 from typing import Literal
 
 from agenticflow import Agent
-from agenticflow.events import EventBus
-from agenticflow.observability import Observer, Channel, ObservabilityLevel, TraceType
+from agenticflow.observability import Channel, ObservabilityLevel, Observer, TraceType
 from agenticflow.tools.base import tool
 
 
 @tool
 def calculate(expression: str) -> str:
     """Evaluate a mathematical expression.
-    
+
     Args:
         expression: Math expression like "2 + 2"
-        
+
     Returns:
         Result of calculation
     """
@@ -42,10 +41,10 @@ def calculate(expression: str) -> str:
 @tool
 def get_info(topic: Literal["python", "async", "agents"]) -> str:
     """Get information about a specific topic.
-    
+
     Args:
         topic: Must be one of: 'python', 'async', or 'agents'
-        
+
     Returns:
         Information about the topic
     """

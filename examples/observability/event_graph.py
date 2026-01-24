@@ -18,7 +18,6 @@ async def demo_basic_graph() -> None:
     print("DEMO 1: Basic Event Graph")
     print("=" * 80)
 
-    model = "gpt4"
 
     # Create agents
     classifier = Agent(
@@ -62,7 +61,6 @@ async def demo_graph_with_timing() -> None:
     print("DEMO 2: Event Graph with Timing")
     print("=" * 80)
 
-    model = "gpt4"
 
     researcher = Agent(
         name="Researcher",
@@ -98,7 +96,6 @@ async def demo_complex_flow() -> None:
     print("DEMO 3: Complex Multi-Branch Flow")
     print("=" * 80)
 
-    model = "gpt4"
 
     # Router that determines priority
     router = Agent(
@@ -113,7 +110,7 @@ async def demo_complex_flow() -> None:
         system_prompt="Handle urgent tasks immediately with high priority response.",
     )
 
-    normal_handler = Agent(
+    Agent(
         name="NormalHandler",
         model="gpt4",
         system_prompt="Process normal priority tasks with standard response.",
@@ -150,7 +147,6 @@ async def demo_export_graph() -> None:
     print("=" * 80)
 
 
-    model = "gpt4"
 
     agent1 = Agent(name="Agent1", model="gpt4", system_prompt="Step 1")
     agent2 = Agent(name="Agent2", model="gpt4", system_prompt="Step 2")

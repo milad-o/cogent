@@ -34,7 +34,6 @@ async def example_1_map_reduce():
     print("\nThree workers process chunks independently, then Flow automatically")
     print("triggers coordinator when ALL workers complete.\n")
 
-    model = "gpt4"
 
     # Create worker agents
     worker1 = Agent(name="worker_1", model="gpt4", instructions="Process data chunks briefly.")
@@ -64,7 +63,7 @@ async def example_1_map_reduce():
     print("Assigning work to workers...")
 
     # Use semantic event name for clarity
-    result = await flow.run("Process data chunks", initial_event=TaskEvents.ASSIGNED)
+    await flow.run("Process data chunks", initial_event=TaskEvents.ASSIGNED)
 
     print("\n[OK] Success: Flow automatically coordinated map-reduce!\n")
 
@@ -82,7 +81,6 @@ async def example_2_multi_stage():
     print("\nStage 1: Technical + Security review (parallel)")
     print("Stage 2: Business review (after Stage 1 complete)\n")
 
-    model = "gpt4"
 
     # Stage 1 reviewers
     tech = Agent(name="tech_review", model="gpt4", instructions="Technical review - be brief.")
@@ -109,7 +107,7 @@ async def example_2_multi_stage():
     print("Submitting document for review...")
 
     # Use semantic review event
-    result = await flow.run("Review this document", initial_event=ReviewEvents.SUBMITTED)
+    await flow.run("Review this document", initial_event=ReviewEvents.SUBMITTED)
 
     print("\n[OK] Success: Flow coordinated multi-stage review!\n")
 
@@ -126,7 +124,6 @@ async def example_3_batches():
     print("=" * 70)
     print("\nProcess 3 batches. Coordination auto-resets after each.\n")
 
-    model = "gpt4"
 
     worker_a = Agent(name="worker_a", model="gpt4", instructions="Process batches quickly.")
     worker_b = Agent(name="worker_b", model="gpt4", instructions="Process batches quickly.")
@@ -170,7 +167,6 @@ async def example_4_one_time_gate():
     print("\nDeployment gate: ALL checks must pass. Use .once() to")
     print("trigger only once.\n")
 
-    model = "gpt4"
 
     build = Agent(name="build_check", model="gpt4", instructions="Check build status briefly.")
     test = Agent(name="test_check", model="gpt4", instructions="Run tests briefly.")
@@ -218,7 +214,6 @@ async def example_5_composition():
     print("=" * 70)
     print("\nEscalate only when ALL supervisors flag AND priority is high.\n")
 
-    model = "gpt4"
 
     sup1 = Agent(name="supervisor_1", model="gpt4", instructions="Monitor systems briefly.")
     sup2 = Agent(name="supervisor_2", model="gpt4", instructions="Monitor systems briefly.")
@@ -238,7 +233,8 @@ async def example_5_composition():
         return Event(name=IncidentEvents.ESCALATED, source="escalation_system")
 
     # Combine coordination with priority filter
-    priority_filter = lambda e: e.data.get("priority") == "high"
+    def priority_filter(e):
+        return e.data.get("priority") == "high"
     flow.register(
         escalate,
         on=AgentEvents.DONE,

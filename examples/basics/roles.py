@@ -115,7 +115,6 @@ async def demo_supervisor_flow():
     print("  Pattern: SUPERVISOR ↔ [WORKER, WORKER]")
     print("  SUPERVISOR delegates and finishes; WORKERs do tool work")
 
-    model = "gpt4"
 
     from agenticflow import SupervisorRole, WorkerRole
 
@@ -165,7 +164,6 @@ async def demo_review_flow():
     print("  Pattern: WORKER → REVIEWER")
     print("  WORKER does work; REVIEWER approves/rejects and finishes")
 
-    model = "gpt4"
 
     from agenticflow import ReviewerRole, WorkerRole
 
@@ -206,7 +204,6 @@ async def demo_autonomous():
     print("  Pattern: Single AUTONOMOUS agent")
     print("  Can use tools AND finish (perfect for solo tasks)")
 
-    model = "gpt4"
     from agenticflow import AutonomousRole
 
     assistant = Agent(

@@ -60,7 +60,6 @@ async def demo_worker_vs_autonomous():
     """Show difference between WORKER and AUTONOMOUS with real LLM."""
     print("\n=== WORKER vs AUTONOMOUS (Real LLM Behavior) ===\n")
 
-    model = "gpt4"
     task = "What is Python programming language?"
 
     # WORKER: Can use tools, but CANNOT finish
@@ -102,7 +101,6 @@ async def demo_supervisor_delegation():
     """Show supervisor trying to delegate (even without workers)."""
     print("\n\n=== SUPERVISOR Behavior (Delegation Tendency) ===\n")
 
-    model = "gpt4"
 
     supervisor = Agent(
         name="Manager",
@@ -128,7 +126,6 @@ async def demo_reviewer_behavior():
     """Show reviewer evaluating work."""
     print("\n\n=== REVIEWER Behavior (Evaluation Mode) ===\n")
 
-    model = "gpt4"
 
     reviewer = Agent(
         name="QA",
@@ -157,7 +154,6 @@ async def demo_tool_access_control():
     """Show that roles control tool access."""
     print("\n\n=== Tool Access Control by Role ===\n")
 
-    model = "gpt4"
     task = "Search for information about Python"
 
     # WORKER: Can use tools

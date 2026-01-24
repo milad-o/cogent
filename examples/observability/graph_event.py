@@ -8,7 +8,6 @@ from agenticflow.observability import Observer
 
 
 async def main():
-    model = "gpt4"
 
     agent1 = Agent(name="Agent1", model="gpt4", system_prompt="Say hello")
     agent2 = Agent(name="Agent2", model="gpt4", system_prompt="Say goodbye")

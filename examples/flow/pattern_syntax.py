@@ -233,7 +233,7 @@ async def example_6_comparison():
     print("   ✅ Pattern syntax is more concise")
     print("   ✅ After parameter is more explicit\n")
 
-    result = await flow.run(
+    await flow.run(
         initial_event=Event(name="task.created", data={"task": "Compare approaches"})
     )
 

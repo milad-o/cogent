@@ -11,14 +11,14 @@ from agenticflow.tools import tool
 
 def create_delegate_tool(flow: Any, from_agent: str) -> Any:
     """Create a delegation tool for a coordinator agent.
-    
+
     This tool is automatically injected into agents that coordinate work
     (registered with on="task.created" or similar coordination events).
-    
+
     Args:
         flow: The Flow instance
         from_agent: Name of the coordinating agent
-        
+
     Returns:
         Tool function for delegating to specialists
     """
@@ -29,23 +29,23 @@ def create_delegate_tool(flow: Any, from_agent: str) -> Any:
         task: str,
     ) -> str:
         """Delegate a task to a specialist agent.
-        
+
         Use this when you need to hand off specialized work to another team member.
-        
+
         Args:
             specialist: Name of the specialist agent (e.g., "data_analyst", "writer", "researcher")
             task: Clear description of what you want them to do
-            
+
         Returns:
             Confirmation that the task was delegated
-            
+
         Example:
             delegate_to(
                 specialist="data_analyst",
                 task="Analyze Q4 sales data and identify trends"
             )
         """
-        from agenticflow.reactive.a2a import create_request
+        from agenticflow.flow.a2a import create_request
 
         # Create agent request
         request = create_request(
@@ -63,7 +63,7 @@ def create_delegate_tool(flow: Any, from_agent: str) -> Any:
     available = [name for name, (_, cfg) in flow._agents_registry.items()
                  if any(t.on == "agent.request" for t in cfg.triggers)]
     delegate_to.__doc__ = f"""Delegate a task to a specialist agent.
-    
+
 Available specialists in this flow: {', '.join(available)}
 
 Use this when you need to hand off specialized work to another team member.
@@ -71,7 +71,7 @@ Use this when you need to hand off specialized work to another team member.
 Args:
     specialist: Name of the specialist agent
     task: Clear description of what you want them to do
-    
+
 Returns:
     Confirmation that the task was delegated
 """
@@ -81,14 +81,14 @@ Returns:
 
 def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
     """Create a reply tool for a specialist agent.
-    
+
     This tool is automatically injected into agents that handle delegated work
     (registered with handles=True).
-    
+
     Args:
-        flow: The Flow instance  
+        flow: The Flow instance
         specialist_agent: Name of the specialist agent
-        
+
     Returns:
         Tool function for replying with results
     """
@@ -99,23 +99,23 @@ def create_reply_tool(flow: Any, specialist_agent: str) -> Any:
         success: bool = True,
     ) -> str:
         """Send your result back to the agent who delegated this task to you.
-        
+
         Call this when you've completed the delegated work.
-        
+
         Args:
             result: Your analysis, report, or output
             success: Whether the task completed successfully (default: True)
-            
+
         Returns:
             Confirmation that the reply was sent
-            
+
         Example:
             reply_with_result(
                 result="Sales increased 15% in Q4, driven by holiday promotions",
                 success=True
             )
         """
-        from agenticflow.reactive.a2a import AgentResponse
+        from agenticflow.flow.a2a import AgentResponse
 
         # Create response (correlation_id will be extracted from current event context)
         response = AgentResponse(

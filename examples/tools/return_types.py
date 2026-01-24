@@ -69,7 +69,7 @@ def get_weather(city: str) -> dict[str, int | str]:
         city: City name to query (e.g., "Miami", "Chicago").
 
     Returns:
-        A dictionary with temp (int, Fahrenheit), humidity (int, %), 
+        A dictionary with temp (int, Fahrenheit), humidity (int, %),
         condition (str: sunny/cloudy/rainy), and wind_speed (int, mph).
     """
     weather_data = {
@@ -226,7 +226,7 @@ def check_stock_and_reserve(
         quantity: Quantity to reserve.
 
     Returns:
-        A dictionary with available (bool), reserved (int), 
+        A dictionary with available (bool), reserved (int),
         remaining_stock (int), and message (str).
     """
     if stock >= quantity:

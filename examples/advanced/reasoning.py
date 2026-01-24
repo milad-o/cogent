@@ -26,18 +26,14 @@ Example output:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
+import contextlib
 
 from agenticflow import Agent, Observer
 from agenticflow.agent import ReasoningConfig, ReasoningStyle
 from agenticflow.tools.base import tool
 
 # Handle both direct execution and module import
-try:
-    from examples.config import get_model
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
 
 
@@ -79,7 +75,7 @@ def calculate_metrics(
     profit = revenue - expenses
     profit_margin = profit / revenue if revenue > 0 else 0
     revenue_per_employee = revenue / employees if employees > 0 else 0
-    
+
     return {
         "profit": profit,
         "profit_margin": f"{profit_margin:.1%}",
@@ -113,9 +109,8 @@ async def example_basic_reasoning():
     print("\n" + "=" * 60)
     print("Example 1: Basic Reasoning")
     print("=" * 60)
-    
-    model = "gpt4"
-    
+
+
     # Enable reasoning with True (uses default config)
     agent = Agent(
         name="Analyst",
@@ -124,11 +119,11 @@ async def example_basic_reasoning():
         reasoning=True,  # Enable default reasoning
         observer=Observer.trace(),  # Show all reasoning events
     )
-    
+
     result = await agent.run(
         "Analyze ACME Corp's financial health and provide a recommendation."
     )
-    
+
     print(f"\n📊 Result:\n{result}")
 
 
@@ -142,9 +137,8 @@ async def example_reasoning_styles():
     print("\n" + "=" * 60)
     print("Example 2: Reasoning Styles")
     print("=" * 60)
-    
-    model = "gpt4"
-    
+
+
     # Critical reasoning - questions assumptions
     agent = Agent(
         name="CriticalAnalyst",
@@ -153,11 +147,11 @@ async def example_reasoning_styles():
         reasoning=ReasoningConfig.critical(),
         observer=Observer.normal(),  # Show progress and reasoning
     )
-    
+
     result = await agent.run(
         "Compare ACME Corp and TechStart Inc. Which is a better investment?"
     )
-    
+
     print(f"\n📊 Critical Analysis:\n{result}")
 
 
@@ -171,9 +165,8 @@ async def example_deep_reasoning():
     print("\n" + "=" * 60)
     print("Example 3: Deep Reasoning")
     print("=" * 60)
-    
-    model = "gpt4"
-    
+
+
     # Deep reasoning - requires 70% confidence to stop thinking
     agent = Agent(
         name="DeepAnalyst",
@@ -182,12 +175,12 @@ async def example_deep_reasoning():
         reasoning=ReasoningConfig.deep(),
         observer=Observer.normal(),
     )
-    
+
     result = await agent.run(
         "Given limited data, assess ACME Corp's long-term viability. "
         "Consider risks and uncertainty."
     )
-    
+
     print(f"\n📊 Deep Analysis:\n{result}")
 
 
@@ -201,9 +194,8 @@ async def example_quick_reasoning():
     print("\n" + "=" * 60)
     print("Example 4: Quick vs No Reasoning Comparison")
     print("=" * 60)
-    
-    model = "gpt4"
-    
+
+
     # Agent with quick reasoning
     agent_reasoning = Agent(
         name="QuickAnalyst",
@@ -212,7 +204,7 @@ async def example_quick_reasoning():
         reasoning=ReasoningConfig.quick(),
         observer=Observer.normal(),
     )
-    
+
     # Agent without reasoning
     agent_no_reasoning = Agent(
         name="DirectAnalyst",
@@ -221,14 +213,14 @@ async def example_quick_reasoning():
         reasoning=None,  # No reasoning
         observer=Observer.normal(),
     )
-    
+
     task = "Get ACME Corp's employee count."
-    
+
     print("With quick reasoning:")
     result1 = await agent_reasoning.run(task)
     text1 = result1.unwrap()
     print(f"Result: {str(text1)[:100]}...")
-    
+
     print("\nWithout reasoning:")
     result2 = await agent_no_reasoning.run(task)
     text2 = result2.unwrap()
@@ -245,9 +237,8 @@ async def example_custom_config():
     print("\n" + "=" * 60)
     print("Example 5: Custom Reasoning Config")
     print("=" * 60)
-    
-    model = "gpt4"
-    
+
+
     # Custom config: exploratory style, show thinking, 2 rounds
     custom_config = ReasoningConfig(
         enabled=True,
@@ -256,7 +247,7 @@ async def example_custom_config():
         show_thinking=True,  # Include <thinking> in output
         self_correct=True,
     )
-    
+
     agent = Agent(
         name="Explorer",
         model="gpt4",
@@ -264,12 +255,12 @@ async def example_custom_config():
         reasoning=custom_config,
         observer=Observer.normal(),
     )
-    
+
     result = await agent.run(
         "Explore different ways to evaluate these two companies: "
         "ACME Corp and TechStart Inc."
     )
-    
+
     print(f"\n📊 Exploratory Analysis:\n{result}")
 
 
@@ -283,9 +274,8 @@ async def example_per_call_reasoning():
     print("\n" + "=" * 60)
     print("Example 6: Per-Call Reasoning Override")
     print("=" * 60)
-    
-    model = "gpt4"
-    
+
+
     # Agent with NO reasoning by default
     agent = Agent(
         name="FlexibleAnalyst",
@@ -294,7 +284,7 @@ async def example_per_call_reasoning():
         reasoning=False,  # Disabled by default
         observer=Observer.normal(),
     )
-    
+
     # Simple question - no reasoning needed
     print("\n📝 Simple query (no reasoning):")
     result1 = await agent.run(
@@ -302,7 +292,7 @@ async def example_per_call_reasoning():
         reasoning=False,  # Explicit: no reasoning
     )
     print(f"   Result: {result1.unwrap()}")
-    
+
     # Complex task - enable reasoning for this call only
     print("\n🧠 Complex query (reasoning enabled for this call):")
     result2 = await agent.run(
@@ -311,7 +301,7 @@ async def example_per_call_reasoning():
     )
     text2 = result2.unwrap()
     print(f"   Result: {str(text2)[:200]}...")
-    
+
     # Very complex - use custom config for this call
     print("\n🔬 Very complex query (custom reasoning config):")
     result3 = await agent.run(
@@ -324,7 +314,7 @@ async def example_per_call_reasoning():
     )
     text3 = result3.unwrap()
     print(f"   Result: {str(text3)[:200]}...")
-    
+
     print("\n💡 Per-call reasoning allows optimal thinking for each task!")
 
 
@@ -341,7 +331,7 @@ async def main():
     await example_quick_reasoning()
     await example_custom_config()
     await example_per_call_reasoning()
-    
+
     print("\n" + "=" * 60)
     print("All examples complete!")
     print("=" * 60)

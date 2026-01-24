@@ -25,7 +25,6 @@ async def demo_observer_levels():
     print("DEMO 1: Observer Levels")
     print("=" * 80)
 
-    model = "gpt4"
     researcher = Agent(
         name="researcher",
         model="gpt4",
@@ -73,7 +72,6 @@ async def demo_trace_filtering():
     print("DEMO 2: Trace Filtering and Analysis")
     print("=" * 80)
 
-    model = "gpt4"
     classifier = Agent(name="classifier", model="gpt4", system_prompt="Classify the task type.")
     processor = Agent(name="processor", model="gpt4", system_prompt="Process the task.")
 
@@ -83,7 +81,7 @@ async def demo_trace_filtering():
     flow.register(classifier, on="task.created", emits="task.classified")
     flow.register(processor, on="task.classified", emits="flow.done")
 
-    result = await flow.run(
+    await flow.run(
         "Analyze this customer feedback: 'Great product!'",
         initial_event="task.created",
     )
@@ -149,7 +147,6 @@ async def demo_performance_analysis():
     print("DEMO 3: Performance Analysis")
     print("=" * 80)
 
-    model = "gpt4"
 
     # Create a multi-stage pipeline
     agents = [
@@ -165,7 +162,7 @@ async def demo_performance_analysis():
     flow.register(agents[1], on="stage_1.done", emits="stage_2.done")
     flow.register(agents[2], on="stage_2.done", emits="flow.done")
 
-    result = await flow.run(
+    await flow.run(
         "Process this data through all stages",
         initial_event="task.created",
     )
@@ -208,7 +205,6 @@ async def demo_debugging_unmatched():
     print("DEMO 4: Debugging Unmatched Events")
     print("=" * 80)
 
-    model = "gpt4"
     agent = Agent(name="worker", model="gpt4")
 
     observer = Observer.debug()
@@ -219,7 +215,7 @@ async def demo_debugging_unmatched():
 
     print("\n⚠️  Attempting to run with mismatched event pattern...")
 
-    result = await flow.run(
+    await flow.run(
         "Do some work",
         initial_event="task.created",  # This won't match!
     )
@@ -256,7 +252,6 @@ async def demo_export_traces():
     print("DEMO 5: Exporting Traces")
     print("=" * 80)
 
-    model = "gpt4"
     agent1 = Agent(name="analyzer", model="gpt4")
     agent2 = Agent(name="reporter", model="gpt4")
 
@@ -266,7 +261,7 @@ async def demo_export_traces():
     flow.register(agent1, on="task.created", emits="analysis.done")
     flow.register(agent2, on="analysis.done", emits="flow.done")
 
-    result = await flow.run(
+    await flow.run(
         "Analyze and report on the data",
         initial_event="task.created",
     )

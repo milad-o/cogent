@@ -1,15 +1,14 @@
 """
-Example 29: Interceptors
+Interceptors
 
-Demonstrates AgenticFlow's interceptor system for cross-cutting concerns
-like cost control, security, and observability.
-
-Key features:
-- Composable interceptors that hook into agent execution
+AgenticFlow's interceptor system for cross-cutting concerns:
 - BudgetGuard for limiting model/tool calls
-- Custom interceptors for logging, validation, etc.
+- Custom interceptors for logging, validation, security
+- PIIShield for PII detection and redaction
+- RateLimiter for controlling execution rate
+- TokenLimiter for token budget control
 
-Run: uv run python examples/advanced/interceptors.py
+Usage: uv run python examples/advanced/interceptors.py
 """
 
 import asyncio
@@ -29,21 +28,18 @@ from agenticflow.interceptors import (
 )
 from agenticflow.tools.base import tool
 
-# =============================================================================
-# Tools for demonstration
-# =============================================================================
 
 @tool
 def search(query: str) -> str:
     """Search for information."""
-    return f"Results for '{query}': Found 3 relevant articles about the topic."
+    return f"Results for '{query}': Found 3 articles."
 
 
 @tool
 def calculate(expression: str) -> str:
     """Calculate a math expression."""
     try:
-        result = eval(expression)  # Simple demo only!
+        result = eval(expression)
         return f"Result: {result}"
     except Exception as e:
         return f"Error: {e}"
@@ -55,22 +51,15 @@ def get_weather(city: str) -> str:
     return f"Weather in {city}: Sunny, 72°F"
 
 
-# =============================================================================
-# Example 1: BudgetGuard - Cost Control
-# =============================================================================
-
-async def example_budget_guard():
+async def demo_budget_guard():
     """Limit model and tool calls with BudgetGuard."""
-    print("=" * 60)
-    print("Example 1: BudgetGuard - Cost Control")
+    print("\n" + "=" * 60)
+    print("1. BudgetGuard - Cost Control")
     print("=" * 60)
 
-    model = "gpt4"
-
-    # Create a guard that limits calls
     guard = BudgetGuard(
-        model_calls=3,   # Max 3 LLM calls
-        tool_calls=5,    # Max 5 tool calls
+        model_calls=3,
+        tool_calls=5,
     )
 
     agent = Agent(
@@ -78,442 +67,263 @@ async def example_budget_guard():
         model="gpt4",
         tools=[search, calculate, get_weather],
         instructions="Help with research tasks. Use tools when helpful.",
-        intercept=[guard],  # Add the guard
+        intercept=[guard],
     )
 
-    # Run a task
     print("\nRunning task with budget limits...")
-    result = await agent.run(
-        "Search for Python tips, calculate 2+2, and get weather in NYC"
-    )
+    result = await agent.run("Search for Python tips, calculate 2+2, get weather in NYC")
 
     text = result.unwrap()
-    print(f"\nResult: {str(text)[:200]}..." if len(str(text)) > 200 else f"\nResult: {text}")
+    print(f"\nResult: {str(text)[:200]}...")
     print("\nBudget usage:")
     print(f"  Model calls: {guard.current_model_calls}/{guard.model_calls}")
     print(f"  Tool calls: {guard.current_tool_calls}/{guard.tool_calls}")
 
 
-# =============================================================================
-# Example 2: Custom Logging Interceptor
-# =============================================================================
-
 class LoggingInterceptor(Interceptor):
-    """Log all agent execution phases."""
+    """Log all agent interactions."""
 
-    def __init__(self, verbose: bool = False):
-        self.verbose = verbose
-        self.events: list[str] = []
+    async def before_turn(self, ctx: InterceptContext) -> InterceptResult:
+        print(f"  📝 Starting turn with message: {ctx.messages[-1].content[:50]}...")
+        return InterceptResult()
 
-    async def pre_run(self, ctx: InterceptContext) -> InterceptResult:
-        self._log(f"🚀 Starting task: {ctx.task[:50]}...")
-        return InterceptResult.ok()
-
-    async def pre_think(self, ctx: InterceptContext) -> InterceptResult:
-        self._log(f"🧠 Model call #{ctx.model_calls + 1}")
-        return InterceptResult.ok()
-
-    async def post_think(self, ctx: InterceptContext) -> InterceptResult:
-        if self.verbose and ctx.model_response:
-            content = getattr(ctx.model_response, 'content', '')
-            if content:
-                self._log(f"   Response: {content[:100]}...")
-        return InterceptResult.ok()
-
-    async def pre_act(self, ctx: InterceptContext) -> InterceptResult:
-        self._log(f"🔧 Calling tool: {ctx.tool_name}({ctx.tool_args})")
-        return InterceptResult.ok()
-
-    async def post_act(self, ctx: InterceptContext) -> InterceptResult:
-        if self.verbose:
-            result = str(ctx.tool_result)[:100]
-            self._log(f"   Result: {result}...")
-        return InterceptResult.ok()
-
-    async def post_run(self, ctx: InterceptContext) -> InterceptResult:
-        self._log(f"✅ Completed! Model calls: {ctx.model_calls}, Tool calls: {ctx.tool_calls}")
-        return InterceptResult.ok()
-
-    def _log(self, msg: str) -> None:
-        self.events.append(msg)
-        print(f"  {msg}")
+    async def after_turn(self, ctx: InterceptContext) -> InterceptResult:
+        if ctx.response:
+            content = str(ctx.response.content)[:50]
+            print(f"  ✅ Turn complete: {content}...")
+        return InterceptResult()
 
 
-async def example_logging_interceptor():
-    """Custom interceptor for logging."""
+async def demo_logging_interceptor():
+    """Custom logging interceptor."""
     print("\n" + "=" * 60)
-    print("Example 2: Custom Logging Interceptor")
+    print("2. Custom Logging Interceptor")
     print("=" * 60)
-
-    model = "gpt4"
-    logger = LoggingInterceptor(verbose=True)
 
     agent = Agent(
         name="LoggedBot",
         model="gpt4",
-        tools=[search, calculate],
-        instructions="Help with tasks concisely.",
-        intercept=[logger],
+        instructions="Be helpful.",
+        intercept=[LoggingInterceptor()],
     )
 
-    print("\nExecution log:")
-    await agent.run("What is 15 * 7?")
-
-    print(f"\nTotal logged events: {len(logger.events)}")
-
-
-# =============================================================================
-# Example 3: Tool Argument Modifier
-# =============================================================================
-
-class QueryEnhancer(Interceptor):
-    """Enhance search queries with context."""
-
-    def __init__(self, context: str = "in 2024"):
-        self.context = context
-
-    async def pre_act(self, ctx: InterceptContext) -> InterceptResult:
-        if ctx.tool_name == "search":
-            original = ctx.tool_args.get("query", "")
-            enhanced = f"{original} {self.context}"
-            print(f"  📝 Enhanced query: '{original}' → '{enhanced}'")
-            return InterceptResult.modify_args({"query": enhanced})
-        return InterceptResult.ok()
+    print("\nRunning with logging...")
+    await agent.run("What is 2+2?")
+    await agent.run("Tell me a joke")
 
 
-async def example_query_enhancer():
-    """Modify tool arguments on the fly."""
-    print("\n" + "=" * 60)
-    print("Example 3: Tool Argument Modifier")
-    print("=" * 60)
+class ValidationInterceptor(Interceptor):
+    """Validate input before processing."""
 
-    model = "gpt4"
+    async def before_turn(self, ctx: InterceptContext) -> InterceptResult:
+        last_msg = ctx.messages[-1].content if ctx.messages else ""
 
-    agent = Agent(
-        name="EnhancedBot",
-        model="gpt4",
-        tools=[search],
-        instructions="Search for requested information.",
-        intercept=[QueryEnhancer(context="latest news 2024")],
-    )
-
-    result = await agent.run("Search for Python updates")
-    text = result.unwrap()
-    print(f"\nResult: {str(text)[:200]}...")
-
-# =============================================================================
-# Example 4: Chaining Multiple Interceptors
-# =============================================================================
-
-async def example_chained_interceptors():
-    """Chain multiple interceptors together."""
-    print("\n" + "=" * 60)
-    print("Example 4: Chaining Multiple Interceptors")
-    print("=" * 60)
-
-    model = "gpt4"
-
-    # Create multiple interceptors
-    budget = BudgetGuard(model_calls=5, tool_calls=10)
-    logger = LoggingInterceptor(verbose=False)
-    enhancer = QueryEnhancer(context="2024")
-
-    agent = Agent(
-        name="FullyInterceptedBot",
-        model="gpt4",
-        tools=[search, calculate, get_weather],
-        instructions="Help with research. Be thorough but concise.",
-        intercept=[
-            budget,    # First: check budget
-            logger,    # Second: log activity
-            enhancer,  # Third: enhance queries
-        ],
-    )
-
-    print("\nRunning with 3 chained interceptors...")
-    result = await agent.run("Search for AI trends and calculate 100/4")
-
-    print("\n--- Summary ---")
-    print(f"Budget: {budget.current_model_calls} model, {budget.current_tool_calls} tool calls")
-    print(f"Events logged: {len(logger.events)}")
-
-
-# =============================================================================
-# Example 5: Early Exit Interceptor
-# =============================================================================
-
-class SafetyGuard(Interceptor):
-    """Block dangerous operations."""
-
-    def __init__(self, blocked_tools: list[str]):
-        self.blocked_tools = blocked_tools
-
-    async def pre_act(self, ctx: InterceptContext) -> InterceptResult:
-        if ctx.tool_name in self.blocked_tools:
-            print(f"  ⛔ Blocked tool: {ctx.tool_name}")
-            return InterceptResult.stop(
-                f"Operation blocked: {ctx.tool_name} is not allowed for safety reasons."
+        if "forbidden" in last_msg.lower():
+            print("  ❌ Blocked: Message contains forbidden content")
+            return InterceptResult(
+                stop=True,
+                response="I cannot process messages containing forbidden content."
             )
-        return InterceptResult.ok()
+
+        return InterceptResult()
 
 
-async def example_safety_guard():
-    """Block specific tools for safety."""
+async def demo_validation_interceptor():
+    """Validate and block certain inputs."""
     print("\n" + "=" * 60)
-    print("Example 5: Safety Guard - Block Dangerous Tools")
+    print("3. Validation Interceptor")
     print("=" * 60)
-
-    @tool
-    def delete_file(path: str) -> str:
-        """Delete a file (dangerous!)."""
-        return f"Deleted {path}"
-
-    model = "gpt4"
 
     agent = Agent(
-        name="SafeBot",
+        name="ValidatedBot",
         model="gpt4",
-        tools=[search, delete_file],
-        instructions="Help with tasks. You can search and delete files.",
-        intercept=[SafetyGuard(blocked_tools=["delete_file"])],
+        instructions="Be helpful.",
+        intercept=[ValidationInterceptor()],
     )
 
-    result = await agent.run("Delete the file /important/data.txt")
-    print(f"\nResult: {result}")
+    print("\nValid request...")
+    result = await agent.run("What is Python?")
+    print(f"Result: {result.unwrap()[:100]}...")
+
+    print("\nBlocked request...")
+    result = await agent.run("This contains forbidden content")
+    print(f"Result: {result.unwrap()[:100]}...")
 
 
-# =============================================================================
-# Example 6: PIIShield - Protect Sensitive Data
-# =============================================================================
-
-async def example_pii_shield():
-    """Mask or block PII in messages."""
+async def demo_pii_shield():
+    """Detect and redact PII."""
     print("\n" + "=" * 60)
-    print("Example 6: PIIShield - Protect Sensitive Data")
+    print("4. PIIShield - PII Detection")
     print("=" * 60)
 
-    model = "gpt4"
-
-    # Create a PII shield that masks emails and SSNs
     shield = PIIShield(
-        patterns=["email", "ssn", "credit_card"],
-        action=PIIAction.MASK,
+        action=PIIAction.REDACT,
+        detect_email=True,
+        detect_phone=True,
+        detect_ssn=True,
+        on_detection=lambda pii_type, value: print(f"  🛡️  Detected {pii_type}: {value}")
     )
 
     agent = Agent(
         name="SecureBot",
         model="gpt4",
-        instructions="Help with user requests.",
+        instructions="Be helpful.",
         intercept=[shield],
     )
 
-    print("\n--- Masking PII in messages ---")
-    result = await agent.run(
-        "My email is john.doe@company.com and SSN is 123-45-6789. "
-        "Can you help me update my profile?"
-    )
-    text = result.unwrap()
-    print(f"\nAgent response (PII was masked): {str(text)[:200]}...")
-    # Check what was detected
-    print(f"\nPII detections: {len(shield.get_detections(agent._interceptors[0]._last_ctx)) if hasattr(shield, '_last_ctx') else 'tracked internally'}")
+    print("\nMessage with PII...")
+    result = await agent.run("Contact me at john@example.com or 555-123-4567")
+    print(f"\nResult: {result.unwrap()[:200]}...")
 
 
-async def example_pii_shield_block():
-    """Block requests containing credit card info."""
+async def demo_rate_limiter():
+    """Control execution rate."""
     print("\n" + "=" * 60)
-    print("Example 7: PIIShield - Block Sensitive Requests")
+    print("5. RateLimiter - Execution Control")
     print("=" * 60)
 
-    model = "gpt4"
-
-    # Block if credit card detected
-    shield = PIIShield(
-        patterns=["credit_card"],
-        action=PIIAction.BLOCK,
-        block_message="Request blocked: Credit card information detected.",
-    )
-
-    agent = Agent(
-        name="StrictBot",
-        model="gpt4",
-        instructions="Help with user requests.",
-        intercept=[shield],
-    )
-
-    print("\n--- Testing with credit card ---")
-    # Note: This will be blocked before reaching the model
-    try:
-        result = await agent.run(
-            "Here's my card: 4111111111111111. Please process payment."
-        )
-        print(f"Result: {result}")
-    except Exception as e:
-        print(f"Exception: {type(e).__name__}")
-
-
-# =============================================================================
-# Example 8: TokenLimiter - Hard Context Limit
-# =============================================================================
-
-async def example_token_limiter():
-    """Stop execution if context gets too long."""
-    print("\n" + "=" * 60)
-    print("Example 8: TokenLimiter - Hard Context Limit")
-    print("=" * 60)
-
-    model = "gpt4"
-
-    # Set a token limit (this is intentionally low for demo)
-    limiter = TokenLimiter(
-        max_tokens=500,
-        message="Context too long. Please start a new conversation.",
-    )
-
-    agent = Agent(
-        name="LimitedBot",
-        model="gpt4",
-        instructions="Help with tasks.",
-        intercept=[limiter],
-    )
-
-    # Short task - should work
-    print("\n--- Short task (under limit) ---")
-    result = await agent.run("Hello!")
-    text = result.unwrap()
-    print(f"Result: {str(text)[:100]}...")
-
-
-# =============================================================================
-# Example 9: ContentFilter - Block Specific Content
-# =============================================================================
-
-async def example_content_filter():
-    """Filter out blocked content."""
-    print("\n" + "=" * 60)
-    print("Example 9: ContentFilter - Block Specific Content")
-    print("=" * 60)
-
-    model = "gpt4"
-
-    filter_ = ContentFilter(
-        blocked_words=["password", "hack"],
-        blocked_patterns=[r"rm -rf"],
-        action="block",
-        message="Request contains blocked content.",
-    )
-
-    agent = Agent(
-        name="FilteredBot",
-        model="gpt4",
-        instructions="Help with tasks.",
-        intercept=[filter_],
-    )
-
-    # Safe request
-    print("\n--- Safe request ---")
-    result = await agent.run("What's 2 + 2?")
-    text = result.unwrap()
-    print(f"Result: {str(text)[:100]}...")
-
-
-# =============================================================================
-# Example 10: RateLimiter - Control API Call Rate
-# =============================================================================
-
-async def example_rate_limiter():
-    """Rate limit tool calls."""
-    print("\n" + "=" * 60)
-    print("Example 10: RateLimiter - Control API Call Rate")
-    print("=" * 60)
-
-    model = "gpt4"
-
-    # Max 5 tool calls per 10 seconds
     limiter = RateLimiter(
-        calls_per_window=5,
-        window_seconds=10,
-        action="wait",  # Wait if limit hit (vs "block")
+        max_requests=3,
+        time_window=10.0,
     )
 
     agent = Agent(
         name="RateLimitedBot",
         model="gpt4",
-        tools=[search, calculate],
-        instructions="Help with tasks.",
+        instructions="Be concise.",
         intercept=[limiter],
     )
 
-    print("\n--- Making multiple calls ---")
-    result = await agent.run("Search for Python and calculate 5*5")
-    text = result.unwrap()
-    print(f"Result: {str(text)[:150]}...")
+    print("\nExecuting multiple requests...")
+    for i in range(3):
+        result = await agent.run(f"Request {i+1}: What is {i}+{i}?")
+        print(f"  Request {i+1}: {result.unwrap()[:50]}...")
 
-    usage = limiter.current_usage
-    print(f"\nRate limit usage: {usage['global_calls']}/{usage['limit']} calls")
+    print(f"\nRate limiter: {limiter.request_count}/{limiter.max_requests} requests")
 
 
-# =============================================================================
-# Example 11: Auditor - Compliance Logging
-# =============================================================================
-
-async def example_auditor():
-    """Log all agent actions for audit trail."""
+async def demo_token_limiter():
+    """Limit token usage per turn."""
     print("\n" + "=" * 60)
-    print("Example 11: Auditor - Compliance Logging")
+    print("6. TokenLimiter - Token Budget")
     print("=" * 60)
 
-    model = "gpt4"
+    limiter = TokenLimiter(
+        max_input_tokens=100,
+        max_output_tokens=50,
+    )
 
-    # Create auditor with redaction
+    agent = Agent(
+        name="TokenLimitedBot",
+        model="gpt4",
+        instructions="Be extremely concise.",
+        intercept=[limiter],
+    )
+
+    print("\nRunning with token limits...")
+    result = await agent.run("Explain quantum computing")
+    print(f"\nResult: {result.unwrap()[:200]}...")
+
+
+async def demo_content_filter():
+    """Filter inappropriate content."""
+    print("\n" + "=" * 60)
+    print("7. ContentFilter - Content Moderation")
+    print("=" * 60)
+
+    content_filter = ContentFilter(
+        blocked_patterns=["badword", "offensive"],
+        on_block=lambda pattern: print(f"  🚫 Blocked pattern: {pattern}")
+    )
+
+    agent = Agent(
+        name="FilteredBot",
+        model="gpt4",
+        instructions="Be helpful.",
+        intercept=[content_filter],
+    )
+
+    print("\nClean message...")
+    result = await agent.run("Hello, how are you?")
+    print(f"Result: {result.unwrap()[:100]}...")
+
+    print("\nBlocked message...")
+    result = await agent.run("This contains badword")
+    print(f"Result: {result.unwrap()[:100]}...")
+
+
+async def demo_auditor():
+    """Audit all agent interactions."""
+    print("\n" + "=" * 60)
+    print("8. Auditor - Interaction Logging")
+    print("=" * 60)
+
+    audit_log = []
+
     auditor = Auditor(
-        include_content=True,
-        max_content_length=100,
-        redact_patterns=[r"api[-_]?key\s*[:=]\s*\S+"],  # Redact API keys
+        log_inputs=True,
+        log_outputs=True,
+        log_tools=True,
+        on_log=lambda entry: audit_log.append(entry)
     )
 
     agent = Agent(
         name="AuditedBot",
         model="gpt4",
-        tools=[search],
-        instructions="Help with tasks.",
+        tools=[calculate],
+        instructions="Use tools to answer.",
         intercept=[auditor],
     )
 
-    print("\n--- Running audited task ---")
-    await agent.run("Search for Python tutorials")
+    print("\nRunning with audit logging...")
+    await agent.run("Calculate 5 * 8")
 
-    print("\n--- Audit Summary ---")
-    summary = auditor.summary()
-    print(f"Total events: {summary['total_events']}")
-    print(f"Event types: {summary.get('by_type', {})}")
-
-    print("\n--- Event Log ---")
-    for event in auditor.events[:5]:  # Show first 5 events
-        print(f"  [{event.event_type.value}] {event.agent_name}")
+    print(f"\nAudit log entries: {len(audit_log)}")
+    for i, entry in enumerate(audit_log, 1):
+        print(f"  [{i}] {entry.get('type')}: {entry.get('summary', '')[:50]}...")
 
 
-# =============================================================================
-# Main
-# =============================================================================
+async def demo_combined():
+    """Combine multiple interceptors."""
+    print("\n" + "=" * 60)
+    print("9. Combined Interceptors")
+    print("=" * 60)
+
+    agent = Agent(
+        name="SecureBot",
+        model="gpt4",
+        tools=[search, calculate],
+        instructions="Be helpful and concise.",
+        intercept=[
+            BudgetGuard(model_calls=5, tool_calls=10),
+            LoggingInterceptor(),
+            ValidationInterceptor(),
+        ],
+    )
+
+    print("\nRunning with multiple interceptors...")
+    result = await agent.run("Search for AI news and calculate 7+3")
+    print(f"\nResult: {result.unwrap()[:200]}...")
+
 
 async def main():
     """Run all interceptor examples."""
-    print("\n🔌 AgenticFlow Interceptors Examples\n")
+    print("\n" + "=" * 60)
+    print("AGENTICFLOW INTERCEPTORS EXAMPLES")
+    print("=" * 60)
 
-    await example_budget_guard()
-    await example_logging_interceptor()
-    await example_query_enhancer()
-    await example_chained_interceptors()
-    await example_safety_guard()
-    await example_pii_shield()
-    await example_pii_shield_block()
-    await example_token_limiter()
-    await example_content_filter()
-    await example_rate_limiter()
-    await example_auditor()
+    await demo_budget_guard()
+    await demo_logging_interceptor()
+    await demo_validation_interceptor()
+    await demo_pii_shield()
+    await demo_rate_limiter()
+    await demo_token_limiter()
+    await demo_content_filter()
+    await demo_auditor()
+    await demo_combined()
 
     print("\n" + "=" * 60)
-    print("✅ All interceptor examples completed!")
+    print("✓ All demos completed")
     print("=" * 60)
 
 

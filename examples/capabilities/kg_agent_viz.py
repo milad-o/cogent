@@ -44,10 +44,10 @@ async def main():
     agent = Agent(
         name="Knowledge Builder",
         model="gpt4",
-        instructions="""You are a knowledge extraction agent. 
-        
-Extract all entities (people, companies, locations, events, projects, etc.) and 
-their relationships from the provided text. Capture important attributes for each 
+        instructions="""You are a knowledge extraction agent.
+
+Extract all entities (people, companies, locations, events, projects, etc.) and
+their relationships from the provided text. Capture important attributes for each
 entity and be thorough in identifying connections between them.
 
 When you finish extracting, say "Knowledge extraction complete!" """,
@@ -60,13 +60,13 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     Alice Johnson is a Senior Software Engineer at TechCorp, working in the Platform team.
     She reports to Bob Smith, who is the Engineering Manager of the Platform team.
     Bob has been at TechCorp for 8 years and previously worked at DataSystems Inc.
-    
+
     Alice is currently leading the Migration Project, which aims to move services to Kubernetes.
     The Migration Project started in Q3 2024 and is expected to complete in Q1 2025.
-    
+
     Charlie Davis, a Product Manager, is the stakeholder for the Migration Project.
     Charlie works closely with both Alice and Bob on project planning.
-    
+
     TechCorp is headquartered in San Francisco and has offices in New York and London.
     The company was founded in 2015 and focuses on cloud infrastructure solutions.
     """

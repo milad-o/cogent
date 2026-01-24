@@ -7,10 +7,10 @@ Can be run with different transports:
 
     # Stdio (for local testing)
     uv run python examples/mcp_server/search_server.py stdio
-    
+
     # HTTP with SSE (for remote/web)
     uv run python examples/mcp_server/search_server.py http --port 8000
-    
+
     # WebSocket (for real-time bidirectional)
     uv run python examples/mcp_server/search_server.py websocket --port 8001
 

@@ -290,7 +290,6 @@ async def agent_demo():
 
 
     sandbox = CodeSandbox(allow_imports=True, timeout=5)
-    model = "gpt4"
 
     agent = Agent(
         name="Compute Agent",

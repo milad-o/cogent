@@ -59,7 +59,7 @@ async def main() -> None:
     strategies = strategies_tool.func()
 
     print("\nSummarization strategies:")
-    for name, info in strategies["strategies"].items():
+    for _name, info in strategies["strategies"].items():
         print(f"  • {info['name']}: {info['description']}")
         print(f"    Best for: {', '.join(info['best_for'])}")
 
@@ -111,7 +111,7 @@ async def main() -> None:
         1. Read files from the data directory
         2. Summarize documents using various strategies
         3. Answer questions about document content
-        
+
         When asked to summarize, choose the appropriate strategy:
         - map_reduce: For large documents, fastest
         - refine: For documents needing coherent narrative

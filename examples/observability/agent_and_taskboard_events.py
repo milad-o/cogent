@@ -26,7 +26,6 @@ async def main():
     print("="*80)
 
     # Create model
-    model = "gpt4"
 
     # Use standard observer to show consistent formatting
     observer = Observer(level=ObservabilityLevel.DEBUG)
@@ -46,7 +45,7 @@ async def main():
     1. First, understand what async/await is
     2. Then, identify 3 key benefits
     3. Finally, provide a simple example
-    
+
     Track your progress using tasks and notes.
     """
 

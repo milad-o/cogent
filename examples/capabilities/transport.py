@@ -7,17 +7,18 @@ The transport layer has been reorganized.
 For distributed event patterns, see examples/flow/event_sources.py
 """
 
-import sys
-
-print("⚠️  This example is deprecated and uses old reactive.transport API.")
-print("See examples/flow/event_sources.py for current event-driven patterns.")
-sys.exit(0)
+import asyncio
 import json
+import sys
 from unittest.mock import patch
 
 from agenticflow import Agent, Flow, FlowConfig, react_to
 from agenticflow.events import Event, EventBus
-from agenticflow.reactive.transport import LocalTransport, RedisTransport
+from agenticflow.flow.transport import LocalTransport, RedisTransport
+
+print("⚠️  This example is deprecated and uses old reactive.transport API.")
+print("See examples/flow/event_sources.py for current event-driven patterns.")
+sys.exit(0)
 
 
 # Mock Redis classes for demo when Redis is unavailable
@@ -133,12 +134,12 @@ async def pattern_matching():
 
     print("Subscribing to multiple patterns:")
     for pattern in patterns:
-        async def make_handler(p):
-            async def handler(event):
+        def make_handler(p=pattern):
+            async def _handler(event):
                 patterns[p].append(event)
-            return handler
+            return _handler
 
-        handler = await make_handler(pattern)
+        handler = make_handler()
         await transport.subscribe(pattern, handler)
         print(f"  ✓ {pattern}")
 
@@ -176,7 +177,6 @@ async def agent_coordination():
     await transport.connect()
 
     bus = EventBus(transport=transport)
-    model = "gpt4"
 
     # Create specialized agents
     analyzer = Agent(
@@ -354,7 +354,6 @@ async def _run_multi_process(is_mock: bool):
     await transport.connect()
 
     bus = EventBus(transport=transport)
-    model = "gpt4"
 
     # Create real agent with LLM
     agent = Agent(
