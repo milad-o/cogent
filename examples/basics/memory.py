@@ -17,7 +17,7 @@ Features:
 - Key discovery via search_memories()
 - Thread-based conversation memory
 - Cross-thread memory sharing via scoped namespaces
-- Persistence with SQLAlchemyStore  
+- Persistence with SQLAlchemyStore
 - Automatic long-term fact management
 
 Usage:
@@ -36,7 +36,6 @@ async def demo_memory_discovery():
     """Show how agents discover memory keys via search."""
     print("\n--- Memory Key Discovery ---")
 
-    model = "gpt4"
     memory = Memory()
 
     # Pre-populate with some facts using varied key names
@@ -105,7 +104,6 @@ async def demo_conversation_memory():
     """Show conversation memory with automatic fact storage."""
     print("\n--- Conversation Memory (Thread-Based) ---")
 
-    model = "gpt4"
 
     # Memory is always agentic - tools are automatically available
     memory = Memory()
@@ -174,7 +172,6 @@ async def demo_persistent_memory():
         print("  ⚠ SQLAlchemy not installed. Run: uv add sqlalchemy aiosqlite")
         return
 
-    model = "gpt4"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "agent_memory.db"
@@ -232,7 +229,6 @@ async def demo_memory_tools():
     """Show agent automatically using memory tools."""
     print("\n--- Agent with Memory Tools ---")
 
-    model = "gpt4"
     memory = Memory()  # Always agentic
 
     # Just pass memory - tools are auto-added!
@@ -275,7 +271,6 @@ async def demo_shared_memory():
     """Show multiple agents sharing memory."""
     print("\n--- Shared Memory (Multi-Agent) ---")
 
-    model = "gpt4"
 
     # Create shared memory
     shared_memory = Memory()

@@ -65,7 +65,7 @@ def extract_text(path: str) -> str:
 async def demo_file_processing():
     """
     Demonstrate file-triggered agent processing.
-    
+
     Agents react to different file types and process them accordingly.
     """
     print("\n" + "=" * 60)
@@ -73,7 +73,6 @@ async def demo_file_processing():
     print("=" * 60)
 
     # Get LLM model
-    model = "gpt4"
 
     # Create specialized agents for different file types
     json_agent = Agent(
@@ -126,7 +125,7 @@ async def demo_file_processing():
         when=lambda e: e.data.get("extension") == ".txt",
     )
 
-    print(f"\n✓ Registered event handlers successfully")
+    print("\n✓ Registered event handlers successfully")
 
     # Create temp directory with test files
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -185,7 +184,7 @@ async def demo_file_processing():
 async def demo_notification_sink():
     """
     Demonstrate event-based order processing.
-    
+
     Shows how to trigger agents on events and handle results.
     """
     print("\n" + "=" * 60)
@@ -210,7 +209,7 @@ async def demo_notification_sink():
     )
 
     if result.success:
-        print(f"✅ Order processed successfully")
+        print("✅ Order processed successfully")
         response_text = str(result.output)[:300]
         print(f"   Response: {response_text}")
     else:

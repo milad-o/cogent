@@ -190,7 +190,6 @@ async def agent_demo():
         print(f"⚠️  Data directory not found: {data_dir}")
         return
 
-    model = "gpt4"
 
     fs = FileSystem(
         allowed_paths=[str(data_dir.resolve())],

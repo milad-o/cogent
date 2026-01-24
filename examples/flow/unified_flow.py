@@ -35,7 +35,6 @@ def get_observer():
 
 async def basic_flow_example():
     """Basic Flow with explicit event wiring."""
-    model = "gpt4"
     observer = get_observer()
 
     # Create agents with clean API
@@ -71,7 +70,6 @@ async def basic_flow_example():
 
 async def pipeline_pattern_example():
     """Pipeline pattern - sequential processing."""
-    model = "gpt4"
     observer = get_observer()
 
     # Create stage agents
@@ -106,7 +104,6 @@ async def pipeline_pattern_example():
 
 async def supervisor_pattern_example():
     """Supervisor pattern - coordinator with workers."""
-    model = "gpt4"
     observer = get_observer()
 
     # Coordinator agent
@@ -187,7 +184,6 @@ async def custom_reactors_example():
 
 async def streaming_example():
     """Streaming events as they occur."""
-    model = "gpt4"
     observer = get_observer()
 
     agent = Agent(
@@ -201,7 +197,7 @@ async def streaming_example():
     flow = Flow(observer=observer)
     flow.register(agent, on="task.created", emits="flow.done")
 
-    async for event in flow.stream("Tell me a joke"):
+    async for _event in flow.stream("Tell me a joke"):
         # Events are logged by observer, no manual printing needed
         pass
 
@@ -210,41 +206,38 @@ async def streaming_example():
 
 async def main():
     """Run all examples."""
-    from rich.console import Console
-    console = Console()
-
-    console.print("\n[bold blue]Starting Unified Flow Examples[/bold blue]\n")
+    print("\nStarting Unified Flow Examples\n")
 
     # Basic flow
-    console.print("[bold cyan]═══ Basic Flow Example ═══[/bold cyan]")
+    print("═══ Basic Flow Example ═══")
     result = await basic_flow_example()
-    console.print(f"Result: success={result.success}, events={result.events_processed}")
+    print(f"Result: success={result.success}, events={result.events_processed}")
     if result.output:
         output_str = str(result.output)
-        console.print(f"Output: {output_str[:200]}..." if len(output_str) > 200 else f"Output: {output_str}")
+        print(f"Output: {output_str[:200]}..." if len(output_str) > 200 else f"Output: {output_str}")
 
     # Pipeline pattern
-    console.print("\n[bold cyan]═══ Pipeline Pattern Example ═══[/bold cyan]")
+    print("\n═══ Pipeline Pattern Example ═══")
     result = await pipeline_pattern_example()
-    console.print(f"Result: success={result.success}, stages={result.events_processed}")
+    print(f"Result: success={result.success}, stages={result.events_processed}")
 
     # Supervisor pattern
-    console.print("\n[bold cyan]═══ Supervisor Pattern Example ═══[/bold cyan]")
+    print("\n═══ Supervisor Pattern Example ═══")
     result = await supervisor_pattern_example()
-    console.print(f"Result: success={result.success}")
+    print(f"Result: success={result.success}")
 
     # Custom reactors (no LLM)
-    console.print("\n[bold cyan]═══ Custom Reactors Example ═══[/bold cyan]")
+    print("\n═══ Custom Reactors Example ═══")
     result = await custom_reactors_example()
-    console.print(f"Result: success={result.success}")
+    print(f"Result: success={result.success}")
     if result.event_history:
-        console.print(f"Events: {[e.name for e in result.event_history]}")
+        print(f"Events: {[e.name for e in result.event_history]}")
 
     # Streaming
-    console.print("\n[bold cyan]═══ Streaming Example ═══[/bold cyan]")
+    print("\n═══ Streaming Example ═══")
     await streaming_example()
 
-    console.print("\n[bold green]✓ All examples completed[/bold green]")
+    print("\n✓ All examples completed")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ The Observer automatically displays Response[T] metadata:
 
 Usage:
     uv run python examples/observability/observer.py
-    
+
 See also:
     examples/observability/response_metadata.py - Detailed Response metadata demo
 """
@@ -25,7 +25,6 @@ from agenticflow import Agent, ObservabilityLevel, Observer, pipeline
 
 async def demo_levels():
     """Show different verbosity levels."""
-    model = "gpt4"
 
     analyst = Agent(name="Analyst", model="gpt4")
     writer = Agent(name="Writer", model="gpt4")
@@ -43,7 +42,6 @@ async def demo_levels():
 
 async def demo_trace():
     """Show deep tracing with execution graph."""
-    model = "gpt4"
 
     researcher = Agent(name="Researcher", model="gpt4")
     analyst = Agent(name="Analyst", model="gpt4")
@@ -72,7 +70,6 @@ async def demo_trace():
 
 async def demo_callbacks():
     """Custom callbacks with silent display."""
-    model = "gpt4"
 
     analyst = Agent(name="Analyst", model="gpt4")
     writer = Agent(name="Writer", model="gpt4")

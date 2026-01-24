@@ -29,7 +29,7 @@ from agenticflow.documents.loaders import PDFMarkdownLoader
 from agenticflow.documents.splitters import RecursiveCharacterSplitter
 from agenticflow.models import OpenAIEmbedding
 from agenticflow.observability.bus import EventBus
-from agenticflow.observability.event import EventType
+from agenticflow.observability.trace_record import TraceType
 from agenticflow.retriever import (
     BM25Retriever,
     DenseRetriever,
@@ -93,14 +93,14 @@ async def _build_summary_index(*, pages: list[Document]) -> SummaryIndex:
     event_bus = EventBus()
 
     def _print_summary_index_event(event: Any) -> None:
-        if event.type == EventType.SUMMARY_INDEX_START:
+        if event.type == TraceType.SUMMARY_INDEX_START:
             print(
                 "[SummaryIndex] start",
                 f"documents={event.data.get('documents_count')}",
             )
             return
 
-        if event.type == EventType.SUMMARY_INDEX_DOCUMENT_SUMMARIZED:
+        if event.type == TraceType.SUMMARY_INDEX_DOCUMENT_SUMMARIZED:
             doc_index = event.data.get("doc_index")
             doc_total = event.data.get("doc_total")
             page = event.data.get("page")
@@ -117,7 +117,7 @@ async def _build_summary_index(*, pages: list[Document]) -> SummaryIndex:
                 print(f"[SummaryIndex] {doc_index}/{doc_total} summarized{suffix}{dur}")
             return
 
-        if event.type == EventType.SUMMARY_INDEX_COMPLETE:
+        if event.type == TraceType.SUMMARY_INDEX_COMPLETE:
             print(
                 "[SummaryIndex] complete",
                 f"duration_ms={event.data.get('duration_ms'):.0f}"
@@ -126,7 +126,7 @@ async def _build_summary_index(*, pages: list[Document]) -> SummaryIndex:
             )
             return
 
-        if event.type == EventType.SUMMARY_INDEX_ERROR:
+        if event.type == TraceType.SUMMARY_INDEX_ERROR:
             print(
                 "[SummaryIndex] error",
                 f"error={event.data.get('error')}",
@@ -134,10 +134,10 @@ async def _build_summary_index(*, pages: list[Document]) -> SummaryIndex:
 
     event_bus.subscribe_many(
         [
-            EventType.SUMMARY_INDEX_START,
-            EventType.SUMMARY_INDEX_DOCUMENT_SUMMARIZED,
-            EventType.SUMMARY_INDEX_COMPLETE,
-            EventType.SUMMARY_INDEX_ERROR,
+            TraceType.SUMMARY_INDEX_START,
+            TraceType.SUMMARY_INDEX_DOCUMENT_SUMMARIZED,
+            TraceType.SUMMARY_INDEX_COMPLETE,
+            TraceType.SUMMARY_INDEX_ERROR,
         ],
         _print_summary_index_event,
     )

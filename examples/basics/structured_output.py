@@ -198,16 +198,16 @@ async def example_advanced_config():
 
     review_text = """
     Amazing headphones! 10/10 would buy again.
-    
+
     The Good:
     - Incredible sound quality
     - Super comfortable for long sessions
     - Battery lasts forever
-    
+
     The Bad:
     - A bit pricey
     - Case could be better
-    
+
     Overall: Definitely recommend these to anyone!
     """
 

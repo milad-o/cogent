@@ -10,7 +10,7 @@ For sequential execution or other strategies, use executors directly.
 
 Usage:
     python examples/executors/strategies_demo.py
-    
+
 Requires:
     Configure examples/.env with your preferred LLM_PROVIDER
 """
@@ -32,7 +32,7 @@ from agenticflow.tools import tool
 @tool
 def calculate(expression: str) -> str:
     """Evaluate a mathematical expression.
-    
+
     Args:
         expression: A math expression like '2 + 2' or '10 * 5 / 2'
     """
@@ -50,7 +50,7 @@ def calculate(expression: str) -> str:
 @tool
 def get_weather(city: str) -> str:
     """Get the current weather for a city.
-    
+
     Args:
         city: Name of the city
     """
@@ -67,7 +67,7 @@ def get_weather(city: str) -> str:
 @tool
 def search_database(query: str) -> str:
     """Search a database for information.
-    
+
     Args:
         query: Search query
     """
@@ -109,7 +109,7 @@ async def demo_native():
     1. Calculate 25 * 4
     2. Get the weather in Tokyo
     3. Search for information about Python
-    
+
     Give me a summary of all results.
     """
 
@@ -145,7 +145,7 @@ async def demo_sequential():
     1. Calculate 25 * 4
     2. Get the weather in Tokyo
     3. Search for information about Python
-    
+
     Give me a summary of all results.
     """
 

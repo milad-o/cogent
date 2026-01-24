@@ -3,7 +3,7 @@ Demo: Response Metadata in Observer
 
 Shows how Observer automatically displays Response[T] metadata:
 - Token usage
-- Tool call tracking  
+- Tool call tracking
 - Duration
 
 Usage:
@@ -11,20 +11,17 @@ Usage:
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-
 
 from agenticflow import Agent, Observer, tool
+
 
 @tool
 def calculator(expression: str) -> float:
     """Calculate a mathematical expression.
-    
+
     Args:
         expression: A Python math expression like '2+2' or '15*8'
-        
+
     Returns:
         The result of the calculation
     """
@@ -33,10 +30,10 @@ def calculator(expression: str) -> float:
 @tool
 def get_weather(city: str) -> str:
     """Get weather information for a city.
-    
+
     Args:
         city: Name of the city
-        
+
     Returns:
         Weather description
     """
@@ -47,16 +44,15 @@ def get_weather(city: str) -> str:
 async def demo_basic_response():
     """Basic response with metadata."""
     print("\n=== Basic Response ===")
-    
-    model = "gpt4"
+
     agent = Agent(
         name="Assistant",
         model="gpt4",
         verbosity=True,  # Observer shows metadata
     )
-    
+
     response = await agent.run("What is 2+2?")
-    
+
     print(f"\nContent: {response.content or '(empty response from model)'}")
     if response.metadata.tokens:
         print(f"Tokens: {response.metadata.tokens.total_tokens}")
@@ -65,17 +61,16 @@ async def demo_basic_response():
 async def demo_tool_tracking():
     """Response with tool calls."""
     print("\n=== Tool Call Tracking ===")
-    
-    model = "gpt4"
+
     agent = Agent(
         name="MathBot",
         model="gpt4",
         tools=[calculator],
         verbosity=True,
     )
-    
+
     response = await agent.run("Calculate 123 * 456")
-    
+
     print(f"\nTool calls: {len(response.tool_calls)}")
     for tc in response.tool_calls:
         print(f"  - {tc.tool_name} ({tc.duration:.3f}s)")
@@ -84,19 +79,18 @@ async def demo_tool_tracking():
 async def demo_observer_integration():
     """Observer with Response metadata."""
     print("\n=== Observer Integration ===")
-    
-    model = "gpt4"
+
     observer = Observer.verbose()
-    
+
     agent = Agent(
         name="Worker",
         model="gpt4",
         tools=[calculator],
         observer=observer,
     )
-    
-    response = await agent.run("Calculate 999 * 888")
-    
+
+    await agent.run("Calculate 999 * 888")
+
     print(f"\nTotal events tracked: {len(observer.events())}")
 
 

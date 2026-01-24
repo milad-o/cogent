@@ -11,7 +11,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from agenticflow import Agent, Flow
+from agenticflow import Agent
 from agenticflow.capabilities import Spreadsheet
 
 

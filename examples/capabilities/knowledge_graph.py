@@ -24,7 +24,7 @@ from pathlib import Path
 def load_knowledge_file(kg, filepath: str) -> dict:
     """
     Load entities and relationships from a knowledge file.
-    
+
     File format:
     - entity|name|type|{"attr": "value"}
     - rel|source|relation|target
@@ -66,7 +66,6 @@ async def demo():
     print("🧠 Knowledge Graph Capability Demo")
     print("=" * 60)
 
-    model = "gpt4"
 
     # === Step 1: Load KnowledgeGraph from file ===
     print("\n📂 Step 1: Load Knowledge from File")
@@ -175,27 +174,27 @@ to trace the path and provide complete answers.""",
         print(f"   File size: {save_path.stat().st_size} bytes")
 
         # Create new graph and load
-        from agenticflow.capabilities import KnowledgeGraph as KG
-        kg2 = KG(backend="memory")
+        from agenticflow.capabilities import KnowledgeGraph
+        kg2 = KnowledgeGraph(backend="memory")
         kg2.load(save_path)
         print(f"✅ Loaded into new graph: {kg2.stats()}")
 
         # Demo 2: SQLite backend (persistent by default)
         db_path = Path(tmpdir) / "knowledge.db"
-        with KG(backend="sqlite", path=db_path) as kg_sqlite:
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg_sqlite:
             kg_sqlite.graph.add_entity("Test", "Demo", {"note": "SQLite persists automatically"})
             print("\n✅ SQLite backend:")
             print(f"   Path: {db_path}")
             print(f"   Stats: {kg_sqlite.stats()}")
 
         # Reopen to verify persistence
-        with KG(backend="sqlite", path=db_path) as kg_sqlite2:
+        with KnowledgeGraph(backend="sqlite", path=db_path) as kg_sqlite2:
             test = kg_sqlite2.get_entity("Test")
             print(f"   Reloaded: {test.id if test else 'Not found'} - {test.attributes if test else {}}")
 
         # Demo 3: JSON backend (auto-saves)
         json_path = Path(tmpdir) / "knowledge.json"
-        kg_json = KG(backend="json", path=json_path, auto_save=True)
+        kg_json = KnowledgeGraph(backend="json", path=json_path, auto_save=True)
         kg_json.graph.add_entity("Auto", "Demo", {"note": "Auto-saved on change"})
         print("\n✅ JSON backend (auto-save):")
         print(f"   Path: {json_path}")

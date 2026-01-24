@@ -76,10 +76,9 @@ async def main() -> None:
     )
 
     # Best-effort: keep provider calls bounded.
-    try:
+    from contextlib import suppress
+    with suppress(Exception):
         model.timeout = 90.0  # type: ignore[attr-defined]
-    except Exception:
-        pass
 
     # This example is intentionally heavyweight: multiple extractions + optional TOC vision scan.
     # If the PDF has no embedded TOC, TOC extraction can add up to `toc_max_pages` extra model calls.

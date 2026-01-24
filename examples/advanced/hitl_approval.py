@@ -30,8 +30,7 @@ import asyncio
 from dataclasses import dataclass
 
 from agenticflow import Agent
-from agenticflow.reactive.core import ReactionType, Trigger
-from agenticflow.reactive.flow import Flow, FlowConfig
+from agenticflow.flow.core import Flow, FlowConfig, ReactionType, Trigger
 
 
 @dataclass
@@ -86,7 +85,6 @@ async def main():
     print("for agent actions in a reactive flow.\n")
 
     # Create model
-    model = "gpt4"
 
     # Create agents
     analyst = Agent(

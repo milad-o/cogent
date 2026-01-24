@@ -79,7 +79,6 @@ async def main():
     print("\n💡 Tip: Use max_output=500 to limit all, or None for no limit")
 
     # Create agent with taskboard
-    model = "gpt4"
     agent = Agent(
         name="DetailedAgent",
         model="gpt4",
@@ -92,7 +91,7 @@ async def main():
     1. Define the core endpoints (list at least 5)
     2. Identify authentication requirements
     3. Describe error handling strategy
-    
+
     Track your work with tasks and add detailed notes.
     """
 

@@ -24,10 +24,10 @@ from agenticflow.tools.base import tool
 @tool
 def search_docs(query: str) -> str:
     """Search documentation (mock).
-    
+
     Args:
         query: Search query
-        
+
     Returns:
         Mock search results
     """
@@ -48,10 +48,10 @@ def search_docs(query: str) -> str:
 @tool
 def run_code(code: str) -> str:
     """Run Python code (mock).
-    
+
     Args:
         code: Python code to execute
-        
+
     Returns:
         Execution result
     """
@@ -71,7 +71,6 @@ async def demo_basic_taskboard():
     print("=" * 70)
     print()
 
-    model = "gpt4"
 
     # Enable taskboard with default configuration
     agent = Agent(
@@ -121,7 +120,6 @@ async def demo_taskboard_with_verification():
     print("=" * 70)
     print()
 
-    model = "gpt4"
 
     # Configure taskboard to require verification
     agent = Agent(
@@ -164,7 +162,6 @@ async def demo_taskboard_inspection():
     print("=" * 70)
     print()
 
-    model = "gpt4"
 
     agent = Agent(
         name="Analyst",
@@ -244,7 +241,6 @@ async def demo_taskboard_serialization():
     print("=" * 70)
     print()
 
-    model = "gpt4"
 
     agent = Agent(
         name="Worker",

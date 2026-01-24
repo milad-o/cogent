@@ -11,7 +11,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from agenticflow import Agent, Flow
+from agenticflow import Agent
 from agenticflow.capabilities import Shell
 
 
@@ -29,7 +29,6 @@ async def main() -> None:
             timeout_seconds=30,
         )
 
-        model = "gpt4"
         devops = Agent(
             name="DevOps",
             model="gpt4",

@@ -20,11 +20,11 @@ Requirements:
 Transports:
     # STDIO (this example uses this - subprocess managed automatically)
     MCP.stdio(command="uv", args=["run", "python", "server.py", "stdio"])
-    
+
     # HTTP/SSE (connect to running server)
     # First: uv run python examples/data/mcp_server/search_server.py http --port 8765
     MCP.sse(url="http://127.0.0.1:8765/sse")
-    
+
     # HTTP Streamable (newer protocol)
     MCP.http(url="http://127.0.0.1:8765/mcp")
 """
@@ -56,7 +56,7 @@ async def demo_research_agent() -> None:
     agent = Agent(
         name="ResearchAgent",
         model="gpt4",
-        instructions="""You are a research assistant. 
+        instructions="""You are a research assistant.
 Use your available tools to find current, accurate information.
 Make ONE search, then respond with a concise answer citing sources.""",
         capabilities=[mcp],
@@ -222,12 +222,12 @@ async def main() -> None:
     print("=" * 60)
     print("""
     This example demonstrates MCP capability integration:
-    
+
     • Agent connects to MCP server (search_server.py)
     • Tools are discovered automatically from the server
     • Agent uses tools based on their descriptions
     • No hardcoded tool names in agent instructions!
-    
+
     Transports demonstrated:
     • STDIO - Local subprocess (Demos 1-3, 5)
     • HTTP/SSE - Remote server (Demo 4 - requires manual server start)
@@ -249,7 +249,7 @@ async def main() -> None:
     print("=" * 60)
     print("""
     MCP enables agents to connect to external tool servers:
-    
+
     ✅ Auto tool discovery - Tools found on connection
     ✅ Description-based usage - Agent reads tool descriptions
     ✅ Multiple transports:
@@ -257,12 +257,12 @@ async def main() -> None:
        • HTTP/SSE - Remote web server
        • WebSocket - Bidirectional real-time
     ✅ Seamless integration - Works like any other capability
-    
+
     To test HTTP/SSE transport manually:
-    
+
     Terminal 1 (start server):
         uv run python examples/data/mcp_server/search_server.py http --port 8765
-    
+
     Terminal 2 (Python):
         from agenticflow.capabilities import MCP
         mcp = MCP.sse(url="http://127.0.0.1:8765/sse")

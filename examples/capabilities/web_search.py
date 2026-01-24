@@ -64,8 +64,8 @@ def api_usage_example():
 
     # Cache demonstration
     print("\n→ Testing cache")
-    page1 = ws.fetch("http://example.com")
-    page2 = ws.fetch("http://example.com")  # Should hit cache
+    ws.fetch("http://example.com")
+    ws.fetch("http://example.com")  # Should hit cache
     cleared = ws.clear_cache()
     print(f"  ✓ Cache cleared: {cleared} pages")
 
@@ -80,7 +80,6 @@ async def agent_research_example():
     print("Agent Research Example: AI-Powered Web Research")
     print("=" * 60)
 
-    model = "gpt4"
 
     # Combine WebSearch with KnowledgeGraph for research + memory
     ws = WebSearch(max_results=5)
@@ -124,7 +123,6 @@ async def multi_capability_example():
     print("Multi-Capability Example: Web + Memory + Files")
     print("=" * 60)
 
-    model = "gpt4"
 
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace).resolve()
@@ -164,7 +162,7 @@ async def multi_capability_example():
 
         print("\n→ Task: Multi-step research and file creation")
         print("-" * 60)
-        response = await agent.run(query)
+        await agent.run(query)
 
         # Verify results
         research_file = workspace_path / "research.txt"

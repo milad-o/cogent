@@ -25,7 +25,6 @@ async def main() -> None:
         print("Install playwright to run this example: uv add playwright && playwright install chromium")
         return
 
-    model = "gpt4"
     researcher = Agent(
         name="WebResearcher",
         model="gpt4",
@@ -36,7 +35,6 @@ async def main() -> None:
     flow = Flow(
         name="web_research",
         agents=[researcher],
-        verbosity=settings.verbose_level,
     )
 
     result = await flow.run(

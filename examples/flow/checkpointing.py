@@ -249,7 +249,7 @@ async def file_based_checkpointing() -> None:
         flow.register(processor, [react_to("task.created")])
         flow.register(reporter, [react_to("processor.completed")])
 
-        result = await flow.run(
+        await flow.run(
             "Process batch B-002 and create a report",
             initial_event="task.created",
             initial_data={"batch_id": "B-002"},
@@ -297,7 +297,7 @@ async def multi_flow_coordination() -> None:
         flow = Flow(config=config, checkpointer=checkpointer, observer=observer)
         flow.register(agent, [react_to("task.created")])
 
-        result = await flow.run(task, initial_event="task.created")
+        await flow.run(task, initial_event="task.created")
         checkpoints = await checkpointer.list_checkpoints(flow_name)
         print(f"  {flow_name}: {len(checkpoints)} checkpoints")
 

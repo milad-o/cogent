@@ -6,7 +6,7 @@ of agents.
 
 Key API:
     view = agent.graph()         # Get GraphView from any entity
-    
+
     view.mermaid() -> str        # Mermaid diagram code
     view.ascii() -> str          # Terminal-friendly text
     view.dot() -> str            # Graphviz DOT format

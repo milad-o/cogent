@@ -26,7 +26,6 @@ async def demo_token_tracking():
         track_tokens=True,       # Track cumulative usage
     )
 
-    model = "gpt4"
     agent = Agent(
         name="Assistant",
         model="gpt4",
@@ -49,7 +48,6 @@ async def demo_structured_export():
 
     observer = Observer.trace()
 
-    model = "gpt4"
     agent = Agent(
         name="Researcher",
         model="gpt4",
@@ -89,7 +87,6 @@ async def demo_progress_indicators():
         show_progress_steps=True,  # Enable step progress
     )
 
-    model = "gpt4"
     agent = Agent(
         name="Analyzer",
         model="gpt4",
@@ -109,7 +106,7 @@ async def demo_error_context():
     print("═" * 60 + "\n")
 
     # Use DEBUG level to see suggestions
-    observer = Observer.debug()
+    Observer.debug()
 
     print("Error context enhancement is automatic!")
     print("When errors occur at DEBUG level, you'll see:")
@@ -132,7 +129,7 @@ async def demo_state_diff():
     print("DEMO 5: State Change Diff Visualization")
     print("═" * 60 + "\n")
 
-    observer = Observer.detailed()
+    Observer.detailed()
 
     print("State diff visualization is available for reactive agents!")
     print("When AGENT_STATUS_CHANGED events are emitted, you'll see:")

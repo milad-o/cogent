@@ -26,7 +26,6 @@ async def example_basic_groups():
     print("=" * 60)
 
     flow = Flow()
-    model = "gpt4"
 
     # Create analyst agents
     analyst1 = Agent(name="analyst1", model="gpt4", instructions="You are analyst 1")
@@ -70,7 +69,6 @@ async def example_pattern_syntax_with_groups():
     print("=" * 60)
 
     flow = Flow()
-    model = "gpt4"
 
     # Create worker agents
     worker1 = Agent(name="worker1", model="gpt4", instructions="You are worker 1")
@@ -111,7 +109,6 @@ async def example_builtin_agents_group():
     print("=" * 60)
 
     flow = Flow()
-    model = "gpt4"
 
     # Create multiple agents
     researcher = Agent(name="researcher", model="gpt4", instructions="Research topics")
@@ -179,7 +176,6 @@ async def example_chaining_groups():
     print("=" * 60)
 
     flow = Flow()
-    model = "gpt4"
 
     # Chain group definitions
     flow.add_source_group("writers", ["w1", "w2", "w3"]) \
