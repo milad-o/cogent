@@ -130,14 +130,18 @@ class Memory:
         vectorstore: VectorStore | None = None,
         namespace: str = "",
         event_bus: TraceBus | None = None,
+        saver: Any | None = None,  # MemorySaver for checkpointing
+        acc_enabled: bool = False,  # Agent Cognitive Compressor
     ) -> None:
         """Initialize Memory.
 
         Args:
-            store: Persistence store. Defaults to InMemoryStore.
+            store: Persistence store for key-value. Defaults to InMemoryStore.
             vectorstore: VectorStore for semantic search. Optional.
             namespace: Key prefix for isolation.
             event_bus: TraceBus for observability. Optional.
+            saver: MemorySaver for conversation checkpointing. Optional.
+            acc_enabled: Enable Agent Cognitive Compressor (bounded memory).
 
         Memory is always agentic - it automatically exposes tools to agents.
         When an Agent receives a Memory instance, tools are auto-added.
@@ -149,11 +153,30 @@ class Memory:
         self._lock = asyncio.Lock()
         self._tools_cache: list[Any] | None = None
         self._current_thread_id: str | None = None  # Track active thread for tools
+        
+        # Checkpointing support (for conversation persistence)
+        self._saver = saver
+        self._cache: dict[str, Any] = {}  # In-memory cache for checkpoints
+        self._version_counters: dict[str, int] = {}
+        
+        # ACC (Agent Cognitive Compressor) support
+        self._acc_enabled = acc_enabled
+        self._acc_states: dict[str, Any] = {}  # thread_id -> ACC
 
     @property
     def store(self) -> Store:
         """Get the underlying store."""
         return self._store
+
+    @property
+    def saver(self) -> Any | None:
+        """Get the checkpointing saver (if any)."""
+        return self._saver
+
+    @property
+    def has_persistence(self) -> bool:
+        """Whether conversation checkpointing is enabled."""
+        return self._saver is not None
 
     @property
     def vectorstore(self) -> VectorStore | None:

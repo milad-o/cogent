@@ -59,6 +59,12 @@ from cogent.memory.stores import (
     RedisStore,
     SQLAlchemyStore,
 )
+from cogent.memory.checkpointing import (
+    MemorySaver,
+    MemorySnapshot,
+    ThreadConfig,
+    InMemorySaver,
+)
 
 __all__ = [
     # Core
@@ -69,6 +75,11 @@ __all__ = [
     "InMemoryStore",
     "SQLAlchemyStore",
     "RedisStore",
+    # Checkpointing (conversation persistence)
+    "MemorySaver",
+    "MemorySnapshot",
+    "ThreadConfig",
+    "InMemorySaver",
     # Agent Cognitive Compressor (ACC) - Bounded memory control
     "AgentCognitiveCompressor",
     "BoundedMemoryState",

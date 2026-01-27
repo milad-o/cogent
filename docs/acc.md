@@ -6,7 +6,7 @@
 
 Agentive Context Control (ACC) implements bio-inspired bounded memory with exact-match caching. Unlike traditional conversation history that grows unbounded, ACC:
 
-- **Prevents context drift** — Exact string matching ensures consistent retrieval
+- **Prevents context drift** — Exact string matching ensures consistent retrieval¬
 - **Bounds memory** — Automatic eviction when capacity is reached
 - **Caches exactly** — No semantic similarity, no false positives
 - **Fast lookups** — O(1) dictionary-based retrieval
