@@ -93,11 +93,9 @@ from cogent.agent.hitl import (
     PendingAction,
     should_interrupt,
 )
-from cogent.agent.memory import (
-    AgentMemory,
-    InMemoryCheckpointer,  # Backward compat alias
+# Memory components moved to cogent.memory
+from cogent.memory import (
     InMemorySaver,
-    MemoryCheckpoint,  # Backward compat alias
     MemorySnapshot,
     ThreadConfig,
 )
@@ -302,13 +300,10 @@ __all__ = [
     "Agent",
     "AgentConfig",
     "AgentState",
-    # Memory
-    "AgentMemory",
+    # Memory (checkpointing - from cogent.memory)
     "MemorySnapshot",
-    "MemoryCheckpoint",  # Backward compat alias
     "ThreadConfig",
     "InMemorySaver",
-    "InMemoryCheckpointer",  # Backward compat alias
     # Execution strategies
     "ExecutionStrategy",
     "ExecutionPlan",

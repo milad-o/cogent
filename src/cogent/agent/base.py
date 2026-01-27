@@ -2972,13 +2972,13 @@ class Agent:
         # Load conversation context if thread_id provided
         if thread_id:
             # Set current thread on memory for tools to access
-            if self._memory_manager and hasattr(
-                self._memory_manager, "_current_thread_id"
+            if self._memory and hasattr(
+                self._memory, "_current_thread_id"
             ):
-                self._memory_manager._current_thread_id = thread_id
+                self._memory._current_thread_id = thread_id
 
             # Use ACC (bounded memory) or transcript replay (legacy)
-            if self._use_acc and self._memory._acc_enabled:
+            if self._memory._acc_enabled:
                 # ACC: Load bounded memory state instead of full transcript
                 acc = await self._memory.get_acc_state(thread_id)
                 memory_context = acc.format_for_prompt(task)
@@ -2990,13 +2990,11 @@ class Agent:
                     self.state.add_message(memory_msg)
             else:
                 # Legacy: Load full conversation history (transcript replay)
-                if self._memory_manager:
-                    history = await self._memory_manager.get_thread_messages(thread_id)
-                else:
+                if self._memory:
                     history = await self._memory.get_messages(thread_id)
-                # Add history to agent state so executor can use it
-                for msg in history:
-                    self.state.add_message(msg)
+                    # Add history to agent state so executor can use it
+                    for msg in history:
+                        self.state.add_message(msg)
 
         # Apply reasoning override for this call
         original_reasoning = self._reasoning_config
@@ -3224,14 +3222,12 @@ class Agent:
         # Load conversation history if thread_id provided
         if thread_id:
             # Set current thread on memory for tools to access
-            if self._memory_manager and hasattr(
-                self._memory_manager, "_current_thread_id"
+            if self._memory and hasattr(
+                self._memory, "_current_thread_id"
             ):
-                self._memory_manager._current_thread_id = thread_id
+                self._memory._current_thread_id = thread_id
 
-            if self._memory_manager:
-                history = await self._memory_manager.get_thread_messages(thread_id)
-            else:
+            if self._memory:
                 history = await self._memory.get_messages(thread_id)
             messages.extend(history)
 
@@ -3247,17 +3243,12 @@ class Agent:
         assistant_response: str,
     ) -> None:
         """Save exchange to conversation history."""
-        if self._memory_manager:
-            await self._memory_manager.add_thread_messages(
-                thread_id,
-                [
-                    HumanMessage(content=user_message),
-                    AIMessage(content=str(assistant_response)),
-                ],
-            )
-        else:
+        if self._memory:
             await self._memory.add_message(
                 HumanMessage(content=user_message), thread_id=thread_id
+            )
+            await self._memory.add_message(
+                AIMessage(content=str(assistant_response)), thread_id=thread_id
             )
             await self._memory.add_message(
                 AIMessage(content=str(assistant_response)), thread_id=thread_id

@@ -15,6 +15,7 @@ Usage:
 import asyncio
 
 from cogent import Agent
+from cogent.observability import Observer
 
 
 async def layer1_conversation():
@@ -22,29 +23,29 @@ async def layer1_conversation():
     print("\n=== Layer 1: Conversation Memory ===")
     print("Thread-based message history - ON by default\n")
 
+    observer = Observer.trace()
+
     # conversation=True is the default!
     agent = Agent(
         name="Assistant",
         model="gpt4",
         instructions="You are a helpful assistant. Be concise.",
+        observer=observer,
     )
 
     # Conversation 1
     print("[Thread: user-123]")
     r1 = await agent.run("Hi, I'm Alice!", thread_id="user-123")
-    print(f"User: Hi, I'm Alice!")
-    print(f"Agent: {r1.content}\n")
+    print(f"\nAgent: {r1}\n")
 
     r2 = await agent.run("What's my name?", thread_id="user-123")
-    print(f"User: What's my name?")
-    print(f"Agent: {r2.content}\n")
+    print(f"\nAgent: {r2}\n")
 
     # Different thread = fresh context
     print("[Thread: user-456]")
     r3 = await agent.run("What's my name?", thread_id="user-456")
-    print(f"User: What's my name?")
-    print(f"Agent: {r3.content}")
-    print("  ✓ Different thread = no memory of Alice\n")
+    print(f"\nAgent: {r3}")
+    print("\n✓ Different thread = no memory of Alice\n")
 
 
 async def layer2_bounded_memory():
@@ -52,11 +53,14 @@ async def layer2_bounded_memory():
     print("\n=== Layer 2: Bounded Memory (ACC) ===")
     print("Agent Cognitive Compressor - Prevents drift in long conversations\n")
 
+    observer = Observer.trace()
+
     agent = Agent(
         name="Assistant",
         model="gpt4",
         bounded_memory=True,  # Enable ACC
         instructions="You are a helpful assistant.",
+        observer=observer,
     )
 
     print("  Simulating a VERY long conversation (50+ turns)...")
@@ -74,11 +78,14 @@ async def layer3_long_term_memory():
     print("\n=== Layer 3: Long-term Memory ===")
     print("remember/recall tools for persistent facts\n")
 
+    observer = Observer.trace()
+
     agent = Agent(
         name="Assistant",
         model="gpt4",
         memory=True,  # Enable long-term memory tools
         instructions="ALWAYS call remember() when user shares important info.",
+        observer=observer,
     )
 
     # Agent gets these tools automatically:
@@ -93,10 +100,7 @@ async def layer3_long_term_memory():
         "My name is Bob and I prefer dark mode.",
         thread_id="conv-1",
     )
-    print(f"User: My name is Bob and I prefer dark mode.")
-    print(f"Agent: {r1.content}")
-    if r1.tool_calls:
-        print(f"Tools used: {[tc.tool_name for tc in r1.tool_calls]}\n")
+    print(f"\nAgent: {r1}\n")
 
     # Different thread - but agent can recall from long-term memory!
     print("[Thread: conv-2]")
@@ -104,11 +108,8 @@ async def layer3_long_term_memory():
         "What are my preferences?",
         thread_id="conv-2",
     )
-    print(f"User: What are my preferences?")
-    print(f"Agent: {r2.content}")
-    if r2.tool_calls:
-        print(f"Tools used: {[tc.tool_name for tc in r2.tool_calls]}")
-    print("  ✓ Cross-thread memory via long-term storage\n")
+    print(f"\nAgent: {r2}")
+    print("\n✓ Cross-thread memory via long-term storage\n")
 
 
 async def layer4_semantic_cache():
@@ -118,31 +119,32 @@ async def layer4_semantic_cache():
 
     from cogent.capabilities import WebSearch
 
+    observer = Observer.trace()
+
     agent = Agent(
         name="Researcher",
         model="gpt4",
-        capabilities=[WebSearch],
+        capabilities=[WebSearch()],  # Must be instance, not class
         cache=True,  # Enable semantic caching
         instructions="Search the web for answers.",
+        observer=observer,
     )
 
     print("First query (cache MISS):")
     r1 = await agent.run("What is Python?")
-    print(f"User: What is Python?")
-    print(f"Agent: {r1.content[:100]}...")
-    print("  → Web search performed\n")
+    print(f"\nAgent: {str(r1)[:200]}...")
+    print("→ Web search performed\n")
 
     print("Similar query (cache HIT - 85%+ similarity):")
     r2 = await agent.run("Tell me about the Python programming language")
-    print(f"User: Tell me about the Python programming language")
-    print(f"Agent: {r2.content[:100]}...")
-    print("  → Cached result used (7-10× faster!)\n")
+    print(f"\nAgent: {str(r2)[:200]}...")
+    print("→ Cached result used (7-10× faster!)\n")
 
     # Check cache stats
     if agent.cache:
-        stats = agent.cache.stats()
-        print(f"  Cache stats: {stats['hits']} hits, {stats['misses']} misses")
-        print(f"  Hit rate: {stats['hit_rate']:.1%}\n")
+        stats = agent.cache.get_metrics()
+        print(f"\n📊 Cache stats: {stats['cache_hits']} hits, {stats['cache_misses']} misses")
+        print(f"  Hit rate: {stats['cache_hit_rate']:.1%}\n")
 
 
 async def all_layers_together():
@@ -152,6 +154,8 @@ async def all_layers_together():
 
     from cogent.capabilities import WebSearch
 
+    observer = Observer.trace()
+
     agent = Agent(
         name="SuperAgent",
         model="gpt4",
@@ -159,8 +163,9 @@ async def all_layers_together():
         bounded_memory=True,    # Layer 2: ACC for drift prevention
         memory=True,            # Layer 3: Long-term facts
         cache=True,             # Layer 4: Semantic cache
-        capabilities=[WebSearch],
+        capabilities=[WebSearch()],
         instructions="You are an advanced assistant with full memory capabilities.",
+        observer=observer,
     )
 
     print("  ✓ Layer 1: Conversation - Thread-based history")
@@ -173,20 +178,14 @@ async def all_layers_together():
         "My name is Charlie. Remember this: I love Rust programming.",
         thread_id="super-thread",
     )
-    print("User: My name is Charlie. Remember this: I love Rust programming.")
-    print(f"Agent: {r1.content}")
-    if r1.tool_calls:
-        print(f"Tools used: {[tc.tool_name for tc in r1.tool_calls]}\n")
+    print(f"\nAgent: {r1}\n")
 
     r2 = await agent.run(
         "Search the web for Rust tutorials, then tell me what you found.",
         thread_id="super-thread",
     )
-    print("User: Search the web for Rust tutorials, then tell me what you found.")
-    print(f"Agent: {r2.content[:150]}...")
-    if r2.tool_calls:
-        print(f"Tools used: {[tc.tool_name for tc in r2.tool_calls]}")
-    print("\n  ✓ All layers working together!\n")
+    print(f"\nAgent: {str(r2)[:300]}...")
+    print("\n✓ All layers working together!\n")
 
 
 async def main():
@@ -198,22 +197,8 @@ async def main():
     await layer1_conversation()
     await layer2_bounded_memory()
     await layer3_long_term_memory()
-    
-    # Skip layer 4 and combined demo if no API keys
-    import os
-    if os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"):
-        await layer4_semantic_cache()
-        await all_layers_together()
-    else:
-        print("\n⚠ Set OPENAI_API_KEY or ANTHROPIC_API_KEY for cache demos")
-
-    print("\n" + "=" * 60)
-    print("  Summary:")
-    print("  • Layer 1 (conversation): Always ON by default")
-    print("  • Layer 2 (bounded_memory): Use for 50+ turn conversations")
-    print("  • Layer 3 (memory): Add remember/recall tools")
-    print("  • Layer 4 (cache): Speed up expensive tools 7-10×")
-    print("=" * 60 + "\n")
+    await layer4_semantic_cache()
+    await all_layers_together()
 
 
 if __name__ == "__main__":
