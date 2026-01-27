@@ -53,6 +53,7 @@ Core concepts every user should know.
 | [all_providers.py](basics/all_providers.py) | **NEW v1.14.1** Test all model providers (OpenAI, Anthropic, Gemini, Groq) |
 | [response.py](basics/response.py) | Response[T] protocol - typed results with metadata |
 | [memory.py](basics/memory.py) | Thread-based conversation memory |
+| [memory_layers.py](basics/memory_layers.py) | **NEW** 4-layer memory architecture (conversation, ACC, long-term, cache) |
 | [roles.py](basics/roles.py) | Agent roles (worker, supervisor, etc.) |
 | [role_configs.py](basics/role_configs.py) | RoleConfig objects (recommended API) |
 | [streaming.py](basics/streaming.py) | Token-by-token LLM streaming |
