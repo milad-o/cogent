@@ -635,7 +635,7 @@ from cogent import Agent
 agent = Agent(
     name="Assistant",
     model="gpt-4o-mini",
-    cache=True,  # Enable semantic cache
+    cache=True,  # Creates SemanticCache internally
 )
 
 # First query
@@ -645,14 +645,17 @@ await agent.run("What are the best Python frameworks?")
 await agent.run("What are the top Python frameworks?")  # Instant
 ```
 
+> [!NOTE]
+> `cache=True` creates a SemanticCache with default settings. No manual setup needed.
+
 ### Tool-Level Caching
 
-Use `@tool(cache=True)` to enable semantic caching on individual tools:
+Use `@tool(cache=True)` to cache individual tool calls. Tools use the agent's cache:
 
 ```python
 from cogent import Agent, tool
 
-@tool(cache=True)
+@tool(cache=True)  # Tool uses agent's cache
 async def search_products(query: str) -> str:
     """Search products in the catalog."""
     return await product_api.search(query)
@@ -660,7 +663,7 @@ async def search_products(query: str) -> str:
 agent = Agent(
     model="gpt-4o-mini",
     tools=[search_products],
-    cache=True,  # Required for @tool(cache=True)
+    cache=True,  # Required — tools use this cache
 )
 
 # First call executes the tool
@@ -669,6 +672,10 @@ await agent.run("Find running shoes")
 # Similar query hits tool cache
 await agent.run("Show me running sneakers")  # Cache hit!
 ```
+
+**Requirements:**
+- Agent must have `cache=True` (creates the cache)
+- Tool must have `cache=True` (opts into caching)
 
 See [tool-building.md](tool-building.md#semantic-caching) for more details.
 
