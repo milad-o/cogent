@@ -9,35 +9,35 @@ warnings.filterwarnings(
 )
 
 """
-AgenticFlow - Event-Driven Multi-Agent System Framework
-========================================================
+AgenticFlow - Production Agent Framework
+=========================================
 
-A lightweight, native multi-agent framework with:
-- Multi-agent patterns (supervisor, mesh, pipeline, hierarchical)
+A lightweight, single-agent-first framework with:
+- Tool-augmented agent execution (research shows tools > multi-agent)
 - Intelligent resilience (retry, circuit breakers, fallbacks)
 - Native model support for OpenAI, Azure, Anthropic, Groq, Gemini, Ollama
 - Full observability (tracing, metrics, progress tracking)
-- Event-driven architecture with pub/sub patterns
-- Mermaid visualization for agents, patterns, and flows
+- Tactical multi-agent via Agent.as_tool() for simple delegation
 
-Quick Start (Standalone Execution):
+Quick Start:
     ```python
-    from agenticflow import run, tool
+    from agenticflow import Agent, tool
 
     @tool
     def search(query: str) -> str:
         '''Search the web.'''
         return f"Results for {query}"
 
-    # Execute a task with tools - no Agent class needed!
-    result = await run(
-        "Search for Python tutorials",
-        tools=[search],
+    agent = Agent(
+        name="Assistant",
         model="gpt-4o-mini",
+        tools=[search],
     )
+
+    result = await agent.run("Search for Python tutorials")
     ```
 
-Native Models (Recommended):
+Native Models:
     ```python
     from agenticflow.models.openai import OpenAIChat
     from agenticflow.models.azure import AzureOpenAIChat
@@ -60,35 +60,14 @@ Native Models (Recommended):
     )
     ```
 
-With Agent Class:
+Simple Delegation (coming soon):
     ```python
-    from agenticflow import Agent, AgentConfig, EventBus
-    from agenticflow.models.openai import OpenAIChat
+    # Convert agent to tool for delegation
+    researcher = Agent(name="Researcher", model="gpt-4o")
+    writer = Agent(name="Writer", model="gpt-4o", tools=[researcher.as_tool()])
 
-    agent = Agent(
-        config=AgentConfig(
-            name="Assistant",
-            model=OpenAIChat(model="gpt-4o"),
-        ),
-        event_bus=TraceBus(),
-    )
-
-    # Think with automatic retry on failures
-    response = await agent.think("What should I do?")
-
-    # Execute complex tasks
-    result = await agent.run("Search and analyze data")
-    ```
-
-Multi-Agent Patterns:
-    ```python
-    from agenticflow.flow import pipeline, supervisor, mesh
-
-    # Create a pipeline pattern
-    flow = pipeline([researcher, writer, editor])
-
-    # Run with progress tracking
-    result = await flow.run("Create a blog post")
+    # Writer can delegate to researcher as needed
+    result = await writer.run("Research and write article on AI")
     ```
 """
 
@@ -136,14 +115,14 @@ from agenticflow.agent.resilience import (
     RetryStrategy,
     ToolResilience,
 )
-from agenticflow.agent.roles import (
-    AutonomousRole,
-    CustomRole,
-    ReviewerRole,
-    RoleConfig,
-    SupervisorRole,
-    WorkerRole,
-)
+# from agenticflow.agent.roles import (
+#     AutonomousRole,
+#     CustomRole,
+#     ReviewerRole,
+#     RoleConfig,
+#     SupervisorRole,
+#     WorkerRole,
+# )
 from agenticflow.agent.state import AgentState
 from agenticflow.agent.streaming import (
     CollectorStreamCallback,
@@ -172,16 +151,16 @@ from agenticflow.core.enums import (
 from agenticflow.core.utils import generate_id, now_utc
 
 # Core Events (event-driven primitives)
-from agenticflow.events import (
-    Event,
-    EventBus,
-    EventMatcher,
-    EventStore,
-    FileEventStore,
-    InMemoryEventStore,
-    create_event_store,
-    matches,
-)
+# from agenticflow.events import (
+#     Event,
+#     EventBus,
+#     EventMatcher,
+#     EventStore,
+#     FileEventStore,
+#     InMemoryEventStore,
+#     create_event_store,
+#     matches,
+# )
 
 # Core orchestration events (separate from observability)
 # Graphs - Execution strategies
@@ -197,66 +176,66 @@ from agenticflow.executors import (
 )
 
 # Flow - THE MAIN ENTRY POINT
-from agenticflow.flow import (
-    # Base classes
-    BaseFlow,
-    ExecutionContext,
-    # Core Flow (unified event-driven orchestration)
-    Flow,
-    FlowConfig,
-    # Context
-    FlowContext,
-    FlowProtocol,
-    FlowResult,
-)
-from agenticflow.flow import (
-    brainstorm as flow_brainstorm,
-)
-from agenticflow.flow import (
-    chain as flow_chain,
-)
-from agenticflow.flow import (
-    collaborative as flow_collaborative,
-)
-from agenticflow.flow import (
-    coordinator as flow_coordinator,
-)
-from agenticflow.flow import (
-    mesh as flow_mesh,
-)
-from agenticflow.flow import (
-    # Patterns (imported with aliases to avoid name collisions)
-    pipeline as flow_pipeline,
-)
-from agenticflow.flow import (
-    supervisor as flow_supervisor,
-)
-from agenticflow.flow.patterns import (
-    # Mesh
-    brainstorm,
-    # Pipeline
-    chain,
-    collaborative,
-    # Supervisor
-    coordinator,
-    mesh,
-    pipeline,
-    supervisor,
-)
-from agenticflow.flow.skills import (
-    Skill,
-    SkillBuilder,
-    skill,
-)
-
-# Note: Flow, FlowConfig, FlowResult are already exported from agenticflow.flow
-from agenticflow.flow.triggers import (
-    AgentTriggerConfig,
-    Trigger,
-    on,  # Backward compat alias
-    react_to,
-    when,
-)
+# from agenticflow.flow import (
+#     # Base classes
+#     BaseFlow,
+#     ExecutionContext,
+#     # Core Flow (unified event-driven orchestration)
+#     Flow,
+#     FlowConfig,
+#     # Context
+#     FlowContext,
+#     FlowProtocol,
+#     FlowResult,
+# )
+# from agenticflow.flow import (
+#     brainstorm as flow_brainstorm,
+# )
+# from agenticflow.flow import (
+#     chain as flow_chain,
+# )
+# from agenticflow.flow import (
+#     collaborative as flow_collaborative,
+# )
+# from agenticflow.flow import (
+#     coordinator as flow_coordinator,
+# )
+# from agenticflow.flow import (
+#     mesh as flow_mesh,
+# )
+# from agenticflow.flow import (
+#     # Patterns (imported with aliases to avoid name collisions)
+#     pipeline as flow_pipeline,
+# )
+# from agenticflow.flow import (
+#     supervisor as flow_supervisor,
+# )
+# from agenticflow.flow.patterns import (
+#     # Mesh
+#     brainstorm,
+#     # Pipeline
+#     chain,
+#     collaborative,
+#     # Supervisor
+#     coordinator,
+#     mesh,
+#     pipeline,
+#     supervisor,
+# )
+# from agenticflow.flow.skills import (
+#     Skill,
+#     SkillBuilder,
+#     skill,
+# )
+# 
+# # Note: Flow, FlowConfig, FlowResult are already exported from agenticflow.flow
+# from agenticflow.flow.triggers import (
+#     AgentTriggerConfig,
+#     Trigger,
+#     on,  # Backward compat alias
+#     react_to,
+#     when,
+# )
 from agenticflow.graph import (
     GraphConfig,
     GraphDirection,
@@ -296,22 +275,22 @@ from agenticflow.interceptors import (
 )
 
 # Middleware (cross-cutting concerns)
-from agenticflow.middleware import (
-    AggressiveTimeoutMiddleware,
-    BaseMiddleware,
-    LoggingMiddleware,
-    Middleware,
-    MiddlewareChain,
-    RetryMiddleware,
-    SimpleRetryMiddleware,
-    SimpleTracingMiddleware,
-    TimeoutMiddleware,
-    TracingMiddleware,
-    VerboseMiddleware,
-)
-from agenticflow.middleware import (
-    Span as MiddlewareSpan,  # Renamed to avoid conflict with observability.Span
-)
+# from agenticflow.middleware import (
+#     AggressiveTimeoutMiddleware,
+#     BaseMiddleware,
+#     LoggingMiddleware,
+#     Middleware,
+#     MiddlewareChain,
+#     RetryMiddleware,
+#     SimpleRetryMiddleware,
+#     SimpleTracingMiddleware,
+#     TimeoutMiddleware,
+#     TracingMiddleware,
+#     VerboseMiddleware,
+# )
+# from agenticflow.middleware import (
+#     Span as MiddlewareSpan,  # Renamed to avoid conflict with observability.Span
+# )
 
 # LLM & Embedding Models (native)
 from agenticflow.models import (
@@ -377,45 +356,45 @@ from agenticflow.observability.handlers import (
 from agenticflow.observability.trace_record import Trace, TraceType
 
 # Reactors (event handlers for flows)
-from agenticflow.reactors import (
-    AgentReactor,
-    Aggregator,
-    BaseReactor,
-    CallbackGateway,
-    ConditionalRouter,
-    ErrorPolicy,
-    FanInMode,
-    FirstWins,
-    FunctionReactor,
-    Gateway,
-    HandoverStrategy,
-    HttpGateway,
-    LogGateway,
-    MapTransform,
-    Reactor,
-    ReactorConfig,
-    Transform,
-    WaitAll,
-    function_reactor,
-    wrap_agent,
-)
-from agenticflow.reactors import (
-    Router as EventRouter,  # Renamed to avoid conflict with flow.Router
-)
+# from agenticflow.reactors import (
+#     AgentReactor,
+#     Aggregator,
+#     BaseReactor,
+#     CallbackGateway,
+#     ConditionalRouter,
+#     ErrorPolicy,
+#     FanInMode,
+#     FirstWins,
+#     FunctionReactor,
+#     Gateway,
+#     HandoverStrategy,
+#     HttpGateway,
+#     LogGateway,
+#     MapTransform,
+#     Reactor,
+#     ReactorConfig,
+#     Transform,
+#     WaitAll,
+#     function_reactor,
+#     wrap_agent,
+# )
+# from agenticflow.reactors import (
+#     Router as EventRouter,  # Renamed to avoid conflict with flow.Router
+# )
 
 # Tasks
-from agenticflow.tasks.manager import TaskManager
-from agenticflow.tasks.task import Task
+# from agenticflow.tasks.manager import TaskManager
+# from agenticflow.tasks.task import Task
 from agenticflow.tools.base import BaseTool, tool
-from agenticflow.tools.deferred import (
-    DeferredManager,
-    DeferredResult,
-    DeferredRetry,
-    DeferredStatus,
-    is_deferred,
-)
+# from agenticflow.tools.deferred import (
+#     DeferredManager,
+#     DeferredResult,
+#     DeferredRetry,
+#     DeferredStatus,
+#     is_deferred,
+# )
 
-# Tools (THIS IS WHERE WE ADD VALUE)
+# Tools
 from agenticflow.tools.registry import ToolRegistry, create_tool_from_function
 
 # Backwards-compatible aliases for visualization module
