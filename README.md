@@ -78,7 +78,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
 - **Memory & Persistence** — Conversation history, long-term memory with fuzzy matching ([docs/memory.md](docs/memory.md))
 - **Memory Control (ACC)** — Bio-inspired bounded memory prevents drift ([docs/acc.md](docs/acc.md))
-- **Semantic Caching** — Cache reasoning artifacts at 80%+ hit rates ([docs/caching.md](docs/caching.md))
+- **Semantic Caching** — Cache reasoning artifacts at 80%+ hit rates ([docs/memory.md#semantic-cache](docs/memory.md#semantic-cache))
 - **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents, patterns, and flows
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates

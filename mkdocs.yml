@@ -93,7 +93,6 @@ nav:
       - Document Processing: document.md
       - Memory: memory.md
       - ACC Memory Control: acc.md
-      - Semantic Caching: caching.md
   - Advanced:
       - Events: events.md
       - Interceptors: interceptors.md

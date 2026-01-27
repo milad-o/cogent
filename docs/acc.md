@@ -302,5 +302,5 @@ class ACC:
 ## Further Reading
 
 - [Memory System](memory.md) — Overview of all memory components
-- [Semantic Caching](caching.md) — Similarity-based caching
+- [Semantic Cache](memory.md#semantic-cache) — Similarity-based caching
 - [Agent Configuration](agent.md) — Configuring agents with ACC
