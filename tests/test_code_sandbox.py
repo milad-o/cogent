@@ -1,7 +1,7 @@
 """Tests for CodeSandbox capability."""
 
 
-from agenticflow.capabilities.code_sandbox import (
+from cogent.capabilities.code_sandbox import (
     BLOCKED_BUILTINS,
     BLOCKED_IMPORTS,
     CodeSandbox,

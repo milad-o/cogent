@@ -15,8 +15,8 @@ import asyncio
 import time
 from pathlib import Path
 
-from agenticflow.documents.loaders import PDFMarkdownLoader
-from agenticflow.documents.summarizer import MapReduceSummarizer, RefineSummarizer
+from cogent.documents.loaders import PDFMarkdownLoader
+from cogent.documents.summarizer import MapReduceSummarizer, RefineSummarizer
 
 
 async def main() -> None:

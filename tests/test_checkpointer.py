@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agenticflow.flow.checkpointer import (
+from cogent.flow.checkpointer import (
     FileCheckpointer,
     FlowState,
     MemoryCheckpointer,

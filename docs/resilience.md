@@ -5,8 +5,8 @@ AgenticFlow provides production-grade resilience features that automatically han
 ## Quick Start
 
 ```python
-from agenticflow import Agent
-from agenticflow.agent.resilience import ResilienceConfig
+from cogent import Agent
+from cogent.agent.resilience import ResilienceConfig
 
 # Default: 3 retries with exponential backoff (ENABLED by default)
 agent = Agent(name="MyAgent", model=model, tools=[...])
@@ -86,7 +86,7 @@ async def data_pipeline(agent: Agent):
 ### 1. Automatic Retry with Exponential Backoff
 
 ```python
-from agenticflow.agent.resilience import RetryPolicy, RetryStrategy
+from cogent.agent.resilience import RetryPolicy, RetryStrategy
 
 policy = RetryPolicy(
     max_retries=5,
@@ -214,7 +214,7 @@ ResilienceConfig.fast_fail()
 Full control over all resilience parameters:
 
 ```python
-from agenticflow.agent.resilience import (
+from cogent.agent.resilience import (
     ResilienceConfig,
     RetryPolicy,
     RetryStrategy,
@@ -268,7 +268,7 @@ config.tool_configs["flaky_api"] = {
 Track retries and recovery with observability:
 
 ```python
-from agenticflow.observability import Observer, ObservabilityLevel
+from cogent.observability import Observer, ObservabilityLevel
 
 observer = Observer(
     level=ObservabilityLevel.DEBUG,  # See retry events
@@ -286,9 +286,9 @@ agent.add_observer(observer)
 ## Example: Production API Integration
 
 ```python
-from agenticflow import Agent
-from agenticflow.agent.resilience import ResilienceConfig, RetryPolicy
-from agenticflow.tools import tool
+from cogent import Agent
+from cogent.agent.resilience import ResilienceConfig, RetryPolicy
+from cogent.tools import tool
 
 @tool
 async def external_api_call(query: str) -> dict:
@@ -396,10 +396,10 @@ While this document covers **tool-level** resilience (retries, circuit breakers)
 ### Quick Example: Combined Resilience
 
 ```python
-from agenticflow import Agent, Flow
-from agenticflow.agent.resilience import ResilienceConfig
-from agenticflow.flow import FlowConfig, pipeline
-from agenticflow.flow.checkpointer import FileCheckpointer
+from cogent import Agent, Flow
+from cogent.agent.resilience import ResilienceConfig
+from cogent.flow import FlowConfig, pipeline
+from cogent.flow.checkpointer import FileCheckpointer
 
 # Agents with tool-level resilience
 researcher = Agent(

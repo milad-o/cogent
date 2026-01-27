@@ -1,6 +1,6 @@
 """Extended tests for capabilities - KnowledgeGraph convenience methods and CodebaseAnalyzer."""
 
-from agenticflow.capabilities import KnowledgeGraph
+from cogent.capabilities import KnowledgeGraph
 
 
 class TestKnowledgeGraphConvenienceMethods:
@@ -122,7 +122,7 @@ class TestCodebaseAnalyzer:
     """Tests for CodebaseAnalyzer capability."""
 
     def test_name_and_description(self):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         analyzer = CodebaseAnalyzer()
 
@@ -130,7 +130,7 @@ class TestCodebaseAnalyzer:
         assert "codebase" in analyzer.description.lower()
 
     def test_tools_provided(self):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         analyzer = CodebaseAnalyzer()
         tools = analyzer.tools
@@ -144,7 +144,7 @@ class TestCodebaseAnalyzer:
         assert "find_functions" in tool_names
 
     def test_load_single_file(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         test_file = tmp_path / "test_module.py"
         test_file.write_text("""
@@ -165,7 +165,7 @@ class Greeter:
         assert stats["functions"] >= 1
 
     def test_load_directory(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         (tmp_path / "module_a.py").write_text("""
 def func_a():
@@ -189,7 +189,7 @@ class ClassB(ClassA):
         assert stats["classes"] == 2
 
     def test_skips_test_files_by_default(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         (tmp_path / "main.py").write_text("def main(): pass")
         (tmp_path / "test_main.py").write_text("def test_main(): pass")
@@ -200,7 +200,7 @@ class ClassB(ClassA):
         assert stats["files"] == 1
 
     def test_include_tests_option(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         (tmp_path / "main.py").write_text("def main(): pass")
         (tmp_path / "test_main.py").write_text("def test_main(): pass")
@@ -211,7 +211,7 @@ class ClassB(ClassA):
         assert stats["files"] == 2
 
     def test_get_class(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         test_file = tmp_path / "models.py"
         test_file.write_text("""
@@ -230,7 +230,7 @@ class Employee(Person):
         assert person.type == "Class"
 
     def test_find_by_name(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         test_file = tmp_path / "utils.py"
         test_file.write_text("""
@@ -251,7 +251,7 @@ def other_func():
         assert len(matches) == 2
 
     def test_stats(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         test_file = tmp_path / "app.py"
         test_file.write_text("""
@@ -274,7 +274,7 @@ def main():
         assert stats["loaded_files"] == 1
 
     def test_clear(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         test_file = tmp_path / "app.py"
         test_file.write_text("class App: pass")
@@ -290,7 +290,7 @@ def main():
         assert analyzer.stats()["loaded_files"] == 0
 
     def test_kg_property(self):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         analyzer = CodebaseAnalyzer()
 
@@ -298,7 +298,7 @@ def main():
         assert isinstance(analyzer.kg, KnowledgeGraph)
 
     def test_inheritance_detection(self, tmp_path):
-        from agenticflow.capabilities import CodebaseAnalyzer
+        from cogent.capabilities import CodebaseAnalyzer
 
         test_file = tmp_path / "models.py"
         test_file.write_text("""

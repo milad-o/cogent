@@ -8,12 +8,12 @@ This file demonstrates that IDE autocomplete now works for:
 4. All configuration objects (ReasoningConfig, SpawningConfig, Observer, etc.)
 """
 
-from agenticflow import Agent
-from agenticflow.agent.reasoning import ReasoningConfig
-from agenticflow.agent.spawning import SpawningConfig
-from agenticflow.models import ChatModel
-from agenticflow.observability import Observer
-from agenticflow.tools import tool
+from cogent import Agent
+from cogent.agent.reasoning import ReasoningConfig
+from cogent.agent.spawning import SpawningConfig
+from cogent.models import ChatModel
+from cogent.observability import Observer
+from cogent.tools import tool
 
 
 @tool

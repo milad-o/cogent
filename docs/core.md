@@ -1,6 +1,6 @@
 # Core Module
 
-The `agenticflow.core` module provides foundational types, enums, utilities, and dependency injection used throughout the framework.
+The `cogent.core` module provides foundational types, enums, utilities, and dependency injection used throughout the framework.
 
 ## Overview
 
@@ -12,7 +12,7 @@ The core module defines:
 - **Reactive utilities** for event-driven systems (idempotency, retries, delays)
 
 ```python
-from agenticflow.core import (
+from cogent.core import (
     # Enums
     TaskStatus,
     AgentStatus,
@@ -41,7 +41,7 @@ from agenticflow.core import (
 Task lifecycle states:
 
 ```python
-from agenticflow.core import TaskStatus
+from cogent.core import TaskStatus
 
 status = TaskStatus.RUNNING
 
@@ -68,7 +68,7 @@ status.is_active()    # RUNNING, SPAWNING
 Agent lifecycle states:
 
 ```python
-from agenticflow.core import AgentStatus
+from cogent.core import AgentStatus
 
 status = AgentStatus.THINKING
 
@@ -93,7 +93,7 @@ status.is_working()    # Currently working (THINKING, ACTING)
 System events for observability and coordination:
 
 ```python
-from agenticflow.core import EventType
+from cogent.core import EventType
 
 event = EventType.TASK_COMPLETED
 event.category  # "task"
@@ -120,7 +120,7 @@ event.category  # "task"
 Task priority levels (comparable):
 
 ```python
-from agenticflow.core import Priority
+from cogent.core import Priority
 
 # Priorities are comparable
 Priority.HIGH > Priority.NORMAL  # True
@@ -141,7 +141,7 @@ Priority.LOW < Priority.CRITICAL  # True
 Agent roles define capabilities:
 
 ```python
-from agenticflow.core import AgentRole
+from cogent.core import AgentRole
 
 role = AgentRole.SUPERVISOR
 role.can_finish     # True
@@ -165,7 +165,7 @@ Native message types compatible with OpenAI/Anthropic/etc. APIs:
 ### SystemMessage
 
 ```python
-from agenticflow.core.messages import SystemMessage
+from cogent.core.messages import SystemMessage
 
 msg = SystemMessage("You are a helpful assistant.")
 msg.to_dict()  # {"role": "system", "content": "..."}
@@ -174,7 +174,7 @@ msg.to_dict()  # {"role": "system", "content": "..."}
 ### HumanMessage
 
 ```python
-from agenticflow.core.messages import HumanMessage
+from cogent.core.messages import HumanMessage
 
 msg = HumanMessage("Hello, how are you?")
 msg.to_dict()  # {"role": "user", "content": "..."}
@@ -183,7 +183,7 @@ msg.to_dict()  # {"role": "user", "content": "..."}
 ### AIMessage
 
 ```python
-from agenticflow.core.messages import AIMessage
+from cogent.core.messages import AIMessage
 
 # Text response
 msg = AIMessage(content="I'm doing well!")
@@ -201,7 +201,7 @@ msg.to_dict()  # Includes properly formatted tool_calls
 ### ToolMessage
 
 ```python
-from agenticflow.core.messages import ToolMessage
+from cogent.core.messages import ToolMessage
 
 msg = ToolMessage(
     content='{"temperature": 72}',
@@ -212,7 +212,7 @@ msg = ToolMessage(
 ### Helper Functions
 
 ```python
-from agenticflow.core.messages import (
+from cogent.core.messages import (
     messages_to_dict,
     parse_openai_response,
 )
@@ -235,8 +235,8 @@ Base class for invocation-scoped context that provides dependency injection for 
 
 ```python
 from dataclasses import dataclass
-from agenticflow import Agent, tool
-from agenticflow.core import RunContext
+from cogent import Agent, tool
+from cogent.core import RunContext
 
 @dataclass
 class AppContext(RunContext):
@@ -280,7 +280,7 @@ Event-driven utilities for building robust reactive systems.
 In-memory idempotency guard to ensure side-effects execute only once per key:
 
 ```python
-from agenticflow.core import IdempotencyGuard
+from cogent.core import IdempotencyGuard
 
 guard = IdempotencyGuard()
 
@@ -303,7 +303,7 @@ async def process_event(event_id: str, data: dict):
 Bounded retry tracker for exponential backoff and retry policies:
 
 ```python
-from agenticflow.core import RetryBudget
+from cogent.core import RetryBudget
 
 budget = RetryBudget.in_memory(max_attempts=3)
 
@@ -329,7 +329,7 @@ async def handle_with_retries(task_id: str):
 Schedule delayed event emission:
 
 ```python
-from agenticflow.core import emit_later
+from cogent.core import emit_later
 
 # In a Flow
 async def handle_timeout(event, ctx):
@@ -349,7 +349,7 @@ async def handle_timeout(event, ctx):
 Calculate exponential backoff with jitter:
 
 ```python
-from agenticflow.core import jittered_delay
+from cogent.core import jittered_delay
 import random
 
 attempt = 2
@@ -371,7 +371,7 @@ await asyncio.sleep(delay)
 Performance timing helper:
 
 ```python
-from agenticflow.core import Stopwatch
+from cogent.core import Stopwatch
 
 stopwatch = Stopwatch()
 
@@ -390,7 +390,7 @@ print(f"Work completed in {elapsed:.2f}s")
 Generate unique identifiers:
 
 ```python
-from agenticflow.core import generate_id
+from cogent.core import generate_id
 
 task_id = generate_id()  # "task_a1b2c3d4"
 agent_id = generate_id(prefix="agent")  # "agent_e5f6g7h8"
@@ -399,7 +399,7 @@ agent_id = generate_id(prefix="agent")  # "agent_e5f6g7h8"
 ### Timestamps
 
 ```python
-from agenticflow.core import now_utc, now_local, to_local, format_timestamp
+from cogent.core import now_utc, now_local, to_local, format_timestamp
 
 # Get current time
 utc_now = now_utc()      # datetime in UTC
@@ -423,8 +423,8 @@ formatted = format_timestamp(utc_now)  # "2024-12-04 10:30:45 UTC"
 Generic container for agent responses with full metadata:
 
 ```python
-from agenticflow import Agent
-from agenticflow.core.response import Response
+from cogent import Agent
+from cogent.core.response import Response
 
 agent = Agent(name="analyst", model=model)
 
@@ -463,7 +463,7 @@ except ResponseError as e:
 Token consumption tracking:
 
 ```python
-from agenticflow.core.response import TokenUsage
+from cogent.core.response import TokenUsage
 
 tokens = response.metadata.tokens
 print(f"Prompt: {tokens.prompt_tokens}")
@@ -476,7 +476,7 @@ print(f"Total: {tokens.total_tokens}")
 Tool invocation tracking with timing:
 
 ```python
-from agenticflow.core.response import ToolCall
+from cogent.core.response import ToolCall
 
 for call in response.tool_calls:
     print(f"Tool: {call.tool_name}")
@@ -491,7 +491,7 @@ for call in response.tool_calls:
 Consistent metadata across all responses:
 
 ```python
-from agenticflow.core.response import ResponseMetadata
+from cogent.core.response import ResponseMetadata
 
 metadata = response.metadata
 # agent: Agent that generated response
@@ -508,7 +508,7 @@ metadata = response.metadata
 Structured error information:
 
 ```python
-from agenticflow.core.response import ErrorInfo
+from cogent.core.response import ErrorInfo
 
 if not response.success:
     error = response.error
@@ -538,7 +538,7 @@ data = response.to_dict()
 #### Event Conversion
 
 ```python
-from agenticflow.events import Event
+from cogent.events import Event
 
 # Convert response to event for flow orchestration
 event = Event.from_response(
@@ -555,7 +555,7 @@ assert event.metadata["tokens"]["total"] == response.metadata.tokens.total_token
 #### A2A Integration
 
 ```python
-from agenticflow.flow.a2a import AgentResponse
+from cogent.flow.a2a import AgentResponse
 
 # Create A2A response from agent Response
 a2a_response = AgentResponse.from_response(
@@ -597,7 +597,7 @@ core_response = a2a_response.unwrap()
 ## Exports
 
 ```python
-from agenticflow.core import (
+from cogent.core import (
     # Enums
     TaskStatus,
     AgentStatus,
@@ -621,7 +621,7 @@ from agenticflow.core import (
     Stopwatch,
 )
 
-from agenticflow.core.messages import (
+from cogent.core.messages import (
     BaseMessage,
     SystemMessage,
     HumanMessage,
@@ -631,7 +631,7 @@ from agenticflow.core.messages import (
     parse_openai_response,
 )
 
-from agenticflow.core.response import (
+from cogent.core.response import (
     Response,
     ResponseMetadata,
     TokenUsage,

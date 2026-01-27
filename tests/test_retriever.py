@@ -8,12 +8,12 @@ from pathlib import Path
 import pytest
 
 # Test both import paths - new document module and backward-compatible retriever imports
-from agenticflow.documents import (
+from cogent.documents import (
     Document,
     DocumentLoader,
     load_documents,
 )
-from agenticflow.documents.splitters import (
+from cogent.documents.splitters import (
     CharacterSplitter,
     CodeSplitter,
     MarkdownSplitter,
@@ -21,18 +21,18 @@ from agenticflow.documents.splitters import (
     SentenceSplitter,
     split_text,
 )
-from agenticflow.models import MockEmbedding
-from agenticflow.retriever.base import (
+from cogent.models import MockEmbedding
+from cogent.retriever.base import (
     BaseRetriever,
     FusionStrategy,
     RetrievalResult,
 )
-from agenticflow.retriever.utils.fusion import (
+from cogent.retriever.utils.fusion import (
     deduplicate_results,
     fuse_results,
     normalize_scores,
 )
-from agenticflow.vectorstore import Document as VectorStoreDocument
+from cogent.vectorstore import Document as VectorStoreDocument
 
 # ============================================================================
 # Test Fixtures
@@ -599,11 +599,11 @@ class TestBaseRetriever:
     @pytest.mark.asyncio
     async def test_multi_representation_as_tool(self) -> None:
         """Test MultiRepresentationIndex.as_tool() with custom parameters."""
-        from agenticflow.models import MockChatModel
-        from agenticflow.retriever.multi_representation import (
+        from cogent.models import MockChatModel
+        from cogent.retriever.multi_representation import (
             MultiRepresentationIndex,
         )
-        from agenticflow.vectorstore import VectorStore
+        from cogent.vectorstore import VectorStore
 
         model = MockChatModel()
         vs = VectorStore(embeddings=MockEmbedding())
@@ -646,8 +646,8 @@ class TestBaseRetriever:
     async def test_time_based_index_as_tool(self) -> None:
         """Test TimeBasedIndex.as_tool() with time-aware parameters."""
 
-        from agenticflow.retriever.temporal import TimeBasedIndex
-        from agenticflow.vectorstore import VectorStore
+        from cogent.retriever.temporal import TimeBasedIndex
+        from cogent.vectorstore import VectorStore
 
         vs = VectorStore(embeddings=MockEmbedding())
         index = TimeBasedIndex(vectorstore=vs)
@@ -893,8 +893,8 @@ class TestDenseRetriever:
     @pytest.fixture
     def mock_vectorstore(self, sample_documents: list[Document]):
         """Create a mock vector store."""
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(
             embeddings=MockEmbedding(dimensions=64),
@@ -909,7 +909,7 @@ class TestDenseRetriever:
         sample_documents: list[Document],
     ) -> None:
         """Test basic dense retrieval."""
-        from agenticflow.retriever.dense import DenseRetriever
+        from cogent.retriever.dense import DenseRetriever
 
         # Add documents
         await mock_vectorstore.add_documents(sample_documents)
@@ -928,7 +928,7 @@ class TestDenseRetriever:
         sample_documents: list[VectorStoreDocument],
     ) -> None:
         """Test dense retrieval with scores."""
-        from agenticflow.retriever.dense import DenseRetriever
+        from cogent.retriever.dense import DenseRetriever
 
         await mock_vectorstore.add_documents(sample_documents)
         retriever = DenseRetriever(mock_vectorstore)
@@ -952,7 +952,7 @@ class TestBM25Retriever:
     async def test_bm25_basic(self, sample_documents: list[Document]) -> None:
         """Test basic BM25 retrieval."""
         pytest.importorskip("rank_bm25")
-        from agenticflow.retriever.sparse import BM25Retriever
+        from cogent.retriever.sparse import BM25Retriever
 
         retriever = BM25Retriever()
         await retriever.index_documents(sample_documents)
@@ -968,7 +968,7 @@ class TestBM25Retriever:
     async def test_bm25_with_scores(self, sample_documents: list[Document]) -> None:
         """Test BM25 with scores."""
         pytest.importorskip("rank_bm25")
-        from agenticflow.retriever.sparse import BM25Retriever
+        from cogent.retriever.sparse import BM25Retriever
 
         retriever = BM25Retriever()
         await retriever.index_documents(sample_documents)
@@ -983,7 +983,7 @@ class TestBM25Retriever:
     async def test_bm25_tokenizer(self, sample_documents: list[Document]) -> None:
         """Test BM25 with basic retrieval."""
         pytest.importorskip("rank_bm25")
-        from agenticflow.retriever.sparse import BM25Retriever
+        from cogent.retriever.sparse import BM25Retriever
 
         # Test with default settings
         retriever = BM25Retriever()
@@ -998,7 +998,7 @@ class TestBM25Retriever:
     @pytest.mark.asyncio
     async def test_bm25_with_keywords(self, sample_documents: list[Document]) -> None:
         """Test BM25 with explicit keywords instead of query."""
-        from agenticflow.retriever.sparse import BM25Retriever
+        from cogent.retriever.sparse import BM25Retriever
 
         retriever = BM25Retriever()
         await retriever.index_documents(sample_documents)
@@ -1013,7 +1013,7 @@ class TestBM25Retriever:
     @pytest.mark.asyncio
     async def test_bm25_as_tool_with_keywords(self, sample_documents: list[Document]) -> None:
         """Test BM25 as_tool() exposes keywords parameter."""
-        from agenticflow.retriever.sparse import BM25Retriever
+        from cogent.retriever.sparse import BM25Retriever
 
         retriever = BM25Retriever()
         await retriever.index_documents(sample_documents)
@@ -1049,10 +1049,10 @@ class TestHybridRetriever:
     @pytest.mark.asyncio
     async def test_hybrid_basic(self, sample_documents: list[Document]) -> None:
         """Test basic hybrid retrieval with metadata fields."""
-        from agenticflow.retriever.dense import DenseRetriever
-        from agenticflow.retriever.hybrid import HybridRetriever, MetadataMatchMode
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.dense import DenseRetriever
+        from cogent.retriever.hybrid import HybridRetriever, MetadataMatchMode
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         # Add metadata to documents
         docs_with_meta = [
@@ -1082,10 +1082,10 @@ class TestHybridRetriever:
     @pytest.mark.asyncio
     async def test_hybrid_weights(self, sample_documents: list[Document]) -> None:
         """Test hybrid with different weight configurations."""
-        from agenticflow.retriever.dense import DenseRetriever
-        from agenticflow.retriever.hybrid import HybridRetriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.dense import DenseRetriever
+        from cogent.retriever.hybrid import HybridRetriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         docs_with_meta = [
             Document(text="Python is great", metadata={"category": "python"}),
@@ -1132,11 +1132,11 @@ class TestEnsembleRetriever:
     async def test_ensemble_basic(self, sample_documents: list[Document]) -> None:
         """Test basic ensemble retrieval."""
         pytest.importorskip("rank_bm25")
-        from agenticflow.retriever.dense import DenseRetriever
-        from agenticflow.retriever.ensemble import EnsembleRetriever
-        from agenticflow.retriever.sparse import BM25Retriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.dense import DenseRetriever
+        from cogent.retriever.ensemble import EnsembleRetriever
+        from cogent.retriever.sparse import BM25Retriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
@@ -1157,11 +1157,11 @@ class TestEnsembleRetriever:
     async def test_ensemble_fusion_strategies(self, sample_documents: list[Document]) -> None:
         """Test ensemble with different fusion strategies."""
         pytest.importorskip("rank_bm25")
-        from agenticflow.retriever.dense import DenseRetriever
-        from agenticflow.retriever.ensemble import EnsembleRetriever
-        from agenticflow.retriever.sparse import BM25Retriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.dense import DenseRetriever
+        from cogent.retriever.ensemble import EnsembleRetriever
+        from cogent.retriever.sparse import BM25Retriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
@@ -1199,9 +1199,9 @@ class TestParentDocumentRetriever:
     @pytest.mark.asyncio
     async def test_parent_retriever_basic(self) -> None:
         """Test basic parent document retrieval."""
-        from agenticflow.retriever.contextual import ParentDocumentRetriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.contextual import ParentDocumentRetriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
 
@@ -1229,9 +1229,9 @@ class TestParentDocumentRetriever:
     @pytest.mark.asyncio
     async def test_parent_retriever_with_scores(self) -> None:
         """Test parent retrieval with scores."""
-        from agenticflow.retriever.contextual import ParentDocumentRetriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.contextual import ParentDocumentRetriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
 
@@ -1255,9 +1255,9 @@ class TestSentenceWindowRetriever:
     @pytest.mark.asyncio
     async def test_sentence_window_basic(self) -> None:
         """Test basic sentence window retrieval."""
-        from agenticflow.retriever.contextual import SentenceWindowRetriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.contextual import SentenceWindowRetriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
 
@@ -1300,9 +1300,9 @@ class TestSelfQueryRetriever:
     @pytest.mark.asyncio
     async def test_self_query_basic(self, mock_llm, sample_documents: list[Document]) -> None:
         """Test basic self-query retrieval."""
-        from agenticflow.retriever.self_query import AttributeInfo, SelfQueryRetriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.self_query import AttributeInfo, SelfQueryRetriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
@@ -1323,9 +1323,9 @@ class TestSelfQueryRetriever:
     @pytest.mark.asyncio
     async def test_self_query_verbose(self, mock_llm, sample_documents: list[Document]) -> None:
         """Test self-query with verbose output."""
-        from agenticflow.retriever.self_query import AttributeInfo, SelfQueryRetriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever.self_query import AttributeInfo, SelfQueryRetriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
@@ -1356,7 +1356,7 @@ class TestCrossEncoderReranker:
     async def test_cross_encoder_basic(self, sample_documents: list[Document]) -> None:
         """Test basic cross-encoder reranking."""
         pytest.importorskip("sentence_transformers")
-        from agenticflow.retriever.rerankers import CrossEncoderReranker
+        from cogent.retriever.rerankers import CrossEncoderReranker
 
         reranker = CrossEncoderReranker(
             model="cross-encoder/ms-marco-MiniLM-L-6-v2",
@@ -1400,7 +1400,7 @@ class TestLLMReranker:
         sample_documents: list[Document],
     ) -> None:
         """Test basic LLM reranking."""
-        from agenticflow.retriever.rerankers import LLMReranker
+        from cogent.retriever.rerankers import LLMReranker
 
         reranker = LLMReranker(model=mock_model, max_concurrent=2)
 
@@ -1417,7 +1417,7 @@ class TestLLMReranker:
     @pytest.mark.asyncio
     async def test_listwise_reranker(self, sample_documents: list[Document]) -> None:
         """Test listwise LLM reranking."""
-        from agenticflow.retriever.rerankers import ListwiseLLMReranker
+        from cogent.retriever.rerankers import ListwiseLLMReranker
 
         class MockModel:
             model = "mock"
@@ -1449,7 +1449,7 @@ class TestModuleExports:
 
     def test_main_exports(self) -> None:
         """Test that main retriever module exports all components."""
-        from agenticflow import retriever
+        from cogent import retriever
 
         # Core
         assert hasattr(retriever, "Retriever")
@@ -1479,7 +1479,7 @@ class TestModuleExports:
 
     def test_rerankers_submodule(self) -> None:
         """Test rerankers submodule exports."""
-        from agenticflow.retriever import rerankers
+        from cogent.retriever import rerankers
 
         assert hasattr(rerankers, "Reranker")
         assert hasattr(rerankers, "BaseReranker")
@@ -1500,7 +1500,7 @@ class TestHyDERetriever:
     @pytest.fixture
     def mock_model(self):
         """Create a mock chat model for hypothesis generation."""
-        from agenticflow.models.mock import MockChatModel
+        from cogent.models.mock import MockChatModel
         return MockChatModel(responses=[
             "Python is a versatile programming language used for web development, "
             "data science, machine learning, and automation. It features clean syntax "
@@ -1510,9 +1510,9 @@ class TestHyDERetriever:
     @pytest.fixture
     async def base_retriever(self, sample_documents: list[Document]):
         """Create a base dense retriever."""
-        from agenticflow.retriever import DenseRetriever
-        from agenticflow.vectorstore import VectorStore
-        from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+        from cogent.retriever import DenseRetriever
+        from cogent.vectorstore import VectorStore
+        from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
         vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
         await vs.add_documents(sample_documents)
@@ -1521,7 +1521,7 @@ class TestHyDERetriever:
     @pytest.mark.asyncio
     async def test_hyde_basic_retrieval(self, mock_model, base_retriever) -> None:
         """Test basic HyDE retrieval."""
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.retriever.hyde import HyDERetriever
 
         hyde = HyDERetriever(base_retriever, mock_model)
 
@@ -1535,7 +1535,7 @@ class TestHyDERetriever:
     @pytest.mark.asyncio
     async def test_hyde_with_scores(self, mock_model, base_retriever) -> None:
         """Test HyDE retrieval with scores."""
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.retriever.hyde import HyDERetriever
 
         hyde = HyDERetriever(base_retriever, mock_model)
 
@@ -1550,7 +1550,7 @@ class TestHyDERetriever:
     @pytest.mark.asyncio
     async def test_hyde_generate_hypothetical(self, mock_model, base_retriever) -> None:
         """Test hypothetical document generation."""
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.retriever.hyde import HyDERetriever
 
         hyde = HyDERetriever(base_retriever, mock_model)
 
@@ -1564,7 +1564,7 @@ class TestHyDERetriever:
     @pytest.mark.asyncio
     async def test_hyde_custom_prompt(self, mock_model, base_retriever) -> None:
         """Test HyDE with custom prompt template."""
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.retriever.hyde import HyDERetriever
 
         custom_prompt = "Write a technical explanation for: {query}"
 
@@ -1581,8 +1581,8 @@ class TestHyDERetriever:
     @pytest.mark.asyncio
     async def test_hyde_multiple_hypotheticals(self, base_retriever) -> None:
         """Test HyDE with multiple hypothetical documents."""
-        from agenticflow.models.mock import MockChatModel
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.models.mock import MockChatModel
+        from cogent.retriever.hyde import HyDERetriever
 
         # Model that returns different responses
         model = MockChatModel(responses=[
@@ -1605,7 +1605,7 @@ class TestHyDERetriever:
     @pytest.mark.asyncio
     async def test_hyde_include_original_query(self, mock_model, base_retriever) -> None:
         """Test HyDE with original query included in search."""
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.retriever.hyde import HyDERetriever
 
         hyde = HyDERetriever(
             base_retriever,
@@ -1620,7 +1620,7 @@ class TestHyDERetriever:
     @pytest.mark.asyncio
     async def test_hyde_custom_name(self, mock_model, base_retriever) -> None:
         """Test HyDE with custom name."""
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.retriever.hyde import HyDERetriever
 
         hyde = HyDERetriever(
             base_retriever,
@@ -1636,7 +1636,7 @@ class TestHyDERetriever:
 
     def test_hyde_repr(self, mock_model, base_retriever) -> None:
         """Test HyDE string representation."""
-        from agenticflow.retriever.hyde import HyDERetriever
+        from cogent.retriever.hyde import HyDERetriever
 
         hyde = HyDERetriever(base_retriever, mock_model, n_hypotheticals=2)
 
@@ -1657,8 +1657,8 @@ class TestLLMAdapter:
     @pytest.mark.asyncio
     async def test_chat_model_adapter(self) -> None:
         """Test ChatModelAdapter wraps chat models correctly."""
-        from agenticflow.models import MockChatModel
-        from agenticflow.retriever.utils.llm_adapter import ChatModelAdapter
+        from cogent.models import MockChatModel
+        from cogent.retriever.utils.llm_adapter import ChatModelAdapter
 
         chat_model = MockChatModel()
         adapter = ChatModelAdapter(chat_model)
@@ -1671,8 +1671,8 @@ class TestLLMAdapter:
     @pytest.mark.asyncio
     async def test_adapt_llm_with_chat_model(self) -> None:
         """Test adapt_llm auto-wraps chat models."""
-        from agenticflow.models import MockChatModel
-        from agenticflow.retriever.utils.llm_adapter import LLMProtocol, adapt_llm
+        from cogent.models import MockChatModel
+        from cogent.retriever.utils.llm_adapter import LLMProtocol, adapt_llm
 
         chat_model = MockChatModel()
         adapted = adapt_llm(chat_model)
@@ -1687,7 +1687,7 @@ class TestLLMAdapter:
     @pytest.mark.asyncio
     async def test_adapt_llm_with_generate_model(self) -> None:
         """Test adapt_llm leaves models with .generate() as-is."""
-        from agenticflow.retriever.utils.llm_adapter import adapt_llm
+        from cogent.retriever.utils.llm_adapter import adapt_llm
 
         class MockGenerateModel:
             async def generate(self, prompt: str) -> str:
@@ -1704,7 +1704,7 @@ class TestLLMAdapter:
 
     def test_adapt_llm_invalid_model(self) -> None:
         """Test adapt_llm raises error for invalid models."""
-        from agenticflow.retriever.utils.llm_adapter import adapt_llm
+        from cogent.retriever.utils.llm_adapter import adapt_llm
 
         class InvalidModel:
             pass
@@ -1715,9 +1715,9 @@ class TestLLMAdapter:
     @pytest.mark.asyncio
     async def test_summary_index_auto_adapts_chat_model(self) -> None:
         """Test SummaryIndex automatically adapts chat models."""
-        from agenticflow.models import MockChatModel
-        from agenticflow.retriever import SummaryIndex
-        from agenticflow.vectorstore import Document, VectorStore
+        from cogent.models import MockChatModel
+        from cogent.retriever import SummaryIndex
+        from cogent.vectorstore import Document, VectorStore
 
         # Create index with chat model (no manual adapter needed)
         model = MockChatModel()

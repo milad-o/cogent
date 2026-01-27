@@ -10,7 +10,7 @@ Usage:
 
 import asyncio
 
-from agenticflow import Agent
+from cogent import Agent
 
 
 async def main():

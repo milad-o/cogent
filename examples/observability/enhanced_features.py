@@ -10,7 +10,7 @@ Demonstrates enhanced observability features:
 import asyncio
 from pathlib import Path
 
-from agenticflow import Agent, ObservabilityLevel, Observer
+from cogent import Agent, ObservabilityLevel, Observer
 
 
 async def demo_token_tracking():

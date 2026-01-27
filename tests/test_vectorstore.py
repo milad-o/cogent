@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from agenticflow.vectorstore import (
+from cogent.vectorstore import (
     Document,
     DocumentMetadata,
     MockEmbeddings,
@@ -23,7 +23,7 @@ from agenticflow.vectorstore import (
     split_documents,
     split_text,
 )
-from agenticflow.vectorstore.backends.inmemory import InMemoryBackend
+from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
 # ============================================================
 # Document Tests
@@ -351,7 +351,7 @@ class TestSimilarityMetrics:
     @pytest.mark.asyncio
     async def test_cosine_similarity(self) -> None:
         """Test cosine similarity metric (default)."""
-        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        from cogent.vectorstore.backends.inmemory import SimilarityMetric
 
         backend = InMemoryBackend(metric=SimilarityMetric.COSINE)
 
@@ -379,7 +379,7 @@ class TestSimilarityMetrics:
     @pytest.mark.asyncio
     async def test_euclidean_metric(self) -> None:
         """Test euclidean distance metric."""
-        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        from cogent.vectorstore.backends.inmemory import SimilarityMetric
 
         backend = InMemoryBackend(metric=SimilarityMetric.EUCLIDEAN)
 
@@ -404,7 +404,7 @@ class TestSimilarityMetrics:
     @pytest.mark.asyncio
     async def test_manhattan_metric(self) -> None:
         """Test manhattan distance metric."""
-        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        from cogent.vectorstore.backends.inmemory import SimilarityMetric
 
         backend = InMemoryBackend(metric=SimilarityMetric.MANHATTAN)
 
@@ -429,7 +429,7 @@ class TestSimilarityMetrics:
     @pytest.mark.asyncio
     async def test_dot_product_metric(self) -> None:
         """Test dot product metric."""
-        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        from cogent.vectorstore.backends.inmemory import SimilarityMetric
 
         # Disable normalization to see raw dot product differences
         backend = InMemoryBackend(metric=SimilarityMetric.DOT_PRODUCT, normalize=False)
@@ -458,7 +458,7 @@ class TestSimilarityMetrics:
         """Test creating backend with string metric."""
         backend = InMemoryBackend(metric="euclidean")
 
-        from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+        from cogent.vectorstore.backends.inmemory import SimilarityMetric
         assert backend.metric == SimilarityMetric.EUCLIDEAN
 
 
@@ -697,7 +697,7 @@ class TestVectorStoreWithMockEmbeddings:
     @pytest.mark.asyncio
     async def test_as_retriever(self) -> None:
         """Test converting VectorStore to DenseRetriever."""
-        from agenticflow.retriever.dense import DenseRetriever
+        from cogent.retriever.dense import DenseRetriever
 
         store = VectorStore.with_mock_embeddings()
         await store.add_texts([
@@ -721,7 +721,7 @@ class TestVectorStoreWithMockEmbeddings:
     @pytest.mark.asyncio
     async def test_as_retriever_with_params(self) -> None:
         """Test as_retriever with custom parameters."""
-        from agenticflow.retriever.dense import DenseRetriever
+        from cogent.retriever.dense import DenseRetriever
 
         store = VectorStore.with_mock_embeddings()
         await store.add_texts(["Test document"])

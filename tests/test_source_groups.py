@@ -2,9 +2,9 @@
 
 import pytest
 
-from agenticflow import Agent, Flow
-from agenticflow.events import Event
-from agenticflow.models import MockChatModel
+from cogent import Agent, Flow
+from cogent.events import Event
+from cogent.models import MockChatModel
 
 
 class TestSourceGroupsBasics:
@@ -274,14 +274,14 @@ class TestGroupEdgeCases:
 
     def test_from_source_raises_without_flow_parameter(self):
         """from_source with :group but no flow parameter raises ValueError."""
-        from agenticflow.events.patterns import from_source
+        from cogent.events.patterns import from_source
 
         with pytest.raises(ValueError, match="Flow instance required"):
             from_source(":analysts")
 
     def test_from_source_with_group_and_flow(self):
         """from_source with :group and flow parameter works."""
-        from agenticflow.events.patterns import from_source
+        from cogent.events.patterns import from_source
 
         flow = Flow()
         flow.add_source_group("team", ["alice", "bob"])

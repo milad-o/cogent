@@ -26,8 +26,8 @@ import asyncio
 import json
 from pathlib import Path
 
-from agenticflow.documents.loaders import PDFVisionLoader
-from agenticflow.documents.loaders.pdf import OutputFormat
+from cogent.documents.loaders import PDFVisionLoader
+from cogent.documents.loaders.pdf import OutputFormat
 
 
 def _print_doc_header(title: str) -> None:

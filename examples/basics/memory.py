@@ -28,8 +28,8 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from agenticflow import Agent
-from agenticflow.memory import Memory
+from cogent import Agent
+from cogent.memory import Memory
 
 
 async def demo_memory_discovery():
@@ -167,7 +167,7 @@ async def demo_persistent_memory():
     print("\n--- Persistent Memory (SQLite) ---")
 
     try:
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
     except ImportError:
         print("  ⚠ SQLAlchemy not installed. Run: uv add sqlalchemy aiosqlite")
         return

@@ -33,7 +33,7 @@ class TestSQLAlchemyStore:
     async def test_import_sqlalchemy_store(self):
         """Test SQLAlchemyStore can be imported."""
         pytest.importorskip("sqlalchemy")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         assert SQLAlchemyStore is not None
 
@@ -42,7 +42,7 @@ class TestSQLAlchemyStore:
         """Test basic set and get operations with SQLite."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -58,7 +58,7 @@ class TestSQLAlchemyStore:
         """Test get returns None for non-existent key."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -73,7 +73,7 @@ class TestSQLAlchemyStore:
         """Test delete operation."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -92,7 +92,7 @@ class TestSQLAlchemyStore:
         """Test listing keys."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -114,7 +114,7 @@ class TestSQLAlchemyStore:
         """Test clearing keys."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -141,7 +141,7 @@ class TestSQLAlchemyStore:
         """Test batch get."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -161,7 +161,7 @@ class TestSQLAlchemyStore:
         """Test batch set."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -179,7 +179,7 @@ class TestSQLAlchemyStore:
         """Test that set updates existing values."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -201,7 +201,7 @@ class TestSQLAlchemyStore:
         """Test storing complex JSON-serializable types."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -227,7 +227,7 @@ class TestRedisStore:
     async def test_import_redis_store(self):
         """Test RedisStore can be imported."""
         pytest.importorskip("redis")
-        from agenticflow.memory.stores import RedisStore
+        from cogent.memory.stores import RedisStore
 
         assert RedisStore is not None
 
@@ -235,7 +235,7 @@ class TestRedisStore:
     async def test_redis_connection_error_handling(self):
         """Test Redis handles connection errors gracefully."""
         pytest.importorskip("redis")
-        from agenticflow.memory.stores import RedisStore
+        from cogent.memory.stores import RedisStore
 
         # Invalid host should fail to connect
         store = RedisStore(url="redis://invalid-host:6379")
@@ -258,8 +258,8 @@ class TestMemoryWithStores:
         """Test Memory class with SQLAlchemy store."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory import Memory
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory import Memory
+        from cogent.memory.stores import SQLAlchemyStore
 
         store = SQLAlchemyStore(f"sqlite+aiosqlite:///{temp_db}")
         await store.initialize()
@@ -284,8 +284,8 @@ class TestMemoryWithStores:
         """Test that memory persists across instances."""
         pytest.importorskip("sqlalchemy")
         pytest.importorskip("aiosqlite")
-        from agenticflow.memory import Memory
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory import Memory
+        from cogent.memory.stores import SQLAlchemyStore
 
         db_url = f"sqlite+aiosqlite:///{temp_db}"
 
@@ -317,7 +317,7 @@ class TestFAISSBackend:
     async def test_import_faiss_backend(self):
         """Test FAISS backend can be imported."""
         pytest.importorskip("faiss")
-        from agenticflow.vectorstore.backends import FAISSBackend
+        from cogent.vectorstore.backends import FAISSBackend
 
         assert FAISSBackend is not None
 
@@ -325,8 +325,8 @@ class TestFAISSBackend:
     async def test_faiss_add_and_search(self):
         """Test adding and searching documents."""
         pytest.importorskip("faiss")
-        from agenticflow.vectorstore.backends import FAISSBackend
-        from agenticflow.vectorstore.document import Document
+        from cogent.vectorstore.backends import FAISSBackend
+        from cogent.vectorstore.document import Document
 
         backend = FAISSBackend(dimension=4)
 
@@ -354,8 +354,8 @@ class TestFAISSBackend:
     async def test_faiss_delete(self):
         """Test deleting documents."""
         pytest.importorskip("faiss")
-        from agenticflow.vectorstore.backends import FAISSBackend
-        from agenticflow.vectorstore.document import Document, DocumentMetadata
+        from cogent.vectorstore.backends import FAISSBackend
+        from cogent.vectorstore.document import Document, DocumentMetadata
 
         backend = FAISSBackend(dimension=4)
 
@@ -376,8 +376,8 @@ class TestFAISSBackend:
     async def test_faiss_with_filter(self):
         """Test search with metadata filter."""
         pytest.importorskip("faiss")
-        from agenticflow.vectorstore.backends import FAISSBackend
-        from agenticflow.vectorstore.document import Document, DocumentMetadata
+        from cogent.vectorstore.backends import FAISSBackend
+        from cogent.vectorstore.document import Document, DocumentMetadata
 
         backend = FAISSBackend(dimension=4)
 
@@ -420,7 +420,7 @@ class TestChromaBackend:
     async def test_import_chroma_backend(self):
         """Test Chroma backend can be imported."""
         pytest.importorskip("chromadb")
-        from agenticflow.vectorstore.backends import ChromaBackend
+        from cogent.vectorstore.backends import ChromaBackend
 
         assert ChromaBackend is not None
 
@@ -428,8 +428,8 @@ class TestChromaBackend:
     async def test_chroma_add_and_search(self, temp_dir):
         """Test adding and searching documents."""
         pytest.importorskip("chromadb")
-        from agenticflow.vectorstore.backends import ChromaBackend
-        from agenticflow.vectorstore.document import Document, DocumentMetadata
+        from cogent.vectorstore.backends import ChromaBackend
+        from cogent.vectorstore.document import Document, DocumentMetadata
 
         backend = ChromaBackend(
             collection_name="test_collection",
@@ -453,8 +453,8 @@ class TestChromaBackend:
     async def test_chroma_delete(self, temp_dir):
         """Test deleting documents."""
         pytest.importorskip("chromadb")
-        from agenticflow.vectorstore.backends import ChromaBackend
-        from agenticflow.vectorstore.document import Document, DocumentMetadata
+        from cogent.vectorstore.backends import ChromaBackend
+        from cogent.vectorstore.document import Document, DocumentMetadata
 
         backend = ChromaBackend(
             collection_name="test_delete",
@@ -478,8 +478,8 @@ class TestChromaBackend:
     async def test_chroma_get(self, temp_dir):
         """Test getting document by ID."""
         pytest.importorskip("chromadb")
-        from agenticflow.vectorstore.backends import ChromaBackend
-        from agenticflow.vectorstore.document import Document, DocumentMetadata
+        from cogent.vectorstore.backends import ChromaBackend
+        from cogent.vectorstore.document import Document, DocumentMetadata
 
         backend = ChromaBackend(
             collection_name="test_get",
@@ -506,7 +506,7 @@ class TestQdrantBackend:
     async def test_import_qdrant_backend(self):
         """Test Qdrant backend can be imported."""
         pytest.importorskip("qdrant_client")
-        from agenticflow.vectorstore.backends import QdrantBackend
+        from cogent.vectorstore.backends import QdrantBackend
 
         assert QdrantBackend is not None
 
@@ -514,8 +514,8 @@ class TestQdrantBackend:
     async def test_qdrant_inmemory_operations(self):
         """Test Qdrant with in-memory storage."""
         pytest.importorskip("qdrant_client")
-        from agenticflow.vectorstore.backends import QdrantBackend
-        from agenticflow.vectorstore.document import Document
+        from cogent.vectorstore.backends import QdrantBackend
+        from cogent.vectorstore.document import Document
 
         # Use in-memory mode (no url or path)
         backend = QdrantBackend(
@@ -540,8 +540,8 @@ class TestQdrantBackend:
     async def test_qdrant_with_filter(self):
         """Test Qdrant search with filter."""
         pytest.importorskip("qdrant_client")
-        from agenticflow.vectorstore.backends import QdrantBackend
-        from agenticflow.vectorstore.document import Document
+        from cogent.vectorstore.backends import QdrantBackend
+        from cogent.vectorstore.document import Document
 
         backend = QdrantBackend(
             collection_name="test_filter",
@@ -581,7 +581,7 @@ class TestPgVectorBackend:
     async def test_import_pgvector_backend(self):
         """Test pgvector backend can be imported."""
         pytest.importorskip("psycopg")
-        from agenticflow.vectorstore.backends import PgVectorBackend
+        from cogent.vectorstore.backends import PgVectorBackend
 
         assert PgVectorBackend is not None
 
@@ -589,7 +589,7 @@ class TestPgVectorBackend:
     async def test_pgvector_missing_dependency(self):
         """Test helpful error when psycopg is missing."""
         # This test just verifies the import logic
-        from agenticflow.vectorstore.backends.pgvector import PgVectorBackend
+        from cogent.vectorstore.backends.pgvector import PgVectorBackend
 
         # If psycopg is installed, the class should be available
         assert PgVectorBackend is not None
@@ -605,7 +605,7 @@ class TestLazyImports:
 
     def test_vectorstore_backends_module_exports(self):
         """Test vectorstore backends module exports correct names."""
-        from agenticflow.vectorstore import backends
+        from cogent.vectorstore import backends
 
         assert "InMemoryBackend" in backends.__all__
         assert "FAISSBackend" in backends.__all__
@@ -615,13 +615,13 @@ class TestLazyImports:
 
     def test_inmemory_always_available(self):
         """Test InMemoryBackend is always available."""
-        from agenticflow.vectorstore.backends import InMemoryBackend
+        from cogent.vectorstore.backends import InMemoryBackend
 
         assert InMemoryBackend is not None
 
     def test_memory_stores_available(self):
         """Test memory stores can be imported."""
-        from agenticflow.memory import InMemoryStore, Memory
+        from cogent.memory import InMemoryStore, Memory
 
         assert InMemoryStore is not None
         assert Memory is not None
@@ -629,14 +629,14 @@ class TestLazyImports:
     def test_memory_sqlalchemy_store_import(self):
         """Test SQLAlchemyStore import with optional dep."""
         pytest.importorskip("sqlalchemy")
-        from agenticflow.memory.stores import SQLAlchemyStore
+        from cogent.memory.stores import SQLAlchemyStore
 
         assert SQLAlchemyStore is not None
 
     def test_memory_redis_store_import(self):
         """Test RedisStore import with optional dep."""
         pytest.importorskip("redis")
-        from agenticflow.memory.stores import RedisStore
+        from cogent.memory.stores import RedisStore
 
         assert RedisStore is not None
 
@@ -652,8 +652,8 @@ class TestVectorStoreIntegration:
     @pytest.mark.asyncio
     async def test_vectorstore_with_inmemory(self):
         """Test VectorStore with default InMemory backend."""
-        from agenticflow.vectorstore import MockEmbeddings, VectorStore
-        from agenticflow.vectorstore.backends import InMemoryBackend
+        from cogent.vectorstore import MockEmbeddings, VectorStore
+        from cogent.vectorstore.backends import InMemoryBackend
 
         store = VectorStore(
             embeddings=MockEmbeddings(),
@@ -670,8 +670,8 @@ class TestVectorStoreIntegration:
     async def test_vectorstore_with_faiss(self):
         """Test VectorStore with FAISS backend."""
         pytest.importorskip("faiss")
-        from agenticflow.vectorstore import MockEmbeddings, VectorStore
-        from agenticflow.vectorstore.backends import FAISSBackend
+        from cogent.vectorstore import MockEmbeddings, VectorStore
+        from cogent.vectorstore.backends import FAISSBackend
 
         embeddings = MockEmbeddings()
         backend = FAISSBackend(dimension=embeddings.dimension)
@@ -687,8 +687,8 @@ class TestVectorStoreIntegration:
     async def test_vectorstore_with_chroma(self):
         """Test VectorStore with Chroma backend."""
         pytest.importorskip("chromadb")
-        from agenticflow.vectorstore import MockEmbeddings, VectorStore
-        from agenticflow.vectorstore.backends import ChromaBackend
+        from cogent.vectorstore import MockEmbeddings, VectorStore
+        from cogent.vectorstore.backends import ChromaBackend
 
         with tempfile.TemporaryDirectory() as temp_dir:
             embeddings = MockEmbeddings()

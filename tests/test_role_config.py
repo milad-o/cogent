@@ -2,7 +2,7 @@
 
 import pytest
 
-from agenticflow import (
+from cogent import (
     Agent,
     AutonomousRole,
     CustomRole,
@@ -10,8 +10,8 @@ from agenticflow import (
     SupervisorRole,
     WorkerRole,
 )
-from agenticflow.core.enums import AgentRole
-from agenticflow.models.openai import OpenAIChat
+from cogent.core.enums import AgentRole
+from cogent.models.openai import OpenAIChat
 
 
 class TestRoleConfigClasses:

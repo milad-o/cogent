@@ -6,7 +6,7 @@ from typing import Literal
 
 import pytest
 
-from agenticflow.agent.output import (
+from cogent.agent.output import (
     OutputMethod,
     OutputValidationError,
     ResponseSchema,

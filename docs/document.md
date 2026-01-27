@@ -1,6 +1,6 @@
 # Document Module
 
-The `agenticflow.documents` module provides comprehensive document loading, text splitting, and summarization capabilities for RAG (Retrieval Augmented Generation) systems.
+The `cogent.documents` module provides comprehensive document loading, text splitting, and summarization capabilities for RAG (Retrieval Augmented Generation) systems.
 
 ## Overview
 
@@ -11,7 +11,7 @@ The document module includes:
 - **Summarizers**: Handle documents exceeding LLM context limits
 
 ```python
-from agenticflow.documents import (
+from cogent.documents import (
     Document,
     DocumentMetadata,
     DocumentLoader,
@@ -39,10 +39,10 @@ chunks = splitter.split_documents(docs)
 
 ### Document
 
-Core document type used throughout agenticflow:
+Core document type used throughout cogent:
 
 ```python
-from agenticflow.documents import Document, DocumentMetadata
+from cogent.documents import Document, DocumentMetadata
 
 # Create with structured metadata
 doc = Document(
@@ -168,7 +168,7 @@ print(doc.metadata.custom["custom_field"])  # "value"
 The main loader class that auto-detects file types:
 
 ```python
-from agenticflow.documents.loaders import DocumentLoader
+from cogent.documents.loaders import DocumentLoader
 
 loader = DocumentLoader()
 
@@ -201,7 +201,7 @@ docs = await loader.load("data.csv", encoding="utf-8")
 High-performance PDF loader optimized for LLM/RAG with parallel processing:
 
 ```python
-from agenticflow.documents.loaders import PDFMarkdownLoader
+from cogent.documents.loaders import PDFMarkdownLoader
 
 loader = PDFMarkdownLoader(
     max_workers=4,      # CPU workers for parallel processing
@@ -246,7 +246,7 @@ class PDFProcessingResult:
 ### Convenience Functions
 
 ```python
-from agenticflow.documents.loaders import load_documents, load_documents_sync
+from cogent.documents.loaders import load_documents, load_documents_sync
 
 # Async loading
 docs = await load_documents("./data")
@@ -260,7 +260,7 @@ docs = load_documents_sync("./data")
 Register custom file handlers:
 
 ```python
-from agenticflow.documents.loaders import BaseLoader, register_loader
+from cogent.documents.loaders import BaseLoader, register_loader
 
 class XMLLoader(BaseLoader):
     EXTENSIONS = [".xml"]
@@ -281,7 +281,7 @@ register_loader(XMLLoader)
 The recommended splitter for most use cases:
 
 ```python
-from agenticflow.documents.splitters import RecursiveCharacterSplitter
+from cogent.documents.splitters import RecursiveCharacterSplitter
 
 splitter = RecursiveCharacterSplitter(
     chunk_size=1000,      # Target chunk size
@@ -311,7 +311,7 @@ chunks = splitter.split_documents(docs)
 Split by sentence boundaries:
 
 ```python
-from agenticflow.documents.splitters import SentenceSplitter
+from cogent.documents.splitters import SentenceSplitter
 
 splitter = SentenceSplitter(
     chunk_size=1000,
@@ -326,7 +326,7 @@ chunks = splitter.split_text(text)
 Preserve Markdown structure:
 
 ```python
-from agenticflow.documents.splitters import MarkdownSplitter
+from cogent.documents.splitters import MarkdownSplitter
 
 splitter = MarkdownSplitter(
     chunk_size=1000,
@@ -345,7 +345,7 @@ chunks = splitter.split_text(markdown_text)
 Language-aware code splitting:
 
 ```python
-from agenticflow.documents.splitters import CodeSplitter
+from cogent.documents.splitters import CodeSplitter
 
 splitter = CodeSplitter(
     language="python",
@@ -362,7 +362,7 @@ chunks = splitter.split_text(python_code)
 Split based on semantic similarity:
 
 ```python
-from agenticflow.documents.splitters import SemanticSplitter
+from cogent.documents.splitters import SemanticSplitter
 
 splitter = SemanticSplitter(
     embedding_model=my_embeddings,
@@ -377,7 +377,7 @@ chunks = await splitter.split_text(text)
 Split by token count (for LLM context limits):
 
 ```python
-from agenticflow.documents.splitters import TokenSplitter
+from cogent.documents.splitters import TokenSplitter
 
 splitter = TokenSplitter(
     chunk_size=512,       # Max tokens per chunk
@@ -391,7 +391,7 @@ chunks = splitter.split_text(text)
 ### Convenience Function
 
 ```python
-from agenticflow.documents.splitters import split_text
+from cogent.documents.splitters import split_text
 
 chunks = split_text(
     text,
@@ -408,7 +408,7 @@ chunks = split_text(
 The standard document container:
 
 ```python
-from agenticflow.documents import Document
+from cogent.documents import Document
 
 doc = Document(
     text="Document content...",
@@ -429,7 +429,7 @@ print(doc.metadata["source"])
 Chunk with position information:
 
 ```python
-from agenticflow.documents import TextChunk
+from cogent.documents import TextChunk
 
 chunk = TextChunk(
     text="Chunk content...",
@@ -450,7 +450,7 @@ For documents exceeding LLM context limits, use summarization strategies:
 Parallel chunk summarization, then combine:
 
 ```python
-from agenticflow.documents.summarizer import MapReduceSummarizer
+from cogent.documents.summarizer import MapReduceSummarizer
 
 summarizer = MapReduceSummarizer(model=my_model)
 result = await summarizer.summarize(long_text)
@@ -461,7 +461,7 @@ result = await summarizer.summarize(long_text)
 Sequential refinement through chunks:
 
 ```python
-from agenticflow.documents.summarizer import RefineSummarizer
+from cogent.documents.summarizer import RefineSummarizer
 
 summarizer = RefineSummarizer(model=my_model)
 result = await summarizer.summarize(long_text)
@@ -472,7 +472,7 @@ result = await summarizer.summarize(long_text)
 Tree-based recursive summarization:
 
 ```python
-from agenticflow.documents.summarizer import HierarchicalSummarizer
+from cogent.documents.summarizer import HierarchicalSummarizer
 
 summarizer = HierarchicalSummarizer(
     model=my_model,
@@ -486,7 +486,7 @@ result = await summarizer.summarize(very_long_text)
 ## Exports
 
 ```python
-from agenticflow.documents import (
+from cogent.documents import (
     # Types
     Document,
     TextChunk,
@@ -521,7 +521,7 @@ from agenticflow.documents import (
     split_text,
 )
 
-from agenticflow.documents.loaders import (
+from cogent.documents.loaders import (
     # PDF LLM types
     PDFProcessingResult,
     PDFProcessingStatus,

@@ -14,14 +14,14 @@ Run:
 import asyncio
 import random
 
-from agenticflow import Agent
-from agenticflow.agent.resilience import (
+from cogent import Agent
+from cogent.agent.resilience import (
     ResilienceConfig,
     RetryPolicy,
     RetryStrategy,
 )
-from agenticflow.observability import ObservabilityLevel, Observer
-from agenticflow.tools.base import tool
+from cogent.observability import ObservabilityLevel, Observer
+from cogent.tools.base import tool
 
 # =============================================================================
 # Simulated Tools with Failure Scenarios

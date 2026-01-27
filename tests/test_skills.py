@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agenticflow import (
+from cogent import (
     Skill,
     SkillBuilder,
     Trigger,
@@ -20,7 +20,7 @@ from agenticflow import (
 def mock_event():
     """Create a mock event for testing."""
     def _create(name: str = "code.write", data: dict | None = None):
-        from agenticflow.events.event import Event as CoreEvent
+        from cogent.events.event import Event as CoreEvent
         return CoreEvent(name=name, data=data or {})
     return _create
 

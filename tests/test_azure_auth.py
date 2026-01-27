@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from agenticflow.models.azure import AzureEntraAuth, _resolve_azure_openai_auth
+from cogent.models.azure import AzureEntraAuth, _resolve_azure_openai_auth
 
 
 def test_resolve_azure_openai_auth_api_key_explicit() -> None:

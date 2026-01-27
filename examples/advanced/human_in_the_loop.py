@@ -11,14 +11,14 @@ Usage: uv run python examples/advanced/human_in_the_loop.py
 
 import asyncio
 
-from agenticflow import (
+from cogent import (
     AbortedException,
     Agent,
     HumanDecision,
     InterruptedException,
 )
-from agenticflow.agent.hitl import GuidanceResult, HumanResponse
-from agenticflow.tools.base import tool
+from cogent.agent.hitl import GuidanceResult, HumanResponse
+from cogent.tools.base import tool
 
 
 @tool

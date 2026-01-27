@@ -1,6 +1,6 @@
 # Observability Module
 
-The `agenticflow.observability` module provides comprehensive monitoring, tracing, metrics, and progress output for understanding system behavior at runtime.
+The `cogent.observability` module provides comprehensive monitoring, tracing, metrics, and progress output for understanding system behavior at runtime.
 
 ## Overview
 
@@ -13,8 +13,8 @@ The observability module includes:
 - **Dashboard** - Real-time monitoring UI
 
 ```python
-from agenticflow import Agent
-from agenticflow.observability import Observer
+from cogent import Agent
+from cogent.observability import Observer
 
 # Simple: verbose output
 agent = Agent(name="assistant", model=model, verbose=True)
@@ -31,7 +31,7 @@ result = await agent.run("Hello", observer=observer)
 Unified observability interface with preset levels:
 
 ```python
-from agenticflow.observability import Observer
+from cogent.observability import Observer
 
 # Preset levels (recommended)
 observer = Observer.silent()    # No output
@@ -50,7 +50,7 @@ result = await flow.run("Task", observer=observer)
 ### ObservabilityLevel
 
 ```python
-from agenticflow.observability import ObservabilityLevel
+from cogent.observability import ObservabilityLevel
 
 ObservabilityLevel.SILENT   # No output
 ObservabilityLevel.MINIMAL  # Start/complete only
@@ -63,7 +63,7 @@ ObservabilityLevel.TRACE    # Everything + execution graph
 ### Custom Observer
 
 ```python
-from agenticflow.observability import Observer, Channel
+from cogent.observability import Observer, Channel
 
 observer = Observer(
     level=ObservabilityLevel.DEBUG,
@@ -81,7 +81,7 @@ observer = Observer(
 The observability system uses **channels** to let you subscribe to specific event categories. This keeps output clean and focused on what matters to you:
 
 ```python
-from agenticflow.observability import Observer, Channel
+from cogent.observability import Observer, Channel
 
 # Subscribe to specific channels
 observer = Observer(
@@ -149,14 +149,14 @@ The event-driven Flow paradigm is fully integrated with the observability system
 AgenticFlow uses two separate event systems for clean separation of concerns:
 
 #### 1. EventBus (Orchestration)
-**Module**: `agenticflow.events.EventBus`  
+**Module**: `cogent.events.EventBus`  
 **Purpose**: Core orchestration and flow control  
 **Events**: `task.created`, `agent.done`, `research.complete`, custom events  
 **Used by**: Flow, reactors, agent coordination  
 **Consumers**: Reactors registered via `flow.register()`
 
 ```python
-from agenticflow.events import EventBus
+from cogent.events import EventBus
 
 # Orchestration bus - handles flow logic
 events = EventBus()
@@ -164,14 +164,14 @@ await events.publish("task.created", {"id": "123"})
 ```
 
 #### 2. TraceBus (Observability)
-**Module**: `agenticflow.observability.TraceBus`  
+**Module**: `cogent.observability.TraceBus`  
 **Purpose**: Telemetry, tracing, and monitoring  
 **Events**: `TraceType` enum values (REACTIVE_*, AGENT_*, TASK_*)  
 **Used by**: Observer, metrics, logging, exporters  
 **Consumers**: Observer handlers, dashboards, log files
 
 ```python
-from agenticflow.observability import TraceBus
+from cogent.observability import TraceBus
 
 # Observability bus - separate from orchestration
 traces = TraceBus()
@@ -196,8 +196,8 @@ The Flow automatically bridges the two systems:
 - Observer attaches to TraceBus automatically
 
 ```python
-from agenticflow import Flow, Agent
-from agenticflow.observability import Observer
+from cogent import Flow, Agent
+from cogent.observability import Observer
 
 observer = Observer.trace()
 flow = Flow(observer=observer)  # Observer attaches to TraceBus
@@ -492,8 +492,8 @@ print(f"Total flows observed: {len(all_flows)}")
 ### Example: Full Flow Observability
 
 ```python
-from agenticflow import Agent, Flow
-from agenticflow.observability import Observer, TraceType
+from cogent import Agent, Flow
+from cogent.observability import Observer, TraceType
 
 # Setup
 model = get_model()
@@ -544,8 +544,8 @@ print(" → ".join(events))
 Central pub/sub system for all framework events:
 
 ```python
-from agenticflow.observability import TraceBus, Event
-from agenticflow.core import TraceType
+from cogent.observability import TraceBus, Event
+from cogent.core import TraceType
 
 bus = TraceBus()
 
@@ -611,7 +611,7 @@ task_events = bus.get_history(
 ### Global TraceBus
 
 ```python
-from agenticflow.observability import get_trace_bus, set_trace_bus
+from cogent.observability import get_trace_bus, set_trace_bus
 
 # Get the global bus
 bus = get_trace_bus()
@@ -628,7 +628,7 @@ set_trace_bus(custom_bus)
 Immutable event records:
 
 ```python
-from agenticflow.observability import Trace
+from cogent.observability import Trace
 
 event = Event(
     type=TraceType.TASK_COMPLETED,
@@ -654,7 +654,7 @@ Pre-built handlers for common use cases:
 ### ConsoleEventHandler
 
 ```python
-from agenticflow.observability import ConsoleEventHandler
+from cogent.observability import ConsoleEventHandler
 
 handler = ConsoleEventHandler(
     format="[{timestamp}] {type}: {data}",
@@ -667,7 +667,7 @@ bus.subscribe_all(handler)
 ### FileEventHandler
 
 ```python
-from agenticflow.observability import FileEventHandler
+from cogent.observability import FileEventHandler
 
 handler = FileEventHandler(
     path="events.jsonl",
@@ -681,7 +681,7 @@ bus.subscribe_all(handler)
 ### FilteringEventHandler
 
 ```python
-from agenticflow.observability import FilteringEventHandler
+from cogent.observability import FilteringEventHandler
 
 handler = FilteringEventHandler(
     wrapped=ConsoleEventHandler(),
@@ -695,7 +695,7 @@ bus.subscribe_all(handler)
 ### MetricsEventHandler
 
 ```python
-from agenticflow.observability import MetricsEventHandler
+from cogent.observability import MetricsEventHandler
 
 handler = MetricsEventHandler()
 bus.subscribe_all(handler)
@@ -716,7 +716,7 @@ print(handler.metrics)
 Distributed tracing with spans:
 
 ```python
-from agenticflow.observability import Tracer, SpanKind
+from cogent.observability import Tracer, SpanKind
 
 tracer = Tracer(service_name="my-agent")
 
@@ -736,7 +736,7 @@ async with tracer.start_span("process_request", kind=SpanKind.SERVER) as span:
 ### Span Context
 
 ```python
-from agenticflow.observability import SpanContext
+from cogent.observability import SpanContext
 
 # Get current span context
 ctx = tracer.get_current_context()
@@ -757,7 +757,7 @@ async with tracer.start_span("handle", context=incoming_ctx) as span:
 Detailed execution tracing for debugging:
 
 ```python
-from agenticflow.observability import ExecutionTracer, TraceLevel
+from cogent.observability import ExecutionTracer, TraceLevel
 
 tracer = ExecutionTracer(level=TraceLevel.DETAILED)
 
@@ -778,7 +778,7 @@ trace.to_html("trace.html")
 Combine observability with tracing:
 
 ```python
-from agenticflow.observability import TracingObserver
+from cogent.observability import TracingObserver
 
 observer = TracingObserver(
     level=ObservabilityLevel.DEBUG,
@@ -796,7 +796,7 @@ result = await flow.run("Task", observer=observer)
 Collect and export metrics:
 
 ```python
-from agenticflow.observability import MetricsCollector, Counter, Gauge, Histogram
+from cogent.observability import MetricsCollector, Counter, Gauge, Histogram
 
 collector = MetricsCollector()
 
@@ -847,13 +847,13 @@ Rich terminal output for agent execution:
 ### Quick Start
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 # Simple verbose flag
 agent = Agent(name="assistant", model=model, verbose=True)
 
 # Or configure output
-from agenticflow.observability import configure_output, Verbosity
+from cogent.observability import configure_output, Verbosity
 
 configure_output(
     verbosity=Verbosity.DETAILED,
@@ -865,7 +865,7 @@ configure_output(
 ### OutputConfig
 
 ```python
-from agenticflow.observability import OutputConfig, Verbosity, OutputFormat, Theme
+from cogent.observability import OutputConfig, Verbosity, OutputFormat, Theme
 
 config = OutputConfig(
     verbosity=Verbosity.DETAILED,
@@ -894,7 +894,7 @@ observer = Observer(output_config=config)
 ### ProgressTracker
 
 ```python
-from agenticflow.observability import ProgressTracker, ProgressEvent
+from cogent.observability import ProgressTracker, ProgressEvent
 
 tracker = ProgressTracker()
 
@@ -922,7 +922,7 @@ tracker.complete(result="Research complete")
 Real-time monitoring UI:
 
 ```python
-from agenticflow.observability import Dashboard, DashboardConfig
+from cogent.observability import Dashboard, DashboardConfig
 
 config = DashboardConfig(
     port=8080,
@@ -945,13 +945,13 @@ await dashboard.start()
 Real-time event streaming:
 
 ```python
-from agenticflow.observability import WebSocketServer, start_websocket_server
+from cogent.observability import WebSocketServer, start_websocket_server
 
 # Start server
 server = await start_websocket_server(port=8765)
 
 # Or use the handler directly with your own server
-from agenticflow.observability import websocket_handler
+from cogent.observability import websocket_handler
 
 # In your WebSocket endpoint:
 async def handle_client(websocket):
@@ -977,7 +977,7 @@ ws.onmessage = (event) => {
 Inspect system state at runtime:
 
 ```python
-from agenticflow.observability import SystemInspector, AgentInspector
+from cogent.observability import SystemInspector, AgentInspector
 
 # System-wide inspection
 inspector = SystemInspector()

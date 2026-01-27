@@ -4,7 +4,7 @@ Tests for agent reasoning module.
 
 import pytest
 
-from agenticflow.agent.reasoning import (
+from cogent.agent.reasoning import (
     ReasoningConfig,
     ReasoningResult,
     ReasoningStyle,

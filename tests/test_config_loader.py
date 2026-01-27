@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from agenticflow.config import (
+from cogent.config import (
     find_config_file,
     get_api_key,
     get_provider_config,
@@ -158,7 +158,7 @@ models:
         config_file.write_text("models:\n  default: gpt4")
 
         # Need to patch at module level before import
-        import agenticflow.config as config_module
+        import cogent.config as config_module
         original_yaml = config_module.yaml
         try:
             config_module.yaml = None

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from agenticflow.capabilities import FileSystem
+from cogent.capabilities import FileSystem
 
 
 class TestFileSystemInit:

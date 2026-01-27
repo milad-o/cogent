@@ -2,9 +2,9 @@
 
 import pytest
 
-from agenticflow.agent import Agent
-from agenticflow.core import Response
-from agenticflow.models.mock import MockChatModel
+from cogent.agent import Agent
+from cogent.core import Response
+from cogent.models.mock import MockChatModel
 
 
 class TestAgentResponseIntegration:

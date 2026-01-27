@@ -1,7 +1,7 @@
 """Tests for source-based event filtering."""
 
 
-from agenticflow.events import (
+from cogent.events import (
     Event,
     SourceFilter,
     any_source,

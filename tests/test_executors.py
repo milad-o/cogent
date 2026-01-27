@@ -11,9 +11,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from agenticflow.agent import Agent, AgentConfig
-from agenticflow.agent.taskboard import TaskBoard
-from agenticflow.executors import (
+from cogent.agent import Agent, AgentConfig
+from cogent.agent.taskboard import TaskBoard
+from cogent.executors import (
     ExecutionPlan,
     ExecutionStrategy,
     NativeExecutor,

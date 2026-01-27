@@ -16,9 +16,9 @@ Run:
 import asyncio
 from typing import Literal
 
-from agenticflow import Agent
-from agenticflow.observability import Channel, ObservabilityLevel, Observer, TraceType
-from agenticflow.tools.base import tool
+from cogent import Agent
+from cogent.observability import Channel, ObservabilityLevel, Observer, TraceType
+from cogent.tools.base import tool
 
 
 @tool

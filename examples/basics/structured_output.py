@@ -19,8 +19,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from agenticflow import Agent
-from agenticflow.agent.output import OutputMethod, ResponseSchema
+from cogent import Agent
+from cogent.agent.output import OutputMethod, ResponseSchema
 
 # =============================================================================
 # Example 1: Simple Extraction with Pydantic

@@ -1,6 +1,6 @@
 # VectorStore Module
 
-The `agenticflow.vectorstore` module provides semantic search and vector storage for RAG applications.
+The `cogent.vectorstore` module provides semantic search and vector storage for RAG applications.
 
 ## Overview
 
@@ -11,7 +11,7 @@ VectorStore provides:
 - Multiple embedding providers (OpenAI, Ollama, etc.)
 
 ```python
-from agenticflow.vectorstore import VectorStore
+from cogent.vectorstore import VectorStore
 
 # Simple: in-memory with OpenAI embeddings
 store = VectorStore()
@@ -26,7 +26,7 @@ results = await store.search("programming language", k=2)
 ### Basic Usage
 
 ```python
-from agenticflow.vectorstore import VectorStore
+from cogent.vectorstore import VectorStore
 
 # Create store (uses OpenAI embeddings by default)
 store = VectorStore()
@@ -47,7 +47,7 @@ for r in results:
 ### With Documents
 
 ```python
-from agenticflow.vectorstore import VectorStore, Document, DocumentMetadata
+from cogent.vectorstore import VectorStore, Document, DocumentMetadata
 
 # Create documents with structured metadata
 docs = [
@@ -122,8 +122,8 @@ All embedding providers support a **standardized API**:
 ### OpenAI (Default)
 
 ```python
-from agenticflow.vectorstore import VectorStore
-from agenticflow.models import OpenAIEmbedding
+from cogent.vectorstore import VectorStore
+from cogent.models import OpenAIEmbedding
 
 # Uses text-embedding-3-small by default
 store = VectorStore()
@@ -140,7 +140,7 @@ print(result.metadata.tokens)  # Track token usage
 ### Ollama (Local)
 
 ```python
-from agenticflow.models import OllamaEmbedding
+from cogent.models import OllamaEmbedding
 
 embeddings = OllamaEmbedding(
     model="nomic-embed-text",
@@ -152,7 +152,7 @@ store = VectorStore(embeddings=embeddings)
 ### Other Providers
 
 ```python
-from agenticflow.models import (
+from cogent.models import (
     GeminiEmbedding,
     CohereEmbedding,
     MistralEmbedding,
@@ -171,7 +171,7 @@ embeddings = CohereEmbedding(model="embed-english-v3.0")
 embeddings = MistralEmbedding(model="mistral-embed")
 
 # Azure OpenAI
-from agenticflow.models.azure import AzureEntraAuth
+from cogent.models.azure import AzureEntraAuth
 embeddings = AzureOpenAIEmbedding(
     azure_endpoint="https://your-resource.openai.azure.com",
     deployment="text-embedding-ada-002",
@@ -193,7 +193,7 @@ embeddings = CustomEmbedding(
 ### Mock (Testing)
 
 ```python
-from agenticflow.models import MockEmbedding
+from cogent.models import MockEmbedding
 
 embeddings = MockEmbedding(dimensions=384)
 store = VectorStore(embeddings=embeddings)
@@ -210,8 +210,8 @@ store = VectorStore(embeddings=embeddings)
 NumPy-based, no external dependencies:
 
 ```python
-from agenticflow.vectorstore import VectorStore
-from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+from cogent.vectorstore import VectorStore
+from cogent.vectorstore.backends.inmemory import SimilarityMetric
 
 store = VectorStore(
     metric=SimilarityMetric.COSINE,  # or DOT_PRODUCT, EUCLIDEAN
@@ -224,7 +224,7 @@ Large-scale similarity search:
 
 ```python
 # pip install faiss-cpu (or faiss-gpu)
-from agenticflow.vectorstore.backends import FAISSBackend
+from cogent.vectorstore.backends import FAISSBackend
 
 backend = FAISSBackend(
     index_type="IVF",      # or "Flat", "HNSW"
@@ -240,7 +240,7 @@ Persistent vector database:
 
 ```python
 # pip install chromadb
-from agenticflow.vectorstore.backends import ChromaBackend
+from cogent.vectorstore.backends import ChromaBackend
 
 backend = ChromaBackend(
     collection_name="my_docs",
@@ -255,7 +255,7 @@ Production-ready vector database:
 
 ```python
 # pip install qdrant-client
-from agenticflow.vectorstore.backends import QdrantBackend
+from cogent.vectorstore.backends import QdrantBackend
 
 backend = QdrantBackend(
     collection_name="my_docs",
@@ -273,7 +273,7 @@ PostgreSQL with vector extension:
 
 ```python
 # pip install psycopg[pool]
-from agenticflow.vectorstore.backends import PgVectorBackend
+from cogent.vectorstore.backends import PgVectorBackend
 
 backend = PgVectorBackend(
     connection_string="postgresql://user:pass@localhost/db",
@@ -290,7 +290,7 @@ store = VectorStore(backend=backend)
 ### Adding Documents
 
 ```python
-from agenticflow.vectorstore import VectorStore, Document
+from cogent.vectorstore import VectorStore, Document
 
 store = VectorStore()
 
@@ -316,7 +316,7 @@ ids = await store.add_documents(docs)
 ### Document Utilities
 
 ```python
-from agenticflow.vectorstore import (
+from cogent.vectorstore import (
     create_documents,
     split_text,
     split_documents,
@@ -397,7 +397,7 @@ results = await store.search(
 Search results contain:
 
 ```python
-from agenticflow.vectorstore import SearchResult
+from cogent.vectorstore import SearchResult
 
 @dataclass
 class SearchResult:
@@ -415,7 +415,7 @@ class SearchResult:
 Create vectorstore with specific configuration:
 
 ```python
-from agenticflow.vectorstore import create_vectorstore
+from cogent.vectorstore import create_vectorstore
 
 # Simple
 store = create_vectorstore()
@@ -439,7 +439,7 @@ store = create_vectorstore(
 ## Similarity Metrics
 
 ```python
-from agenticflow.vectorstore.backends.inmemory import SimilarityMetric
+from cogent.vectorstore.backends.inmemory import SimilarityMetric
 
 SimilarityMetric.COSINE       # Normalized dot product (default)
 SimilarityMetric.DOT_PRODUCT  # Raw dot product
@@ -451,8 +451,8 @@ SimilarityMetric.EUCLIDEAN    # L2 distance
 ## Integration with Retrievers
 
 ```python
-from agenticflow.retriever import DenseRetriever
-from agenticflow.vectorstore import VectorStore
+from cogent.retriever import DenseRetriever
+from cogent.vectorstore import VectorStore
 
 # Create vectorstore and add documents
 store = VectorStore()
@@ -533,7 +533,7 @@ await store.add_texts(
 All embedding providers implement the `EmbeddingProvider` protocol:
 
 ```python
-from agenticflow.vectorstore.base import EmbeddingProvider
+from cogent.vectorstore.base import EmbeddingProvider
 
 class EmbeddingProvider(Protocol):
     """Protocol for embedding providers used by VectorStore."""
@@ -560,7 +560,7 @@ class EmbeddingProvider(Protocol):
 - `CustomEmbedding` - Custom OpenAI-compatible APIs
 - `MockEmbedding` - Testing
 
-All providers are imported from `agenticflow.models`.
+All providers are imported from `cogent.models`.
 
 ### Backends
 

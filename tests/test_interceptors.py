@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from agenticflow.interceptors.audit import AuditEvent, Auditor, AuditTraceType
-from agenticflow.interceptors.base import (
+from cogent.interceptors.audit import AuditEvent, Auditor, AuditTraceType
+from cogent.interceptors.base import (
     InterceptContext,
     Interceptor,
     InterceptResult,
@@ -15,19 +15,19 @@ from agenticflow.interceptors.base import (
     StopExecution,
     run_interceptors,
 )
-from agenticflow.interceptors.budget import (
+from cogent.interceptors.budget import (
     BudgetExhaustedError,
     BudgetGuard,
     ExitBehavior,
 )
-from agenticflow.interceptors.context import (
+from cogent.interceptors.context import (
     ContextCompressor,
     TokenLimiter,
     _estimate_tokens,
     _messages_to_text,
 )
-from agenticflow.interceptors.ratelimit import RateLimiter, ThrottleInterceptor
-from agenticflow.interceptors.security import (
+from cogent.interceptors.ratelimit import RateLimiter, ThrottleInterceptor
+from cogent.interceptors.security import (
     ContentFilter,
     PIIAction,
     PIIShield,
@@ -1067,11 +1067,11 @@ class TestAuditEvent:
 # Test Context Layer Interceptors
 # =============================================================================
 
-from agenticflow.core.context import EMPTY_CONTEXT, RunContext
-from agenticflow.interceptors.failover import Failover, FailoverTrigger
-from agenticflow.interceptors.gates import ConversationGate, PermissionGate, ToolGate
-from agenticflow.interceptors.guards import CircuitBreaker, ToolGuard
-from agenticflow.interceptors.prompt import (
+from cogent.core.context import EMPTY_CONTEXT, RunContext
+from cogent.interceptors.failover import Failover, FailoverTrigger
+from cogent.interceptors.gates import ConversationGate, PermissionGate, ToolGate
+from cogent.interceptors.guards import CircuitBreaker, ToolGuard
+from cogent.interceptors.prompt import (
     ContextPrompt,
     ConversationPrompt,
     LambdaPrompt,

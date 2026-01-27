@@ -12,8 +12,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agenticflow import Agent
-from agenticflow.models import BaseChatModel, create_chat
+from cogent import Agent
+from cogent.models import BaseChatModel, create_chat
 
 
 class TestAgentStringModels:
@@ -89,7 +89,7 @@ class TestBackwardCompatibility:
 
     def test_existing_code_unchanged(self):
         """Test that existing code patterns still work."""
-        from agenticflow.models import OpenAIChat
+        from cogent.models import OpenAIChat
 
         # Old style - direct instantiation
         with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
@@ -238,7 +238,7 @@ class TestThreeTierAPI:
 
     def test_tier3_direct(self):
         """Test Tier 3 (direct model classes)."""
-        from agenticflow.models import OpenAIChat
+        from cogent.models import OpenAIChat
 
         with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
             model = OpenAIChat(model="gpt-4o", api_key="sk-test")
@@ -246,7 +246,7 @@ class TestThreeTierAPI:
 
     def test_all_tiers_interoperable(self):
         """Test that all tiers can be used together."""
-        from agenticflow.models import OpenAIChat
+        from cogent.models import OpenAIChat
 
         mock_model = MagicMock(spec=BaseChatModel)
 

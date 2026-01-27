@@ -2,8 +2,8 @@
 
 import pytest
 
-from agenticflow.memory import InMemoryStore, Memory
-from agenticflow.memory.tools import create_memory_tools, format_memory_context
+from cogent.memory import InMemoryStore, Memory
+from cogent.memory.tools import create_memory_tools, format_memory_context
 
 
 class TestInMemoryStore:

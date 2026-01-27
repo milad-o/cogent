@@ -1,11 +1,11 @@
 
-from agenticflow.core.messages import (
+from cogent.core.messages import (
     AIMessage,
     HumanMessage,
     SystemMessage,
     ToolMessage,
 )
-from agenticflow.models.base import convert_messages
+from cogent.models.base import convert_messages
 
 
 def test_convert_messages_assigns_missing_tool_call_ids_and_pairs_tool_message() -> None:

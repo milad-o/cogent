@@ -10,9 +10,9 @@ Verifies that models accept various input types:
 
 import pytest
 
-from agenticflow.core.messages import AIMessage, HumanMessage, SystemMessage
-from agenticflow.models.base import convert_messages, normalize_input
-from agenticflow.models.mock import MockChatModel
+from cogent.core.messages import AIMessage, HumanMessage, SystemMessage
+from cogent.models.base import convert_messages, normalize_input
+from cogent.models.mock import MockChatModel
 
 
 class TestNormalizeInput:

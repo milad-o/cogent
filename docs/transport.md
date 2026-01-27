@@ -22,8 +22,8 @@ The **Transport** system allows agents to communicate across process boundaries 
 For single-process applications or testing:
 
 ```python
-from agenticflow.events import Event, EventBus
-from agenticflow.events.transport import LocalTransport
+from cogent.events import Event, EventBus
+from cogent.events.transport import LocalTransport
 
 # Create local transport
 transport = LocalTransport()
@@ -48,14 +48,14 @@ For production multi-process deployments:
 
 **Install Redis support**:
 ```bash
-uv add agenticflow[redis]
+uv add cogent[redis]
 # or
 uv add redis>=5.0.0
 ```
 
 **Use RedisTransport**:
 ```python
-from agenticflow.events.transport import RedisTransport
+from cogent.events.transport import RedisTransport
 
 transport = RedisTransport(redis_url="redis://localhost:6379/0")
 await transport.connect()
@@ -168,7 +168,7 @@ transport = LocalTransport()
 ```python
 transport = RedisTransport(
     redis_url="redis://localhost:6379/0",
-    channel_prefix="agenticflow"  # Optional namespace
+    channel_prefix="cogent"  # Optional namespace
 )
 ```
 
@@ -192,7 +192,7 @@ sudo apt-get install redis-server  # Ubuntu
 redis-server
 
 # Install Python package
-uv add agenticflow[redis]
+uv add cogent[redis]
 ```
 
 ---
@@ -202,8 +202,8 @@ uv add agenticflow[redis]
 Use transport with `EventBus` for automatic event routing:
 
 ```python
-from agenticflow.events.transport import RedisTransport
-from agenticflow.events import EventBus
+from cogent.events.transport import RedisTransport
+from cogent.events import EventBus
 
 # Create transport
 transport = RedisTransport(redis_url="redis://localhost:6379")
@@ -233,9 +233,9 @@ Example: Coordinating agents across 2 processes
 **Process 1 (Worker Agent)**:
 ```python
 # worker.py
-from agenticflow import Agent
-from agenticflow.events.transport import RedisTransport
-from agenticflow.events import Event
+from cogent import Agent
+from cogent.events.transport import RedisTransport
+from cogent.events import Event
 
 transport = RedisTransport(redis_url="redis://localhost:6379")
 await transport.connect()
@@ -260,8 +260,8 @@ await transport.subscribe("task.created", handle_task)
 **Process 2 (Coordinator)**:
 ```python
 # coordinator.py
-from agenticflow.events.transport import RedisTransport
-from agenticflow.events import Event
+from cogent.events.transport import RedisTransport
+from cogent.events import Event
 
 transport = RedisTransport(redis_url="redis://localhost:6379")
 await transport.connect()
@@ -295,7 +295,7 @@ python coordinator.py
 Transports raise specific exceptions:
 
 ```python
-from agenticflow.events.transport import (
+from cogent.events.transport import (
     TransportError,
     ConnectionError,
     PublishError,
@@ -328,8 +328,8 @@ except TransportError as e:
 
 ```python
 import pytest
-from agenticflow.events import Event
-from agenticflow.events.transport import LocalTransport
+from cogent.events import Event
+from cogent.events.transport import LocalTransport
 
 @pytest.mark.asyncio
 async def test_event_delivery():

@@ -2,8 +2,8 @@
 Tests for tool return type extraction and schema generation.
 """
 
-from agenticflow.tools import tool
-from agenticflow.tools.base import (
+from cogent.tools import tool
+from cogent.tools.base import (
     _type_to_readable_string,
 )
 

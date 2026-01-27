@@ -16,8 +16,8 @@ Features:
 
 import asyncio
 
-from agenticflow import Agent
-from agenticflow.capabilities import CodeSandbox
+from cogent import Agent
+from cogent.capabilities import CodeSandbox
 
 
 def separator(title: str) -> None:

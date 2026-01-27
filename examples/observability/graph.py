@@ -19,7 +19,7 @@ Usage:
     uv run python examples/observability/graph.py
 """
 
-from agenticflow import Agent, tool
+from cogent import Agent, tool
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Sample Tools

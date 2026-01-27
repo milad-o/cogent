@@ -15,8 +15,8 @@ Streaming reactions enable Flow to yield output progressively as agents generate
 ## Quick Start
 
 ```python
-from agenticflow import Agent, Flow, react_to
-from agenticflow.models import ChatModel
+from cogent import Agent, Flow, react_to
+from cogent.models import ChatModel
 
 # Create agents with streaming-capable models
 researcher = Agent(
@@ -118,7 +118,7 @@ For direct model streaming (without Flow), see [Models - Streaming](models.md#st
 Simple single-agent streaming:
 
 ```python
-from agenticflow import Flow, react_to
+from cogent import Flow, react_to
 
 agent = Agent(name="assistant", model=model)
 flow = Flow()
@@ -320,7 +320,7 @@ For very long outputs, streaming prevents memory buildup.
 Streaming respects `FlowConfig` settings:
 
 ```python
-from agenticflow import FlowConfig
+from cogent import FlowConfig
 
 config = FlowConfig(
     max_rounds=100,          # Maximum event processing rounds
@@ -369,8 +369,8 @@ uv run python examples/basics/streaming.py
 
 ```python
 import pytest
-from agenticflow import Flow
-from agenticflow.flow.streaming import FlowStreamChunk
+from cogent import Flow
+from cogent.flow.streaming import FlowStreamChunk
 
 @pytest.mark.asyncio
 async def test_streaming():

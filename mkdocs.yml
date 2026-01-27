@@ -1,8 +1,8 @@
-site_name: AgenticFlow
-site_description: Production-grade multi-agent framework for building AI agents that actually work
-site_url: https://milad-o.github.io/agenticflow
-repo_url: https://github.com/milad-o/agenticflow
-repo_name: milad-o/agenticflow
+site_name: Cogent
+site_description: Production AI agent framework with memory control and semantic caching
+site_url: https://milad-o.github.io/cogent
+repo_url: https://github.com/milad-o/cogent
+repo_name: milad-o/cogent
 
 theme:
   name: material

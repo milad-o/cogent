@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from agenticflow.capabilities.web_search import (
+from cogent.capabilities.web_search import (
     DuckDuckGoProvider,
     FetchedPage,
     SearchResult,

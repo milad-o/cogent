@@ -1,6 +1,6 @@
 # Agent Module
 
-The `agenticflow.agent` module defines the core agent abstraction - autonomous entities that can think, act, and communicate.
+The `cogent.agent` module defines the core agent abstraction - autonomous entities that can think, act, and communicate.
 
 ## Overview
 
@@ -11,7 +11,7 @@ Agents are the primary actors in the system. Each agent has:
 - Access to tools and the event bus
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 # Simple string model (recommended for v1.14.1+)
 agent = Agent(
@@ -29,7 +29,7 @@ agent = Agent(
 )
 
 # Medium-level: Factory function
-from agenticflow.models import create_chat
+from cogent.models import create_chat
 agent = Agent(
     name="Researcher",
     model=create_chat("gpt4"),
@@ -37,7 +37,7 @@ agent = Agent(
 )
 
 # Low-level: Full control
-from agenticflow.models import OpenAIChat
+from cogent.models import OpenAIChat
 model = OpenAIChat(model="gpt-4o", temperature=0.7)
 agent = Agent(
     name="Researcher",
@@ -55,7 +55,7 @@ result = await agent.run("Find information about quantum computing")
 The main agent class with multiple construction patterns:
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 # Simplified API (recommended)
 agent = Agent(
@@ -74,9 +74,9 @@ agent = Agent(
 )
 
 # Advanced API with AgentConfig
-from agenticflow.agent import AgentConfig
-from agenticflow.core.enums import AgentRole
-from agenticflow.models import create_chat
+from cogent.agent import AgentConfig
+from cogent.core.enums import AgentRole
+from cogent.models import create_chat
 
 config = AgentConfig(
     name="Writer",
@@ -93,7 +93,7 @@ agent = Agent(config=config)
 Use role configuration objects for type-safe, immutable role definitions:
 
 ```python
-from agenticflow import (
+from cogent import (
     SupervisorRole,
     WorkerRole,
     ReviewerRole,
@@ -196,8 +196,8 @@ autonomous = Agent(
 **Recommended:** Use `CustomRole` for hybrid capabilities:
 
 ```python
-from agenticflow import CustomRole
-from agenticflow.core import AgentRole
+from cogent import CustomRole
+from cogent.core import AgentRole
 
 # Reviewer that can use tools
 hybrid_reviewer = Agent(
@@ -385,7 +385,7 @@ See `examples/basics/role_behavior.py` for real LLM behavior examples.
 Enable conversation memory for multi-turn interactions:
 
 ```python
-from agenticflow.agent import InMemorySaver
+from cogent.agent import InMemorySaver
 
 agent = Agent(
     name="Assistant",
@@ -409,7 +409,7 @@ response = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
 Built-in fault tolerance with retries, circuit breakers, and fallbacks:
 
 ```python
-from agenticflow.agent import ResilienceConfig, RetryPolicy
+from cogent.agent import ResilienceConfig, RetryPolicy
 
 agent = Agent(
     name="Worker",
@@ -459,8 +459,8 @@ Enable extended thinking for complex problems with AI-controlled reasoning round
 ### Basic Usage
 
 ```python
-from agenticflow import Agent
-from agenticflow.agent.reasoning import ReasoningConfig
+from cogent import Agent
+from cogent.agent.reasoning import ReasoningConfig
 
 # Simple: Enable with defaults
 agent = Agent(
@@ -588,7 +588,7 @@ async for chunk in agent.run("Write a story", stream=True):
 Dynamic agent creation at runtime:
 
 ```python
-from agenticflow.agent import SpawningConfig, AgentSpec
+from cogent.agent import SpawningConfig, AgentSpec
 
 agent = Agent(
     name="Coordinator",
@@ -610,8 +610,8 @@ result = await agent.run("Research and write about AI")
 Built-in observability for standalone usage:
 
 ```python
-from agenticflow import Agent
-from agenticflow.observability import ObservabilityLevel
+from cogent import Agent
+from cogent.observability import ObservabilityLevel
 
 # Boolean shorthand
 agent = Agent(name="Worker", model=model, verbosity=True)  # Progress level
@@ -626,7 +626,7 @@ agent = Agent(name="Worker", model=model, verbosity=ObservabilityLevel.DEBUG)
 agent = Agent(name="Worker", model=model, verbosity=4)  # DEBUG
 
 # Advanced: Full control with observer
-from agenticflow.observability import Observer
+from cogent.observability import Observer
 
 observer = Observer.debug()
 agent = Agent(name="Worker", model=model, observer=observer)
@@ -673,7 +673,7 @@ agent = Agent(name="Worker", model=model, observer=observer)
 ## Exports
 
 ```python
-from agenticflow.agent import (
+from cogent.agent import (
     # Core
     Agent,
     AgentConfig,

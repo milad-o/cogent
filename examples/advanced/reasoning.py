@@ -28,9 +28,9 @@ Example output:
 import asyncio
 import contextlib
 
-from agenticflow import Agent, Observer
-from agenticflow.agent import ReasoningConfig, ReasoningStyle
-from agenticflow.tools.base import tool
+from cogent import Agent, Observer
+from cogent.agent import ReasoningConfig, ReasoningStyle
+from cogent.tools.base import tool
 
 # Handle both direct execution and module import
 with contextlib.suppress(ImportError):

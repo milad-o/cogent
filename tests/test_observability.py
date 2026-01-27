@@ -5,7 +5,7 @@ from io import StringIO
 
 import pytest
 
-from agenticflow.observability import (
+from cogent.observability import (
     Counter,
     Dashboard,
     DashboardConfig,
@@ -307,7 +307,7 @@ class TestObserver:
 
     def test_factory_methods(self):
         """Test observer factory methods."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability import Channel, ObservabilityLevel, Observer
 
         obs = Observer.off()
         assert obs.config.level == ObservabilityLevel.OFF
@@ -336,7 +336,7 @@ class TestObserver:
 
     def test_custom_channels(self):
         """Test observer with custom channels."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability import Channel, ObservabilityLevel, Observer
 
         obs = Observer(
             level=ObservabilityLevel.DETAILED,
@@ -351,9 +351,9 @@ class TestObserver:
     @pytest.mark.asyncio
     async def test_attach_to_event_bus(self):
         """Test attaching observer to event bus."""
-        from agenticflow.observability import ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         bus = TraceBus()
         obs = Observer(level=ObservabilityLevel.DEBUG)
@@ -371,9 +371,9 @@ class TestObserver:
     @pytest.mark.asyncio
     async def test_callbacks(self):
         """Test observer callbacks."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         agent_calls = []
         tool_calls = []
@@ -400,9 +400,9 @@ class TestObserver:
     @pytest.mark.asyncio
     async def test_events_query(self):
         """Test querying observed events."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = TraceBus()
@@ -428,9 +428,9 @@ class TestObserver:
     @pytest.mark.asyncio
     async def test_timeline(self):
         """Test timeline generation."""
-        from agenticflow.observability import ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = TraceBus()
@@ -446,9 +446,9 @@ class TestObserver:
     @pytest.mark.asyncio
     async def test_summary(self):
         """Test summary generation."""
-        from agenticflow.observability import ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = TraceBus()
@@ -466,14 +466,14 @@ class TestObserverStreaming:
 
     def test_streaming_channel_exists(self):
         """Test that STREAMING channel is available."""
-        from agenticflow.observability import Channel
+        from cogent.observability import Channel
 
         assert hasattr(Channel, "STREAMING")
         assert Channel.STREAMING.value == "streaming"
 
     def test_streaming_factory_method(self):
         """Test Observer.streaming() factory method."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability import Channel, ObservabilityLevel, Observer
 
         obs = Observer.streaming()
         assert obs.config.level == ObservabilityLevel.DEBUG
@@ -486,7 +486,7 @@ class TestObserverStreaming:
 
     def test_streaming_only_factory_method(self):
         """Test Observer.streaming_only() factory method."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability import Channel, ObservabilityLevel, Observer
 
         obs = Observer.streaming_only()
         assert obs.config.level == ObservabilityLevel.DEBUG
@@ -494,7 +494,7 @@ class TestObserverStreaming:
 
     def test_on_stream_callback_config(self):
         """Test on_stream callback is properly configured."""
-        from agenticflow.observability import Observer
+        from cogent.observability import Observer
 
         stream_calls = []
 
@@ -507,9 +507,9 @@ class TestObserverStreaming:
     @pytest.mark.asyncio
     async def test_streaming_events_dispatched(self):
         """Test streaming events are dispatched to callback."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         stream_calls = []
 
@@ -550,9 +550,9 @@ class TestObserverStreaming:
     @pytest.mark.asyncio
     async def test_streaming_events_in_metrics(self):
         """Test streaming events are counted in metrics."""
-        from agenticflow.observability import ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         obs = Observer(level=ObservabilityLevel.DEBUG)
         bus = TraceBus()
@@ -572,9 +572,9 @@ class TestObserverStreaming:
         """Test streaming events are properly formatted."""
         from io import StringIO
 
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         output = StringIO()
         obs = Observer(
@@ -603,9 +603,9 @@ class TestObserverStreaming:
     @pytest.mark.asyncio
     async def test_stream_error_triggers_on_error(self):
         """Test STREAM_ERROR triggers on_error callback."""
-        from agenticflow.observability import Channel, ObservabilityLevel, Observer
-        from agenticflow.observability.bus import TraceBus
-        from agenticflow.observability.trace_record import Trace, TraceType
+        from cogent.observability import Channel, ObservabilityLevel, Observer
+        from cogent.observability.bus import TraceBus
+        from cogent.observability.trace_record import Trace, TraceType
 
         errors = []
 

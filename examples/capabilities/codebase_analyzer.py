@@ -18,7 +18,7 @@ from pathlib import Path
 
 def demo_programmatic():
     """Demo the CodebaseAnalyzer programmatic API."""
-    from agenticflow.capabilities import CodebaseAnalyzer
+    from cogent.capabilities import CodebaseAnalyzer
 
     print("=" * 60)
     print("🔍 CodebaseAnalyzer Programmatic Demo")
@@ -86,7 +86,7 @@ def demo_programmatic():
 
 async def demo_agent(analyzer):
     """Demo an agent using CodebaseAnalyzer to answer questions."""
-    from agenticflow import Agent
+    from cogent import Agent
 
     print("\n" + "=" * 60)
     print("🤖 Agent with CodebaseAnalyzer Demo")

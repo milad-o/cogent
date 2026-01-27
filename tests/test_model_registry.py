@@ -10,8 +10,8 @@ Tests the 3-tier model API's core resolution logic:
 
 import pytest
 
-from agenticflow.models import BaseChatModel
-from agenticflow.models.registry import (
+from cogent.models import BaseChatModel
+from cogent.models.registry import (
     MODEL_ALIASES,
     MODEL_PROVIDERS,
     resolve_and_create_model,

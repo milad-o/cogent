@@ -8,10 +8,10 @@ Get up and running with AgenticFlow in minutes.
 
 ```bash
 # Minimal installation (core only)
-pip install git+https://github.com/milad-o/agenticflow.git
+pip install git+https://github.com/milad-o/cogent.git
 
 # Or with uv (recommended)
-uv add git+https://github.com/milad-o/agenticflow.git
+uv add git+https://github.com/milad-o/cogent.git
 ```
 
 **Optional dependency groups:**
@@ -20,35 +20,35 @@ Choose what you need:
 
 ```bash
 # Vector stores (FAISS, Qdrant)
-uv add "agenticflow[vector-stores] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[vector-stores] @ git+https://github.com/milad-o/cogent.git"
 
 # Retrieval (BM25, rerankers)
-uv add "agenticflow[retrieval] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[retrieval] @ git+https://github.com/milad-o/cogent.git"
 
 # Database backends (SQLAlchemy + drivers)
-uv add "agenticflow[database] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[database] @ git+https://github.com/milad-o/cogent.git"
 
 # Infrastructure (Redis)
-uv add "agenticflow[infrastructure] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[infrastructure] @ git+https://github.com/milad-o/cogent.git"
 
 # Web tools (search, scraping)
-uv add "agenticflow[web] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[web] @ git+https://github.com/milad-o/cogent.git"
 
 # LLM providers (Anthropic, Azure, Cohere, Groq)
-uv add "agenticflow[all-providers] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[all-providers] @ git+https://github.com/milad-o/cogent.git"
 
 # All backends
-uv add "agenticflow[all-backend] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[all-backend] @ git+https://github.com/milad-o/cogent.git"
 
 # Everything
-uv add "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[all] @ git+https://github.com/milad-o/cogent.git"
 ```
 
 **Development installation:**
 
 ```bash
 # Development + testing
-uv add --dev agenticflow[dev,test,test-backends,docs]
+uv add --dev cogent[dev,test,test-backends,docs]
 ```
 
 ---
@@ -59,7 +59,7 @@ uv add --dev agenticflow[dev,test,test-backends,docs]
 
 ```python
 import asyncio
-from agenticflow import Agent, tool
+from cogent import Agent, tool
 
 @tool
 def get_weather(city: str) -> str:
@@ -86,11 +86,11 @@ asyncio.run(main())
 agent = Agent(name="Assistant", model="anthropic:claude")
 
 # Medium-level: Factory function
-from agenticflow.models import create_chat
+from cogent.models import create_chat
 agent = Agent(name="Assistant", model=create_chat("gpt4"))
 
 # Low-level: Full control
-from agenticflow.models import OpenAIChat
+from cogent.models import OpenAIChat
 agent = Agent(name="Assistant", model=OpenAIChat(model="gpt-4o", temperature=0.7))
 ```
 
@@ -99,8 +99,8 @@ agent = Agent(name="Assistant", model=OpenAIChat(model="gpt-4o", temperature=0.7
 Instead of defining individual tools, use pre-built capabilities:
 
 ```python
-from agenticflow import Agent
-from agenticflow.capabilities import FileSystem, WebSearch, CodeSandbox
+from cogent import Agent
+from cogent.capabilities import FileSystem, WebSearch, CodeSandbox
 
 agent = Agent(
     name="Assistant",
@@ -138,7 +138,7 @@ agent = Agent(
 Define tools with the `@tool` decorator:
 
 ```python
-from agenticflow import tool
+from cogent import tool
 
 @tool
 def search(query: str, max_results: int = 10) -> str:
@@ -170,7 +170,7 @@ async def fetch_data(url: str) -> str:
 Coordinate multiple agents with built-in patterns:
 
 ```python
-from agenticflow.flow import pipeline, supervisor, mesh
+from cogent.flow import pipeline, supervisor, mesh
 
 researcher = Agent(name="Researcher", model=model, instructions="Research thoroughly.")
 writer = Agent(name="Writer", model=model, instructions="Write clearly.")
@@ -194,7 +194,7 @@ result = await flow.run("Create a blog post about quantum computing")
 AgenticFlow supports all major LLM providers with native SDK integrations:
 
 ```python
-from agenticflow.models import (
+from cogent.models import (
     OpenAIChat,
     AnthropicChat,
     GeminiChat,
@@ -218,7 +218,7 @@ model = GroqChat(model="llama-3.3-70b-versatile")
 model = OllamaChat(model="llama3.2")
 
 # Or use factory function
-from agenticflow.models import create_chat
+from cogent.models import create_chat
 
 model = create_chat("anthropic", model="claude-sonnet-4-20250514")
 ```
@@ -270,7 +270,7 @@ agent.clear_memory()
 Track execution with built-in observability:
 
 ```python
-from agenticflow.observability import Observer
+from cogent.observability import Observer
 
 # Pre-configured observers
 observer = Observer.trace()      # Maximum detail
@@ -294,7 +294,7 @@ for event in observer.events():
 Control execution with middleware:
 
 ```python
-from agenticflow.interceptors import BudgetGuard, RateLimiter, PIIShield
+from cogent.interceptors import BudgetGuard, RateLimiter, PIIShield
 
 agent = Agent(
     name="Assistant",
@@ -318,13 +318,13 @@ Now that you know the basics, explore:
 - **[Capabilities](capabilities.md)** — Explore built-in tools and capabilities
 - **[Graph Visualization](graph.md)** — Visualize your agents and flows
 - **[RAG & Retrieval](retrievers.md)** — Build retrieval-augmented generation systems
-- **[Examples](https://github.com/milad-o/agenticflow/tree/main/examples)** — See working examples
+- **[Examples](https://github.com/milad-o/cogent/tree/main/examples)** — See working examples
 
 ---
 
 ## Need Help?
 
-- **Documentation**: https://milad-o.github.io/agenticflow
-- **Examples**: https://github.com/milad-o/agenticflow/tree/main/examples
-- **Issues**: https://github.com/milad-o/agenticflow/issues
+- **Documentation**: https://milad-o.github.io/cogent
+- **Examples**: https://github.com/milad-o/cogent/tree/main/examples
+- **Issues**: https://github.com/milad-o/cogent/issues
 

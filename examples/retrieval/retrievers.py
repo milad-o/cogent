@@ -13,8 +13,8 @@ Usage: uv run python examples/retrieval/retrievers.py
 
 import asyncio
 
-from agenticflow.models import OpenAIEmbedding
-from agenticflow.retriever import (
+from cogent.models import OpenAIEmbedding
+from cogent.retriever import (
     AttributeInfo,
     BM25Retriever,
     DecayFunction,
@@ -32,7 +32,7 @@ from agenticflow.retriever import (
     SummaryIndex,
     TimeBasedIndex,
 )
-from agenticflow.vectorstore import Document, VectorStore
+from cogent.vectorstore import Document, VectorStore
 
 DOCUMENTS = [
     Document(

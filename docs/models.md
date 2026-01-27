@@ -1,6 +1,6 @@
 # Models Module
 
-The `agenticflow.models` module provides a **3-tier API** for working with LLMs - from simple string-based models to full control with direct SDK access.
+The `cogent.models` module provides a **3-tier API** for working with LLMs - from simple string-based models to full control with direct SDK access.
 
 ## 🎯 3-Tier Model API
 
@@ -11,7 +11,7 @@ AgenticFlow offers three levels of abstraction - choose based on your needs:
 The simplest way to get started. Just use model name strings:
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 # Auto-resolves to gpt-4o
 agent = Agent("Helper", model="gpt4")
@@ -37,14 +37,14 @@ agent = Agent("Helper", model="openai:gpt-4o")
 **API Key Loading** (Priority Order):
 1. Explicit `api_key=` parameter (highest)
 2. Environment variables (includes `.env` when loaded)
-3. Config file `agenticflow.toml` / `agenticflow.yaml` or `~/.agenticflow/config.*` (lowest)
+3. Config file `cogent.toml` / `cogent.yaml` or `~/.cogent/config.*` (lowest)
 
 ### Tier 2: Medium-Level (Factory Functions)
 
 For when you need a model instance without an agent. Supports **4 flexible usage patterns**:
 
 ```python
-from agenticflow.models import create_chat
+from cogent.models import create_chat
 
 # Pattern 1: Model name only (auto-detects provider)
 llm = create_chat("gpt-4o")              # OpenAI
@@ -86,7 +86,7 @@ print(response.content)
 For maximum control over model configuration:
 
 ```python
-from agenticflow.models import OpenAIChat, AnthropicChat, GeminiChat
+from cogent.models import OpenAIChat, AnthropicChat, GeminiChat
 
 # Full control over all parameters
 model = OpenAIChat(
@@ -170,7 +170,7 @@ embedding_model = "text-embedding-3-large"
 
 Create a config file at one of these locations:
 
-**TOML Format** (`agenticflow.toml` or `~/.agenticflow/config.toml`):
+**TOML Format** (`cogent.toml` or `~/.cogent/config.toml`):
 
 ```toml
 [models]
@@ -190,7 +190,7 @@ api_key = "..."
 api_key = "gsk_..."
 ```
 
-**YAML Format** (`agenticflow.yaml` or `~/.agenticflow/config.yaml`):
+**YAML Format** (`cogent.yaml` or `~/.cogent/config.yaml`):
 
 ```yaml
 models:
@@ -237,7 +237,7 @@ response = await model.ainvoke([
 
 ### 3. Message Objects (Type-Safe)
 ```python
-from agenticflow.core.messages import SystemMessage, HumanMessage
+from cogent.core.messages import SystemMessage, HumanMessage
 
 response = await model.ainvoke([
     SystemMessage(content="You are helpful"),
@@ -250,7 +250,7 @@ response = await model.ainvoke([
 ## OpenAI
 
 ```python
-from agenticflow.models import OpenAIChat, OpenAIEmbedding
+from cogent.models import OpenAIChat, OpenAIEmbedding
 
 # Tier 1: Simple string
 agent = Agent("Helper", model="gpt4")
@@ -283,7 +283,7 @@ vector = result.embeddings[0]
 **With tools:**
 
 ```python
-from agenticflow.tools import tool
+from cogent.tools import tool
 
 @tool
 def search(query: str) -> str:
@@ -307,7 +307,7 @@ if response.tool_calls:
 OpenAI's Responses API is optimized for tool use and structured outputs. Use the `use_responses_api=True` parameter:
 
 ```python
-from agenticflow.models.openai import OpenAIChat
+from cogent.models.openai import OpenAIChat
 
 # Standard Chat Completions API (default)
 model = OpenAIChat(model="gpt-4o")
@@ -329,7 +329,7 @@ The Responses API provides better performance for multi-turn tool conversations 
 Enterprise Azure deployments with Azure AD support:
 
 ```python
-from agenticflow.models.azure import AzureEntraAuth, AzureOpenAIChat, AzureOpenAIEmbedding
+from cogent.models.azure import AzureEntraAuth, AzureOpenAIChat, AzureOpenAIEmbedding
 
 # With API key
 model = AzureOpenAIChat(
@@ -398,7 +398,7 @@ AZURE_OPENAI_AUTH_TYPE=managed_identity  # api_key | default | managed_identity 
 Claude models with native SDK:
 
 ```python
-from agenticflow.models.anthropic import AnthropicChat
+from cogent.models.anthropic import AnthropicChat
 
 model = AnthropicChat(
     model="claude-sonnet-4-20250514",
@@ -432,7 +432,7 @@ bound = model.bind_tools([search_tool])
 Ultra-fast inference for supported models:
 
 ```python
-from agenticflow.models.groq import GroqChat
+from cogent.models.groq import GroqChat
 
 model = GroqChat(
     model="llama-3.3-70b-versatile",
@@ -458,7 +458,7 @@ response = await model.ainvoke([
 Groq also supports OpenAI's Responses API for optimized tool use:
 
 ```python
-from agenticflow.models.groq import GroqChat
+from cogent.models.groq import GroqChat
 
 # Standard Chat Completions API (default)
 model = GroqChat(model="llama-3.3-70b-versatile")
@@ -478,7 +478,7 @@ response = await bound.ainvoke(messages)
 Google's Gemini models:
 
 ```python
-from agenticflow.models.gemini import GeminiChat, GeminiEmbedding
+from cogent.models.gemini import GeminiChat, GeminiEmbedding
 
 model = GeminiChat(
     model="gemini-2.0-flash",
@@ -500,7 +500,7 @@ embeddings = GeminiEmbedding(model="text-embedding-004")
 Local models via Ollama:
 
 ```python
-from agenticflow.models.ollama import OllamaChat, OllamaEmbedding
+from cogent.models.ollama import OllamaChat, OllamaEmbedding
 
 # Chat (requires `ollama run llama3.2`)
 model = OllamaChat(
@@ -523,7 +523,7 @@ embeddings = OllamaEmbedding(model="nomic-embed-text")
 Any OpenAI-compatible endpoint (vLLM, Together AI, etc.):
 
 ```python
-from agenticflow.models.custom import CustomChat, CustomEmbedding
+from cogent.models.custom import CustomChat, CustomEmbedding
 
 # vLLM
 model = CustomChat(
@@ -552,7 +552,7 @@ embeddings = CustomEmbedding(
 Create models dynamically by provider:
 
 ```python
-from agenticflow.models import create_chat, create_embedding
+from cogent.models import create_chat, create_embedding
 
 # OpenAI
 model = create_chat("openai", model="gpt-4o")
@@ -592,7 +592,7 @@ model = create_chat(
 For testing without API calls:
 
 ```python
-from agenticflow.models import MockChatModel, MockEmbedding
+from cogent.models import MockChatModel, MockEmbedding
 
 # Predictable responses
 model = MockChatModel(responses=["Hello!", "How can I help?"])
@@ -616,7 +616,7 @@ print(len(vectors[0]))  # 384
 All models support streaming with **complete metadata**:
 
 ```python
-from agenticflow.models import ChatModel
+from cogent.models import ChatModel
 
 model = ChatModel(model="gpt-4o")
 
@@ -698,7 +698,7 @@ async for chunk in model.astream(messages):
 All 9 embedding providers support a **standardized API** with rich metadata and flexible usage patterns:
 
 ```python
-from agenticflow.models import OpenAIEmbedding, GeminiEmbedding, OllamaEmbedding
+from cogent.models import OpenAIEmbedding, GeminiEmbedding, OllamaEmbedding
 
 embedder = OpenAIEmbedding(model="text-embedding-3-small")
 
@@ -807,7 +807,7 @@ result = embedder.embed(large_batch)  # Sync version for compatibility
 All models support streaming with **complete metadata**:
 
 ```python
-from agenticflow.models import ChatModel
+from cogent.models import ChatModel
 
 model = ChatModel(model="gpt-4o")
 
@@ -846,7 +846,7 @@ async for chunk in model.astream([
 Protocol for all chat models:
 
 ```python
-from agenticflow.models.base import BaseChatModel
+from cogent.models.base import BaseChatModel
 
 class BaseChatModel(Protocol):
     async def ainvoke(
@@ -872,7 +872,7 @@ class BaseChatModel(Protocol):
 Response type from chat models:
 
 ```python
-from agenticflow.models.base import AIMessage
+from cogent.models.base import AIMessage
 
 @dataclass
 class AIMessage:
@@ -887,8 +887,8 @@ class AIMessage:
 Standardized protocol for all embedding models:
 
 ```python
-from agenticflow.models.base import BaseEmbedding
-from agenticflow.core.messages import EmbeddingResult
+from cogent.models.base import BaseEmbedding
+from cogent.core.messages import EmbeddingResult
 
 class BaseEmbedding(ABC):
     # Primary methods - return full metadata

@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from agenticflow.observability.trace_record import TraceType
-from agenticflow.tools.deferred import (
+from cogent.observability.trace_record import TraceType
+from cogent.tools.deferred import (
     DeferredManager,
     DeferredResult,
     DeferredRetry,
