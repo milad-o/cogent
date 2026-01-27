@@ -245,6 +245,16 @@ class Memory:
         acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
         self._acc_states[thread_id] = acc
         return acc
+    
+    async def save_acc_state(self, thread_id: str, acc: Any) -> None:
+        """Save ACC state for a thread.
+        
+        Args:
+            thread_id: Thread identifier.
+            acc: ACC compressor instance to save.
+        """
+        # Keep in memory cache (persistence would go through saver if needed)
+        self._acc_states[thread_id] = acc
 
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event if event_bus is configured."""
