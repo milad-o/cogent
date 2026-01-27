@@ -571,6 +571,78 @@ SemanticCache provides embedding-based caching with configurable similarity thre
 - **Cost reduction** — Fewer API calls = lower costs
 - **Automatic eviction** — LRU policy and TTL expiration
 
+### Quick Start
+
+Enable caching with `cache=True`:
+
+```python
+from cogent import Agent
+
+agent = Agent(
+    model="gpt-4o-mini",
+    cache=True,  # Enable semantic cache with defaults
+)
+
+# First query
+await agent.run("What are the best Python frameworks?")
+
+# Similar query hits cache (instant!)
+await agent.run("What are the top Python frameworks?")
+```
+
+### Custom Configuration
+
+Pass a `SemanticCache` instance for custom settings:
+
+```python
+from cogent import Agent
+from cogent.memory import SemanticCache
+
+agent = Agent(
+    model="gpt-4o-mini",
+    cache=SemanticCache(
+        similarity_threshold=0.90,  # Stricter matching (default: 0.85)
+        max_size=5000,              # Larger cache (default: 1000)
+        ttl=3600,                   # 1 hour TTL (default: None)
+    ),
+)
+```
+
+**Similarity Threshold:**
+
+| Threshold | Behavior | Use Case |
+|-----------|----------|----------|
+| **0.95-1.0** | Very strict, near-exact | Deterministic outputs |
+| **0.85-0.95** | Balanced, similar intent | General purpose (default) |
+| **0.70-0.85** | Loose, broad matching | Exploratory queries |
+
+### Tool-Level Caching
+
+Use `@tool(cache=True)` to cache expensive tool calls:
+
+```python
+from cogent import Agent, tool
+
+@tool(cache=True)
+async def search_products(query: str) -> str:
+    """Search products in the catalog."""
+    return await product_api.search(query)
+
+agent = Agent(
+    model="gpt-4o-mini",
+    tools=[search_products],
+    cache=True,  # Required — tools use agent's cache
+)
+
+# First call executes the tool
+await agent.run("Find running shoes")
+
+# Similar query hits cache
+await agent.run("Show me running sneakers")  # Cache hit!
+```
+
+See [tool-building.md](tool-building.md#semantic-caching) for more details.
+
 ### When to Use
 
 | Use Semantic Cache When | Don't Use When |
@@ -579,128 +651,3 @@ SemanticCache provides embedding-based caching with configurable similarity thre
 | Similar questions rephrased | Outputs must be deterministic |
 | Intent-based matching | Query structure matters |
 | High query volume | Low query volume |
-
-### Basic Usage
-
-```python
-from cogent.memory import SemanticCache
-from cogent.models import OpenAIEmbedding
-
-# Create cache with embedding model
-cache = SemanticCache(
-    embedding_model=OpenAIEmbedding(model="text-embedding-3-small"),
-    similarity_threshold=0.85,  # 85% similar = cache hit
-    max_size=1000,              # Keep 1000 most recent entries
-)
-
-# Cache a result
-await cache.set("What is the capital of France?", "The capital of France is Paris.")
-
-# Similar query hits cache
-result = await cache.get("What's the capital city of France?")
-print(result)  # "The capital of France is Paris." (cache hit!)
-
-# Dissimilar query misses cache
-result = await cache.get("What is the capital of Germany?")
-print(result)  # None (cache miss)
-```
-
-### Configuration
-
-```python
-cache = SemanticCache(
-    embedding_model=OpenAIEmbedding(model="text-embedding-3-large"),
-    similarity_threshold=0.90,  # Stricter matching (default: 0.85)
-    max_size=5000,              # Larger cache (default: 1000)
-    ttl=3600,                   # 1 hour TTL in seconds (default: None)
-    eviction_policy="lru",      # LRU or FIFO (default: "lru")
-)
-```
-
-**Similarity Threshold:**
-
-| Threshold | Behavior | Use Case |
-|-----------|----------|----------|
-| **0.95-1.0** | Very strict, near-exact matches | Deterministic outputs required |
-| **0.85-0.95** | Balanced, similar intent | General purpose (recommended) |
-| **0.70-0.85** | Loose, broad matching | Exploratory queries |
-
-### Agent Integration
-
-Enable semantic caching on agents with `cache=True`:
-
-```python
-from cogent import Agent
-
-agent = Agent(
-    name="Assistant",
-    model="gpt-4o-mini",
-    cache=True,  # Creates SemanticCache internally
-)
-
-# First query
-await agent.run("What are the best Python frameworks?")
-
-# Similar query hits cache
-await agent.run("What are the top Python frameworks?")  # Instant
-```
-
-> [!NOTE]
-> `cache=True` creates a SemanticCache with default settings. No manual setup needed.
-
-### Tool-Level Caching
-
-Use `@tool(cache=True)` to cache individual tool calls. Tools use the agent's cache:
-
-```python
-from cogent import Agent, tool
-
-@tool(cache=True)  # Tool uses agent's cache
-async def search_products(query: str) -> str:
-    """Search products in the catalog."""
-    return await product_api.search(query)
-
-agent = Agent(
-    model="gpt-4o-mini",
-    tools=[search_products],
-    cache=True,  # Required — tools use this cache
-)
-
-# First call executes the tool
-await agent.run("Find running shoes")
-
-# Similar query hits tool cache
-await agent.run("Show me running sneakers")  # Cache hit!
-```
-
-**Requirements:**
-- Agent must have `cache=True` (creates the cache)
-- Tool must have `cache=True` (opts into caching)
-
-See [tool-building.md](tool-building.md#semantic-caching) for more details.
-
-### SemanticCache API
-
-```python
-class SemanticCache:
-    def __init__(
-        self,
-        embedding_model: EmbeddingModel,
-        similarity_threshold: float = 0.85,
-        max_size: int = 1000,
-        ttl: int | None = None,
-        eviction_policy: Literal["lru", "fifo"] = "lru",
-    ): ...
-    
-    async def set(self, key: str, value: str) -> None:
-        """Cache a result for the given key."""
-    
-    async def get(self, key: str) -> str | None:
-        """Retrieve cached result for similar key."""
-    
-    def clear(self) -> None:
-        """Remove all entries from cache."""
-    
-    def size(self) -> int:
-        """Get current number of cached entries."""
-```
