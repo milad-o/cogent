@@ -3015,12 +3015,12 @@ class Agent:
             # Save to conversation history if thread_id provided
             if thread_id:
                 # Update ACC state from this turn
-                if self._use_acc and self._memory._acc_enabled:
+                if self._memory and self._memory._acc_enabled:
                     acc = await self._memory.get_acc_state(thread_id)
                     
                     # Extract tool calls for ACC
                     tool_calls_data = [
-                        {"name": tc.name, "args": getattr(tc, "args", {})}
+                        {"name": tc.tool_name, "args": getattr(tc, "arguments", {})}
                         for tc in self.state.tool_calls
                     ]
                     
