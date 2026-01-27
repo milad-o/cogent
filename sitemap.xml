@@ -1,83 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://milad-o.github.io/agenticflow/</loc>
+         <loc>https://milad-o.github.io/cogent/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/RESEARCH_FINDINGS/</loc>
+         <loc>https://milad-o.github.io/cogent/RESEARCH_FINDINGS/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/agent/</loc>
+         <loc>https://milad-o.github.io/cogent/agent/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/capabilities/</loc>
+         <loc>https://milad-o.github.io/cogent/capabilities/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/context/</loc>
+         <loc>https://milad-o.github.io/cogent/context/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/core/</loc>
+         <loc>https://milad-o.github.io/cogent/core/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/document/</loc>
+         <loc>https://milad-o.github.io/cogent/document/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/getting-started/</loc>
+         <loc>https://milad-o.github.io/cogent/getting-started/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/graph/</loc>
+         <loc>https://milad-o.github.io/cogent/graph/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/interceptors/</loc>
+         <loc>https://milad-o.github.io/cogent/interceptors/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/memory/</loc>
+         <loc>https://milad-o.github.io/cogent/memory/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/models/</loc>
+         <loc>https://milad-o.github.io/cogent/models/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/observability/</loc>
+         <loc>https://milad-o.github.io/cogent/observability/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/resilience/</loc>
+         <loc>https://milad-o.github.io/cogent/resilience/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/retrievers/</loc>
+         <loc>https://milad-o.github.io/cogent/retrievers/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/skills/</loc>
+         <loc>https://milad-o.github.io/cogent/skills/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/streaming/</loc>
+         <loc>https://milad-o.github.io/cogent/streaming/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/tools/</loc>
+         <loc>https://milad-o.github.io/cogent/tools/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/transport/</loc>
+         <loc>https://milad-o.github.io/cogent/transport/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
     <url>
-         <loc>https://milad-o.github.io/agenticflow/vectorstore/</loc>
+         <loc>https://milad-o.github.io/cogent/vectorstore/</loc>
          <lastmod>2026-01-27</lastmod>
     </url>
 </urlset>
