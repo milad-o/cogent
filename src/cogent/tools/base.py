@@ -54,6 +54,7 @@ class BaseTool:
     args_schema: dict[str, Any] = field(default_factory=dict)
     return_info: str = field(default="", repr=False)
     _needs_context: bool = field(default=False, repr=False)
+    _cache_enabled: bool = field(default=False, repr=False)
 
     def __post_init__(self) -> None:
         """Check if function needs context injection."""
@@ -83,6 +84,34 @@ class BaseTool:
         Returns:
             Tool result.
         """
+        # Handle caching if enabled
+        if self._cache_enabled and ctx and ctx.agent and ctx.agent.cache:
+            cache = ctx.agent.cache
+            # Create cache key from tool name and args (sorted for consistency)
+            cache_key = f"{self.name}:{repr(sorted(args.items()))}"
+            
+            # Check cache first
+            cached = await cache.get(self.name, cache_key, "")
+            if cached:
+                return cached.artifact
+            
+            # Cache miss - execute function
+            if self._needs_context:
+                if asyncio.iscoroutinefunction(self.func):
+                    result = await self.func(**args, ctx=ctx)
+                else:
+                    result = await asyncio.to_thread(self.func, **args, ctx=ctx)
+            else:
+                if asyncio.iscoroutinefunction(self.func):
+                    result = await self.func(**args)
+                else:
+                    result = await asyncio.to_thread(self.func, **args)
+            
+            # Store in cache
+            await cache.put(self.name, cache_key, result, "")
+            return result
+        
+        # No caching - normal execution
         if self._needs_context and ctx is not None:
             if asyncio.iscoroutinefunction(self.func):
                 return await self.func(**args, ctx=ctx)
@@ -332,11 +361,19 @@ def tool(
     *,
     name: str | None = None,
     description: str | None = None,
+    cache: bool = False,
 ) -> BaseTool | Callable[[Callable[..., Any]], BaseTool]:
     """Decorator to create a tool from a function.
 
     The function's docstring becomes the tool description.
     Parameter types and descriptions are extracted from type hints and docstring.
+
+    Args:
+        func: The function to wrap (when used without parentheses).
+        name: Optional custom name for the tool.
+        description: Optional custom description (uses docstring if not provided).
+        cache: If True, automatically cache results using agent's semantic cache.
+               Requires agent.cache to be enabled.
 
     Example:
         @tool
@@ -348,8 +385,15 @@ def tool(
             '''
             return f"Results for: {query}"
 
+        # With caching enabled:
+        @tool(cache=True)
+        async def expensive_api(query: str) -> dict:
+            '''Call an expensive external API.'''
+            response = await call_api(query)
+            return response.json()
+
         # With custom name:
-        @tool(name="web_search")
+        @tool(name="web_search", cache=True)
         def search(query: str) -> str:
             '''Search the web.'''
             return f"Results for: {query}"
@@ -374,6 +418,7 @@ def tool(
             func=fn,
             args_schema=args_schema,
             return_info=return_info,
+            _cache_enabled=cache,
         )
 
     if func is not None:
