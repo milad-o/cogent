@@ -557,6 +557,43 @@ class Agent:
 
         return None
 
+    def _aggregate_tokens_from_messages(self, messages: list | None = None) -> TokenUsage | None:
+        """Aggregate token usage from all AI messages.
+
+        Sums up tokens from all AIMessage metadata in the given messages.
+
+        Args:
+            messages: List of messages to aggregate from. If None, uses state history.
+
+        Returns:
+            TokenUsage with totals, or None if no token info available.
+        """
+        if messages is None:
+            messages = self.state.message_history
+            
+        total_prompt = 0
+        total_completion = 0
+        found_any = False
+
+        for msg in messages:
+            # Check if it's an AI message with metadata
+            if hasattr(msg, "metadata") and msg.metadata:
+                metadata = msg.metadata
+                if hasattr(metadata, "tokens") and metadata.tokens:
+                    tokens = metadata.tokens
+                    if hasattr(tokens, "prompt_tokens"):
+                        total_prompt += tokens.prompt_tokens or 0
+                        total_completion += tokens.completion_tokens or 0
+                        found_any = True
+
+        if found_any:
+            return TokenUsage(
+                prompt_tokens=total_prompt,
+                completion_tokens=total_completion,
+                total_tokens=total_prompt + total_completion,
+            )
+        return None
+
     def _setup_output(self, output: type | dict | ResponseSchema | None) -> None:
         """Setup structured output for response schema enforcement.
 
@@ -3019,6 +3056,9 @@ class Agent:
 
             # Execute task
             result = await executor.execute(task, context)
+            
+            # Get messages from executor for token aggregation
+            executor_messages = getattr(executor, '_last_messages', None) or []
 
             # Save to conversation history if thread_id provided
             if thread_id:
@@ -3048,10 +3088,14 @@ class Agent:
 
             # Build Response object
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
+            
+            # Aggregate token usage from all AI messages
+            total_tokens = self._aggregate_tokens_from_messages(executor_messages)
+            
             metadata = ResponseMetadata(
                 agent=self.name,
                 model=model_identifier(self.model),
-                tokens=None,  # Executors may aggregate tokens differently
+                tokens=total_tokens,
                 duration=duration_ms / 1000,
                 correlation_id=None,
             )
@@ -3060,7 +3104,7 @@ class Agent:
                 content=result,
                 metadata=metadata,
                 tool_calls=list(self.state.tool_calls),
-                messages=list(self.state.message_history),  # Include full conversation
+                messages=executor_messages,  # Use executor's messages with token info
                 events=list(self.state.emitted_events),
                 error=None,
             )

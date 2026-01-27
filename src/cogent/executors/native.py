@@ -747,6 +747,9 @@ class NativeExecutor(BaseExecutor):
 
         total_tool_calls = 0
         model_calls = 0
+        
+        # Store messages reference for token aggregation
+        self._last_messages = messages
 
         # Get interceptors from agent
         interceptors: list[Interceptor] = getattr(self.agent, "_interceptors", [])
@@ -1014,6 +1017,10 @@ class NativeExecutor(BaseExecutor):
                             "duration_ms": duration_ms,
                         },
                     )
+                
+                # Sync messages to agent state for token aggregation
+                self.agent.state._message_history = messages
+                
                 return final_output
 
             # Emit tool call events
