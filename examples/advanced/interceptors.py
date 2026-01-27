@@ -13,8 +13,8 @@ Usage: uv run python examples/advanced/interceptors.py
 
 import asyncio
 
-from agenticflow import Agent
-from agenticflow.interceptors import (
+from cogent import Agent
+from cogent.interceptors import (
     Auditor,
     BudgetGuard,
     ContentFilter,
@@ -26,7 +26,7 @@ from agenticflow.interceptors import (
     RateLimiter,
     TokenLimiter,
 )
-from agenticflow.tools.base import tool
+from cogent.tools.base import tool
 
 
 @tool

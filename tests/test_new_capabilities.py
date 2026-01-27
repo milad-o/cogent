@@ -18,14 +18,14 @@ class TestSpreadsheetCapability:
 
     def test_import(self) -> None:
         """Test that Spreadsheet can be imported."""
-        from agenticflow.capabilities import Spreadsheet
+        from cogent.capabilities import Spreadsheet
 
         ss = Spreadsheet()
         assert ss is not None
 
     def test_get_tools(self) -> None:
         """Test that Spreadsheet provides expected tools."""
-        from agenticflow.capabilities import Spreadsheet
+        from cogent.capabilities import Spreadsheet
 
         ss = Spreadsheet()
         tools = ss.get_tools()
@@ -38,7 +38,7 @@ class TestSpreadsheetCapability:
 
     def test_read_csv(self) -> None:
         """Test reading a CSV file."""
-        from agenticflow.capabilities import Spreadsheet
+        from cogent.capabilities import Spreadsheet
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test CSV
@@ -59,7 +59,7 @@ class TestSpreadsheetCapability:
 
     def test_write_csv(self) -> None:
         """Test writing a CSV file."""
-        from agenticflow.capabilities import Spreadsheet
+        from cogent.capabilities import Spreadsheet
 
         with tempfile.TemporaryDirectory() as tmpdir:
             csv_path = Path(tmpdir) / "output.csv"
@@ -84,7 +84,7 @@ class TestSpreadsheetCapability:
 
     def test_filter_data(self) -> None:
         """Test data filtering."""
-        from agenticflow.capabilities import Spreadsheet
+        from cogent.capabilities import Spreadsheet
 
         ss = Spreadsheet()
         data = [
@@ -107,7 +107,7 @@ class TestSpreadsheetCapability:
 
     def test_aggregate_data(self) -> None:
         """Test data aggregation."""
-        from agenticflow.capabilities import Spreadsheet
+        from cogent.capabilities import Spreadsheet
 
         ss = Spreadsheet()
         data = [
@@ -129,7 +129,7 @@ class TestSpreadsheetCapability:
 
     def test_path_validation(self) -> None:
         """Test path validation."""
-        from agenticflow.capabilities import Spreadsheet
+        from cogent.capabilities import Spreadsheet
 
         with tempfile.TemporaryDirectory() as tmpdir:
             ss = Spreadsheet(allowed_paths=[tmpdir])
@@ -153,14 +153,14 @@ class TestBrowserCapability:
 
     def test_import(self) -> None:
         """Test that Browser can be imported."""
-        from agenticflow.capabilities import Browser
+        from cogent.capabilities import Browser
 
         browser = Browser()
         assert browser is not None
 
     def test_get_tools(self) -> None:
         """Test that Browser provides expected tools."""
-        from agenticflow.capabilities import Browser
+        from cogent.capabilities import Browser
 
         browser = Browser()
         tools = browser.get_tools()
@@ -174,7 +174,7 @@ class TestBrowserCapability:
 
     def test_url_validation_blocked(self) -> None:
         """Test URL validation with blocked domains."""
-        from agenticflow.capabilities import Browser
+        from cogent.capabilities import Browser
 
         browser = Browser(blocked_domains=["evil.com"])
 
@@ -188,7 +188,7 @@ class TestBrowserCapability:
 
     def test_url_validation_allowed(self) -> None:
         """Test URL validation with allowed domains."""
-        from agenticflow.capabilities import Browser
+        from cogent.capabilities import Browser
 
         browser = Browser(allowed_domains=["example.com"])
 
@@ -202,7 +202,7 @@ class TestBrowserCapability:
 
     def test_dependency_check(self) -> None:
         """Test dependency checking."""
-        from agenticflow.capabilities import Browser
+        from cogent.capabilities import Browser
 
         browser = Browser()
         # Should raise ImportError if playwright not installed
@@ -222,14 +222,14 @@ class TestShellCapability:
 
     def test_import(self) -> None:
         """Test that Shell can be imported."""
-        from agenticflow.capabilities import Shell
+        from cogent.capabilities import Shell
 
         shell = Shell()
         assert shell is not None
 
     def test_get_tools(self) -> None:
         """Test that Shell provides expected tools."""
-        from agenticflow.capabilities import Shell
+        from cogent.capabilities import Shell
 
         shell = Shell()
         tools = shell.get_tools()
@@ -243,8 +243,8 @@ class TestShellCapability:
 
     def test_command_validation_blocked(self) -> None:
         """Test command validation with blocked commands."""
-        from agenticflow.capabilities import Shell
-        from agenticflow.capabilities.shell import SecurityError
+        from cogent.capabilities import Shell
+        from cogent.capabilities.shell import SecurityError
 
         shell = Shell()
 
@@ -257,8 +257,8 @@ class TestShellCapability:
 
     def test_command_validation_allowed(self) -> None:
         """Test command validation with allowed commands."""
-        from agenticflow.capabilities import Shell
-        from agenticflow.capabilities.shell import SecurityError
+        from cogent.capabilities import Shell
+        from cogent.capabilities.shell import SecurityError
 
         shell = Shell(allowed_commands=["ls", "cat", "echo"])
 
@@ -272,8 +272,8 @@ class TestShellCapability:
 
     def test_dangerous_patterns(self) -> None:
         """Test detection of dangerous patterns."""
-        from agenticflow.capabilities import Shell
-        from agenticflow.capabilities.shell import SecurityError
+        from cogent.capabilities import Shell
+        from cogent.capabilities.shell import SecurityError
 
         shell = Shell(allowed_commands=[])  # Allow all for this test
         shell.blocked_commands = set()  # Clear blocked
@@ -288,8 +288,8 @@ class TestShellCapability:
 
     def test_operator_restrictions(self) -> None:
         """Test operator restrictions."""
-        from agenticflow.capabilities import Shell
-        from agenticflow.capabilities.shell import SecurityError
+        from cogent.capabilities import Shell
+        from cogent.capabilities.shell import SecurityError
 
         # Pipes allowed by default
         shell_with_pipes = Shell(allowed_commands=["ls", "grep"])
@@ -308,8 +308,8 @@ class TestShellCapability:
 
     def test_path_validation(self) -> None:
         """Test path validation."""
-        from agenticflow.capabilities import Shell
-        from agenticflow.capabilities.shell import SecurityError
+        from cogent.capabilities import Shell
+        from cogent.capabilities.shell import SecurityError
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # When using allowed_paths, working_dir must be in allowed_paths
@@ -331,7 +331,7 @@ class TestShellCapability:
     @pytest.mark.asyncio
     async def test_run_simple_command(self) -> None:
         """Test running a simple command."""
-        from agenticflow.capabilities import Shell
+        from cogent.capabilities import Shell
 
         shell = Shell(allowed_commands=["echo"])
         result = await shell._run_command("echo hello")
@@ -345,7 +345,7 @@ class TestShellCapability:
         """Test command timeout."""
         import sys
 
-        from agenticflow.capabilities import Shell
+        from cogent.capabilities import Shell
 
         # Use platform-specific sleep command
         if sys.platform == "win32":
@@ -361,7 +361,7 @@ class TestShellCapability:
 
     def test_env_building(self) -> None:
         """Test environment building."""
-        from agenticflow.capabilities import Shell
+        from cogent.capabilities import Shell
 
         shell = Shell(env_vars={"CUSTOM_VAR": "custom_value"})
         env = shell._build_env()
@@ -384,7 +384,7 @@ class TestCapabilitiesIntegration:
 
     def test_all_capabilities_importable(self) -> None:
         """Test that all new capabilities can be imported from main module."""
-        from agenticflow.capabilities import (
+        from cogent.capabilities import (
             Browser,
             Shell,
             Spreadsheet,
@@ -396,7 +396,7 @@ class TestCapabilitiesIntegration:
 
     def test_capabilities_have_get_tools(self) -> None:
         """Test that all capabilities implement get_tools."""
-        from agenticflow.capabilities import (
+        from cogent.capabilities import (
             Browser,
             Shell,
             Spreadsheet,

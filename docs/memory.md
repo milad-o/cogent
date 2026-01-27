@@ -1,6 +1,6 @@
 # Memory Module
 
-The `agenticflow.memory` module provides a memory-first architecture where memory is a first-class citizen that can be wired to any entity (Agent, Team, Flow).
+The `cogent.memory` module provides a memory-first architecture where memory is a first-class citizen that can be wired to any entity (Agent, Team, Flow).
 
 ## Overview
 
@@ -11,8 +11,8 @@ Memory enables agents to:
 - Scope memories by user, team, or conversation
 
 ```python
-from agenticflow import Agent
-from agenticflow.memory import Memory
+from cogent import Agent
+from cogent.memory import Memory
 
 # Basic in-memory storage
 memory = Memory()
@@ -30,7 +30,7 @@ agent = Agent(name="assistant", model=model, memory=memory)
 The main memory interface with simple remember/recall API:
 
 ```python
-from agenticflow.memory import Memory
+from cogent.memory import Memory
 
 memory = Memory()
 
@@ -62,7 +62,7 @@ await memory.clear()
 Create isolated memory views for users, teams, or conversations:
 
 ```python
-from agenticflow.memory import Memory
+from cogent.memory import Memory
 
 memory = Memory()
 
@@ -88,8 +88,8 @@ await project_mem.remember("status", "active")
 Wire the same memory to multiple agents for shared knowledge:
 
 ```python
-from agenticflow import Agent
-from agenticflow.memory import Memory
+from cogent import Agent
+from cogent.memory import Memory
 
 # Shared memory instance
 shared = Memory()
@@ -114,7 +114,7 @@ findings = await shared.recall("findings")
 Fast, no-persistence storage for development and testing:
 
 ```python
-from agenticflow.memory import Memory, InMemoryStore
+from cogent.memory import Memory, InMemoryStore
 
 # Default - uses InMemoryStore
 memory = Memory()
@@ -128,7 +128,7 @@ memory = Memory(store=InMemoryStore())
 Persistent storage with SQLAlchemy 2.0 async support:
 
 ```python
-from agenticflow.memory import Memory, SQLAlchemyStore
+from cogent.memory import Memory, SQLAlchemyStore
 
 # SQLite (local file)
 store = SQLAlchemyStore("sqlite+aiosqlite:///./memory.db")
@@ -161,7 +161,7 @@ async with SQLAlchemyStore("sqlite+aiosqlite:///./data.db") as store:
 Distributed cache with native TTL support:
 
 ```python
-from agenticflow.memory import Memory, RedisStore
+from cogent.memory import Memory, RedisStore
 
 store = RedisStore(
     url="redis://localhost:6379",
@@ -181,8 +181,8 @@ await memory.remember("session", {"user": "alice"}, ttl=1800)
 Add a vector store to enable semantic search over memories:
 
 ```python
-from agenticflow.memory import Memory, SQLAlchemyStore
-from agenticflow.vectorstore import VectorStore
+from cogent.memory import Memory, SQLAlchemyStore
+from cogent.vectorstore import VectorStore
 
 # Memory with semantic search
 memory = Memory(
@@ -208,8 +208,8 @@ for result in results:
 Memory automatically exposes tools to agents for autonomous memory management:
 
 ```python
-from agenticflow import Agent
-from agenticflow.memory import Memory
+from cogent import Agent
+from cogent.memory import Memory
 
 # Memory is always agentic - tools auto-added
 memory = Memory()
@@ -297,7 +297,7 @@ agent = Agent(name="assistant", model=model, memory=True)
 ### Conversation History
 
 ```python
-from agenticflow.memory import Memory
+from cogent.memory import Memory
 
 memory = Memory()
 
@@ -321,8 +321,8 @@ async def chat(user_id: str, message: str) -> str:
 ### Team Knowledge Base
 
 ```python
-from agenticflow.memory import Memory, SQLAlchemyStore
-from agenticflow.vectorstore import VectorStore
+from cogent.memory import Memory, SQLAlchemyStore
+from cogent.vectorstore import VectorStore
 
 # Persistent team memory with search
 team_memory = Memory(
@@ -342,8 +342,8 @@ results = await team_memory.search("time off work", k=3)
 ### Agent with Persistent Context
 
 ```python
-from agenticflow import Agent
-from agenticflow.memory import Memory, SQLAlchemyStore
+from cogent import Agent
+from cogent.memory import Memory, SQLAlchemyStore
 
 store = SQLAlchemyStore("sqlite+aiosqlite:///./agent.db")
 memory = Memory(store=store)

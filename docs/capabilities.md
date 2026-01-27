@@ -1,6 +1,6 @@
 # Capabilities Module
 
-The `agenticflow.capabilities` module provides composable tools that plug into any agent. Capabilities are reusable building blocks that add domain-specific functionality.
+The `cogent.capabilities` module provides composable tools that plug into any agent. Capabilities are reusable building blocks that add domain-specific functionality.
 
 ## Overview
 
@@ -10,8 +10,8 @@ Capabilities encapsulate related functionality and expose it through native tool
 - Can be initialized/shutdown with the agent lifecycle
 
 ```python
-from agenticflow import Agent
-from agenticflow.capabilities import (
+from cogent import Agent
+from cogent.capabilities import (
     KnowledgeGraph, FileSystem, WebSearch, CodeSandbox,
     MCP, Spreadsheet, PDF, Browser, Shell, Summarizer,
 )
@@ -35,7 +35,7 @@ agent = Agent(
 Entity/relationship memory with multi-hop reasoning and multiple storage backends.
 
 ```python
-from agenticflow.capabilities import KnowledgeGraph
+from cogent.capabilities import KnowledgeGraph
 
 # In-memory (default, no persistence)
 kg = KnowledgeGraph()
@@ -50,7 +50,7 @@ kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
 kg = KnowledgeGraph(backend="json", path="knowledge.json")
 
 # Custom backend instance
-from agenticflow.capabilities.knowledge_graph.backends import GraphBackend
+from cogent.capabilities.knowledge_graph.backends import GraphBackend
 custom_backend = MyCustomBackend()  # Your implementation
 kg = KnowledgeGraph(backend=custom_backend)
 
@@ -163,7 +163,7 @@ remember(entity="Alice", entity_type="Person", attributes='{"role": "CEO"}')
 Sandboxed file operations with security controls.
 
 ```python
-from agenticflow.capabilities import FileSystem
+from cogent.capabilities import FileSystem
 
 # Read-only access to docs
 fs = FileSystem(
@@ -207,7 +207,7 @@ agent = Agent(name="Worker", model=model, capabilities=[fs])
 Web search and page fetching using DuckDuckGo (free, no API key).
 
 ```python
-from agenticflow.capabilities import WebSearch
+from cogent.capabilities import WebSearch
 
 # Default configuration
 ws = WebSearch()
@@ -239,7 +239,7 @@ agent = Agent(name="Researcher", model=model, capabilities=[ws])
 Safe Python code execution with security controls.
 
 ```python
-from agenticflow.capabilities import CodeSandbox
+from cogent.capabilities import CodeSandbox
 
 sandbox = CodeSandbox(
     timeout=30,           # Execution timeout in seconds
@@ -270,7 +270,7 @@ agent = Agent(name="Coder", model=model, capabilities=[sandbox])
 Connect to local and remote MCP servers.
 
 ```python
-from agenticflow.capabilities import MCP
+from cogent.capabilities import MCP
 
 # Local server (stdio)
 mcp_local = MCP.stdio(
@@ -308,7 +308,7 @@ agent = Agent(
 Excel and CSV file operations.
 
 ```python
-from agenticflow.capabilities import Spreadsheet
+from cogent.capabilities import Spreadsheet
 
 ss = Spreadsheet(
     default_format="xlsx",
@@ -335,7 +335,7 @@ agent = Agent(name="Analyst", model=model, capabilities=[ss])
 Headless browser automation with Playwright.
 
 ```python
-from agenticflow.capabilities import Browser
+from cogent.capabilities import Browser
 
 browser = Browser(
     headless=True,
@@ -363,7 +363,7 @@ agent = Agent(name="WebAgent", model=model, capabilities=[browser])
 Sandboxed terminal command execution.
 
 ```python
-from agenticflow.capabilities import Shell
+from cogent.capabilities import Shell
 
 shell = Shell(
     allowed_commands=["ls", "cat", "grep", "find"],
@@ -393,7 +393,7 @@ agent = Agent(name="SysAdmin", model=model, capabilities=[shell])
 Document summarization with multiple strategies.
 
 ```python
-from agenticflow.capabilities import Summarizer, SummarizerConfig
+from cogent.capabilities import Summarizer, SummarizerConfig
 
 summarizer = Summarizer(
     config=SummarizerConfig(
@@ -425,7 +425,7 @@ agent = Agent(name="Summarizer", model=model, capabilities=[summarizer])
 Python codebase analysis with AST parsing.
 
 ```python
-from agenticflow.capabilities import CodebaseAnalyzer
+from cogent.capabilities import CodebaseAnalyzer
 
 analyzer = CodebaseAnalyzer(
     root_path="./src",
@@ -450,8 +450,8 @@ agent = Agent(name="CodeReviewer", model=model, capabilities=[analyzer])
 Extend `BaseCapability` to create your own:
 
 ```python
-from agenticflow.capabilities.base import BaseCapability
-from agenticflow.tools import tool, BaseTool
+from cogent.capabilities.base import BaseCapability
+from cogent.tools import tool, BaseTool
 
 class MyCapability(BaseCapability):
     @property
@@ -485,7 +485,7 @@ class MyCapability(BaseCapability):
 ## Exports
 
 ```python
-from agenticflow.capabilities import (
+from cogent.capabilities import (
     # Base class
     BaseCapability,
     # Capabilities

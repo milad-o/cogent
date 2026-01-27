@@ -11,8 +11,8 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from agenticflow import Agent
-from agenticflow.capabilities import Shell
+from cogent import Agent
+from cogent.capabilities import Shell
 
 
 async def main() -> None:

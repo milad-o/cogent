@@ -24,20 +24,20 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from agenticflow.agent import Agent
-from agenticflow.documents.loaders import PDFMarkdownLoader
-from agenticflow.documents.splitters import RecursiveCharacterSplitter
-from agenticflow.models import OpenAIEmbedding
-from agenticflow.observability.bus import EventBus
-from agenticflow.observability.trace_record import TraceType
-from agenticflow.retriever import (
+from cogent.agent import Agent
+from cogent.documents.loaders import PDFMarkdownLoader
+from cogent.documents.splitters import RecursiveCharacterSplitter
+from cogent.models import OpenAIEmbedding
+from cogent.observability.bus import EventBus
+from cogent.observability.trace_record import TraceType
+from cogent.retriever import (
     BM25Retriever,
     DenseRetriever,
     EnsembleRetriever,
     SummaryIndex,
 )
-from agenticflow.tools.base import BaseTool
-from agenticflow.vectorstore import Document, VectorStore
+from cogent.tools.base import BaseTool
+from cogent.vectorstore import Document, VectorStore
 
 
 def _default_pdf_path() -> Path:

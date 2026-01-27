@@ -2,8 +2,8 @@
 
 import pytest
 
-from agenticflow.capabilities import KnowledgeGraph
-from agenticflow.capabilities.knowledge_graph import InMemoryGraph
+from cogent.capabilities import KnowledgeGraph
+from cogent.capabilities.knowledge_graph import InMemoryGraph
 
 
 class TestInMemoryGraph:
@@ -328,7 +328,7 @@ class TestAgentWithCapabilities:
     def test_agent_with_capability(self):
         from unittest.mock import MagicMock
 
-        from agenticflow import Agent
+        from cogent import Agent
 
         model = MagicMock()
         kg = KnowledgeGraph()
@@ -347,7 +347,7 @@ class TestAgentWithCapabilities:
     def test_agent_capability_list(self):
         from unittest.mock import MagicMock
 
-        from agenticflow import Agent
+        from cogent import Agent
 
         model = MagicMock()
         kg = KnowledgeGraph()
@@ -364,7 +364,7 @@ class TestAgentWithCapabilities:
     def test_get_capability_by_name(self):
         from unittest.mock import MagicMock
 
-        from agenticflow import Agent
+        from cogent import Agent
 
         model = MagicMock()
         kg = KnowledgeGraph()
@@ -383,7 +383,7 @@ class TestAgentWithCapabilities:
     def test_invalid_capability_raises(self):
         from unittest.mock import MagicMock
 
-        from agenticflow import Agent
+        from cogent import Agent
 
         model = MagicMock()
 
@@ -442,7 +442,7 @@ class TestSQLiteGraph:
     """Tests for SQLiteGraph backend."""
 
     def test_create_and_query(self, tmp_path):
-        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        from cogent.capabilities.knowledge_graph import SQLiteGraph
 
         db_path = tmp_path / "test.db"
         graph = SQLiteGraph(db_path)
@@ -466,7 +466,7 @@ class TestSQLiteGraph:
 
     def test_persistence_across_connections(self, tmp_path):
         """Test that data persists across connections."""
-        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        from cogent.capabilities.knowledge_graph import SQLiteGraph
 
         db_path = tmp_path / "persist.db"
 
@@ -484,7 +484,7 @@ class TestSQLiteGraph:
 
     def test_query_patterns(self, tmp_path):
         """Test query patterns work with SQLite."""
-        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        from cogent.capabilities.knowledge_graph import SQLiteGraph
 
         db_path = tmp_path / "query.db"
         graph = SQLiteGraph(db_path)
@@ -505,7 +505,7 @@ class TestSQLiteGraph:
 
     def test_stats(self, tmp_path):
         """Test stats with SQLite."""
-        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        from cogent.capabilities.knowledge_graph import SQLiteGraph
 
         db_path = tmp_path / "stats.db"
         graph = SQLiteGraph(db_path)
@@ -522,7 +522,7 @@ class TestSQLiteGraph:
 
     def test_clear(self, tmp_path):
         """Test clearing SQLite graph."""
-        from agenticflow.capabilities.knowledge_graph import SQLiteGraph
+        from cogent.capabilities.knowledge_graph import SQLiteGraph
 
         db_path = tmp_path / "clear.db"
         graph = SQLiteGraph(db_path)
@@ -544,7 +544,7 @@ class TestJSONFileGraph:
         """Test that changes are auto-saved."""
         import json
 
-        from agenticflow.capabilities.knowledge_graph import JSONFileGraph
+        from cogent.capabilities.knowledge_graph import JSONFileGraph
 
         file_path = tmp_path / "auto.json"
         graph = JSONFileGraph(file_path, auto_save=True)
@@ -559,7 +559,7 @@ class TestJSONFileGraph:
 
     def test_no_auto_save(self, tmp_path):
         """Test manual save when auto_save is False."""
-        from agenticflow.capabilities.knowledge_graph import JSONFileGraph
+        from cogent.capabilities.knowledge_graph import JSONFileGraph
 
         file_path = tmp_path / "manual.json"
         graph = JSONFileGraph(file_path, auto_save=False)

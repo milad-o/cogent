@@ -7,10 +7,10 @@ Better for abstract/conceptual questions than direct embedding search.
 
 import asyncio
 
-from agenticflow.documents import RecursiveCharacterSplitter
-from agenticflow.models import OpenAIEmbedding, create_chat
-from agenticflow.retriever import DenseRetriever, HyDERetriever
-from agenticflow.vectorstore import Document, VectorStore
+from cogent.documents import RecursiveCharacterSplitter
+from cogent.models import OpenAIEmbedding, create_chat
+from cogent.retriever import DenseRetriever, HyDERetriever
+from cogent.vectorstore import Document, VectorStore
 
 KNOWLEDGE_BASE = """
 Exercise has profound effects on mental well-being. Physical activity

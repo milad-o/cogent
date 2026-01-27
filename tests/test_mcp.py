@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agenticflow.capabilities.mcp import MCP, MCPServerConfig, MCPToolInfo, MCPTransport
+from cogent.capabilities.mcp import MCP, MCPServerConfig, MCPToolInfo, MCPTransport
 
 
 class TestMCPServerConfig:

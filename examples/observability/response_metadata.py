@@ -12,7 +12,7 @@ Usage:
 
 import asyncio
 
-from agenticflow import Agent, Observer, tool
+from cogent import Agent, Observer, tool
 
 
 @tool

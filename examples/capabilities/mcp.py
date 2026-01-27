@@ -32,8 +32,8 @@ Transports:
 import asyncio
 from pathlib import Path
 
-from agenticflow import Agent, Observer
-from agenticflow.capabilities import MCP
+from cogent import Agent, Observer
+from cogent.capabilities import MCP
 
 
 async def demo_research_agent() -> None:
@@ -264,7 +264,7 @@ async def main() -> None:
         uv run python examples/data/mcp_server/search_server.py http --port 8765
 
     Terminal 2 (Python):
-        from agenticflow.capabilities import MCP
+        from cogent.capabilities import MCP
         mcp = MCP.sse(url="http://127.0.0.1:8765/sse")
         # ... use with agent
     """)

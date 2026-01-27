@@ -1,13 +1,13 @@
 # Graph Module
 
-The `agenticflow.graph` module provides unified visualization for agents, patterns, and flows.
+The `cogent.graph` module provides unified visualization for agents, patterns, and flows.
 
 ## Overview
 
 Visualize any entity as a diagram:
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 agent = Agent(name="assistant", model=model, tools=[search, write])
 
@@ -89,8 +89,8 @@ view.save("output", format="png")
 Visualize agent structure:
 
 ```python
-from agenticflow import Agent
-from agenticflow.capabilities import WebSearch, FileSystem
+from cogent import Agent
+from cogent.capabilities import WebSearch, FileSystem
 
 agent = Agent(
     name="researcher",
@@ -132,8 +132,8 @@ Visualize multi-agent patterns using `FlowGraph`:
 ### Supervisor
 
 ```python
-from agenticflow.flow import supervisor
-from agenticflow.graph import FlowGraph
+from cogent.flow import supervisor
+from cogent.graph import FlowGraph
 
 flow = supervisor(coordinator=manager, workers=[analyst, writer, reviewer])
 
@@ -144,8 +144,8 @@ print(graph.render())  # Mermaid by default
 ### Pipeline
 
 ```python
-from agenticflow.flow import pipeline
-from agenticflow.graph import FlowGraph
+from cogent.flow import pipeline
+from cogent.graph import FlowGraph
 
 flow = pipeline([researcher, writer, editor])
 
@@ -156,8 +156,8 @@ print(graph.render())
 ### Mesh
 
 ```python
-from agenticflow.flow import mesh
-from agenticflow.graph import FlowGraph
+from cogent.flow import mesh
+from cogent.graph import FlowGraph
 
 flow = mesh([analyst1, analyst2, analyst3], max_rounds=3)
 
@@ -172,8 +172,8 @@ print(graph.render())
 Visualize custom event-driven flows:
 
 ```python
-from agenticflow import Flow, react_to
-from agenticflow.graph import FlowGraph
+from cogent import Flow, react_to
+from cogent.graph import FlowGraph
 
 flow = Flow(name="content-pipeline")
 flow.register(researcher, [react_to("task.created")])
@@ -190,7 +190,7 @@ print(graph.render())
 ### GraphConfig
 
 ```python
-from agenticflow.graph import GraphConfig, GraphTheme, GraphDirection
+from cogent.graph import GraphConfig, GraphTheme, GraphDirection
 
 config = GraphConfig(
     direction=GraphDirection.TOP_DOWN,  # or LEFT_RIGHT
@@ -230,7 +230,7 @@ view = agent.graph(config=config)
 Visualize execution traces:
 
 ```python
-from agenticflow.observability import ExecutionTracer
+from cogent.observability import ExecutionTracer
 
 tracer = ExecutionTracer()
 result = await agent.run("Query", tracer=tracer)
@@ -282,7 +282,7 @@ print(view.ascii())
 ### DAG ASCII Rendering
 
 ```python
-from agenticflow.observability import render_dag_ascii
+from cogent.observability import render_dag_ascii
 
 dag = {
     "A": ["B", "C"],
@@ -318,7 +318,7 @@ print(f"View at: {url}")
 ### Jupyter Notebooks
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 agent = Agent(name="assistant", model=model)
 view = agent.graph()
@@ -355,7 +355,7 @@ view.save("diagram.mmd")
 Visualize knowledge graphs with entity grouping and custom layouts:
 
 ```python
-from agenticflow.capabilities import KnowledgeGraph
+from cogent.capabilities import KnowledgeGraph
 
 kg = KnowledgeGraph()
 

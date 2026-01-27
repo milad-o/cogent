@@ -11,8 +11,8 @@ Requires: uv add playwright && playwright install chromium
 
 import asyncio
 
-from agenticflow import Agent, Flow
-from agenticflow.capabilities import Browser
+from cogent import Agent, Flow
+from cogent.capabilities import Browser
 
 
 async def main() -> None:

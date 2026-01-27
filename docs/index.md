@@ -19,7 +19,7 @@ AgenticFlow is a **production-grade multi-agent framework** designed for perform
 ## Quick Example
 
 ```python
-from agenticflow import Agent, tool
+from cogent import Agent, tool
 
 @tool
 def search(query: str) -> str:
@@ -35,10 +35,10 @@ result = await agent.run("Find the latest news on AI agents")
 
 ```bash
 # Install from GitHub
-pip install git+https://github.com/milad-o/agenticflow.git
+pip install git+https://github.com/milad-o/cogent.git
 
 # Or with uv (recommended)
-uv add git+https://github.com/milad-o/agenticflow.git
+uv add git+https://github.com/milad-o/cogent.git
 ```
 
 **[Get Started →](getting-started.md)**
@@ -66,7 +66,7 @@ uv add git+https://github.com/milad-o/agenticflow.git
 - [Agent Documentation](agent.md) — Learn about the core Agent class
 - [Multi-Agent Flow](flow.md) — Build coordinated multi-agent systems
 - [Capabilities](capabilities.md) — Explore built-in capabilities
-- [Examples](https://github.com/milad-o/agenticflow/tree/main/examples) — See working examples
+- [Examples](https://github.com/milad-o/cogent/tree/main/examples) — See working examples
 
 ## Latest Release (v1.14.1)
 
@@ -81,4 +81,4 @@ uv add git+https://github.com/milad-o/agenticflow.git
 - 🔍 **Auto Provider Detection** — Supports GPT-5, Gemini 3, Mistral Large 3, Command A, and all mainstream models
 - ✅ **74 New Tests** — Comprehensive test coverage for all new features
 
-See [CHANGELOG](https://github.com/milad-o/agenticflow/blob/main/CHANGELOG.md) for full version history.
+See [CHANGELOG](https://github.com/milad-o/cogent/blob/main/CHANGELOG.md) for full version history.

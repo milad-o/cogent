@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from agenticflow.core import (
+from cogent.core import (
     ErrorInfo,
     Response,
     ResponseError,

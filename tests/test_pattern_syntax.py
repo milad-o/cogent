@@ -2,8 +2,8 @@
 
 import pytest
 
-from agenticflow.events import Event, ParsedPattern, parse_pattern
-from agenticflow.flow import Flow
+from cogent.events import Event, ParsedPattern, parse_pattern
+from cogent.flow import Flow
 
 
 class TestParsePattern:

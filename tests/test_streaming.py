@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from agenticflow import Agent, ChatModel, Flow
-from agenticflow.flow.streaming import FlowStreamChunk
+from cogent import Agent, ChatModel, Flow
+from cogent.flow.streaming import FlowStreamChunk
 
 pytestmark = pytest.mark.asyncio
 
@@ -201,7 +201,7 @@ async def test_conditional_streaming(model):
 async def test_streaming_error_handling():
     """Test error handling during streaming."""
     from unittest.mock import AsyncMock, patch
-    from agenticflow import Agent
+    from cogent import Agent
     
     # Create agent with mocked model that fails during streaming
     agent = Agent("test-agent", model="openai:gpt-4")
@@ -228,7 +228,7 @@ async def test_streaming_error_handling():
 
 async def test_streaming_with_config(streaming_agent):
     """Test streaming respects flow configuration."""
-    from agenticflow import FlowConfig
+    from cogent import FlowConfig
 
     config = FlowConfig(
         max_rounds=2,
@@ -248,7 +248,7 @@ async def test_streaming_with_config(streaming_agent):
 
 async def test_streaming_respects_stop_events(streaming_agent):
     """Test streaming stops on stop events."""
-    from agenticflow import FlowConfig
+    from cogent import FlowConfig
 
     config = FlowConfig(
         stop_events=frozenset({"task.done", "flow.completed", "flow.failed"}),
@@ -289,7 +289,7 @@ async def test_streaming_backward_compatibility(streaming_agent):
 
 async def test_reactivestream_chunk_from_agent_chunk():
     """Test FlowStreamChunk.from_agent_chunk() conversion."""
-    from agenticflow.agent.streaming import StreamChunk
+    from cogent.agent.streaming import StreamChunk
 
     agent_chunk = StreamChunk(
         content="Hello",

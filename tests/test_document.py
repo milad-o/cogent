@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agenticflow.documents import (
+from cogent.documents import (
     LOADERS,
     BaseLoader,
     # Splitters
@@ -400,7 +400,7 @@ class TestModuleExports:
 
     def test_document_module_exports(self) -> None:
         """Test that documents module exports all components."""
-        from agenticflow import documents as document
+        from cogent import documents as document
 
         # Types
         assert hasattr(document, "Document")
@@ -427,7 +427,7 @@ class TestModuleExports:
 
     def test_backward_compat_from_retriever(self) -> None:
         """Test backward compatibility imports from retriever."""
-        from agenticflow.retriever import (
+        from cogent.retriever import (
             Document,
             DocumentLoader,
             RecursiveCharacterSplitter,

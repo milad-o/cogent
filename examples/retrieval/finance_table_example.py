@@ -14,8 +14,8 @@ from pathlib import Path
 
 async def main() -> None:
     """Load GPT-4 technical report and query tables with PDFVisionLoader."""
-    from agenticflow import Agent, create_chat
-    from agenticflow.documents import PDFVisionLoader
+    from cogent import Agent, create_chat
+    from cogent.documents import PDFVisionLoader
 
     # Load GPT-4 technical report from examples/data
     report_path = Path(__file__).parent.parent / "data" / "gpt4_technical_report.pdf"

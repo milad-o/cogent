@@ -20,7 +20,7 @@ See also:
 
 import asyncio
 
-from agenticflow import Agent, ObservabilityLevel, Observer, pipeline
+from cogent import Agent, ObservabilityLevel, Observer, pipeline
 
 
 async def demo_levels():

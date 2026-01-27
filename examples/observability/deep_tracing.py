@@ -10,9 +10,9 @@ Run:
 
 import asyncio
 
-from agenticflow import Agent
-from agenticflow.observability import Channel, ObservabilityLevel, Observer
-from agenticflow.tools import tool
+from cogent import Agent
+from cogent.observability import Channel, ObservabilityLevel, Observer
+from cogent.tools import tool
 
 
 # Define some simple tools

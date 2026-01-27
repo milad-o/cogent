@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from agenticflow.events import Event
-from agenticflow.events.transport import (
+from cogent.events import Event
+from cogent.events.transport import (
     LocalTransport,
     PublishError,
     Transport,
@@ -196,7 +196,7 @@ class TestRedisTransport:
     @pytest.mark.asyncio
     async def test_redis_connect(self):
         """Test Redis connection."""
-        from agenticflow.events.transport import RedisTransport
+        from cogent.events.transport import RedisTransport
 
         transport = RedisTransport(url="redis://localhost:6379")
 
@@ -209,7 +209,7 @@ class TestRedisTransport:
     @pytest.mark.asyncio
     async def test_redis_pub_sub(self):
         """Test Redis pub/sub."""
-        from agenticflow.events.transport import RedisTransport
+        from cogent.events.transport import RedisTransport
 
         transport = RedisTransport(url="redis://localhost:6379")
         await transport.connect()
@@ -254,7 +254,7 @@ class TestTransportProtocol:
     )
     def test_redis_transport_implements_protocol(self):
         """Test RedisTransport implements Transport protocol."""
-        from agenticflow.events.transport import RedisTransport
+        from cogent.events.transport import RedisTransport
 
         transport = RedisTransport(url="redis://localhost:6379")
         assert isinstance(transport, Transport)

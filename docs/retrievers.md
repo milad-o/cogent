@@ -60,8 +60,8 @@ results = await retriever.retrieve(
 Semantic search using vector embeddings. The most common retriever for general RAG applications.
 
 ```python
-from agenticflow.retriever import DenseRetriever
-from agenticflow.vectorstore import VectorStore
+from cogent.retriever import DenseRetriever
+from cogent.vectorstore import VectorStore
 
 # Create vectorstore and retriever
 vectorstore = VectorStore(embeddings=embeddings)
@@ -87,8 +87,8 @@ results = await retriever.retrieve("AI and deep learning", k=2)
 Lexical retrieval using the BM25 algorithm. Fast, interpretable, and excellent for keyword queries.
 
 ```python
-from agenticflow.retriever import BM25Retriever
-from agenticflow.vectorstore import Document
+from cogent.retriever import BM25Retriever
+from cogent.vectorstore import Document
 
 # Create documents
 documents = [
@@ -121,7 +121,7 @@ results = await retriever.retrieve("Python tutorial", k=2)
 Combines metadata search with content search. Wraps any retriever and boosts/filters by metadata fields.
 
 ```python
-from agenticflow.retriever import HybridRetriever, DenseRetriever, MetadataMatchMode
+from cogent.retriever import HybridRetriever, DenseRetriever, MetadataMatchMode
 
 # Wrap any content retriever
 content_retriever = DenseRetriever(vectorstore)
@@ -160,7 +160,7 @@ for r in results:
 Combine any number of retrievers with configurable fusion strategies.
 
 ```python
-from agenticflow.retriever import (
+from cogent.retriever import (
     EnsembleRetriever,
     DenseRetriever,
     BM25Retriever,
@@ -197,7 +197,7 @@ results = await ensemble.retrieve("query", k=10)
 Index small chunks for precise matching, but return full parent documents for context.
 
 ```python
-from agenticflow.retriever import ParentDocumentRetriever
+from cogent.retriever import ParentDocumentRetriever
 
 retriever = ParentDocumentRetriever(
     vectorstore=vectorstore,
@@ -225,7 +225,7 @@ results = await retriever.retrieve("specific concept", k=3)
 Index individual sentences, but return with surrounding context.
 
 ```python
-from agenticflow.retriever import SentenceWindowRetriever
+from cogent.retriever import SentenceWindowRetriever
 
 retriever = SentenceWindowRetriever(
     vectorstore=vectorstore,
@@ -255,7 +255,7 @@ for r in results:
 Generate LLM summaries of documents for efficient high-level retrieval.
 
 ```python
-from agenticflow.retriever import SummaryIndex
+from cogent.retriever import SummaryIndex
 
 index = SummaryIndex(
     llm=model,
@@ -287,7 +287,7 @@ for doc_id, summary in index.summaries.items():
 Hierarchical tree of summaries for very large documents or corpora.
 
 ```python
-from agenticflow.retriever import TreeIndex
+from cogent.retriever import TreeIndex
 
 index = TreeIndex(
     llm=model,
@@ -314,7 +314,7 @@ results = await index.retrieve("specific topic", k=5)
 Extract keywords with LLM and build inverted index for fast lookup.
 
 ```python
-from agenticflow.retriever import KeywordTableIndex
+from cogent.retriever import KeywordTableIndex
 
 index = KeywordTableIndex(
     llm=model,
@@ -342,7 +342,7 @@ print(index.keyword_table)  # {"python": [doc_ids...], "ml": [...]}
 LLM parses natural language queries into semantic search + metadata filters.
 
 ```python
-from agenticflow.retriever import SelfQueryRetriever, AttributeInfo
+from cogent.retriever import SelfQueryRetriever, AttributeInfo
 
 retriever = SelfQueryRetriever(
     vectorstore=vectorstore,
@@ -376,7 +376,7 @@ results = await retriever.retrieve(
 Respect and leverage document structure (headers, sections).
 
 ```python
-from agenticflow.retriever import HierarchicalIndex
+from cogent.retriever import HierarchicalIndex
 
 index = HierarchicalIndex(
     vectorstore=vectorstore,
@@ -407,7 +407,7 @@ for r in results:
 Prioritize recent information with time-decay scoring.
 
 ```python
-from agenticflow.retriever import TimeBasedIndex, TimeRange, DecayFunction
+from cogent.retriever import TimeBasedIndex, TimeRange, DecayFunction
 
 index = TimeBasedIndex(
     vectorstore=vectorstore,
@@ -453,7 +453,7 @@ results = await index.retrieve(
 Store multiple embeddings per document for diverse query handling.
 
 ```python
-from agenticflow.retriever import MultiRepresentationIndex, QueryType
+from cogent.retriever import MultiRepresentationIndex, QueryType
 
 index = MultiRepresentationIndex(
     vectorstore=vectorstore,
@@ -499,7 +499,7 @@ results = await index.retrieve(
 Rerankers improve retrieval quality by re-scoring initial results.
 
 ```python
-from agenticflow.retriever import (
+from cogent.retriever import (
     DenseRetriever,
     CrossEncoderReranker,
     CohereReranker,
@@ -537,7 +537,7 @@ reranked = await reranker.rerank(query, initial_docs, top_n=5)
 ### Fusion Functions
 
 ```python
-from agenticflow.retriever import fuse_results, FusionStrategy
+from cogent.retriever import fuse_results, FusionStrategy
 
 # Fuse results from multiple retrievers
 fused = fuse_results(
@@ -551,7 +551,7 @@ fused = fuse_results(
 ### Score Normalization
 
 ```python
-from agenticflow.retriever import normalize_scores
+from cogent.retriever import normalize_scores
 
 # Normalize scores to 0-1 range
 normalized = normalize_scores(results)
@@ -560,7 +560,7 @@ normalized = normalize_scores(results)
 ### Deduplication
 
 ```python
-from agenticflow.retriever import deduplicate_results
+from cogent.retriever import deduplicate_results
 
 # Remove duplicate documents
 unique = deduplicate_results(results, by="content")  # or "id"
@@ -571,7 +571,7 @@ unique = deduplicate_results(results, by="content")  # or "id"
 For RAG applications, use these utilities to prepare results for LLM prompts:
 
 ```python
-from agenticflow.retriever import (
+from cogent.retriever import (
     add_citations,
     format_context,
     format_citations_reference,

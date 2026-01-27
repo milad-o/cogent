@@ -38,7 +38,7 @@ async def basic_streaming():
     print("Demo 1: Basic Streaming")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow
+    from cogent import Agent, Flow
 
     # Create agent with streaming-capable model
     assistant = Agent(
@@ -76,7 +76,7 @@ async def multi_agent_streaming():
     print("Demo 2: Multi-Agent Streaming")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow
+    from cogent import Agent, Flow
 
     # Create multiple agents
     researcher = Agent(
@@ -128,7 +128,7 @@ async def streaming_with_progress():
     print("Demo 3: Streaming with Progress Indicators")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow
+    from cogent import Agent, Flow
 
     # Create agents for a 3-stage pipeline
     analyzer = Agent(
@@ -191,7 +191,7 @@ async def conditional_streaming():
     print("Demo 4: Conditional Streaming (Event-Driven Routing)")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow
+    from cogent import Agent, Flow
 
     # Create specialized agents
     python_expert = Agent(
@@ -265,7 +265,7 @@ async def streaming_error_handling():
     print("Demo 5: Error Handling in Streaming")
     print("=" * 70)
 
-    from agenticflow import Agent, Flow
+    from cogent import Agent, Flow
 
     # Create agent that might fail
     assistant = Agent(

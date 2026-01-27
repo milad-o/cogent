@@ -16,7 +16,7 @@ Usage:
 
 import asyncio
 
-from agenticflow import Agent
+from cogent import Agent
 
 
 def search_web(query: str) -> str:

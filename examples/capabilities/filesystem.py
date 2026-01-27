@@ -25,7 +25,7 @@ def programmatic_demo():
     print("📁 FileSystem Programmatic Demo")
     print("=" * 60)
 
-    from agenticflow.capabilities import FileSystem
+    from cogent.capabilities import FileSystem
 
     # Create a temporary workspace
     with tempfile.TemporaryDirectory() as workspace:
@@ -179,8 +179,8 @@ async def agent_demo():
     print("🤖 Agent with FileSystem Demo")
     print("=" * 60)
 
-    from agenticflow import Agent, Observer
-    from agenticflow.capabilities import FileSystem
+    from cogent import Agent, Observer
+    from cogent.capabilities import FileSystem
 
     # Use the examples/data directory from the project
     examples_dir = Path(__file__).parent
@@ -240,7 +240,7 @@ def security_demo():
     print("🔒 FileSystem Security Demo")
     print("=" * 60)
 
-    from agenticflow.capabilities import FileSystem
+    from cogent.capabilities import FileSystem
 
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace)

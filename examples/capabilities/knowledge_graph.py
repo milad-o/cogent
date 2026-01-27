@@ -59,8 +59,8 @@ def load_knowledge_file(kg, filepath: str) -> dict:
 
 
 async def demo():
-    from agenticflow import Agent
-    from agenticflow.capabilities import KnowledgeGraph
+    from cogent import Agent
+    from cogent.capabilities import KnowledgeGraph
 
     print("=" * 60)
     print("🧠 Knowledge Graph Capability Demo")
@@ -174,7 +174,7 @@ to trace the path and provide complete answers.""",
         print(f"   File size: {save_path.stat().st_size} bytes")
 
         # Create new graph and load
-        from agenticflow.capabilities import KnowledgeGraph
+        from cogent.capabilities import KnowledgeGraph
         kg2 = KnowledgeGraph(backend="memory")
         kg2.load(save_path)
         print(f"✅ Loaded into new graph: {kg2.stats()}")

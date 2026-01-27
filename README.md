@@ -1,41 +1,41 @@
-# AgenticFlow
+# Cogent
 
 <p align="center">
   <strong>Build AI agents that actually work.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/milad-o/agenticflow/releases"><img src="https://img.shields.io/badge/version-1.17.3-blue.svg" alt="Version"></a>
-  <a href="https://github.com/milad-o/agenticflow/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://github.com/milad-o/cogent/releases"><img src="https://img.shields.io/badge/version-1.17.3-blue.svg" alt="Version"></a>
+  <a href="https://github.com/milad-o/cogent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python"></a>
-  <a href="https://milad-o.github.io/agenticflow"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
-  <a href="https://github.com/milad-o/agenticflow/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build"></a>
-  <a href="https://github.com/milad-o/agenticflow/tree/main/tests"><img src="https://img.shields.io/badge/tests-1925-success.svg" alt="Tests"></a>
+  <a href="https://milad-o.github.io/cogent"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
+  <a href="https://github.com/milad-o/cogent/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build"></a>
+  <a href="https://github.com/milad-o/cogent/tree/main/tests"><img src="https://img.shields.io/badge/tests-1925-success.svg" alt="Tests"></a>
 </p>
 
 <p align="center">
   <a href="#installation">Installation</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#core-architecture">Architecture</a> •
-    <a href="#agenticflowflowpatterns--multi-agent-patterns">Patterns</a> •
   <a href="#capabilities">Capabilities</a> •
   <a href="#examples">Examples</a>
 </p>
 
 ---
 
-AgenticFlow is a **production-grade multi-agent framework** designed for performance, simplicity, and real-world deployment. Unlike frameworks that wrap LangChain or add unnecessary abstractions, AgenticFlow uses **native SDK integrations** and a **zero-overhead executor** to deliver the fastest possible agent execution.
+Cogent is a **production AI agent framework** built on cutting-edge research in memory control and semantic caching. Unlike frameworks focused on multi-agent orchestration, Cogent emphasizes **bounded memory**, **reasoning artifacts caching**, and **tool augmentation** for superior performance and reliability.
 
-**Why AgenticFlow?**
+**Why Cogent?**
 
+- 🧠 **Memory Control** — Bio-inspired bounded memory prevents context drift and poisoning
+- ⚡ **Semantic Caching** — Cache reasoning artifacts (intents, plans) at 80%+ hit rates
 - 🚀 **Fast** — Parallel tool execution, cached model binding, direct SDK calls
 - 🔧 **Simple** — Define tools with `@tool`, create agents in 3 lines, no boilerplate
 - 🏭 **Production-ready** — Built-in resilience, observability, and security interceptors
-- 🤝 **Multi-agent** — Supervisor, Pipeline, Mesh, and Hierarchical coordination patterns
 - 📦 **Batteries included** — File system, web search, code sandbox, browser, PDF, and more
 
 ```python
-from agenticflow import Agent, tool
+from cogent import Agent, tool
 
 @tool
 def search(query: str) -> str:

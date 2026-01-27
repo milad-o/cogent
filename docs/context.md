@@ -1,6 +1,6 @@
 # RunContext Module
 
-The `agenticflow.context` module provides invocation-scoped context for dependency injection into tools and interceptors.
+The `cogent.context` module provides invocation-scoped context for dependency injection into tools and interceptors.
 
 ## Overview
 
@@ -8,7 +8,7 @@ RunContext enables passing typed data to tools and interceptors at invocation ti
 
 ```python
 from dataclasses import dataclass
-from agenticflow import Agent, RunContext, tool
+from cogent import Agent, RunContext, tool
 
 @dataclass
 class AppContext(RunContext):
@@ -38,7 +38,7 @@ result = await agent.run(
 
 ```python
 from dataclasses import dataclass
-from agenticflow import RunContext
+from cogent import RunContext
 
 @dataclass
 class MyContext(RunContext):
@@ -77,7 +77,7 @@ class ServiceContext(RunContext):
 ### Accessing Context
 
 ```python
-from agenticflow import tool, RunContext
+from cogent import tool, RunContext
 
 @tool
 def get_user_orders(ctx: RunContext) -> str:
@@ -116,7 +116,7 @@ def search_with_context(
 ## Using Context in Interceptors
 
 ```python
-from agenticflow.interceptors import Interceptor, InterceptContext, InterceptResult
+from cogent.interceptors import Interceptor, InterceptContext, InterceptResult
 
 class PermissionInterceptor(Interceptor):
     async def intercept(
@@ -140,7 +140,7 @@ class PermissionInterceptor(Interceptor):
 The base `RunContext` includes a metadata dict for extension:
 
 ```python
-from agenticflow import RunContext
+from cogent import RunContext
 
 ctx = RunContext(metadata={
     "request_id": "req-123",
@@ -164,7 +164,7 @@ new_ctx = ctx.with_metadata(
 ## Passing Context to Agents
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 agent = Agent(name="assistant", model=model, tools=[...])
 
@@ -203,7 +203,7 @@ Common pattern for web applications:
 
 ```python
 from fastapi import FastAPI, Depends
-from agenticflow import Agent, RunContext
+from cogent import Agent, RunContext
 
 app = FastAPI()
 

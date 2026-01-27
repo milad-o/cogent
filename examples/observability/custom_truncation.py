@@ -36,8 +36,8 @@ observer = Observer(
 
 import asyncio
 
-from agenticflow import Agent
-from agenticflow.observability import ObservabilityLevel, Observer
+from cogent import Agent
+from cogent.observability import ObservabilityLevel, Observer
 
 
 async def main():

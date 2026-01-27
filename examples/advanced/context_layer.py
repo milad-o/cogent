@@ -13,8 +13,8 @@ Usage: uv run python examples/advanced/context_layer.py
 import asyncio
 from dataclasses import dataclass, field
 
-from agenticflow import Agent, RunContext
-from agenticflow.interceptors import (
+from cogent import Agent, RunContext
+from cogent.interceptors import (
     ContextPrompt,
     ConversationGate,
     InterceptContext,
@@ -22,7 +22,7 @@ from agenticflow.interceptors import (
     PermissionGate,
     ToolGuard,
 )
-from agenticflow.tools.base import tool
+from cogent.tools.base import tool
 
 
 @dataclass

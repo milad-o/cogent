@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from agenticflow.observability.bus import TraceBus, get_trace_bus, set_trace_bus
-from agenticflow.observability.trace_record import Trace, TraceType
+from cogent.observability.bus import TraceBus, get_trace_bus, set_trace_bus
+from cogent.observability.trace_record import Trace, TraceType
 
 
 class TestTraceBus:

@@ -8,13 +8,13 @@ Get up and running with AgenticFlow in minutes.
 
 ```bash
 # Install from GitHub
-pip install git+https://github.com/milad-o/agenticflow.git
+pip install git+https://github.com/milad-o/cogent.git
 
 # Or with uv (recommended)
-uv add git+https://github.com/milad-o/agenticflow.git
+uv add git+https://github.com/milad-o/cogent.git
 
 # With optional dependencies
-pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
+pip install "cogent[all] @ git+https://github.com/milad-o/cogent.git"
 ```
 
 **Optional dependencies:**
@@ -33,7 +33,7 @@ pip install "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 
 ```python
 import asyncio
-from agenticflow import Agent, tool
+from cogent import Agent, tool
 
 @tool
 def get_weather(city: str) -> str:
@@ -60,11 +60,11 @@ asyncio.run(main())
 agent = Agent(name="Assistant", model="anthropic:claude")
 
 # Medium-level: Factory function
-from agenticflow.models import create_chat
+from cogent.models import create_chat
 agent = Agent(name="Assistant", model=create_chat("gemini"))
 
 # Low-level: Full control
-from agenticflow.models import OpenAIChat
+from cogent.models import OpenAIChat
 agent = Agent(name="Assistant", model=OpenAIChat(model="gpt-4o", temperature=0.7))
 ```
 
@@ -73,8 +73,8 @@ agent = Agent(name="Assistant", model=OpenAIChat(model="gpt-4o", temperature=0.7
 Instead of defining individual tools, use pre-built capabilities:
 
 ```python
-from agenticflow import Agent
-from agenticflow.capabilities import FileSystem, WebSearch, CodeSandbox
+from cogent import Agent
+from cogent.capabilities import FileSystem, WebSearch, CodeSandbox
 
 agent = Agent(
     name="Assistant",
@@ -112,7 +112,7 @@ agent = Agent(
 Define tools with the `@tool` decorator:
 
 ```python
-from agenticflow import tool
+from cogent import tool
 
 @tool
 def search(query: str, max_results: int = 10) -> str:
@@ -144,7 +144,7 @@ async def fetch_data(url: str) -> str:
 Coordinate multiple agents with built-in patterns:
 
 ```python
-from agenticflow.flow import pipeline, supervisor, mesh
+from cogent.flow import pipeline, supervisor, mesh
 
 researcher = Agent(name="Researcher", model=model, instructions="Research thoroughly.")
 writer = Agent(name="Writer", model=model, instructions="Write clearly.")
@@ -168,7 +168,7 @@ result = await flow.run("Create a blog post about quantum computing")
 AgenticFlow supports all major LLM providers with native SDK integrations:
 
 ```python
-from agenticflow.models import (
+from cogent.models import (
     OpenAIChat,
     AnthropicChat,
     GeminiChat,
@@ -192,7 +192,7 @@ model = GroqChat(model="llama-3.3-70b-versatile")
 model = OllamaChat(model="llama3.2")
 
 # Or use factory function
-from agenticflow.models import create_chat
+from cogent.models import create_chat
 
 model = create_chat("anthropic", model="claude-sonnet-4-20250514")
 ```
@@ -244,7 +244,7 @@ agent.clear_memory()
 Track execution with built-in observability:
 
 ```python
-from agenticflow.observability import Observer
+from cogent.observability import Observer
 
 # Pre-configured observers
 observer = Observer.trace()      # Maximum detail
@@ -268,7 +268,7 @@ for event in observer.events():
 Control execution with middleware:
 
 ```python
-from agenticflow.interceptors import BudgetGuard, RateLimiter, PIIShield
+from cogent.interceptors import BudgetGuard, RateLimiter, PIIShield
 
 agent = Agent(
     name="Assistant",
@@ -290,15 +290,15 @@ agent = Agent(
 - [Capabilities](capabilities.md) — Explore built-in tools
 - [Graph Visualization](graph.md) — Visualize your agents
 - [RAG & Retrieval](retrievers.md) — Build RAG systems
-- [Examples](https://github.com/milad-o/agenticflow/tree/main/examples) — See working examples
+- [Examples](https://github.com/milad-o/cogent/tree/main/examples) — See working examples
 
 ---
 
 ## Need Help?
 
-- **Documentation**: https://milad-o.github.io/agenticflow
-- **Examples**: https://github.com/milad-o/agenticflow/tree/main/examples
-- **Issues**: https://github.com/milad-o/agenticflow/issues
+- **Documentation**: https://milad-o.github.io/cogent
+- **Examples**: https://github.com/milad-o/cogent/tree/main/examples
+- **Issues**: https://github.com/milad-o/cogent/issues
 
 ---
 
@@ -338,7 +338,7 @@ agent = Agent(
 ## Module Map
 
 ```
-agenticflow/
+cogent/
 ├── agent/          # Core agent abstraction
 ├── capabilities/   # Plug-in capabilities (RAG, WebSearch, etc.)
 ├── core/           # Enums, message types, utilities
@@ -364,8 +364,8 @@ agenticflow/
 ### Simple Agent
 
 ```python
-from agenticflow import Agent
-from agenticflow.models import ChatModel
+from cogent import Agent
+from cogent.models import ChatModel
 
 agent = Agent(
     name="assistant",
@@ -379,8 +379,8 @@ result = await agent.run("What is Python?")
 ### Agent with Tools
 
 ```python
-from agenticflow import Agent, tool
-from agenticflow.models import ChatModel
+from cogent import Agent, tool
+from cogent.models import ChatModel
 
 @tool
 def search(query: str) -> str:
@@ -399,8 +399,8 @@ result = await agent.run("Find info about AI trends")
 ### Multi-Agent Pipeline
 
 ```python
-from agenticflow import Agent
-from agenticflow.flow import pipeline
+from cogent import Agent
+from cogent.flow import pipeline
 
 researcher = Agent(name="researcher", model=model)
 writer = Agent(name="writer", model=model)
@@ -414,8 +414,8 @@ result = await flow.run("Create an article about quantum computing")
 ### Agent with Memory
 
 ```python
-from agenticflow import Agent
-from agenticflow.memory import Memory, SQLAlchemyStore
+from cogent import Agent
+from cogent.memory import Memory, SQLAlchemyStore
 
 memory = Memory(store=SQLAlchemyStore("sqlite+aiosqlite:///agent.db"))
 
@@ -435,8 +435,8 @@ await agent.run("What's my name?")  # Remembers "Alice"
 ### With Observability
 
 ```python
-from agenticflow import Agent
-from agenticflow.observability import Observer
+from cogent import Agent
+from cogent.observability import Observer
 
 observer = Observer.debug()
 
@@ -452,8 +452,8 @@ result = await agent.run("Complex task", observer=observer)
 ### With Interceptors
 
 ```python
-from agenticflow import Agent
-from agenticflow.interceptors import BudgetGuard, PIIShield
+from cogent import Agent
+from cogent.interceptors import BudgetGuard, PIIShield
 
 agent = Agent(
     name="assistant",
@@ -471,13 +471,13 @@ agent = Agent(
 
 ```bash
 # Core
-pip install agenticflow
+pip install cogent
 
 # With optional dependencies
-pip install agenticflow[qdrant]     # Qdrant vector store
-pip install agenticflow[chroma]     # ChromaDB vector store
-pip install agenticflow[faiss]      # FAISS vector store
-pip install agenticflow[all]        # All optional deps
+pip install cogent[qdrant]     # Qdrant vector store
+pip install cogent[chroma]     # ChromaDB vector store
+pip install cogent[faiss]      # FAISS vector store
+pip install cogent[all]        # All optional deps
 ```
 
 flow = pipeline([researcher, writer, editor])

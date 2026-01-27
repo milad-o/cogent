@@ -1,6 +1,6 @@
 # Interceptors Module
 
-The `agenticflow.interceptors` module provides composable units that intercept agent execution for cross-cutting concerns like cost control, security, context management, and observability.
+The `cogent.interceptors` module provides composable units that intercept agent execution for cross-cutting concerns like cost control, security, context management, and observability.
 
 ## Overview
 
@@ -11,8 +11,8 @@ Interceptors are middleware that wrap agent execution at specific phases:
 - **After tool call** - Post-process results, aggregate data
 
 ```python
-from agenticflow import Agent
-from agenticflow.interceptors import BudgetGuard, PIIShield
+from cogent import Agent
+from cogent.interceptors import BudgetGuard, PIIShield
 
 agent = Agent(
     name="assistant",
@@ -53,7 +53,7 @@ Response to User
 ### Phase Enum
 
 ```python
-from agenticflow.interceptors import Phase
+from cogent.interceptors import Phase
 
 Phase.BEFORE_LLM    # Before sending to LLM
 Phase.AFTER_LLM     # After receiving LLM response
@@ -69,7 +69,7 @@ Interceptors return a result that can:
 - **Stop** - Halt execution with a response
 
 ```python
-from agenticflow.interceptors import InterceptResult
+from cogent.interceptors import InterceptResult
 
 # Continue unchanged
 return InterceptResult.continue_()
@@ -90,7 +90,7 @@ return InterceptResult.stop(response="Cannot proceed: budget exceeded")
 Control costs by limiting LLM and tool calls:
 
 ```python
-from agenticflow.interceptors import BudgetGuard
+from cogent.interceptors import BudgetGuard
 
 agent = Agent(
     name="assistant",
@@ -116,7 +116,7 @@ print(f"Tokens: {guard.tokens_used}/{guard.max_tokens}")
 Detect and handle PII in inputs/outputs:
 
 ```python
-from agenticflow.interceptors import PIIShield, PIIAction
+from cogent.interceptors import PIIShield, PIIAction
 
 agent = Agent(
     name="assistant",
@@ -146,7 +146,7 @@ agent = Agent(
 Filter harmful or inappropriate content:
 
 ```python
-from agenticflow.interceptors import ContentFilter
+from cogent.interceptors import ContentFilter
 
 agent = Agent(
     name="assistant",
@@ -165,7 +165,7 @@ agent = Agent(
 Limit context size to fit model constraints:
 
 ```python
-from agenticflow.interceptors import TokenLimiter
+from cogent.interceptors import TokenLimiter
 
 agent = Agent(
     name="assistant",
@@ -186,7 +186,7 @@ agent = Agent(
 Compress context to reduce token usage:
 
 ```python
-from agenticflow.interceptors import ContextCompressor
+from cogent.interceptors import ContextCompressor
 
 agent = Agent(
     name="assistant",
@@ -210,7 +210,7 @@ agent = Agent(
 Control which tools are available:
 
 ```python
-from agenticflow.interceptors import ToolGate
+from cogent.interceptors import ToolGate
 
 agent = Agent(
     name="assistant",
@@ -243,7 +243,7 @@ agent = Agent(
 Role-based tool permissions:
 
 ```python
-from agenticflow.interceptors import PermissionGate
+from cogent.interceptors import PermissionGate
 
 agent = Agent(
     name="assistant",
@@ -266,7 +266,7 @@ agent = Agent(
 Enable tools based on conversation state:
 
 ```python
-from agenticflow.interceptors import ConversationGate
+from cogent.interceptors import ConversationGate
 
 agent = Agent(
     name="assistant",
@@ -292,7 +292,7 @@ agent = Agent(
 Limit request rates:
 
 ```python
-from agenticflow.interceptors import RateLimiter
+from cogent.interceptors import RateLimiter
 
 agent = Agent(
     name="assistant",
@@ -312,8 +312,8 @@ agent = Agent(
 Automatic model failover:
 
 ```python
-from agenticflow.interceptors import Failover, FailoverTrigger
-from agenticflow.models import ChatModel
+from cogent.interceptors import Failover, FailoverTrigger
+from cogent.models import ChatModel
 
 agent = Agent(
     name="assistant",
@@ -340,7 +340,7 @@ agent = Agent(
 Prevent cascade failures:
 
 ```python
-from agenticflow.interceptors import CircuitBreaker
+from cogent.interceptors import CircuitBreaker
 
 agent = Agent(
     name="assistant",
@@ -360,7 +360,7 @@ agent = Agent(
 Per-tool retry and circuit breaker:
 
 ```python
-from agenticflow.interceptors import ToolGuard
+from cogent.interceptors import ToolGuard
 
 agent = Agent(
     name="assistant",
@@ -392,7 +392,7 @@ agent = Agent(
 Log all agent activity:
 
 ```python
-from agenticflow.interceptors import Auditor, AuditEventType
+from cogent.interceptors import Auditor, AuditEventType
 
 async def log_event(event):
     print(f"[{event.type}] {event.agent}: {event.data}")
@@ -424,7 +424,7 @@ agent = Agent(
 Inject dynamic context into system prompt:
 
 ```python
-from agenticflow.interceptors import ContextPrompt
+from cogent.interceptors import ContextPrompt
 
 agent = Agent(
     name="assistant",
@@ -449,7 +449,7 @@ User preferences: {preferences}""",
 Add conversation-aware context:
 
 ```python
-from agenticflow.interceptors import ConversationPrompt
+from cogent.interceptors import ConversationPrompt
 
 agent = Agent(
     name="assistant",
@@ -469,7 +469,7 @@ agent = Agent(
 Custom prompt modification:
 
 ```python
-from agenticflow.interceptors import LambdaPrompt
+from cogent.interceptors import LambdaPrompt
 
 agent = Agent(
     name="assistant",
@@ -493,7 +493,7 @@ agent = Agent(
 ### Basic Structure
 
 ```python
-from agenticflow.interceptors import Interceptor, Phase, InterceptContext, InterceptResult
+from cogent.interceptors import Interceptor, Phase, InterceptContext, InterceptResult
 
 class MyInterceptor(Interceptor):
     """Custom interceptor example."""
@@ -570,7 +570,7 @@ class ConversationTracker(Interceptor):
 Interceptors execute in order. Use `StopExecution` to halt the chain:
 
 ```python
-from agenticflow.interceptors import StopExecution
+from cogent.interceptors import StopExecution
 
 agent = Agent(
     name="assistant",

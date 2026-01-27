@@ -2,10 +2,10 @@
 
 import pytest
 
-from agenticflow import Agent
-from agenticflow.agent.roles import get_role_behavior, get_role_prompt
-from agenticflow.core.enums import AgentRole
-from agenticflow.models import ChatModel
+from cogent import Agent
+from cogent.agent.roles import get_role_behavior, get_role_prompt
+from cogent.core.enums import AgentRole
+from cogent.models import ChatModel
 
 
 class TestRoleCapabilities:

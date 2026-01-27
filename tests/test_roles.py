@@ -1,7 +1,7 @@
 """Tests for agent roles and behaviors with clean 4-role system."""
 
 
-from agenticflow.agent import (
+from cogent.agent import (
     Agent,
     RoleBehavior,
     extract_final_answer,
@@ -10,7 +10,7 @@ from agenticflow.agent import (
     has_final_answer,
     parse_delegation,
 )
-from agenticflow.core.enums import AgentRole
+from cogent.core.enums import AgentRole
 
 
 class TestRolePrompts:

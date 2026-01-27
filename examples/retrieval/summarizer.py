@@ -19,9 +19,9 @@ Requires:
 import asyncio
 from pathlib import Path
 
-from agenticflow import Agent
-from agenticflow.capabilities import Summarizer, SummarizerConfig
-from agenticflow.capabilities.filesystem import FileSystem
+from cogent import Agent
+from cogent.capabilities import Summarizer, SummarizerConfig
+from cogent.capabilities.filesystem import FileSystem
 
 
 async def main() -> None:

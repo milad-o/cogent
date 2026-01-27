@@ -26,8 +26,8 @@ Unlike tools (which are code-based functions), skills are prompt-driven speciali
 Use the `skill()` function to define event-triggered specializations:
 
 ```python
-from agenticflow import skill, tool
-from agenticflow.events import has_data
+from cogent import skill, tool
+from cogent.events import has_data
 
 @tool
 def run_python(code: str) -> str:
@@ -90,7 +90,7 @@ debugger_skill = skill(
 Skills are registered on a `Flow` and automatically activate when matching events occur:
 
 ```python
-from agenticflow import Flow, Agent, react_to
+from cogent import Flow, Agent, react_to
 
 # Create flow
 flow = Flow()
@@ -145,7 +145,7 @@ skill("global", on="*", ...)
 Use `when` parameter for fine-grained control:
 
 ```python
-from agenticflow.events import has_data, matches
+from cogent.events import has_data, matches
 
 # Activate only for Python code
 python_skill = skill(
@@ -343,7 +343,7 @@ api_skill = skill(
 Here's a complete example showing skills in action:
 
 ```python
-from agenticflow import Agent, Flow, Observer, react_to, skill, tool
+from cogent import Agent, Flow, Observer, react_to, skill, tool
 
 # Define tools
 @tool

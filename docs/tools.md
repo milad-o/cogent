@@ -1,13 +1,13 @@
 # Tools Module
 
-The `agenticflow.tools` module provides tool creation, registration, and deferred execution for agent capabilities.
+The `cogent.tools` module provides tool creation, registration, and deferred execution for agent capabilities.
 
 ## Overview
 
 Tools are functions that agents can call to interact with the world:
 
 ```python
-from agenticflow import Agent, tool
+from cogent import Agent, tool
 
 @tool
 def search(query: str) -> str:
@@ -32,7 +32,7 @@ result = await agent.run("Search for AI news")
 The simplest way to create tools:
 
 ```python
-from agenticflow import tool
+from cogent import tool
 
 @tool
 def calculate(expression: str) -> float:
@@ -118,7 +118,7 @@ async def fetch_url(url: str) -> str:
 Access run context in tools:
 
 ```python
-from agenticflow import tool, RunContext
+from cogent import tool, RunContext
 
 @tool
 def get_user_data(ctx: RunContext) -> str:
@@ -140,7 +140,7 @@ result = await agent.run(
 Manage collections of tools:
 
 ```python
-from agenticflow.tools import ToolRegistry
+from cogent.tools import ToolRegistry
 
 registry = ToolRegistry()
 
@@ -165,7 +165,7 @@ names = registry.list_names()  # ["search", "calculate", "fetch"]
 ### From Functions
 
 ```python
-from agenticflow.tools import create_tool_from_function
+from cogent.tools import create_tool_from_function
 
 def my_function(x: int, y: int) -> int:
     """Add two numbers."""
@@ -198,7 +198,7 @@ For operations requiring human approval or async completion:
 ### DeferredResult
 
 ```python
-from agenticflow.tools import DeferredResult, DeferredStatus
+from cogent.tools import DeferredResult, DeferredStatus
 
 @tool
 def send_email(to: str, subject: str, body: str) -> DeferredResult:
@@ -215,7 +215,7 @@ def send_email(to: str, subject: str, body: str) -> DeferredResult:
 Manage deferred operations:
 
 ```python
-from agenticflow.tools import DeferredManager
+from cogent.tools import DeferredManager
 
 manager = DeferredManager()
 
@@ -236,7 +236,7 @@ final_result = await manager.get_result(result_id)
 ### DeferredStatus
 
 ```python
-from agenticflow.tools import DeferredStatus
+from cogent.tools import DeferredStatus
 
 DeferredStatus.PENDING    # Waiting for action
 DeferredStatus.APPROVED   # Approved, ready to execute
@@ -250,7 +250,7 @@ DeferredStatus.FAILED     # Execution failed
 Wait for deferred completion:
 
 ```python
-from agenticflow.tools import DeferredWaiter
+from cogent.tools import DeferredWaiter
 
 waiter = DeferredWaiter(manager)
 
@@ -266,7 +266,7 @@ results = await waiter.wait_all([id1, id2, id3])
 Auto-retry failed deferred operations:
 
 ```python
-from agenticflow.tools import DeferredRetry
+from cogent.tools import DeferredRetry
 
 retry = DeferredRetry(
     manager=manager,
@@ -280,7 +280,7 @@ result = await retry.execute(result_id)
 ### is_deferred Helper
 
 ```python
-from agenticflow.tools import is_deferred
+from cogent.tools import is_deferred
 
 result = tool_call()
 
@@ -370,7 +370,7 @@ def create_task(title: str, priority: Priority = Priority.MEDIUM) -> str:
 ### Adding Tools to Agents
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 agent = Agent(
     name="assistant",

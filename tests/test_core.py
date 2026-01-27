@@ -4,14 +4,14 @@ Tests for core enums and utilities.
 
 from datetime import UTC, datetime
 
-from agenticflow.core.enums import (
+from cogent.core.enums import (
     AgentRole,
     AgentStatus,
     Priority,
     TaskStatus,
 )
-from agenticflow.core.utils import generate_id, now_utc, truncate_string
-from agenticflow.observability.trace_record import TraceType
+from cogent.core.utils import generate_id, now_utc, truncate_string
+from cogent.observability.trace_record import TraceType
 
 
 class TestTaskStatus:

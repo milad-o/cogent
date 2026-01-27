@@ -19,9 +19,9 @@ Usage:
 import asyncio
 from pathlib import Path
 
-from agenticflow import Agent
-from agenticflow.capabilities import KnowledgeGraph
-from agenticflow.observability import Observer
+from cogent import Agent
+from cogent.capabilities import KnowledgeGraph
+from cogent.observability import Observer
 
 
 async def main():
@@ -87,7 +87,7 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     # Show tool usage trace
     print("\n🔧 Tool Usage Trace:")
     print("-" * 70)
-    from agenticflow.observability import TraceType
+    from cogent.observability import TraceType
 
     tool_events = observer.events(event_type=TraceType.TOOL_CALLED)
     for event in tool_events:

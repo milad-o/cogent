@@ -18,8 +18,8 @@ Usage:
 import asyncio
 from pathlib import Path
 
-from agenticflow import Agent, Observer
-from agenticflow.capabilities import FileSystem, KnowledgeGraph, WebSearch
+from cogent import Agent, Observer
+from cogent.capabilities import FileSystem, KnowledgeGraph, WebSearch
 
 # ============================================================
 # API-Level Usage
