@@ -539,7 +539,6 @@ class WebSearch(BaseCapability):
         max_content_length: int = 50000,
         user_agent: str | None = None,
         name: str = "web_search",
-        cache: SemanticCache | None = None,
     ):
         self._name = name
         self._provider = provider or DuckDuckGoProvider()
@@ -549,7 +548,6 @@ class WebSearch(BaseCapability):
         self._user_agent = user_agent or (
             "Mozilla/5.0 (compatible; AgenticFlow/1.0; +https://github.com/agenticflow)"
         )
-        self._cache = cache
         self._tools_cache: list[BaseTool] | None = None
 
         # Simple in-memory cache for fetched pages
@@ -597,9 +595,10 @@ class WebSearch(BaseCapability):
         Returns:
             List of SearchResult objects
         """
-        # Check semantic cache if available
-        if self._cache:
-            cached = await self._cache.get("search", query, "")
+        # Check semantic cache if available (from agent)
+        cache = self.agent.cache if self.agent else None
+        if cache:
+            cached = await cache.get("search", query, "")
             if cached:
                 return cached.artifact
         
@@ -610,8 +609,8 @@ class WebSearch(BaseCapability):
         )
         
         # Store in cache
-        if self._cache and results:
-            await self._cache.put("search", query, results, "")
+        if cache and results:
+            await cache.put("search", query, results, "")
         
         return results
 
@@ -630,9 +629,10 @@ class WebSearch(BaseCapability):
         Returns:
             List of SearchResult objects
         """
-        # Check semantic cache if available
-        if self._cache:
-            cached = await self._cache.get("news", query, "")
+        # Check semantic cache if available (from agent)
+        cache = self.agent.cache if self.agent else None
+        if cache:
+            cached = await cache.get("news", query, "")
             if cached:
                 return cached.artifact
         
@@ -643,8 +643,8 @@ class WebSearch(BaseCapability):
         )
         
         # Store in cache
-        if self._cache and results:
-            await self._cache.put("news", query, results, "")
+        if cache and results:
+            await cache.put("news", query, results, "")
         
         return results
 
