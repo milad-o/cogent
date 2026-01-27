@@ -114,22 +114,15 @@ Average Speedup: 7× on cache hits
 
 ## Agent Integration
 
-Use semantic caching with agents to cache similar user queries:
+Enable semantic caching on agents with `cache=True`:
 
 ```python
 from cogent import Agent
-from cogent.memory import SemanticCache
-from cogent.models import OpenAIEmbedding
 
 agent = Agent(
     name="Assistant",
     model="gpt-4o-mini",
-    tools=[search, fetch_data],
-    semantic_cache=SemanticCache(
-        embedding_model=OpenAIEmbedding(),
-        similarity_threshold=0.85,
-        max_size=500,
-    ),
+    cache=True,  # Enable semantic cache
 )
 
 # First query
@@ -138,6 +131,52 @@ await agent.run("What are the best Python frameworks?")
 # Similar query hits cache
 await agent.run("What are the top Python frameworks?")  # Instant
 ```
+
+### Tool-Level Caching
+
+Use `@tool(cache=True)` to enable semantic caching on individual tools:
+
+```python
+from cogent import Agent, tool
+
+@tool(cache=True)
+async def search_products(query: str) -> str:
+    """Search products in the catalog.
+    
+    Args:
+        query: Search query for products.
+    
+    Returns:
+        Product search results.
+    """
+    # Expensive API call - cached semantically
+    return await product_api.search(query)
+
+# Agent must have cache enabled
+agent = Agent(
+    model="gpt-4o-mini",
+    tools=[search_products],
+    cache=True,  # Required for @tool(cache=True)
+)
+
+# First call executes the tool
+await agent.run("Find running shoes")
+
+# Similar query hits tool cache (semantic match)
+await agent.run("Show me running sneakers")  # Cache hit!
+```
+
+**How tool caching works:**
+
+1. Tool input is embedded using the agent's embedding model
+2. Cache checks for semantically similar previous calls
+3. If similarity exceeds threshold (default 0.85), cached result is returned
+4. Otherwise, tool executes and result is stored
+
+> [!TIP]
+> Use `@tool(cache=True)` for expensive API calls, database queries, or any tool with slow/costly execution.
+
+See [examples/advanced/semantic_cache_custom_tools.py](../examples/advanced/semantic_cache_custom_tools.py) for a complete demo.
 
 ## Pattern: Multi-Level Caching
 
