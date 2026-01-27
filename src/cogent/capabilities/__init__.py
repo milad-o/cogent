@@ -43,11 +43,15 @@ Example:
     ```
 """
 
+from cogent.capabilities.api_tester import APITester
 from cogent.capabilities.base import BaseCapability
 from cogent.capabilities.browser import Browser
 from cogent.capabilities.code_sandbox import CodeSandbox
 from cogent.capabilities.codebase import CodebaseAnalyzer
+from cogent.capabilities.database import Database
+from cogent.capabilities.data_validator import DataValidator
 from cogent.capabilities.filesystem import FileSystem
+from cogent.capabilities.http_client import HTTPClient
 from cogent.capabilities.knowledge_graph import KnowledgeGraph
 from cogent.capabilities.mcp import MCP, MCPServerConfig, MCPTransport
 from cogent.capabilities.shell import Shell
@@ -56,11 +60,15 @@ from cogent.capabilities.summarizer import Summarizer, SummarizerConfig
 from cogent.capabilities.web_search import WebSearch
 
 __all__ = [
+    "APITester",
     "BaseCapability",
     "Browser",
     "CodebaseAnalyzer",
     "CodeSandbox",
+    "Database",
+    "DataValidator",
     "FileSystem",
+    "HTTPClient",
     "KnowledgeGraph",
     "MCP",
     "MCPServerConfig",

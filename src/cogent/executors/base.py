@@ -24,12 +24,10 @@ class ExecutionStrategy(StrEnum):
     Choose based on task complexity:
     - NATIVE: High-performance parallel execution (DEFAULT)
     - SEQUENTIAL: Sequential tool execution for ordered tasks
-    - TREE_SEARCH: LATS-style exploration with backtracking (BEST ACCURACY)
     """
 
     NATIVE = "native"  # Default - parallel tool execution
     SEQUENTIAL = "sequential"  # Sequential tool execution
-    TREE_SEARCH = "tree_search"  # LATS Monte Carlo tree search
 
 
 @dataclass

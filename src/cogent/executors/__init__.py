@@ -7,13 +7,11 @@ Module Structure:
     base.py        - BaseExecutor, ExecutionStrategy enum
     models.py      - ToolCall, ExecutionPlan data classes
     native.py      - NativeExecutor (default), SequentialExecutor, run()
-    tree_search.py - TreeSearchExecutor (LATS Monte Carlo tree search)
     factory.py     - create_executor() helper
 
 Execution Strategies:
     NativeExecutor: High-performance parallel execution (DEFAULT)
     SequentialExecutor: Sequential tool execution for ordered tasks
-    TreeSearchExecutor: LATS-style MCTS with backtracking (BEST ACCURACY)
 
 Standalone Execution:
     run(): Execute tasks without creating an Agent (fastest path)
@@ -49,13 +47,13 @@ from cogent.executors.models import ExecutionPlan, ToolCall
 # Native executors (default)
 from cogent.executors.native import NativeExecutor, SequentialExecutor, run
 
-# Tree search executor
-from cogent.executors.tree_search import (
-    NodeState,
-    SearchNode,
-    TreeSearchExecutor,
-    TreeSearchResult,
-)
+# Tree search executor - REMOVED (was part of multi-agent orchestration)
+# from cogent.executors.tree_search import (
+#     NodeState,
+#     SearchNode,
+#     TreeSearchExecutor,
+#     TreeSearchResult,
+# )
 
 __all__ = [
     # Strategy enum
@@ -64,16 +62,16 @@ __all__ = [
     "ToolCall",
     "ExecutionPlan",
     "CompletionCheck",
-    # Tree search classes
-    "SearchNode",
-    "NodeState",
-    "TreeSearchResult",
+    # Tree search classes - REMOVED
+    # "SearchNode",
+    # "NodeState",
+    # "TreeSearchResult",
     # Base
     "BaseExecutor",
     # Executors
     "NativeExecutor",
     "SequentialExecutor",
-    "TreeSearchExecutor",
+    # "TreeSearchExecutor",  # REMOVED
     # Standalone execution
     "run",
     # Factory

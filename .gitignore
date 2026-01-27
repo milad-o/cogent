@@ -89,4 +89,6 @@ tests/.env
 
 # Ad hoc documentation
 EXAMPLES_STATUS.md
+PLAN.md
+TASKBOARD.md
 

@@ -100,18 +100,43 @@ class BaseTool:
         Returns:
             Tool definition dict.
         """
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": {
-                    "type": "object",
-                    "properties": self.args_schema,
-                    "required": list(self.args_schema.keys()),
+        # Handle Pydantic BaseModel schema
+        if hasattr(self.args_schema, "model_json_schema"):
+            # Pydantic v2
+            schema = self.args_schema.model_json_schema()
+            return {
+                "type": "function",
+                "function": {
+                    "name": self.name,
+                    "description": self.description,
+                    "parameters": schema,
                 },
-            },
-        }
+            }
+        elif hasattr(self.args_schema, "schema"):
+            # Pydantic v1
+            schema = self.args_schema.schema()
+            return {
+                "type": "function",
+                "function": {
+                    "name": self.name,
+                    "description": self.description,
+                    "parameters": schema,
+                },
+            }
+        else:
+            # Dict-based schema
+            return {
+                "type": "function",
+                "function": {
+                    "name": self.name,
+                    "description": self.description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": self.args_schema,
+                        "required": list(self.args_schema.keys()),
+                    },
+                },
+            }
 
     # Alias for backward compatibility
     to_openai = to_dict

@@ -37,6 +37,7 @@ from cogent.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
     from cogent.core.messages import BaseMessage
+    from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
 
 
 # ============================================================
@@ -246,6 +247,8 @@ class AgentMemory:
         max_history: int = 100,
         # Legacy parameter name support
         checkpointer: MemorySaver | None = None,
+        # ACC support
+        acc_enabled: bool = False,
     ):
         # Support both 'backend' and legacy 'checkpointer' parameter
         self._backend = backend or checkpointer
@@ -257,6 +260,10 @@ class AgentMemory:
         self._version_counters: dict[str, int] = {}
         # In-memory fallback for long-term storage
         self._long_term: dict[str, Any] = {}
+        
+        # ACC (Agent Cognitive Compressor) support
+        self._acc_enabled = acc_enabled
+        self._acc_states: dict[str, AgentCognitiveCompressor] = {}  # thread_id -> ACC
 
     @property
     def backend(self) -> MemorySaver | None:
@@ -643,7 +650,120 @@ class AgentMemory:
             "max_history": self.max_history,
             "active_threads": len(self._cache),
             "thread_ids": list(self._cache.keys()),
+            "acc_enabled": self._acc_enabled,
+            "acc_states": len(self._acc_states),
         }
+
+    # ========================================
+    # ACC (Agent Cognitive Compressor) Methods
+    # ========================================
+
+    async def get_acc_state(
+        self,
+        thread_id: str,
+    ) -> AgentCognitiveCompressor:
+        """Get or create ACC state for a thread.
+        
+        Args:
+            thread_id: Thread identifier.
+        
+        Returns:
+            ACC compressor for this thread.
+        """
+        if not self._acc_enabled:
+            raise RuntimeError("ACC is not enabled. Set acc_enabled=True when creating AgentMemory.")
+        
+        # Return existing ACC if in cache
+        if thread_id in self._acc_states:
+            return self._acc_states[thread_id]
+        
+        # Try to load from backend
+        if self._backend:
+            config = ThreadConfig(thread_id=thread_id).to_config()
+            try:
+                result = await self._backend.aget_tuple(config)
+            except AttributeError:
+                result = self._backend.get_tuple(config)
+            
+            if result and result.checkpoint:
+                # Load ACC state from checkpoint
+                acc_data = result.checkpoint.get("channel_values", {}).get("__acc__")
+                if acc_data:
+                    from cogent.memory.acc import (
+                        AgentCognitiveCompressor,
+                        BoundedMemoryState,
+                        SemanticForgetGate,
+                    )
+                    
+                    state = BoundedMemoryState.from_dict(acc_data)
+                    gate = SemanticForgetGate()
+                    acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
+                    self._acc_states[thread_id] = acc
+                    return acc
+        
+        # Create new ACC
+        from cogent.memory.acc import (
+            AgentCognitiveCompressor,
+            BoundedMemoryState,
+            SemanticForgetGate,
+        )
+        
+        state = BoundedMemoryState()
+        gate = SemanticForgetGate()
+        acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
+        self._acc_states[thread_id] = acc
+        return acc
+
+    async def save_acc_state(
+        self,
+        thread_id: str,
+        acc: AgentCognitiveCompressor,
+    ) -> None:
+        """Save ACC state for a thread.
+        
+        Args:
+            thread_id: Thread identifier.
+            acc: ACC compressor to save.
+        """
+        if not self._acc_enabled:
+            raise RuntimeError("ACC is not enabled.")
+        
+        # Update cache
+        self._acc_states[thread_id] = acc
+        
+        # Persist if backend configured
+        if self._backend:
+            config = ThreadConfig(
+                thread_id=thread_id,
+                version=self._get_next_version(thread_id),
+            ).to_config()
+            
+            # Create checkpoint with ACC state
+            checkpoint = {
+                "v": 1,
+                "id": config["configurable"]["checkpoint_id"],
+                "ts": now_utc().isoformat(),
+                "channel_values": {
+                    "__acc__": acc.state.to_dict(),
+                },
+                "channel_versions": {},
+                "versions_seen": {},
+            }
+            
+            try:
+                await self._backend.aput(
+                    config,
+                    checkpoint,
+                    {"source": "cogent_acc", "stats": acc.get_stats()},
+                    {},
+                )
+            except AttributeError:
+                self._backend.put(
+                    config,
+                    checkpoint,
+                    {"source": "cogent_acc", "stats": acc.get_stats()},
+                    {},
+                )
 
 
 # ============================================================

@@ -157,11 +157,8 @@ async def demo_pii_shield():
     print("=" * 60)
 
     shield = PIIShield(
-        action=PIIAction.REDACT,
-        detect_email=True,
-        detect_phone=True,
-        detect_ssn=True,
-        on_detection=lambda pii_type, value: print(f"  🛡️  Detected {pii_type}: {value}")
+        patterns=["email", "phone", "ssn"],
+        action=PIIAction.MASK,
     )
 
     agent = Agent(
@@ -183,8 +180,8 @@ async def demo_rate_limiter():
     print("=" * 60)
 
     limiter = RateLimiter(
-        max_requests=3,
-        time_window=10.0,
+        calls_per_window=3,
+        window_seconds=10.0,
     )
 
     agent = Agent(
@@ -199,8 +196,6 @@ async def demo_rate_limiter():
         result = await agent.run(f"Request {i+1}: What is {i}+{i}?")
         print(f"  Request {i+1}: {result.unwrap()[:50]}...")
 
-    print(f"\nRate limiter: {limiter.request_count}/{limiter.max_requests} requests")
-
 
 async def demo_token_limiter():
     """Limit token usage per turn."""
@@ -209,8 +204,7 @@ async def demo_token_limiter():
     print("=" * 60)
 
     limiter = TokenLimiter(
-        max_input_tokens=100,
-        max_output_tokens=50,
+        max_tokens=100,
     )
 
     agent = Agent(
@@ -233,7 +227,6 @@ async def demo_content_filter():
 
     content_filter = ContentFilter(
         blocked_patterns=["badword", "offensive"],
-        on_block=lambda pattern: print(f"  🚫 Blocked pattern: {pattern}")
     )
 
     agent = Agent(
@@ -261,10 +254,7 @@ async def demo_auditor():
     audit_log = []
 
     auditor = Auditor(
-        log_inputs=True,
-        log_outputs=True,
-        log_tools=True,
-        on_log=lambda entry: audit_log.append(entry)
+        callback=lambda event: audit_log.append(event),
     )
 
     agent = Agent(
@@ -279,8 +269,8 @@ async def demo_auditor():
     await agent.run("Calculate 5 * 8")
 
     print(f"\nAudit log entries: {len(audit_log)}")
-    for i, entry in enumerate(audit_log, 1):
-        print(f"  [{i}] {entry.get('type')}: {entry.get('summary', '')[:50]}...")
+    for i, entry in enumerate(audit_log[:3], 1):
+        print(f"  [{i}] {entry.event_type}: {entry.task[:50]}...")
 
 
 async def demo_combined():

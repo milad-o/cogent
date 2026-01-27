@@ -44,6 +44,17 @@ from cogent.memory.core import (
     Memory,
     Store,
 )
+from cogent.memory.acc import (
+    AgentCognitiveCompressor,
+    BoundedMemoryState,
+    MemoryItem,
+    SemanticForgetGate,
+)
+from cogent.memory.cache import (
+    CachedArtifact,
+    SemanticCache,
+    compute_context_hash,
+)
 from cogent.memory.stores import (
     RedisStore,
     SQLAlchemyStore,
@@ -58,4 +69,13 @@ __all__ = [
     "InMemoryStore",
     "SQLAlchemyStore",
     "RedisStore",
+    # Agent Cognitive Compressor (ACC) - Bounded memory control
+    "AgentCognitiveCompressor",
+    "BoundedMemoryState",
+    "MemoryItem",
+    "SemanticForgetGate",
+    # Semantic caching - Pipeline-aware reasoning cache
+    "SemanticCache",
+    "CachedArtifact",
+    "compute_context_hash",
 ]

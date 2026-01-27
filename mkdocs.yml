@@ -75,6 +75,7 @@ nav:
       - Core: core.md
       - Models: models.md
       - Tools: tools.md
+      - Tool Composition: tool-composition.md
       - Context: context.md
       - Executors: executors.md
   - Multi-Agent:
@@ -97,6 +98,7 @@ nav:
       - Streaming: streaming.md
       - Transport: transport.md
       - Observability: observability.md
+      - Testing: testing.md
 
 extra:
   social:

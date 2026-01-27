@@ -149,7 +149,6 @@ from cogent.executors import (
     NativeExecutor,
     SequentialExecutor,
     ToolCall,
-    TreeSearchExecutor,
     create_executor,
     run,
 )
@@ -316,7 +315,6 @@ __all__ = [
     "ToolCall",
     "NativeExecutor",
     "SequentialExecutor",
-    "TreeSearchExecutor",
     "run",
     "create_executor",
     # Resilience

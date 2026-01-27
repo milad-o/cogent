@@ -8,7 +8,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from cogent.core.enums import AgentRole
 from cogent.executors.base import ExecutionStrategy
 
 if TYPE_CHECKING:
@@ -115,7 +114,6 @@ class AgentConfig:
     """
 
     name: str
-    role: AgentRole = AgentRole.WORKER
     description: str = ""
 
     # LLM Configuration - native BaseChatModel or string
@@ -147,7 +145,6 @@ class AgentConfig:
     # Execution Strategy - how the agent processes tasks with tools
     # - NATIVE: High-performance parallel execution (DEFAULT)
     # - SEQUENTIAL: Sequential tool execution for ordered tasks
-    # - TREE_SEARCH: LATS-style MCTS with backtracking (BEST ACCURACY)
     execution_strategy: ExecutionStrategy = ExecutionStrategy.NATIVE
 
     # Resilience Configuration (intelligent retry, circuit breaker, fallback)
@@ -183,7 +180,6 @@ class AgentConfig:
             strategy_map = {
                 "native": ExecutionStrategy.NATIVE,
                 "sequential": ExecutionStrategy.SEQUENTIAL,
-                "tree_search": ExecutionStrategy.TREE_SEARCH,
             }
             strategy = strategy_map.get(self.execution_strategy.lower())
             if strategy is None:
