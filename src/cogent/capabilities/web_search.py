@@ -25,11 +25,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlparse
 
 from cogent.capabilities.base import BaseCapability
 from cogent.tools.base import BaseTool, tool
+
+if TYPE_CHECKING:
+    from cogent.memory import SemanticCache
 
 
 @dataclass
@@ -536,6 +539,7 @@ class WebSearch(BaseCapability):
         max_content_length: int = 50000,
         user_agent: str | None = None,
         name: str = "web_search",
+        cache: SemanticCache | None = None,
     ):
         self._name = name
         self._provider = provider or DuckDuckGoProvider()
@@ -545,6 +549,7 @@ class WebSearch(BaseCapability):
         self._user_agent = user_agent or (
             "Mozilla/5.0 (compatible; AgenticFlow/1.0; +https://github.com/agenticflow)"
         )
+        self._cache = cache
         self._tools_cache: list[BaseTool] | None = None
 
         # Simple in-memory cache for fetched pages
@@ -577,7 +582,7 @@ class WebSearch(BaseCapability):
     # Core Operations
     # =========================================================================
 
-    def search(
+    async def search(
         self,
         query: str,
         max_results: int | None = None,
@@ -592,12 +597,25 @@ class WebSearch(BaseCapability):
         Returns:
             List of SearchResult objects
         """
-        return self._provider.search(
+        # Check semantic cache if available
+        if self._cache:
+            cached = await self._cache.get("search", query, "")
+            if cached:
+                return cached.artifact
+        
+        # Execute search
+        results = self._provider.search(
             query,
             max_results=max_results or self._max_results,
         )
+        
+        # Store in cache
+        if self._cache and results:
+            await self._cache.put("search", query, results, "")
+        
+        return results
 
-    def search_news(
+    async def search_news(
         self,
         query: str,
         max_results: int | None = None,
@@ -612,10 +630,23 @@ class WebSearch(BaseCapability):
         Returns:
             List of SearchResult objects
         """
-        return self._provider.news(
+        # Check semantic cache if available
+        if self._cache:
+            cached = await self._cache.get("news", query, "")
+            if cached:
+                return cached.artifact
+        
+        # Execute search
+        results = self._provider.news(
             query,
             max_results=max_results or self._max_results,
         )
+        
+        # Store in cache
+        if self._cache and results:
+            await self._cache.put("news", query, results, "")
+        
+        return results
 
     def fetch(
         self,
@@ -763,7 +794,7 @@ class WebSearch(BaseCapability):
         ws = self
 
         @tool
-        def web_search(query: str, max_results: int = 10) -> str:
+        async def web_search(query: str, max_results: int = 10) -> str:
             """
             Search the web for information.
 
@@ -774,7 +805,7 @@ class WebSearch(BaseCapability):
             Returns:
                 Search results with titles, URLs, and snippets
             """
-            results = ws.search(query, max_results=max_results)
+            results = await ws.search(query, max_results=max_results)
 
             if not results:
                 return f"No results found for: {query}"
@@ -793,7 +824,7 @@ class WebSearch(BaseCapability):
         ws = self
 
         @tool
-        def news_search(query: str, max_results: int = 10) -> str:
+        async def news_search(query: str, max_results: int = 10) -> str:
             """
             Search for recent news articles.
 
@@ -804,7 +835,7 @@ class WebSearch(BaseCapability):
             Returns:
                 News articles with titles, URLs, and excerpts
             """
-            results = ws.search_news(query, max_results=max_results)
+            results = await ws.search_news(query, max_results=max_results)
 
             if not results:
                 return f"No news found for: {query}"

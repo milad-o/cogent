@@ -287,6 +287,10 @@ class Shell(BaseCapability):
                 raise SecurityError(msg)
 
         # Check for disallowed operators
+        if ";" in command:
+            msg = "Command chaining with semicolon (;) is not allowed"
+            raise SecurityError(msg)
+        
         if not self.allow_pipes and "|" in command:
             msg = "Pipe operations are not allowed"
             raise SecurityError(msg)
@@ -388,9 +392,14 @@ class Shell(BaseCapability):
         timed_out = False
 
         try:
-            # Run command
-            process = await asyncio.create_subprocess_shell(
-                command,
+            # Parse command safely (prevent injection)
+            cmd_parts = shlex.split(command)
+            if not cmd_parts:
+                raise ValueError("Empty command")
+            
+            # Run command with exec (safer than shell=True)
+            process = await asyncio.create_subprocess_exec(
+                *cmd_parts,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=str(cwd),

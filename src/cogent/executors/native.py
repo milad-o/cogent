@@ -37,7 +37,7 @@ from cogent.core.messages import (
     ToolMessage,
 )
 from cogent.core.utils import model_identifier
-from cogent.events.bus import EventBus
+from cogent.observability.bus import TraceBus
 from cogent.interceptors.base import (
     InterceptContext,
     Interceptor,
@@ -609,7 +609,7 @@ class NativeExecutor(BaseExecutor):
         task: str,
         context: dict[str, object] | None,
         messages: list[BaseMessage],
-        event_bus: EventBus | None,
+        event_bus: TraceBus | None,
         agent_name: str,
         run_context: RunContext | None = None,
     ) -> str | StructuredResult:
@@ -719,7 +719,7 @@ class NativeExecutor(BaseExecutor):
         task: str,
         context: dict[str, object] | None,
         messages: list[BaseMessage],
-        event_bus: EventBus | None,
+        event_bus: TraceBus | None,
         agent_name: str,
         execution_start: float,
         run_context: RunContext | None = None,
@@ -1198,7 +1198,7 @@ class NativeExecutor(BaseExecutor):
         task: str,
         context: dict[str, object] | None,
         messages: list[BaseMessage],
-        event_bus: EventBus | None,
+        event_bus: TraceBus | None,
         agent_name: str,
     ) -> dict[str, object]:
         """Execute reasoning phase before main loop.

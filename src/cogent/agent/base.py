@@ -31,16 +31,8 @@ from cogent.agent.output import (
 from cogent.agent.reasoning import (
     ReasoningConfig,
 )
-from cogent.agent.roles import RoleConfig
-from cogent.agent.spawning import SpawningConfig
 from cogent.agent.state import AgentState
-from cogent.agent.taskboard import (
-    TASKBOARD_INSTRUCTIONS,
-    TaskBoard,
-    TaskBoardConfig,
-    create_taskboard_tools,
-)
-from cogent.core.enums import AgentRole, AgentStatus
+from cogent.core.enums import AgentStatus
 from cogent.core.messages import AIMessage, HumanMessage, SystemMessage
 from cogent.core.response import (
     ErrorInfo,
@@ -51,13 +43,11 @@ from cogent.core.response import (
 from cogent.core.utils import generate_id, model_identifier, now_utc
 from cogent.models.base import BaseChatModel
 from cogent.observability.trace_record import Trace, TraceType
-from cogent.tasks.task import Task
 from cogent.tools.base import BaseTool
 
 if TYPE_CHECKING:
     from cogent.agent.memory import AgentMemory, MemoryStore
     from cogent.agent.resilience import ResilienceConfig, ToolResilience
-    from cogent.agent.spawning import SpawningConfig, SpawnManager
     from cogent.agent.streaming import StreamChunk, StreamEvent
     from cogent.graph import GraphView
     from cogent.memory import Memory
@@ -139,9 +129,6 @@ class Agent:
         # Core parameters
         name: str,
         model: BaseChatModel | str | None = None,
-        role: AgentRole
-        | Literal["worker", "supervisor", "reviewer", "autonomous"]
-        | RoleConfig = AgentRole.WORKER,
         description: str = "",
         instructions: str | None = None,
         tools: Sequence[BaseTool | str | Callable] | None = None,
@@ -154,6 +141,7 @@ class Agent:
         # Memory and state
         memory: bool | AgentMemory | Memory | None = None,
         store: MemoryStore | None = None,
+        use_acc: bool = False,  # Agent Cognitive Compressor (bounded memory)
         # HITL and streaming
         interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
         stream: bool = False,
@@ -161,20 +149,9 @@ class Agent:
         reasoning: bool | ReasoningConfig = False,
         output: type | dict | ResponseSchema | None = None,
         intercept: Sequence[Callable] | None = None,
-        spawning: SpawningConfig | None = None,
         # Observability
         verbosity: bool | str | int | None = None,
         observer: Observer | None = None,
-        # TaskBoard
-        taskboard: bool | TaskBoardConfig | None = None,
-        # Role-specific parameters (only used if role is string/enum, ignored if RoleConfig)
-        workers: list[str] | None = None,
-        criteria: list[str] | None = None,
-        specialty: str | None = None,
-        # Capability overrides
-        can_finish: bool | None = None,
-        can_delegate: bool | None = None,
-        can_use_tools: bool | None = None,
     ) -> None:
         """
         Initialize an Agent.
@@ -182,56 +159,39 @@ class Agent:
         Args:
             name: Agent name
             model: Chat model - string (e.g., "gpt4", "claude"), provider:model (e.g., "anthropic:claude-sonnet-4"), or BaseChatModel instance
-            role: Agent role - string, AgentRole enum, or RoleConfig object
             description: Agent description
             instructions: Instructions for the agent - defines behavior and personality
             tools: List of tools - BaseTool objects, strings, or callables
             capabilities: Additional capabilities to enable
             system_prompt: System prompt (alias for instructions)
             resilience: ResilienceConfig for retry logic and circuit breakers
-            event_bus: Event bus for communication (optional, Flow provides this)
-            tool_registry: Registry of available tools (optional, Flow provides this)
+            trace_bus: TraceBus for event communication (optional)
+            tool_registry: Registry of available tools (optional)
             memory: Memory backend for conversation persistence:
-                - True: Use built-in InMemoryCheckpointer
+                - True: Use built-in InMemorySaver
                 - AgentMemory instance: Custom configuration
             store: Store for long-term memory across threads
+            use_acc: Enable Agent Cognitive Compressor (bounded memory)
+                - Replaces transcript replay with bounded internal state
+                - Prevents memory poisoning and drift
+                - Based on arXiv:2601.11653
             interrupt_on: HITL rules - dict mapping tool names to approval rules
             stream: Enable token-by-token streaming by default
             reasoning: Enable extended thinking/chain-of-thought mode
             output: Enforce structured output schema
             intercept: List of interceptors for execution hooks
-            spawning: SpawningConfig for dynamic agent creation
-            verbosity: Observability level - ObservabilityLevel enum, int (0-5), string ("off", "result", "progress", "detailed", "debug", "trace"), bool (False=off, True=progress), or None (default=off)
+            verbosity: Observability level - ObservabilityLevel enum, int (0-5), string, bool, or None
             observer: Observer instance for rich observability (takes precedence over verbosity)
-            taskboard: Enable task tracking - True, TaskBoardConfig, or False/None
-            workers: Worker agent names (for SUPERVISOR role)
-            criteria: Evaluation criteria (for REVIEWER role)
-            specialty: Description of specialty (for WORKER role)
-            can_finish: Override capability to provide FINAL ANSWER
-            can_delegate: Override capability to delegate to other agents
-            can_use_tools: Override capability to call tools
-            can_use_tools: Override capability to call tools (custom roles)
 
         Model Examples:
             ```python
             # High-level: Just model name (auto-detects provider)
             agent = Agent(name="Helper", model="gpt4")
             agent = Agent(name="Helper", model="claude")
-            agent = Agent(name="Helper", model="gemini")
 
             # With provider prefix for explicit control
             agent = Agent(name="Helper", model="anthropic:claude-sonnet-4")
             agent = Agent(name="Helper", model="groq:llama-70b")
-
-            # Medium-level: Create model explicitly
-            from cogent.models import create_chat
-            model = create_chat("openai", "gpt-4o")
-            agent = Agent(name="Helper", model=model)
-
-            # Low-level: Full control
-            from cogent.models import OpenAIChat
-            model = OpenAIChat(model="gpt-4o", temperature=0.7, api_key="sk-...")
-            agent = Agent(name="Helper", model=model)
             ```
 
         Example with memory:
@@ -239,27 +199,9 @@ class Agent:
             # Simple: just pass True for in-memory
             agent = Agent(name="Assistant", model=model, memory=True)
 
-            # Or use InMemorySaver directly
-            from cogent.agent.memory import InMemorySaver
-            agent = Agent(name="Assistant", model=model, memory=InMemorySaver())
-
             # Run with thread-based memory
             response = await agent.run("Hi, I'm Alice", thread_id="conv-1")
             response = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
-            ```
-
-        Example with verbose (standalone usage):
-            ```python
-            # See tool calls and agent reasoning
-            agent = Agent(
-                name="Researcher",
-                model=model,
-                tools=[search, read_url],
-                verbose="debug",  # Shows all tool calls
-            )
-
-            result = await agent.run("Find info about Python")
-            # Output shows: thinking... → tool calls → results → response
             ```
 
         Example with structured output:
@@ -267,100 +209,14 @@ class Agent:
             from pydantic import BaseModel, Field
 
             class ContactInfo(BaseModel):
-                '''Contact information.'''
                 name: str = Field(description="Full name")
                 email: str = Field(description="Email address")
-                phone: str | None = Field(None, description="Phone number")
 
-            agent = Agent(
-                name="Extractor",
-                model=model,
-                output=ContactInfo,  # Enforce schema
-            )
-
+            agent = Agent(name="Extractor", model=model, output=ContactInfo)
             result = await agent.run("Extract: John Doe, john@acme.com")
-            print(result.data)  # ContactInfo(name="John Doe", email="john@acme.com", phone=None)
-            ```
-
-        Example with taskboard:
-            ```python
-            # Enable task tracking - agent gets tools to manage its own work
-            agent = Agent(
-                name="Researcher",
-                model=model,
-                tools=[search, summarize],
-                taskboard=True,  # Adds task management tools + instructions
-            )
-
-            result = await agent.run("Research Python async patterns")
-
-            # Check what the agent tracked
-            print(agent.taskboard.summary())
-            ```
-
-        Example with role-specific parameters:
-            ```python
-            # Supervisor with team members
-            supervisor = Agent(
-                name="Manager",
-                model=model,
-                role="supervisor",
-                workers=["Alice", "Bob"],  # Adds to prompt
-            )
-
-            # Reviewer with criteria
-            reviewer = Agent(
-                name="QA",
-                model=model,
-                role="reviewer",
-                criteria=["accuracy", "clarity"],  # Adds to prompt
-            )
-
-            # Worker with specialty
-            worker = Agent(
-                name="Analyst",
-                model=model,
-                role="worker",
-                specialty="data analysis",  # Adds to prompt
-            )
-            ```
-
-        Example with custom roles (capability overrides):
-            ```python
-            # Hybrid: Reviewer that can use tools
-            hybrid = Agent(
-                name="TechnicalReviewer",
-                model=model,
-                role="reviewer",
-                can_use_tools=True,  # Override!
-                tools=[linter, analyzer],
-            )
-
-            # Custom orchestrator: Worker that can finish and delegate
-            orchestrator = Agent(
-                name="Orchestrator",
-                model=model,
-                role="worker",
-                can_finish=True,    # Override!
-                can_delegate=True,  # Override!
-            )
+            print(result.data)  # ContactInfo(name="John Doe", email="john@acme.com")
             ```
         """
-        # Handle role - can be string, enum, or RoleConfig object
-        role_config = None
-        role_enum = None
-
-        if isinstance(role, str):
-            # String role - convert to enum
-            role_enum = AgentRole(role.lower())
-        elif hasattr(role, "get_role_type"):
-            # RoleConfig object
-            role_config = role
-            role_enum = role_config.get_role_type()
-        else:
-            # AgentRole enum directly
-            role_enum = role
-
         # Extract tool names and store tool objects
         tool_names: list[str] = []
         self._direct_tools: list[BaseTool] = []
@@ -377,38 +233,11 @@ class Agent:
                     tool_names.append(getattr(tool, "name", str(tool)))
 
         # instructions takes priority over system_prompt
-        # If neither provided, use role-specific default prompt
-        effective_prompt = instructions or system_prompt
-        if not effective_prompt:
-            from cogent.agent.roles import get_role_prompt
-
-            has_tools = bool(tool_names or self._direct_tools)
-            effective_prompt = get_role_prompt(role_enum, has_tools=has_tools)
-
-        # If we have a RoleConfig object, let it enhance the prompt
-        if role_config:
-            effective_prompt = role_config.enhance_prompt(effective_prompt)
-        else:
-            # Otherwise, use legacy parameter-based enhancement
-            # (workers, criteria, specialty are ignored if RoleConfig is used)
-            if workers and role_enum == AgentRole.SUPERVISOR:
-                effective_prompt += f"\n\nYour team members: {', '.join(workers)}"
-
-            if criteria and role_enum == AgentRole.REVIEWER:
-                effective_prompt += "\n\nEvaluation criteria:\n- " + "\n- ".join(
-                    criteria
-                )
-
-            if specialty and role_enum == AgentRole.WORKER:
-                effective_prompt += f"\n\nYour specialty: {specialty}"
-
-        # Store role config for capability lookups
-        self._role_config = role_config
+        effective_prompt = instructions or system_prompt or "You are a helpful AI assistant."
 
         # Create config from parameters (internal use only)
         config = AgentConfig(
             name=name,
-            role=role_enum,
             description=description,
             model=model,
             system_prompt=effective_prompt,
@@ -430,16 +259,8 @@ class Agent:
         self._capabilities: list[Any] = []
         self._capabilities_initialized: bool = False  # Track if async init done
         self._observer = None  # Observer for standalone usage
+        self._use_acc = use_acc  # Store ACC flag
         self._setup_resilience()
-
-        # Apply capability overrides if provided
-        self._capability_overrides: dict[str, bool] = {}
-        if can_finish is not None:
-            self._capability_overrides["can_finish"] = can_finish
-        if can_delegate is not None:
-            self._capability_overrides["can_delegate"] = can_delegate
-        if can_use_tools is not None:
-            self._capability_overrides["can_use_tools"] = can_use_tools
 
         # Setup observer for standalone agent usage
         # observer parameter takes precedence over verbosity
@@ -464,9 +285,6 @@ class Agent:
         # Setup memory
         self._setup_memory(memory, store)
 
-        # Setup taskboard (task tracking and working memory)
-        self._setup_taskboard(taskboard)
-
         # Setup reasoning mode
         self._setup_reasoning(reasoning)
 
@@ -475,10 +293,6 @@ class Agent:
 
         # Setup interceptors
         self._interceptors: list[Callable] = list(intercept) if intercept else []
-
-        # Spawning support (set externally or via SpawningConfig)
-        self._spawn_manager: SpawnManager | None = None
-        self._setup_spawning(spawning)
 
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
@@ -740,42 +554,6 @@ class Agent:
         """Whether the agent has interceptors configured."""
         return bool(getattr(self, "_interceptors", None))
 
-    def _setup_spawning(self, spawning: SpawningConfig | None) -> None:
-        """Setup spawning capability for dynamic agent creation.
-
-        Args:
-            spawning: SpawningConfig for enabling agent spawning.
-                When configured, adds spawn_agent tool for LLM to use.
-        """
-        if spawning is None:
-            return
-
-        from cogent.agent.spawning import (
-            SpawningConfig,
-            SpawnManager,
-            create_spawn_tool,
-        )
-
-        if not isinstance(spawning, SpawningConfig):
-            raise TypeError(f"spawning must be SpawningConfig, got {type(spawning)}")
-
-        # Create spawn manager
-        self._spawn_manager = SpawnManager(self, spawning)
-
-        # Create and add spawn_agent tool
-        spawn_tool = create_spawn_tool(self._spawn_manager, spawning)
-        self._direct_tools.append(spawn_tool)
-        if spawn_tool.name not in self.config.tools:
-            self.config.tools.append(spawn_tool.name)
-
-        # Invalidate caches since we added a tool
-        self.invalidate_caches()
-
-    @property
-    def spawn_manager(self) -> Any | None:
-        """Get the spawn manager if spawning is enabled."""
-        return self._spawn_manager
-
     @property
     def deferred_manager(self) -> Any:
         """Get the deferred manager for async tool completion.
@@ -794,73 +572,6 @@ class Agent:
             self._deferred_manager = DeferredManager(self.trace_bus)
 
         return self._deferred_manager
-
-    @property
-    def can_spawn(self) -> bool:
-        """Whether this agent can spawn child agents."""
-        return self._spawn_manager is not None
-
-    async def spawn(
-        self,
-        role: str,
-        task: str,
-        system_prompt: str | None = None,
-        tools: list[str] | None = None,
-    ) -> str:
-        """
-        Spawn a specialist agent to execute a task.
-
-        Convenience method - wraps spawn_manager.spawn().
-
-        Args:
-            role: Role/type of the specialist.
-            task: Task for the spawned agent.
-            system_prompt: Optional custom system prompt.
-            tools: Optional tool names to enable.
-
-        Returns:
-            Result from the spawned agent.
-
-        Raises:
-            RuntimeError: If spawning is not enabled.
-        """
-        if not self._spawn_manager:
-            raise RuntimeError(
-                "Spawning not enabled. Initialize agent with spawning=SpawningConfig(...)"
-            )
-        return await self._spawn_manager.spawn(role, task, system_prompt, tools)
-
-    async def parallel_map(
-        self,
-        items: list[Any],
-        task_template: str,
-        role: str = "worker",
-    ) -> list[str]:
-        """
-        Map a task template over items in parallel using spawned agents.
-
-        Args:
-            items: Items to process.
-            task_template: Template with {item} placeholder.
-            role: Role for spawned workers.
-
-        Returns:
-            List of results in same order as items.
-
-        Example:
-            ```python
-            results = await agent.parallel_map(
-                items=["Apple", "Google", "Microsoft"],
-                task_template="Research {item} and provide a summary",
-                role="researcher",
-            )
-            ```
-        """
-        if not self._spawn_manager:
-            raise RuntimeError(
-                "Spawning not enabled. Initialize agent with spawning=SpawningConfig(...)"
-            )
-        return await self._spawn_manager.parallel_map(items, task_template, role)
 
     async def _execute_tool(
         self,
@@ -1121,21 +832,18 @@ class Agent:
         Args:
             memory: Memory backend - can be:
                 - None: No persistence (in-memory only for session)
-                - True: Use default MemoryManager (conversation only)
-                - MemoryManager: Use the new unified memory system
-                - MemoryConfig: Create MemoryManager from config
-                - dict: Create MemoryManager from kwargs
+                - True: Use default Memory (conversation only)
+                - Memory: Use the unified memory system
                 - AgentMemory: Legacy support
-                - External saver: Legacy support
             store: External MemoryStore for long-term memory (legacy).
         """
         from cogent.agent.memory import AgentMemory, InMemorySaver
         from cogent.memory import Memory
-
+        
         # New Memory class support
         if isinstance(memory, Memory):
             self._memory_manager = memory
-            self._memory = AgentMemory(backend=InMemorySaver(), store=store)
+            self._memory = AgentMemory(backend=InMemorySaver(), store=store, acc_enabled=self._use_acc)
             # Memory is always agentic - add tools
             self._add_memory_tools()
             return
@@ -1143,7 +851,7 @@ class Agent:
         if memory is True:
             # Default: use new Memory (always agentic)
             self._memory_manager = Memory()
-            self._memory = AgentMemory(backend=InMemorySaver(), store=store)
+            self._memory = AgentMemory(backend=InMemorySaver(), store=store, acc_enabled=self._use_acc)
             self._add_memory_tools()
             return
 
@@ -1154,10 +862,10 @@ class Agent:
             self._memory = memory
         elif memory is not None and memory is not False:
             # Assume it's an external saver
-            self._memory = AgentMemory(backend=memory, store=store)
+            self._memory = AgentMemory(backend=memory, store=store, acc_enabled=self._use_acc)
         else:
             # No persistence
-            self._memory = AgentMemory(store=store)
+            self._memory = AgentMemory(store=store, acc_enabled=self._use_acc)
 
     def _add_memory_tools(self) -> None:
         """Add memory tools to agent."""
@@ -3019,6 +2727,162 @@ class Agent:
             reasoning=reasoning,
         )
 
+    def as_tool(
+        self,
+        name: str | None = None,
+        description: str | None = None,
+        return_full_response: bool = False,
+    ) -> BaseTool:
+        """Convert this agent into a callable tool for tactical delegation.
+        
+        Use this SPARINGLY - only when research shows multi-agent helps:
+        1. Verification workflows (generator + checker)
+        2. Truly parallel independent tasks
+        3. Specialized models for different subtasks
+        
+        Default: Single agent + tools >> Multi-agent coordination
+        
+        Args:
+            name: Tool name (default: agent name)
+            description: Tool description (default: agent description)
+            return_full_response: If True, returns full Response object;
+                                 if False, returns just content string
+        
+        Returns:
+            BaseTool that wraps this agent's execution
+        
+        Example - Verification Pattern:
+            ```python
+            # Generator + Verifier (research-backed use case)
+            generator = Agent(
+                name="CodeGenerator",
+                model="gpt-4o",
+                instructions="Generate clean Python code",
+            )
+            
+            verifier = Agent(
+                name="CodeVerifier",
+                model="claude-sonnet-4",  # Different model for diversity
+                instructions="Review code for correctness and style",
+            )
+            
+            orchestrator = Agent(
+                name="Orchestrator",
+                model="gpt-4o",
+                tools=[
+                    generator.as_tool(
+                        description="Generate code for a task"
+                    ),
+                    verifier.as_tool(
+                        description="Verify and improve code"
+                    ),
+                ],
+                instructions=\"\"\"
+                For code tasks:
+                1. Use CodeGenerator to create code
+                2. Use CodeVerifier to check for issues
+                3. If issues found, iterate
+                4. Return verified code
+                \"\"\",
+            )
+            
+            result = await orchestrator.run(
+                "Create a binary search function"
+            )
+            ```
+        
+        Example - Parallel Tasks:
+            ```python
+            analyst = Agent(
+                name="CompanyAnalyst",
+                model="gpt-4o",
+                tools=[search, calculator],
+                instructions="Analyze a company's performance",
+            )
+            
+            orchestrator = Agent(
+                name="Orchestrator",
+                model="gpt-4o",
+                tools=[
+                    analyst.as_tool(
+                        description="Analyze a specific company"
+                    ),
+                ],
+                instructions=\"\"\"
+                For competitive analysis:
+                1. Call CompanyAnalyst for each company
+                2. Aggregate results
+                3. Provide comparative summary
+                \"\"\",
+            )
+            ```
+        
+        Anti-Pattern (DON'T DO THIS):
+            ```python
+            # BAD: Linear chain - just use one agent!
+            step1 = Agent("Step1", instructions="Do step 1")
+            step2 = Agent("Step2", instructions="Do step 2")
+            
+            orchestrator = Agent(tools=[
+                step1.as_tool(),
+                step2.as_tool(),
+            ])
+            # This is slower and more expensive than one agent!
+            ```
+        
+        See: AGENT_AS_TOOL_DESIGN.md for complete guidelines
+        """
+        from pydantic import BaseModel, Field
+        
+        from cogent.tools.base import BaseTool
+        
+        # Tool input schema
+        class AgentToolInput(BaseModel):
+            """Input for agent-as-tool."""
+            
+            task: str = Field(description="Task description for the agent")
+        
+        # Create tool function that wraps agent execution
+        async def execute_agent_task(task: str) -> str | dict:
+            """Execute agent and return result."""
+            try:
+                response = await self.run(task)
+                
+                # If response failed, return error info
+                if not response.success and response.error:
+                    return f"Agent execution error: {response.error.message}"
+                
+                if return_full_response:
+                    # Return full Response object as dict
+                    return {
+                        "content": response.content,
+                        "metadata": {
+                            "agent": response.metadata.agent if response.metadata else None,
+                            "model": response.metadata.model if response.metadata else None,
+                            "duration": response.metadata.duration if response.metadata else None,
+                        },
+                        "tool_calls": [
+                            {"name": tc.name, "args": getattr(tc, "args", {})}
+                            for tc in (response.tool_calls or [])
+                        ],
+                    }
+                else:
+                    # Return just content
+                    return str(response.content) if response.content else ""
+                    
+            except Exception as e:
+                return f"Agent execution failed: {str(e)}"
+        
+        # Create and return tool
+        tool = BaseTool(
+            name=name or self.name,
+            description=description or self.config.description or f"Execute task using {self.name} agent",
+            func=execute_agent_task,
+            args_schema=AgentToolInput,
+        )
+        
+        return tool
+
     async def _run_impl(
         self,
         task: str,
@@ -3044,7 +2908,7 @@ class Agent:
         self.state.clear_history()
         self.state.clear_tool_calls()
 
-        # Load conversation history into agent state if thread_id provided
+        # Load conversation context if thread_id provided
         if thread_id:
             # Set current thread on memory for tools to access
             if self._memory_manager and hasattr(
@@ -3052,13 +2916,26 @@ class Agent:
             ):
                 self._memory_manager._current_thread_id = thread_id
 
-            if self._memory_manager:
-                history = await self._memory_manager.get_thread_messages(thread_id)
+            # Use ACC (bounded memory) or transcript replay (legacy)
+            if self._use_acc and self._memory._acc_enabled:
+                # ACC: Load bounded memory state instead of full transcript
+                acc = await self._memory.get_acc_state(thread_id)
+                memory_context = acc.format_for_prompt(task)
+                
+                # Add formatted memory as system message
+                if memory_context:
+                    from cogent.core.messages import SystemMessage
+                    memory_msg = SystemMessage(content=f"# Memory Context\n\n{memory_context}")
+                    self.state.add_message(memory_msg)
             else:
-                history = await self._memory.get_messages(thread_id)
-            # Add history to agent state so executor can use it
-            for msg in history:
-                self.state.add_message(msg)
+                # Legacy: Load full conversation history (transcript replay)
+                if self._memory_manager:
+                    history = await self._memory_manager.get_thread_messages(thread_id)
+                else:
+                    history = await self._memory.get_messages(thread_id)
+                # Add history to agent state so executor can use it
+                for msg in history:
+                    self.state.add_message(msg)
 
         # Apply reasoning override for this call
         original_reasoning = self._reasoning_config
@@ -3078,7 +2955,29 @@ class Agent:
 
             # Save to conversation history if thread_id provided
             if thread_id:
-                await self._save_to_thread(thread_id, task, result)
+                # Update ACC state from this turn
+                if self._use_acc and self._memory._acc_enabled:
+                    acc = await self._memory.get_acc_state(thread_id)
+                    
+                    # Extract tool calls for ACC
+                    tool_calls_data = [
+                        {"name": tc.name, "args": getattr(tc, "args", {})}
+                        for tc in self.state.tool_calls
+                    ]
+                    
+                    # Update ACC from this turn
+                    await acc.update_from_turn(
+                        user_message=task,
+                        assistant_message=str(result),
+                        tool_calls=tool_calls_data,
+                        current_task=task,
+                    )
+                    
+                    # Save updated ACC state
+                    await self._memory.save_acc_state(thread_id, acc)
+                else:
+                    # Legacy: Save full transcript
+                    await self._save_to_thread(thread_id, task, result)
 
             # Build Response object
             duration_ms = (now_utc() - start_time).total_seconds() * 1000

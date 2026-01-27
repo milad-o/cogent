@@ -35,26 +35,20 @@ def create_executor(
         executor = create_executor(agent, ExecutionStrategy.NATIVE)
         result = await executor.execute("Do something")
 
-        # Use TreeSearch for complex tasks requiring exploration
-        executor = create_executor(agent, ExecutionStrategy.TREE_SEARCH)
-        result = await executor.execute("Solve this complex problem")
-
         # Use Sequential for ordered tool execution
         executor = create_executor(agent, ExecutionStrategy.SEQUENTIAL)
         result = await executor.execute(task)
     """
     # Import here to avoid circular imports at module load time
     from cogent.executors.native import NativeExecutor, SequentialExecutor
-    from cogent.executors.tree_search import TreeSearchExecutor
 
     executors = {
         ExecutionStrategy.NATIVE: NativeExecutor,
         ExecutionStrategy.SEQUENTIAL: SequentialExecutor,
-        ExecutionStrategy.TREE_SEARCH: TreeSearchExecutor,
     }
 
     executor_class = executors.get(strategy)
     if executor_class is None:
-        raise ValueError(f"Unknown strategy: {strategy}")
+        raise ValueError(f"Unknown strategy: {strategy}. Available: NATIVE, SEQUENTIAL")
 
     return executor_class(agent)

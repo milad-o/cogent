@@ -116,6 +116,13 @@ class TraceType(StrEnum):
     THREAD_CREATED = "memory.thread.created"  # New conversation thread
     THREAD_MESSAGE_ADDED = "memory.thread.message"  # Message added to thread
 
+    # Semantic cache events (reasoning artifact caching)
+    CACHE_HIT = "cache.hit"  # Cached artifact retrieved
+    CACHE_MISS = "cache.miss"  # No cached artifact found
+    CACHE_PUT = "cache.put"  # Artifact stored in cache
+    CACHE_INVALIDATED = "cache.invalidated"  # Cache entries invalidated
+    CACHE_EXPIRED = "cache.expired"  # Cache entry expired
+
     # Retrieval events (RAG retrieval pipeline)
     RETRIEVAL_START = "retrieval.start"  # Retrieval query started
     RETRIEVAL_COMPLETE = "retrieval.complete"  # Retrieval finished with results
