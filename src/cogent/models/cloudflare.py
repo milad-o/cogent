@@ -1,5 +1,5 @@
 """
-Cloudflare Workers AI models for AgenticFlow.
+Cloudflare Workers AI models for Cogent.
 
 Cloudflare exposes OpenAI-compatible chat and embedding endpoints:
 - Chat: https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1/chat/completions

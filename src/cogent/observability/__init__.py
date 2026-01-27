@@ -1,4 +1,4 @@
-"""Observability module for AgenticFlow.
+"""Observability module for Cogent.
 
 Provides comprehensive monitoring, tracing, metrics, events, and progress output
 for understanding system behavior at runtime.
@@ -14,7 +14,7 @@ Includes:
 
 Note:
     For core orchestration events (agent-to-agent routing), use
-    `agenticflow.events.Event` instead of `Trace`.
+    `cogent.events.Event` instead of `Trace`.
 """
 
 from cogent.observability.bus import (

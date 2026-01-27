@@ -3,7 +3,7 @@
 Example: MCP (Model Context Protocol) Integration.
 
 Demonstrates AI agents using MCP server tools with different transports:
-- STDIO: Local subprocess (default, managed by AgenticFlow)
+- STDIO: Local subprocess (default, managed by Cogent)
 - HTTP/SSE: Remote web server
 - WebSocket: Bidirectional real-time
 
@@ -189,7 +189,7 @@ async def demo_stdio_subprocess() -> None:
 
     server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
 
-    # Stdio transport - AgenticFlow manages the subprocess
+    # Stdio transport - Cogent manages the subprocess
     mcp = MCP.stdio(
         command="uv",
         args=["run", "python", str(server_path), "stdio"],
@@ -233,7 +233,7 @@ async def main() -> None:
     • HTTP/SSE - Remote server (Demo 4 - requires manual server start)
     """)
 
-    # Stdio demos (subprocess managed by AgenticFlow)
+    # Stdio demos (subprocess managed by Cogent)
     await demo_research_agent()
     await demo_news_analyst()
     await demo_fact_checker()

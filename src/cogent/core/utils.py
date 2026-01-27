@@ -1,5 +1,5 @@
 """
-Utility functions for AgenticFlow.
+Utility functions for Cogent.
 """
 
 from __future__ import annotations

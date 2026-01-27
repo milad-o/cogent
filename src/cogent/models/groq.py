@@ -1,5 +1,5 @@
 """
-Groq models for AgenticFlow.
+Groq models for Cogent.
 
 Groq provides extremely fast inference for open-source LLMs.
 Supports Llama, Mixtral, and other models.

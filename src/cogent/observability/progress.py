@@ -1,5 +1,5 @@
 """
-Progress & Output System for AgenticFlow
+Progress & Output System for Cogent
 =========================================
 
 A comprehensive, fully customizable output system for:

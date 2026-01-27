@@ -1,6 +1,6 @@
 # Tool Resilience & Recovery
 
-AgenticFlow provides production-grade resilience features that automatically handle transient failures, prevent cascading failures, and enable graceful degradation.
+Cogent provides production-grade resilience features that automatically handle transient failures, prevent cascading failures, and enable graceful degradation.
 
 ## Quick Start
 
@@ -367,7 +367,7 @@ Consider:
 
 ## Flow-Level Checkpointing
 
-While this document covers **tool-level** resilience (retries, circuit breakers), AgenticFlow also provides **flow-level** checkpointing for crash recovery in multi-agent orchestration.
+While this document covers **tool-level** resilience (retries, circuit breakers), Cogent also provides **flow-level** checkpointing for crash recovery in multi-agent orchestration.
 
 ### Tool Resilience vs Flow Checkpointing
 

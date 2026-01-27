@@ -22,7 +22,7 @@ class TestAgentStringModels:
     def test_agent_with_string_model(self):
         """Test creating agent with string model."""
         # Mock the API call to avoid needing real API keys
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             agent = Agent(name="TestAgent", model="gpt4")
             # Verify agent was created (would fail without model resolution)
             assert agent is not None
@@ -30,7 +30,7 @@ class TestAgentStringModels:
 
     def test_agent_with_provider_prefix(self):
         """Test creating agent with provider prefix."""
-        with patch('agenticflow.models.anthropic.AnthropicChat.__init__', return_value=None):
+        with patch('cogent.models.anthropic.AnthropicChat.__init__', return_value=None):
             agent = Agent(name="TestAgent", model="anthropic:claude")
             assert agent is not None
 
@@ -50,7 +50,7 @@ class TestCreateChatIntegration:
 
     def test_create_chat_single_arg(self):
         """Test create_chat with single argument."""
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
             try:
                 create_chat("gpt4")
             except Exception:
@@ -61,7 +61,7 @@ class TestCreateChatIntegration:
 
     def test_create_chat_two_args(self):
         """Test create_chat with provider and model."""
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
             try:
                 create_chat("openai", "gpt-4o")
             except Exception:
@@ -71,7 +71,7 @@ class TestCreateChatIntegration:
 
     def test_create_chat_with_kwargs(self):
         """Test create_chat with additional parameters."""
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
             try:
                 create_chat("gpt4", temperature=0.9, max_tokens=1000)
             except Exception:
@@ -92,13 +92,13 @@ class TestBackwardCompatibility:
         from cogent.models import OpenAIChat
 
         # Old style - direct instantiation
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             model = OpenAIChat(model="gpt-4o", api_key="sk-test")
             assert model is not None
 
     def test_create_chat_backward_compat(self):
         """Test create_chat backward compatibility."""
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             # Old two-argument form
             try:
                 model = create_chat("openai", "gpt-4o")
@@ -126,7 +126,7 @@ class TestErrorHandling:
     def test_missing_api_key(self):
         """Test behavior when API key is missing."""
         with patch.dict('os.environ', {}, clear=True):
-            with patch('agenticflow.config.get_provider_config', return_value={}):
+            with patch('cogent.config.get_provider_config', return_value={}):
                 # Should raise error about missing API key
                 with pytest.raises(Exception):
                     agent = Agent("Test", model="gpt4")
@@ -139,8 +139,8 @@ class TestErrorHandling:
     def test_none_model_with_config(self):
         """Test that None model uses default from config."""
         # When model=None, should try to load from config
-        with patch('agenticflow.config.get_provider_config', return_value={"default": "gpt4"}):
-            with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.config.get_provider_config', return_value={"default": "gpt4"}):
+            with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
                 try:
                     agent = Agent("Test", model=None)
                     # Should use default model from config
@@ -153,15 +153,15 @@ class TestConfigIntegration:
 
     def test_api_key_from_config(self, tmp_path):
         """Test that API keys are loaded from config."""
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-config-test-key"
 """)
 
-        with patch('agenticflow.config.find_config_file', return_value=config_file):
+        with patch('cogent.config.find_config_file', return_value=config_file):
             with patch.dict('os.environ', {}, clear=True):
-                with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
+                with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
                     try:
                         create_chat("gpt4")
                     except:
@@ -174,15 +174,15 @@ api_key = "sk-config-test-key"
 
     def test_env_var_overrides_config(self, tmp_path):
         """Test that environment variables override config file."""
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-config-key"
 """)
 
-        with patch('agenticflow.config.find_config_file', return_value=config_file):
+        with patch('cogent.config.find_config_file', return_value=config_file):
             with patch.dict('os.environ', {"OPENAI_API_KEY": "sk-env-key"}):
-                with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
+                with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
                     try:
                         create_chat("gpt4")
                     except:
@@ -195,15 +195,15 @@ api_key = "sk-config-key"
 
     def test_explicit_key_highest_priority(self, tmp_path):
         """Test that explicit API key has highest priority."""
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-config-key"
 """)
 
-        with patch('agenticflow.config.find_config_file', return_value=config_file):
+        with patch('cogent.config.find_config_file', return_value=config_file):
             with patch.dict('os.environ', {"OPENAI_API_KEY": "sk-env-key"}):
-                with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
+                with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None) as mock_init:
                     try:
                         create_chat("gpt4", api_key="sk-explicit-key")
                     except Exception:
@@ -220,7 +220,7 @@ class TestThreeTierAPI:
 
     def test_tier1_high_level(self):
         """Test Tier 1 (high-level string API)."""
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             try:
                 agent = Agent("Helper", model="gpt4")
                 assert agent.name == "Helper"
@@ -229,7 +229,7 @@ class TestThreeTierAPI:
 
     def test_tier2_factory(self):
         """Test Tier 2 (factory function)."""
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             try:
                 model = create_chat("gpt4")
                 assert model is not None
@@ -240,7 +240,7 @@ class TestThreeTierAPI:
         """Test Tier 3 (direct model classes)."""
         from cogent.models import OpenAIChat
 
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             model = OpenAIChat(model="gpt-4o", api_key="sk-test")
             assert model is not None
 
@@ -251,11 +251,11 @@ class TestThreeTierAPI:
         mock_model = MagicMock(spec=BaseChatModel)
 
         # Tier 3: Direct class
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             direct_model = OpenAIChat(model="gpt-4o", api_key="sk-test")
 
         # Tier 2: Factory
-        with patch('agenticflow.models.openai.OpenAIChat.__init__', return_value=None):
+        with patch('cogent.models.openai.OpenAIChat.__init__', return_value=None):
             try:
                 factory_model = create_chat("gpt4")
             except Exception:

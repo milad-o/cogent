@@ -1,5 +1,5 @@
 """
-AgenticFlow CLI - Command-line interface for AgenticFlow.
+Cogent CLI - Command-line interface for Cogent.
 """
 
 import argparse
@@ -10,8 +10,8 @@ import sys
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        prog="agenticflow",
-        description="AgenticFlow - Event-Driven Multi-Agent System Framework",
+        prog="cogent",
+        description="Cogent - Event-Driven Multi-Agent System Framework",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -54,7 +54,7 @@ def main() -> None:
     if args.version:
         from cogent import __version__
 
-        print(f"AgenticFlow v{__version__}")
+        print(f"Cogent v{__version__}")
         return
 
     if args.command == "serve":
@@ -104,7 +104,7 @@ def show_info() -> None:
     from cogent import __version__
 
     print(f"""
-AgenticFlow v{__version__}
+Cogent v{__version__}
 ========================
 
 A production-grade event-driven multi-agent system framework.
@@ -120,7 +120,7 @@ Optional Dependencies:
   • websockets  - Real-time event streaming
   • fastapi     - REST API server
 
-Documentation: https://github.com/milad-o/agenticflow
+Documentation: https://github.com/milad-o/cogent
 """)
 
 

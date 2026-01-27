@@ -1,5 +1,5 @@
 """
-Mistral AI models for AgenticFlow.
+Mistral AI models for Cogent.
 
 Supports all Mistral models via the official API.
 

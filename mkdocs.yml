@@ -106,6 +106,6 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/milad-o/agenticflow
+      link: https://github.com/milad-o/cogent
   version:
     provider: mike

@@ -1,5 +1,5 @@
 """
-Enums for AgenticFlow - defines status types and roles.
+Enums for Cogent - defines status types and roles.
 """
 
 from enum import IntEnum, StrEnum

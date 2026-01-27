@@ -1,4 +1,4 @@
-"""Core document types for AgenticFlow.
+"""Core document types for Cogent.
 
 This module defines the fundamental document structures used throughout
 the framework for RAG, retrieval, and document processing.
@@ -231,7 +231,7 @@ class DocumentMetadata:
 class Document:
     """A document with text content, structured metadata, and optional embedding.
 
-    This is THE unified document type used throughout agenticflow for:
+    This is THE unified document type used throughout cogent for:
     - Loading documents from files
     - Storing in vector stores
     - Retrieval results

@@ -1,7 +1,7 @@
 """Unified Response Protocol.
 
 This module provides the core types for the unified response protocol used
-throughout AgenticFlow. All agent operations (run, think, etc.) return a
+throughout Cogent. All agent operations (run, think, etc.) return a
 Response[T] object that contains the result plus rich metadata.
 
 The Response[T] generic container ensures:
@@ -143,7 +143,7 @@ class ResponseMetadata:
 class Response[T]:
     """Unified response container for all agent/tool operations.
 
-    This is the canonical response type used throughout AgenticFlow:
+    This is the canonical response type used throughout Cogent:
     - Agent.run() returns Response[T]
     - Agent.think() returns Response[str]
     - Tools return Response[ToolResult]

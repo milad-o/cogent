@@ -1,5 +1,5 @@
 """
-Human-in-the-Loop (HITL) support for AgenticFlow.
+Human-in-the-Loop (HITL) support for Cogent.
 
 Provides types and utilities for implementing human oversight of agent actions,
 including tool approval workflows and interactive decision-making.

@@ -129,7 +129,7 @@ result = {
     # JSON processing
     result = sandbox.execute("""
 import json
-data = {"name": "AgenticFlow", "version": "0.1.0", "features": ["agents", "tools", "graphs"]}
+data = {"name": "Cogent", "version": "0.1.0", "features": ["agents", "tools", "graphs"]}
 result = json.dumps(data, indent=2)
 """)
     print(f"\nJSON output:\n{result.return_value}")

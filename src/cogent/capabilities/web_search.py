@@ -546,7 +546,7 @@ class WebSearch(BaseCapability):
         self._fetch_timeout = fetch_timeout
         self._max_content_length = max_content_length
         self._user_agent = user_agent or (
-            "Mozilla/5.0 (compatible; AgenticFlow/1.0; +https://github.com/agenticflow)"
+            "Mozilla/5.0 (compatible; Cogent/1.0; +https://github.com/cogent)"
         )
         self._tools_cache: list[BaseTool] | None = None
 
@@ -754,7 +754,7 @@ class WebSearch(BaseCapability):
         except ImportError:
             raise ImportError(
                 "beautifulsoup4 required for HTML parsing. "
-                "Install with: uv add 'agenticflow[web]'"
+                "Install with: uv add 'cogent[web]'"
             ) from None
 
         soup = BeautifulSoup(html, "html.parser")

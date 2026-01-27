@@ -1,5 +1,5 @@
 """
-Native LLM and Embedding models for AgenticFlow.
+Native LLM and Embedding models for Cogent.
 
 High-performance model interfaces using provider SDKs directly.
 Supports OpenAI, Azure, Anthropic, Groq, Gemini, Cohere, Cloudflare, Ollama, and custom endpoints.
@@ -466,7 +466,7 @@ def create_embedding(
 
 
 def is_native_model(model: Any) -> bool:
-    """Check if a model is a native AgenticFlow model.
+    """Check if a model is a native Cogent model.
 
     Args:
         model: Model instance to check.

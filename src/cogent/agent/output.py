@@ -1,7 +1,7 @@
 """
 Structured Output - enforce response schemas on agent outputs.
 
-AgenticFlow's approach to structured output:
+Cogent's approach to structured output:
 - Agent-level configuration via `output` parameter
 - Supports Pydantic, dataclass, TypedDict, and JSON Schema
 - Automatic validation with configurable retry

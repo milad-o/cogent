@@ -1,5 +1,5 @@
 """
-Native message types for AgenticFlow.
+Native message types for Cogent.
 
 Lightweight message implementations compatible with chat API message format.
 All major providers (OpenAI, Azure, Anthropic, etc.) use this same format.

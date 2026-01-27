@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 class MemorySaver(Protocol):
     """Protocol for persistence backend interface.
 
-    This allows agenticflow to accept any compatible saver:
+    This allows cogent to accept any compatible saver:
     - InMemorySaver (in-memory for testing)
     - SQL-based backends for production
     - Custom implementations
@@ -343,7 +343,7 @@ class AgentMemory:
                 await self._backend.aput(
                     config,
                     snapshot.to_checkpoint_format(),
-                    {"source": "agenticflow", "agent": agent_name},
+                    {"source": "cogent", "agent": agent_name},
                     {},
                 )
             except AttributeError:
@@ -351,7 +351,7 @@ class AgentMemory:
                 self._backend.put(
                     config,
                     snapshot.to_checkpoint_format(),
-                    {"source": "agenticflow", "agent": agent_name},
+                    {"source": "cogent", "agent": agent_name},
                     {},
                 )
 

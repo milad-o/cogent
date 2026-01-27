@@ -165,7 +165,7 @@ result = await flow.run("Create a blog post about quantum computing")
 
 ## Model Providers
 
-AgenticFlow supports all major LLM providers with native SDK integrations:
+Cogent supports all major LLM providers with native SDK integrations:
 
 ```python
 from cogent.models import (

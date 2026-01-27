@@ -1,5 +1,5 @@
 """
-Azure OpenAI and Azure AI Foundry models for AgenticFlow.
+Azure OpenAI and Azure AI Foundry models for Cogent.
 
 Azure OpenAI:
 - API Key authentication

@@ -104,7 +104,7 @@ class DashboardConfig:
         enable_live_updates: Enable real-time updates.
     """
 
-    name: str = "AgenticFlow Dashboard"
+    name: str = "Cogent Dashboard"
     refresh_interval_ms: int = 1000
     history_window_minutes: int = 60
     enable_live_updates: bool = True

@@ -10,7 +10,7 @@ Why:
 
 Notes:
 - Requires `pymupdf` (import name: `fitz`) for PDF rendering.
-- Model must support multimodal inputs (image + text). AgenticFlow's
+- Model must support multimodal inputs (image + text). Cogent's
   `convert_messages` preserves OpenAI-style multimodal message content.
 
 Example:

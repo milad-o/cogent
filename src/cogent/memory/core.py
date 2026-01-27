@@ -1,4 +1,4 @@
-"""Memory-first architecture for AgenticFlow.
+"""Memory-first architecture for Cogent.
 
 Core principle: Memory is a first-class citizen.
 Wire it to any entity (Agent, Team, Flow) and it changes behavior.

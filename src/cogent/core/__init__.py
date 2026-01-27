@@ -1,7 +1,7 @@
 """
-Core module - foundational types and utilities for AgenticFlow.
+Core module - foundational types and utilities for Cogent.
 
-For models and embeddings, use native AgenticFlow models:
+For models and embeddings, use native Cogent models:
     from cogent.models import ChatModel, create_chat
     from cogent.models.anthropic import AnthropicChat
     from cogent.models.gemini import GeminiChat

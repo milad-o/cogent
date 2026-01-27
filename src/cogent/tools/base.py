@@ -1,5 +1,5 @@
 """
-Native tool abstraction for AgenticFlow.
+Native tool abstraction for Cogent.
 
 Lightweight tool implementations compatible with OpenAI function calling format.
 Supports context injection via `ctx: RunContext` parameter.

@@ -19,7 +19,7 @@ class ToolRegistry:
 
     The ToolRegistry manages available tools that agents can use.
     It supports:
-    - Registering native AgenticFlow tools
+    - Registering native Cogent tools
     - Getting tool by name
     - Generating tool descriptions for LLM prompts
     - Event emission for tool registration

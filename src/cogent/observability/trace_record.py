@@ -207,7 +207,7 @@ class Trace:
 
     Note:
         This is for observability/telemetry. For core orchestration events,
-        use `agenticflow.events.Event` instead.
+        use `cogent.events.Event` instead.
 
     Attributes:
         type: The type of trace (from TraceType enum)

@@ -391,7 +391,7 @@ class RedisStore:
         self,
         url: str = "redis://localhost:6379/0",
         *,
-        prefix: str = "agenticflow:",
+        prefix: str = "cogent:",
     ) -> None:
         """Initialize Redis store.
 

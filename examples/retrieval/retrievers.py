@@ -1,7 +1,7 @@
 """
 Advanced Retrievers
 
-Demonstrates core retriever types in AgenticFlow:
+Demonstrates core retriever types in Cogent:
 - Dense/BM25/Hybrid/Ensemble retrievers
 - Contextual retrievers (ParentDocument, SentenceWindow)
 - LLM-powered indexes (Summary, Keyword, SelfQuery)
