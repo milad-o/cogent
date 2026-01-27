@@ -145,11 +145,19 @@ print(get_weather.return_info)
     name="web_search",           # Override function name
     description="Search the web",  # Override docstring
     return_direct=True,          # Return result directly to user
+    cache=True,                  # Enable semantic caching (requires agent.cache)
 )
 def search(query: str, max_results: int = 10) -> str:
     """Search implementation."""
     return f"Found {max_results} results for: {query}"
 ```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `name` | `str` | Function name | Override the tool name |
+| `description` | `str` | Docstring | Override the tool description |
+| `return_direct` | `bool` | `False` | Return result directly to user without LLM processing |
+| `cache` | `bool` | `False` | Enable automatic semantic caching (see [Semantic Caching](#semantic-caching)) |
 
 ## Async Tools
 
@@ -389,6 +397,57 @@ class RateLimitedAPI:
 
 ### Pattern 3: Caching
 
+#### Semantic Caching (Recommended)
+
+Use `@tool(cache=True)` for automatic semantic caching. Similar queries return cached results:
+
+```python
+from cogent import Agent, tool
+
+@tool(cache=True)
+async def search_products(query: str) -> str:
+    """Search products in the catalog.
+    
+    Args:
+        query: Search query for products.
+    
+    Returns:
+        Product search results.
+    """
+    # Expensive API call - cached semantically
+    return await product_api.search(query)
+
+# Agent must have cache enabled
+agent = Agent(
+    model="gpt-4o-mini",
+    tools=[search_products],
+    cache=True,  # Required for @tool(cache=True)
+)
+
+# First call executes the tool
+await agent.run("Find running shoes")
+
+# Similar query hits cache (semantic match)
+await agent.run("Show me running sneakers")  # Cache hit!
+```
+
+**How it works:**
+
+1. Tool input is embedded using the agent's embedding model
+2. Cache checks for semantically similar previous calls
+3. If similarity exceeds threshold, cached result is returned
+4. Otherwise, tool executes and result is stored
+
+**Requirements:**
+
+- Agent must have `cache=True` enabled
+- An embedding model must be configured (or uses default)
+- Tool must have `cache=True` in decorator
+
+#### Simple LRU Caching
+
+For exact-match caching (same input = same output):
+
 ```python
 from cogent import tool
 from functools import lru_cache
@@ -396,10 +455,13 @@ from functools import lru_cache
 @tool
 @lru_cache(maxsize=100)
 def cached_computation(input: str) -> str:
-    """Expensive computation with caching."""
-    # Cached result for same input
+    """Expensive computation with exact-match caching."""
+    # Cached result for identical input only
     return expensive_operation(input)
 ```
+
+> [!TIP]
+> Use `@tool(cache=True)` for semantic similarity matching, `@lru_cache` for exact string matching.
 
 ### Pattern 4: Validation
 
