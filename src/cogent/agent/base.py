@@ -32,7 +32,7 @@ from cogent.agent.reasoning import (
     ReasoningConfig,
 )
 from cogent.agent.state import AgentState
-from cogent.core.enums import AgentStatus
+from cogent.core.enums import AgentRole, AgentStatus
 from cogent.core.messages import AIMessage, HumanMessage, SystemMessage
 from cogent.core.response import (
     ErrorInfo,
@@ -56,6 +56,23 @@ if TYPE_CHECKING:
     from cogent.observability.progress import ProgressTracker
     from cogent.tools.deferred import DeferredToolManager
     from cogent.tools.registry import ToolRegistry
+
+# Import taskboard (real implementation)
+from cogent.agent.taskboard import (
+    TaskBoard,
+    TaskBoardConfig,
+    TASKBOARD_INSTRUCTIONS,
+    create_taskboard_tools,
+)
+
+# Task type for execute_task (legacy multi-agent feature)
+if TYPE_CHECKING:
+    class Task:
+        id: str
+        name: str
+        description: str | None
+        tool: str | None
+        args: dict
 
 
 class Agent:
@@ -150,6 +167,7 @@ class Agent:
         reasoning: bool | ReasoningConfig = False,
         output: type | dict | ResponseSchema | None = None,
         intercept: Sequence[Callable] | None = None,
+        taskboard: bool | TaskBoardConfig = False,
         # Observability
         verbosity: bool | str | int | None = None,
         observer: Observer | None = None,
@@ -336,6 +354,12 @@ class Agent:
 
         # Setup interceptors
         self._interceptors: list[Callable] = list(intercept) if intercept else []
+
+        # Setup taskboard if enabled
+        self._taskboard: TaskBoard | None = None
+        self._taskboard_enabled: bool = False
+        if taskboard:
+            self._setup_taskboard(taskboard)
 
         # Performance caches (invalidated when tools change)
         self._cached_tool_descriptions: str | None = None
@@ -779,21 +803,14 @@ class Agent:
 
         return result, error
 
-    def _setup_taskboard(self, taskboard: bool | TaskBoardConfig | None) -> None:
+    def _setup_taskboard(self, taskboard: bool | TaskBoardConfig) -> None:
         """Setup taskboard for task tracking.
 
         Args:
             taskboard: TaskBoard configuration:
-                - None/False: Create basic taskboard (no tools)
                 - True: Enable with default config (adds tools + instructions)
                 - TaskBoardConfig: Enable with custom config
         """
-        # Always create a taskboard for internal use
-        if taskboard is None or taskboard is False:
-            self._taskboard = TaskBoard(event_bus=self.trace_bus)
-            self._taskboard_enabled = False
-            return
-
         # Enable taskboard with tools
         config = TaskBoardConfig() if taskboard is True else taskboard
 
@@ -812,7 +829,6 @@ class Agent:
         if config.include_instructions and self.config.system_prompt:
             self.config = AgentConfig(
                 name=self.config.name,
-                role=self.config.role,
                 description=self.config.description,
                 model=self.config.model,
                 temperature=self.config.temperature,
@@ -1028,8 +1044,10 @@ class Agent:
         return self._memory.has_persistence
 
     @property
-    def taskboard(self) -> TaskBoard:
+    def taskboard(self) -> TaskBoard | None:
         """Access the agent's taskboard for task tracking.
+
+        Returns None if taskboard is not enabled. Enable with `taskboard=True`.
 
         The taskboard provides:
         - Tasks: Track work items with status
@@ -1038,16 +1056,15 @@ class Agent:
 
         Example:
             ```python
-            # Track tasks
-            agent.taskboard.add_task("Search for Python tutorials")
-            agent.taskboard.complete_task("Search", "Found 5 articles")
+            agent = Agent(name="Worker", model="gpt4", taskboard=True)
 
-            # Take notes
-            agent.taskboard.add_note("Python is great for data science")
+            # Agent now has taskboard tools:
+            # - add_task, update_task, add_note, verify_task, get_taskboard_status
 
-            # Check completion
-            if agent.taskboard.is_complete():
-                print("All tasks done!")
+            result = await agent.run("Research Python tutorials and track your work")
+
+            # Check taskboard after run
+            print(agent.taskboard.summary())
             ```
         """
         return self._taskboard
@@ -1072,9 +1089,17 @@ class Agent:
     @property
     def role_behavior(self):
         """Get behavior definition for this agent's role."""
-        from cogent.agent.roles import get_role_behavior
-
-        return get_role_behavior(self.role)
+        # Return a simple object with role capabilities
+        role = self.role
+        return type(
+            "RoleBehavior",
+            (),
+            {
+                "can_delegate": role == AgentRole.SUPERVISOR,
+                "can_finish": role in (AgentRole.SUPERVISOR, AgentRole.AUTONOMOUS, AgentRole.REVIEWER),
+                "can_use_tools": role in (AgentRole.WORKER, AgentRole.AUTONOMOUS),
+            },
+        )()
 
     @property
     def can_delegate(self) -> bool:
@@ -1268,10 +1293,10 @@ class Agent:
         # If no base prompt but we have tools, generate a minimal prompt
         if not base_prompt:
             if tools or caps_desc:
-                from cogent.agent.roles import get_role_prompt
-
-                has_tools = bool(tools)
-                base_prompt = get_role_prompt(self.config.role, has_tools=has_tools)
+                # Generate minimal role-based prompt
+                base_prompt = "You are a helpful AI assistant."
+                if tools:
+                    base_prompt += " Use your tools to help accomplish tasks."
             else:
                 return None
 
