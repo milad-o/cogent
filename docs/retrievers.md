@@ -1,6 +1,6 @@
 # Retriever Guide
 
-AgenticFlow provides a comprehensive retrieval system with multiple strategies for different use cases. This guide covers all available retrievers and when to use each.
+Cogent provides a comprehensive retrieval system with multiple strategies for different use cases. This guide covers all available retrievers and when to use each.
 
 ## Unified API
 

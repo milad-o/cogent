@@ -361,7 +361,7 @@ Consider:
 - [Flow Checkpointing](./flow.md#checkpointing-crash-recovery) - Flow-level crash recovery
 - [tool_resilience.py](./tool_resilience.py) - Complete working examples
 - [docs/observability.md](../../docs/observability.md) - Monitoring and tracing
-- [docs/tools.md](../../docs/tools.md) - Creating tools
+- [docs/tool-building.md](../../docs/tool-building.md) - Creating tools
 
 ---
 

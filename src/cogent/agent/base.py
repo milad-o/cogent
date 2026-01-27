@@ -141,7 +141,7 @@ class Agent:
         # Memory and state (4-layer architecture)
         conversation: bool = True,  # Layer 1: Thread-based message history (always on by default)
         bounded_memory: bool = False,  # Layer 2: ACC for drift prevention
-        memory: bool = False,  # Layer 3: Long-term memory with remember/recall tools
+        memory: bool | Any = False,  # Layer 3: Long-term memory with remember/recall tools (or Memory object)
         cache: bool = False,  # Layer 4: Semantic cache for tool outputs
         # HITL and streaming
         interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
@@ -177,10 +177,12 @@ class Agent:
                 - Replaces full transcript with bounded internal state
                 - Based on arXiv:2601.11653
                 - Enable for long conversations (>10 turns)
-            memory: Layer 3 - Long-term memory with tools (default: False)
+            memory: Layer 3 - Long-term memory with tools (default: False, or Memory object)
                 - Adds remember/recall tools for persistent facts
                 - Cross-thread memory retrieval
                 - Enable for agents that need to learn user preferences
+                - Can pass bool (True) or Memory object with vectorstore for semantic search
+                - Example: `memory=Memory(vectorstore=VectorStore())` for semantic key matching
             cache: Layer 4 - Semantic cache for tool outputs (default: False)
                 - Caches similar tool calls using embedding similarity
                 - 80%+ hit rates, 7-10× speedup for repeated queries
@@ -868,7 +870,7 @@ class Agent:
         *,
         conversation: bool = True,
         bounded_memory: bool = False,
-        long_term_memory: bool = False,
+        long_term_memory: bool | Any = False,
         semantic_cache: bool = False,
     ) -> None:
         """Setup memory using 4-layer architecture.
@@ -876,23 +878,29 @@ class Agent:
         Args:
             conversation: Layer 1 - Thread-based message history (default: True)
             bounded_memory: Layer 2 - Agent Cognitive Compressor (default: False)
-            long_term_memory: Layer 3 - Long-term memory with tools (default: False)
+            long_term_memory: Layer 3 - Long-term memory with tools (bool or Memory object)
             semantic_cache: Layer 4 - Semantic cache for tool outputs (default: False)
         """
         from cogent.memory import Memory, InMemorySaver
 
-        # Create unified Memory instance
-        # It handles both conversation (Layer 1) and long-term facts (Layer 3)
-        backend = InMemorySaver() if conversation else None
-        self._memory = Memory(
-            saver=backend,  # Checkpointing for conversation
-            acc_enabled=bounded_memory,  # Layer 2: ACC
-        )
-
-        # Layer 3: Long-term memory with remember/recall tools
-        if long_term_memory:
-            # Tools are built into Memory.tools property
+        # Check if user passed a Memory object directly
+        if isinstance(long_term_memory, Memory):
+            self._memory = long_term_memory
+            # Add memory tools since user provided Memory with tools
             self._add_memory_tools()
+        else:
+            # Create unified Memory instance
+            # It handles both conversation (Layer 1) and long-term facts (Layer 3)
+            backend = InMemorySaver() if conversation else None
+            self._memory = Memory(
+                saver=backend,  # Checkpointing for conversation
+                acc_enabled=bounded_memory,  # Layer 2: ACC
+            )
+
+            # Layer 3: Long-term memory with remember/recall tools
+            if long_term_memory:
+                # Tools are built into Memory.tools property
+                self._add_memory_tools()
 
         # Layer 4: Semantic cache for tool outputs (shared across all tools)
         if semantic_cache:

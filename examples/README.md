@@ -1,6 +1,6 @@
-# AgenticFlow Examples
+# Cogent Examples
 
-Comprehensive examples organized by category to help you learn AgenticFlow.
+Comprehensive examples organized by category to help you learn Cogent.
 
 ## 🆕 What's New in v1.14.1
 
@@ -147,7 +147,7 @@ Advanced patterns for production systems.
 All new examples use the **3-tier model API** - no `config.py` imports needed:
 
 ```python
-from agenticflow import Agent
+from cogent import Agent
 
 # Tier 1: Simple strings (recommended!) ⭐
 agent = Agent(name="Helper", model="gpt4")
@@ -159,14 +159,14 @@ agent = Agent(name="Helper", model="anthropic:claude-sonnet-4")
 agent = Agent(name="Helper", model="groq:llama-70b")
 
 # Tier 3: Full control with model instances
-from agenticflow.models import OpenAIChat
+from cogent.models import OpenAIChat
 agent = Agent(name="Helper", model=OpenAIChat(model="gpt-4o", temperature=0.7))
 ```
 
 **API keys auto-load from:**
 1. `.env` file in project root (highest priority)
-2. `agenticflow.toml` or `agenticflow.yaml` (project-level)
-3. `~/.agenticflow/config.toml` or `config.yaml` (user-level)
+2. `cogent.toml` or `cogent.yaml` (project-level)
+3. `~/.cogent/config.toml` or `config.yaml` (user-level)
 4. Environment variables (lowest priority)
 
 ### Legacy: config.py Helper

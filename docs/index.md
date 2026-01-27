@@ -1,4 +1,4 @@
-# AgenticFlow
+# Cogent
 
 <p align="center">
   <strong>Build AI agents that actually work.</strong>
@@ -6,9 +6,9 @@
 
 ---
 
-AgenticFlow is a **production-grade multi-agent framework** designed for performance, simplicity, and real-world deployment. Unlike frameworks that wrap LangChain or add unnecessary abstractions, AgenticFlow uses **native SDK integrations** and a **zero-overhead executor** to deliver the fastest possible agent execution.
+Cogent is a **production-grade AI agent framework** designed for performance, simplicity, and real-world deployment. Unlike frameworks that wrap LangChain or add unnecessary abstractions, Cogent uses **native SDK integrations** and a **zero-overhead executor** to deliver the fastest possible agent execution.
 
-## Why AgenticFlow?
+## Why Cogent?
 
 - 🚀 **Fast** — Parallel tool execution, cached model binding, direct SDK calls
 - 🔧 **Simple** — Define tools with `@tool`, create agents in 3 lines, no boilerplate
@@ -50,7 +50,7 @@ uv add git+https://github.com/milad-o/cogent.git
 - **Multi-Agent Patterns** — Supervisor, Pipeline, Mesh, Hierarchical
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
-- **Memory & Persistence** — Conversation history, long-term memory with semantic search
+- **Memory & Persistence** — Conversation history, long-term memory with fuzzy matching
 - **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents, patterns, and flows
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates

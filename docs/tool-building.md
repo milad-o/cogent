@@ -4,9 +4,30 @@
 
 ## Overview
 
-Tools extend agent capabilities by providing access to external systems, APIs, databases, and custom logic. Cogent makes tool creation simple with the `@tool` decorator while supporting advanced patterns for production use.
+Tools are functions that agents can call to interact with the world — APIs, databases, files, web searches, and more. Cogent provides two ways to add tools:
 
-**This guide uses cogent's 8+ production capabilities as examples.**
+1. **@tool decorator** — Create custom tools from any function (this guide)
+2. **Capabilities** — Use pre-built tool classes like WebSearch, FileSystem, CodeSandbox
+
+**Capabilities are classes that provide tools.** They handle setup, state management, and expose multiple related tools:
+
+```python
+from cogent import Agent
+from cogent.capabilities import WebSearch, FileSystem, CodeSandbox
+
+agent = Agent(
+    model="gpt-4o-mini",
+    capabilities=[
+        WebSearch(),                          # Provides: search, fetch_url
+        FileSystem(allowed_paths=["./data"]), # Provides: read, write, list
+        CodeSandbox(),                        # Provides: execute_python
+    ],
+)
+```
+
+> **See [Capabilities](capabilities.md) for 12+ production-ready capabilities** — KnowledgeGraph, Browser, PDF, Shell, MCP, and more.
+
+For custom logic, use the `@tool` decorator:
 
 ## Quick Start
 
@@ -77,6 +98,57 @@ def my_tool(param1: str, param2: int = 10) -> str:
     }
   }
 }
+```
+
+### Return Type Information
+
+The `@tool` decorator automatically extracts return type information and includes it in the tool description. This helps the LLM understand what output to expect:
+
+```python
+@tool
+def get_weather(city: str) -> dict[str, int]:
+    """Get weather data for a city.
+    
+    Args:
+        city: City name to query.
+    
+    Returns:
+        A dictionary with temp, humidity, and wind_speed.
+    """
+    return {"temp": 75, "humidity": 45, "wind_speed": 10}
+
+# LLM sees this description:
+# "Get weather data for a city. Returns: dict[str, int] - A dictionary with temp, humidity, and wind_speed."
+
+# Access the return info directly:
+print(get_weather.return_info)
+# Output: "dict[str, int] - A dictionary with temp, humidity, and wind_speed."
+```
+
+**What gets extracted:**
+
+| Source | Example | Result |
+|--------|---------|--------|
+| Return type annotation | `-> str` | `"str"` |
+| Generic types | `-> dict[str, int]` | `"dict[str, int]"` |
+| Optional types | `-> str \| None` | `"str \| None"` |
+| Docstring Returns section | `Returns: The result.` | `"The result."` |
+| Both combined | Type + docstring | `"dict[str, int] - A dictionary with..."` |
+
+> [!TIP]
+> Always include a `Returns:` section in your docstrings to give the LLM context about the output format.
+
+### Decorator Options
+
+```python
+@tool(
+    name="web_search",           # Override function name
+    description="Search the web",  # Override docstring
+    return_direct=True,          # Return result directly to user
+)
+def search(query: str, max_results: int = 10) -> str:
+    """Search implementation."""
+    return f"Found {max_results} results for: {query}"
 ```
 
 ## Async Tools
@@ -169,246 +241,33 @@ async def safe_fetch(url: str) -> str:
 - Return error as string (don't raise in tools)
 - Log errors for debugging
 
-## Example: HTTPClient Capability
-
-Full-featured HTTP client from Phase 4.4:
-
-```python
-from cogent import tool
-import httpx
-from typing import Any
-
-class HTTPClient:
-    """HTTP client with retries, timeouts, and streaming."""
-    
-    def __init__(
-        self,
-        base_url: str | None = None,
-        timeout: float = 30.0,
-        max_retries: int = 3,
-    ):
-        self.base_url = base_url
-        self.timeout = timeout
-        self.max_retries = max_retries
-    
-    @tool
-    async def http_get(
-        self,
-        url: str,
-        headers: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """Make HTTP GET request.
-        
-        Args:
-            url: URL to request.
-            headers: Optional HTTP headers.
-        
-        Returns:
-            Response with status, headers, and body.
-        """
-        full_url = f"{self.base_url}{url}" if self.base_url else url
-        
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            for attempt in range(self.max_retries):
-                try:
-                    response = await client.get(full_url, headers=headers)
-                    return {
-                        "status": response.status_code,
-                        "headers": dict(response.headers),
-                        "body": response.text,
-                    }
-                except httpx.TimeoutException:
-                    if attempt == self.max_retries - 1:
-                        return {"error": "Request timed out after retries"}
-                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
-                except Exception as e:
-                    return {"error": str(e)}
-    
-    @tool
-    async def http_post(
-        self,
-        url: str,
-        data: dict[str, Any] | None = None,
-        json: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Make HTTP POST request with data or JSON."""
-        # Similar implementation
-        pass
-```
-
-**Key features:**
-- Configurable timeouts and retries
-- Exponential backoff
-- Multiple HTTP methods
-- Structured responses
-
-See full implementation: [src/cogent/capabilities/http_client.py](../src/cogent/capabilities/http_client.py)
-
-## Example: Database Capability
-
-Async SQL database access:
-
-```python
-from cogent import tool
-import aiosqlite
-from typing import Any
-
-class Database:
-    """Async SQLite database wrapper."""
-    
-    def __init__(self, db_path: str):
-        self.db_path = db_path
-        self._pool: aiosqlite.Connection | None = None
-    
-    async def _get_connection(self) -> aiosqlite.Connection:
-        """Get or create database connection."""
-        if not self._pool:
-            self._pool = await aiosqlite.connect(self.db_path)
-        return self._pool
-    
-    @tool
-    async def execute_query(
-        self,
-        query: str,
-        params: list[Any] | None = None,
-    ) -> list[dict[str, Any]]:
-        """Execute SQL query and return results.
-        
-        Args:
-            query: SQL query to execute.
-            params: Optional query parameters for safety.
-        
-        Returns:
-            List of rows as dictionaries.
-        """
-        conn = await self._get_connection()
-        conn.row_factory = aiosqlite.Row
-        
-        try:
-            async with conn.execute(query, params or []) as cursor:
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
-        except Exception as e:
-            return [{"error": f"Query failed: {str(e)}"}]
-    
-    async def close(self):
-        """Close database connection."""
-        if self._pool:
-            await self._pool.close()
-            self._pool = None
-```
-
-**Key features:**
-- Connection pooling
-- Row factory for dict results
-- Parameterized queries (SQL injection prevention)
-- Proper resource cleanup
-
-See full implementation: [src/cogent/capabilities/database.py](../src/cogent/capabilities/database.py)
-
-## Example: DataValidator Capability
-
-Schema validation with Pydantic:
-
-```python
-from cogent import tool
-from pydantic import BaseModel, ValidationError
-from typing import Any
-
-class DataValidator:
-    """Validate data against Pydantic schemas."""
-    
-    @tool
-    def validate_data(
-        self,
-        data: dict[str, Any],
-        schema: type[BaseModel],
-    ) -> dict[str, Any]:
-        """Validate data against a Pydantic schema.
-        
-        Args:
-            data: Data to validate.
-            schema: Pydantic model class.
-        
-        Returns:
-            Validation result with errors if any.
-        """
-        try:
-            validated = schema(**data)
-            return {
-                "valid": True,
-                "data": validated.model_dump(),
-            }
-        except ValidationError as e:
-            return {
-                "valid": False,
-                "errors": e.errors(),
-            }
-```
-
-**Key features:**
-- Type-safe validation
-- Clear error reporting
-- Integration with Pydantic ecosystem
-
-See full implementation: [src/cogent/capabilities/data_validator.py](../src/cogent/capabilities/data_validator.py)
-
 ## Tool Composition
 
-Combine multiple tools into a capability class:
+Combine related tools into a capability class:
 
 ```python
 from cogent import tool
 
-class APITester:
-    """Test HTTP APIs with assertions."""
+class Calculator:
+    """Calculator with memory."""
     
-    def __init__(self, base_url: str):
-        self.base_url = base_url
-        self.results: list[dict] = []
+    def __init__(self):
+        self.memory: float = 0.0
     
     @tool
-    async def test_endpoint(
-        self,
-        path: str,
-        expected_status: int = 200,
-    ) -> dict:
-        """Test API endpoint."""
-        # Make request
-        response = await self._request(path)
-        
-        # Assert status
-        passed = response.status == expected_status
-        
-        # Record result
-        result = {
-            "endpoint": path,
-            "expected": expected_status,
-            "actual": response.status,
-            "passed": passed,
-        }
-        self.results.append(result)
-        
+    def add(self, a: float, b: float) -> float:
+        """Add two numbers."""
+        result = a + b
+        self.memory = result
         return result
     
     @tool
-    def get_results(self) -> dict:
-        """Get all test results."""
-        total = len(self.results)
-        passed = sum(1 for r in self.results if r["passed"])
-        
-        return {
-            "total": total,
-            "passed": passed,
-            "failed": total - passed,
-            "pass_rate": (passed / total * 100) if total > 0 else 0,
-            "results": self.results,
-        }
+    def recall(self) -> float:
+        """Recall last result from memory."""
+        return self.memory
 ```
 
-**Pattern:** Related tools in a class share state and configuration.
-
-See full implementation: [src/cogent/capabilities/api_tester.py](../src/cogent/capabilities/api_tester.py)
+**Pattern:** Related tools in a class share state and configuration. This is exactly how capabilities work — see [Capabilities](capabilities.md).
 
 ## Context Injection
 
@@ -444,34 +303,17 @@ async def get_user_data(
 
 ```python
 from cogent import Agent
-from cogent.capabilities import HTTPClient, Database, WebSearch
+from cogent.capabilities import WebSearch, FileSystem
 
-# Method 1: Pass tool functions directly
+# Custom tools + capabilities together
 agent = Agent(
-    name="Assistant",
     model="gpt-4o-mini",
-    tools=[get_weather, search_web, fetch_url],
-)
-
-# Method 2: Use capability classes
-agent = Agent(
-    name="Assistant",
-    model="gpt-4o-mini",
-    capabilities=[
-        HTTPClient(),
-        Database("data.db"),
-        WebSearch(),
-    ],
-)
-
-# Method 3: Mix both
-agent = Agent(
-    name="Assistant",
-    model="gpt-4o-mini",
-    tools=[custom_tool],
-    capabilities=[HTTPClient(), Database("data.db")],
+    tools=[get_weather, my_custom_tool],  # Your @tool functions
+    capabilities=[WebSearch(), FileSystem()],  # Pre-built tool providers
 )
 ```
+
+All tools (custom + from capabilities) are available to the agent.
 
 ## Testing Tools
 
@@ -576,6 +418,55 @@ async def validated_search(params: SearchParams) -> list:
     return await search(params.query, params.max_results)
 ```
 
+## Tool Execution
+
+When an agent has multiple tools, they execute in **parallel by default** via NativeExecutor:
+
+```python
+from cogent import Agent
+
+agent = Agent(
+    model="gpt-4o-mini",
+    tools=[fetch_weather, fetch_news, fetch_stock]
+)
+
+# If LLM requests multiple tools in one turn, they run concurrently
+result = await agent.run("Get weather, news, and stock data")
+# 3 tools × 0.5s each = ~0.5s total (parallel via asyncio.gather)
+```
+
+**Execution behavior:**
+- **Parallel**: When LLM requests multiple tools in one turn
+- **Sequential**: When LLM naturally calls tools one at a time across turns
+- **LLM decides**: Based on task requirements and your prompt
+
+**Configuration:**
+
+```python
+from cogent.executors import NativeExecutor
+
+executor = NativeExecutor(
+    agent,
+    max_tool_calls_per_turn=50,  # Max tools per LLM response
+    max_concurrent_tools=20,      # Tune for external API rate limits
+    resilience=True               # Auto-retry on LLM rate limits
+)
+```
+
+### Standalone Execution
+
+For quick tasks without creating an Agent:
+
+```python
+from cogent.executors import run
+
+result = await run(
+    "Search for Python tutorials",
+    tools=[search],
+    model="gpt-4o-mini",
+)
+```
+
 ## Best Practices
 
 1. **Use type hints** — Enable automatic schema generation
@@ -600,24 +491,230 @@ async def validated_search(params: SearchParams) -> list:
 | No error handling | Crashes on failures | Wrap in try/except |
 | Too complex | LLM struggles to use | Split into multiple simpler tools |
 
-## Production Capabilities Reference
+## Tool Registry
 
-Study these for production-ready patterns:
+Manage collections of tools:
 
-| Capability | Key Features | File |
-|------------|--------------|------|
-| **HTTPClient** | Retries, timeouts, streaming | [http_client.py](../src/cogent/capabilities/http_client.py) |
-| **Database** | Connection pooling, safety | [database.py](../src/cogent/capabilities/database.py) |
-| **APITester** | Assertions, test suites | [api_tester.py](../src/cogent/capabilities/api_tester.py) |
-| **DataValidator** | Schema validation | [data_validator.py](../src/cogent/capabilities/data_validator.py) |
-| **WebSearch** | Semantic caching, news search | [web_search.py](../src/cogent/capabilities/web_search.py) |
-| **Browser** | Playwright automation | [browser.py](../src/cogent/capabilities/browser.py) |
-| **Shell** | Command injection protection | [shell.py](../src/cogent/capabilities/shell.py) |
-| **FileSystem** | Sandboxed file operations | [filesystem.py](../src/cogent/capabilities/filesystem.py) |
+```python
+from cogent.tools import ToolRegistry
+
+registry = ToolRegistry()
+
+# Register tools
+registry.register(search_tool)
+registry.register(calculate_tool)
+registry.register(fetch_tool)
+
+# Get all tools
+all_tools = registry.get_all()
+
+# Get by name
+search = registry.get("search")
+
+# Check existence
+has_search = registry.has("search")
+
+# List names
+names = registry.list_names()  # ["search", "calculate", "fetch"]
+```
+
+### From Functions
+
+```python
+from cogent.tools import create_tool_from_function
+
+def my_function(x: int, y: int) -> int:
+    """Add two numbers."""
+    return x + y
+
+tool = create_tool_from_function(my_function)
+registry.register(tool)
+```
+
+### Categories
+
+Organize tools by category:
+
+```python
+# Register with category
+registry.register(search_tool, category="web")
+registry.register(fetch_tool, category="web")
+registry.register(calculate_tool, category="math")
+
+# Get by category
+web_tools = registry.get_by_category("web")
+```
+
+## Deferred Tools
+
+For operations requiring human approval or async completion:
+
+### DeferredResult
+
+```python
+from cogent.tools import DeferredResult, DeferredStatus
+
+@tool
+def send_email(to: str, subject: str, body: str) -> DeferredResult:
+    """Send an email (requires approval)."""
+    return DeferredResult(
+        status=DeferredStatus.PENDING,
+        message="Email pending approval",
+        data={"to": to, "subject": subject},
+    )
+```
+
+### DeferredManager
+
+Manage deferred operations:
+
+```python
+from cogent.tools import DeferredManager
+
+manager = DeferredManager()
+
+# Register deferred result
+result_id = await manager.register(deferred_result)
+
+# Check status
+status = await manager.status(result_id)
+
+# Approve/reject
+await manager.approve(result_id, approver="admin")
+await manager.reject(result_id, reason="Not allowed")
+
+# Get result after approval
+final_result = await manager.get_result(result_id)
+```
+
+### DeferredStatus
+
+```python
+from cogent.tools import DeferredStatus
+
+DeferredStatus.PENDING    # Waiting for action
+DeferredStatus.APPROVED   # Approved, ready to execute
+DeferredStatus.REJECTED   # Rejected
+DeferredStatus.COMPLETED  # Execution completed
+DeferredStatus.FAILED     # Execution failed
+```
+
+### DeferredWaiter
+
+Wait for deferred completion:
+
+```python
+from cogent.tools import DeferredWaiter
+
+waiter = DeferredWaiter(manager)
+
+# Wait for result (with timeout)
+result = await waiter.wait(result_id, timeout=300)
+
+# Wait for multiple
+results = await waiter.wait_all([id1, id2, id3])
+```
+
+### DeferredRetry
+
+Auto-retry failed deferred operations:
+
+```python
+from cogent.tools import DeferredRetry
+
+retry = DeferredRetry(
+    manager=manager,
+    max_attempts=3,
+    backoff="exponential",
+)
+
+result = await retry.execute(result_id)
+```
+
+### is_deferred Helper
+
+```python
+from cogent.tools import is_deferred
+
+result = tool_call()
+
+if is_deferred(result):
+    # Handle deferred result
+    result_id = await manager.register(result)
+else:
+    # Handle immediate result
+    print(result)
+```
+
+## Complex Types
+
+### Pydantic Models
+
+```python
+from pydantic import BaseModel
+
+class EmailRequest(BaseModel):
+    to: str
+    subject: str
+    body: str
+    cc: list[str] = []
+
+@tool
+def send_email(request: EmailRequest) -> str:
+    """Send an email."""
+    return f"Sent to {request.to}"
+```
+
+### Enum Parameters
+
+```python
+from enum import Enum
+
+class Priority(Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+@tool
+def create_task(title: str, priority: Priority = Priority.MEDIUM) -> str:
+    """Create a task with priority."""
+    return f"Created: {title} ({priority.value})"
+```
+
+## API Reference
+
+### Decorators
+
+| Decorator | Description |
+|-----------|-------------|
+| `@tool` | Create a tool from a function |
+
+### Core Classes
+
+| Class | Description |
+|-------|-------------|
+| `ToolRegistry` | Manage tool collections |
+| `BaseTool` | Base class for tools |
+
+### Deferred Execution
+
+| Class | Description |
+|-------|-------------|
+| `DeferredResult` | Result requiring async completion |
+| `DeferredStatus` | Status of deferred operation |
+| `DeferredManager` | Manage deferred results |
+| `DeferredWaiter` | Wait for deferred completion |
+| `DeferredRetry` | Retry failed operations |
+
+### Utility Functions
+
+| Function | Description |
+|----------|-------------|
+| `create_tool_from_function(fn)` | Create tool from function |
+| `is_deferred(result)` | Check if result is deferred |
 
 ## Further Reading
 
-- [Tool Composition](tool-composition.md) — Patterns for combining tools
-- [Testing](testing.md) — Testing framework for tools
-- [Capabilities Overview](capabilities.md) — All built-in capabilities
+- [Capabilities](capabilities.md) — 12+ production-ready tool classes
 - [Agent Configuration](agent.md) — Using tools with agents
+- [Resilience](resilience.md) — Error handling and retry policies

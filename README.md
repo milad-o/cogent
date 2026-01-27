@@ -76,7 +76,9 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 - **Multi-Agent Patterns** — Supervisor, Pipeline, Mesh, Hierarchical
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
-- **Memory & Persistence** — Conversation history, long-term memory with semantic search
+- **Memory & Persistence** — Conversation history, long-term memory with fuzzy matching ([docs/memory.md](docs/memory.md))
+- **Memory Control (ACC)** — Bio-inspired bounded memory prevents drift ([docs/acc.md](docs/acc.md))
+- **Semantic Caching** — Cache reasoning artifacts at 80%+ hit rates ([docs/caching.md](docs/caching.md))
 - **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents, patterns, and flows
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
@@ -90,7 +92,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 
 ## Modules
 
-AgenticFlow is organized into focused modules, each with multiple backends and implementations.
+Cogent is organized into focused modules, each with multiple backends and implementations.
 
 ### `cogent.models` — LLM Providers
 
@@ -238,7 +240,7 @@ store = VectorStore(
 
 ### `cogent.memory` — Memory & Persistence
 
-Long-term memory with semantic search, conversation history, and scoped views.
+Long-term memory with fuzzy matching (semantic fallback optional), conversation history, and scoped views.
 
 **Stores:**
 
@@ -464,8 +466,8 @@ Cogent is built around a high-performance **Native Executor** that eliminates fr
 The executor uses a direct asyncio loop with parallel tool execution—no graph frameworks, no unnecessary abstractions:
 
 ```python
-from agenticflow import Agent, tool
-from agenticflow.models import ChatModel
+from cogent import Agent, tool
+from cogent.models import ChatModel
 
 @tool
 def search(query: str) -> str:

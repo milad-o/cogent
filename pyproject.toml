@@ -36,6 +36,8 @@ dependencies = [
     "sqlalchemy>=2.0.44",
     "aiosqlite>=0.21.0",
     "greenlet>=3.2.4",
+    "rapidfuzz>=3.14.3",
+    "rank-bm25>=0.2.2",
 ]
 
 [project.optional-dependencies]
