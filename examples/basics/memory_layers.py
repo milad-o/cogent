@@ -84,7 +84,7 @@ async def layer3_long_term_memory():
         name="Assistant",
         model="gpt4",
         memory=True,  # Enable long-term memory tools
-        instructions="ALWAYS call remember() when user shares important info.",
+        instructions="You are a helpful assistant. Use your memory tools to remember and recall information.",
         observer=observer,
     )
 
@@ -102,10 +102,10 @@ async def layer3_long_term_memory():
     )
     print(f"\nAgent: {r1}\n")
 
-    # Different thread - but agent can recall from long-term memory!
+    # Different thread - agent should autonomously use memory tools
     print("[Thread: conv-2]")
     r2 = await agent.run(
-        "What are my preferences?",
+        "What's my name?",
         thread_id="conv-2",
     )
     print(f"\nAgent: {r2}")
