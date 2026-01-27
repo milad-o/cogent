@@ -31,7 +31,10 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from cogent.agent.base import Agent
 
 
 @dataclass
@@ -49,6 +52,7 @@ class RunContext:
 
     Attributes:
         metadata: Optional dict for untyped extension data.
+        agent: Internal reference to the executing agent (set by executor).
 
     Example:
         @dataclass
@@ -70,6 +74,7 @@ class RunContext:
     """
 
     metadata: dict[str, Any] = field(default_factory=dict)
+    agent: Agent | None = field(default=None, repr=False, init=False)
 
     def get[T](self, key: str, default: T | None = None) -> T | None:
         """Get a metadata value by key.

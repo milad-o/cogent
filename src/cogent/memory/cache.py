@@ -313,11 +313,18 @@ class SemanticCache:
         """Generate embedding for text."""
         # Check if embedding_fn is async
         import inspect
+        from cogent.core.messages import EmbeddingResult
 
         if inspect.iscoroutinefunction(self._embedding_fn):
-            return await self._embedding_fn(text)
+            result = await self._embedding_fn(text)
         else:
-            return self._embedding_fn(text)
+            result = self._embedding_fn(text)
+        
+        # Handle EmbeddingResult objects (extract first embedding vector)
+        if isinstance(result, EmbeddingResult):
+            return result.embeddings[0]
+        
+        return result
 
     @staticmethod
     def _cosine_similarity(vec1: list[float], vec2: list[float]) -> float:

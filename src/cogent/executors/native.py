@@ -385,6 +385,9 @@ class NativeExecutor(BaseExecutor):
             run_context = RunContext(metadata=context)
             context_dict = context
 
+        # Set agent reference on context for tool access (e.g., cache)
+        run_context.agent = self.agent
+
         # Get observability components
         event_bus = getattr(self.agent, "trace_bus", None)
         agent_name = self.agent.name or "agent"
