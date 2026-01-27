@@ -38,12 +38,12 @@ Cogent is a **production AI agent framework** built on cutting-edge research in 
 from cogent import Agent, tool
 
 @tool
-def search(query: str) -> str:
+async def search(query: str) -> str:
     """Search the web."""
-    return web_search(query)
+    # Your search implementation
+    return results
 
-# Simple string-based model API
-agent = Agent(name="Assistant", model="gpt4", tools=[search])
+agent = Agent(name="Assistant", model="gpt-4o-mini", tools=[search])
 result = await agent.run("Find the latest news on AI agents")
 ```
 
@@ -92,19 +92,19 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 
 AgenticFlow is organized into focused modules, each with multiple backends and implementations.
 
-### `agenticflow.models` — LLM Providers
+### `cogent.models` — LLM Providers
 
 Native SDK wrappers for all major LLM providers with zero abstraction overhead.
 
 | Provider | Chat | Embeddings | String Alias | Notes |
 |----------|------|------------|--------------|-------|
-| **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | `"gpt4"`, `"gpt5"`, `"o4"` | GPT-5 series, o4-mini, o3, GPT-4o |
+| **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | `"gpt4"`, `"gpt-4o"`, `"gpt-4o-mini"` | GPT-4o series, o1, o3 |
 | **Azure** | `AzureOpenAIChat` | `AzureOpenAIEmbedding` | — | Managed Identity, Azure AD support |
-| **Anthropic** | `AnthropicChat` | — | `"claude"`, `"claude-opus"` | Claude 4, extended thinking |
-| **Gemini** | `GeminiChat` | `GeminiEmbedding` | `"gemini"`, `"gemini3"` | Gemini 3 Pro/Flash, Gemini 2.5 |
+| **Anthropic** | `AnthropicChat` | — | `"claude"`, `"claude-opus"` | Claude 3.5 Sonnet, extended thinking |
+| **Gemini** | `GeminiChat` | `GeminiEmbedding` | `"gemini"`, `"gemini-pro"` | Gemini 1.5 Pro/Flash, Gemini 2.0 |
 | **Groq** | `GroqChat` | — | `"llama"`, `"mixtral"` | Fast inference, Llama 3.3, Mixtral |
-| **Mistral** | `MistralChat` | `MistralEmbedding` | `"mistral"`, `"codestral"` | Mistral Large 3, Ministral, Devstral |
-| **Cohere** | `CohereChat` | `CohereEmbedding` | `"command"`, `"command-a"` | Command A, Command R7B, Aya |
+| **Mistral** | `MistralChat` | `MistralEmbedding` | `"mistral"`, `"codestral"` | Mistral Large, Ministral |
+| **Cohere** | `CohereChat` | `CohereEmbedding` | `"command"`, `"command-r"` | Command R+, Aya |
 | **Ollama** | `OllamaChat` | `OllamaEmbedding` | `"ollama"` | Local models, any GGUF |
 | **Custom** | `CustomChat` | `CustomEmbedding` | — | vLLM, Together AI, any OpenAI-compatible |
 
@@ -117,47 +117,51 @@ agent = Agent("Helper", model="claude")
 agent = Agent("Helper", model="gemini")
 
 # 2. Factory functions
-from agenticflow.models import create_chat
+from cogent.models import create_chat
 model = create_chat("gpt4")  # One argument
 model = create_chat("anthropic", "claude-sonnet-4")  # Two arguments
 
 # 3. Direct instantiation (full control)
-from agenticflow.models import OpenAIChat
+from cogent.models import OpenAIChat
 model = OpenAIChat(model="gpt-4o", temperature=0.7, api_key="sk-...")
 ```
 
-### `agenticflow.capabilities` — Agent Capabilities
+### `cogent.capabilities` — Agent Capabilities
 
 Composable tools that plug into any agent. Each capability adds related tools.
 
 | Capability | Description | Tools Added |
 |------------|-------------|-------------|
-| **FileSystem** | Sandboxed file operations | `read_file`, `write_file`, `list_dir`, `search_files` |
-| **WebSearch** | Web search (DuckDuckGo) | `web_search`, `news_search`, `fetch_page` |
-| **CodeSandbox** | Safe Python execution | `execute_python`, `run_function` |
+| **HTTPClient** | Full-featured HTTP client | `http_request`, `http_get`, `http_post` with retries, timeouts |
+| **Database** | Async SQL database access | `execute_query`, `fetch_one`, `fetch_all` with connection pooling |
+| **APITester** | HTTP endpoint testing | `test_endpoint`, `assert_status`, `assert_json` |
+| **DataValidator** | Schema validation | `validate_data`, `validate_json`, `validate_dict` with Pydantic |
+| **WebSearch** | Web search with caching | `web_search`, `news_search` with semantic cache |
 | **Browser** | Playwright automation | `navigate`, `click`, `fill`, `screenshot` |
-| **PDF** | PDF processing | `read_pdf`, `create_pdf`, `merge_pdfs` |
+| **FileSystem** | Sandboxed file operations | `read_file`, `write_file`, `list_dir`, `search_files` |
+| **CodeSandbox** | Safe Python execution | `execute_python`, `run_function` |
 | **Shell** | Sandboxed shell commands | `run_command` |
+| **PDF** | PDF processing | `read_pdf`, `create_pdf`, `merge_pdfs` |
 | **Spreadsheet** | Excel/CSV operations | `read_spreadsheet`, `write_spreadsheet` |
 | **MCP** | Model Context Protocol | Dynamic tools from MCP servers |
-| **KnowledgeGraph** | Entity/relationship memory | `remember`, `recall`, `query` |
-| **Summarizer** | Document summarization | `summarize_text`, `summarize_file` |
-| **CodebaseAnalyzer** | Python AST analysis | `analyze_code`, `find_usages` |
-| **SSISAnalyzer** | SSIS package analysis | `analyze_package`, `trace_lineage` |
 
 ```python
-from agenticflow.capabilities import FileSystem, CodeSandbox, WebSearch
+from cogent.capabilities import FileSystem, CodeSandbox, WebSearch, HTTPClient, Database
 
 agent = Agent(
+    name="Assistant",
+    model="gpt-4o-mini",
     capabilities=[
         FileSystem(allowed_paths=["./project"]),
         CodeSandbox(timeout=30),
         WebSearch(),
+        HTTPClient(),
+        Database("sqlite:///data.db"),
     ]
 )
 ```
 
-### `agenticflow.document` — Document Processing
+### `cogent.document` — Document Processing
 
 Load, split, and process documents for RAG pipelines.
 
@@ -191,7 +195,7 @@ Load, split, and process documents for RAG pipelines.
 | `TokenSplitter` | Token count-based |
 
 ```python
-from agenticflow.document import DocumentLoader, SemanticSplitter
+from cogent.document import DocumentLoader, SemanticSplitter
 
 loader = DocumentLoader()
 docs = await loader.load_directory("./documents")
@@ -200,7 +204,7 @@ splitter = SemanticSplitter(model=model)
 chunks = splitter.split_documents(docs)
 ```
 
-### `agenticflow.vectorstore` — Vector Storage
+### `cogent.vectorstore` — Vector Storage
 
 Semantic search with pluggable backends and embedding providers.
 
@@ -223,8 +227,8 @@ Semantic search with pluggable backends and embedding providers.
 | `MockEmbeddings` | Testing only |
 
 ```python
-from agenticflow.vectorstore import VectorStore, OpenAIEmbeddings
-from agenticflow.vectorstore.backends import FAISSBackend
+from cogent.vectorstore import VectorStore, OpenAIEmbeddings
+from cogent.vectorstore.backends import FAISSBackend
 
 store = VectorStore(
     embeddings=OpenAIEmbeddings(model="text-embedding-3-large"),
@@ -232,7 +236,7 @@ store = VectorStore(
 )
 ```
 
-### `agenticflow.memory` — Memory & Persistence
+### `cogent.memory` — Memory & Persistence
 
 Long-term memory with semantic search, conversation history, and scoped views.
 
@@ -245,7 +249,7 @@ Long-term memory with semantic search, conversation history, and scoped views.
 | `RedisStore` | Redis | Distributed, native TTL |
 
 ```python
-from agenticflow.memory import Memory, SQLAlchemyStore
+from cogent.memory import Memory, SQLAlchemyStore
 
 memory = Memory(store=SQLAlchemyStore("sqlite+aiosqlite:///./data.db"))
 
@@ -254,7 +258,7 @@ user_mem = memory.scoped("user:alice")
 team_mem = memory.scoped("team:research")
 ```
 
-### `agenticflow.executors` — Execution Strategies
+### `cogent.executors` — Execution Strategies
 
 Pluggable execution strategies that define HOW agents process tasks.
 
@@ -267,7 +271,7 @@ Pluggable execution strategies that define HOW agents process tasks.
 **Standalone execution** — bypass Agent class entirely:
 
 ```python
-from agenticflow.executors import run
+from cogent.executors import run
 
 result = await run(
     "Search for Python tutorials and summarize",
@@ -279,7 +283,7 @@ result = await run(
 **Tree Search (LATS)** — explores multiple reasoning paths with backtracking:
 
 ```python
-from agenticflow.executors import TreeSearchExecutor
+from cogent.executors import TreeSearchExecutor
 
 executor = TreeSearchExecutor(
     agent,
@@ -289,7 +293,7 @@ executor = TreeSearchExecutor(
 result = await executor.execute("Complex multi-step task")
 ```
 
-### `agenticflow.flow.patterns` — Multi-Agent Patterns
+### `cogent.flow.patterns` — Multi-Agent Patterns
 
 Coordination patterns for multi-agent workflows with built-in **A2A delegation**.
 
@@ -303,7 +307,7 @@ Coordination patterns for multi-agent workflows with built-in **A2A delegation**
 **Modern Pattern API:**
 
 ```python
-from agenticflow import pipeline, supervisor, mesh
+from cogent import pipeline, supervisor, mesh
 
 # Pipeline: Sequential processing
 flow = pipeline([researcher, writer, editor])
@@ -320,7 +324,7 @@ result = await flow.run("Develop a go-to-market strategy")
 
 **See [docs/flow.md](docs/flow.md) for pattern usage examples.**
 
-### `agenticflow.interceptors` — Middleware
+### `cogent.interceptors` — Middleware
 
 Composable middleware for cross-cutting concerns.
 
@@ -336,9 +340,11 @@ Composable middleware for cross-cutting concerns.
 | **Prompt** | `PromptAdapter`, `ContextPrompt`, `LambdaPrompt` |
 
 ```python
-from agenticflow.interceptors import BudgetGuard, PIIShield, RateLimiter
+from cogent.interceptors import BudgetGuard, PIIShield, RateLimiter
 
 agent = Agent(
+    name="Safe",
+    model="gpt-4o-mini",
     intercept=[
         BudgetGuard(max_model_calls=100),
         PIIShield(patterns=["email", "ssn"]),
@@ -347,7 +353,7 @@ agent = Agent(
 )
 ```
 
-### `agenticflow.observability` — Monitoring & Tracing
+### `cogent.observability` — Monitoring & Tracing
 
 Comprehensive monitoring for understanding system behavior.
 
@@ -363,7 +369,7 @@ Comprehensive monitoring for understanding system behavior.
 **Renderers:** `TextRenderer`, `RichRenderer`, `JSONRenderer`, `MinimalRenderer`
 
 ```python
-from agenticflow.observability import ExecutionTracer, ProgressTracker
+from cogent.observability import ExecutionTracer, ProgressTracker
 
 tracer = ExecutionTracer()
 async with tracer.trace("my-operation") as span:
@@ -371,7 +377,7 @@ async with tracer.trace("my-operation") as span:
     result = await do_work()
 ```
 
-### `agenticflow.graph` — Visualization
+### `cogent.graph` — Visualization
 
 Unified visualization API for agents, patterns, and flows.
 
@@ -398,19 +404,19 @@ view.save("diagram.png")
 
 ```bash
 # Minimal installation (core only)
-uv add git+https://github.com/milad-o/agenticflow.git
+uv add git+https://github.com/milad-o/cogent.git
 
 # With vector stores & retrieval
-uv add "agenticflow[vector-stores,retrieval] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[vector-stores,retrieval] @ git+https://github.com/milad-o/cogent.git"
 
 # With database backends
-uv add "agenticflow[database] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[database] @ git+https://github.com/milad-o/cogent.git"
 
 # With all backends (vector stores, retrieval, database, redis)
-uv add "agenticflow[all-backend] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[all-backend] @ git+https://github.com/milad-o/cogent.git"
 
 # Full installation with all providers & capabilities
-uv add "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
+uv add "cogent[all] @ git+https://github.com/milad-o/cogent.git"
 ```
 
 **Optional dependency groups:**
@@ -437,21 +443,21 @@ uv add "agenticflow[all] @ git+https://github.com/milad-o/agenticflow.git"
 
 ```bash
 # Core dev tools (linting, type checking)
-uv add --dev agenticflow[dev]
+uv add --dev cogent[dev]
 
 # Add testing
-uv add --dev agenticflow[dev,test]
+uv add --dev cogent[dev,test]
 
 # Add backend tests (vector stores, databases)
-uv add --dev agenticflow[dev,test,test-backends]
+uv add --dev cogent[dev,test,test-backends]
 
 # Add documentation
-uv add --dev agenticflow[dev,test,test-backends,docs]
+uv add --dev cogent[dev,test,test-backends,docs]
 ```
 
 ## Core Architecture
 
-AgenticFlow is built around a high-performance **Native Executor** that eliminates framework overhead while providing enterprise-grade features.
+Cogent is built around a high-performance **Native Executor** that eliminates framework overhead while providing enterprise-grade features.
 
 ### Native Executor
 
@@ -492,8 +498,8 @@ result = await agent.run("Search for Python and calculate 2^10")
 Define tools with the `@tool` decorator—automatic schema extraction from type hints and docstrings:
 
 ```python
-from agenticflow import tool
-from agenticflow.core.context import RunContext
+from cogent import tool
+from cogent.core.context import RunContext
 
 @tool
 def search(query: str, max_results: int = 10) -> str:
@@ -532,7 +538,7 @@ async def fetch_data(url: str) -> str:
 For maximum performance, bypass the Agent class entirely:
 
 ```python
-from agenticflow.executors import run
+from cogent.executors import run
 
 result = await run(
     "Search for Python tutorials and summarize the top 3",
@@ -547,8 +553,7 @@ result = await run(
 
 ```python
 import asyncio
-from agenticflow import Agent, tool
-from agenticflow.models import ChatModel
+from cogent import Agent, tool
 
 @tool
 def get_weather(city: str) -> str:
@@ -558,7 +563,7 @@ def get_weather(city: str) -> str:
 async def main():
     agent = Agent(
         name="Assistant",
-        model="gpt4-mini",  # Simple string alias
+        model="gpt-4o-mini",
         tools=[get_weather],
     )
     
@@ -571,15 +576,12 @@ asyncio.run(main())
 ### Multi-Agent Pipeline
 
 ```python
-from agenticflow import Agent
-from agenticflow.flow import pipeline
-from agenticflow.models import ChatModel
+from cogent import Agent
+from cogent.flow import pipeline
 
-model = ChatModel(model="gpt-4o")
-
-researcher = Agent(name="Researcher", model=model, instructions="Research topics thoroughly.")
-writer = Agent(name="Writer", model=model, instructions="Write clear, engaging content.")
-editor = Agent(name="Editor", model=model, instructions="Review and polish the content.")
+researcher = Agent(name="Researcher", model="gpt-4o", instructions="Research topics thoroughly.")
+writer = Agent(name="Writer", model="gpt-4o", instructions="Write clear, engaging content.")
+editor = Agent(name="Editor", model="gpt-4o", instructions="Review and polish the content.")
 
 flow = pipeline([researcher, writer, editor])
 result = await flow.run("Create a blog post about quantum computing")
@@ -590,7 +592,7 @@ result = await flow.run("Create a blog post about quantum computing")
 ```python
 agent = Agent(
     name="Writer",
-    model=model,
+    model="gpt-4o-mini",
     stream=True,
 )
 
@@ -601,12 +603,12 @@ async for chunk in agent.run_stream("Write a poem"):
 ## Human-in-the-Loop
 
 ```python
-from agenticflow import Agent
-from agenticflow.agent import InterruptedException
+from cogent import Agent
+from cogent.agent import InterruptedException
 
 agent = Agent(
     name="Assistant",
-    model=model,
+    model="gpt-4o-mini",
     tools=[sensitive_tool],
     interrupt_on={"tools": ["sensitive_tool"]},  # Require approval
 )
@@ -622,13 +624,13 @@ except InterruptedException as e:
 ## Observability
 
 ```python
-from agenticflow import Agent, Flow
-from agenticflow.observability import ObservabilityLevel
+from cogent import Agent, Flow
+from cogent.observability import ObservabilityLevel
 
 # Verbosity levels for agents
 agent = Agent(
     name="Assistant",
-    model=model,
+    model="gpt-4o-mini",
     verbosity="debug",  # off | result | progress | detailed | debug | trace
 )
 
@@ -646,7 +648,7 @@ flow = Flow(
 )
 
 # Advanced: Custom observer
-from agenticflow.observability import Observer
+from cogent.observability import Observer
 
 flow = Flow(
     agents=[...],
@@ -659,7 +661,7 @@ flow = Flow(
 Control execution flow with middleware:
 
 ```python
-from agenticflow.interceptors import (
+from cogent.interceptors import (
     BudgetGuard,      # Token/cost limits
     RateLimiter,      # Request throttling
     PIIShield,        # Redact sensitive data
@@ -671,7 +673,7 @@ from agenticflow.interceptors import (
 
 agent = Agent(
     name="Safe",
-    model=model,
+    model="gpt-4o-mini",
     intercept=[
         BudgetGuard(max_model_calls=100, max_tool_calls=500),
         PIIShield(patterns=["email", "ssn"]),
@@ -686,7 +688,7 @@ Type-safe responses with automatic validation:
 
 ```python
 from pydantic import BaseModel
-from agenticflow import Agent
+from cogent import Agent
 
 class Analysis(BaseModel):
     sentiment: str
@@ -695,7 +697,7 @@ class Analysis(BaseModel):
 
 agent = Agent(
     name="Analyzer",
-    model=model,
+    model="gpt-4o-mini",
     output=Analysis,  # Enforce schema
 )
 
@@ -709,20 +711,20 @@ print(result.data.confidence)  # 0.95
 Extended thinking for complex problems with AI-controlled rounds:
 
 ```python
-from agenticflow import Agent
-from agenticflow.agent.reasoning import ReasoningConfig
+from cogent import Agent
+from cogent.agent.reasoning import ReasoningConfig
 
 # Simple: Enable with defaults
 agent = Agent(
     name="Analyst",
-    model=model,
+    model="gpt-4o",
     reasoning=True,  # AI decides when ready (up to 10 rounds)
 )
 
 # Custom config
 agent = Agent(
     name="DeepThinker",
-    model=model,
+    model="gpt-4o",
     reasoning=ReasoningConfig(
         max_thinking_rounds=15,  # Safety limit
         style=ReasoningStyle.CRITICAL,
@@ -741,10 +743,11 @@ result = await agent.run(
 ## Resilience
 
 ```python
-from agenticflow.agent import ResilienceConfig, RetryPolicy
+from cogent.agent import ResilienceConfig, RetryPolicy
 
 agent = Agent(
-    model=model,
+    name="Resilient",
+    model="gpt-4o-mini",
     resilience=ResilienceConfig(
         retry=RetryPolicy(max_attempts=3, backoff_multiplier=2.0),
         timeout=30.0,
@@ -835,10 +838,10 @@ uv sync --extra dev
 uv run pytest
 
 # Type checking
-uv run mypy src/agenticflow
+uv run mypy src/cogent
 
 # Linting
-uv run ruff check src/agenticflow
+uv run ruff check src/cogent
 ```
 
 ## License
