@@ -558,3 +558,142 @@ memory = Memory(store=DynamoDBStore("my-memories"))
 | `InMemoryStore` | Development, testing, ephemeral |
 | `SQLAlchemyStore` | Persistent, ACID, SQL databases |
 | `RedisStore` | Distributed, TTL, high-throughput |
+
+---
+
+## Semantic Cache
+
+SemanticCache provides embedding-based caching with configurable similarity thresholds. When a query is "close enough" to a cached entry, return the cached result instead of making an expensive LLM or API call.
+
+**Key Benefits:**
+- **80%+ hit rates** — Cache similar queries, not just exact matches
+- **7-10× speedup** — Cached responses return instantly
+- **Cost reduction** — Fewer API calls = lower costs
+- **Automatic eviction** — LRU policy and TTL expiration
+
+### When to Use
+
+| Use Semantic Cache When | Don't Use When |
+|-------------------------|----------------|
+| User queries with variation | Need exact-match guarantees |
+| Similar questions rephrased | Outputs must be deterministic |
+| Intent-based matching | Query structure matters |
+| High query volume | Low query volume |
+
+### Basic Usage
+
+```python
+from cogent.memory import SemanticCache
+from cogent.models import OpenAIEmbedding
+
+# Create cache with embedding model
+cache = SemanticCache(
+    embedding_model=OpenAIEmbedding(model="text-embedding-3-small"),
+    similarity_threshold=0.85,  # 85% similar = cache hit
+    max_size=1000,              # Keep 1000 most recent entries
+)
+
+# Cache a result
+await cache.set("What is the capital of France?", "The capital of France is Paris.")
+
+# Similar query hits cache
+result = await cache.get("What's the capital city of France?")
+print(result)  # "The capital of France is Paris." (cache hit!)
+
+# Dissimilar query misses cache
+result = await cache.get("What is the capital of Germany?")
+print(result)  # None (cache miss)
+```
+
+### Configuration
+
+```python
+cache = SemanticCache(
+    embedding_model=OpenAIEmbedding(model="text-embedding-3-large"),
+    similarity_threshold=0.90,  # Stricter matching (default: 0.85)
+    max_size=5000,              # Larger cache (default: 1000)
+    ttl=3600,                   # 1 hour TTL in seconds (default: None)
+    eviction_policy="lru",      # LRU or FIFO (default: "lru")
+)
+```
+
+**Similarity Threshold:**
+
+| Threshold | Behavior | Use Case |
+|-----------|----------|----------|
+| **0.95-1.0** | Very strict, near-exact matches | Deterministic outputs required |
+| **0.85-0.95** | Balanced, similar intent | General purpose (recommended) |
+| **0.70-0.85** | Loose, broad matching | Exploratory queries |
+
+### Agent Integration
+
+Enable semantic caching on agents with `cache=True`:
+
+```python
+from cogent import Agent
+
+agent = Agent(
+    name="Assistant",
+    model="gpt-4o-mini",
+    cache=True,  # Enable semantic cache
+)
+
+# First query
+await agent.run("What are the best Python frameworks?")
+
+# Similar query hits cache
+await agent.run("What are the top Python frameworks?")  # Instant
+```
+
+### Tool-Level Caching
+
+Use `@tool(cache=True)` to enable semantic caching on individual tools:
+
+```python
+from cogent import Agent, tool
+
+@tool(cache=True)
+async def search_products(query: str) -> str:
+    """Search products in the catalog."""
+    return await product_api.search(query)
+
+agent = Agent(
+    model="gpt-4o-mini",
+    tools=[search_products],
+    cache=True,  # Required for @tool(cache=True)
+)
+
+# First call executes the tool
+await agent.run("Find running shoes")
+
+# Similar query hits tool cache
+await agent.run("Show me running sneakers")  # Cache hit!
+```
+
+See [tool-building.md](tool-building.md#semantic-caching) for more details.
+
+### SemanticCache API
+
+```python
+class SemanticCache:
+    def __init__(
+        self,
+        embedding_model: EmbeddingModel,
+        similarity_threshold: float = 0.85,
+        max_size: int = 1000,
+        ttl: int | None = None,
+        eviction_policy: Literal["lru", "fifo"] = "lru",
+    ): ...
+    
+    async def set(self, key: str, value: str) -> None:
+        """Cache a result for the given key."""
+    
+    async def get(self, key: str) -> str | None:
+        """Retrieve cached result for similar key."""
+    
+    def clear(self) -> None:
+        """Remove all entries from cache."""
+    
+    def size(self) -> int:
+        """Get current number of cached entries."""
+```
