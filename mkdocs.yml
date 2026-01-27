@@ -75,6 +75,7 @@ nav:
       - Core: core.md
       - Models: models.md
       - Tools: tools.md
+      - Building Tools: tool-building.md
       - Tool Composition: tool-composition.md
       - Context: context.md
       - Executors: executors.md
