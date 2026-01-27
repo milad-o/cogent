@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/milad-o/cogent/releases"><img src="https://img.shields.io/badge/version-1.17.3-blue.svg" alt="Version"></a>
+  <a href="https://github.com/milad-o/cogent/releases"><img src="https://img.shields.io/badge/version-1.0.1-blue.svg" alt="Version"></a>
   <a href="https://github.com/milad-o/cogent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python"></a>
   <a href="https://milad-o.github.io/cogent"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
@@ -49,21 +49,25 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.17.3 - January 2026)
+## 🎉 Latest Changes (v1.0.1 - January 2026)
 
-**Comprehensive Test Coverage Expansion** 🧪
-- ✨ **+422 tests enabled** — Test suite expanded from 1,503 to 1,925 tests (+28%)
-- 📦 **Optional dependencies** — FAISS, Qdrant, Redis, BM25, sentence-transformers, BeautifulSoup4
-- 🔧 **Backend improvements** — Fixed Qdrant metadata filtering, FAISS custom fields, proper error handling
-- 🐛 **Bug fixes** — Resolved streaming test implementation, retriever API compatibility
-- 🎯 **Infrastructure tests** — Properly skipped network/Redis-dependent tests for CI/CD
+**TaskBoard & Observability** 📋
+- ✨ **TaskBoard** — Built-in task tracking system for complex multi-step workflows
+- 🔧 **Token aggregation** — Fixed token usage reporting to aggregate from all executor messages
+- 📊 **Observer.detailed()** — New factory method for detailed observability output
 
-**Previous (v1.17.2 - January 2026)** — Code Modernization
-- 🔄 **Exception chaining** — 35 violations fixed with proper `from e` / `from None` patterns
-- 📝 **Broad exception handlers** — 14 cases documented with fallback strategies
-- 🏷️ **Type annotations** — 32 mutable class attributes annotated with `ClassVar`
-- ♻️ **Code quality** — 28 auto-fixable issues resolved (PIE, RUF rules)
-- ✅ **Batch operations** — Added to InMemoryGraph backend
+**TaskBoard tools:**
+- `add_task` — Add tasks with optional dependencies
+- `update_task` — Update task status (pending → in_progress → completed/blocked)
+- `add_note` — Add observations and notes during execution
+- `verify_task` — Verify task completion with evidence
+- `get_taskboard_status` — Get full taskboard state
+
+```python
+# Enable TaskBoard for complex tasks
+agent = Agent(name="Planner", model="gpt-4o", taskboard=True)
+result = await agent.run("Design a REST API with authentication")
+```
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 
