@@ -380,6 +380,61 @@ tech_reviewer = Agent(
 
 See `examples/basics/role_behavior.py` for real LLM behavior examples.
 
+## TaskBoard
+
+Enable task tracking for complex, multi-step work:
+
+```python
+agent = Agent(
+    name="ProjectManager",
+    model="gpt-4o-mini",
+    instructions="You are a helpful project manager.",
+    taskboard=True,  # Enables task tracking tools
+)
+
+result = await agent.run("Plan a REST API for a todo app")
+
+# Check taskboard after execution
+print(agent.taskboard.summary())
+```
+
+### TaskBoard Tools
+
+When `taskboard=True`, the agent gets these tools:
+
+| Tool | Description |
+|------|-------------|
+| `add_task` | Create a new task to track |
+| `update_task` | Update task status (pending, in_progress, completed, failed, blocked) |
+| `add_note` | Record observations and findings |
+| `verify_task` | Verify a task was completed correctly |
+| `get_taskboard_status` | See overall progress |
+
+### How It Works
+
+1. **Instructions injected** — Agent receives guidance on when/how to use taskboard
+2. **LLM decides** — For complex tasks, the agent breaks them into subtasks
+3. **Progress tracked** — Tasks have status, notes, and verification
+4. **Summary available** — `agent.taskboard.summary()` shows progress
+
+### TaskBoard Configuration
+
+```python
+from cogent.agent.taskboard import TaskBoardConfig
+
+agent = Agent(
+    name="Worker",
+    model="gpt4",
+    taskboard=TaskBoardConfig(
+        include_instructions=True,  # Inject usage instructions (default: True)
+        max_tasks=50,               # Maximum tasks to track
+        track_time=True,            # Track task timing
+    ),
+)
+```
+
+See `examples/advanced/taskboard.py` for a complete example.
+
 ## Memory
 
 Enable conversation memory for multi-turn interactions:
