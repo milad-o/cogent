@@ -216,6 +216,35 @@ class Memory:
             self._tools_cache = create_memory_tools(self)
 
         return self._tools_cache
+    
+    async def get_acc_state(self, thread_id: str) -> Any:
+        """Get or create ACC state for a thread.
+        
+        Args:
+            thread_id: Thread identifier.
+        
+        Returns:
+            ACC compressor for this thread.
+        """
+        if not self._acc_enabled:
+            raise RuntimeError("ACC is not enabled. Set bounded_memory=True when creating Agent.")
+        
+        # Return existing ACC if in cache
+        if thread_id in self._acc_states:
+            return self._acc_states[thread_id]
+        
+        # Create new ACC
+        from cogent.memory.acc import (
+            AgentCognitiveCompressor,
+            BoundedMemoryState,
+            SemanticForgetGate,
+        )
+        
+        state = BoundedMemoryState()
+        gate = SemanticForgetGate()
+        acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
+        self._acc_states[thread_id] = acc
+        return acc
 
     async def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         """Emit an event if event_bus is configured."""
