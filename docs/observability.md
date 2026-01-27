@@ -146,7 +146,7 @@ The event-driven Flow paradigm is fully integrated with the observability system
 
 ### Understanding the Dual-Bus Architecture
 
-AgenticFlow uses two separate event systems for clean separation of concerns:
+Cogent uses two separate event systems for clean separation of concerns:
 
 #### 1. EventBus (Orchestration)
 **Module**: `cogent.events.EventBus`  

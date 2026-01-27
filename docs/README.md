@@ -1,6 +1,6 @@
 # Getting Started
 
-Get up and running with AgenticFlow in minutes.
+Get up and running with Cogent in minutes.
 
 ---
 
@@ -330,7 +330,7 @@ agent = Agent(
 | Module | Description |
 |--------|-------------|
 | [Observability](observability.md) | Events, tracing, metrics, progress output, dashboards |
-| [Memory](memory.md) | Persistent memory with scoping and semantic search |
+| [Memory](memory.md) | Persistent memory with scoping and fuzzy matching |
 | [Graph](graph.md) | Visualization for agents, patterns, and flows |
 
 ---

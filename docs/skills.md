@@ -509,7 +509,7 @@ class PythonExpertSkill:
 
 - **[Flow Documentation](flow.md)** - Complete Flow system guide
 - **[Events Documentation](events.md)** - Event patterns and matching
-- **[Tools Documentation](tools.md)** - Creating and using tools
+- **[Tools Documentation](tool-building.md)** - Creating and using tools
 - **[Examples: skills.py](../examples/advanced/skills.py)** - Working example code
 
 ---

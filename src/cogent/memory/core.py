@@ -295,6 +295,27 @@ class Memory:
         """
         start = time.perf_counter()
         await self._store.set(self._key(key), value, ttl=ttl)
+        
+        # Also store in vectorstore for semantic search on keys
+        if self._vectorstore:
+            from cogent.core.document import Document, DocumentMetadata
+            # Store as: "key: value" to enable semantic search on both
+            text_content = f"{key}: {value}"
+            
+            # Include namespace in metadata so search() can filter correctly
+            custom_metadata = {
+                "memory_key": key,
+                "memory_value": str(value),
+            }
+            if self._namespace:
+                custom_metadata["namespace"] = self._namespace
+            
+            doc = Document(
+                text=text_content,
+                metadata=DocumentMetadata(custom=custom_metadata),
+            )
+            await self._vectorstore.add_documents([doc])
+        
         await self._emit(
             "memory.write",
             {

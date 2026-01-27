@@ -11,9 +11,17 @@ These tools are automatically added to agents with memory enabled.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 from cogent.tools.base import BaseTool
+
+# Optional: fuzzy matching for fast key search
+try:
+    from rapidfuzz import fuzz, process
+    HAS_RAPIDFUZZ = True
+except ImportError:
+    HAS_RAPIDFUZZ = False
 
 if TYPE_CHECKING:
     from cogent.memory.core import Memory
@@ -93,6 +101,32 @@ Returns:
     )
 
 
+def _normalize_key(key: str) -> str:
+    """Normalize a key for better fuzzy matching.
+    
+    Transformations:
+    - Lowercase
+    - Replace underscores/hyphens with spaces
+    - Remove special characters
+    - Collapse multiple spaces
+    
+    Args:
+        key: Original key
+        
+    Returns:
+        Normalized key for matching
+    """
+    # Lowercase
+    key = key.lower()
+    # Replace separators with spaces
+    key = key.replace("_", " ").replace("-", " ")
+    # Remove special characters (keep alphanumeric and spaces)
+    key = re.sub(r"[^a-z0-9\s]", "", key)
+    # Collapse multiple spaces
+    key = re.sub(r"\s+", " ", key).strip()
+    return key
+
+
 def _create_forget_tool(memory: Memory) -> BaseTool:
     """Create a forget tool bound to a Memory instance."""
 
@@ -129,51 +163,130 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
     """Create a search_memories tool bound to a Memory instance."""
 
     async def search_memories(query: str) -> str:
-        """Search long-term memory for relevant facts.
+        """Search long-term memory for relevant facts using fuzzy matching.
+
+        Uses fuzzy string matching (rapidfuzz) for fast, offline key matching.
+        Falls back to semantic search if vectorstore is available and fuzzy fails.
 
         Args:
-            query: Search term (semantic or keyword-based)
+            query: Search term (fuzzy matched against keys)
         """
-        # Try semantic search first if vectorstore is available
+        # Get all keys (excluding internal ones)
+        all_keys = await memory.keys()
+        user_keys = [
+            key for key in all_keys
+            if not key.startswith("thread:") and not key.startswith("_")
+        ]
+
+        if not user_keys:
+            return "No memories stored yet."
+
+        # Method 1: Fuzzy matching (fast, free, offline)
+        if HAS_RAPIDFUZZ:
+            # Normalize query for better matching
+            normalized_query = _normalize_key(query)
+            
+            # Create mapping of normalized keys to original keys
+            key_map = {_normalize_key(key): key for key in user_keys}
+            normalized_keys = list(key_map.keys())
+            
+            # Fuzzy search with token_sort_ratio (handles word order)
+            matches = process.extract(
+                normalized_query,
+                normalized_keys,
+                scorer=fuzz.token_sort_ratio,
+                limit=5,
+                score_cutoff=40  # Minimum 40% similarity
+            )
+            
+            if matches:
+                lines = []
+                for norm_key, score, _ in matches:
+                    original_key = key_map[norm_key]
+                    value = await memory.recall(original_key)
+                    lines.append(f"- {original_key}: {value}")
+                return "Found (fuzzy match):\\n" + "\\n".join(lines)
+        
+        # Method 2: Semantic search (if vectorstore available and fuzzy failed/unavailable)
         if memory.vectorstore:
             try:
                 results = await memory.search(query, k=5)
                 if results:
                     lines = []
+                    seen_keys = set()
                     for result in results:
-                        content = result.content[:200]  # Truncate long content
-                        score = (
-                            f"(relevance: {result.score:.2f})"
-                            if hasattr(result, "score")
-                            else ""
-                        )
-                        lines.append(f"- {content} {score}")
-                    return "Found (semantic search):\n" + "\n".join(lines)
+                        if (
+                            "memory_key" in result.document.metadata.custom
+                            and result.document.metadata.custom["memory_key"]
+                        ):
+                            key = result.document.metadata.custom["memory_key"]
+                            if key.startswith("thread:") or key.startswith("_"):
+                                continue
+                            if key not in seen_keys:
+                                seen_keys.add(key)
+                                value = await memory.recall(key)
+                                lines.append(f"- {key}: {value}")
+                    if lines:
+                        return "Found (semantic search):\\n" + "\\n".join(lines)
             except Exception:
-                # Fall back to keyword search if semantic fails
                 pass
 
-        # Fallback: keyword search over long-term facts
-        keys = await memory.keys()
+        # Method 3: Simple keyword search (fallback)
+        query_lower = query.lower()
+        matching_keys = [
+            key for key in user_keys
+            if query_lower in key.lower()
+        ]
+
+        if not matching_keys:
+            return f"No memories found matching: {query}"
+
+        lines = []
+        for key in matching_keys[:5]:
+            value = await memory.recall(key)
+            lines.append(f"- {key}: {value}")
+
+        return "Found (keyword search):\\n" + "\\n".join(lines)
         if not keys:
             return "No memories stored."
 
         query_lower = query.lower()
-        matches: list[tuple[str, Any]] = []
+        matches: list[tuple[str, Any, float]] = []  # (key, value, score)
 
         for key in keys:
             if key.startswith("_"):  # Skip internal keys like _messages
                 continue
             value = await memory.recall(key)
             if value is not None:
-                # Check if query matches key or value
-                if query_lower in key.lower() or query_lower in str(value).lower():
-                    matches.append((key, value))
+                score = 0.0
+                key_lower = key.lower()
+                value_str = str(value).lower()
+                
+                # Exact match on key (highest score)
+                if query_lower == key_lower:
+                    score = 100.0
+                # Substring match on key (high score)
+                elif query_lower in key_lower:
+                    score = 80.0
+                # Key contains substring of query (good score)
+                elif any(word in key_lower for word in query_lower.split() if len(word) > 2):
+                    score = 60.0
+                # Substring match in value
+                elif query_lower in value_str:
+                    score = 40.0
+                # Value contains substring of query
+                elif any(word in value_str for word in query_lower.split() if len(word) > 2):
+                    score = 20.0
+                
+                if score > 0:
+                    matches.append((key, value, score))
 
         if not matches:
             return f"No memories found matching: {query}"
 
-        lines = [f"- {k}: {v}" for k, v in matches[:5]]
+        # Sort by score descending
+        matches.sort(key=lambda x: x[2], reverse=True)
+        lines = [f"- {k}: {v}" for k, v, _ in matches[:5]]
         return "Found (keyword search):\n" + "\n".join(lines)
 
     return BaseTool(
