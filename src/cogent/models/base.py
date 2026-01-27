@@ -1,5 +1,5 @@
 """
-Base classes for AgenticFlow models.
+Base classes for Cogent models.
 
 All chat and embedding models inherit from these base classes.
 """
@@ -69,7 +69,7 @@ def convert_messages(messages: list[MessageInput]) -> list[dict[str, object]]:
         - [{"type": "text", "text": "..."}, {"type": "image_url", "image_url": {...}}]
 
         This enables vision-capable chat models to receive images without
-        AgenticFlow flattening them into a single string.
+        Cogent flattening them into a single string.
         """
         if isinstance(value, list) and value:
             return all(isinstance(item, dict) and "type" in item for item in value)
@@ -314,7 +314,7 @@ class BaseChatModel(ABC):
         """Lazily initialize clients on first use."""
         if not self._initialized:
             with contextlib.suppress(Exception):
-                __import__("agenticflow.config")
+                __import__("cogent.config")
             self._init_client()
             self._initialized = True
 

@@ -2,7 +2,7 @@
 Mid-level graph builders for agents, flows, and topologies.
 
 These builders provide convenient APIs to create Graph objects from
-AgenticFlow components without manual node/edge construction.
+Cogent components without manual node/edge construction.
 """
 
 from __future__ import annotations

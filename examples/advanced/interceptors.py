@@ -1,7 +1,7 @@
 """
 Interceptors
 
-AgenticFlow's interceptor system for cross-cutting concerns:
+Cogent's interceptor system for cross-cutting concerns:
 - BudgetGuard for limiting model/tool calls
 - Custom interceptors for logging, validation, security
 - PIIShield for PII detection and redaction

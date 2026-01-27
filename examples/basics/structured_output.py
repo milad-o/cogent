@@ -1,7 +1,7 @@
 """
 Example 24: Structured Output
 
-Demonstrates AgenticFlow's structured output capability for enforcing
+Demonstrates Cogent's structured output capability for enforcing
 response schemas on agent outputs.
 
 Key features:
@@ -183,7 +183,7 @@ async def example_advanced_config():
     # Full control over structured output behavior
     config = ResponseSchema(
         schema=ProductReview,
-        method=OutputMethod.AUTO,  # Let AgenticFlow choose best method
+        method=OutputMethod.AUTO,  # Let Cogent choose best method
         retry_on_error=True,       # Retry if validation fails
         max_retries=2,             # Up to 2 retries
         include_raw=True,          # Include raw response in result
@@ -282,7 +282,7 @@ async def example_json_schema():
 
 async def main():
     """Run all examples."""
-    print("\n🔧 AgenticFlow Structured Output Examples\n")
+    print("\n🔧 Cogent Structured Output Examples\n")
 
     await example_contact_extraction()
     await example_sentiment_analysis()

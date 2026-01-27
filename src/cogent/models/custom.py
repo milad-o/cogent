@@ -1,5 +1,5 @@
 """
-Custom OpenAI-compatible models for AgenticFlow.
+Custom OpenAI-compatible models for Cogent.
 
 Supports any OpenAI-compatible API endpoint like:
 - vLLM

@@ -33,7 +33,7 @@ class AgentConfig:
         name: Human-readable agent name
         role: Agent's role in the system
         description: Detailed description of agent's purpose
-        model: LLM model - must be a native AgenticFlow chat model instance.
+        model: LLM model - must be a native Cogent chat model instance.
             Use native models:
             - ChatModel(model="gpt-4o")
             - AzureOpenAIChat(...)

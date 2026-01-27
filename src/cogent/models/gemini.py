@@ -1,5 +1,5 @@
 """
-Google Gemini models for AgenticFlow.
+Google Gemini models for Cogent.
 
 Supports Gemini 2.0, 1.5 Pro, 1.5 Flash, and other Google AI models.
 

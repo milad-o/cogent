@@ -1,9 +1,9 @@
 """
-Configuration loader for AgenticFlow.
+Configuration loader for Cogent.
 
 Loads API keys and settings from:
-1. Project-level: ./agenticflow.toml or ./agenticflow.yaml
-2. User-level: ~/.agenticflow/config.toml or ~/.agenticflow/config.yaml
+1. Project-level: ./cogent.toml or ./cogent.yaml
+2. User-level: ~/.cogent/config.toml or ~/.cogent/config.yaml
 3. Environment variables (highest priority when used)
 4. .env files (automatically loaded from current directory)
 
@@ -37,26 +37,26 @@ def find_config_file() -> Path | None:
     """Find configuration file in standard locations.
 
     Checks in order:
-    1. ./agenticflow.toml
-    2. ./agenticflow.yaml (if pyyaml installed)
-    3. ~/.agenticflow/config.toml
-    4. ~/.agenticflow/config.yaml (if pyyaml installed)
+    1. ./cogent.toml
+    2. ./cogent.yaml (if pyyaml installed)
+    3. ~/.cogent/config.toml
+    4. ~/.cogent/config.yaml (if pyyaml installed)
 
     Returns:
         Path to config file or None if not found
     """
     # Project-level configs
-    project_toml = Path.cwd() / "agenticflow.toml"
+    project_toml = Path.cwd() / "cogent.toml"
     if project_toml.exists():
         return project_toml
 
     if HAS_YAML:
-        project_yaml = Path.cwd() / "agenticflow.yaml"
+        project_yaml = Path.cwd() / "cogent.yaml"
         if project_yaml.exists():
             return project_yaml
 
     # User-level configs
-    user_config_dir = Path.home() / ".agenticflow"
+    user_config_dir = Path.home() / ".cogent"
 
     user_toml = user_config_dir / "config.toml"
     if user_toml.exists():

@@ -83,7 +83,7 @@ class TestDuckDuckGoProvider:
         provider = DuckDuckGoProvider()
         assert provider.name == "duckduckgo"
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider._get_client")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider._get_client")
     def test_search_returns_results(self, mock_client):
         """Test search returns properly formatted results."""
         mock_ddgs = MagicMock()
@@ -102,7 +102,7 @@ class TestDuckDuckGoProvider:
         assert results[0].position == 1
         assert results[1].position == 2
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider._get_client")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider._get_client")
     def test_search_handles_error(self, mock_client):
         """Test search handles errors gracefully."""
         mock_ddgs = MagicMock()
@@ -114,7 +114,7 @@ class TestDuckDuckGoProvider:
 
         assert results == []
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider._get_client")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider._get_client")
     def test_news_returns_results(self, mock_client):
         """Test news search returns results."""
         mock_ddgs = MagicMock()
@@ -190,7 +190,7 @@ class TestWebSearchTools:
 class TestWebSearchOperations:
     """Test WebSearch operations."""
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider.search")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider.search")
     def test_search(self, mock_search):
         """Test search operation."""
         mock_search.return_value = [
@@ -203,7 +203,7 @@ class TestWebSearchOperations:
         assert len(results) == 1
         mock_search.assert_called_once_with("test query", max_results=10)
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider.news")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider.news")
     def test_search_news(self, mock_news):
         """Test news search operation."""
         mock_news.return_value = [
@@ -314,7 +314,7 @@ class TestHTMLExtraction:
 class TestWebSearchToolExecution:
     """Test tool execution."""
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider.search")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider.search")
     def test_web_search_tool(self, mock_search):
         """Test web_search tool execution."""
         mock_search.return_value = [
@@ -329,7 +329,7 @@ class TestWebSearchToolExecution:
         assert "Result" in result
         assert "https://example.com" in result
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider.search")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider.search")
     def test_web_search_tool_no_results(self, mock_search):
         """Test web_search tool with no results."""
         mock_search.return_value = []
@@ -341,7 +341,7 @@ class TestWebSearchToolExecution:
 
         assert "No results" in result
 
-    @patch("agenticflow.capabilities.web_search.DuckDuckGoProvider.news")
+    @patch("cogent.capabilities.web_search.DuckDuckGoProvider.news")
     def test_news_search_tool(self, mock_news):
         """Test news_search tool execution."""
         mock_news.return_value = [

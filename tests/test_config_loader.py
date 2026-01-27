@@ -27,7 +27,7 @@ class TestConfigFileDiscovery:
 
     def test_find_project_toml(self, tmp_path):
         """Test finding project-level TOML config."""
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("[models]\ndefault = 'gpt4'")
 
         with patch('pathlib.Path.cwd', return_value=tmp_path):
@@ -36,7 +36,7 @@ class TestConfigFileDiscovery:
 
     def test_find_project_yaml(self, tmp_path):
         """Test finding project-level YAML config."""
-        config_file = tmp_path / "agenticflow.yaml"
+        config_file = tmp_path / "cogent.yaml"
         config_file.write_text("models:\n  default: gpt4")
 
         with patch('pathlib.Path.cwd', return_value=tmp_path):
@@ -45,8 +45,8 @@ class TestConfigFileDiscovery:
 
     def test_toml_preferred_over_yaml(self, tmp_path):
         """Test that TOML is preferred when both exist."""
-        toml_file = tmp_path / "agenticflow.toml"
-        yaml_file = tmp_path / "agenticflow.yaml"
+        toml_file = tmp_path / "cogent.toml"
+        yaml_file = tmp_path / "cogent.yaml"
         toml_file.write_text("[models]\ndefault = 'gpt4'")
         yaml_file.write_text("models:\n  default: claude")
 
@@ -56,7 +56,7 @@ class TestConfigFileDiscovery:
 
     def test_user_config_fallback(self, tmp_path):
         """Test falling back to user-level config."""
-        user_config = tmp_path / ".agenticflow" / "config.toml"
+        user_config = tmp_path / ".cogent" / "config.toml"
         user_config.parent.mkdir(parents=True)
         user_config.write_text("[models]\ndefault = 'gpt4'")
 
@@ -176,7 +176,7 @@ class TestApiKeyResolution:
         explicit_key = "sk-explicit-key"
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-env-key"}):
-            with patch('agenticflow.config.get_provider_config', return_value={"api_key": "sk-config-key"}):
+            with patch('cogent.config.get_provider_config', return_value={"api_key": "sk-config-key"}):
                 key = get_api_key("openai", explicit_key)
                 assert key == explicit_key
 
@@ -185,14 +185,14 @@ class TestApiKeyResolution:
         env_key = "sk-env-key"
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": env_key}):
-            with patch('agenticflow.config.get_provider_config', return_value={"api_key": "sk-config-key"}):
+            with patch('cogent.config.get_provider_config', return_value={"api_key": "sk-config-key"}):
                 key = get_api_key("openai", None)
                 assert key == env_key
 
     def test_config_file_lowest_priority(self, tmp_path):
         """Test that config file has lowest priority."""
         # Create a config file
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-config-key"
@@ -209,7 +209,7 @@ api_key = "sk-config-key"
         """Test behavior when no API key is available."""
         with patch.dict(os.environ, {}, clear=True):
             with patch('pathlib.Path.home', return_value=tmp_path):
-                with patch('agenticflow.config.get_provider_config', return_value={}):
+                with patch('cogent.config.get_provider_config', return_value={}):
                     key = get_api_key("openai", None)
                     assert key is None
 
@@ -233,7 +233,7 @@ class TestProviderConfig:
 
     def test_get_full_provider_config(self, tmp_path):
         """Test getting full provider configuration."""
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-test"
@@ -242,7 +242,7 @@ temperature = 0.7
 max_tokens = 2000
 """)
 
-        with patch('agenticflow.config.find_config_file', return_value=config_file):
+        with patch('cogent.config.find_config_file', return_value=config_file):
             config = get_provider_config("openai")
             assert config["api_key"] == "sk-test"
             assert config["organization"] == "org-test"
@@ -251,19 +251,19 @@ max_tokens = 2000
 
     def test_get_config_no_file(self):
         """Test getting config when no file exists."""
-        with patch('agenticflow.config.find_config_file', return_value=None):
+        with patch('cogent.config.find_config_file', return_value=None):
             config = get_provider_config("openai")
             assert config == {}
 
     def test_get_config_provider_not_in_file(self, tmp_path):
         """Test getting config for provider not in file."""
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-test"
 """)
 
-        with patch('agenticflow.config.find_config_file', return_value=config_file):
+        with patch('cogent.config.find_config_file', return_value=config_file):
             config = get_provider_config("anthropic")
             assert config == {}
 
@@ -274,7 +274,7 @@ class TestConfigIntegration:
     def test_priority_chain_complete(self, tmp_path):
         """Test complete priority chain."""
         # Set up config file
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-config-key"
@@ -285,7 +285,7 @@ temperature = 0.5
         explicit_key = "sk-explicit"
         env_key = "sk-env"
 
-        with patch('agenticflow.config.find_config_file', return_value=config_file):
+        with patch('cogent.config.find_config_file', return_value=config_file):
             # Test explicit wins
             with patch.dict(os.environ, {"OPENAI_API_KEY": env_key}):
                 key = get_api_key("openai", explicit_key)
@@ -303,7 +303,7 @@ temperature = 0.5
 
     def test_multiple_providers_config(self, tmp_path):
         """Test config with multiple providers."""
-        config_file = tmp_path / "agenticflow.toml"
+        config_file = tmp_path / "cogent.toml"
         config_file.write_text("""
 [models.openai]
 api_key = "sk-openai"
@@ -315,7 +315,7 @@ api_key = "sk-ant"
 api_key = "gemini-key"
 """)
 
-        with patch('agenticflow.config.find_config_file', return_value=config_file):
+        with patch('cogent.config.find_config_file', return_value=config_file):
             with patch.dict(os.environ, {}, clear=True):
                 assert get_api_key("openai", None) == "sk-openai"
                 assert get_api_key("anthropic", None) == "sk-ant"
@@ -329,7 +329,7 @@ class TestDotenvIntegration:
         """Test that .env is loaded on module import."""
         # This is tested implicitly by the module loading .env on import
         # We can verify by checking if environment variables are accessible
-        with patch('agenticflow.config.load_dotenv') as mock_load:
+        with patch('cogent.config.load_dotenv') as mock_load:
             # Re-import would call load_dotenv
             # In practice, this is already done, so we test behavior
             pass

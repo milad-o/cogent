@@ -1,5 +1,5 @@
 """
-Anthropic models for AgenticFlow.
+Anthropic models for Cogent.
 
 Usage:
     from cogent.models.anthropic import AnthropicChat

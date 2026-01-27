@@ -1,7 +1,7 @@
 """
 Context Layer
 
-AgenticFlow's Context Layer for runtime injection and dynamic behavior control:
+Cogent's Context Layer for runtime injection and dynamic behavior control:
 - RunContext: Pass invocation-scoped data to tools/interceptors
 - ToolGate: Dynamic tool filtering based on permissions/stage
 - ToolGuard/CircuitBreaker: Tool retry and failure protection

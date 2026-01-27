@@ -4,7 +4,7 @@ The `cogent.models` module provides a **3-tier API** for working with LLMs - fro
 
 ## 🎯 3-Tier Model API
 
-AgenticFlow offers three levels of abstraction - choose based on your needs:
+Cogent offers three levels of abstraction - choose based on your needs:
 
 ### Tier 1: High-Level (String Models) ⭐ **Recommended**
 
@@ -134,7 +134,7 @@ GEMINI_API_KEY=AIza...
 GROQ_API_KEY=gsk_...
 ```
 
-AgenticFlow automatically loads `.env` files using `python-dotenv`.
+Cogent automatically loads `.env` files using `python-dotenv`.
 
 ### Model Overrides (Environment + Config)
 
@@ -703,7 +703,7 @@ from cogent.models import OpenAIEmbedding, GeminiEmbedding, OllamaEmbedding
 embedder = OpenAIEmbedding(model="text-embedding-3-small")
 
 # Primary API: embed() / aembed() - Returns EmbeddingResult with full metadata
-result = await embedder.aembed(["Hello world", "AgenticFlow"])
+result = await embedder.aembed(["Hello world", "Cogent"])
 print(result.embeddings)            # list[list[float]] - the actual vectors
 print(result.metadata.model)        # "text-embedding-3-small"
 print(result.metadata.tokens)       # TokenUsage(prompt=4, completion=0, total=4)

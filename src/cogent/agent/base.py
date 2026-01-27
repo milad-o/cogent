@@ -630,7 +630,7 @@ class Agent:
         - Sync tools
         - Async tools
         - Deferred tools (return DeferredResult for async completion)
-        - Tools with func attribute (AgenticFlow BaseTool)
+        - Tools with func attribute (Cogent BaseTool)
         - Tools with ainvoke/invoke methods (LangChain-style)
 
         Args:
@@ -650,7 +650,7 @@ class Agent:
         try:
             # Execute the tool - support multiple interfaces
             if hasattr(tool, "func"):
-                # AgenticFlow BaseTool with func attribute
+                # Cogent BaseTool with func attribute
                 if asyncio.iscoroutinefunction(tool.func):
                     result = await tool.func(**tool_args)
                 else:
@@ -1313,7 +1313,7 @@ class Agent:
         Accepts:
         - String model names: "gpt4", "claude", "gemini"
         - Provider:model syntax: "anthropic:claude-sonnet-4", "groq:llama-70b"
-        - Native AgenticFlow models: ChatModel, AzureOpenAIChat, AnthropicChat, GroqChat, etc.
+        - Native Cogent models: ChatModel, AzureOpenAIChat, AnthropicChat, GroqChat, etc.
 
         Example:
             ```python

@@ -1,7 +1,7 @@
 """
 Tool Resilience & Recovery - Automatic retry, circuit breakers, and failure learning.
 
-Demonstrates AgenticFlow's tool resilience features:
+Demonstrates Cogent's tool resilience features:
 - Automatic retry with exponential backoff
 - Circuit breaker to prevent cascading failures
 - Fallback tool chains for graceful degradation

@@ -139,7 +139,7 @@ Respond in JSON format:
             from cogent.observability.logger import LogLevel, ObservabilityLogger
 
             self._log = ObservabilityLogger(
-                name="agenticflow.retriever.summary_index",
+                name="cogent.retriever.summary_index",
                 level=LogLevel.DEBUG,
             )
             self._log.set_context(

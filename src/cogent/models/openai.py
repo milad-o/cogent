@@ -1,5 +1,5 @@
 """
-OpenAI models for AgenticFlow.
+OpenAI models for Cogent.
 
 Usage:
     from cogent.models.openai import OpenAIChat, OpenAIEmbedding

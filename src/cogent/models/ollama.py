@@ -1,5 +1,5 @@
 """
-Ollama models for AgenticFlow.
+Ollama models for Cogent.
 
 Ollama runs LLMs locally. Supports Llama, Mistral, Qwen, and other models.
 

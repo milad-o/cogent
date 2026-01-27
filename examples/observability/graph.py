@@ -115,7 +115,7 @@ def demo_save_options():
 
 def main():
     """Run all graph demos."""
-    print("AgenticFlow Graph API")
+    print("Cogent Graph API")
     print("=" * 60)
 
     demo_agent_graph()

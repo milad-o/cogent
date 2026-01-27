@@ -621,7 +621,7 @@ class PDFMarkdownLoader(BaseLoader):
         self._log: ObservabilityLogger | None = None
         if verbose:
             self._log = ObservabilityLogger(
-                name="agenticflow.document.loaders.pdf",
+                name="cogent.document.loaders.pdf",
                 level=LogLevel.DEBUG,
             )
             self._log.set_context(

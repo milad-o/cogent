@@ -101,7 +101,7 @@ class WebSocketServer:
                     {
                         "type": "welcome",
                         "client_id": client_id,
-                        "message": "Connected to AgenticFlow Event Stream",
+                        "message": "Connected to Cogent Event Stream",
                     }
                 )
             )
@@ -254,7 +254,7 @@ async def websocket_handler(
                 {
                     "type": "welcome",
                     "client_id": client_id,
-                    "message": "Connected to AgenticFlow Event Stream",
+                    "message": "Connected to Cogent Event Stream",
                 }
             )
         )

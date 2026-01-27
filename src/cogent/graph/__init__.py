@@ -1,5 +1,5 @@
 """
-AgenticFlow Graph API - Unified visualization for agents, topologies, and flows.
+Cogent Graph API - Unified visualization for agents, topologies, and flows.
 
 Simple API:
     ```python

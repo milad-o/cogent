@@ -9,7 +9,7 @@ warnings.filterwarnings(
 )
 
 """
-AgenticFlow - Production Agent Framework
+Cogent - Production Agent Framework
 =========================================
 
 A lightweight, single-agent-first framework with:

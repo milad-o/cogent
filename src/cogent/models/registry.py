@@ -1,5 +1,5 @@
 """
-Model registry for AgenticFlow.
+Model registry for Cogent.
 
 Provides model alias resolution and automatic provider detection.
 Enables high-level API: Agent("Helper", model="gpt4")

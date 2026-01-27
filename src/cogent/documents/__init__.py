@@ -1,4 +1,4 @@
-"""Document processing module for AgenticFlow.
+"""Document processing module for Cogent.
 
 This module provides comprehensive document loading, text splitting, and
 summarization capabilities for building RAG (Retrieval Augmented Generation) systems.

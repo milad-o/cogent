@@ -2,7 +2,7 @@
 TraceBus - central pub/sub system for observability event distribution.
 
 Note: This was renamed from TraceBus to TraceBus to distinguish from the
-core orchestration TraceBus in agenticflow.events.bus. The old name is
+core orchestration TraceBus in cogent.events.bus. The old name is
 still available as a deprecated alias.
 """
 
@@ -25,7 +25,7 @@ class TraceBus:
     Central observability event bus with pub/sub pattern.
 
     TraceBus handles observability events (tracing, metrics, logging).
-    For core orchestration events, use agenticflow.events.TraceBus instead.
+    For core orchestration events, use cogent.events.TraceBus instead.
 
     It supports:
     - Type-specific subscriptions

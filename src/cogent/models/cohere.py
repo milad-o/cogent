@@ -1,5 +1,5 @@
 """
-Cohere models for AgenticFlow.
+Cohere models for Cogent.
 
 Supports Cohere chat (Command models) and embeddings.
 

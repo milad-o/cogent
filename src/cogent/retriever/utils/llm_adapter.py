@@ -24,7 +24,7 @@ class LLMProtocol(Protocol):
 class ChatModelAdapter:
     """Adapter to make chat models compatible with retriever LLM interface.
 
-    AgenticFlow chat models use `.ainvoke(messages)` with role-based messages,
+    Cogent chat models use `.ainvoke(messages)` with role-based messages,
     while LLM-powered retrievers expect a simple `.generate(prompt)` interface
     for model-agnostic operation.
 

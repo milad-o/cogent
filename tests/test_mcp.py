@@ -405,7 +405,7 @@ class TestMCPInitialization:
         mcp = MCP()
         mock_agent = MagicMock()
 
-        with patch("agenticflow.capabilities.mcp.logger") as mock_logger:
+        with patch("cogent.capabilities.mcp.logger") as mock_logger:
             await mcp.initialize(mock_agent)
             mock_logger.warning.assert_called_once()
 
