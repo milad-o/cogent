@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-01-27
+
+### Added
+
+- **TaskBoard** — Agent task tracking and verification system
+  - `taskboard=True` parameter to enable task tracking
+  - Tools: `add_task`, `update_task`, `add_note`, `verify_task`, `get_taskboard_status`
+  - Auto-injected instructions for complex task breakdown
+  - Progress tracking and task verification
+- **Token Usage Fix** — Response now shows actual token usage from model
+  - `Response.metadata.tokens` properly aggregates from AIMessage metadata
+  - Observer displays tokens in `[completed]` line
+- **Observer.detailed()** — New preset showing tool calls with timestamps
+
+### Fixed
+
+- Pylance errors in `agent/base.py` (missing imports, legacy role references)
+- Token usage was always `None` — now properly aggregated from executor messages
+
 ## [1.0.0] - 2026-01-27
 
 ### Added
