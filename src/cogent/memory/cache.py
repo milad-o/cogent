@@ -13,9 +13,19 @@ import json
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from cogent.core.utils import now_utc
+
+if TYPE_CHECKING:
+    from cogent.models import EmbeddingModel
+
+
+@runtime_checkable
+class EmbeddingProvider(Protocol):
+    """Protocol for objects that can generate embeddings."""
+
+    async def embed_query(self, query: str) -> Any: ...
 
 
 @dataclass
@@ -72,7 +82,7 @@ class SemanticCache:
     compared to 38% for traditional boundary caching.
     
     Args:
-        embedding_fn: Function to convert text to embedding vector
+        embedding: Embedding model instance with embed_query method
         similarity_threshold: Minimum cosine similarity for cache hit (0.85 = ~85% similar)
         max_entries: Maximum cache entries per stage (LRU eviction)
         default_ttl: Default time-to-live in seconds
@@ -83,7 +93,7 @@ class SemanticCache:
         
         # Create cache with embedding model
         embed = create_embedding("openai", "text-embedding-3-small")
-        cache = SemanticCache(embedding_fn=embed.embed_query)
+        cache = SemanticCache(embedding=embed)
         
         # Cache intent parsing
         intent = {"goal": "find_tutorials", "topic": "python"}
@@ -111,12 +121,12 @@ class SemanticCache:
 
     def __init__(
         self,
-        embedding_fn: Callable[[str], list[float]],
+        embedding: EmbeddingProvider | EmbeddingModel,
         similarity_threshold: float = 0.85,
         max_entries: int = 10000,
         default_ttl: int = 86400,
     ) -> None:
-        self._embedding_fn = embedding_fn
+        self._embedding = embedding
         self._threshold = similarity_threshold
         self._max_entries = max_entries
         self._default_ttl = default_ttl
@@ -310,21 +320,10 @@ class SemanticCache:
         return count
 
     async def _embed(self, text: str) -> list[float]:
-        """Generate embedding for text."""
-        # Check if embedding_fn is async
-        import inspect
-        from cogent.core.messages import EmbeddingResult
-
-        if inspect.iscoroutinefunction(self._embedding_fn):
-            result = await self._embedding_fn(text)
-        else:
-            result = self._embedding_fn(text)
-        
-        # Handle EmbeddingResult objects (extract first embedding vector)
-        if isinstance(result, EmbeddingResult):
-            return result.embeddings[0]
-        
-        return result
+        """Generate embedding for text using the embedding model."""
+        result = await self._embedding.embed_query(text)
+        # EmbeddingResult.embeddings is list[list[float]], get first vector
+        return result.embeddings[0]
 
     @staticmethod
     def _cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
