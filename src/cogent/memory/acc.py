@@ -460,7 +460,8 @@ class AgentCognitiveCompressor:
         max_context: int = 20,
         forget_gate: SemanticForgetGate | None = None,
         vectorstore: VectorStore | None = None,
-        extractor_model: BaseChatModel | None = None,
+        model: BaseChatModel | str | None = None,
+        extraction_mode: Literal["heuristic", "model"] = "heuristic",
     ):
         """Initialize ACC.
         
@@ -472,7 +473,9 @@ class AgentCognitiveCompressor:
             max_context: Max context items to track (default: 20)
             forget_gate: Forget gate for relevance-based pruning
             vectorstore: Optional vectorstore for artifact recall
-            extractor_model: Optional model for memory extraction
+            model: Model for extraction. String ("gpt-4o-mini") or BaseChatModel.
+                   If None with extraction_mode="model", uses agent's model.
+            extraction_mode: "heuristic" (fast, rule-based) or "model" (LLM-based extraction)
         """
         # Create state from bounds if not provided
         if state is not None:
@@ -486,7 +489,40 @@ class AgentCognitiveCompressor:
             )
         self.forget_gate = forget_gate or SemanticForgetGate()
         self.vectorstore = vectorstore
-        self.extractor_model = extractor_model
+        self.extraction_mode = extraction_mode
+        
+        # Resolve model (lazy initialization for strings)
+        self._model_spec = model  # Store spec for lazy resolution
+        self._resolved_model: BaseChatModel | None = None
+
+    def _get_model(self) -> BaseChatModel | None:
+        """Get the resolved model for AI extraction.
+        
+        Returns:
+            Resolved model or None if not available.
+        """
+        if self._resolved_model is not None:
+            return self._resolved_model
+        
+        if self._model_spec is None:
+            return None
+        
+        # Resolve string model spec
+        if isinstance(self._model_spec, str):
+            from cogent.models import create_model
+            self._resolved_model = create_model(self._model_spec)
+        else:
+            self._resolved_model = self._model_spec
+        
+        return self._resolved_model
+
+    def set_model(self, model: BaseChatModel) -> None:
+        """Set the model for AI extraction (called by agent if not set).
+        
+        Args:
+            model: The model to use for extraction.
+        """
+        self._resolved_model = model
 
     async def update_from_turn(
         self,
@@ -534,8 +570,134 @@ class AgentCognitiveCompressor:
     ) -> list[MemoryItem]:
         """Extract memory-worthy content from conversation turn.
         
-        For now, uses simple rule-based extraction.
-        Future: Use LLM to extract structured memory.
+        Uses heuristic or AI extraction based on extraction_mode.
+        
+        Args:
+            user_message: User's message
+            assistant_message: Assistant's response
+            tool_calls: Tools called
+        
+        Returns:
+            List of memory artifacts
+        """
+        if self.extraction_mode == "model":
+            return await self._extract_artifacts_ai(
+                user_message, assistant_message, tool_calls
+            )
+        return await self._extract_artifacts_heuristic(
+            user_message, assistant_message, tool_calls
+        )
+
+    async def _extract_artifacts_ai(
+        self,
+        user_message: str,
+        assistant_message: str,
+        tool_calls: list[dict],
+    ) -> list[MemoryItem]:
+        """Extract artifacts using LLM for semantic understanding.
+        
+        Uses structured output to extract:
+        - Constraints: Requirements, rules, goals
+        - Entities: Names, facts, data
+        - Actions: Tool usage, decisions
+        """
+        model = self._get_model()
+        if model is None:
+            # Fall back to heuristic if no model available
+            return await self._extract_artifacts_heuristic(
+                user_message, assistant_message, tool_calls
+            )
+
+        from pydantic import BaseModel, Field
+
+        class ExtractedMemory(BaseModel):
+            """Extracted memory items from conversation."""
+            constraints: list[str] = Field(
+                default_factory=list,
+                description="Requirements, rules, goals, or must-do items"
+            )
+            entities: list[str] = Field(
+                default_factory=list,
+                description="Important names, facts, numbers, or knowledge"
+            )
+            key_actions: list[str] = Field(
+                default_factory=list,
+                description="Key decisions or actions taken"
+            )
+
+        # Build extraction prompt
+        tool_calls_text = ", ".join(tc.get("name", "?") for tc in tool_calls) if tool_calls else "None"
+        extraction_prompt = f"""Extract key memory items from this conversation turn.
+
+USER: {user_message}
+ASSISTANT: {assistant_message}
+TOOLS CALLED: {tool_calls_text}
+
+Extract:
+1. Constraints: Any requirements, rules, goals, or things that must be done
+2. Entities: Important names, facts, numbers, or knowledge to remember
+3. Key Actions: Significant decisions or actions taken
+
+Be concise. Only extract what's truly important to remember."""
+
+        try:
+            # Use structured output
+            response = await model.with_structured_output(ExtractedMemory).ainvoke(
+                extraction_prompt
+            )
+            
+            artifacts: list[MemoryItem] = []
+            
+            # Convert to MemoryItems
+            for constraint in response.constraints[:3]:  # Max 3 per turn
+                artifacts.append(MemoryItem(
+                    content=constraint,
+                    type="constraint",
+                    relevance=1.0,
+                    verified=False,
+                ))
+            
+            for entity in response.entities[:5]:  # Max 5 per turn
+                artifacts.append(MemoryItem(
+                    content=entity,
+                    type="entity",
+                    relevance=0.9,
+                    verified=False,
+                ))
+            
+            for action in response.key_actions[:3]:  # Max 3 per turn
+                artifacts.append(MemoryItem(
+                    content=action,
+                    type="action",
+                    relevance=0.8,
+                    verified=False,
+                ))
+
+            # Always add tool calls as actions
+            for tool_call in tool_calls:
+                tool_name = tool_call.get("name", "unknown")
+                artifacts.append(MemoryItem(
+                    content=f"Called tool: {tool_name}",
+                    type="action",
+                    relevance=0.7,
+                    verified=False,
+                ))
+
+            return artifacts
+
+        except Exception:
+            # Fall back to heuristic on any error
+            return await self._extract_artifacts_heuristic(
+                user_message, assistant_message, tool_calls
+            )
+
+    async def _extract_artifacts_heuristic(
+        self,
+        user_message: str,
+        assistant_message: str,
+        tool_calls: list[dict],
+    ) -> list[MemoryItem]:
+        """Extract artifacts using fast rule-based heuristics.
         
         Args:
             user_message: User's message
@@ -559,7 +721,6 @@ class AgentCognitiveCompressor:
             )
 
         # Extract entities (simple heuristic - capitalize words)
-        # Future: Use NER or LLM extraction
         words = user_message.split() + assistant_message.split()
         capitalized = [w.strip(".,!?") for w in words if w and w[0].isupper()]
         if capitalized:

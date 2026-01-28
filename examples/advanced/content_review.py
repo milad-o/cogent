@@ -38,8 +38,20 @@ async def main():
 
     observer = Observer(level="trace")
 
-    # ACC with custom bounds (state is internal)
-    acc = AgentCognitiveCompressor(max_constraints=5, max_entities=15, max_actions=10, max_context=10)
+    # ACC with AI extraction (uses efficient model for semantic compression)
+    # Options:
+    #   extraction_mode="heuristic" - Fast, rule-based (default)
+    #   extraction_mode="ai" - LLM-based semantic extraction
+    #   model="gpt-4o-mini" - Specify efficient model for extraction
+    #   model=None - Uses agent's model when extraction_mode="ai"
+    acc = AgentCognitiveCompressor(
+        max_constraints=5,
+        max_entities=15,
+        max_actions=10,
+        max_context=10,
+        extraction_mode="heuristic",  # Fast mode for this demo
+        # extraction_mode="ai", model="gpt-4o-mini",  # AI mode with dedicated model
+    )
     memory = Memory(acc=acc)
 
     # Writer agent

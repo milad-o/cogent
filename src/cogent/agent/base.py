@@ -3156,6 +3156,16 @@ class Agent:
             if self._memory._acc_enabled:
                 # ACC: Load bounded memory state instead of full transcript
                 acc = await self._memory.get_acc_state(thread_id)
+                
+                # Pass agent's model to ACC if it needs one for AI extraction
+                if (
+                    hasattr(acc, "extraction_mode")
+                    and acc.extraction_mode == "model"
+                    and acc._get_model() is None
+                    and self.model is not None
+                ):
+                    acc.set_model(self.model)
+                
                 memory_context = acc.format_for_prompt(task)
 
                 # Add formatted memory as system message
