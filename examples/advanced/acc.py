@@ -25,7 +25,7 @@ async def demo_basic_acc():
     agent = Agent(
         name="Assistant",
         model="gpt-4o-mini",
-        bounded_memory=True,  # Enable ACC
+        acc=True,  # Enable ACC
         observer=Observer.trace(),
     )
 
@@ -37,46 +37,31 @@ async def demo_basic_acc():
     print("✓ ACC maintains bounded context across turns")
 
 
-async def demo_acc_internals():
-    """Show how ACC works internally."""
-    print("\n--- ACC Internals ---")
+async def demo_custom_acc():
+    """Pass a custom ACC instance with specific bounds."""
+    print("\n--- Custom ACC Instance ---")
     
-    # Create bounded state manually
+    # Create custom ACC with smaller bounds
     state = BoundedMemoryState(
         max_constraints=5,
-        max_entities=10,
-        max_actions=5,
-        max_context=5,
+        max_entities=20,
+        max_actions=10,
+        max_context=10,
     )
-    
-    # Create compressor
     acc = AgentCognitiveCompressor(state=state)
     
-    # Update from conversation turns
-    await acc.update_from_turn(
-        user_message="Remember: I need responses in JSON format",
-        assistant_message="I'll format all responses as JSON.",
-        tool_calls=[],
-        current_task="API development help",
+    agent = Agent(
+        name="Assistant",
+        model="gpt-4o-mini",
+        acc=acc,  # Pass custom ACC instance
+        observer=Observer.trace(),
     )
+
+    await agent.run("Remember: Always respond in JSON format.", thread_id="custom")
+    await agent.run("What format should responses be in?", thread_id="custom")
     
-    await acc.update_from_turn(
-        user_message="My API endpoint is /users",
-        assistant_message="Got it, working with /users endpoint.",
-        tool_calls=[],
-        current_task="API development help",
-    )
-    
-    # Check state
-    print(f"Constraints: {len(state.constraints)}")
-    print(f"Entities:    {len(state.entities)}")
-    print(f"Actions:     {len(state.actions)}")
-    print(f"Utilization: {state.utilization:.0%}")
-    
-    # Format for LLM prompt
-    context = acc.format_for_prompt("Create a GET /users endpoint")
-    print(f"\nFormatted context ({len(context)} chars):")
-    print(context[:200] + "..." if len(context) > 200 else context)
+    print(f"ACC state - Constraints: {len(state.constraints)}, Entities: {len(state.entities)}")
+    print("✓ Custom ACC bounds applied")
 
 
 async def demo_drift_prevention():
@@ -86,7 +71,7 @@ async def demo_drift_prevention():
     agent = Agent(
         name="Assistant",
         model="gpt-4o-mini",
-        bounded_memory=True,
+        acc=True,
         observer=Observer.trace(),
     )
 
@@ -97,7 +82,7 @@ async def demo_drift_prevention():
     )
     
     # Many turns later... ACC keeps the constraint
-    for i in range(5):
+    for i in range(3):
         await agent.run(f"Question {i+1}: How do I handle errors?", thread_id="long-conv")
     
     # Verify constraint still present
@@ -106,7 +91,7 @@ async def demo_drift_prevention():
         thread_id="long-conv",
     )
     
-    print(f"\nResult (should have Python 3.12+ type hints):\n{result}")
+    print(f"\nResult (should have type hints):\n{str(result)[:300]}...")
 
 
 async def main():
@@ -115,7 +100,7 @@ async def main():
     print("=" * 50)
     
     await demo_basic_acc()
-    await demo_acc_internals()
+    await demo_custom_acc()
     await demo_drift_prevention()
     
     print("\n✓ Done")

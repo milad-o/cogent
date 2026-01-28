@@ -48,17 +48,17 @@ async def layer1_conversation():
     print("\n✓ Different thread = no memory of Alice\n")
 
 
-async def layer2_bounded_memory():
-    """Layer 2: Bounded Memory (ACC) - Prevents drift."""
-    print("\n=== Layer 2: Bounded Memory (ACC) ===")
-    print("Agent Cognitive Compressor - Prevents drift in long conversations\n")
+async def layer2_acc():
+    """Layer 2: ACC - Prevents drift."""
+    print("\n=== Layer 2: ACC (Agentic Context Compression) ===")
+    print("Prevents drift in long conversations\n")
 
     observer = Observer.trace()
 
     agent = Agent(
         name="Assistant",
         model="gpt4",
-        bounded_memory=True,  # Enable ACC
+        acc=True,  # Enable ACC
         instructions="You are a helpful assistant.",
         observer=observer,
     )
@@ -160,7 +160,7 @@ async def all_layers_together():
         name="SuperAgent",
         model="gpt4",
         conversation=True,      # Layer 1: Thread-based history (default)
-        bounded_memory=True,    # Layer 2: ACC for drift prevention
+        acc=True,               # Layer 2: ACC for drift prevention
         memory=True,            # Layer 3: Long-term facts
         cache=True,             # Layer 4: Semantic cache
         capabilities=[WebSearch()],
@@ -195,7 +195,7 @@ async def main():
     print("=" * 60)
 
     await layer1_conversation()
-    await layer2_bounded_memory()
+    await layer2_acc()
     await layer3_long_term_memory()
     await layer4_semantic_cache()
     await all_layers_together()
