@@ -8,13 +8,9 @@ Run: uv run python examples/advanced/acc_comparison.py
 
 import asyncio
 
-from dotenv import load_dotenv
-
-from cogent import Agent
+from cogent import Agent, Observer
 from cogent.memory import Memory
 from cogent.memory.acc import AgentCognitiveCompressor
-
-load_dotenv()
 
 # Simulate a long conversation
 CONVERSATION = [
@@ -38,11 +34,13 @@ async def run_with_transcript_replay():
     print("=" * 60)
 
     memory = Memory()
+    observer = Observer(level="trace")
     agent = Agent(
         name="Assistant",
         model="gpt-4o-mini",
         instructions="You are a helpful assistant. Be very brief.",
         memory=memory,
+        observer=observer,
     )
 
     # Run conversation
@@ -75,11 +73,13 @@ async def run_with_acc():
         model="gpt-4o-mini",
     )
     memory = Memory(acc=acc)
+    observer = Observer(level="trace")
     agent = Agent(
         name="Assistant",
         model="gpt-4o-mini",
         instructions="You are a helpful assistant. Be very brief.",
         memory=memory,
+        observer=observer,
     )
 
     # Run conversation
