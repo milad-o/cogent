@@ -959,8 +959,7 @@ class Agent:
             backend = InMemorySaver() if conversation else None
             self._memory = Memory(
                 saver=backend,  # Checkpointing for conversation
-                acc_enabled=acc_enabled,  # Layer 2: ACC
-                acc_instance=acc_instance,  # Optional pre-configured ACC
+                acc=acc,  # Layer 2: ACC (bool or instance)
             )
 
             # Layer 3: Long-term memory with remember/recall tools

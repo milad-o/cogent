@@ -9,6 +9,7 @@ Memory enables agents to:
 - Share state between agents
 - Perform semantic search over memories
 - Scope memories by user, team, or conversation
+- **ACC (Agentic Context Compression)** — Bounded context for long conversations
 
 ```python
 from cogent import Agent
@@ -21,6 +22,9 @@ value = await memory.recall("user_preference")
 
 # Wire to an agent
 agent = Agent(name="assistant", model=model, memory=memory)
+
+# Memory with ACC enabled (prevents drift in long conversations)
+memory = Memory(acc=True)
 ```
 
 ## Core Classes
@@ -653,6 +657,78 @@ See [tool-building.md](tool-building.md#semantic-caching) for more details.
 | Use Semantic Cache When | Don't Use When |
 |-------------------------|----------------|
 | User queries with variation | Need exact-match guarantees |
+
+---
+
+## ACC (Agentic Context Compression)
+
+ACC provides bounded memory for long conversations, preventing context drift and memory poisoning.
+
+### Basic Usage
+
+Enable ACC with `acc=True` on Memory or Agent:
+
+```python
+from cogent import Agent
+from cogent.memory import Memory
+
+# Option 1: Enable on Agent
+agent = Agent(name="Assistant", model="gpt-4o", acc=True)
+
+# Option 2: Enable on Memory (then pass to Agent)
+memory = Memory(acc=True)
+agent = Agent(name="Assistant", model="gpt-4o", memory=memory)
+```
+
+### Custom ACC Bounds
+
+For fine-grained control, pass an `AgentCognitiveCompressor` instance:
+
+```python
+from cogent import Agent
+from cogent.memory import Memory
+from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+
+# Create custom bounds
+state = BoundedMemoryState(
+    max_constraints=10,  # Rules, guidelines
+    max_entities=30,     # Facts, knowledge
+    max_actions=20,      # Past actions
+    max_context=15,      # Relevant context
+)
+acc = AgentCognitiveCompressor(state=state)
+
+# Pass to Memory
+memory = Memory(acc=acc)
+agent = Agent(name="Assistant", model="gpt-4o", memory=memory)
+
+# Or pass directly to Agent
+agent = Agent(name="Assistant", model="gpt-4o", acc=acc)
+```
+
+### Thread ID for Context Persistence
+
+ACC requires `thread_id` to persist context across multiple `run()` calls:
+
+```python
+# Same thread_id = context persists
+await agent.run("My name is Alice", thread_id="session-1")
+await agent.run("What's my name?", thread_id="session-1")  # Remembers!
+
+# Different thread_id = fresh context
+await agent.run("What's my name?", thread_id="session-2")  # Doesn't know
+```
+
+### When to Use ACC
+
+| Use ACC When | Don't Use When |
+|--------------|----------------|
+| Long conversations (>10 turns) | Short, one-off queries |
+| Need to prevent context drift | Stateless operations |
+| Bounded memory is critical | Need full conversation replay |
+| Multi-turn workflows | Simple Q&A |
+
+See [acc.md](acc.md) for detailed ACC documentation.
 | Similar questions rephrased | Outputs must be deterministic |
 | Intent-based matching | Query structure matters |
 | High query volume | Low query volume |
