@@ -33,21 +33,20 @@ await agent.run("What's my name?", thread_id="session-1")  # Remembers!
 
 ## Custom Bounds
 
-For fine-grained control, pass an `AgentCognitiveCompressor` instance:
+For fine-grained control, pass custom bounds directly to `AgentCognitiveCompressor`:
 
 ```python
 from cogent import Agent
 from cogent.memory import Memory
-from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+from cogent.memory.acc import AgentCognitiveCompressor
 
-# Create custom bounded state
-state = BoundedMemoryState(
+# Create ACC with custom bounds
+acc = AgentCognitiveCompressor(
     max_constraints=10,  # Rules, guidelines (default: 10)
     max_entities=30,     # Facts, knowledge (default: 50)
     max_actions=20,      # Past actions (default: 30)
     max_context=15,      # Relevant context (default: 20)
 )
-acc = AgentCognitiveCompressor(state=state)
 
 # Pass to Agent or Memory
 agent = Agent(name="Assistant", model="gpt-4o", acc=acc)
@@ -56,8 +55,8 @@ memory = Memory(acc=acc)
 agent = Agent(name="Assistant", model="gpt-4o", memory=memory)
 
 # Access state for monitoring
-print(f"Entities: {len(state.entities)}/{state.max_entities}")
-print(f"Actions: {len(state.actions)}/{state.max_actions}")
+print(f"Entities: {len(acc.state.entities)}/{acc.state.max_entities}")
+print(f"Actions: {len(acc.state.actions)}/{acc.state.max_actions}")
 ```
 
 ## When to Use ACC

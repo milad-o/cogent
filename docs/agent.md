@@ -479,14 +479,13 @@ agent = Agent(
 For long conversations (>10 turns), enable ACC to prevent memory drift:
 
 ```python
-from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+from cogent.memory.acc import AgentCognitiveCompressor
 
 # Simple: Enable with defaults
 agent = Agent(name="Assistant", model="gpt4", acc=True)
 
-# Advanced: Custom ACC instance with specific bounds
-state = BoundedMemoryState(max_constraints=5, max_entities=20)
-acc = AgentCognitiveCompressor(state=state)
+# Advanced: Custom ACC with specific bounds
+acc = AgentCognitiveCompressor(max_constraints=5, max_entities=20)
 agent = Agent(name="Assistant", model="gpt4", acc=acc)
 ```
 
