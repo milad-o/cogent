@@ -5,13 +5,15 @@ This is a minimal, focused class that coordinates:
 - Event publishing via EventBus
 - Event formatting via FormatterRegistry
 - Output via Sinks
+- Event capture for history/state tracking (opt-in)
 """
 
 from __future__ import annotations
 
+import fnmatch
 import sys
-from collections.abc import Callable
-from typing import TYPE_CHECKING, TextIO
+from collections.abc import Callable, Iterator
+from typing import TYPE_CHECKING, TextIO, overload
 
 from cogent.observability.core.bus import EventBus
 from cogent.observability.core.config import (
@@ -86,6 +88,12 @@ class Observer:
 
         # Subscribe to events
         observer.on("tool.*", lambda e: print(f"Tool event: {e.type}"))
+
+        # Capture events for history tracking
+        observer = Observer(level="trace", capture=["tool.result", "agent.*"])
+        # ... run agent ...
+        for event in observer.history("tool.result"):
+            print(event.data)
         ```
     """
 
@@ -95,6 +103,7 @@ class Observer:
         *,
         level: str | Level | None = None,
         stream: TextIO | None = None,
+        capture: list[str] | None = None,
     ) -> None:
         """
         Initialize observer.
@@ -103,6 +112,7 @@ class Observer:
             config: Full configuration object
             level: Level preset name or Level enum (shortcut for config)
             stream: Output stream (shortcut for config)
+            capture: Event patterns to capture for history (e.g., ["tool.result", "agent.*"])
         """
         # Build config from shortcuts or use provided
         if config is None:
@@ -136,6 +146,10 @@ class Observer:
         self._enabled = config.level != Level.OFF
         self._streaming_mode = False
 
+        # Event capture for history tracking
+        self._capture_patterns: list[str] = capture or []
+        self._captured_events: list[Event] = []
+
     # === Core API ===
 
     def emit(self, event_type: str, **data: object) -> Event | None:
@@ -164,6 +178,9 @@ class Observer:
         # Create event
         event = create_event(event_type, **data)
 
+        # Capture if pattern matches
+        self._maybe_capture(event)
+
         # Publish to bus (for subscribers)
         self._bus.publish(event)
 
@@ -188,6 +205,9 @@ class Observer:
 
         if not self._should_include(event.type):
             return
+
+        # Capture if pattern matches
+        self._maybe_capture(event)
 
         self._bus.publish(event)
         self._output(event)
@@ -366,7 +386,64 @@ class Observer:
         """
         return self._bus.stats()
 
+    # === Event History ===
+
+    @overload
+    def history(self) -> list[Event]: ...
+    @overload
+    def history(self, pattern: str) -> Iterator[Event]: ...
+
+    def history(self, pattern: str | None = None) -> list[Event] | Iterator[Event]:
+        """
+        Get captured events.
+
+        Must have set `capture=[...]` patterns when creating the Observer.
+
+        Args:
+            pattern: Optional glob pattern to filter events (e.g., "tool.*")
+                     If None, returns all captured events.
+
+        Returns:
+            List of all captured events, or iterator of matching events.
+
+        Example:
+            ```python
+            observer = Observer(level="trace", capture=["tool.result"])
+            # ... run agent ...
+
+            # Get all captured events
+            all_events = observer.history()
+
+            # Filter by pattern
+            for event in observer.history("tool.*"):
+                print(event.data.get("tool_name"))
+            ```
+        """
+        if pattern is None:
+            return self._captured_events.copy()
+
+        return (e for e in self._captured_events if fnmatch.fnmatch(e.type, pattern))
+
+    def clear_history(self) -> None:
+        """Clear all captured events."""
+        self._captured_events.clear()
+
+    @property
+    def captured(self) -> list[Event]:
+        """All captured events (alias for history())."""
+        return self._captured_events.copy()
+
     # === Internal ===
+
+    def _maybe_capture(self, event: Event) -> None:
+        """Capture event if it matches any capture pattern."""
+        if not self._capture_patterns:
+            return
+
+        for pattern in self._capture_patterns:
+            if fnmatch.fnmatch(event.type, pattern):
+                self._captured_events.append(event)
+                break  # Capture once even if multiple patterns match
 
     def _should_include(self, event_type: str) -> bool:
         """Check if event passes include/exclude filters."""
