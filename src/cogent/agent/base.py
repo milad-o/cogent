@@ -48,6 +48,7 @@ from cogent.tools.base import BaseTool
 if TYPE_CHECKING:
     from cogent.memory import MemorySaver, MemorySnapshot, InMemorySaver
     from cogent.memory.acc import AgentCognitiveCompressor
+    from cogent.memory.cache import SemanticCache
     from cogent.agent.resilience import ResilienceConfig, ToolResilience
     from cogent.agent.streaming import StreamChunk, StreamEvent
     from cogent.graph import GraphView
@@ -160,7 +161,7 @@ class Agent:
         conversation: bool = True,  # Layer 1: Thread-based message history (always on by default)
         acc: bool | AgentCognitiveCompressor = False,  # Layer 2: ACC for drift prevention
         memory: bool | Any = False,  # Layer 3: Long-term memory with remember/recall tools (or Memory object)
-        cache: bool = False,  # Layer 4: Semantic cache for tool outputs
+        cache: bool | SemanticCache = False,  # Layer 4: Semantic cache for tool outputs
         # HITL and streaming
         interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
         stream: bool = False,
@@ -207,6 +208,7 @@ class Agent:
                 - Caches similar tool calls using embedding similarity
                 - 80%+ hit rates, 7-10× speedup for repeated queries
                 - Enable for expensive tools (WebSearch, Database)
+                - Can pass True (auto-create) or SemanticCache instance
             interrupt_on: HITL rules - dict mapping tool names to approval rules
             stream: Enable token-by-token streaming by default
             reasoning: Enable extended thinking/chain-of-thought mode
@@ -926,7 +928,7 @@ class Agent:
         conversation: bool = True,
         acc: bool | AgentCognitiveCompressor = False,
         long_term_memory: bool | Any = False,
-        semantic_cache: bool = False,
+        semantic_cache: bool | SemanticCache = False,
     ) -> None:
         """Setup memory using 4-layer architecture.
 
@@ -934,10 +936,11 @@ class Agent:
             conversation: Layer 1 - Thread-based message history (default: True)
             acc: Layer 2 - Agent Cognitive Compressor (bool or ACC instance)
             long_term_memory: Layer 3 - Long-term memory with tools (bool or Memory object)
-            semantic_cache: Layer 4 - Semantic cache for tool outputs (default: False)
+            semantic_cache: Layer 4 - Semantic cache (bool or SemanticCache instance)
         """
         from cogent.memory import Memory, InMemorySaver
         from cogent.memory.acc import AgentCognitiveCompressor
+        from cogent.memory.cache import SemanticCache
 
         # Determine ACC configuration
         acc_enabled = bool(acc)
@@ -965,17 +968,20 @@ class Agent:
 
         # Layer 4: Semantic cache for tool outputs (shared across all tools)
         if semantic_cache:
-            from cogent.memory import SemanticCache
-            from cogent.models import create_embedding
-            
-            # Create shared semantic cache with default embedding model
-            embed_model = create_embedding("openai", "text-embedding-3-small")
-            self._semantic_cache = SemanticCache(
-                embedding_fn=embed_model.embed_query,
-                similarity_threshold=0.85,  # 85% similarity for cache hits
-                max_entries=10000,
-                default_ttl=86400,  # 24 hours
-            )
+            if isinstance(semantic_cache, SemanticCache):
+                # Use provided SemanticCache instance
+                self._semantic_cache = semantic_cache
+            else:
+                # Create default SemanticCache
+                from cogent.models import create_embedding
+                
+                embed_model = create_embedding("openai", "text-embedding-3-small")
+                self._semantic_cache = SemanticCache(
+                    embedding_fn=embed_model.embed_query,
+                    similarity_threshold=0.85,  # 85% similarity for cache hits
+                    max_entries=10000,
+                    default_ttl=86400,  # 24 hours
+                )
         else:
             self._semantic_cache = None
 
