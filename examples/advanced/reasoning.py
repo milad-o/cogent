@@ -117,7 +117,7 @@ async def example_basic_reasoning():
         model="gpt4",
         tools=[get_company_data, calculate_metrics],
         reasoning=True,  # Enable default reasoning
-        observer=Observer.trace(),  # Show all reasoning events
+        observer=Observer(level="trace"),  # Show all reasoning events
     )
 
     result = await agent.run(

@@ -55,7 +55,7 @@ def test_config_object_types():
         name="Test",
         model=model,
         # Observer should be recognized as Observer type
-        observer=Observer.debug(),  # <-- Type hint should show Observer
+        observer=Observer(level="debug"),  # <-- Type hint should show Observer
         # ReasoningConfig should be recognized
         reasoning=ReasoningConfig.standard(),  # <-- Type hint should work
         # SpawningConfig should be recognized

@@ -26,7 +26,7 @@ async def demo_basic_acc():
         name="Assistant",
         model="gpt-4o-mini",
         acc=True,  # Enable ACC
-        observer=Observer.trace(),
+        observer=Observer(level="trace"),
     )
 
     # Simulate conversation that would normally cause drift
@@ -54,7 +54,7 @@ async def demo_custom_acc():
         name="Assistant",
         model="gpt-4o-mini",
         acc=acc,  # Pass custom ACC instance
-        observer=Observer.trace(),
+        observer=Observer(level="trace"),
     )
 
     await agent.run("Remember: Always respond in JSON format.", thread_id="custom")
@@ -72,7 +72,7 @@ async def demo_drift_prevention():
         name="Assistant",
         model="gpt-4o-mini",
         acc=True,
-        observer=Observer.trace(),
+        observer=Observer(level="trace"),
     )
 
     # Initial constraint

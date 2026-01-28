@@ -37,7 +37,7 @@ async def demo_websearch_cache():
         model="gpt-4o-mini",
         capabilities=[WebSearch(max_results=3)],
         cache=True,  # Auto-create SemanticCache
-        observer=Observer.trace(),
+        observer=Observer(level="trace"),
     )
 
     # First search (cache miss)
@@ -73,7 +73,7 @@ async def demo_custom_cache_instance():
         model="gpt-4o-mini",
         tools=[expensive_analysis, slow_lookup],
         cache=custom_cache,  # Pass instance directly
-        observer=Observer.trace(),
+        observer=Observer(level="trace"),
     )
 
     # First analysis (cache miss)

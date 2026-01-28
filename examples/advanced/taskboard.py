@@ -30,7 +30,7 @@ async def main() -> None:
     print("=" * 70)
 
     # Create agent with taskboard enabled
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     agent = Agent(
         name="ProjectManager",

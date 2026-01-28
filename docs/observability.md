@@ -20,7 +20,7 @@ from cogent.observability import Observer
 agent = Agent(name="assistant", model=model, verbose=True)
 
 # Advanced: full observability
-observer = Observer.trace()
+observer = Observer(level="trace")
 result = await agent.run("Hello", observer=observer)
 ```
 
@@ -34,11 +34,11 @@ Unified observability interface with preset levels:
 from cogent.observability import Observer
 
 # Preset levels (recommended)
-observer = Observer.silent()    # No output
-observer = Observer.progress()  # Basic progress
-observer = Observer.verbose()   # Show agent outputs
-observer = Observer.debug()     # Include tool calls (excludes raw LLM content)
-observer = Observer.trace()     # Maximum detail + graph (excludes raw LLM content)
+observer = Observer(level="silent")    # No output
+observer = Observer(level="progress")  # Basic progress
+observer = Observer(level="verbose")   # Show agent outputs
+observer = Observer(level="debug")     # Include tool calls (excludes raw LLM content)
+observer = Observer(level="trace")     # Maximum detail + graph (excludes raw LLM content)
 
 # Use with agents
 result = await agent.run("Query", observer=observer)
@@ -128,7 +128,7 @@ observer = Observer(
 )
 # Now you'll see prompts, system messages, response content
 
-# Note: Observer.debug() and Observer.trace() do NOT include Channel.LLM by default
+# Note: Observer(level="debug") and Observer(level="trace") do NOT include Channel.LLM by default
 # This is intentional - LLM content requires explicit opt-in for privacy
 ```
 
@@ -199,7 +199,7 @@ The Flow automatically bridges the two systems:
 from cogent import Flow, Agent
 from cogent.observability import Observer
 
-observer = Observer.trace()
+observer = Observer(level="trace")
 flow = Flow(observer=observer)  # Observer attaches to TraceBus
 
 # When you register reactors:
@@ -236,7 +236,7 @@ Different observer levels reveal different aspects of flow execution:
 No output whatsoever.
 
 ```python
-observer = Observer.silent()
+observer = Observer(level="silent")
 flow = Flow(observer=observer)
 await flow.run("task")
 # → (no output)
@@ -246,7 +246,7 @@ await flow.run("task")
 Basic flow progress only - good for production monitoring.
 
 ```python
-observer = Observer.progress()
+observer = Observer(level="progress")
 flow = Flow(observer=observer)
 await flow.run("task")
 ```
@@ -263,7 +263,7 @@ await flow.run("task")
 Flow progress + agent outputs - shows what's happening.
 
 ```python
-observer = Observer.verbose()
+observer = Observer(level="verbose")
 flow = Flow(observer=observer)
 await flow.run("task")
 ```
@@ -284,7 +284,7 @@ await flow.run("task")
 Detailed execution - includes events, conditions, reactor matching.
 
 ```python
-observer = Observer.debug()
+observer = Observer(level="debug")
 flow = Flow(observer=observer)
 await flow.run("task")
 ```
@@ -324,7 +324,7 @@ await flow.run("task")
 Everything + execution graphs and full event history.
 
 ```python
-observer = Observer.trace()
+observer = Observer(level="trace")
 flow = Flow(observer=observer)
 await flow.run("task")
 
@@ -342,7 +342,7 @@ for trace in observer.traces:
 See which events triggered which reactors:
 
 ```python
-observer = Observer.debug()
+observer = Observer(level="debug")
 flow = Flow(observer=observer)
 
 result = await flow.run("task")
@@ -362,7 +362,7 @@ for event in reactive_events:
 Identify slow reactors and bottlenecks:
 
 ```python
-observer = Observer.trace()
+observer = Observer(level="trace")
 flow = Flow(observer=observer)
 
 result = await flow.run("task")
@@ -385,7 +385,7 @@ for event in slow_agents:
 See how events flow through the system:
 
 ```python
-observer = Observer.trace()
+observer = Observer(level="trace")
 flow = Flow(observer=observer)
 
 result = await flow.run("task")
@@ -408,7 +408,7 @@ for i, event in enumerate(events, 1):
 Find events that didn't match any reactors:
 
 ```python
-observer = Observer.debug()
+observer = Observer(level="debug")
 flow = Flow(observer=observer)
 
 result = await flow.run("task")
@@ -432,7 +432,7 @@ if unmatched:
 Save flow execution for later analysis:
 
 ```python
-observer = Observer.trace()
+observer = Observer(level="trace")
 flow = Flow(observer=observer)
 
 result = await flow.run("task")
@@ -460,7 +460,7 @@ print(f"✅ Exported {len(traces_data)} traces")
 Share an observer across multiple flow executions:
 
 ```python
-observer = Observer.debug()
+observer = Observer(level="debug")
 
 # Flow 1
 flow1 = Flow(observer=observer)
@@ -481,9 +481,9 @@ print(f"Total flows observed: {len(all_flows)}")
 
 ### Best Practices
 
-1. **Start with PROGRESS**: Use `Observer.progress()` for production
-2. **DEBUG for development**: Use `Observer.debug()` during development
-3. **TRACE for troubleshooting**: Use `Observer.trace()` when debugging issues
+1. **Start with PROGRESS**: Use `Observer(level="progress")` for production
+2. **DEBUG for development**: Use `Observer(level="debug")` during development
+3. **TRACE for troubleshooting**: Use `Observer(level="trace")` when debugging issues
 4. **Filter traces**: Don't process all traces - filter by type
 5. **Export for analysis**: Save traces to JSON for offline analysis
 6. **Monitor performance**: Track `duration_ms` in traces to find bottlenecks
@@ -500,7 +500,7 @@ model = get_model()
 researcher = Agent(name="researcher", model=model)
 writer = Agent(name="writer", model=model)
 
-observer = Observer.debug()
+observer = Observer(level="debug")
 flow = Flow(observer=observer)
 
 flow.register(researcher, on="task.created", emits="research.done")

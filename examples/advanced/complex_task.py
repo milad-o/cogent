@@ -18,11 +18,11 @@ Usage:
     uv run python examples/advanced/complex_task.py
 
 Observer levels (from quiet to verbose):
-    Observer.quiet()    - No output
-    Observer.result()   - Final result only
-    Observer.progress() - Key milestones (default)
-    Observer.detailed() - Tool calls and timing
-    Observer.debug()    - Everything
+    Observer(level="quiet")    - No output
+    Observer(level="result")   - Final result only
+    Observer(level="progress") - Key milestones (default)
+    Observer(level="detailed") - Tool calls and timing
+    Observer(level="debug")    - Everything
 """
 
 import asyncio
@@ -120,7 +120,7 @@ async def main():
     print("=" * 60)
 
     # Use detailed observer to see tool calls
-    observer = Observer.detailed()
+    observer = Observer(level="detailed")
 
     # Single agent with multiple tools - output schema only applies to final response
     agent = Agent(

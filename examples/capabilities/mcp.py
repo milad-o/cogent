@@ -60,7 +60,7 @@ async def demo_research_agent() -> None:
 Use your available tools to find current, accurate information.
 Make ONE search, then respond with a concise answer citing sources.""",
         capabilities=[mcp],
-        observer=Observer.debug(),
+        observer=Observer(level="debug"),
     )
 
     try:
@@ -97,7 +97,7 @@ async def demo_news_analyst() -> None:
 Find recent news on the topic and provide a brief summary.
 Make ONE search, then respond with key headlines and sources.""",
         capabilities=[mcp],
-        observer=Observer.debug(),
+        observer=Observer(level="debug"),
     )
 
     try:
@@ -135,7 +135,7 @@ Make ONE search to find the answer.
 Once you find the fact, IMMEDIATELY respond with the answer and source.
 Do NOT keep searching for more sources.""",
         capabilities=[mcp],
-        observer=Observer.debug(),
+        observer=Observer(level="debug"),
     )
 
     try:
@@ -167,7 +167,7 @@ async def demo_http_transport() -> None:
         model="gpt4",
         instructions="You are a research assistant. Use your tools to search. Be concise.",
         capabilities=[mcp],
-        observer=Observer.debug(),
+        observer=Observer(level="debug"),
     )
 
     try:

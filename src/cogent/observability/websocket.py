@@ -196,7 +196,7 @@ class WebSocketServer:
             self.port,
         )
         self._running = True
-        print(f"🌐 WebSocket server started at ws://{self.host}:{self.port}")
+        print(f"[WS] WebSocket server started at ws://{self.host}:{self.port}")
 
     async def stop(self) -> None:
         """Stop the WebSocket server."""
@@ -204,7 +204,7 @@ class WebSocketServer:
             self._server.close()
             await self._server.wait_closed()
             self._running = False
-            print("🌐 WebSocket server stopped")
+            print("[WS] WebSocket server stopped")
 
     @property
     def is_running(self) -> bool:
@@ -305,7 +305,7 @@ async def start_websocket_server(
         The started WebSocketServer, or None if websockets not available
     """
     if not WEBSOCKET_AVAILABLE:
-        print("⚠️ WebSocket not available. Install with: uv add websockets")
+        print("[WARN] WebSocket not available. Install with: uv add websockets")
         return None
 
     server = WebSocketServer(event_bus, host, port)

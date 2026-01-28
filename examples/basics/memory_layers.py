@@ -23,7 +23,7 @@ async def layer1_conversation():
     print("\n=== Layer 1: Conversation Memory ===")
     print("Thread-based message history - ON by default\n")
 
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     # conversation=True is the default!
     agent = Agent(
@@ -53,7 +53,7 @@ async def layer2_acc():
     print("\n=== Layer 2: ACC (Agentic Context Compression) ===")
     print("Prevents drift in long conversations\n")
 
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     agent = Agent(
         name="Assistant",
@@ -78,7 +78,7 @@ async def layer3_long_term_memory():
     print("\n=== Layer 3: Long-term Memory ===")
     print("remember/recall tools for persistent facts\n")
 
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     agent = Agent(
         name="Assistant",
@@ -119,7 +119,7 @@ async def layer4_semantic_cache():
 
     from cogent.capabilities import WebSearch
 
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     agent = Agent(
         name="Researcher",
@@ -154,7 +154,7 @@ async def all_layers_together():
 
     from cogent.capabilities import WebSearch
 
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     agent = Agent(
         name="SuperAgent",

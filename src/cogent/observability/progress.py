@@ -115,7 +115,7 @@ class OutputConfig:
     indent: str = "  "
     use_unicode: bool = True
     use_colors: bool = True
-    spinner_chars: str = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    spinner_chars: str = "|/-\\|/-\\|/"
 
     @classmethod
     def minimal(cls) -> OutputConfig:
@@ -221,35 +221,35 @@ class Symbols:
     """Unicode symbols for output."""
 
     # Status indicators
-    CHECK = "✓"
-    CROSS = "✗"
-    ARROW = "→"
-    BULLET = "•"
-    STAR = "★"
-    CIRCLE = "○"
-    FILLED_CIRCLE = "●"
+    CHECK = "[ok]"
+    CROSS = "[X]"
+    ARROW = "->"
+    BULLET = "*"
+    STAR = "*"
+    CIRCLE = "o"
+    FILLED_CIRCLE = "(o)"
 
     # Progress
-    SPINNER: ClassVar[list[str]] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-    BAR_FILLED = "█"
-    BAR_EMPTY = "░"
-    BAR_PARTIAL: ClassVar[list[str]] = ["▏", "▎", "▍", "▌", "▋", "▊", "▉"]
+    SPINNER: ClassVar[list[str]] = ["|", "/", "-", "\\", "|", "/", "-", "\\", "|", "/"]
+    BAR_FILLED = "#"
+    BAR_EMPTY = "-"
+    BAR_PARTIAL: ClassVar[list[str]] = ["|", "|", "|", "|", "|", "|", "|"]
 
     # DAG/Tree
-    BRANCH = "├──"
-    LAST_BRANCH = "└──"
-    PIPE = "│"
-    CORNER = "└"
-    TEE = "├"
-    HORIZONTAL = "─"
+    BRANCH = "+--"
+    LAST_BRANCH = "+--"
+    PIPE = "|"
+    CORNER = "+"
+    TEE = "+"
+    HORIZONTAL = "-"
 
     # Boxes
-    BOX_TOP_LEFT = "┌"
-    BOX_TOP_RIGHT = "┐"
-    BOX_BOTTOM_LEFT = "└"
-    BOX_BOTTOM_RIGHT = "┘"
-    BOX_HORIZONTAL = "─"
-    BOX_VERTICAL = "│"
+    BOX_TOP_LEFT = "+"
+    BOX_TOP_RIGHT = "+"
+    BOX_BOTTOM_LEFT = "+"
+    BOX_BOTTOM_RIGHT = "+"
+    BOX_HORIZONTAL = "-"
+    BOX_VERTICAL = "|"
 
     # ASCII fallbacks
     ASCII_CHECK = "[OK]"
@@ -429,7 +429,7 @@ class RichRenderer(BaseRenderer):
         data = event.data
 
         if event_type == "start":
-            parts.append(s.info("🚀"))
+            parts.append(s.info("[starting]"))
             parts.append(s.bold(data.get("title", "Starting")))
 
         elif event_type == "complete":
@@ -482,7 +482,7 @@ class RichRenderer(BaseRenderer):
             wave = data.get("wave", 0)
             total = data.get("total_waves", 0)
             parallel = data.get("parallel_calls", 0)
-            parts.append(s.info(f"⚡ Wave {wave}/{total}:"))
+            parts.append(s.info(f"Wave {wave}/{total}:"))
             parts.append(f"{parallel} parallel calls")
 
         elif event_type == "step":
@@ -506,7 +506,7 @@ class RichRenderer(BaseRenderer):
             attempt = data.get("attempt", 0)
             max_retries = data.get("max_retries", 0)
             delay = data.get("delay", 0)
-            parts.append(s.warning("🔄"))
+            parts.append(s.warning("[retry]"))
             parts.append(s.tool(tool))
             parts.append(f"retry {attempt}/{max_retries}")
             parts.append(s.dim(f"in {delay:.1f}s"))
@@ -514,14 +514,14 @@ class RichRenderer(BaseRenderer):
         elif event_type == "circuit_open":
             tool = data.get("tool", "Unknown")
             reset_timeout = data.get("reset_timeout", 30)
-            parts.append(s.error("⚡"))
+            parts.append(s.error("[OPEN]"))
             parts.append(s.tool(tool))
             parts.append(s.error("CIRCUIT OPEN"))
             parts.append(s.dim(f"(blocked for {reset_timeout}s)"))
 
         elif event_type == "circuit_close":
             tool = data.get("tool", "Unknown")
-            parts.append(s.success("⚡"))
+            parts.append(s.success("[CLOSED]"))
             parts.append(s.tool(tool))
             parts.append(s.success("circuit recovered"))
 
@@ -529,9 +529,9 @@ class RichRenderer(BaseRenderer):
             from_tool = data.get("from_tool", "?")
             to_tool = data.get("to_tool", "?")
             reason = data.get("reason", "")
-            parts.append(s.warning("↩️"))
+            parts.append(s.warning("[fallback]"))
             parts.append(s.tool(from_tool))
-            parts.append(s.dim("→"))
+            parts.append(s.dim("->"))
             parts.append(s.tool(to_tool))
             if reason:
                 parts.append(s.dim(f"({reason})"))
@@ -539,14 +539,14 @@ class RichRenderer(BaseRenderer):
         elif event_type == "recovery":
             tool = data.get("tool", "Unknown")
             method = data.get("method", "retry")
-            parts.append(s.success("✅"))
+            parts.append(s.success("[ok]"))
             parts.append(s.tool(tool))
             parts.append(s.success("recovered"))
             parts.append(s.dim(f"via {method}"))
             if method == "retry" and "attempts" in data:
                 parts.append(s.dim(f"({data['attempts']} attempts)"))
             elif method == "fallback" and "fallback_tool" in data:
-                parts.append(s.dim(f"→ {data['fallback_tool']}"))
+                parts.append(s.dim(f"-> {data['fallback_tool']}"))
 
         else:
             # Generic rendering
@@ -1154,7 +1154,7 @@ class ProgressTracker:
         if not self._events:
             return "No events recorded"
 
-        lines = ["Timeline:", "─" * 40]
+        lines = ["Timeline:", "-" * 40]
 
         start_time = self._events[0].timestamp
 
@@ -1163,17 +1163,17 @@ class ProgressTracker:
             time_str = f"+{delta:.2f}s"
 
             if event.event_type == "start":
-                symbol = "🚀"
+                symbol = "[>]"
             elif event.event_type == "complete":
-                symbol = "✓"
+                symbol = "[ok]"
             elif event.event_type == "error":
-                symbol = "✗"
+                symbol = "[X]"
             elif event.event_type == "agent_complete":
-                symbol = "👤"
+                symbol = "[A]"
             elif event.event_type == "tool_result":
-                symbol = "🔧"
+                symbol = "[T]"
             else:
-                symbol = "•"
+                symbol = "*"
 
             desc = (
                 event.data.get("title")
@@ -1378,23 +1378,23 @@ def render_dag_ascii(
     # Render
     lines = []
     status_symbols = {
-        "pending": "○",
-        "running": "◐",
-        "completed": "●",
-        "failed": "✗",
+        "pending": "[ ]",
+        "running": "[~]",
+        "completed": "[x]",
+        "failed": "[X]",
     }
 
     for i, level in enumerate(levels):
         level_nodes = []
         for node in level:
             status = (node_status or {}).get(node, "pending")
-            symbol = status_symbols.get(status, "○")
+            symbol = status_symbols.get(status, "o")
             level_nodes.append(f"{symbol} {node}")
 
         lines.append(f"  Level {i + 1}: {' | '.join(level_nodes)}")
 
         if i < len(levels) - 1:
-            lines.append("      │")
-            lines.append("      ▼")
+            lines.append("      |")
+            lines.append("      v")
 
     return "\n".join(lines)

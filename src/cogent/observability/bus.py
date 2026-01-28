@@ -264,7 +264,7 @@ class TraceBus:
                 handler(event)
         except Exception as e:
             # Log but don't propagate handler errors
-            print(f"⚠️ Event handler error: {e}")
+            print(f"[WARN] Event handler error: {e}")
 
     async def _broadcast_to_websockets(self, event: Trace) -> None:
         """

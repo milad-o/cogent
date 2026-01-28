@@ -54,7 +54,7 @@ result = await agent.run("Find the latest news on AI agents")
 **TaskBoard & Observability** 📋
 - ✨ **TaskBoard** — Built-in task tracking system for complex multi-step workflows
 - 🔧 **Token aggregation** — Fixed token usage reporting to aggregate from all executor messages
-- 📊 **Observer.detailed()** — New factory method for detailed observability output
+- 📊 **Observer(level="detailed")** — New preset for detailed observability output
 
 **TaskBoard tools:**
 - `add_task` — Add tasks with optional dependencies
@@ -658,7 +658,7 @@ from cogent.observability import Observer
 
 flow = Flow(
     agents=[...],
-    observer=Observer.detailed(),
+    observer=Observer(level="detailed"),
 )
 ```
 

@@ -24,7 +24,7 @@ async def demo_generator_verifier() -> None:
     print("=" * 60)
     print()
     
-    observer = Observer.trace()
+    observer = Observer(level="trace")
     
     # Generator agent
     generator = Agent(
@@ -111,7 +111,7 @@ async def demo_parallel_analysis() -> None:
     print("=" * 60)
     print()
     
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     # Three specialist agents
     sentiment_agent = Agent(

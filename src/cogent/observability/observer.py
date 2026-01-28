@@ -16,7 +16,7 @@ Example - Agent with Observer:
     ```python
     from cogent import Agent, Observer
 
-    observer = Observer.verbose()
+    observer = Observer(level="verbose")
     agent = Agent(
         name="Assistant",
         model=model,
@@ -31,7 +31,7 @@ Example - Flow with Observer:
     ```python
     from cogent import Flow, Agent, Observer
 
-    observer = Observer.trace()  # Maximum detail + graph
+    observer = Observer(level="trace")  # Maximum detail + graph
 
     flow = Flow(
         name="my-flow",
@@ -47,7 +47,7 @@ Example - Flow with Observer:
 Example - Full Control:
     ```python
     observer = Observer(
-        level=ObservabilityLevel.DEBUG,
+        level="debug",
         channels=[Channel.AGENTS, Channel.TOOLS],
         show_timestamps=True,
         on_event=my_callback,
@@ -61,12 +61,12 @@ Example - Subscribe to LLM Events (Opt-in):
     # By default, LLM events show subtle presence only
     # To see detailed LLM request/response content, subscribe to LLM channel
     observer = Observer(
-        level=ObservabilityLevel.DEBUG,
+        level="debug",
         channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM],  # Add LLM channel
     )
 
     # Or use TRACE level to see all LLM details
-    observer = Observer.trace()  # Includes all channels
+    observer = Observer(level="trace")  # Includes all channels
     ```
 """
 
@@ -413,18 +413,21 @@ class Observer:
     of flow execution. It can be configured with:
 
     - Preset levels (OFF, RESULT, PROGRESS, DETAILED, DEBUG, TRACE)
+    - String level shortcuts ("off", "minimal", "progress", "verbose", "detailed", "debug", "trace")
     - Specific channels (AGENTS, TOOLS, MESSAGES, etc.)
     - Custom callbacks for events
     - Output format and styling
 
-    Example - Quick setup:
+    Example - Quick setup with string levels:
         ```python
-        # Use presets
-        observer = Observer.off()       # No output
-        observer = Observer.minimal()   # Results only
-        observer = Observer.progress()  # Key milestones
-        observer = Observer.detailed()  # Tool calls, timing
-        observer = Observer.debug()     # Everything
+        # Use string presets (recommended)
+        observer = Observer(level="off")       # No output
+        observer = Observer(level="minimal")   # Results only
+        observer = Observer(level="progress")  # Key milestones (default)
+        observer = Observer(level="verbose")   # Agent thoughts with content
+        observer = Observer(level="detailed")  # Tool calls, timing
+        observer = Observer(level="debug")     # Everything
+        observer = Observer(level="trace")     # Maximum detail + graph
 
         flow = Flow(..., observer=observer)
         ```
@@ -458,7 +461,7 @@ class Observer:
     Example - Detailed configuration:
         ```python
         observer = Observer(
-            level=ObservabilityLevel.DETAILED,
+            level="detailed",
             channels=[Channel.AGENTS, Channel.TOOLS],
             show_timestamps=True,
             show_duration=True,
@@ -469,17 +472,142 @@ class Observer:
         ```
     """
 
+    # Level presets - define the default configuration for each string level
+    _LEVEL_PRESETS: dict[str, dict] = {
+        "off": {
+            "level": ObservabilityLevel.OFF,
+        },
+        "minimal": {
+            "level": ObservabilityLevel.RESULT,
+            "channels": [Channel.TASKS],
+        },
+        "progress": {
+            "level": ObservabilityLevel.PROGRESS,
+            "channels": [Channel.AGENTS, Channel.TASKS, Channel.FLOW],
+        },
+        "normal": {
+            "level": ObservabilityLevel.PROGRESS,
+            "channels": [Channel.AGENTS, Channel.TASKS, Channel.FLOW],
+        },
+        "verbose": {
+            "level": ObservabilityLevel.PROGRESS,
+            "channels": [Channel.AGENTS, Channel.TASKS, Channel.FLOW],
+            "show_duration": True,
+            "truncate": 500,
+        },
+        "detailed": {
+            "level": ObservabilityLevel.DETAILED,
+            "channels": [Channel.AGENTS, Channel.TOOLS, Channel.TASKS, Channel.FLOW],
+            "show_timestamps": True,
+            "show_duration": True,
+        },
+        "debug": {
+            "level": ObservabilityLevel.DEBUG,
+            "channels": [
+                Channel.AGENTS,
+                Channel.TOOLS,
+                Channel.MESSAGES,
+                Channel.TASKS,
+                Channel.STREAMING,
+                Channel.MEMORY,
+                Channel.RETRIEVAL,
+                Channel.DOCUMENTS,
+                Channel.MCP,
+                Channel.FLOW,
+                Channel.SYSTEM,
+                Channel.RESILIENCE,
+            ],
+            "show_timestamps": True,
+            "show_duration": True,
+            "show_trace_ids": True,
+            "truncate": 0,
+        },
+        "trace": {
+            "level": ObservabilityLevel.TRACE,
+            "channels": [
+                Channel.AGENTS,
+                Channel.TOOLS,
+                Channel.MESSAGES,
+                Channel.TASKS,
+                Channel.STREAMING,
+                Channel.MEMORY,
+                Channel.RETRIEVAL,
+                Channel.DOCUMENTS,
+                Channel.MCP,
+                Channel.FLOW,
+                Channel.SYSTEM,
+                Channel.RESILIENCE,
+            ],
+            "show_timestamps": True,
+            "show_duration": True,
+            "show_trace_ids": True,
+            "truncate": 0,
+        },
+        "json": {
+            "level": ObservabilityLevel.DETAILED,
+            "channels": [Channel.ALL],
+            "format": OutputFormat.JSON,
+            "show_timestamps": True,
+        },
+        "agents_only": {
+            "level": ObservabilityLevel.DETAILED,
+            "channels": [Channel.AGENTS],
+            "show_timestamps": True,
+        },
+        "tools_only": {
+            "level": ObservabilityLevel.DETAILED,
+            "channels": [Channel.TOOLS],
+            "show_timestamps": True,
+        },
+        "messages_only": {
+            "level": ObservabilityLevel.DETAILED,
+            "channels": [Channel.MESSAGES],
+        },
+        "resilience_only": {
+            "level": ObservabilityLevel.DETAILED,
+            "channels": [Channel.RESILIENCE, Channel.TOOLS],
+            "show_timestamps": True,
+        },
+        "streaming": {
+            "level": ObservabilityLevel.DEBUG,
+            "channels": [Channel.AGENTS, Channel.STREAMING, Channel.TASKS],
+            "show_timestamps": True,
+            "show_duration": True,
+        },
+    }
+
+    @staticmethod
+    def _resolve_level_preset(level: ObservabilityLevel | str) -> dict:
+        """Resolve a level (string or enum) to preset configuration."""
+        if isinstance(level, str):
+            preset_name = level.lower().replace("-", "_")
+            if preset_name in Observer._LEVEL_PRESETS:
+                return Observer._LEVEL_PRESETS[preset_name].copy()
+            # Try to match as enum name
+            try:
+                enum_level = ObservabilityLevel[level.upper()]
+                return {"level": enum_level}
+            except KeyError:
+                valid_levels = list(Observer._LEVEL_PRESETS.keys()) + [
+                    e.name.lower() for e in ObservabilityLevel
+                ]
+                raise ValueError(
+                    f"Invalid level '{level}'. Valid levels: {', '.join(valid_levels)}"
+                )
+        # Already an ObservabilityLevel enum
+        return {"level": level}
+
     def __init__(
         self,
-        level: ObservabilityLevel = ObservabilityLevel.PROGRESS,
+        level: ObservabilityLevel | str = ObservabilityLevel.PROGRESS,
         channels: list[Channel] | set[Channel] | None = None,
         *,
         # Output
         stream: TextIO | None = None,
         format: OutputFormat = OutputFormat.RICH,
-        show_timestamps: bool = False,
-        show_duration: bool = True,
-        show_trace_ids: bool = False,
+        show_timestamps: bool | None = None,
+        show_duration: bool | None = None,
+        show_trace_ids: bool | None = None,
         # Mid-level API: single output limit (applies to all content types)
         max_output: int | None = None,
         # Low-level API: fine-grained truncation (advanced users)
@@ -508,21 +636,21 @@ class Observer:
         exclude_tools: set[str] | list[str] | None = None,
     ) -> None:
         """
-        Create a Observer.
-
-        API Levels:
-            - **High level**: Use presets like `Observer.minimal()`, `Observer.verbose()`, etc.
-            - **Mid level**: Use `max_output` for simple output limiting
-            - **Low level**: Use individual `truncate_*` params for fine control
+        Create an Observer.
 
         Args:
-            level: Verbosity level (OFF through TRACE)
-            channels: Which event channels to observe (default: ALL)
+            level: Verbosity level - can be:
+                - String preset: "off", "minimal", "progress", "verbose", "detailed", "debug", "trace"
+                - ObservabilityLevel enum: ObservabilityLevel.PROGRESS, etc.
+                
+                String presets apply sensible defaults for channels and display options.
+                
+            channels: Which event channels to observe (default depends on level preset)
             stream: Output stream (default: stdout)
             format: Output format (TEXT, RICH, JSON)
-            show_timestamps: Show timestamps in output
-            show_duration: Show operation duration
-            show_trace_ids: Show correlation IDs
+            show_timestamps: Show timestamps in output (default depends on level)
+            show_duration: Show operation duration (default depends on level)
+            show_trace_ids: Show correlation IDs (default depends on level)
             max_output: Max chars for ALL content types (None = no limit).
                         Simple API - use this instead of individual truncate params.
             truncate: Max chars for general content (advanced, overrides max_output)
@@ -541,6 +669,24 @@ class Observer:
             include_tools: Only these tools (None = all)
             exclude_tools: Exclude these tools
         """
+        # === Resolve string level to preset configuration ===
+        preset = self._resolve_level_preset(level)
+        resolved_level = preset["level"]
+        
+        # Apply preset defaults, but allow explicit overrides
+        if channels is None:
+            channels = preset.get("channels")
+        if show_timestamps is None:
+            show_timestamps = preset.get("show_timestamps", False)
+        if show_duration is None:
+            show_duration = preset.get("show_duration", True)
+        if show_trace_ids is None:
+            show_trace_ids = preset.get("show_trace_ids", False)
+        if truncate is None and max_output is None:
+            truncate = preset.get("truncate", 0)
+        if format == OutputFormat.RICH and "format" in preset:
+            format = preset["format"]
+        
         # Resolve truncation: low-level overrides mid-level, default is 0 (no limit)
         base_limit = max_output if max_output is not None else 0
         final_truncate = truncate if truncate is not None else base_limit
@@ -555,7 +701,7 @@ class Observer:
         )
 
         self.config = ObserverConfig(
-            level=level,
+            level=resolved_level,
             channels=set(channels) if channels else {Channel.ALL},
             stream=stream or sys.stdout,
             format=format,
@@ -858,7 +1004,7 @@ class Observer:
             # Will show tokens as they arrive:
             # ▸ [Agent] streaming... (gpt-4o)
             # Hello world...  <- tokens appear in real-time
-            # ✓ [Agent] stream complete (1.2s, 45 tok/s)
+            # [ok] [Agent] stream complete (1.2s, 45 tok/s)
             ```
         """
         return cls(
@@ -1230,7 +1376,7 @@ class Observer:
         # ═══════════════════════════════════════════════════════════
         # USER & OUTPUT EVENTS - Consistent [Name] format
         # Format: [User] 👤 input: content
-        #         [Agent] 📤 output (duration)
+        #         [Agent] [>>] output (duration)
         # ═══════════════════════════════════════════════════════════
 
         if event_type == TraceType.USER_INPUT:
@@ -1542,8 +1688,8 @@ class Observer:
 
         # ═══════════════════════════════════════════════════════════
         # TOOL EVENTS - Shown as children of agents with consistent indentation
-        # Format: [Agent]   ↳ 🔧 tool_name
-        #         [Agent]     → result preview
+        # Format: [Agent]   |-> [T] tool_name
+        #         [Agent]     -> result preview
         # ═══════════════════════════════════════════════════════════
 
         elif event_type == TraceType.TOOL_CALLED:
@@ -1582,14 +1728,14 @@ class Observer:
             )
             result_clean = result_str.replace("\n", " ").strip()
 
-            # Format: [Agent] [tool-result] tool_name (duration) ⮕ result
+            # Format: [Agent] [tool-result] tool_name (duration) -> result
             result_part = ""
             if result_clean and len(result_clean) < 120:
-                result_part = f" {s.dim('⮕')} {result_clean}"
+                result_part = f" {s.dim('->')} {result_clean}"
             elif result_clean:
                 # Longer results on next line
                 indent = " " * (len(formatted_name) + 3)
-                result_part = f"\n{indent}{s.dim('⮕')} {result_clean}"
+                result_part = f"\n{indent}{s.dim('->')} {result_clean}"
 
             return f"{prefix}{s.agent(formatted_name)} {s.success('[tool-result]')} {s.tool(tool_name)}{s.success(duration_str)}{result_part}"
 
@@ -1632,8 +1778,8 @@ class Observer:
             task_truncated = _truncate_smart(task, max_chars=100)
             event_name = data.get("event_name", "")
             if event_name and event_name != "task.created":
-                return f"{prefix}{s.success('📋 created')} {task_truncated} {s.dim(f'({event_name})')}"
-            return f"{prefix}{s.success('📋 created')} {task_truncated}"
+                return f"{prefix}{s.success('[created]')} {task_truncated} {s.dim(f'({event_name})')}"
+            return f"{prefix}{s.success('[created]')} {task_truncated}"
 
         elif event_type == TraceType.TASK_STARTED:
             task_name = data.get("task_name", data.get("task", "task"))
@@ -1647,13 +1793,13 @@ class Observer:
             task_result = data.get("result", "")
             if task_result:
                 result_preview = _truncate_smart(str(task_result), max_chars=80)
-                return f"{prefix}{s.success(f'✓ completed{duration_str}')}\n  {s.dim(result_preview)}"
-            return f"{prefix}{s.success(f'✓ completed{duration_str}')}"
+                return f"{prefix}{s.success(f'[ok] completed{duration_str}')}\n  {s.dim(result_preview)}"
+            return f"{prefix}{s.success(f'[ok] completed{duration_str}')}"
 
         elif event_type == TraceType.TASK_FAILED:
             error = data.get("error", "unknown")
             error_truncated = _truncate_smart(str(error), max_chars=100)
-            return f"{prefix}{s.error(f'✗ failed: {error_truncated}')}"
+            return f"{prefix}{s.error(f'[X] failed: {error_truncated}')}"
 
         elif event_type == TraceType.TASK_RETRYING:
             attempt = data.get("attempt", "?")
@@ -1661,11 +1807,11 @@ class Observer:
             delay_str = ""
             if "delay" in data:
                 delay_str = s.dim(f" in {data['delay']:.1f}s")
-            return f"{prefix}{s.warning(f'🔄 retrying ({attempt}/{max_retries})')}{delay_str}"
+            return f"{prefix}{s.warning(f'[retry] ({attempt}/{max_retries})')}{delay_str}"
 
         # ═══════════════════════════════════════════════════════════
         # MESSAGE EVENTS - Agent-to-agent communication (concise)
-        # Format: 📤 Sender → Receiver: "preview"
+        # Format: [>>] Sender -> Receiver: "preview"
         # ═══════════════════════════════════════════════════════════
 
         elif event_type == TraceType.MESSAGE_SENT:
@@ -1677,7 +1823,7 @@ class Observer:
                 max_chars=self.config.truncate_messages,
             )
             content_str = f': "{content_preview}"' if content_preview else ""
-            return f"{prefix}{s.dim('📤')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
+            return f"{prefix}{s.dim('[>>]')} {s.agent(sender)} {s.dim('->')} {s.agent(receiver)}{s.dim(content_str)}"
 
         elif event_type == TraceType.MESSAGE_RECEIVED:
             receiver = data.get("agent_name", data.get("agent", "?"))
@@ -1688,17 +1834,17 @@ class Observer:
                 max_chars=self.config.truncate_messages,
             )
             content_str = f': "{content_preview}"' if content_preview else ""
-            return f"{prefix}{s.dim('📥')} {s.agent(sender)} {s.dim('→')} {s.agent(receiver)}{s.dim(content_str)}"
+            return f"{prefix}{s.dim('[<<]')} {s.agent(sender)} {s.dim('->')} {s.agent(receiver)}{s.dim(content_str)}"
 
         elif event_type == TraceType.MESSAGE_BROADCAST:
             sender = data.get("sender_id", "?")
             topic = data.get("topic", "")
             topic_str = f" ({topic})" if topic else ""
-            return f"{prefix}{s.dim('📢')} {s.agent(sender)} {s.dim(f'broadcast{topic_str}')}"
+            return f"{prefix}{s.dim('[broadcast]')} {s.agent(sender)} {s.dim(f'broadcast{topic_str}')}"
 
         # ═══════════════════════════════════════════════════════════
         # STREAMING EVENTS - Real-time LLM output with consistent formatting
-        # Format: [Agent] ▸ streaming... → [Agent] ✓ stream complete (duration, tok/s)
+        # Format: [Agent] > streaming... -> [Agent] [ok] stream complete (duration, tok/s)
         # ═══════════════════════════════════════════════════════════
 
         elif event_type == TraceType.STREAM_START:
@@ -1743,7 +1889,7 @@ class Observer:
             args_part = (
                 f"\n               {s.dim(args_preview)}" if args_preview else ""
             )
-            return f"{prefix}{s.agent(formatted_name)}    {s.info('↳')} {s.tool(f'🔧 {tool_name}')} {s.dim('(during stream)')}{args_part}"
+            return f"{prefix}{s.agent(formatted_name)}    {s.info('|->')} {s.tool(f'[T] {tool_name}')} {s.dim('(during stream)')}{args_part}"
 
         elif event_type == TraceType.STREAM_END:
             agent_name = data.get("agent_name", data.get("agent", "?"))
@@ -1778,7 +1924,7 @@ class Observer:
             if self.config.level >= ObservabilityLevel.DEBUG:
                 self.config.stream.write("\n")
 
-            header = f"{prefix}{s.agent(formatted_name)}  {s.success(f'✓ stream complete{duration_str}')}"
+            header = f"{prefix}{s.agent(formatted_name)}  {s.success(f'[ok] stream complete{duration_str}')}"
             if content_preview and self.config.level >= ObservabilityLevel.DETAILED:
                 wrapped = _wrap_content(content_preview, indent="  ")
                 return f"{header}\n{wrapped}"
@@ -1792,7 +1938,7 @@ class Observer:
             # Clean up streaming state
             self._streaming_agents.pop(agent_name, None)
             self._stream_buffer.pop(agent_name, None)
-            return f"{prefix}{s.agent(formatted_name)}  {s.error(f'✗ stream error: {error_truncated}')}"
+            return f"{prefix}{s.agent(formatted_name)}  {s.error(f'[X] stream error: {error_truncated}')}"
 
         # ═══════════════════════════════════════════════════════════
         # LLM OBSERVABILITY EVENTS - Subtle presence, details opt-in
@@ -1923,7 +2069,7 @@ class Observer:
             indent = "   " * depth
             tree_char = "├─" if depth > 1 else ""
 
-            header = f"{prefix}{indent}{tree_char}{s.info('🚀')} {s.agent(f'[{parent}]')} spawned {s.success(s.bold(role))}"
+            header = f"{prefix}{indent}{tree_char}{s.info('[spawn]')} {s.agent(f'[{parent}]')} spawned {s.success(s.bold(role))}"
             lines.append(header)
             if task:
                 lines.append(f"{prefix}{indent}   {s.dim('Task:')} {s.dim(task)}")
@@ -1941,7 +2087,7 @@ class Observer:
             indent = "   " * depth
             tree_char = "└─" if depth > 1 else ""
 
-            header = f"{prefix}{indent}{tree_char}{s.success('✓')} {s.success(role)} completed"
+            header = f"{prefix}{indent}{tree_char}{s.success('[ok]')} {s.success(role)} completed"
             if result:
                 # Truncate and clean up result preview
                 result_clean = result[:120].replace("\n", " ").strip()
@@ -1959,13 +2105,13 @@ class Observer:
 
             indent = "   " * depth
             tree_char = "└─" if depth > 1 else ""
-            return f"{prefix}{indent}{tree_char}{s.error('✗')} {s.error(role)} {s.error(f'FAILED: {error[:80]}')}"
+            return f"{prefix}{indent}{tree_char}{s.error('[X]')} {s.error(role)} {s.error(f'FAILED: {error[:80]}')}"
 
         elif event_type == TraceType.AGENT_DESPAWNED:
             role = data.get("role", "?")
             depth = data.get("depth", 1)
             indent = "   " * depth
-            return f"{prefix}{indent}{s.dim(f'🗑️ {role} cleaned up')}"
+            return f"{prefix}{indent}{s.dim(f'[cleanup] {role} cleaned up')}"
 
         # ═══════════════════════════════════════════════════════════
         # VECTORSTORE EVENTS - Document indexing and search
@@ -1974,7 +2120,7 @@ class Observer:
         elif event_type == TraceType.VECTORSTORE_ADD:
             count = data.get("count", 0)
             embedded = data.get("embedded", count)
-            return f"{prefix}{s.success('📚')} {s.bold('VectorStore')} Added {s.agent(str(count))} documents ({embedded} embedded)"
+            return f"{prefix}{s.success('[+docs]')} {s.bold('VectorStore')} Added {s.agent(str(count))} documents ({embedded} embedded)"
 
         elif event_type == TraceType.VECTORSTORE_SEARCH:
             query = data.get("query", "?")[:50]
@@ -1982,14 +2128,14 @@ class Observer:
             results = data.get("results", 0)
             top_score = data.get("top_score")
             score_str = f" (top: {top_score:.2f})" if top_score else ""
-            return f"{prefix}{s.info('🔍')} {s.bold('VectorStore')} Search k={k} → {s.agent(str(results))} results{score_str}: {s.dim(query)}"
+            return f"{prefix}{s.info('[search]')} {s.bold('VectorStore')} Search k={k} -> {s.agent(str(results))} results{score_str}: {s.dim(query)}"
 
         elif event_type == TraceType.VECTORSTORE_DELETE:
             count = data.get("count", 0)
             clear = data.get("clear", False)
             if clear:
-                return f"{prefix}{s.warning('🗑️')} {s.bold('VectorStore')} Cleared all {s.agent(str(count))} documents"
-            return f"{prefix}{s.warning('🗑️')} {s.bold('VectorStore')} Deleted {s.agent(str(count))} documents"
+                return f"{prefix}{s.warning('[-docs]')} {s.bold('VectorStore')} Cleared all {s.agent(str(count))} documents"
+            return f"{prefix}{s.warning('[-docs]')} {s.bold('VectorStore')} Deleted {s.agent(str(count))} documents"
 
         # ═══════════════════════════════════════════════════════════
         # MCP EVENTS - Model Context Protocol server interactions
@@ -1998,22 +2144,22 @@ class Observer:
         elif event_type == TraceType.MCP_SERVER_CONNECTING:
             server = data.get("server_name", "?")
             transport = data.get("transport", "?")
-            return f"{prefix}{s.info('🔌')} {s.bold('MCP')} Connecting to {s.agent(server)} ({transport})..."
+            return f"{prefix}{s.info('[+]')} {s.bold('MCP')} Connecting to {s.agent(server)} ({transport})..."
 
         elif event_type == TraceType.MCP_SERVER_CONNECTED:
             server = data.get("server_name", "?")
             transport = data.get("transport", "?")
-            return f"{prefix}{s.success('✓')} {s.bold('MCP')} Connected to {s.agent(server)} ({transport})"
+            return f"{prefix}{s.success('[ok]')} {s.bold('MCP')} Connected to {s.agent(server)} ({transport})"
 
         elif event_type == TraceType.MCP_SERVER_DISCONNECTED:
             count = data.get("server_count", 0)
             tools = data.get("tool_count", 0)
-            return f"{prefix}{s.dim('🔌')} {s.bold('MCP')} Disconnected ({count} servers, {tools} tools)"
+            return f"{prefix}{s.dim('[-]')} {s.bold('MCP')} Disconnected ({count} servers, {tools} tools)"
 
         elif event_type == TraceType.MCP_SERVER_ERROR:
             server = data.get("server_name", "?")
             error = data.get("error", "Unknown error")[:80]
-            return f"{prefix}{s.error('✗')} {s.bold('MCP')} {s.agent(server)} {s.error(f'Error: {error}')}"
+            return f"{prefix}{s.error('[X]')} {s.bold('MCP')} {s.agent(server)} {s.error(f'Error: {error}')}"
 
         elif event_type == TraceType.MCP_TOOLS_DISCOVERED:
             server = data.get("server_name", "?")
@@ -2023,8 +2169,8 @@ class Observer:
                 tools_preview = ", ".join(tool_names[:5])
                 if count > 5:
                     tools_preview += f" (+{count - 5} more)"
-                return f"{prefix}{s.info('🔧')} {s.bold('MCP')} {s.agent(server)} discovered {s.tool(f'{count} tools')}: {tools_preview}"
-            return f"{prefix}{s.dim('🔧')} {s.bold('MCP')} {s.agent(server)} no tools discovered"
+                return f"{prefix}{s.info('[T]')} {s.bold('MCP')} {s.agent(server)} discovered {s.tool(f'{count} tools')}: {tools_preview}"
+            return f"{prefix}{s.dim('[T]')} {s.bold('MCP')} {s.agent(server)} no tools discovered"
 
         elif event_type == TraceType.MCP_TOOL_CALLED:
             server = data.get("server_name", "?")
@@ -2037,13 +2183,13 @@ class Observer:
             server = data.get("server_name", "?")
             tool = data.get("tool_name", "?")
             result = str(data.get("result_preview", ""))[:80]
-            return f"{prefix}{s.success('✓')} {s.bold('MCP')} {s.tool(tool)} {s.dim(result)}"
+            return f"{prefix}{s.success('[ok]')} {s.bold('MCP')} {s.tool(tool)} {s.dim(result)}"
 
         elif event_type == TraceType.MCP_TOOL_ERROR:
             server = data.get("server_name", "?")
             tool = data.get("tool_name", "?")
             error = data.get("error", "Unknown error")[:80]
-            return f"{prefix}{s.error('✗')} {s.bold('MCP')} {s.tool(tool)} {s.error(f'Error: {error}')}"
+            return f"{prefix}{s.error('[X]')} {s.bold('MCP')} {s.tool(tool)} {s.error(f'Error: {error}')}"
 
         # ═══════════════════════════════════════════════════════════
         # REACTIVE FLOW EVENTS - Event-driven orchestration
@@ -2204,11 +2350,11 @@ class Observer:
                     ]
                 )
                 if agent:
-                    return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}{meta} {s.dim('from')} {s.agent(f'[{agent}]')}"
-                return f"{prefix}{s.dim('📨')} {s.dim('Event:')} {s.info(event_name)}{meta}"
+                    return f"{prefix}{s.dim('[E]')} {s.dim('Event:')} {s.info(event_name)}{meta} {s.dim('from')} {s.agent(f'[{agent}]')}"
+                return f"{prefix}{s.dim('[E]')} {s.dim('Event:')} {s.info(event_name)}{meta}"
             # Generic custom events
             data_preview = str(data)[:100] if data else ""
-            return f"{prefix}{s.dim('📨')} {s.dim('Custom:')} {s.dim(data_preview)}"
+            return f"{prefix}{s.dim('[E]')} {s.dim('Custom:')} {s.dim(data_preview)}"
 
         # ═══════════════════════════════════════════════════════════
         # DEFAULT - System/other events (dimmed)
@@ -2232,29 +2378,29 @@ class Observer:
         # Color and emoji based on event type
         if event_type.category == "agent":
             if "responded" in event_type.value:
-                icon = s.success("✓")
+                icon = s.success("[ok]")
             elif "thinking" in event_type.value:
-                icon = "🧠"
+                icon = "[~]"
             elif "error" in event_type.value:
-                icon = s.error("✗")
+                icon = s.error("[X]")
             else:
-                icon = "▶"
+                icon = ">"
             type_str = s.agent(event_type.value)
         elif event_type.category == "tool":
             if "result" in event_type.value:
-                icon = s.success("✓")
+                icon = s.success("[ok]")
             elif "error" in event_type.value:
-                icon = s.error("✗")
+                icon = s.error("[X]")
             else:
-                icon = "🔧"
+                icon = "[T]"
             type_str = s.tool(event_type.value)
         elif event_type.category == "task":
             if "completed" in event_type.value:
-                icon = s.success("✅")
+                icon = s.success("[OK]")
             elif "failed" in event_type.value:
-                icon = s.error("❌")
+                icon = s.error("[FAIL]")
             else:
-                icon = "🚀"
+                icon = "[>]"
             type_str = s.success(event_type.value)
         else:
             icon = "•"
@@ -2454,8 +2600,8 @@ class Observer:
             >>> print(observer.graph())
             ```mermaid
             graph TD
-                agent_Researcher_a1b2c3[Researcher ✓ 1234ms]
-                tool_search_d4e5f6[🔧 search ✓]
+                agent_Researcher_a1b2c3[Researcher [ok] 1234ms]
+                tool_search_d4e5f6[[T] search [ok]]
                 agent_Researcher_a1b2c3 -->|calls| tool_search_d4e5f6
             ```
         """
@@ -2479,11 +2625,11 @@ class Observer:
         # Agent nodes
         for node in self._nodes.values():
             status_icon = (
-                "✓"
+                "[ok]"
                 if node["status"] == "completed"
-                else "✗"
+                else "[X]"
                 if node["status"] == "failed"
-                else "⋯"
+                else "..."
             )
             duration = (
                 f" {node.get('duration_ms', 0):.0f}ms" if "duration_ms" in node else ""
@@ -2495,16 +2641,16 @@ class Observer:
         # Tool nodes
         for tool in self._tool_calls:
             status_icon = (
-                "✓"
+                "[ok]"
                 if tool["status"] == "completed"
-                else "✗"
+                else "[X]"
                 if tool["status"] == "failed"
-                else "⋯"
+                else "..."
             )
             duration = (
                 f" {tool.get('duration_ms', 0):.0f}ms" if "duration_ms" in tool else ""
             )
-            label = f"🔧 {tool['name']} {status_icon}{duration}"
+            label = f"[T] {tool['name']} {status_icon}{duration}"
             css_class = "error" if tool["status"] == "failed" else "tool"
             lines.append(f"    {tool['id']}[{label}]:::{css_class}")
 
@@ -2524,11 +2670,11 @@ class Observer:
 
         for node in self._nodes.values():
             status = (
-                "✓"
+                "[ok]"
                 if node["status"] == "completed"
-                else "✗"
+                else "[X]"
                 if node["status"] == "failed"
-                else "…"
+                else "..."
             )
             duration = (
                 f" ({node.get('duration_ms', 0):.0f}ms)"
@@ -2541,13 +2687,13 @@ class Observer:
             for tool_id in node.get("tools_called", []):
                 tool = next((t for t in self._tool_calls if t["id"] == tool_id), None)
                 if tool:
-                    t_status = "✓" if tool["status"] == "completed" else "✗"
+                    t_status = "[ok]" if tool["status"] == "completed" else "[X]"
                     t_duration = (
                         f" ({tool.get('duration_ms', 0):.0f}ms)"
                         if "duration_ms" in tool
                         else ""
                     )
-                    lines.append(f"      └─ 🔧 {tool['name']} [{t_status}]{t_duration}")
+                    lines.append(f"      +-- [T] {tool['name']} [{t_status}]{t_duration}")
 
         return "\n".join(lines)
 
@@ -2620,9 +2766,9 @@ class Observer:
         Example:
             >>> print(observer.timeline())
             Timeline:
-            ──────────────────────────────────────────────────
+            --------------------------------------------------
             +  0.00s  [Researcher] started
-            +  0.05s  └─ 🔧 web_search (345ms)
+            +  0.05s  +-- [T] web_search (345ms)
             +  0.40s  [Researcher] completed (401ms)
             +  0.41s  [Writer] started
             +  1.23s  [Writer] completed (820ms)
@@ -2656,18 +2802,18 @@ class Observer:
                                     if "duration_ms" in tool
                                     else ""
                                 )
-                                status = "✓" if tool["status"] == "completed" else "✗"
+                                status = "[ok]" if tool["status"] == "completed" else "[X]"
                                 all_items.append(
                                     (
                                         tool["start_time"],
                                         "tool",
-                                        f"└─ 🔧 {tool['name']} {status}{t_dur}",
+                                        f"+-- [T] {tool['name']} {status}{t_dur}",
                                     )
                                 )
 
                 # End event
                 if node.get("end_time"):
-                    status = "✓" if node["status"] == "completed" else "✗"
+                    status = "[ok]" if node["status"] == "completed" else "[X]"
                     duration = (
                         f" ({node.get('duration_ms', 0):.0f}ms)"
                         if "duration_ms" in node
@@ -2738,7 +2884,7 @@ class Observer:
 
         Example:
             ```python
-            observer = Observer.trace()
+            observer = Observer(level="trace")
             flow = Flow(observer=observer)
 
             flow.on("start", handler1, emits="processing")
@@ -2931,7 +3077,7 @@ class Observer:
         if "duration_seconds" in m:
             lines.append(f"⏱  Duration: {m['duration_seconds']:.2f}s")
 
-        lines.append(f"📊 Total events: {m.get('total_events', 0)}")
+        lines.append(f"[#] Total events: {m.get('total_events', 0)}")
 
         # Agent stats
         if self._nodes:
@@ -2941,13 +3087,13 @@ class Observer:
             failed = sum(1 for n in self._nodes.values() if n["status"] == "failed")
             lines.append("")
             lines.append("Agents:")
-            lines.append(f"  ✓ Completed: {completed}")
+            lines.append(f"  [ok] Completed: {completed}")
             if failed:
-                lines.append(f"  ✗ Failed: {failed}")
+                lines.append(f"  [X] Failed: {failed}")
 
             # Show each agent's timing
             for node in self._nodes.values():
-                status = "✓" if node["status"] == "completed" else "✗"
+                status = "[ok]" if node["status"] == "completed" else "[X]"
                 duration = (
                     f" ({node.get('duration_ms', 0):.0f}ms)"
                     if "duration_ms" in node
@@ -2961,18 +3107,18 @@ class Observer:
             failed = sum(1 for t in self._tool_calls if t["status"] == "failed")
             lines.append("")
             lines.append("Tools:")
-            lines.append(f"  🔧 Calls: {len(self._tool_calls)}")
-            lines.append(f"  ✓ Success: {completed}")
+            lines.append(f"  [T] Calls: {len(self._tool_calls)}")
+            lines.append(f"  [ok] Success: {completed}")
             if failed:
-                lines.append(f"  ✗ Failed: {failed}")
+                lines.append(f"  [X] Failed: {failed}")
 
         # Token usage stats (if tracked)
         if self.config.track_tokens and self._total_tokens["total"] > 0:
             lines.append("")
             lines.append("Token Usage:")
-            lines.append(f"  📊 Total: {self._total_tokens['total']:,}")
-            lines.append(f"  ⬇️  Input: {self._total_tokens['input']:,}")
-            lines.append(f"  ⬆️  Output: {self._total_tokens['output']:,}")
+            lines.append(f"  [#] Total: {self._total_tokens['total']:,}")
+            lines.append(f"  [<-] Input: {self._total_tokens['input']:,}")
+            lines.append(f"  [->] Output: {self._total_tokens['output']:,}")
 
             # Per-agent breakdown if multiple agents
             if len(self._token_usage) > 1:
@@ -3009,7 +3155,7 @@ class Observer:
 
         Example:
             ```python
-            observer = Observer.trace()
+            observer = Observer(level="trace")
             await flow.run("task")
 
             # Export for analysis

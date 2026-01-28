@@ -566,7 +566,7 @@ class ObserverStreamCallback:
         from cogent.observability import Observer
         from cogent.agent.streaming import ObserverStreamCallback
 
-        observer = Observer.verbose()
+        observer = Observer(level="verbose")
         callback = ObserverStreamCallback(observer, agent_name="writer")
 
         async for chunk in agent.think("Write a story", stream=True):

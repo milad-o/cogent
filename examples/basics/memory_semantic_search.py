@@ -33,7 +33,7 @@ async def demo_semantic_memory():
     memory = Memory(vectorstore=VectorStore())
 
     # Create agent with memory
-    observer = Observer.trace()
+    observer = Observer(level="trace")
     agent = Agent(
         name="Assistant",
         model="gpt-4o",
@@ -99,7 +99,7 @@ async def demo_without_vectorstore():
     # Create Memory WITHOUT vectorstore
     memory = Memory()  # No vectorstore - fuzzy + keyword only
 
-    observer = Observer.trace()
+    observer = Observer(level="trace")
     agent = Agent(
         name="Basic",
         model="gpt-4o",

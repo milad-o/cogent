@@ -197,7 +197,7 @@ async def agent_demo():
     )
 
     # Use Observer for detailed observability
-    observer = Observer.detailed()
+    observer = Observer(level="detailed")
 
     agent = Agent(
         name="FileAssistant",
