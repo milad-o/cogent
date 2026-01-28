@@ -131,8 +131,7 @@ class Memory:
         namespace: str = "",
         event_bus: TraceBus | None = None,
         saver: Any | None = None,  # MemorySaver for checkpointing
-        acc_enabled: bool = False,  # Agent Cognitive Compressor
-        acc_instance: Any | None = None,  # Pre-configured ACC instance
+        acc: bool | Any = False,  # ACC: True to enable, or pass AgentCognitiveCompressor instance
     ) -> None:
         """Initialize Memory.
 
@@ -142,8 +141,7 @@ class Memory:
             namespace: Key prefix for isolation.
             event_bus: TraceBus for observability. Optional.
             saver: MemorySaver for conversation checkpointing. Optional.
-            acc_enabled: Enable Agent Cognitive Compressor (bounded memory).
-            acc_instance: Optional pre-configured AgentCognitiveCompressor instance.
+            acc: Agent Cognitive Compressor. True to enable, or pass instance.
 
         Memory is always agentic - it automatically exposes tools to agents.
         When an Agent receives a Memory instance, tools are auto-added.
@@ -162,8 +160,10 @@ class Memory:
         self._version_counters: dict[str, int] = {}
 
         # ACC (Agent Cognitive Compressor) support
-        self._acc_enabled = acc_enabled or (acc_instance is not None)
-        self._acc_instance = acc_instance  # Pre-configured instance (optional)
+        # acc can be: False (disabled), True (auto-create), or ACC instance
+        from cogent.memory.acc import AgentCognitiveCompressor
+        self._acc_enabled = bool(acc)
+        self._acc_instance = acc if isinstance(acc, AgentCognitiveCompressor) else None
         self._acc_states: dict[str, Any] = {}  # thread_id -> ACC
 
     @property
