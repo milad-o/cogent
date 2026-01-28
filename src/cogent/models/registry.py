@@ -82,6 +82,11 @@ MODEL_ALIASES: dict[str, str] = {
     "deepseek-chat": "deepseek-chat",
     "deepseek-reasoner": "deepseek-reasoner",
     "deepseek-r1": "deepseek-reasoner",  # DeepSeek R1 = reasoner
+    # Cerebras
+    "cerebras": "llama3.1-8b",
+    "cerebras-llama": "llama3.1-8b",
+    "cerebras-70b": "llama-3.3-70b",
+    "cerebras-qwen": "qwen-3-32b",
 }
 
 # Provider detection patterns - model prefix to provider mapping
@@ -151,6 +156,9 @@ MODEL_PROVIDERS: dict[str, str] = {
     # xAI (Grok)
     "grok-": "xai",
     "grok": "xai",
+    # Cerebras (ultra-fast inference)
+    "llama3.1-": "cerebras",  # Cerebras uses llama3.1-8b format
+    "gpt-oss-": "cerebras",  # Cerebras reasoning model
 }
 
 

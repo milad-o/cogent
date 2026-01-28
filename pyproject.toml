@@ -38,6 +38,7 @@ dependencies = [
     "greenlet>=3.2.4",
     "rapidfuzz>=3.14.3",
     "rank-bm25>=0.2.2",
+    "cerebras-cloud-sdk>=1.64.1",
 ]
 
 [project.optional-dependencies]

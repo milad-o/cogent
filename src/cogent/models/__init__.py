@@ -116,6 +116,9 @@ from cogent.models.xai import XAIChat
 # DeepSeek models
 from cogent.models.deepseek import DeepSeekChat
 
+# Cerebras models
+from cogent.models.cerebras import CerebrasChat
+
 # Model registry for high-level API
 from cogent.models.registry import (
     get_provider_for_model,
@@ -255,6 +258,7 @@ def create_chat(
         "ollama",
         "mistral",
         "xai",
+        "cerebras",
         "custom",
     }
 
@@ -365,10 +369,15 @@ def create_chat(
 
         return DeepSeekChat(model=model or "deepseek-chat", **kwargs)
 
+    elif provider == "cerebras":
+        from cogent.models.cerebras import CerebrasChat
+
+        return CerebrasChat(model=model or "llama3.1-8b", **kwargs)
+
     else:
         raise ValueError(
             f"Unknown provider: {provider}. "
-            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, mistral, xai, deepseek, custom"
+            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, mistral, xai, deepseek, cerebras, custom"
         )
 
 
@@ -536,6 +545,12 @@ __all__ = [
     # Ollama
     "OllamaChat",
     "OllamaEmbedding",
+    # xAI
+    "XAIChat",
+    # DeepSeek
+    "DeepSeekChat",
+    # Cerebras
+    "CerebrasChat",
     # Aliases
     "ChatModel",  # Alias for OpenAIChat
     "EmbeddingModel",  # Alias for OpenAIEmbedding
