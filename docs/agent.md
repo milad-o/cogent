@@ -492,6 +492,30 @@ agent = Agent(name="Assistant", model="gpt4", acc=acc)
 
 See [docs/acc.md](acc.md) for detailed ACC documentation.
 
+### Semantic Cache
+
+For expensive tools, enable semantic caching to avoid redundant calls:
+
+```python
+from cogent.memory import SemanticCache
+from cogent.models import create_embedding
+
+# Simple: Enable with defaults
+agent = Agent(name="Assistant", model="gpt4", cache=True)
+
+# Advanced: Custom SemanticCache instance
+embed = create_embedding("openai", "text-embedding-3-small")
+cache = SemanticCache(
+    embedding=embed,
+    similarity_threshold=0.90,  # Stricter matching
+    max_entries=5000,
+    default_ttl=3600,  # 1 hour
+)
+agent = Agent(name="Assistant", model="gpt4", cache=cache)
+```
+
+See [docs/memory.md#semantic-cache](memory.md#semantic-cache) for detailed cache documentation.
+
 ## Resilience
 
 Built-in fault tolerance with retries, circuit breakers, and fallbacks:
