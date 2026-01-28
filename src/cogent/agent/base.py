@@ -127,15 +127,12 @@ class Agent:
         agent = Agent(config=config, event_bus=event_bus)
         ```
 
-    When used with Flow (recommended):
+    Standalone usage:
         ```python
-        from cogent import Flow, Agent
+        from cogent import Agent
 
-        # No need to pass event_bus or tool_registry
-        agent = Agent(name="Worker", model=model, tools=[my_tool])
-
-        # Flow wires everything automatically
-        flow = Flow(name="my-flow", agents=[agent], topology="pipeline")
+        agent = Agent(name="Worker", model="gpt4", tools=[my_tool])
+        result = await agent.run("Do something")
         ```
     """
 
@@ -151,7 +148,7 @@ class Agent:
         capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
-        # Advanced parameters (usually provided by Flow)
+        # Advanced parameters
         trace_bus: TraceBus | None = None,
         tool_registry: ToolRegistry | None = None,
         # Memory and state (4-layer architecture)
@@ -535,6 +532,18 @@ class Agent:
         Returns:
             TokenUsage if available, None otherwise
         """
+        # Check for metadata.tokens (our native models)
+        if hasattr(result, "metadata") and result.metadata:
+            meta = result.metadata
+            if hasattr(meta, "tokens") and meta.tokens:
+                tokens = meta.tokens
+                return TokenUsage(
+                    prompt_tokens=getattr(tokens, "prompt_tokens", 0),
+                    completion_tokens=getattr(tokens, "completion_tokens", 0),
+                    total_tokens=getattr(tokens, "total_tokens", 0),
+                    reasoning_tokens=getattr(tokens, "reasoning_tokens", None),
+                )
+
         # Check for usage attribute (common pattern)
         if hasattr(result, "usage"):
             usage = result.usage
@@ -544,6 +553,7 @@ class Agent:
                     prompt_tokens=usage.get("prompt_tokens", 0),
                     completion_tokens=usage.get("completion_tokens", 0),
                     total_tokens=usage.get("total_tokens", 0),
+                    reasoning_tokens=usage.get("reasoning_tokens"),
                 )
             # Handle object with attributes
             if hasattr(usage, "prompt_tokens"):
@@ -551,6 +561,7 @@ class Agent:
                     prompt_tokens=getattr(usage, "prompt_tokens", 0),
                     completion_tokens=getattr(usage, "completion_tokens", 0),
                     total_tokens=getattr(usage, "total_tokens", 0),
+                    reasoning_tokens=getattr(usage, "reasoning_tokens", None),
                 )
 
         # Check for usage_metadata (Anthropic/some providers)
@@ -562,6 +573,7 @@ class Agent:
                     completion_tokens=metadata.get("output_tokens", 0),
                     total_tokens=metadata.get("input_tokens", 0)
                     + metadata.get("output_tokens", 0),
+                    reasoning_tokens=metadata.get("reasoning_tokens"),
                 )
 
         return None
@@ -584,7 +596,9 @@ class Agent:
 
         total_prompt = 0
         total_completion = 0
+        total_reasoning = 0
         found_any = False
+        has_reasoning = False
 
         for msg in messages:
             # Check if it's an AI message with metadata
@@ -596,12 +610,17 @@ class Agent:
                         total_prompt += tokens.prompt_tokens or 0
                         total_completion += tokens.completion_tokens or 0
                         found_any = True
+                        # Aggregate reasoning tokens if present
+                        if hasattr(tokens, "reasoning_tokens") and tokens.reasoning_tokens:
+                            total_reasoning += tokens.reasoning_tokens
+                            has_reasoning = True
 
         if found_any:
             return TokenUsage(
                 prompt_tokens=total_prompt,
                 completion_tokens=total_completion,
                 total_tokens=total_prompt + total_completion,
+                reasoning_tokens=total_reasoning if has_reasoning else None,
             )
         return None
 
@@ -1436,7 +1455,7 @@ class Agent:
                 old_status=old_status.value,
                 new_status=status.value,
             )
-        # Also emit to TraceBus for Flow compatibility
+        # Also emit to TraceBus
         elif self.trace_bus:
             from cogent.observability.trace_record import Trace
 
@@ -1488,7 +1507,7 @@ class Agent:
             if hasattr(event_type, "value"):
                 event_type = event_type.value
             self._observer.emit(event_type, **data)
-        # Also publish to TraceBus for Flow compatibility
+        # Also publish to TraceBus
         elif self.trace_bus:
             from cogent.observability.trace_record import Trace, TraceType
 
@@ -1681,20 +1700,60 @@ class Agent:
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
             self.state.add_thinking_time(duration_ms)
 
+            # Extract thinking/reasoning content if available
+            thinking_content = getattr(response, "thinking", None)
+            thoughts_content = getattr(response, "thoughts", None)
+            
+            # Extract token usage including reasoning tokens
+            token_data = {}
+            if hasattr(response, "metadata") and response.metadata:
+                meta = response.metadata
+                if hasattr(meta, "tokens") and meta.tokens:
+                    token_data = {
+                        "prompt": meta.tokens.prompt_tokens,
+                        "completion": meta.tokens.completion_tokens,
+                        "total": meta.tokens.total_tokens,
+                        "reasoning": meta.tokens.reasoning_tokens,
+                    }
+
             # Emit raw LLM response event (before any parsing)
+            llm_response_data = {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "response": result,
+                "response_length": len(result) if result else 0,
+                "duration_ms": duration_ms,
+                "has_tool_calls": hasattr(response, "tool_calls")
+                and bool(response.tool_calls),
+                "tokens": token_data,
+            }
+            
+            # Add thinking preview if available
+            if thinking_content:
+                llm_response_data["thinking_preview"] = thinking_content[:300]
+                llm_response_data["thinking_length"] = len(thinking_content)
+            elif thoughts_content:
+                llm_response_data["thinking_preview"] = thoughts_content[:300]
+                llm_response_data["thinking_length"] = len(thoughts_content)
+            
             await self._emit_event(
                 "llm.response",
-                {
-                    "agent_id": self.id,
-                    "agent_name": self.name,
-                    "response": result,
-                    "response_length": len(result) if result else 0,
-                    "duration_ms": duration_ms,
-                    "has_tool_calls": hasattr(response, "tool_calls")
-                    and bool(response.tool_calls),
-                },
+                llm_response_data,
                 correlation_id,
             )
+            
+            # Emit dedicated thinking event if extended thinking was used
+            if thinking_content or thoughts_content:
+                await self._emit_event(
+                    "llm.thinking",
+                    {
+                        "agent_id": self.id,
+                        "agent_name": self.name,
+                        "thinking": thinking_content or thoughts_content,
+                        "thinking_tokens": token_data.get("reasoning", 0),
+                    },
+                    correlation_id,
+                )
 
             # Update history
             self.state.add_message(HumanMessage(content=prompt))

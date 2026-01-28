@@ -31,19 +31,24 @@ class TokenUsage:
         prompt_tokens: Tokens in the prompt/input
         completion_tokens: Tokens in the completion/output
         total_tokens: Sum of prompt and completion tokens
+        reasoning_tokens: Tokens used for reasoning/thinking (if available)
     """
 
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    reasoning_tokens: int | None = None
 
-    def to_dict(self) -> dict[str, int]:
+    def to_dict(self) -> dict[str, int | None]:
         """Convert to dictionary for serialization."""
-        return {
+        result = {
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
             "total_tokens": self.total_tokens,
         }
+        if self.reasoning_tokens is not None:
+            result["reasoning_tokens"] = self.reasoning_tokens
+        return result
 
 
 @dataclass

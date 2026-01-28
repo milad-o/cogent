@@ -952,32 +952,74 @@ class NativeExecutor(BaseExecutor):
             for i, tc in enumerate(tool_calls):
                 if isinstance(tc, dict) and not tc.get("id"):
                     tc["id"] = f"call_{iteration + 1}_{i}"
-            if event_bus:
-                await event_bus.publish(
+            
+            # Extract thinking/reasoning content if available
+            thinking_content = getattr(response, "thinking", None)
+            thoughts_content = getattr(response, "thoughts", None)
+            
+            # Extract token usage including reasoning tokens
+            token_data = {}
+            if hasattr(response, "metadata") and response.metadata:
+                meta = response.metadata
+                if hasattr(meta, "tokens") and meta.tokens:
+                    token_data = {
+                        "prompt": meta.tokens.prompt_tokens,
+                        "completion": meta.tokens.completion_tokens,
+                        "total": meta.tokens.total_tokens,
+                        "reasoning": meta.tokens.reasoning_tokens,
+                    }
+            
+            if event_bus or observer:
+                llm_response_data = {
+                    "agent_name": agent_name,
+                    "iteration": iteration + 1,
+                    "content": (response.content or "")[:500],
+                    "content_length": len(response.content or ""),
+                    "tool_calls": [
+                        {
+                            "name": tc.get("name", "?"),
+                            "args": str(tc.get("args", {}))[:100],
+                        }
+                        for tc in tool_calls[:5]
+                    ]
+                    if tool_calls
+                    else [],
+                    "has_tool_calls": bool(tool_calls),
+                    "finish_reason": "tool_calls" if tool_calls else "stop",
+                    "duration_ms": loop_duration_ms,
+                    "tokens": token_data,
+                }
+                
+                # Add thinking preview if available
+                if thinking_content:
+                    llm_response_data["thinking_preview"] = thinking_content[:300]
+                    llm_response_data["thinking_length"] = len(thinking_content)
+                elif thoughts_content:
+                    llm_response_data["thinking_preview"] = thoughts_content[:300]
+                    llm_response_data["thinking_length"] = len(thoughts_content)
+                
+                await emit_event(
                     TraceType.LLM_RESPONSE.value,
-                    {
-                        "agent_name": agent_name,
-                        "iteration": iteration + 1,
-                        "content": (response.content or "")[:500],
-                        "content_length": len(response.content or ""),
-                        "tool_calls": [
-                            {
-                                "name": tc.get("name", "?"),
-                                "args": str(tc.get("args", {}))[:100],
-                            }
-                            for tc in tool_calls[:5]
-                        ]
-                        if tool_calls
-                        else [],
-                        "has_tool_calls": bool(tool_calls),
-                        "finish_reason": "tool_calls" if tool_calls else "stop",
-                        "duration_ms": loop_duration_ms,
-                    },
+                    llm_response_data,
                 )
+                
+                # Emit dedicated thinking event if extended thinking was used
+                # or if reasoning tokens are present (OpenAI o-series)
+                reasoning_tokens = token_data.get("reasoning", 0)
+                if thinking_content or thoughts_content or reasoning_tokens:
+                    await emit_event(
+                        TraceType.LLM_THINKING.value,
+                        {
+                            "agent_name": agent_name,
+                            "iteration": iteration + 1,
+                            "thinking": thinking_content or thoughts_content or "",
+                            "thinking_tokens": reasoning_tokens,
+                        },
+                    )
 
             # Emit tool decision event if tools were selected
-            if tool_calls and event_bus:
-                await event_bus.publish(
+            if tool_calls and (event_bus or observer):
+                await emit_event(
                     TraceType.LLM_TOOL_DECISION.value,
                     {
                         "agent_name": agent_name,

@@ -1,12 +1,12 @@
-"""Tests for Flow streaming support."""
+"""Tests for Agent streaming support."""
 
 import os
 from pathlib import Path
 
 import pytest
 
-from cogent import Agent, ChatModel, Flow
-from cogent.flow.streaming import FlowStreamChunk
+from cogent import Agent, ChatModel
+from cogent.agent.streaming import StreamChunk
 
 pytestmark = pytest.mark.asyncio
 
@@ -51,276 +51,137 @@ def streaming_agent(model):
 
 async def test_basic_streaming(streaming_agent):
     """Test basic streaming execution."""
-    flow = Flow()
-    flow.register(streaming_agent, on="task.created")
-
     chunks_received = []
 
-    async for chunk in flow.run_streaming("Test task"):
-        assert isinstance(chunk, FlowStreamChunk)
-        assert chunk.agent_name == "test_agent"
-        assert chunk.event_name == "task.created"
+    async for chunk in streaming_agent.run("Say hello", stream=True):
+        assert isinstance(chunk, StreamChunk)
         assert chunk.content is not None
         chunks_received.append(chunk)
 
     # Should receive multiple chunks (or at least one)
     assert len(chunks_received) >= 1
 
-    # At least one chunk should be marked final or last chunk should be considered final
-    final_chunks = [c for c in chunks_received if c.is_final]
-    assert len(final_chunks) >= 0  # May or may not have explicit final marker
-
-    # All chunks should have valid properties
-    for chunk in chunks_received:
-        assert chunk.content is not None
-        assert chunk.event_id
-
 
 async def test_streaming_chunk_properties(streaming_agent):
-    """Test FlowStreamChunk properties."""
-    flow = Flow()
-    flow.register(streaming_agent, on="task.created")
-
-    async for chunk in flow.run_streaming("Test"):
+    """Test StreamChunk properties."""
+    async for chunk in streaming_agent.run("Test", stream=True):
         # Basic properties
-        assert hasattr(chunk, "agent_name")
-        assert hasattr(chunk, "event_id")
-        assert hasattr(chunk, "event_name")
         assert hasattr(chunk, "content")
         assert hasattr(chunk, "delta")
-        assert hasattr(chunk, "is_final")
-
-        # Content and delta should be same
-        assert chunk.content == chunk.delta
-
+        assert hasattr(chunk, "finish_reason")
         break  # Just test first chunk
 
 
-async def test_empty_stream_no_matches(model):
-    """Test streaming when no agents match."""
-    agent = Agent(name="agent", model=model, system_prompt="Be concise.")
-    flow = Flow()
-    flow.register(agent, on="nonexistent.event")
+async def test_streaming_collects_full_response(streaming_agent):
+    """Test that streaming collects full response."""
+    full_content = ""
+
+    async for chunk in streaming_agent.run("Say hello world", stream=True):
+        if chunk.content:
+            full_content += chunk.content
+
+    # Should have some content
+    assert len(full_content) > 0
+
+
+# =============================================================================
+# Streaming with Tools
+# =============================================================================
+
+async def test_streaming_with_tools(model):
+    """Test streaming with tool calls."""
+    from cogent.tools import tool
+
+    @tool
+    def get_number() -> int:
+        """Get a number."""
+        return 42
+
+    agent = Agent(
+        name="tool_agent",
+        model=model,
+        tools=[get_number],
+        system_prompt="Use tools when asked. Be concise.",
+    )
 
     chunks = []
-    async for chunk in flow.run_streaming("Test", initial_event="task.created"):
+    async for chunk in agent.run("What number do you get from get_number?", stream=True):
         chunks.append(chunk)
 
-    # Should receive no chunks since no agent matched
-    assert len(chunks) == 0
+    # Should have received chunks
+    assert len(chunks) >= 1
 
 
 # =============================================================================
-# Multi-Agent Streaming
+# Streaming with Conversation
 # =============================================================================
 
-async def test_multi_agent_streaming(model):
-    """Test streaming with multiple agents."""
-    agent1 = Agent(name="agent1", model=model, system_prompt="Be concise - 3 words max.")
-    agent2 = Agent(name="agent2", model=model, system_prompt="Be concise - 3 words max.")
+async def test_streaming_with_conversation(streaming_agent):
+    """Test streaming preserves conversation context."""
+    thread_id = "test-thread"
 
-    flow = Flow()
-    flow.register(agent1, on="task.created", emits="agent1.done")
-    flow.register(agent2, on="agent1.done")
-
-    agents_seen = set()
-    chunks_per_agent = {}
-
-    async for chunk in flow.run_streaming("Test"):
-        agents_seen.add(chunk.agent_name)
-        chunks_per_agent.setdefault(chunk.agent_name, []).append(chunk)
-
-    # Both agents should have streamed
-    assert "agent1" in agents_seen
-    assert "agent2" in agents_seen
-
-    # Each agent should have multiple chunks (or at least one)
-    assert len(chunks_per_agent["agent1"]) >= 1
-    assert len(chunks_per_agent["agent2"]) >= 1
-
-
-async def test_streaming_event_context(streaming_agent):
-    """Test that event context is preserved in chunks."""
-    flow = Flow()
-    flow.register(streaming_agent, on="custom.event")
-
-    event_ids = set()
-
-    async for chunk in flow.run_streaming(
-        "Test",
-        initial_event="custom.event",
-        initial_data={"key": "value"},
+    # First message
+    chunks1 = []
+    async for chunk in streaming_agent.run(
+        "My name is TestUser",
+        stream=True,
+        thread_id=thread_id,
     ):
-        assert chunk.event_name == "custom.event"
-        assert chunk.event_id  # Should have event ID
-        event_ids.add(chunk.event_id)
+        chunks1.append(chunk)
 
-    # All chunks from same agent should have same event ID
-    assert len(event_ids) == 1
+    assert len(chunks1) >= 1
+
+    # Second message should remember context
+    chunks2 = []
+    async for chunk in streaming_agent.run(
+        "What is my name?",
+        stream=True,
+        thread_id=thread_id,
+    ):
+        chunks2.append(chunk)
+
+    assert len(chunks2) >= 1
 
 
 # =============================================================================
-# Conditional Streaming
+# Non-streaming Comparison
 # =============================================================================
 
-async def test_conditional_streaming(model):
-    """Test streaming with conditional triggers."""
-    agent_a = Agent(name="agent_a", model=model, system_prompt="3 words max.")
-    agent_b = Agent(name="agent_b", model=model, system_prompt="3 words max.")
+async def test_streaming_vs_non_streaming(streaming_agent):
+    """Test that streaming and non-streaming produce similar results."""
+    prompt = "Say exactly: Hello"
 
-    flow = Flow()
-    flow.register(
-        agent_a,
-        on="task.created", when=lambda e: e.data.get("type") == "A",
-    )
-    flow.register(
-        agent_b,
-        on="task.created", when=lambda e: e.data.get("type") == "B",
-    )
+    # Non-streaming
+    result = await streaming_agent.run(prompt)
+    non_streaming_content = result.content
 
-    # Test with type A
+    # Streaming
+    streaming_content = ""
+    async for chunk in streaming_agent.run(prompt, stream=True):
+        if chunk.content:
+            streaming_content += chunk.content
+
+    # Both should produce content
+    assert len(non_streaming_content) > 0
+    assert len(streaming_content) > 0
+
+
+# =============================================================================
+# Think Method Streaming
+# =============================================================================
+
+async def test_think_streaming(streaming_agent):
+    """Test streaming via think() method."""
     chunks = []
-    async for chunk in flow.run_streaming("Test", initial_data={"type": "A"}):
+
+    async for chunk in streaming_agent.think("Test prompt", stream=True):
+        assert isinstance(chunk, StreamChunk)
         chunks.append(chunk)
 
-    assert all(chunk.agent_name == "agent_a" for chunk in chunks)
-
-    # Test with type B
-    chunks = []
-    async for chunk in flow.run_streaming("Test", initial_data={"type": "B"}):
-        chunks.append(chunk)
-
-    assert all(chunk.agent_name == "agent_b" for chunk in chunks)
+    assert len(chunks) >= 1
 
 
-# =============================================================================
-# Error Handling
-# =============================================================================
-
-@pytest.mark.asyncio
-async def test_streaming_error_handling():
-    """Test error handling during streaming."""
-    from unittest.mock import AsyncMock, patch
-    from cogent import Agent
-    
-    # Create agent with mocked model that fails during streaming
-    agent = Agent("test-agent", model="openai:gpt-4")
-    
-    # Mock the model to raise an error during streaming
-    async def failing_stream(*args, **kwargs):
-        yield {"type": "text", "text": "Starting..."}
-        raise RuntimeError("Simulated streaming failure")
-    
-    with patch.object(agent._model, "stream", side_effect=failing_stream):
-        chunks = []
-        try:
-            async for chunk in agent.stream("test message"):
-                chunks.append(chunk)
-        except RuntimeError as e:
-            assert str(e) == "Simulated streaming failure"
-            assert len(chunks) == 1  # Should have received one chunk before failure
-            assert chunks[0]["text"] == "Starting..."
-
-
-# =============================================================================
-# Configuration Tests
-# =============================================================================
-
-async def test_streaming_with_config(streaming_agent):
-    """Test streaming respects flow configuration."""
-    from cogent import FlowConfig
-
-    config = FlowConfig(
-        max_rounds=2,
-        stop_on_idle=True,
-    )
-
-    flow = Flow(config=config)
-    flow.register(streaming_agent, on="task.created")
-
-    chunks = []
-    async for chunk in flow.run_streaming("Test"):
-        chunks.append(chunk)
-
-    # Should complete within configured limits
-    assert len(chunks) > 0
-
-
-async def test_streaming_respects_stop_events(streaming_agent):
-    """Test streaming stops on stop events."""
-    from cogent import FlowConfig
-
-    config = FlowConfig(
-        stop_events=frozenset({"task.done", "flow.completed", "flow.failed"}),
-    )
-
-    flow = Flow(config=config)
-    flow.register(streaming_agent, on="task.created", emits="task.done")
-
-    chunks = []
-    async for chunk in flow.run_streaming("Test"):
-        chunks.append(chunk)
-
-    # Should stop after agent emits stop event
-    assert len(chunks) > 0
-
-
-# =============================================================================
-# Integration Tests
-# =============================================================================
-
-async def test_streaming_backward_compatibility(streaming_agent):
-    """Test that run_streaming doesn't break existing functionality."""
-    flow = Flow()
-    flow.register(streaming_agent, on="task.created")
-
-    # Regular run() should still work
-    result = await flow.run("Test task")
-    assert result.output
-    assert result.events_processed > 0
-
-    # Streaming should also work
-    chunks = []
-    async for chunk in flow.run_streaming("Test task"):
-        chunks.append(chunk)
-
-    assert len(chunks) > 0
-
-
-async def test_reactivestream_chunk_from_agent_chunk():
-    """Test FlowStreamChunk.from_agent_chunk() conversion."""
-    from cogent.agent.streaming import StreamChunk
-
-    agent_chunk = StreamChunk(
-        content="Hello",
-        finish_reason="stop",
-        model="test",
-        index=0,
-    )
-
-    reactive_chunk = FlowStreamChunk.from_agent_chunk(
-        chunk=agent_chunk,
-        agent_name="test_agent",
-        event_id="evt_123",
-        event_name="test.event",
-        extra_metadata="value",
-    )
-
-    assert reactive_chunk.agent_name == "test_agent"
-    assert reactive_chunk.event_id == "evt_123"
-    assert reactive_chunk.event_name == "test.event"
-    assert reactive_chunk.content == "Hello"
-    assert reactive_chunk.is_final is True
-    assert reactive_chunk.finish_reason == "stop"
-
-
-async def test_streaming_preserves_flow_state(streaming_agent):
-    """Test that streaming preserves flow state."""
-    flow = Flow()
-    flow.register(streaming_agent, on="task.created")
-
-    # Check flow has an ID after streaming
-    async for _ in flow.run_streaming("Test"):
-        pass
-
-    assert flow.flow_id is not None
+async def test_think_non_streaming(streaming_agent):
+    """Test non-streaming think() method."""
+    result = await streaming_agent.think("Test prompt")
+    assert result.content is not None

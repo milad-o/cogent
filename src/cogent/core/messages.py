@@ -21,19 +21,24 @@ class TokenUsage:
         prompt_tokens: Tokens in the prompt/input
         completion_tokens: Tokens in the completion/output
         total_tokens: Sum of prompt and completion tokens
+        reasoning_tokens: Tokens used for reasoning/thinking (o-series, Claude, Gemini)
     """
 
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    reasoning_tokens: int | None = None
 
-    def to_dict(self) -> dict[str, int]:
+    def to_dict(self) -> dict[str, int | None]:
         """Convert to dictionary for serialization."""
-        return {
+        result: dict[str, int | None] = {
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
             "total_tokens": self.total_tokens,
         }
+        if self.reasoning_tokens is not None:
+            result["reasoning_tokens"] = self.reasoning_tokens
+        return result
 
 
 @dataclass
@@ -104,6 +109,7 @@ class MessageMetadata:
         duration: Generation duration in seconds (for AI messages)
         response_id: Provider response ID (for AI messages)
         correlation_id: ID linking related messages
+        is_thinking: Whether this chunk is from model thinking (Extended Thinking)
     """
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -114,6 +120,7 @@ class MessageMetadata:
     duration: float | None = None
     response_id: str | None = None
     correlation_id: str | None = None
+    is_thinking: bool = False  # For Extended Thinking streaming
 
     def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for serialization."""
@@ -126,6 +133,7 @@ class MessageMetadata:
             "duration": self.duration,
             "response_id": self.response_id,
             "correlation_id": self.correlation_id,
+            "is_thinking": self.is_thinking,
         }
 
 

@@ -1,13 +1,29 @@
 """
 Google Gemini models for Cogent.
 
-Supports Gemini 2.0, 1.5 Pro, 1.5 Flash, and other Google AI models.
+Supports Gemini 2.5, 2.0, 1.5 Pro, 1.5 Flash, and other Google AI models.
+Includes Thinking Config for enhanced reasoning on complex tasks.
 
 Usage:
     from cogent.models.gemini import GeminiChat, GeminiEmbedding
 
+    # Standard usage
     llm = GeminiChat(model="gemini-2.0-flash")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
+
+    # With Thinking (Gemini 2.5 models)
+    llm = GeminiChat(
+        model="gemini-2.5-flash-preview-05-20",
+        thinking_budget=8192,  # Token budget for thinking
+    )
+    response = await llm.ainvoke("Solve this complex problem...")
+    print(response.thoughts)  # Access thought summary
+    print(response.content)   # Access final response
+
+Thinking-enabled models:
+    - gemini-2.5-pro-preview-05-06: Most capable, uses thinking_budget
+    - gemini-2.5-flash-preview-05-20: Fast, uses thinking_budget  
+    - gemini-2.0-flash-thinking-exp-01-21: Uses thinking_level
 """
 
 from __future__ import annotations
@@ -31,6 +47,20 @@ from cogent.models.base import (
     convert_messages,
     normalize_input,
 )
+
+# Models that support thinking_budget (Gemini 2.5)
+THINKING_BUDGET_MODELS = {
+    "gemini-2.5-pro-preview-05-06",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-flash",
+}
+
+# Models that use thinking_level instead (experimental)
+THINKING_LEVEL_MODELS = {
+    "gemini-2.0-flash-thinking-exp-01-21",
+    "gemini-2.0-flash-thinking-exp",
+}
 
 
 def _messages_to_gemini(
@@ -236,11 +266,21 @@ def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
     return function_declarations if function_declarations else []
 
 
-def _parse_response(response: Any) -> AIMessage:
-    """Parse Gemini response into AIMessage with metadata."""
+def _parse_response(response: Any, include_thoughts: bool = False) -> AIMessage:
+    """Parse Gemini response into AIMessage with metadata.
+    
+    Args:
+        response: Gemini API response.
+        include_thoughts: Whether to include thought summaries in response.
+    
+    Returns:
+        AIMessage with content, tool_calls, thoughts (if enabled), and metadata.
+    """
     from cogent.core.messages import MessageMetadata, TokenUsage
 
     content = ""
+    thoughts = ""
+    thought_signature = None
     tool_calls = []
 
     # Handle the response structure
@@ -253,7 +293,12 @@ def _parse_response(response: Any) -> AIMessage:
         return AIMessage(content="")
 
     for part in candidate.content.parts:
-        if hasattr(part, "text") and part.text:
+        # Handle thought parts (Gemini 2.5 thinking)
+        if hasattr(part, "thought") and part.thought:
+            thoughts += part.text if hasattr(part, "text") else ""
+            if hasattr(part, "thought_signature"):
+                thought_signature = part.thought_signature
+        elif hasattr(part, "text") and part.text:
             content += part.text
         if hasattr(part, "function_call") and part.function_call:
             fc = part.function_call
@@ -272,6 +317,12 @@ def _parse_response(response: Any) -> AIMessage:
                 }
             )
 
+    # Extract thinking tokens if available
+    thinking_tokens = None
+    if hasattr(response, "usage_metadata"):
+        if hasattr(response.usage_metadata, "thoughts_token_count"):
+            thinking_tokens = response.usage_metadata.thoughts_token_count
+
     metadata = MessageMetadata(
         model=response.model_version if hasattr(response, "model_version") else None,
         tokens=TokenUsage(
@@ -284,6 +335,7 @@ def _parse_response(response: Any) -> AIMessage:
             total_tokens=response.usage_metadata.total_token_count
             if hasattr(response, "usage_metadata")
             else 0,
+            reasoning_tokens=thinking_tokens,
         )
         if hasattr(response, "usage_metadata")
         else None,
@@ -292,25 +344,35 @@ def _parse_response(response: Any) -> AIMessage:
         else None,
     )
 
-    return AIMessage(
+    msg = AIMessage(
         content=content,
         tool_calls=tool_calls,
         metadata=metadata,
     )
+    
+    # Add thoughts if present
+    if thoughts and include_thoughts:
+        msg.thoughts = thoughts
+        if thought_signature:
+            msg.thought_signature = thought_signature
+    
+    return msg
 
 
 @dataclass
 class GeminiChat(BaseChatModel):
-    """Google Gemini chat model.
+    """Google Gemini chat model with Thinking support.
 
     High-performance chat model using the Google GenAI SDK.
+    Supports Thinking Config for enhanced reasoning on complex tasks.
 
     Available models:
-    - gemini-2.0-flash (latest)
+    - gemini-2.5-pro-preview-05-06 (thinking with budget)
+    - gemini-2.5-flash-preview-05-20 (fast thinking with budget)
+    - gemini-2.0-flash (latest non-thinking)
     - gemini-2.0-flash-exp (experimental)
     - gemini-1.5-pro
     - gemini-1.5-flash
-    - gemini-1.5-flash-8b
 
     Example:
         from cogent.models.gemini import GeminiChat
@@ -318,20 +380,38 @@ class GeminiChat(BaseChatModel):
         # Default model
         llm = GeminiChat()  # Uses gemini-2.0-flash
 
-        # Custom model
-        llm = GeminiChat(model="gemini-1.5-pro")
+        # With Thinking (Gemini 2.5)
+        llm = GeminiChat(
+            model="gemini-2.5-flash-preview-05-20",
+            thinking_budget=8192,  # Token budget for thinking
+        )
+        response = await llm.ainvoke("Solve this step by step...")
+        print(response.thoughts)  # Thought summary
+        print(response.content)   # Final answer
 
         # With tools
         llm = GeminiChat().bind_tools([search_tool])
 
-        response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
-
         # Streaming
         async for chunk in llm.astream(messages):
             print(chunk.content, end="")
+
+    Attributes:
+        model: Model name (default: gemini-2.0-flash).
+        thinking_budget: Token budget for thinking (Gemini 2.5 models).
+            - 0: Disable thinking (dynamic thinking)
+            - 1-24576: Fixed budget
+            - None: Use model default
+        thinking_level: Thinking intensity for experimental models.
+            - "minimal", "low", "medium", "high"
+        include_thoughts: Whether to include thought summaries in response.
     """
 
     model: str = "gemini-2.0-flash"
+    thinking_budget: int | None = field(default=None)
+    thinking_level: str | None = field(default=None)  # For experimental models
+    include_thoughts: bool = field(default=True)
+    
     _tools: list[Any] = field(default_factory=list, repr=False)
     _parallel_tool_calls: bool = field(default=True, repr=False)
 
@@ -370,6 +450,9 @@ class GeminiChat(BaseChatModel):
             api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            thinking_budget=self.thinking_budget,
+            thinking_level=self.thinking_level,
+            include_thoughts=self.include_thoughts,
         )
         new_model._tools = tools
         new_model._parallel_tool_calls = parallel_tool_calls
@@ -377,9 +460,59 @@ class GeminiChat(BaseChatModel):
         new_model._types = self._types
         new_model._initialized = True
         return new_model
+    
+    def with_thinking(
+        self,
+        budget: int | None = 8192,
+        *,
+        level: str | None = None,
+        include_thoughts: bool = True,
+    ) -> GeminiChat:
+        """Enable Thinking with specified budget or level.
+        
+        Thinking allows the model to reason through complex problems
+        before providing a response.
+        
+        Args:
+            budget: Token budget for thinking (Gemini 2.5 models).
+                - 0: Dynamic thinking (model decides)
+                - 1-24576: Fixed budget
+            level: Thinking level for experimental models.
+                - "minimal", "low", "medium", "high"
+            include_thoughts: Whether to include thought summaries (default True).
+        
+        Returns:
+            New GeminiChat instance with thinking enabled.
+        
+        Example:
+            # Gemini 2.5 with budget
+            llm = GeminiChat(model="gemini-2.5-flash-preview-05-20").with_thinking(8192)
+            
+            # Experimental model with level
+            llm = GeminiChat(model="gemini-2.0-flash-thinking-exp").with_thinking(level="high")
+        """
+        self._ensure_initialized()
+        
+        new_model = GeminiChat(
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            api_key=self.api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+            thinking_budget=budget,
+            thinking_level=level,
+            include_thoughts=include_thoughts,
+        )
+        new_model._tools = getattr(self, "_tools", [])
+        new_model._parallel_tool_calls = getattr(self, "_parallel_tool_calls", True)
+        new_model._client = self._client
+        new_model._types = self._types
+        new_model._initialized = True
+        return new_model
 
     def _build_config(self, system_instruction: str | None = None) -> Any:
-        """Build GenerateContentConfig with current settings."""
+        """Build GenerateContentConfig with current settings including thinking."""
         config_kwargs: dict[str, Any] = {
             "temperature": self.temperature,
         }
@@ -389,6 +522,34 @@ class GeminiChat(BaseChatModel):
 
         if system_instruction:
             config_kwargs["system_instruction"] = system_instruction
+
+        # Thinking configuration (Gemini 2.5 and experimental models)
+        if self.thinking_budget is not None or self.thinking_level is not None:
+            thinking_config: dict[str, Any] = {}
+            
+            # Gemini 2.5 models use thinking_budget
+            if self.thinking_budget is not None:
+                thinking_config["thinking_budget"] = self.thinking_budget
+            
+            # Experimental models use thinking_level
+            if self.thinking_level is not None:
+                # Map string levels to SDK enum values
+                level_mapping = {
+                    "minimal": "THINKING_LEVEL_MINIMAL",
+                    "low": "THINKING_LEVEL_LOW", 
+                    "medium": "THINKING_LEVEL_MEDIUM",
+                    "high": "THINKING_LEVEL_HIGH",
+                }
+                thinking_config["thinking_level"] = level_mapping.get(
+                    self.thinking_level.lower(), 
+                    self.thinking_level
+                )
+            
+            # Include thought summaries in response
+            if self.include_thoughts:
+                thinking_config["include_thoughts"] = True
+            
+            config_kwargs["thinking_config"] = self._types.ThinkingConfig(**thinking_config)
 
         if self._tools:
             function_declarations = _tools_to_gemini(self._tools, self._types)
@@ -429,7 +590,12 @@ class GeminiChat(BaseChatModel):
             contents=gemini_messages,
             config=config,
         )
-        return _parse_response(response)
+        return _parse_response(
+            response,
+            include_thoughts=self.include_thoughts and (
+                self.thinking_budget is not None or self.thinking_level is not None
+            ),
+        )
 
     async def ainvoke(
         self, messages: str | list[dict[str, Any]] | list[Any]
@@ -451,7 +617,12 @@ class GeminiChat(BaseChatModel):
             contents=gemini_messages,
             config=config,
         )
-        return _parse_response(response)
+        return _parse_response(
+            response,
+            include_thoughts=self.include_thoughts and (
+                self.thinking_budget is not None or self.thinking_level is not None
+            ),
+        )
 
     async def astream(
         self, messages: str | list[dict[str, Any]] | list[Any]

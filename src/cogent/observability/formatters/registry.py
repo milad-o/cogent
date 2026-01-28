@@ -97,6 +97,7 @@ class FormatterRegistry:
         from cogent.observability.formatters.console import (
             AgentFormatter,
             DefaultFormatter,
+            LLMFormatter,
             StreamFormatter,
             TaskFormatter,
             ToolFormatter,
@@ -106,6 +107,7 @@ class FormatterRegistry:
         registry.register(AgentFormatter())
         registry.register(ToolFormatter())
         registry.register(TaskFormatter())
+        registry.register(LLMFormatter())
         registry.register(StreamFormatter())
         registry.register(DefaultFormatter())  # Fallback last
         return registry

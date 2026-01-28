@@ -1,12 +1,22 @@
 """
 OpenAI models for Cogent.
 
+Supports Chat Completions API and Reasoning Config for o-series models.
+
 Usage:
     from cogent.models.openai import OpenAIChat, OpenAIEmbedding
 
     # Chat Completions API
     llm = OpenAIChat(model="gpt-4o")
     response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
+
+    # With Reasoning (o-series models)
+    llm = OpenAIChat(
+        model="o3-mini",
+        reasoning_effort="high",  # low, medium, or high
+    )
+    response = await llm.ainvoke("Solve this complex problem...")
+    # Reasoning tokens tracked in response.metadata.tokens.reasoning_tokens
 
     # Responses API (beta) - optimized for tool use
     llm = OpenAIChat(model="gpt-4o", use_responses_api=True)
@@ -18,14 +28,21 @@ Usage:
     # Embeddings
     embedder = OpenAIEmbedding()
     result = await embedder.embed(["Hello", "World"])
+
+Reasoning-enabled models:
+    - o3: Most capable reasoning model
+    - o3-mini: Fast reasoning (supports low/medium/high)
+    - o1: Advanced reasoning
+    - o1-mini: Fast reasoning
+    - o1-preview: Preview version
 """
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Literal
 
 from cogent.core.messages import EmbeddingResult
 from cogent.models.base import (
@@ -36,9 +53,28 @@ from cogent.models.base import (
     normalize_input,
 )
 
+# Models that support reasoning config (o-series)
+REASONING_MODELS = {
+    "o3",
+    "o3-mini",
+    "o3-mini-2025-01-31",
+    "o1",
+    "o1-2024-12-17",
+    "o1-mini",
+    "o1-mini-2024-09-12",
+    "o1-preview",
+    "o1-preview-2024-09-12",
+}
+
+# Models that support reasoning_effort parameter
+REASONING_EFFORT_MODELS = {
+    "o3-mini",
+    "o3-mini-2025-01-31",
+}
+
 
 def _parse_response(response: Any) -> AIMessage:
-    """Parse OpenAI response into AIMessage with metadata."""
+    """Parse OpenAI response into AIMessage with metadata including reasoning tokens."""
     from cogent.core.messages import (
         MessageMetadata,
         TokenUsage,
@@ -58,12 +94,21 @@ def _parse_response(response: Any) -> AIMessage:
                 }
             )
 
+    # Extract reasoning tokens if available (o-series models)
+    reasoning_tokens = None
+    if response.usage:
+        if hasattr(response.usage, "completion_tokens_details"):
+            details = response.usage.completion_tokens_details
+            if hasattr(details, "reasoning_tokens") and details.reasoning_tokens:
+                reasoning_tokens = details.reasoning_tokens
+
     metadata = MessageMetadata(
         model=response.model,
         tokens=TokenUsage(
             prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
             completion_tokens=response.usage.completion_tokens if response.usage else 0,
             total_tokens=response.usage.total_tokens if response.usage else 0,
+            reasoning_tokens=reasoning_tokens,
         )
         if response.usage
         else None,
@@ -106,10 +151,10 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 
 @dataclass
 class OpenAIChat(BaseChatModel):
-    """OpenAI chat model.
+    """OpenAI chat model with Reasoning support.
 
     High-performance chat model using OpenAI SDK directly.
-    Supports GPT-4o, GPT-4, GPT-3.5, and other OpenAI models.
+    Supports GPT-4o, GPT-4, o-series (reasoning), and other OpenAI models.
 
     Example:
         from cogent.models.openai import OpenAIChat
@@ -119,30 +164,42 @@ class OpenAIChat(BaseChatModel):
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
         print(response.content)
 
+        # With Reasoning (o-series models)
+        llm = OpenAIChat(
+            model="o3-mini",
+            reasoning_effort="high",  # low, medium, or high
+        )
+        response = await llm.ainvoke("Solve this step by step...")
+        
+        # Access reasoning token usage
+        if response.metadata.tokens:
+            print(f"Reasoning tokens: {response.metadata.tokens.reasoning_tokens}")
+
         # Responses API (beta) - optimized for tool use
         llm = OpenAIChat(use_responses_api=True)
         response = await llm.ainvoke(messages)
 
-        # With custom model
-        llm = OpenAIChat(model="gpt-4o", temperature=0.7)
-
         # With tools
         llm = OpenAIChat().bind_tools([search_tool, calc_tool])
         response = await llm.ainvoke(messages)
-        if response.tool_calls:
-            # Handle tool calls
-            pass
 
         # Streaming
         async for chunk in llm.astream(messages):
             print(chunk.content, end="")
+
+    Attributes:
+        model: Model name (default: gpt-4o-mini).
+        reasoning_effort: Effort level for o-series models.
+            - "low": Faster, less thorough reasoning
+            - "medium": Balanced (default for o3-mini)
+            - "high": Most thorough reasoning
+        use_responses_api: Use beta Responses API for optimized tool use.
     """
 
     model: str = "gpt-4o-mini"
     base_url: str = ""
-    use_responses_api: bool = (
-        False  # Use beta Responses API instead of Chat Completions
-    )
+    use_responses_api: bool = False
+    reasoning_effort: Literal["low", "medium", "high"] | None = field(default=None)
 
     def _init_client(self) -> None:
         """Initialize OpenAI clients."""
@@ -187,9 +244,64 @@ class OpenAIChat(BaseChatModel):
             timeout=self.timeout,
             max_retries=self.max_retries,
             use_responses_api=self.use_responses_api,
+            reasoning_effort=self.reasoning_effort,
         )
         new_model._tools = tools
         new_model._parallel_tool_calls = parallel_tool_calls
+        new_model._client = self._client
+        new_model._async_client = self._async_client
+        new_model._initialized = True
+        return new_model
+    
+    def with_reasoning(
+        self,
+        effort: Literal["low", "medium", "high"] = "medium",
+    ) -> OpenAIChat:
+        """Enable reasoning with specified effort level.
+        
+        Reasoning allows o-series models to think through complex problems
+        before providing a response.
+        
+        Args:
+            effort: Reasoning effort level.
+                - "low": Faster, less thorough
+                - "medium": Balanced (default)
+                - "high": Most thorough reasoning
+        
+        Returns:
+            New OpenAIChat instance with reasoning enabled.
+        
+        Example:
+            llm = OpenAIChat(model="o3-mini").with_reasoning("high")
+            response = await llm.ainvoke("What is 127 * 893?")
+            print(response.metadata.tokens.reasoning_tokens)
+        
+        Note:
+            - Only supported on o-series models (o3-mini, o1, etc.)
+            - Reasoning tokens are tracked in response metadata
+        """
+        self._ensure_initialized()
+        
+        # Validate model supports reasoning
+        if self.model not in REASONING_MODELS:
+            raise ValueError(
+                f"Model {self.model} does not support reasoning. "
+                f"Use o3, o3-mini, o1, o1-mini, or o1-preview."
+            )
+        
+        new_model = OpenAIChat(
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            api_key=self.api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+            use_responses_api=self.use_responses_api,
+            reasoning_effort=effort,
+        )
+        new_model._tools = getattr(self, "_tools", [])
+        new_model._parallel_tool_calls = getattr(self, "_parallel_tool_calls", True)
         new_model._client = self._client
         new_model._async_client = self._async_client
         new_model._initialized = True
@@ -314,7 +426,7 @@ class OpenAIChat(BaseChatModel):
     def _build_request(
         self, messages: list[dict[str, Any]] | list[Any]
     ) -> dict[str, Any]:
-        """Build API request.
+        """Build API request with reasoning support.
 
         Args:
             messages: List of messages - can be dicts or BaseMessage objects.
@@ -330,20 +442,29 @@ class OpenAIChat(BaseChatModel):
             "messages": formatted_messages,
         }
 
-        # Only include temperature for models that support it
-        # o1, o3, gpt-5 series don't support temperature
+        # Check if model is a reasoning model (o-series)
         model_lower = self.model.lower()
-        supports_temperature = not any(
+        is_reasoning_model = any(
             prefix in model_lower for prefix in ("o1", "o3", "gpt-5")
         )
-        if supports_temperature and self.temperature is not None:
+        
+        # Only include temperature for models that support it
+        # o1, o3, gpt-5 series don't support temperature
+        if not is_reasoning_model and self.temperature is not None:
             kwargs["temperature"] = self.temperature
 
+        # Max tokens handling
         if self.max_tokens:
-            if not supports_temperature:
+            if is_reasoning_model:
                 kwargs["max_completion_tokens"] = self.max_tokens
             else:
                 kwargs["max_tokens"] = self.max_tokens
+        
+        # Reasoning effort for o3-mini and supported models
+        if self.reasoning_effort and self.model in REASONING_EFFORT_MODELS:
+            kwargs["reasoning_effort"] = self.reasoning_effort
+        
+        # Tools
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)
             kwargs["parallel_tool_calls"] = self._parallel_tool_calls

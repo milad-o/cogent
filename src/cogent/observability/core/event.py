@@ -187,6 +187,7 @@ class EventTypes:
     # LLM events
     LLM_REQUEST = "llm.request"
     LLM_RESPONSE = "llm.response"
+    LLM_THINKING = "llm.thinking"
 
     # Memory events
     MEMORY_READ = "memory.read"

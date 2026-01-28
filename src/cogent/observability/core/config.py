@@ -152,7 +152,7 @@ PRESETS: dict[str, ObserverConfig] = {
     "normal": ObserverConfig(level=Level.PROGRESS),
     "verbose": ObserverConfig(
         level=Level.PROGRESS,
-        format=FormatConfig(show_duration=True, truncate=500),
+        format=FormatConfig(show_duration=True),
     ),
     "detailed": ObserverConfig(
         level=Level.DETAILED,

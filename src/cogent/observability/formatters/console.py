@@ -92,7 +92,8 @@ class AgentFormatter(BaseFormatter):
         elif action == "reasoning":
             thought = event.get("thought_preview", "")
             if thought:
-                thought = self.truncate(thought, config.truncate or 200)
+                if config.truncate:
+                    thought = self.truncate(thought, config.truncate)
                 return f"{s.agent(formatted_name)} {s.dim('[reasoning]')}\n  {s.dim(thought)}"
             return f"{s.agent(formatted_name)} {s.dim('[reasoning]')}"
 
@@ -144,12 +145,12 @@ class ToolFormatter(BaseFormatter):
             args = event.get("args", {})
             id_str = f"{s.dim(short_id)} " if short_id else ""
             args_str = ""
-            # Show args if truncate > 0 (verbose modes)
-            if args and config.truncate > 0:
+            if args:
                 # Format args as {key=value} pairs
                 args_parts = [f"{k}={v!r}" for k, v in args.items()]
                 args_preview = "{" + ", ".join(args_parts) + "}"
-                args_preview = self.truncate(args_preview, config.truncate)
+                if config.truncate:
+                    args_preview = self.truncate(args_preview, config.truncate)
                 args_str = f"\n  {s.dim(args_preview)}"
             return f"{agent_prefix}{s.dim('[tool-call]')} {id_str}{s.tool(tool_name)}{args_str}"
 
@@ -162,9 +163,9 @@ class ToolFormatter(BaseFormatter):
             result = event.get("result_preview", str(event.get("result", "")))
             result_str = ""
             if result:
-                result = self.truncate(
-                    str(result).replace("\n", " "), config.truncate or 100
-                )
+                result = str(result).replace("\n", " ")
+                if config.truncate:
+                    result = self.truncate(result, config.truncate)
                 # Try to format dict-like results nicely
                 result_formatted = self._format_result(result)
                 result_str = f"\n  {s.dim(result_formatted)}"
@@ -209,7 +210,9 @@ class TaskFormatter(BaseFormatter):
 
         if action == "started":
             task = event.get("task_name", event.get("task", "task"))
-            task = self.truncate(str(task), 80)
+            task = str(task)
+            if config.truncate:
+                task = self.truncate(task, config.truncate)
             return f"{s.success('> started')} {task}"
 
         elif action == "completed":
@@ -220,10 +223,116 @@ class TaskFormatter(BaseFormatter):
 
         elif action == "failed":
             error = event.get("error", "Unknown error")
-            error = self.truncate(str(error), 80)
+            error = str(error)
+            if config.truncate:
+                error = self.truncate(error, config.truncate)
             return f"{s.error(f'[X] failed: {error}')}"
 
         return f"{s.dim(f'[task.{action}]')}"
+
+
+class LLMFormatter(BaseFormatter):
+    """Formats llm.* events with thinking/reasoning display."""
+
+    patterns = ["llm.*"]
+
+    def format(self, event: Event, config: FormatConfig) -> str | None:
+        s = Styler(config.use_colors)
+        agent_name = event.get("agent_name", "LLM")
+        formatted_name = self.format_name(agent_name)
+        action = event.action
+
+        if action == "request":
+            model = event.get("model", "")
+            msg_count = event.get("message_count", 0)
+            tools = event.get("tools_available", [])
+            tools_str = f" • {len(tools)} tools" if tools else ""
+            return f"{s.agent(formatted_name)} {s.dim('[llm-request]')} {s.info(model)} ({msg_count} msgs){s.dim(tools_str)}"
+
+        elif action == "response":
+            duration_str = ""
+            if config.show_duration and "duration_ms" in event.data:
+                duration_str = f" ({self.format_duration(event.data['duration_ms'])})"
+
+            # Token info with reasoning breakdown
+            tokens = event.get("tokens", {})
+            token_str = self._format_tokens(tokens, s)
+
+            # Thinking summary
+            thinking_preview = event.get("thinking_preview", "")
+            thinking_str = ""
+            if thinking_preview:
+                preview = thinking_preview
+                if config.truncate:
+                    preview = self.truncate(preview, config.truncate)
+                thinking_str = f"\n  {s.dim('[thinking]')} {s.dim(preview)}"
+
+            # Tool calls
+            has_tools = event.get("has_tool_calls", False)
+            finish = event.get("finish_reason", "stop")
+            finish_str = f" → {s.tool('tool_calls')}" if has_tools else ""
+
+            return f"{s.agent(formatted_name)} {s.success('[llm-response]')}{s.success(duration_str)}{token_str}{finish_str}{thinking_str}"
+
+        elif action == "thinking":
+            # Dedicated thinking event
+            thinking_content = event.get("thinking", event.get("content", ""))
+            thinking_tokens = event.get("thinking_tokens", 0)
+            
+            tokens_str = f" ({thinking_tokens} tokens)" if thinking_tokens else ""
+            
+            if thinking_content:
+                preview = thinking_content
+                if config.truncate:
+                    preview = self.truncate(preview, config.truncate)
+                return f"{s.agent(formatted_name)} {s.info('[thinking]')}{s.dim(tokens_str)}\n  {s.dim(preview)}"
+            elif thinking_tokens:
+                # OpenAI o-series: has reasoning tokens but no exposed content
+                return f"{s.agent(formatted_name)} {s.info('[reasoning]')}{s.dim(tokens_str)} {s.dim('(content not exposed)')}"
+            return f"{s.agent(formatted_name)} {s.info('[thinking]')}"
+
+        elif action == "tool_decision":
+            tools = event.get("tools_selected", [])
+            reasoning = event.get("reasoning", "")
+            tools_str = ", ".join(tools[:5])
+            if len(tools) > 5:
+                tools_str += f"... (+{len(tools) - 5})"
+            reason_str = ""
+            if reasoning:
+                reason_text = reasoning
+                if config.truncate:
+                    reason_text = self.truncate(reasoning, config.truncate)
+                reason_str = f"\n  {s.dim(reason_text)}"
+            return f"{s.agent(formatted_name)} {s.dim('[tool-decision]')} {s.tool(tools_str)}{reason_str}"
+
+        return f"{s.agent(formatted_name)} {s.dim(f'[llm.{action}]')}"
+
+    def _format_tokens(self, tokens: dict, s: Styler) -> str:
+        """Format token usage with reasoning breakdown."""
+        if not tokens:
+            return ""
+
+        parts = []
+        
+        # Total tokens
+        total = tokens.get("total", tokens.get("total_tokens", 0))
+        if total:
+            parts.append(f"{total} tokens")
+
+        # Prompt/completion breakdown
+        prompt = tokens.get("prompt", tokens.get("prompt_tokens", 0))
+        completion = tokens.get("completion", tokens.get("completion_tokens", 0))
+        if prompt or completion:
+            parts.append(f"in={prompt}/out={completion}")
+
+        # Reasoning/thinking tokens
+        reasoning = tokens.get("reasoning", tokens.get("reasoning_tokens", 0))
+        if reasoning:
+            parts.append(f"reasoning={reasoning}")
+
+        if parts:
+            return f" • {s.dim(' '.join(parts))}"
+        return ""
 
 
 class StreamFormatter(BaseFormatter):

@@ -1,12 +1,11 @@
 """
-Cogent Graph API - Unified visualization for agents, topologies, and flows.
+Cogent Graph API - Unified visualization for agents and topologies.
 
 Simple API:
     ```python
     # Get a graph from any entity
     view = agent.graph()
     view = topology.graph()
-    view = flow.graph()
 
     # Render in any format
     print(view.mermaid())    # Mermaid code (default)

@@ -1,301 +1,154 @@
 #!/usr/bin/env python3
 """
-Streaming Reactions in Flow
-===================================
+Streaming Responses
+===================
 
-Demonstrates real-time token-by-token streaming from agents in event-driven flows.
+Demonstrates real-time token-by-token streaming from agents.
 
-Unlike regular Flow.run() which waits for complete responses,
-run_streaming() yields tokens as they're generated, providing:
+With streaming enabled, tokens arrive as they're generated, providing:
 - Real-time feedback during agent processing
 - Better UX with progressive output
 - Lower perceived latency
-- Ability to show which agent is currently active
 
 Key Features:
 1. Basic streaming - see tokens as they arrive
-2. Multi-agent streaming - track which agent is speaking
-3. Event-driven chaining with streaming
-4. Stream progress indicators
+2. Streaming with tools - watch tool calls and responses
+3. Streaming with conversation memory
 
 Prerequisites:
-    - Streaming-capable model (OpenAI, Anthropic, etc.)
+    - Streaming-capable model (OpenAI, Anthropic, Grok, etc.)
     - Set API key: export OPENAI_API_KEY=your-key
 
 Run:
-    uv run python examples/reactive/streaming.py
+    uv run python examples/basics/streaming.py
 """
 
 import asyncio
+
+from cogent import Agent
+from cogent.tools import tool
+
 
 # =============================================================================
 # Demo 1: Basic Streaming
 # =============================================================================
 
 async def basic_streaming():
-    """Demo 1: Basic streaming with Flow."""
+    """Demo 1: Basic streaming from an agent."""
     print("\n" + "=" * 70)
     print("Demo 1: Basic Streaming")
     print("=" * 70)
 
-    from cogent import Agent, Flow
-
-    # Create agent with streaming-capable model
-    assistant = Agent(
-        name="assistant",
+    agent = Agent(
+        name="Assistant",
         model="gpt4",
-        system_prompt="You are a helpful assistant. Be concise.",
+        instructions="You are a helpful assistant. Be concise.",
     )
-
-    # Create reactive flow
-    flow = Flow()
-    flow.register(assistant, on="task.created")
 
     print("\n📝 Task: Explain streaming in 2 sentences")
     print("-" * 70)
     print()
 
     # Stream execution - tokens arrive in real-time
-    async for chunk in flow.run_streaming("Explain streaming in 2 sentences"):
+    async for chunk in agent.run("Explain streaming in 2 sentences", stream=True):
         print(chunk.content, end="", flush=True)
 
-        if chunk.is_final:
-            print()  # Newline after completion
-
-    print()
+    print("\n")
     print("✅ Streaming complete!")
 
 
 # =============================================================================
-# Demo 2: Multi-Agent Streaming
+# Demo 2: Streaming with Tools
 # =============================================================================
 
-async def multi_agent_streaming():
-    """Demo 2: Streaming with multiple agents - track who's speaking."""
+async def streaming_with_tools():
+    """Demo 2: Streaming while using tools."""
     print("\n" + "=" * 70)
-    print("Demo 2: Multi-Agent Streaming")
+    print("Demo 2: Streaming with Tools")
     print("=" * 70)
 
-    from cogent import Agent, Flow
+    @tool
+    def get_weather(city: str) -> str:
+        """Get the current weather for a city."""
+        # Simulated weather data
+        weather_data = {
+            "london": "Cloudy, 12°C",
+            "tokyo": "Sunny, 22°C",
+            "new york": "Rainy, 15°C",
+        }
+        return weather_data.get(city.lower(), f"Weather data unavailable for {city}")
 
-    # Create multiple agents
-    researcher = Agent(
-        name="researcher",
+    @tool
+    def get_time(city: str) -> str:
+        """Get the current time in a city."""
+        from datetime import datetime, timezone
+        # Simplified - just return current UTC time
+        return datetime.now(timezone.utc).strftime("%H:%M UTC")
+
+    agent = Agent(
+        name="WeatherBot",
         model="gpt4",
-        system_prompt="You research topics. Provide 2-3 key facts.",
+        tools=[get_weather, get_time],
+        instructions="You help with weather and time queries. Be brief.",
     )
 
-    writer = Agent(
-        name="writer",
-        model="gpt4",
-        system_prompt="You write engaging summaries. Keep it to 2 sentences.",
-    )
-
-    # Create flow with chained agents
-    flow = Flow()
-    flow.register(researcher, on="task.created", emits="researcher.completed")
-    flow.register(writer, on="researcher.completed")
-
-    print("\n📝 Task: Research and summarize quantum computing")
+    print("\n📝 Task: What's the weather and time in Tokyo?")
     print("-" * 70)
-
-    current_agent = None
-
-    async for chunk in flow.run_streaming("Research and summarize quantum computing"):
-        # Show agent name when it changes
-        if chunk.agent_name != current_agent:
-            if current_agent is not None:
-                print()  # Newline before new agent
-            print(f"\n🤖 [{chunk.agent_name}]:", end=" ")
-            current_agent = chunk.agent_name
-
-        print(chunk.content, end="", flush=True)
-
-        if chunk.is_final:
-            print()  # Newline after agent completes
-
     print()
-    print("✅ Multi-agent streaming complete!")
 
-
-# =============================================================================
-# Demo 3: Progress Indicators
-# =============================================================================
-
-async def streaming_with_progress():
-    """Demo 3: Show progress indicators during streaming."""
-    print("\n" + "=" * 70)
-    print("Demo 3: Streaming with Progress Indicators")
-    print("=" * 70)
-
-    from cogent import Agent, Flow
-
-    # Create agents for a 3-stage pipeline
-    analyzer = Agent(
-        name="analyzer",
-        model="gpt4",
-        system_prompt="Analyze the problem. List 2 key points.",
-    )
-
-    planner = Agent(
-        name="planner",
-        model="gpt4",
-        system_prompt="Create a solution plan. 2-3 steps.",
-    )
-
-    executor = Agent(
-        name="executor",
-        model="gpt4",
-        system_prompt="Provide final solution. Be concise.",
-    )
-
-    # Create pipeline flow
-    flow = Flow()
-    flow.register(analyzer, on="task.created", emits="analyzed")
-    flow.register(planner, on="analyzed", emits="planned")
-    flow.register(executor, on="planned")
-
-    print("\n📝 Task: Build a web scraper")
-    print("-" * 70)
-
-    # Track progress
-    agents_completed = 0
-    total_agents = 3
-    current_agent = None
-
-    async for chunk in flow.run_streaming("Build a web scraper"):
-        # Update progress when agent changes
-        if chunk.agent_name != current_agent:
-            if current_agent is not None:
-                agents_completed += 1
-
-            current_agent = chunk.agent_name
-            progress = f"[{agents_completed + 1}/{total_agents}]"
-            print(f"\n\n{progress} 🤖 {chunk.agent_name}:")
-            print("-" * 70)
-
+    async for chunk in agent.run("What's the weather and time in Tokyo?", stream=True):
         print(chunk.content, end="", flush=True)
 
     print("\n")
-    print("=" * 70)
-    print("✅ Pipeline streaming complete!")
+    print("✅ Tool streaming complete!")
 
 
 # =============================================================================
-# Demo 4: Conditional Streaming
+# Demo 3: Streaming with Conversation
 # =============================================================================
 
-async def conditional_streaming():
-    """Demo 4: Different agents stream based on event data."""
+async def streaming_with_conversation():
+    """Demo 3: Streaming with conversation memory."""
     print("\n" + "=" * 70)
-    print("Demo 4: Conditional Streaming (Event-Driven Routing)")
+    print("Demo 3: Streaming with Conversation Memory")
     print("=" * 70)
 
-    from cogent import Agent, Flow
-
-    # Create specialized agents
-    python_expert = Agent(
-        name="python_expert",
+    agent = Agent(
+        name="ChatBot",
         model="gpt4",
-        system_prompt="You are a Python expert. Provide Python advice.",
+        instructions="You are a friendly assistant. Remember what the user tells you.",
     )
 
-    js_expert = Agent(
-        name="js_expert",
-        model="gpt4",
-        system_prompt="You are a JavaScript expert. Provide JS advice.",
-    )
+    thread_id = "demo-conversation"
 
-    general_agent = Agent(
-        name="general",
-        model="gpt4",
-        system_prompt="You are a general programming assistant.",
-    )
-
-    # Create flow with conditional triggers
-    flow = Flow()
-    flow.register(
-        python_expert,
-        on="question.asked",
-        when=lambda e: "python" in str(e.data).lower(),
-    )
-    flow.register(
-        js_expert,
-        on="question.asked",
-        when=lambda e: "javascript" in str(e.data).lower(),
-    )
-    flow.register(
-        general_agent,
-        on="question.asked",
-        when=lambda e: "python" not in str(e.data).lower()
-        and "javascript" not in str(e.data).lower(),
-    )
-
-    # Test multiple questions
-    questions = [
-        ("How do I use list comprehensions in Python?", {"language": "python"}),
-        ("What are JavaScript promises?", {"language": "javascript"}),
-        ("What is version control?", {"language": "general"}),
-    ]
-
-    for question, data in questions:
-        print(f"\n📝 Question: {question}")
-        print("-" * 70)
-
-        async for chunk in flow.run_streaming(
-            question,
-            initial_event="question.asked",
-            initial_data=data,
-        ):
-            if chunk.content:  # Skip empty chunks
-                print(chunk.content, end="", flush=True)
-
-        print("\n")
-
-    print("✅ Conditional streaming complete!")
-
-
-# =============================================================================
-# Demo 5: Error Handling in Streaming
-# =============================================================================
-
-async def streaming_error_handling():
-    """Demo 5: Graceful error handling during streaming."""
-    print("\n" + "=" * 70)
-    print("Demo 5: Error Handling in Streaming")
-    print("=" * 70)
-
-    from cogent import Agent, Flow
-
-    # Create agent that might fail
-    assistant = Agent(
-        name="assistant",
-        model="gpt4",
-        system_prompt="You are a helpful assistant.",
-    )
-
-    flow = Flow()
-    flow.register(assistant, on="task.created")
-
-    print("\n📝 Task: Streaming with potential errors")
+    # First message
+    print("\n📝 User: My name is Alice and I love Python.")
     print("-" * 70)
+    print()
 
-    try:
-        async for chunk in flow.run_streaming("Explain error handling"):
-            print(chunk.content, end="", flush=True)
+    async for chunk in agent.run(
+        "My name is Alice and I love Python.",
+        stream=True,
+        thread_id=thread_id,
+    ):
+        print(chunk.content, end="", flush=True)
 
-            # Check for errors in metadata
-            if chunk.metadata and chunk.metadata.get("error"):
-                print(f"\n⚠️  Error detected: {chunk.metadata['error']}")
+    print("\n")
 
-            if chunk.is_final:
-                if chunk.finish_reason == "error":
-                    print("\n❌ Streaming ended with error")
-                else:
-                    print("\n✅ Streaming completed successfully")
+    # Second message - agent should remember
+    print("📝 User: What's my name and what do I like?")
+    print("-" * 70)
+    print()
 
-    except Exception as e:
-        print(f"\n❌ Exception during streaming: {e}")
+    async for chunk in agent.run(
+        "What's my name and what do I like?",
+        stream=True,
+        thread_id=thread_id,
+    ):
+        print(chunk.content, end="", flush=True)
+
+    print("\n")
+    print("✅ Conversation streaming complete!")
 
 
 # =============================================================================
@@ -304,36 +157,19 @@ async def streaming_error_handling():
 
 async def main():
     """Run all streaming demos."""
-    print("\n" + "=" * 70)
-    print("Streaming Reactions in Flow")
+    print("=" * 70)
+    print("        COGENT STREAMING EXAMPLES")
     print("=" * 70)
 
-    try:
-        await basic_streaming()
-        await asyncio.sleep(1)
-
-        await multi_agent_streaming()
-        await asyncio.sleep(1)
-
-        await streaming_with_progress()
-        await asyncio.sleep(1)
-
-        await conditional_streaming()
-        await asyncio.sleep(1)
-
-        await streaming_error_handling()
-
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted by user")
-    except Exception as e:
-        print(f"\n\n❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
+    await basic_streaming()
+    await streaming_with_tools()
+    await streaming_with_conversation()
 
     print("\n" + "=" * 70)
-    print("All demos complete!")
+    print("All demos completed!")
     print("=" * 70)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
