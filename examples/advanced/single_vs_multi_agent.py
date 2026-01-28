@@ -287,13 +287,25 @@ def list_customers(segment: str | None = None, min_arr: str | None = None) -> st
     Args:
         segment: Filter by segment (enterprise, mid-market, smb) or None for all
         min_arr: Minimum ARR filter as string (e.g. "500000") or None for all
+    
+    Call with NO arguments to see ALL customers.
     """
-    # Convert min_arr to int if provided
-    min_arr_int = int(min_arr) if min_arr and min_arr.isdigit() else None
+    # Normalize segment - treat "None", "null", "all", "" as no filter
+    segment_clean = None
+    if segment and segment.lower() not in ("none", "null", "all", ""):
+        segment_clean = segment.lower()
+    
+    # Convert min_arr to int if provided (and not "None", "0", etc.)
+    min_arr_int = None
+    if min_arr and min_arr not in ("None", "null", "0", ""):
+        try:
+            min_arr_int = int(min_arr)
+        except ValueError:
+            pass
     
     results = []
     for cust_id, cust in CUSTOMERS.items():
-        if segment and segment != "all" and cust["segment"] != segment:
+        if segment_clean and cust["segment"] != segment_clean:
             continue
         if min_arr_int and cust["arr"] < min_arr_int:
             continue
@@ -579,10 +591,13 @@ async def single_agent_approach() -> dict:
     
     agent = Agent(
         name="DueDiligenceAnalyst",
-        model="gpt-4o",
+        model="openai:gpt-4o",
         tools=ALL_TOOLS,
         output=DueDiligenceReport,
         instructions="""You are a senior M&A analyst performing comprehensive due diligence.
+
+⚠️ CRITICAL: You MUST use the tools provided to gather real data. DO NOT make up information.
+⚠️ You cannot complete this task without calling tools first to get actual data.
 
 You have 14 tools that require MULTI-STEP investigation:
 
@@ -677,42 +692,56 @@ async def multi_agent_approach() -> dict:
     # Document Research Specialist
     doc_researcher = Agent(
         name="DocumentResearcher",
-        model="gpt-4o",
+        model="openai:gpt-4o",
         tools=DISCOVERY_TOOLS,
         instructions="""You are a document research specialist.
-Use search_data_room to find relevant documents, then read_document to extract key information.
-Search multiple categories and read all relevant documents.
-Summarize findings with specific references to document IDs.""",
+
+Available categories: financial, legal, compliance, technology, hr, market
+
+Workflow:
+1. Search each category: search_data_room(query="financial"), search_data_room(query="legal"), etc.
+2. Read each document found using read_document(doc_id)
+3. Summarize all findings with specific document references
+
+Search broadly - use category names as queries to find all documents.""",
     )
     
     # Customer Analyst
     customer_analyst = Agent(
         name="CustomerAnalyst",
-        model="gpt-4o",
+        model="openai:gpt-4o",
         tools=CUSTOMER_TOOLS,
         instructions="""You are a customer analysis specialist.
-Use list_customers to find all customers, then get_customer_details for each.
-Pay special attention to customers with health=red or health=yellow.
-Use get_customer_risk_assessment for any at-risk customers.
-Provide complete analysis of customer concentration and churn risk.""",
+
+Workflow:
+1. First call list_customers() with NO filters to see ALL customers
+2. Call get_customer_details(customer_id) for EACH customer ID returned
+3. Call get_customer_risk_assessment(customer_id) for any customer with health=red or health=yellow
+4. Summarize customer concentration, ARR distribution, and churn risks
+
+Do NOT filter on first call - you need to see all customers.""",
     )
     
     # HR/Team Analyst
     team_analyst = Agent(
         name="TeamAnalyst",
-        model="gpt-4o",
+        model="openai:gpt-4o",
         tools=EMPLOYEE_TOOLS,
         instructions="""You are an HR and team analysis specialist.
-Use list_employees(critical_only=True) to find key personnel.
-Get details and retention risk assessment for each critical employee.
-Identify key person dependencies and flight risks.
-Recommend retention strategies for high-risk critical employees.""",
+
+Workflow:
+1. Call list_employees(critical_only="true") to find key personnel
+2. Call get_employee_details(employee_id) for EACH employee ID returned
+3. Call assess_retention_risk(employee_id) for EACH employee
+4. Identify key person dependencies and recommend retention strategies
+
+Note: critical_only should be the string "true" not a boolean.""",
     )
     
     # Technology Analyst
     tech_analyst = Agent(
         name="TechAnalyst",
-        model="gpt-4o",
+        model="openai:gpt-4o",
         tools=TECH_TOOLS,
         instructions="""You are a technology due diligence specialist.
 Use list_codebases to find all repositories.
@@ -724,7 +753,7 @@ Provide total remediation cost and timeline.""",
     # Financial Investigator
     financial_analyst = Agent(
         name="FinancialAnalyst",
-        model="gpt-4o",
+        model="openai:gpt-4o",
         tools=FINANCIAL_TOOLS,
         instructions="""You are a financial due diligence specialist.
 Use get_financial_summary to get overview and identify issues.
@@ -736,7 +765,7 @@ Provide complete picture of financial health and risks.""",
     # Orchestrator coordinates all specialists
     orchestrator = Agent(
         name="ChiefStrategyOfficer",
-        model="gpt-4o",
+        model="openai:gpt-4o",
         tools=[
             doc_researcher.as_tool(description="Research documents in data room - finds and reads key documents"),
             customer_analyst.as_tool(description="Analyze customer base - details and risks for each customer"),
