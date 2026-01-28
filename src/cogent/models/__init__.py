@@ -110,6 +110,9 @@ from cogent.models.ollama import OllamaChat, OllamaEmbedding
 # Default models (OpenAI)
 from cogent.models.openai import OpenAIChat, OpenAIEmbedding
 
+# xAI models
+from cogent.models.xai import XAIChat
+
 # Model registry for high-level API
 from cogent.models.registry import (
     get_provider_for_model,
@@ -248,6 +251,7 @@ def create_chat(
         "cloudflare",
         "ollama",
         "mistral",
+        "xai",
         "custom",
     }
 
@@ -348,10 +352,15 @@ def create_chat(
 
         return MistralChat(model=model or "mistral-small-latest", **kwargs)
 
+    elif provider == "xai":
+        from cogent.models.xai import XAIChat
+
+        return XAIChat(model=model or "grok-4-1-fast", **kwargs)
+
     else:
         raise ValueError(
             f"Unknown provider: {provider}. "
-            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, mistral, custom"
+            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, mistral, xai, custom"
         )
 
 

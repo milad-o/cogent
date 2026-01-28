@@ -49,6 +49,7 @@ EVENT_LEVELS: dict[str, Level] = {
     # Debug level (Level.DEBUG = 4)
     "llm.request": Level.DEBUG,
     "llm.response": Level.DEBUG,
+    "llm.thinking": Level.DEBUG,  # Extended thinking/reasoning content
     "agent.reasoning": Level.DEBUG,
     "agent.acting": Level.DEBUG,
     # Trace level (Level.TRACE = 5)

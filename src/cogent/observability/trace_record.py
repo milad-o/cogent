@@ -66,6 +66,7 @@ class TraceType(StrEnum):
     # LLM Request/Response events (deep observability)
     LLM_REQUEST = "llm.request"  # Full request being sent to LLM
     LLM_RESPONSE = "llm.response"  # Full response from LLM (before parsing)
+    LLM_THINKING = "llm.thinking"  # Extended thinking/reasoning content
     LLM_TOOL_DECISION = "llm.tool_decision"  # LLM decided to call tool(s)
 
     # Streaming events (token-by-token LLM output)
@@ -162,19 +163,6 @@ class TraceType(StrEnum):
     DOCUMENT_LOADED = "document.loaded"  # Document loaded from source
     DOCUMENT_SPLIT = "document.split"  # Document split into chunks
     DOCUMENT_ENRICHED = "document.enriched"  # Metadata added to document
-
-    # Reactive flow events (event-driven orchestration)
-    FLOW__STARTED = "flow.flow.started"  # Reactive flow started
-    FLOW__COMPLETED = "flow.flow.completed"  # Reactive flow finished
-    FLOW__FAILED = "flow.flow.failed"  # Reactive flow failed
-    FLOW_EVENT_EMITTED = "flow.event.emitted"  # Event emitted in flow
-    FLOW_EVENT_PROCESSED = "flow.event.processed"  # Event processed
-    FLOW_AGENT_TRIGGERED = "flow.agent.triggered"  # Agent triggered by event
-    FLOW_AGENT_COMPLETED = "flow.agent.completed"  # Triggered agent completed
-    FLOW_AGENT_FAILED = "flow.agent.failed"  # Triggered agent failed
-    FLOW_NO_MATCH = "flow.no_match"  # No agents matched event
-    FLOW_ROUND_STARTED = "flow.round.started"  # New processing round
-    FLOW_ROUND_COMPLETED = "flow.round.completed"  # Round completed
 
     # Skill events (event-driven behavioral specializations)
     SKILL_ACTIVATED = "skill.activated"  # Skill context injected into agent

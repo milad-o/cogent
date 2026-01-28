@@ -1,7 +1,6 @@
-"""
-GraphView - Unified visualization interface for all graphable entities.
+"""GraphView - Unified visualization interface for graphable entities.
 
-Provides a consistent API for rendering agents, topologies, and flows
+Provides a consistent API for rendering agents and topologies
 to various formats without exposing internal graph primitives.
 """
 
@@ -105,7 +104,7 @@ def _get_standard_class_defs() -> dict[str, ClassDef]:
 class GraphView:
     """Unified graph visualization interface.
 
-    Returned by `.to_graph()` on Agent, Topology, and Flow objects.
+    Returned by `.to_graph()` on Agent and Topology objects.
     Provides consistent rendering API across all entity types.
 
     Example:
@@ -131,7 +130,7 @@ class GraphView:
         self._config = config or GraphConfig()
 
     # ─────────────────────────────────────────────────────────────────────
-    # Factory Methods (for internal use by Agent, Topology, Flow)
+    # Factory Methods (for internal use by Agent, Topology)
     # ─────────────────────────────────────────────────────────────────────
 
     @classmethod
@@ -397,7 +396,7 @@ class GraphView:
 
     @staticmethod
     def _get_step_label(step: Any) -> str:
-        """Get label for a flow step."""
+        """Get label for a pipeline step."""
         if hasattr(step, "name"):
             return step.name
         if hasattr(step, "__name__"):

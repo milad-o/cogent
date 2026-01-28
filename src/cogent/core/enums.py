@@ -99,6 +99,7 @@ class TraceType(StrEnum):
     # LLM Request/Response events (deep observability)
     LLM_REQUEST = "llm.request"  # Full request being sent to LLM
     LLM_RESPONSE = "llm.response"  # Full response from LLM (before parsing)
+    LLM_THINKING = "llm.thinking"  # Extended thinking/reasoning content
     LLM_TOOL_DECISION = "llm.tool_decision"  # LLM decided to call tool(s)
 
     # Streaming events (token-by-token LLM output)

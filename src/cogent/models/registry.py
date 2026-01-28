@@ -66,6 +66,17 @@ MODEL_ALIASES: dict[str, str] = {
     "command-r": "command-r-plus",
     "command-r7b": "command-r7b-12-2024",
     "command-light": "command-r",
+    # xAI (Grok)
+    "grok": "grok-4-1-fast",  # Fast agentic model (2M context, best for tools)
+    "grok-4": "grok-4-0709",  # Flagship reasoning model
+    "grok-fast": "grok-4-1-fast",  # Fast agentic model
+    "grok-fast-reasoning": "grok-4-1-fast-reasoning",  # With reasoning
+    "grok-fast-non-reasoning": "grok-4-1-fast-non-reasoning",  # Without reasoning
+    "grok-vision": "grok-2-vision-1212",  # Image understanding
+    "grok-code": "grok-code-fast-1",  # Code-optimized
+    # Legacy models
+    "grok-3": "grok-3",
+    "grok-3-mini": "grok-3-mini",
 }
 
 # Provider detection patterns - model prefix to provider mapping
@@ -131,6 +142,9 @@ MODEL_PROVIDERS: dict[str, str] = {
     "embed-multilingual-": "cohere",
     "embed-v": "cohere",  # embed-v4.0
     "rerank-": "cohere",
+    # xAI (Grok)
+    "grok-": "xai",
+    "grok": "xai",
 }
 
 

@@ -172,6 +172,7 @@ def get_api_key(provider: str, explicit_key: str | None = None) -> str | None:
         "cloudflare": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_KEY", "CF_API_KEY"],
         "mistral": ["MISTRAL_API_KEY"],
         "together": ["TOGETHER_API_KEY"],
+        "xai": ["XAI_API_KEY"],
     }
 
     provider_lower = provider.lower()

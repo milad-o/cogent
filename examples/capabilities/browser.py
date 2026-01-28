@@ -11,7 +11,7 @@ Requires: uv add playwright && playwright install chromium
 
 import asyncio
 
-from cogent import Agent, Flow
+from cogent import Agent
 from cogent.capabilities import Browser
 
 
@@ -32,16 +32,11 @@ async def main() -> None:
         capabilities=[browser],
     )
 
-    flow = Flow(
-        name="web_research",
-        agents=[researcher],
-    )
-
-    result = await flow.run(
+    result = await researcher.run(
         "Go to https://httpbin.org/html and extract the main content. "
         "Summarize what you find."
     )
-    print(f"\n{result.output}")
+    print(f"\n{result.content}")
 
 
 if __name__ == "__main__":
