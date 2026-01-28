@@ -977,7 +977,7 @@ class Agent:
                 
                 embed_model = create_embedding("openai", "text-embedding-3-small")
                 self._semantic_cache = SemanticCache(
-                    embedding_fn=embed_model.embed_query,
+                    embedding=embed_model,
                     similarity_threshold=0.85,  # 85% similarity for cache hits
                     max_entries=10000,
                     default_ttl=86400,  # 24 hours

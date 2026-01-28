@@ -62,7 +62,7 @@ async def demo_custom_cache_instance():
     # Create custom cache with specific settings
     embed_model = create_embedding("openai", "text-embedding-3-small")
     custom_cache = SemanticCache(
-        embedding_fn=embed_model.embed_query,
+        embedding=embed_model,  # Pass the model, not the function
         similarity_threshold=0.90,  # Higher threshold = stricter matching
         max_entries=5000,
         default_ttl=3600,  # 1 hour TTL
