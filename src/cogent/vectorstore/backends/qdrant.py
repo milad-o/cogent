@@ -141,7 +141,7 @@ class QdrantBackend:
         for doc_id, embedding, doc in zip(ids, embeddings, documents, strict=False):
             # Build payload (metadata + text)
             metadata_dict = doc.metadata.to_dict()
-            
+
             # Flatten custom fields to top level for easier filtering
             custom = metadata_dict.pop("custom", {})
             payload = {
@@ -207,7 +207,7 @@ class QdrantBackend:
         for result in results:
             payload = result.payload or {}
             text = payload.pop("text", "")
-            
+
             # Create metadata with id
             metadata = payload.copy()
             if "id" not in metadata:

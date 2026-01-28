@@ -93,12 +93,6 @@ from cogent.agent.hitl import (
     PendingAction,
     should_interrupt,
 )
-# Memory components moved to cogent.memory
-from cogent.memory import (
-    InMemorySaver,
-    MemorySnapshot,
-    ThreadConfig,
-)
 from cogent.agent.output import (
     OutputMethod,
     ResponseSchema,
@@ -150,7 +144,6 @@ from cogent.executors import (
     create_executor,
     run,
 )
-
 from cogent.graph import (
     GraphConfig,
     GraphDirection,
@@ -187,6 +180,13 @@ from cogent.interceptors import (
     ToolGate,
     ToolGuard,
     run_interceptors,
+)
+
+# Memory components moved to cogent.memory
+from cogent.memory import (
+    InMemorySaver,
+    MemorySnapshot,
+    ThreadConfig,
 )
 
 # LLM & Embedding Models (native)

@@ -37,7 +37,6 @@ from cogent.core.messages import (
     ToolMessage,
 )
 from cogent.core.utils import model_identifier
-from cogent.observability.bus import TraceBus
 from cogent.interceptors.base import (
     InterceptContext,
     Interceptor,
@@ -47,6 +46,7 @@ from cogent.interceptors.base import (
 )
 from cogent.models.base import BaseChatModel
 from cogent.models.openai import OpenAIChat
+from cogent.observability.bus import TraceBus
 from cogent.tools.base import BaseTool
 
 if TYPE_CHECKING:
@@ -388,9 +388,17 @@ class NativeExecutor(BaseExecutor):
         # Set agent reference on context for tool access (e.g., cache)
         run_context.agent = self.agent
 
-        # Get observability components
+        # Get observability components - prefer v2 Observer over v1 TraceBus
+        observer = getattr(self.agent, "_observer", None)
         event_bus = getattr(self.agent, "trace_bus", None)
         agent_name = self.agent.name or "agent"
+
+        # Helper to emit events through observer (preferred) or event_bus (fallback)
+        async def emit_event(event_type: str, data: dict) -> None:
+            if observer:
+                observer.emit(event_type, **data)
+            elif event_bus:
+                await event_bus.publish(event_type, data)
 
         # Update resilience tracker if we have one
         if self._model_resilience and hasattr(self, "tracker"):
@@ -400,15 +408,14 @@ class NativeExecutor(BaseExecutor):
         execution_start = time.perf_counter()
 
         # Emit agent invoked event (not USER_INPUT - that's for user-facing input)
-        if event_bus:
-            await event_bus.publish(
-                TraceType.AGENT_INVOKED.value,
-                {
-                    "agent": agent_name,
-                    "agent_name": agent_name,
-                    "task": task[:200] + "..." if len(task) > 200 else task,
-                },
-            )
+        await emit_event(
+            "agent.invoked",
+            {
+                "agent": agent_name,
+                "agent_name": agent_name,
+                "task": task[:200] + "..." if len(task) > 200 else task,
+            },
+        )
 
         # Build messages once
         messages = self._build_messages(task, context_dict)
@@ -439,6 +446,7 @@ class NativeExecutor(BaseExecutor):
             agent_name,
             execution_start,
             run_context,
+            observer,
         )
 
     async def execute_messages(
@@ -520,6 +528,9 @@ class NativeExecutor(BaseExecutor):
                 task, context_dict, messages, event_bus, agent_name, run_context
             )
 
+        # Get observer for v2 observability
+        observer = getattr(self.agent, "_observer", None)
+
         return await self._execute_main_loop(
             task,
             context_dict,
@@ -528,6 +539,7 @@ class NativeExecutor(BaseExecutor):
             agent_name,
             execution_start,
             run_context,
+            observer,
         )
 
     def _build_messages(
@@ -636,6 +648,9 @@ class NativeExecutor(BaseExecutor):
 
         from cogent.observability.trace_record import TraceType
 
+        # Get observer for v2 observability
+        observer = getattr(self.agent, "_observer", None)
+
         output_config: ResponseSchema | None = getattr(
             self.agent, "_output_config", None
         )
@@ -650,6 +665,7 @@ class NativeExecutor(BaseExecutor):
                 agent_name,
                 time.perf_counter(),
                 run_context,
+                observer,
             )
 
         # Structured output enabled
@@ -678,6 +694,7 @@ class NativeExecutor(BaseExecutor):
                 agent_name,
                 time.perf_counter(),
                 run_context,
+                observer,
             )
 
             # Try to validate
@@ -726,6 +743,7 @@ class NativeExecutor(BaseExecutor):
         agent_name: str,
         execution_start: float,
         run_context: RunContext | None = None,
+        observer: object | None = None,
     ) -> str:
         """Execute the main agent loop (extracted for reuse with structured output).
 
@@ -737,6 +755,7 @@ class NativeExecutor(BaseExecutor):
             agent_name: Agent name for events.
             execution_start: Start time for duration tracking.
             run_context: Optional RunContext for tools and interceptors.
+            observer: Optional Observer v2 instance for event emission.
 
         Returns:
             Raw response content string.
@@ -745,9 +764,16 @@ class NativeExecutor(BaseExecutor):
 
         from cogent.observability.trace_record import TraceType
 
+        # Helper to emit events through observer (preferred) or event_bus (fallback)
+        async def emit_event(event_type: str, data: dict) -> None:
+            if observer:
+                observer.emit(event_type, **data)
+            elif event_bus:
+                await event_bus.publish(event_type, data)
+
         total_tool_calls = 0
         model_calls = 0
-        
+
         # Store messages reference for token aggregation
         self._last_messages = messages
 
@@ -854,23 +880,21 @@ class NativeExecutor(BaseExecutor):
                     return e.response
 
             # Emit thinking event
-            if event_bus:
-                await event_bus.publish(
-                    TraceType.AGENT_THINKING.value,
-                    {
-                        "agent": agent_name,
-                        "agent_name": agent_name,
-                        "iteration": iteration + 1,
-                    },
-                )
+            await emit_event(
+                "agent.thinking",
+                {
+                    "agent": agent_name,
+                    "agent_name": agent_name,
+                    "iteration": iteration + 1,
+                },
+            )
 
             # Emit LLM request event (for deep observability)
-            if event_bus:
-                await event_bus.publish(
-                    TraceType.LLM_REQUEST.value,
-                    {
-                        "agent_name": agent_name,
-                        "model": model_identifier(self.agent.model),
+            await emit_event(
+                "llm.request",
+                {
+                    "agent_name": agent_name,
+                    "model": model_identifier(self.agent.model),
                         "messages": [
                             {
                                 "role": getattr(m, "role", "unknown"),
@@ -1017,26 +1041,34 @@ class NativeExecutor(BaseExecutor):
                             "duration_ms": duration_ms,
                         },
                     )
-                
+
+                # Note: agent.responded event is emitted by Agent._run_impl with richer metadata
+                # (tokens, tool_calls, etc.) so we don't duplicate it here
+
                 # Sync messages to agent state for token aggregation
                 self.agent.state._message_history = messages
-                
+
                 return final_output
 
+            # Generate UUIDs for tool calls (for proper observability tracking)
+            import uuid
+            tool_call_ids = [str(uuid.uuid4())[:8] for _ in response.tool_calls]
+
             # Emit tool call events
-            if event_bus:
-                for tc in response.tool_calls:
-                    tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(
-                        TraceType.TOOL_CALLED.value,
-                        {
-                            "agent": agent_name,
-                            "agent_name": agent_name,
-                            "tool": tool_name,
-                            "tool_name": tool_name,
-                            "args": tc.get("args", {}),
-                        },
-                    )
+            for i, tc in enumerate(response.tool_calls):
+                tool_name = tc.get("name", "unknown")
+                call_id = tool_call_ids[i]
+                await emit_event(
+                    "tool.called",
+                    {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "tool": tool_name,
+                        "tool_name": tool_name,
+                        "call_id": call_id,
+                        "args": tc.get("args", {}),
+                    },
+                )
 
             # Check per-turn tool call limit
             num_calls = len(response.tool_calls)
@@ -1068,23 +1100,24 @@ class NativeExecutor(BaseExecutor):
             messages.extend(tool_results)
             total_tool_calls += num_calls
 
-            # Emit tool result events
-            if event_bus:
-                for i, result in enumerate(tool_results):
-                    tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
-                    tool_name = tc.get("name", "unknown")
-                    await event_bus.publish(
-                        TraceType.TOOL_RESULT.value,
-                        {
-                            "agent": agent_name,
-                            "agent_name": agent_name,
-                            "tool": tool_name,
-                            "tool_name": tool_name,
-                            "result": result.content[:500]
-                            if len(result.content) > 500
-                            else result.content,
-                        },
-                    )
+            # Emit tool result events (use same UUIDs from tool.called)
+            for i, result in enumerate(tool_results):
+                tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
+                tool_name = tc.get("name", "unknown")
+                call_id = tool_call_ids[i] if i < len(tool_call_ids) else ""
+                await emit_event(
+                    "tool.result",
+                    {
+                        "agent": agent_name,
+                        "agent_name": agent_name,
+                        "tool": tool_name,
+                        "tool_name": tool_name,
+                        "call_id": call_id,
+                        "result": result.content[:500]
+                        if len(result.content) > 500
+                        else result.content,
+                    },
+                )
 
         # Max iterations reached - POST_RUN
         if interceptors:

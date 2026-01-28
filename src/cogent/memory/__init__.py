@@ -39,11 +39,6 @@ Available stores:
     - RedisStore: Distributed cache with native TTL
 """
 
-from cogent.memory.core import (
-    InMemoryStore,
-    Memory,
-    Store,
-)
 from cogent.memory.acc import (
     AgentCognitiveCompressor,
     BoundedMemoryState,
@@ -55,15 +50,20 @@ from cogent.memory.cache import (
     SemanticCache,
     compute_context_hash,
 )
-from cogent.memory.stores import (
-    RedisStore,
-    SQLAlchemyStore,
-)
 from cogent.memory.checkpointing import (
+    InMemorySaver,
     MemorySaver,
     MemorySnapshot,
     ThreadConfig,
-    InMemorySaver,
+)
+from cogent.memory.core import (
+    InMemoryStore,
+    Memory,
+    Store,
+)
+from cogent.memory.stores import (
+    RedisStore,
+    SQLAlchemyStore,
 )
 
 __all__ = [

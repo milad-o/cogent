@@ -414,12 +414,12 @@ class Database(BaseCapability):
             result = await db.query(query, params=parsed_params)
 
             if result.success:
-                lines = [f"✓ Query executed successfully"]
+                lines = ["✓ Query executed successfully"]
                 lines.append(f"Rows: {result.row_count}")
                 lines.append(f"Time: {result.execution_time_ms:.0f}ms")
 
                 if result.rows:
-                    lines.append(f"\nResults:")
+                    lines.append("\nResults:")
                     # Show first 10 rows
                     for i, row in enumerate(result.rows[:10], 1):
                         lines.append(f"\n{i}. {row}")
@@ -429,7 +429,7 @@ class Database(BaseCapability):
                 else:
                     lines.append("\nNo rows returned")
             else:
-                lines = [f"✗ Query failed"]
+                lines = ["✗ Query failed"]
                 lines.append(f"Error: {result.error}")
 
             return "\n".join(lines)
@@ -463,11 +463,11 @@ class Database(BaseCapability):
             result = await db.execute(statement, params=parsed_params)
 
             if result.success:
-                lines = [f"✓ Statement executed successfully"]
+                lines = ["✓ Statement executed successfully"]
                 lines.append(f"Affected rows: {result.row_count}")
                 lines.append(f"Time: {result.execution_time_ms:.0f}ms")
             else:
-                lines = [f"✗ Statement failed"]
+                lines = ["✗ Statement failed"]
                 lines.append(f"Error: {result.error}")
 
             return "\n".join(lines)
@@ -514,7 +514,7 @@ class Database(BaseCapability):
                 lines.append(f"Rows inserted: {result.row_count}")
                 lines.append(f"Time: {result.execution_time_ms:.0f}ms")
             else:
-                lines = [f"✗ Insert failed"]
+                lines = ["✗ Insert failed"]
                 lines.append(f"Error: {result.error}")
 
             return "\n".join(lines)

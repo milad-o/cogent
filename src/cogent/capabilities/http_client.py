@@ -201,7 +201,7 @@ class HTTPClient(BaseCapability):
         try:
             # Create client with retry transport
             transport = httpx.AsyncHTTPTransport(retries=self._max_retries)
-            
+
             async with httpx.AsyncClient(
                 transport=transport,
                 timeout=self._timeout,

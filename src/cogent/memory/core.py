@@ -155,12 +155,12 @@ class Memory:
         self._lock = asyncio.Lock()
         self._tools_cache: list[Any] | None = None
         self._current_thread_id: str | None = None  # Track active thread for tools
-        
+
         # Checkpointing support (for conversation persistence)
         self._saver = saver
         self._cache: dict[str, Any] = {}  # In-memory cache for checkpoints
         self._version_counters: dict[str, int] = {}
-        
+
         # ACC (Agent Cognitive Compressor) support
         self._acc_enabled = acc_enabled or (acc_instance is not None)
         self._acc_instance = acc_instance  # Pre-configured instance (optional)
@@ -219,7 +219,7 @@ class Memory:
             self._tools_cache = create_memory_tools(self)
 
         return self._tools_cache
-    
+
     async def get_acc_state(self, thread_id: str) -> Any:
         """Get or create ACC state for a thread.
         
@@ -231,29 +231,29 @@ class Memory:
         """
         if not self._acc_enabled:
             raise RuntimeError("ACC is not enabled. Set acc=True when creating Agent.")
-        
+
         # Return existing ACC if in cache
         if thread_id in self._acc_states:
             return self._acc_states[thread_id]
-        
+
         # Use pre-configured instance if provided (for first thread)
         if self._acc_instance is not None and not self._acc_states:
             self._acc_states[thread_id] = self._acc_instance
             return self._acc_instance
-        
+
         # Create new ACC
         from cogent.memory.acc import (
             AgentCognitiveCompressor,
             BoundedMemoryState,
             SemanticForgetGate,
         )
-        
+
         state = BoundedMemoryState()
         gate = SemanticForgetGate()
         acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
         self._acc_states[thread_id] = acc
         return acc
-    
+
     async def save_acc_state(self, thread_id: str, acc: Any) -> None:
         """Save ACC state for a thread.
         
@@ -303,13 +303,13 @@ class Memory:
         """
         start = time.perf_counter()
         await self._store.set(self._key(key), value, ttl=ttl)
-        
+
         # Also store in vectorstore for semantic search on keys
         if self._vectorstore:
             from cogent.core.document import Document, DocumentMetadata
             # Store as: "key: value" to enable semantic search on both
             text_content = f"{key}: {value}"
-            
+
             # Include namespace in metadata so search() can filter correctly
             custom_metadata = {
                 "memory_key": key,
@@ -317,13 +317,13 @@ class Memory:
             }
             if self._namespace:
                 custom_metadata["namespace"] = self._namespace
-            
+
             doc = Document(
                 text=text_content,
                 metadata=DocumentMetadata(custom=custom_metadata),
             )
             await self._vectorstore.add_documents([doc])
-        
+
         await self._emit(
             "memory.write",
             {

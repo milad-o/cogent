@@ -1,234 +1,207 @@
 # Observability Module
 
-The `cogent.observability` module provides comprehensive monitoring, tracing, metrics, and progress output for understanding system behavior at runtime.
+The `cogent.observability` module provides real-time visibility into agent execution with a simple, composable API.
 
-## Overview
-
-The observability module includes:
-- **TraceBus** - Central pub/sub for all events
-- **Observer** - Unified observability for agents and flows
-- **Tracer** - Distributed tracing with spans
-- **Metrics** - Counters, gauges, histograms
-- **Progress** - Rich terminal output and progress tracking
-- **Dashboard** - Real-time monitoring UI
+## Quick Start
 
 ```python
 from cogent import Agent
 from cogent.observability import Observer
 
-# Simple: verbose output
-agent = Agent(name="assistant", model=model, verbose=True)
+# Create an observer
+observer = Observer(level="progress")
 
-# Advanced: full observability
-observer = Observer(level="trace")
-result = await agent.run("Hello", observer=observer)
+# Attach to agent
+agent = Agent(
+    name="Assistant",
+    model="gpt-4o-mini",
+    tools=[my_tool],
+    observer=observer,
+)
+
+# Run and watch events flow
+result = await agent.run("Do something useful")
+
+# See summary
+print(observer.summary())
+# Events: 8
+#   agent: 4
+#   tool: 4
+```
+
+### Output Levels
+
+| Level | Shows |
+|-------|-------|
+| `"minimal"` | Only completion events |
+| `"progress"` | Starting, thinking, tool calls, completion (default) |
+| `"verbose"` | Progress + tool arguments |
+| `"debug"` | Verbose + LLM requests/responses |
+
+### Example Output
+
+```
+[Assistant] [starting]
+[Assistant] [thinking]
+[Assistant] [tool-call] 8552e158 calculate
+[Assistant] [tool-call] 9c9b41d8 get_weather
+[Assistant] [tool-result] 8552e158 calculate
+  '100'
+[Assistant] [tool-result] 9c9b41d8 get_weather
+  '68°F, Clear'
+[Assistant] [thinking] (iteration 2)
+[Assistant] [completed] (2.0s) • 330 tokens
 ```
 
 ---
 
-## Observer
+## Observer API
 
-Unified observability interface with preset levels:
+### Creating an Observer
 
 ```python
 from cogent.observability import Observer
 
-# Preset levels (recommended)
-observer = Observer(level="silent")    # No output
-observer = Observer(level="progress")  # Basic progress
-observer = Observer(level="verbose")   # Show agent outputs
-observer = Observer(level="debug")     # Include tool calls (excludes raw LLM content)
-observer = Observer(level="trace")     # Maximum detail + graph (excludes raw LLM content)
+# From preset level
+observer = Observer(level="progress")
+observer = Observer(level="verbose")
+observer = Observer(level="debug")
 
-# Use with agents
-result = await agent.run("Query", observer=observer)
-
-# Use with flows
-result = await flow.run("Task", observer=observer)
+# Disable/enable
+observer.enabled = False
+observer.level = "debug"  # Change level dynamically
 ```
 
-### ObservabilityLevel
+### Subscribing to Events
 
 ```python
-from cogent.observability import ObservabilityLevel
+# Subscribe to specific event types
+def on_tool_call(event):
+    print(f"Tool called: {event.data['tool_name']}")
 
-ObservabilityLevel.SILENT   # No output
-ObservabilityLevel.MINIMAL  # Start/complete only
-ObservabilityLevel.NORMAL   # Standard progress
-ObservabilityLevel.VERBOSE  # Show outputs
-ObservabilityLevel.DEBUG    # Tool calls + thinking
-ObservabilityLevel.TRACE    # Everything + execution graph
+observer.on("tool.called", on_tool_call)
+
+# Subscribe to patterns (glob-style)
+observer.on("tool.*", lambda e: print(f"Tool event: {e.type}"))
+observer.on("agent.*", lambda e: print(f"Agent event: {e.type}"))
+
+# Subscribe to all events
+observer.on_all(lambda e: print(f"{e.type}: {e.data}"))
 ```
 
-### Custom Observer
+### Event Types
+
+| Event | Level | Description |
+|-------|-------|-------------|
+| `agent.invoked` | PROGRESS | Agent started processing |
+| `agent.thinking` | PROGRESS | Agent is thinking (per iteration) |
+| `agent.responded` | RESULT | Agent completed with response |
+| `agent.error` | RESULT | Agent failed with error |
+| `tool.called` | PROGRESS | Tool invocation started |
+| `tool.result` | PROGRESS | Tool returned result |
+| `tool.error` | PROGRESS | Tool failed |
+| `llm.request` | DEBUG | LLM API request (verbose) |
+| `llm.response` | DEBUG | LLM API response (verbose) |
+| `stream.start` | PROGRESS | Streaming started |
+| `stream.end` | PROGRESS | Streaming completed |
+| `stream.token` | TRACE | Individual token (very verbose) |
+
+### Event Data
+
+Events contain contextual data:
 
 ```python
-from cogent.observability import Observer, Channel
+def on_tool_result(event):
+    print(f"Agent: {event.data['agent_name']}")
+    print(f"Tool: {event.data['tool_name']}")
+    print(f"Call ID: {event.data['call_id']}")  # UUID for correlation
+    print(f"Result: {event.data['result']}")
 
-observer = Observer(
-    level=ObservabilityLevel.DEBUG,
-    channels=[
-        Channel.CONSOLE,    # Terminal output
-        Channel.FILE,       # Log to file
-        Channel.WEBSOCKET,  # Real-time streaming
-    ],
-    file_path="agent.log",
-)
+observer.on("tool.result", on_tool_result)
 ```
 
-### Modular Channels (Opt-in Observability)
-
-The observability system uses **channels** to let you subscribe to specific event categories. This keeps output clean and focused on what matters to you:
+### Summary
 
 ```python
-from cogent.observability import Observer, Channel
-
-# Subscribe to specific channels
-observer = Observer(
-    level=ObservabilityLevel.DEBUG,
-    channels=[
-        Channel.AGENTS,     # Agent lifecycle events
-        Channel.TOOLS,      # Tool calls and results
-        Channel.TASKS,      # Task execution
-    ],
-)
-
-# Available channels:
-# - Channel.AGENTS: Agent thinking, acting, status
-# - Channel.TOOLS: Tool calls, results, errors
-# - Channel.MESSAGES: Inter-agent communication
-# - Channel.TASKS: Task lifecycle
-# - Channel.LLM: Raw LLM request/response (opt-in)
-# - Channel.STREAMING: Token-by-token output
-# - Channel.MEMORY: Memory operations
-# - Channel.RETRIEVAL: RAG retrieval
-# - Channel.DOCUMENTS: Document loading/splitting
-# - Channel.MCP: Model Context Protocol
-# - Channel.REACTIVE: Reactive flow events
-# - Channel.SYSTEM: System-level events
-# - Channel.RESILIENCE: Retries, circuit breakers
-# - Channel.ALL: Everything
+# After running agent
+print(observer.summary())
+# Events: 10
+#   agent: 6
+#   tool: 4
 ```
 
-**LLM Events are Opt-in**: By default, LLM request/response events show **subtle presence** (just that a request/response occurred). To see full details (prompts, responses, content), explicitly subscribe to `Channel.LLM`:
+---
+
+## Tool Call Tracking
+
+Tool calls include UUIDs for correlating calls with results:
 
 ```python
-# Default behavior: LLM events show subtle presence only
-observer = Observer(
-    level=ObservabilityLevel.DEBUG,
-    channels=[Channel.AGENTS, Channel.TOOLS],
-)
-# → LLM request (5 messages, 3 tools)
-# ← LLM response 1.2s, 2 tools
-
-# Opt-in for LLM details (explicit channel subscription required)
-observer = Observer(
-    level=ObservabilityLevel.DEBUG,
-    channels=[Channel.AGENTS, Channel.TOOLS, Channel.LLM],  # Explicitly add LLM channel
-)
-# Now you'll see prompts, system messages, response content
-
-# Note: Observer(level="debug") and Observer(level="trace") do NOT include Channel.LLM by default
-# This is intentional - LLM content requires explicit opt-in for privacy
+[Assistant] [tool-call] 8552e158 calculate
+[Assistant] [tool-call] 9c9b41d8 get_weather
+[Assistant] [tool-result] 8552e158 calculate  # Same ID
+  '100'
+[Assistant] [tool-result] 9c9b41d8 get_weather  # Same ID
+  '68°F, Clear'
 ```
 
-This modular design ensures:
-- ✅ Clean, focused output by default
-- ✅ Opt-in to detailed LLM debugging when needed
-- ✅ No noise from internal LLM calls unless you want it
-- ✅ Easy to filter what you care about
+This enables tracking parallel tool executions and building execution graphs.
+
+---
+
+## Multiple Agents
+
+A single observer can track multiple agents:
+
+```python
+observer = Observer(level="progress")
+
+researcher = Agent(name="Researcher", observer=observer, ...)
+writer = Agent(name="Writer", observer=observer, ...)
+
+await researcher.run("Research topic")
+await writer.run("Write article")
+
+print(observer.summary())
+# Events: 16
+#   agent: 9
+#   tool: 7
+```
+
+Output shows agent names for clarity:
+```
+[Researcher] [starting]
+[Researcher] [thinking]
+[Researcher] [tool-call] abc123 search
+[Researcher] [completed] (2.1s) • 250 tokens
+[Writer] [starting]
+[Writer] [thinking]
+[Writer] [completed] (1.5s) • 180 tokens
+```
+
+---
+
+## Advanced: TraceBus (v1 API)
+
+For advanced use cases, you can use the lower-level TraceBus API directly:
+
+```python
+from cogent.observability import TraceBus, TraceType
+
+bus = TraceBus()
+
+# Subscribe to specific trace types
+bus.subscribe(TraceType.AGENT_THINKING, lambda e: print(f"Thinking: {e}"))
+
+# Publish events
+bus.publish(TraceType.AGENT_INVOKED, {"agent": "assistant"})
+```
+
+This is primarily used internally by the Observer. Most users should use the Observer API.
 
 ---
 
 ## Observing Event-Driven Flows
-
-The event-driven Flow paradigm is fully integrated with the observability system, providing deep visibility into event processing, reactor activations, and flow execution.
-
-### Understanding the Dual-Bus Architecture
-
-Cogent uses two separate event systems for clean separation of concerns:
-
-#### 1. EventBus (Orchestration)
-**Module**: `cogent.events.EventBus`  
-**Purpose**: Core orchestration and flow control  
-**Events**: `task.created`, `agent.done`, `research.complete`, custom events  
-**Used by**: Flow, reactors, agent coordination  
-**Consumers**: Reactors registered via `flow.register()`
-
-```python
-from cogent.events import EventBus
-
-# Orchestration bus - handles flow logic
-events = EventBus()
-await events.publish("task.created", {"id": "123"})
-```
-
-#### 2. TraceBus (Observability)
-**Module**: `cogent.observability.TraceBus`  
-**Purpose**: Telemetry, tracing, and monitoring  
-**Events**: `TraceType` enum values (REACTIVE_*, AGENT_*, TASK_*)  
-**Used by**: Observer, metrics, logging, exporters  
-**Consumers**: Observer handlers, dashboards, log files
-
-```python
-from cogent.observability import TraceBus
-
-# Observability bus - separate from orchestration
-traces = TraceBus()
-bus.subscribe(TraceType.REACTIVE_FLOW_STARTED, on_flow_start)
-```
-
-#### Why Two Buses?
-
-| Reason | Benefit |
-|--------|---------|
-| **Separation of Concerns** | Orchestration logic ≠ observability logic |
-| **Performance** | Observability can be disabled without affecting flow |
-| **Flexibility** | Different event schemas and lifecycles |
-| **Extensibility** | Each bus can evolve independently |
-
-#### How They Connect
-
-The Flow automatically bridges the two systems:
-- Flow publishes orchestration events to **EventBus** (reactors respond)
-- Flow's `_observe()` method emits to **TraceBus** (observers see it)
-- No direct coupling between buses
-- Observer attaches to TraceBus automatically
-
-```python
-from cogent import Flow, Agent
-from cogent.observability import Observer
-
-observer = Observer(level="trace")
-flow = Flow(observer=observer)  # Observer attaches to TraceBus
-
-# When you register reactors:
-flow.register(agent, on="task.created")  # Listens to EventBus
-
-# When flow runs:
-# 1. EventBus: task.created → agent reactor
-# 2. TraceBus: REACTIVE_AGENT_TRIGGERED → observer
-```
-
-### Flow Trace Events
-
-The Flow emits detailed trace events for every step of execution:
-
-| TraceType | Description | When Emitted | Key Data |
-|-----------|-------------|--------------|----------|
-| `REACTIVE_FLOW_STARTED` | Flow execution begins | `flow.run()` called | `task`, `agents`, `flow_id` |
-| `REACTIVE_EVENT_EMITTED` | Event published to flow | Event enters system | `event_type`, `data`, `source` |
-| `REACTIVE_EVENT_PROCESSED` | Event matched and handled | After reactor processes | `event_type`, `reactor`, `duration_ms` |
-| `REACTIVE_AGENT_TRIGGERED` | Agent reactor activated | Agent starts processing | `agent`, `event`, `trigger` |
-| `REACTIVE_AGENT_COMPLETED` | Agent finished successfully | Agent returns result | `agent`, `output`, `duration_ms` |
-| `REACTIVE_AGENT_FAILED` | Agent encountered error | Agent raises exception | `agent`, `error`, `traceback` |
-| `REACTIVE_NO_MATCH` | No reactors matched event | Event processed but no match | `event_type`, `available_reactors` |
-| `REACTIVE_ROUND_STARTED` | New processing round begins | Start of event loop iteration | `round`, `pending_events` |
-| `REACTIVE_ROUND_COMPLETED` | Round finished | All events in round processed | `round`, `events_processed`, `duration_ms` |
-| `REACTIVE_FLOW_COMPLETED` | Flow execution finished | Flow terminates successfully | `output`, `total_events`, `total_rounds` |
-| `REACTIVE_FLOW_FAILED` | Flow execution failed | Flow terminates with error | `error`, `partial_output`, `events_processed` |
-
-### Observer Levels for Flows
 
 Different observer levels reveal different aspects of flow execution:
 

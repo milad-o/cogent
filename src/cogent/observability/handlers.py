@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TextIO
+from typing import ClassVar, TextIO
 
 from cogent.observability.trace_record import Trace, TraceType
 
@@ -220,7 +220,7 @@ class FileEventHandler:
         """Ensure file is open for writing."""
         if self._file is None or self._file.closed:
             mode = "a" if self._append else "w"
-            self._file = open(self.file_path, mode)
+            self._file = open(self.file_path, mode)  # noqa: SIM115 - persistent handle
         return self._file
 
     def __call__(self, event: Trace) -> None:

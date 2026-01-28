@@ -11,7 +11,6 @@ from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Literal,
 )
 
 from cogent.agent.config import AgentConfig
@@ -42,33 +41,31 @@ from cogent.core.response import (
 )
 from cogent.core.utils import generate_id, model_identifier, now_utc
 from cogent.models.base import BaseChatModel
-from cogent.observability.trace_record import Trace, TraceType
 from cogent.tools.base import BaseTool
 
 if TYPE_CHECKING:
-    from cogent.memory import MemorySaver, MemorySnapshot, InMemorySaver
-    from cogent.memory.acc import AgentCognitiveCompressor
-    from cogent.memory.cache import SemanticCache
     from cogent.agent.resilience import ResilienceConfig, ToolResilience
     from cogent.agent.streaming import StreamChunk, StreamEvent
     from cogent.graph import GraphView
-    from cogent.memory import Memory
+    from cogent.memory.acc import AgentCognitiveCompressor
+    from cogent.memory.cache import SemanticCache
+    from cogent.observability import Observer
     from cogent.observability.bus import TraceBus
-    from cogent.observability.observer import Observer
     from cogent.observability.progress import ProgressTracker
     from cogent.tools.deferred import DeferredToolManager
     from cogent.tools.registry import ToolRegistry
 
 # Import taskboard (real implementation)
 from cogent.agent.taskboard import (
+    TASKBOARD_INSTRUCTIONS,
     TaskBoard,
     TaskBoardConfig,
-    TASKBOARD_INSTRUCTIONS,
     create_taskboard_tools,
 )
 
 # Task type for execute_task (legacy multi-agent feature)
 if TYPE_CHECKING:
+
     class Task:
         id: str
         name: str
@@ -159,8 +156,10 @@ class Agent:
         tool_registry: ToolRegistry | None = None,
         # Memory and state (4-layer architecture)
         conversation: bool = True,  # Layer 1: Thread-based message history (always on by default)
-        acc: bool | AgentCognitiveCompressor = False,  # Layer 2: ACC for drift prevention
-        memory: bool | Any = False,  # Layer 3: Long-term memory with remember/recall tools (or Memory object)
+        acc: bool
+        | AgentCognitiveCompressor = False,  # Layer 2: ACC for drift prevention
+        memory: bool
+        | Any = False,  # Layer 3: Long-term memory with remember/recall tools (or Memory object)
         cache: bool | SemanticCache = False,  # Layer 4: Semantic cache for tool outputs
         # HITL and streaming
         interrupt_on: dict[str, bool | Callable[[str, dict], bool]] | None = None,
@@ -294,7 +293,9 @@ class Agent:
                     tool_names.append(getattr(tool, "name", str(tool)))
 
         # instructions takes priority over system_prompt
-        effective_prompt = instructions or system_prompt or "You are a helpful AI assistant."
+        effective_prompt = (
+            instructions or system_prompt or "You are a helpful AI assistant."
+        )
 
         # Create config from parameters (internal use only)
         config = AgentConfig(
@@ -418,60 +419,47 @@ class Agent:
                 - 4/"debug": Everything including internal events
                 - 5/"trace": Maximum detail + execution graph
         """
-        from cogent.observability import ObservabilityLevel, Observer
+        from cogent.observability import Observer
 
-        # Create an event bus if agent doesn't have one (standalone usage)
-        if self.trace_bus is None:
-            from cogent.observability import TraceBus
-
-            self.trace_bus = TraceBus()
-
-        # Convert to ObservabilityLevel
+        # Map verbosity to level string
         if isinstance(verbosity, bool):
-            level = ObservabilityLevel.PROGRESS if verbosity else ObservabilityLevel.OFF
+            level = "progress" if verbosity else "off"
         elif isinstance(verbosity, int):
-            level = ObservabilityLevel(verbosity)
-        elif isinstance(verbosity, str):
-            # Map string names to enum
             level_map = {
-                "off": ObservabilityLevel.OFF,
-                "result": ObservabilityLevel.RESULT,
-                "minimal": ObservabilityLevel.RESULT,  # Alias
-                "progress": ObservabilityLevel.PROGRESS,
-                "normal": ObservabilityLevel.PROGRESS,  # Alias
-                "detailed": ObservabilityLevel.DETAILED,
-                "verbose": ObservabilityLevel.DETAILED,  # Alias
-                "debug": ObservabilityLevel.DEBUG,
-                "trace": ObservabilityLevel.TRACE,
+                0: "off",
+                1: "minimal",
+                2: "progress",
+                3: "detailed",
+                4: "debug",
+                5: "trace",
             }
-            level = level_map.get(verbosity.lower())
+            level = level_map.get(verbosity, "progress")
+        elif isinstance(verbosity, str):
+            # Normalize aliases
+            alias_map = {
+                "off": "off",
+                "result": "minimal",
+                "minimal": "minimal",
+                "progress": "progress",
+                "normal": "progress",
+                "detailed": "detailed",
+                "verbose": "detailed",
+                "debug": "debug",
+                "trace": "trace",
+            }
+            level = alias_map.get(verbosity.lower())
             if level is None:
                 raise ValueError(
                     f"Invalid verbosity level: {verbosity!r}. "
-                    f"Use: {', '.join(repr(k) for k in level_map)}"
+                    f"Use: {', '.join(repr(k) for k in alias_map)}"
                 )
         else:
-            # Assume it's already an ObservabilityLevel enum
-            level = verbosity
+            level = "progress"
 
-        # Map to Observer presets using string level
-        if level == ObservabilityLevel.OFF:
+        if level == "off":
             return  # No observer
-        elif level == ObservabilityLevel.RESULT:
-            self._observer = Observer(level="minimal")
-        elif level == ObservabilityLevel.PROGRESS:
-            self._observer = Observer(level="progress")
-        elif level == ObservabilityLevel.DETAILED:
-            self._observer = Observer(level="detailed")
-        elif level == ObservabilityLevel.DEBUG:
-            self._observer = Observer(level="debug")
-        elif level == ObservabilityLevel.TRACE:
-            self._observer = Observer(level="trace")
-        else:
-            raise ValueError(f"Unknown observability level: {level}")
 
-        # Connect observer to event bus
-        self._observer.attach(self.trace_bus)
+        self._observer = Observer(level=level)
 
     def _setup_observer(self, observer: Observer) -> None:
         """Setup observer instance for standalone agent usage.
@@ -479,14 +467,7 @@ class Agent:
         Args:
             observer: Observer instance to attach.
         """
-        # Create an event bus if agent doesn't have one (standalone usage)
-        if self.trace_bus is None:
-            from cogent.observability import TraceBus
-
-            self.trace_bus = TraceBus()
-
         self._observer = observer
-        self._observer.attach(self.trace_bus)
 
     def add_observer(self, observer: Observer) -> None:
         """Add an observer for monitoring agent execution.
@@ -585,7 +566,9 @@ class Agent:
 
         return None
 
-    def _aggregate_tokens_from_messages(self, messages: list | None = None) -> TokenUsage | None:
+    def _aggregate_tokens_from_messages(
+        self, messages: list | None = None
+    ) -> TokenUsage | None:
         """Aggregate token usage from all AI messages.
 
         Sums up tokens from all AIMessage metadata in the given messages.
@@ -598,7 +581,7 @@ class Agent:
         """
         if messages is None:
             messages = self.state.message_history
-            
+
         total_prompt = 0
         total_completion = 0
         found_any = False
@@ -742,7 +725,7 @@ class Agent:
 
                 # Emit deferred event
                 await self._emit_event(
-                    TraceType.TOOL_DEFERRED,
+                    "tool.deferred",
                     {
                         "agent_id": self.id,
                         "agent_name": self.name,
@@ -757,7 +740,7 @@ class Agent:
 
                 # Emit waiting event
                 await self._emit_event(
-                    TraceType.TOOL_DEFERRED_WAITING,
+                    "tool.deferred.waiting",
                     {
                         "agent_id": self.id,
                         "agent_name": self.name,
@@ -773,7 +756,7 @@ class Agent:
 
                     # Emit completion event
                     await self._emit_event(
-                        TraceType.TOOL_DEFERRED_COMPLETED,
+                        "tool.deferred.completed",
                         {
                             "agent_id": self.id,
                             "agent_name": self.name,
@@ -788,7 +771,7 @@ class Agent:
                 except TimeoutError as e:
                     # Emit timeout event
                     await self._emit_event(
-                        TraceType.TOOL_DEFERRED_TIMEOUT,
+                        "tool.deferred.timeout",
                         {
                             "agent_id": self.id,
                             "agent_name": self.name,
@@ -938,7 +921,7 @@ class Agent:
             long_term_memory: Layer 3 - Long-term memory with tools (bool or Memory object)
             semantic_cache: Layer 4 - Semantic cache (bool or SemanticCache instance)
         """
-        from cogent.memory import Memory, InMemorySaver
+        from cogent.memory import InMemorySaver, Memory
         from cogent.memory.acc import AgentCognitiveCompressor
         from cogent.memory.cache import SemanticCache
 
@@ -974,7 +957,7 @@ class Agent:
             else:
                 # Create default SemanticCache
                 from cogent.models import create_embedding
-                
+
                 embed_model = create_embedding("openai", "text-embedding-3-small")
                 self._semantic_cache = SemanticCache(
                     embedding=embed_model,
@@ -1046,7 +1029,7 @@ class Agent:
             if agent.cache:
                 stats = agent.cache.stats()
                 print(f"Hit rate: {stats['hit_rate']:.1%}")
-                
+
             # Capabilities automatically use agent.cache when available
             ```
         """
@@ -1110,7 +1093,8 @@ class Agent:
             (),
             {
                 "can_delegate": role == AgentRole.SUPERVISOR,
-                "can_finish": role in (AgentRole.SUPERVISOR, AgentRole.AUTONOMOUS, AgentRole.REVIEWER),
+                "can_finish": role
+                in (AgentRole.SUPERVISOR, AgentRole.AUTONOMOUS, AgentRole.REVIEWER),
                 "can_use_tools": role in (AgentRole.WORKER, AgentRole.AUTONOMOUS),
             },
         )()
@@ -1442,10 +1426,23 @@ class Agent:
         # Skip event in turbo mode
         if self._turbo_mode:
             return
-        if self.trace_bus:
+
+        # Emit via v2 Observer
+        if self._observer:
+            self._observer.emit(
+                "agent.status_changed",
+                agent_id=self.id,
+                agent_name=self.name,
+                old_status=old_status.value,
+                new_status=status.value,
+            )
+        # Also emit to TraceBus for Flow compatibility
+        elif self.trace_bus:
+            from cogent.observability.trace_record import Trace
+
             await self.trace_bus.publish(
                 Trace(
-                    type=TraceType.AGENT_STATUS_CHANGED,
+                    type="agent.status_changed",
                     data={
                         "agent_id": self.id,
                         "agent_name": self.name,
@@ -1457,17 +1454,47 @@ class Agent:
                 )
             )
 
-    async def _emit_event(
+    def _emit(
         self,
-        event_type: TraceType,
-        data: dict,
-        correlation_id: str | None = None,
+        event_type: str,
+        **data: object,
     ) -> None:
-        """Emit an event from this agent."""
+        """Emit an event from this agent (v2 Observer)."""
         # Skip events in turbo mode for max speed
         if self._turbo_mode:
             return
-        if self.trace_bus:
+        if self._observer:
+            self._observer.emit(
+                event_type, agent_name=self.name, agent_id=self.id, **data
+            )
+
+    async def _emit_event(
+        self,
+        event_type: str,
+        data: dict,
+        correlation_id: str | None = None,
+    ) -> None:
+        """Emit an event from this agent (legacy compatibility).
+
+        This method exists for backward compatibility.
+        Prefer using _emit() for new code.
+        """
+        # Skip events in turbo mode for max speed
+        if self._turbo_mode:
+            return
+        # Use v2 Observer if available
+        if self._observer:
+            # Convert TraceType enum to string if needed
+            if hasattr(event_type, "value"):
+                event_type = event_type.value
+            self._observer.emit(event_type, **data)
+        # Also publish to TraceBus for Flow compatibility
+        elif self.trace_bus:
+            from cogent.observability.trace_record import Trace, TraceType
+
+            # Convert string back to enum for TraceBus
+            if isinstance(event_type, str):
+                event_type = TraceType(event_type)
             await self.trace_bus.publish(
                 Trace(
                     type=event_type,
@@ -1598,7 +1625,7 @@ class Agent:
         await self._set_status(AgentStatus.THINKING, correlation_id)
 
         await self._emit_event(
-            TraceType.AGENT_THINKING,
+            "agent.thinking",
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -1629,7 +1656,7 @@ class Agent:
 
         # Emit detailed LLM request event (for deep observability)
         await self._emit_event(
-            TraceType.LLM_REQUEST,
+            "llm.request",
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -1656,7 +1683,7 @@ class Agent:
 
             # Emit raw LLM response event (before any parsing)
             await self._emit_event(
-                TraceType.LLM_RESPONSE,
+                "llm.response",
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1704,7 +1731,7 @@ class Agent:
             }
             event_data.update(self._extract_response_metadata(response_obj))
             await self._emit_event(
-                TraceType.AGENT_RESPONDED,
+                "agent.responded",
                 event_data,
                 correlation_id,
             )
@@ -1715,7 +1742,7 @@ class Agent:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             await self._emit_event(
-                TraceType.AGENT_ERROR,
+                "agent.error",
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1800,7 +1827,7 @@ class Agent:
         await self._set_status(AgentStatus.THINKING, correlation_id)
 
         await self._emit_event(
-            TraceType.AGENT_THINKING,
+            "agent.thinking",
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -1841,7 +1868,7 @@ class Agent:
                 # Emit token event
                 if stream_chunk.content:
                     await self._emit_event(
-                        TraceType.TOKEN_STREAMED,
+                        "stream.token",
                         {
                             "agent_id": self.id,
                             "agent_name": self.name,
@@ -1864,7 +1891,7 @@ class Agent:
             await self._set_status(AgentStatus.IDLE, correlation_id)
 
             await self._emit_event(
-                TraceType.AGENT_RESPONDED,
+                "agent.responded",
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1883,7 +1910,7 @@ class Agent:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             await self._emit_event(
-                TraceType.AGENT_ERROR,
+                "agent.error",
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -1894,7 +1921,7 @@ class Agent:
             )
             raise
 
-    async def get_thread_history(
+    async def stream_events(
         self,
         prompt: str,
         correlation_id: str | None = None,
@@ -2146,7 +2173,7 @@ class Agent:
             self._pending_actions[action_id] = pending
 
             await self._emit_event(
-                TraceType.AGENT_INTERRUPTED,
+                "agent.interrupted",
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -2174,7 +2201,7 @@ class Agent:
         await self._set_status(AgentStatus.ACTING, correlation_id)
 
         await self._emit_event(
-            TraceType.TOOL_CALLED,
+            "tool.called",
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2215,7 +2242,7 @@ class Agent:
                     # Emit additional info if fallback was used
                     if exec_result.used_fallback:
                         await self._emit_event(
-                            TraceType.TOOL_RESULT,
+                            "tool.result",
                             {
                                 "agent_id": self.id,
                                 "tool": tool_name,
@@ -2234,7 +2261,7 @@ class Agent:
                             )
                     else:
                         await self._emit_event(
-                            TraceType.TOOL_RESULT,
+                            "tool.result",
                             {
                                 "agent_id": self.id,
                                 "tool": tool_name,
@@ -2255,7 +2282,7 @@ class Agent:
                     )
 
                     await self._emit_event(
-                        TraceType.TOOL_ERROR,
+                        "tool.error",
                         {
                             "agent_id": self.id,
                             "tool": tool_name,
@@ -2309,7 +2336,7 @@ class Agent:
                 self.state.record_error(str(e))
                 await self._set_status(AgentStatus.ERROR, correlation_id)
                 await self._emit_event(
-                    TraceType.TOOL_ERROR,
+                    "tool.error",
                     {
                         "agent_id": self.id,
                         "tool": tool_name,
@@ -2384,7 +2411,7 @@ class Agent:
         pending = self._pending_actions.pop(action_id)
 
         await self._emit_event(
-            TraceType.AGENT_RESUMED,
+            "agent.resumed",
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2463,7 +2490,7 @@ class Agent:
         await self._set_status(AgentStatus.ACTING, correlation_id)
 
         await self._emit_event(
-            TraceType.TOOL_CALLED,
+            "tool.called",
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2589,7 +2616,7 @@ class Agent:
         await self._set_status(AgentStatus.ACTING, correlation_id)
 
         await self._emit_event(
-            TraceType.TOOL_CALLED,
+            "tool.called",
             {
                 "agent_id": self.id,
                 "agent_name": self.name,
@@ -2671,7 +2698,7 @@ class Agent:
             failures = len(results) - successes
 
             await self._emit_event(
-                TraceType.TOOL_RESULT,
+                "tool.result",
                 {
                     "agent_id": self.id,
                     "tools": [tc[0] for tc in tool_calls],
@@ -2700,7 +2727,7 @@ class Agent:
             self.state.record_error(str(e))
             await self._set_status(AgentStatus.ERROR, correlation_id)
             await self._emit_event(
-                TraceType.TOOL_ERROR,
+                "tool.error",
                 {
                     "agent_id": self.id,
                     "tools": [tc[0] for tc in tool_calls],
@@ -2740,7 +2767,7 @@ class Agent:
 
         try:
             await self._emit_event(
-                TraceType.AGENT_INVOKED,
+                "agent.invoked",
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -2767,7 +2794,7 @@ class Agent:
             self.state.finish_task(task.id, success=True)
 
             await self._emit_event(
-                TraceType.AGENT_RESPONDED,
+                "agent.responded",
                 {
                     "agent_id": self.id,
                     "agent_name": self.name,
@@ -2879,23 +2906,23 @@ class Agent:
         return_full_response: bool = False,
     ) -> BaseTool:
         """Convert this agent into a callable tool for tactical delegation.
-        
+
         Use this SPARINGLY - only when research shows multi-agent helps:
         1. Verification workflows (generator + checker)
         2. Truly parallel independent tasks
         3. Specialized models for different subtasks
-        
+
         Default: Single agent + tools >> Multi-agent coordination
-        
+
         Args:
             name: Tool name (default: agent name)
             description: Tool description (default: agent description)
             return_full_response: If True, returns full Response object;
                                  if False, returns just content string
-        
+
         Returns:
             BaseTool that wraps this agent's execution
-        
+
         Example - Verification Pattern:
             ```python
             # Generator + Verifier (research-backed use case)
@@ -2904,13 +2931,13 @@ class Agent:
                 model="gpt-4o",
                 instructions="Generate clean Python code",
             )
-            
+
             verifier = Agent(
                 name="CodeVerifier",
                 model="claude-sonnet-4",  # Different model for diversity
                 instructions="Review code for correctness and style",
             )
-            
+
             orchestrator = Agent(
                 name="Orchestrator",
                 model="gpt-4o",
@@ -2930,12 +2957,12 @@ class Agent:
                 4. Return verified code
                 \"\"\",
             )
-            
+
             result = await orchestrator.run(
                 "Create a binary search function"
             )
             ```
-        
+
         Example - Parallel Tasks:
             ```python
             analyst = Agent(
@@ -2944,7 +2971,7 @@ class Agent:
                 tools=[search, calculator],
                 instructions="Analyze a company's performance",
             )
-            
+
             orchestrator = Agent(
                 name="Orchestrator",
                 model="gpt-4o",
@@ -2961,50 +2988,56 @@ class Agent:
                 \"\"\",
             )
             ```
-        
+
         Anti-Pattern (DON'T DO THIS):
             ```python
             # BAD: Linear chain - just use one agent!
             step1 = Agent("Step1", instructions="Do step 1")
             step2 = Agent("Step2", instructions="Do step 2")
-            
+
             orchestrator = Agent(tools=[
                 step1.as_tool(),
                 step2.as_tool(),
             ])
             # This is slower and more expensive than one agent!
             ```
-        
+
         See: AGENT_AS_TOOL_DESIGN.md for complete guidelines
         """
         from pydantic import BaseModel, Field
-        
+
         from cogent.tools.base import BaseTool
-        
+
         # Tool input schema
         class AgentToolInput(BaseModel):
             """Input for agent-as-tool."""
-            
+
             task: str = Field(description="Task description for the agent")
-        
+
         # Create tool function that wraps agent execution
         async def execute_agent_task(task: str) -> str | dict:
             """Execute agent and return result."""
             try:
                 response = await self.run(task)
-                
+
                 # If response failed, return error info
                 if not response.success and response.error:
                     return f"Agent execution error: {response.error.message}"
-                
+
                 if return_full_response:
                     # Return full Response object as dict
                     return {
                         "content": response.content,
                         "metadata": {
-                            "agent": response.metadata.agent if response.metadata else None,
-                            "model": response.metadata.model if response.metadata else None,
-                            "duration": response.metadata.duration if response.metadata else None,
+                            "agent": response.metadata.agent
+                            if response.metadata
+                            else None,
+                            "model": response.metadata.model
+                            if response.metadata
+                            else None,
+                            "duration": response.metadata.duration
+                            if response.metadata
+                            else None,
                         },
                         "tool_calls": [
                             {"name": tc.name, "args": getattr(tc, "args", {})}
@@ -3014,18 +3047,20 @@ class Agent:
                 else:
                     # Return just content
                     return str(response.content) if response.content else ""
-                    
+
             except Exception as e:
                 return f"Agent execution failed: {str(e)}"
-        
+
         # Create and return tool
         tool = BaseTool(
             name=name or self.name,
-            description=description or self.config.description or f"Execute task using {self.name} agent",
+            description=description
+            or self.config.description
+            or f"Execute task using {self.name} agent",
             func=execute_agent_task,
             args_schema=AgentToolInput,
         )
-        
+
         return tool
 
     async def _run_impl(
@@ -3056,9 +3091,7 @@ class Agent:
         # Load conversation context if thread_id provided
         if thread_id:
             # Set current thread on memory for tools to access
-            if self._memory and hasattr(
-                self._memory, "_current_thread_id"
-            ):
+            if self._memory and hasattr(self._memory, "_current_thread_id"):
                 self._memory._current_thread_id = thread_id
 
             # Use ACC (bounded memory) or transcript replay (legacy)
@@ -3066,11 +3099,14 @@ class Agent:
                 # ACC: Load bounded memory state instead of full transcript
                 acc = await self._memory.get_acc_state(thread_id)
                 memory_context = acc.format_for_prompt(task)
-                
+
                 # Add formatted memory as system message
                 if memory_context:
                     from cogent.core.messages import SystemMessage
-                    memory_msg = SystemMessage(content=f"# Memory Context\n\n{memory_context}")
+
+                    memory_msg = SystemMessage(
+                        content=f"# Memory Context\n\n{memory_context}"
+                    )
                     self.state.add_message(memory_msg)
             else:
                 # Legacy: Load full conversation history (transcript replay)
@@ -3095,22 +3131,22 @@ class Agent:
 
             # Execute task
             result = await executor.execute(task, context)
-            
+
             # Get messages from executor for token aggregation
-            executor_messages = getattr(executor, '_last_messages', None) or []
+            executor_messages = getattr(executor, "_last_messages", None) or []
 
             # Save to conversation history if thread_id provided
             if thread_id:
                 # Update ACC state from this turn
                 if self._memory and self._memory._acc_enabled:
                     acc = await self._memory.get_acc_state(thread_id)
-                    
+
                     # Extract tool calls for ACC
                     tool_calls_data = [
                         {"name": tc.tool_name, "args": getattr(tc, "arguments", {})}
                         for tc in self.state.tool_calls
                     ]
-                    
+
                     # Update ACC from this turn
                     await acc.update_from_turn(
                         user_message=task,
@@ -3118,7 +3154,7 @@ class Agent:
                         tool_calls=tool_calls_data,
                         current_task=task,
                     )
-                    
+
                     # Save updated ACC state
                     await self._memory.save_acc_state(thread_id, acc)
                 else:
@@ -3127,10 +3163,10 @@ class Agent:
 
             # Build Response object
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
-            
+
             # Aggregate token usage from all AI messages
             total_tokens = self._aggregate_tokens_from_messages(executor_messages)
-            
+
             metadata = ResponseMetadata(
                 agent=self.name,
                 model=model_identifier(self.model),
@@ -3158,7 +3194,7 @@ class Agent:
             }
             event_data.update(self._extract_response_metadata(response_obj))
             await self._emit_event(
-                TraceType.AGENT_RESPONDED,
+                "agent.responded",
                 event_data,
                 None,
             )
@@ -3313,9 +3349,7 @@ class Agent:
         # Load conversation history if thread_id provided
         if thread_id:
             # Set current thread on memory for tools to access
-            if self._memory and hasattr(
-                self._memory, "_current_thread_id"
-            ):
+            if self._memory and hasattr(self._memory, "_current_thread_id"):
                 self._memory._current_thread_id = thread_id
 
             if self._memory:
