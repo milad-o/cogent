@@ -597,42 +597,30 @@ async def single_agent_approach() -> dict:
         instructions="""You are a senior M&A analyst performing comprehensive due diligence.
 
 ⚠️ CRITICAL: You MUST use the tools provided to gather real data. DO NOT make up information.
-⚠️ You cannot complete this task without calling tools first to get actual data.
+⚠️ MAXIMIZE PARALLELISM: Call ALL tools you need in a single response. Don't wait for one area before starting another.
 
-You have 14 tools that require MULTI-STEP investigation:
+You have 14 tools across 5 domains. Call tools from ALL domains in PARALLEL:
 
-DISCOVERY (start here):
-- search_data_room(query, category?) → returns doc IDs
-- read_document(doc_id) → read specific document (use IDs from search)
+STEP 1 - PARALLEL DISCOVERY (call ALL of these at once):
+- get_financial_summary() → get financials first
+- list_customers() → get all customers (no filters!)
+- list_employees(critical_only="true") → get critical employees
+- list_codebases() → get all codebases
+- search_data_room(query="financial") → find financial docs
+- search_data_room(query="legal") → find legal docs
 
-CUSTOMER ANALYSIS (iterate through customers):
-- list_customers(segment?, min_arr?) → returns customer IDs
-- get_customer_details(customer_id) → details for ONE customer
-- get_customer_risk_assessment(customer_id) → risk for ONE customer
+STEP 2 - PARALLEL DEEP DIVE (based on Step 1 results, call ALL at once):
+For each customer ID → get_customer_details() AND get_customer_risk_assessment()
+For each employee ID → get_employee_details() AND assess_retention_risk()  
+For each codebase → analyze_codebase()
+For each financial issue → investigate_financial_item()
+For each doc ID → read_document()
 
-EMPLOYEE ANALYSIS (iterate through key personnel):
-- list_employees(critical_only?, role_filter?) → returns employee IDs
-- get_employee_details(employee_id) → details for ONE employee
-- assess_retention_risk(employee_id) → retention risk for ONE employee
+STEP 3 - PARALLEL REMEDIATION (if needed):
+For codebases with tech_debt > 5 → estimate_remediation()
 
-TECHNOLOGY ANALYSIS (iterate through codebases):
-- list_codebases() → returns codebase names
-- analyze_codebase(codebase_name) → analyze ONE codebase
-- estimate_remediation(codebase_name) → estimate fix effort
-
-FINANCIAL INVESTIGATION:
-- get_financial_summary(period?) → summary + items needing investigation
-- investigate_financial_item(item) → dig into specific issues
-
-WORKFLOW:
-1. Start with discovery - search data room for key documents
-2. Read documents that seem important
-3. Investigate issues you find (e.g., if financials mention a dispute, investigate)
-4. List and analyze customers, especially at-risk ones
-5. List and assess critical employees for retention risk
-6. List and analyze codebases, estimate remediation for problem areas
-
-Build a complete picture through systematic investigation.""",
+⚡ KEY: In each response, call as many tools as possible in parallel. 
+Do NOT do one domain at a time. Do ALL domains simultaneously.""",
         observer=observer,
     )
     
