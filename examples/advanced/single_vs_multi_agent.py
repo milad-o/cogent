@@ -271,7 +271,7 @@ async def orchestrator_with_agent_tools() -> dict:
     # Specialist: Quality checker (verification pattern)
     quality_checker = Agent(
         name="QualityChecker",
-        model="gpt-4o-mini",  # In practice, use different model for diversity
+        model="claude",  # Different model provides diverse perspective
         instructions="""Check content for:
 - Accuracy and factual correctness
 - Completeness (covers key points)
