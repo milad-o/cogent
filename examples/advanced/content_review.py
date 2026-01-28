@@ -38,19 +38,18 @@ async def main():
 
     observer = Observer(level="trace")
 
-    # ACC with AI extraction (uses efficient model for semantic compression)
+    # ACC with model-based extraction (uses efficient model for semantic compression)
     # Options:
     #   extraction_mode="heuristic" - Fast, rule-based (default)
-    #   extraction_mode="ai" - LLM-based semantic extraction
+    #   extraction_mode="model" - LLM-based semantic extraction
     #   model="gpt-4o-mini" - Specify efficient model for extraction
-    #   model=None - Uses agent's model when extraction_mode="ai"
+    #   model=None - Uses agent's model when extraction_mode="model"
     acc = AgentCognitiveCompressor(
         max_constraints=5,
         max_entities=15,
         max_actions=10,
         max_context=10,
-        extraction_mode="heuristic",  # Fast mode for this demo
-        # extraction_mode="ai", model="gpt-4o-mini",  # AI mode with dedicated model
+        extraction_mode="heuristic",  # Fast mode for comparison
     )
     memory = Memory(acc=acc)
 
@@ -84,7 +83,7 @@ async def main():
         cache=True,
     )
 
-    # Run
+    # Run first task
     result = await editor.run("Create a tweet for SmartWatch", thread_id="session-1")
 
     # Output
@@ -100,9 +99,22 @@ async def main():
     else:
         print(result)
 
-    # Stats
+    # Stats after first run
     print(f"\n📊 Cache: {editor.cache.get_metrics()['cache_hit_rate']:.0%} hit rate" if editor.cache else "")
     print(f"🧠 ACC: {len(acc.state.entities)} entities, {len(acc.state.actions)} actions")
+
+    # Second run - ACC should remember context from first run
+    print("\n" + "=" * 40)
+    print("Second run (ACC remembers context)...")
+    result2 = await editor.run("Now create a LinkedIn post for the same product", thread_id="session-1")
+
+    if isinstance(result2, Response) and isinstance(result2.content, StructuredResult):
+        if result2.content.valid:
+            d = result2.content.data
+            print(f"✅ {d.status.upper()} | Score: {d.review_score}/10")
+            print(f"\n{d.final_copy}")
+
+    print(f"\n🧠 ACC after 2 runs: {len(acc.state.entities)} entities, {len(acc.state.actions)} actions")
 
 
 if __name__ == "__main__":
