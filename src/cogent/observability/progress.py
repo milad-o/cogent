@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum, StrEnum
-from typing import Any, TextIO
+from typing import Any, ClassVar, TextIO
 
 from cogent.core.utils import generate_id, now_utc
 

@@ -89,12 +89,12 @@ class BaseTool:
             cache = ctx.agent.cache
             # Create cache key from tool name and args (sorted for consistency)
             cache_key = f"{self.name}:{repr(sorted(args.items()))}"
-            
+
             # Check cache first
             cached = await cache.get(self.name, cache_key, "")
             if cached:
                 return cached.artifact
-            
+
             # Cache miss - execute function
             if self._needs_context:
                 if asyncio.iscoroutinefunction(self.func):
@@ -106,11 +106,11 @@ class BaseTool:
                     result = await self.func(**args)
                 else:
                     result = await asyncio.to_thread(self.func, **args)
-            
+
             # Store in cache
             await cache.put(self.name, cache_key, result, "")
             return result
-        
+
         # No caching - normal execution
         if self._needs_context and ctx is not None:
             if asyncio.iscoroutinefunction(self.func):

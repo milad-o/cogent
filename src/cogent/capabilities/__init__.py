@@ -48,8 +48,8 @@ from cogent.capabilities.base import BaseCapability
 from cogent.capabilities.browser import Browser
 from cogent.capabilities.code_sandbox import CodeSandbox
 from cogent.capabilities.codebase import CodebaseAnalyzer
-from cogent.capabilities.database import Database
 from cogent.capabilities.data_validator import DataValidator
+from cogent.capabilities.database import Database
 from cogent.capabilities.filesystem import FileSystem
 from cogent.capabilities.http_client import HTTPClient
 from cogent.capabilities.knowledge_graph import KnowledgeGraph

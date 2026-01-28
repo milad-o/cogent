@@ -687,7 +687,7 @@ class APITester(BaseCapability):
             lines.append(f"Successes: {result.details['successes']}")
             lines.append(f"Failures: {result.details['failures']}")
             lines.append(f"Mode: {'Concurrent' if concurrent else 'Sequential'}")
-            lines.append(f"\nPerformance:")
+            lines.append("\nPerformance:")
             lines.append(f"  Avg response: {result.details['avg_response_ms']}ms")
             lines.append(f"  Min response: {result.details['min_response_ms']}ms")
             lines.append(f"  Max response: {result.details['max_response_ms']}ms")
@@ -742,7 +742,7 @@ class APITester(BaseCapability):
             lines.append(f"Total time: {result.total_time_ms:.0f}ms")
 
             if result.failed > 0:
-                lines.append(f"\nFailed tests:")
+                lines.append("\nFailed tests:")
                 for test in result.tests:
                     if not test.success:
                         lines.append(f"  - {test.test_name}: {test.error}")

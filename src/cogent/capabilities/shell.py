@@ -290,7 +290,7 @@ class Shell(BaseCapability):
         if ";" in command:
             msg = "Command chaining with semicolon (;) is not allowed"
             raise SecurityError(msg)
-        
+
         if not self.allow_pipes and "|" in command:
             msg = "Pipe operations are not allowed"
             raise SecurityError(msg)
@@ -396,7 +396,7 @@ class Shell(BaseCapability):
             cmd_parts = shlex.split(command)
             if not cmd_parts:
                 raise ValueError("Empty command")
-            
+
             # Run command with exec (safer than shell=True)
             process = await asyncio.create_subprocess_exec(
                 *cmd_parts,

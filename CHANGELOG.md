@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-01-28
+
+### Added
+
+- **Observer v2** — Redesigned observability system with simpler API
+  - `Observer(level="progress")` — Clean console output for agent activity
+  - `Observer(level="verbose")` — Show tool arguments and details
+  - `Observer(level="debug")` — Include LLM request/response events
+  - String-based event types: `agent.invoked`, `agent.thinking`, `tool.called`, `tool.result`, `agent.responded`
+  - Proper tool call correlation with UUID-based `call_id` tracking
+  - Consistent dict-style formatting for args `{key='value'}` and results
+  - `observer.summary()` — Event count summary
+  - `observer.on(pattern, handler)` — Subscribe to event patterns (e.g., `"tool.*"`)
+  - `observer.on_all(handler)` — Subscribe to all events
+
+### Changed
+
+- **Executor event emission** — Events now flow through Observer v2 when attached
+  - `emit_event()` helper prefers Observer over TraceBus
+  - Tool calls include UUID-based `call_id` for result correlation
+  - `llm.request` and `llm.response` events filtered to DEBUG level
+
+### Fixed
+
+- Duplicate `[completed]` events — Agent now emits single completion event with tokens
+- Tool call/result tracking — UUIDs correlate parallel tool executions
+
 ## [1.0.1] - 2026-01-27
 
 ### Added

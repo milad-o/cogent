@@ -32,7 +32,7 @@ from cogent.capabilities.base import BaseCapability
 from cogent.tools.base import BaseTool, tool
 
 if TYPE_CHECKING:
-    from cogent.memory import SemanticCache
+    pass
 
 
 @dataclass
@@ -601,17 +601,17 @@ class WebSearch(BaseCapability):
             cached = await cache.get("search", query, "")
             if cached:
                 return cached.artifact
-        
+
         # Execute search
         results = self._provider.search(
             query,
             max_results=max_results or self._max_results,
         )
-        
+
         # Store in cache
         if cache and results:
             await cache.put("search", query, results, "")
-        
+
         return results
 
     async def search_news(
@@ -635,17 +635,17 @@ class WebSearch(BaseCapability):
             cached = await cache.get("news", query, "")
             if cached:
                 return cached.artifact
-        
+
         # Execute search
         results = self._provider.news(
             query,
             max_results=max_results or self._max_results,
         )
-        
+
         # Store in cache
         if cache and results:
             await cache.put("news", query, results, "")
-        
+
         return results
 
     def fetch(

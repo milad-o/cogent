@@ -9,10 +9,9 @@ stage, not just final outputs. Achieves 83% hit rate vs 38% for boundary caching
 from __future__ import annotations
 
 import hashlib
-import json
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from cogent.core.utils import now_utc
@@ -286,7 +285,7 @@ class SemanticCache:
         hit_rate = self._hits / total_requests if total_requests > 0 else 0.0
 
         total_entries = sum(len(cache) for cache in self._caches.values())
-        
+
         # Estimate memory usage (rough approximation)
         avg_artifact_size = 1024  # 1KB per artifact (estimate)
         memory_mb = (total_entries * avg_artifact_size) / (1024 * 1024)

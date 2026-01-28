@@ -37,7 +37,7 @@ from cogent.core.utils import generate_id, now_utc
 
 if TYPE_CHECKING:
     from cogent.core.messages import BaseMessage
-    from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+    from cogent.memory.acc import AgentCognitiveCompressor
 
 
 # ============================================================
@@ -255,7 +255,7 @@ class AgentMemory:
         # In-memory cache for active threads
         self._cache: dict[str, MemorySnapshot] = {}
         self._version_counters: dict[str, int] = {}
-        
+
         # ACC (Agent Cognitive Compressor) support
         self._acc_enabled = acc_enabled
         self._acc_states: dict[str, AgentCognitiveCompressor] = {}  # thread_id -> ACC
@@ -592,11 +592,11 @@ class AgentMemory:
         """
         if not self._acc_enabled:
             raise RuntimeError("ACC is not enabled. Set acc_enabled=True when creating AgentMemory.")
-        
+
         # Return existing ACC if in cache
         if thread_id in self._acc_states:
             return self._acc_states[thread_id]
-        
+
         # Try to load from backend
         if self._backend:
             config = ThreadConfig(thread_id=thread_id).to_config()
@@ -604,7 +604,7 @@ class AgentMemory:
                 result = await self._backend.aget_tuple(config)
             except AttributeError:
                 result = self._backend.get_tuple(config)
-            
+
             if result and result.checkpoint:
                 # Load ACC state from checkpoint
                 acc_data = result.checkpoint.get("channel_values", {}).get("__acc__")
@@ -614,20 +614,20 @@ class AgentMemory:
                         BoundedMemoryState,
                         SemanticForgetGate,
                     )
-                    
+
                     state = BoundedMemoryState.from_dict(acc_data)
                     gate = SemanticForgetGate()
                     acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
                     self._acc_states[thread_id] = acc
                     return acc
-        
+
         # Create new ACC
         from cogent.memory.acc import (
             AgentCognitiveCompressor,
             BoundedMemoryState,
             SemanticForgetGate,
         )
-        
+
         state = BoundedMemoryState()
         gate = SemanticForgetGate()
         acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
@@ -647,17 +647,17 @@ class AgentMemory:
         """
         if not self._acc_enabled:
             raise RuntimeError("ACC is not enabled.")
-        
+
         # Update cache
         self._acc_states[thread_id] = acc
-        
+
         # Persist if backend configured
         if self._backend:
             config = ThreadConfig(
                 thread_id=thread_id,
                 version=self._get_next_version(thread_id),
             ).to_config()
-            
+
             # Create checkpoint with ACC state
             checkpoint = {
                 "v": 1,
@@ -669,7 +669,7 @@ class AgentMemory:
                 "channel_versions": {},
                 "versions_seen": {},
             }
-            
+
             try:
                 await self._backend.aput(
                     config,

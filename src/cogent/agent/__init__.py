@@ -40,12 +40,6 @@ from cogent.agent.hitl import (
     PendingAction,
     should_interrupt,
 )
-# Memory components moved to cogent.memory
-from cogent.memory import (
-    InMemorySaver,
-    MemorySnapshot,
-    ThreadConfig,
-)
 from cogent.agent.output import (
     OutputMethod,
     OutputValidationError,
@@ -75,6 +69,13 @@ from cogent.agent.resilience import (
     ToolResilience,
 )
 from cogent.agent.state import AgentState
+
+# Memory components moved to cogent.memory
+from cogent.memory import (
+    InMemorySaver,
+    MemorySnapshot,
+    ThreadConfig,
+)
 
 __all__ = [
     # Core

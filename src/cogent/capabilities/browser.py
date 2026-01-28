@@ -168,12 +168,12 @@ class Browser(BaseCapability):
         if not self._has_playwright:
             msg = "playwright not installed. Install with: pip install playwright && playwright install"
             raise ImportError(msg)
-    
+
     async def close(self) -> None:
         """Clean up browser resources."""
         if self._is_closed:
             return
-        
+
         try:
             if self._page:
                 await self._page.close()
@@ -189,12 +189,12 @@ class Browser(BaseCapability):
             self._context = None
             self._page = None
             self._is_closed = True
-    
+
     async def __aenter__(self) -> Browser:
         """Async context manager entry."""
         await self._ensure_browser()
         return self
-    
+
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit - cleanup resources."""
         await self.close()

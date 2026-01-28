@@ -1,115 +1,145 @@
 """
-Demo: Observer - Unified Observability System
+Demo: Observer v2 - See Your Agents in Action
 
-Observer is your single entry point for ALL observability needs:
-- Live console output (see agent thoughts in real-time)
-- Response metadata (tokens, tool calls, duration) - NEW in v1.13.0
-- Deep execution tracing (graph, timeline, spans)
-- Metrics and statistics
-- Export to JSON, Mermaid
-
-The Observer automatically displays Response[T] metadata:
-  [AgentName] [completed] (Xs) • N tokens • M tools
+Observer lets you watch what your agents are doing in real-time:
+- See when agents start thinking
+- Watch tool calls and results
+- Track completion with timing and token counts
 
 Usage:
     uv run python examples/observability/observer.py
-
-See also:
-    examples/observability/response_metadata.py - Detailed Response metadata demo
 """
 
 import asyncio
 
-from cogent import Agent, ObservabilityLevel, Observer, pipeline
+from cogent import Agent
+from cogent.observability import Observer
+from cogent.tools import tool
 
 
-async def demo_levels():
-    """Show different verbosity levels."""
-
-    analyst = Agent(name="Analyst", model="gpt4")
-    writer = Agent(name="Writer", model="gpt4")
-
-    # Verbose - see what agents are thinking
-    print("\n--- Level: verbose() - See Agent Thoughts ---")
-    flow = pipeline([analyst, writer], observer=Observer(level="verbose"))
-    await flow.run("Analyze: What's 2+2? Then summarize.")
-
-    # JSON - structured, readable output
-    print("\n--- Level: json() - Structured Output ---")
-    flow = pipeline([analyst, writer], observer=Observer(level="json"))
-    await flow.run("Explain why the sky is blue.")
+# Simple tools for the demo
+@tool
+def calculate(expression: str) -> str:
+    """Evaluate a math expression."""
+    try:
+        result = eval(expression)  # noqa: S307
+        return str(result)
+    except Exception as e:
+        return f"Error: {e}"
 
 
-async def demo_trace():
-    """Show deep tracing with execution graph."""
-
-    researcher = Agent(name="Researcher", model="gpt4")
-    analyst = Agent(name="Analyst", model="gpt4")
-    writer = Agent(name="Writer", model="gpt4")
-
-    # Trace - maximum observability
-    print("\n--- Level: trace() - Deep Execution Tracing ---")
-    observer = Observer(level="trace")
-
-    flow = pipeline([researcher, analyst, writer], observer=observer)
-    await flow.run("Research the benefits of exercise, analyze the data, and write a summary.")
-
-    # After execution, get insights:
-    print("\n" + "="*60)
-    print("EXECUTION SUMMARY")
-    print(observer.summary())
-
-    print("\n" + "="*60)
-    print("TIMELINE (detailed)")
-    print(observer.timeline(detailed=True))
-
-    print("\n" + "="*60)
-    print("EXECUTION GRAPH (Mermaid)")
-    print(observer.graph())
+@tool
+def get_weather(city: str) -> str:
+    """Get current weather for a city."""
+    # Fake weather data
+    weather = {
+        "new york": "72°F, Sunny",
+        "london": "58°F, Cloudy",
+        "tokyo": "68°F, Clear",
+    }
+    return weather.get(city.lower(), f"Weather data not available for {city}")
 
 
-async def demo_callbacks():
-    """Custom callbacks with silent display."""
+async def demo_progress():
+    """Progress level - see agent activity."""
+    print("\n" + "=" * 60)
+    print("1. PROGRESS LEVEL - See Agent Activity")
+    print("=" * 60)
 
-    analyst = Agent(name="Analyst", model="gpt4")
-    writer = Agent(name="Writer", model="gpt4")
+    observer = Observer(level="progress")
 
-    # Collect events via callbacks
-    events = []
-    agent_actions = []
-
-    observer = Observer(
-        level=ObservabilityLevel.OFF,  # No console output
-        on_event=lambda e: events.append(e.type.value),
-        on_agent=lambda name, action, data: agent_actions.append(f"{name}:{action}"),
+    agent = Agent(
+        name="Assistant",
+        model="gpt-4o-mini",
+        tools=[calculate, get_weather],
+        observer=observer,
     )
 
-    print("\n--- Custom Callbacks (silent collection) ---")
-    flow = pipeline([analyst, writer], observer=observer)
-    await flow.run("Quick analysis of Python vs JavaScript")
+    await agent.run("What's 25 * 4? And what's the weather in Tokyo?")
 
-    print(f"  Collected {len(events)} events")
-    print(f"  Agent actions: {agent_actions}")
+    print("\n" + observer.summary())
 
-    # Get structured trace data (for export to external systems)
-    trace_data = observer.execution_trace()
-    print(f"  Trace ID: {trace_data['trace_id']}")
-    print(f"  Nodes: {len(trace_data['nodes'])}")
-    print(f"  Edges: {len(trace_data['edges'])}")
+
+async def demo_verbose():
+    """Verbose level - see more details."""
+    print("\n" + "=" * 60)
+    print("2. VERBOSE LEVEL - More Details")
+    print("=" * 60)
+
+    observer = Observer(level="verbose")
+
+    agent = Agent(
+        name="Analyst",
+        model="gpt-4o-mini",
+        tools=[calculate],
+        observer=observer,
+    )
+
+    await agent.run("Calculate 100 / 4 + 50")
+
+    print("\n" + observer.summary())
+
+
+async def demo_minimal():
+    """Minimal level - just results."""
+    print("\n" + "=" * 60)
+    print("3. MINIMAL LEVEL - Just Results")
+    print("=" * 60)
+
+    observer = Observer(level="minimal")
+
+    agent = Agent(
+        name="Helper",
+        model="gpt-4o-mini",
+        observer=observer,
+    )
+
+    await agent.run("Say hello in 3 words.")
+
+    print("\n" + observer.summary())
+
+
+async def demo_multi_agent():
+    """Watch multiple agents work."""
+    print("\n" + "=" * 60)
+    print("4. MULTIPLE AGENTS")
+    print("=" * 60)
+
+    observer = Observer(level="progress")
+
+    researcher = Agent(
+        name="Researcher",
+        model="gpt-4o-mini",
+        tools=[get_weather],
+        observer=observer,
+    )
+
+    writer = Agent(
+        name="Writer",
+        model="gpt-4o-mini",
+        observer=observer,
+    )
+
+    # Run sequentially
+    weather_info = await researcher.run("Get weather for London and New York")
+    await writer.run(f"Write a short comparison: {weather_info.content}")
+
+    print("\n" + observer.summary())
 
 
 async def main():
-    print("\n" + "="*60)
-    print("  Observer - Unified Observability Demo")
-    print("="*60)
+    print("\n" + "=" * 60)
+    print("  🔭 Observer v2 - Watch Your Agents Work")
+    print("=" * 60)
 
-    await demo_levels()
-    await demo_trace()
-    await demo_callbacks()
+    await demo_progress()
+    await demo_verbose()
+    await demo_minimal()
+    await demo_multi_agent()
 
-    print("\n" + "="*60)
-    print("✅ Done! Observer provides complete observability.")
-    print("="*60)
+    print("\n" + "=" * 60)
+    print("✅ Observer: Simple, Real-time Agent Visibility")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

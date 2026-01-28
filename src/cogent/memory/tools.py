@@ -185,11 +185,11 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
         if HAS_RAPIDFUZZ:
             # Normalize query for better matching
             normalized_query = _normalize_key(query)
-            
+
             # Create mapping of normalized keys to original keys
             key_map = {_normalize_key(key): key for key in user_keys}
             normalized_keys = list(key_map.keys())
-            
+
             # Fuzzy search with token_sort_ratio (handles word order)
             matches = process.extract(
                 normalized_query,
@@ -198,7 +198,7 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
                 limit=5,
                 score_cutoff=40  # Minimum 40% similarity
             )
-            
+
             if matches:
                 lines = []
                 for norm_key, score, _ in matches:
@@ -206,7 +206,7 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
                     value = await memory.recall(original_key)
                     lines.append(f"- {original_key}: {value}")
                 return "Found (fuzzy match):\\n" + "\\n".join(lines)
-        
+
         # Method 2: Semantic search (if vectorstore available and fuzzy failed/unavailable)
         if memory.vectorstore:
             try:
@@ -261,7 +261,7 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
                 score = 0.0
                 key_lower = key.lower()
                 value_str = str(value).lower()
-                
+
                 # Exact match on key (highest score)
                 if query_lower == key_lower:
                     score = 100.0
@@ -277,7 +277,7 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
                 # Value contains substring of query
                 elif any(word in value_str for word in query_lower.split() if len(word) > 2):
                     score = 20.0
-                
+
                 if score > 0:
                     matches.append((key, value, score))
 

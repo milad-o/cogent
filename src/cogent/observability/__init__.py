@@ -1,185 +1,254 @@
-"""Observability module for Cogent.
+"""
+Observability v2 - Extensible, composable observability for Cogent.
 
-Provides comprehensive monitoring, tracing, metrics, events, and progress output
-for understanding system behavior at runtime.
+A clean-slate redesign focused on:
+- Extensibility: Add custom events, formatters, sinks without modifying core
+- Composability: Mix and match components
+- Simplicity: <2000 total lines vs 6500+ in v1
+- Single Agent First: Optimized for the common case
 
-Includes:
-- TraceBus: Central pub/sub for trace records
-- Trace: Immutable trace records for observability
-- TraceType: All event/trace types in the system
-- Observer: Unified observability for agents, flows, teams
-- Tracer: Distributed tracing
-- Metrics: Counters, gauges, histograms
-- Dashboard: Real-time monitoring UI
+Quick Start:
+    ```python
+    from cogent.observability import Observer
 
-Note:
-    For core orchestration events (agent-to-agent routing), use
-    `cogent.events.Event` instead of `Trace`.
+    # Use string-based levels (same API as v1)
+    observer = Observer(level="verbose")
+
+    # Attach to agent
+    agent = Agent(name="Assistant", model=model, observer=observer)
+    await agent.run("Hello!")
+
+    # Get summary
+    print(observer.summary())
+    ```
+
+Custom Events:
+    ```python
+    from cogent.observability import Observer, Event, create_event
+
+    observer = Observer(level="debug")
+
+    # Emit custom events
+    observer.observe(create_event(
+        "my_app.order.placed",
+        order_id="12345",
+        customer="john@example.com",
+    ))
+    ```
+
+Custom Formatter:
+    ```python
+    from cogent.observability import Observer, Formatter, Event
+
+    class MyFormatter:
+        def can_format(self, event: Event) -> bool:
+            return event.type.startswith("my_app.")
+
+        def format(self, event: Event, config) -> str | None:
+            return f"[MY APP] {event.type}: {event.data}"
+
+    observer = Observer(level="debug")
+    observer.add_formatter(MyFormatter())
+    ```
 """
 
-from cogent.observability.bus import (
-    TraceBus,
-    get_trace_bus,
-    set_trace_bus,
+from cogent.observability.core.bus import EventBus
+from cogent.observability.core.config import (
+    FormatConfig,
+    Level,
+    ObserverConfig,
+    get_preset,
 )
-from cogent.observability.dashboard import (
-    Dashboard,
-    DashboardConfig,
+from cogent.observability.core.event import Event, EventTypes, create_event
+from cogent.observability.formatters.base import BaseFormatter, Formatter
+from cogent.observability.formatters.console import (
+    AgentFormatter,
+    DefaultFormatter,
+    StreamFormatter,
+    Styler,
+    TaskFormatter,
+    ToolFormatter,
 )
+from cogent.observability.formatters.json import JSONFormatter
+from cogent.observability.formatters.registry import FormatterRegistry
 from cogent.observability.handlers import (
     ConsoleEventHandler,
     FileEventHandler,
     FilteringEventHandler,
     MetricsEventHandler,
 )
-from cogent.observability.inspector import (
-    AgentInspector,
-    EventInspector,
-    SystemInspector,
-    TaskInspector,
-)
 from cogent.observability.logger import (
     LogEntry,
     LogLevel,
     ObservabilityLogger,
 )
-from cogent.observability.metrics import (
+from cogent.observability.metrics.collector import (
     Counter,
     Gauge,
     Histogram,
     MetricsCollector,
-    Timer,
 )
-from cogent.observability.observer import (
-    Channel,
-    ObservabilityLevel,
-    Observer,
-)
+from cogent.observability.observer import Observer, create_observer
+
+# ============================================================================
+# Backward Compatibility Imports (v1 exports)
+# These are kept for backward compatibility during migration.
+# ============================================================================
 from cogent.observability.progress import (
-    # Renderers
-    BaseRenderer,
     Colors,
-    JSONRenderer,
-    MinimalRenderer,
-    # Configuration
     OutputConfig,
     OutputFormat,
     ProgressEvent,
     ProgressStyle,
-    # Core classes
     ProgressTracker,
-    RichRenderer,
-    # Styling
-    Styler,
     Symbols,
-    TextRenderer,
-    Theme,
     Verbosity,
     configure_output,
     create_executor_callback,
-    # Callbacks
     create_on_step_callback,
-    # Convenience
-    get_tracker,
-    # Visualization
     render_dag_ascii,
-    set_tracker,
 )
-from cogent.observability.trace import (
-    ExecutionSpan,
-    ExecutionTracer,
-    NodeStatus,
-    NodeTrace,
-    NodeType,
-    ToolTrace,
-    TraceLevel,
-    TracingObserver,
-)
-from cogent.observability.trace_record import Trace, TraceType
-from cogent.observability.tracer import (
-    Span,
-    SpanContext,
-    SpanKind,
-    Tracer,
-)
-from cogent.observability.websocket import (
-    WebSocketServer,
-    start_websocket_server,
-    websocket_handler,
-)
+from cogent.observability.sinks.base import BaseSink, Sink
+from cogent.observability.sinks.callback import CallbackSink
+from cogent.observability.sinks.console import ConsoleSink
+from cogent.observability.sinks.file import FileSink
+from cogent.observability.tracing.span import Span, SpanContext, SpanStatus
+from cogent.observability.tracing.tracer import Tracer, current_span, get_tracer
+
+# Compatibility aliases for v1 types
+Channel = Level  # v1 Channel is now Level
+ObservabilityLevel = Level  # v1 ObservabilityLevel is now Level
+
+
+# v1 items that don't exist in v2 - create placeholders
+class Timer:
+    """Placeholder for v1 Timer - use MetricsCollector.histogram() instead."""
+
+    pass
+
+
+class Dashboard:
+    """Placeholder for v1 Dashboard - not yet migrated."""
+
+    pass
+
+
+class DashboardConfig:
+    """Placeholder for v1 DashboardConfig - not yet migrated."""
+
+    pass
+
+
+class AgentInspector:
+    """Placeholder for v1 AgentInspector - use Observer.summary() instead."""
+
+    pass
+
+
+class EventInspector:
+    """Placeholder for v1 EventInspector - use Observer.get_events() instead."""
+
+    pass
+
+
+class SystemInspector:
+    """Placeholder for v1 SystemInspector - not yet migrated."""
+
+    pass
+
+
+class TaskInspector:
+    """Placeholder for v1 TaskInspector - not yet migrated."""
+
+    pass
+
+
+# SpanKind enum for v1 compat - define inline with values
+class SpanKind:
+    """Span kind for tracing."""
+
+    INTERNAL = "internal"
+    CLIENT = "client"
+    SERVER = "server"
+    PRODUCER = "producer"
+    CONSUMER = "consumer"
+
 
 __all__ = [
-    # Trace System (observability)
-    "Trace",
-    "TraceType",
-    "TraceBus",
-    "get_trace_bus",
-    "set_trace_bus",
-    # Event Handlers
-    "ConsoleEventHandler",
-    "FileEventHandler",
-    "FilteringEventHandler",
-    "MetricsEventHandler",
-    # WebSocket
-    "WebSocketServer",
-    "start_websocket_server",
-    "websocket_handler",
+    # Core
+    "Event",
+    "EventTypes",
+    "create_event",
+    "EventBus",
+    "Level",
+    "ObserverConfig",
+    "FormatConfig",
+    "get_preset",
+    # Formatter Protocol & Base
+    "Formatter",
+    "BaseFormatter",
+    "FormatterRegistry",
+    # Built-in Formatters
+    "AgentFormatter",
+    "ToolFormatter",
+    "TaskFormatter",
+    "StreamFormatter",
+    "DefaultFormatter",
+    "JSONFormatter",
+    "Styler",
+    # Sink Protocol & Base
+    "Sink",
+    "BaseSink",
+    # Built-in Sinks
+    "ConsoleSink",
+    "FileSink",
+    "CallbackSink",
+    # Main Observer
+    "Observer",
+    "create_observer",
     # Tracing
-    "Tracer",
     "Span",
     "SpanContext",
+    "SpanStatus",
     "SpanKind",
-    # Deep Execution Tracing
-    "ExecutionTracer",
-    "TracingObserver",
-    "TraceLevel",
-    "NodeType",
-    "NodeStatus",
-    "NodeTrace",
-    "ToolTrace",
-    "ExecutionSpan",
+    "Tracer",
+    "get_tracer",
+    "current_span",
     # Metrics
     "MetricsCollector",
     "Counter",
     "Gauge",
     "Histogram",
+    # ========================================
+    # Backward Compatibility (v1 exports)
+    # ========================================
+    "Colors",
+    "OutputConfig",
+    "OutputFormat",
+    "ProgressEvent",
+    "ProgressStyle",
+    "ProgressTracker",
+    "Symbols",
+    "Verbosity",
+    "configure_output",
+    "create_executor_callback",
+    "create_on_step_callback",
+    "render_dag_ascii",
+    "ConsoleEventHandler",
+    "FileEventHandler",
+    "FilteringEventHandler",
+    "MetricsEventHandler",
+    # Compatibility aliases
+    "Channel",
+    "ObservabilityLevel",
     "Timer",
-    # Logging
-    "ObservabilityLogger",
-    "LogLevel",
     "LogEntry",
-    # Dashboard
+    "LogLevel",
+    "ObservabilityLogger",
     "Dashboard",
     "DashboardConfig",
-    # Inspection
-    "SystemInspector",
     "AgentInspector",
-    "TaskInspector",
     "EventInspector",
-    # Observer (unified observability for agents, flows, teams)
-    "Observer",
-    "ObservabilityLevel",
-    "Channel",
-    # Progress & Output
-    "OutputConfig",
-    "Verbosity",
-    "OutputFormat",
-    "ProgressStyle",
-    "Theme",
-    "ProgressTracker",
-    "ProgressEvent",
-    "BaseRenderer",
-    "TextRenderer",
-    "RichRenderer",
-    "JSONRenderer",
-    "MinimalRenderer",
-    "Styler",
-    "Colors",
-    "Symbols",
-    "create_on_step_callback",
-    "create_executor_callback",
-    "get_tracker",
-    "set_tracker",
-    "configure_output",
-    "render_dag_ascii",
+    "SystemInspector",
+    "TaskInspector",
 ]
