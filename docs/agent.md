@@ -740,7 +740,7 @@ agent = Agent(name="Worker", model=model, verbosity=4)  # DEBUG
 # Advanced: Full control with observer
 from cogent.observability import Observer
 
-observer = Observer.debug()
+observer = Observer(level="debug")
 agent = Agent(name="Worker", model=model, observer=observer)
 ```
 

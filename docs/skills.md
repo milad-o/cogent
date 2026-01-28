@@ -387,7 +387,7 @@ debug_skill = skill(
 
 # Set up flow
 async def main():
-    observer = Observer.progress()
+    observer = Observer(level="progress")
     flow = Flow(observer=observer)
     
     # Register skills

@@ -454,19 +454,19 @@ class Agent:
             # Assume it's already an ObservabilityLevel enum
             level = verbosity
 
-        # Map to Observer presets
+        # Map to Observer presets using string level
         if level == ObservabilityLevel.OFF:
             return  # No observer
         elif level == ObservabilityLevel.RESULT:
-            self._observer = Observer.minimal()
+            self._observer = Observer(level="minimal")
         elif level == ObservabilityLevel.PROGRESS:
-            self._observer = Observer.progress()
+            self._observer = Observer(level="progress")
         elif level == ObservabilityLevel.DETAILED:
-            self._observer = Observer.detailed()
+            self._observer = Observer(level="detailed")
         elif level == ObservabilityLevel.DEBUG:
-            self._observer = Observer.debug()
+            self._observer = Observer(level="debug")
         elif level == ObservabilityLevel.TRACE:
-            self._observer = Observer.trace()
+            self._observer = Observer(level="trace")
         else:
             raise ValueError(f"Unknown observability level: {level}")
 
@@ -501,7 +501,7 @@ class Agent:
             ```python
             from cogent import Agent, Observer
 
-            observer = Observer.verbose()
+            observer = Observer(level="verbose")
             agent = Agent(name="Worker", model=model)
             agent.add_observer(observer)
 

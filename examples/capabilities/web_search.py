@@ -133,7 +133,7 @@ async def multi_capability_example():
         fs = FileSystem(allowed_paths=[str(workspace_path)], allow_write=True)
 
         # Create observer for detailed execution tracing
-        observer = Observer.trace()
+        observer = Observer(level="trace")
 
         agent = Agent(
             name="ResearchAssistant",

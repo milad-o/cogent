@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Token Usage Fix** — Response now shows actual token usage from model
   - `Response.metadata.tokens` properly aggregates from AIMessage metadata
   - Observer displays tokens in `[completed]` line
-- **Observer.detailed()** — New preset showing tool calls with timestamps
+- **Observer(level="detailed")** — New preset showing tool calls with timestamps
 
 ### Fixed
 

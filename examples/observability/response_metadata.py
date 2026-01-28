@@ -80,7 +80,7 @@ async def demo_observer_integration():
     """Observer with Response metadata."""
     print("\n=== Observer Integration ===")
 
-    observer = Observer.verbose()
+    observer = Observer(level="verbose")
 
     agent = Agent(
         name="Worker",

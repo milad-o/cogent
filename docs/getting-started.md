@@ -273,9 +273,9 @@ Track execution with built-in observability:
 from cogent.observability import Observer
 
 # Pre-configured observers
-observer = Observer.trace()      # Maximum detail
-observer = Observer.verbose()    # Key events
-observer = Observer.minimal()    # Errors only
+observer = Observer(level="trace")      # Maximum detail
+observer = Observer(level="verbose")    # Key events
+observer = Observer(level="minimal")    # Errors only
 
 flow = Flow(
     agents=[...],

@@ -701,21 +701,21 @@ class ExecutionTracer:
 
             # Status indicator
             status_icon = {
-                NodeStatus.PENDING: "○",
-                NodeStatus.RUNNING: "●",
-                NodeStatus.COMPLETED: "✓",
-                NodeStatus.FAILED: "✗",
-                NodeStatus.SKIPPED: "⊘",
+                NodeStatus.PENDING: "[ ]",
+                NodeStatus.RUNNING: "[~]",
+                NodeStatus.COMPLETED: "[ok]",
+                NodeStatus.FAILED: "[X]",
+                NodeStatus.SKIPPED: "[-]",
             }.get(node.status, "?")
 
             # Node type
             type_str = {
-                NodeType.AGENT: "🤖",
-                NodeType.TOOL: "🔧",
-                NodeType.DECISION: "◇",
-                NodeType.PARALLEL: "⫴",
-                NodeType.JOIN: "⊕",
-            }.get(node.type, "□")
+                NodeType.AGENT: "[A]",
+                NodeType.TOOL: "[T]",
+                NodeType.DECISION: "[?]",
+                NodeType.PARALLEL: "[||]",
+                NodeType.JOIN: "[+]",
+            }.get(node.type, "[.]")
 
             # Duration
             duration_str = f" ({node.duration_ms:.0f}ms)" if node.duration_ms else ""
@@ -725,17 +725,17 @@ class ExecutionTracer:
             # Show tools
             if node.tool_traces and self.level >= TraceLevel.TOOLS:
                 for tool in node.tool_traces:
-                    tool_status = "✓" if not tool.error else "✗"
+                    tool_status = "[ok]" if not tool.error else "[X]"
                     lines.append(
-                        f"{prefix}  └─🔧 {tool_status} {tool.tool_name} ({tool.duration_ms:.0f}ms)"
+                        f"{prefix}  +-- [T] {tool_status} {tool.tool_name} ({tool.duration_ms:.0f}ms)"
                     )
 
             # Children
             child_list = children.get(node_id, [])
             for i, child_id in enumerate(child_list):
                 is_last = i == len(child_list) - 1
-                child_prefix = prefix + ("    " if is_last else "│   ")
-                lines.append(f"{prefix}{'└──' if is_last else '├──'}")
+                child_prefix = prefix + ("    " if is_last else "|   ")
+                lines.append(f"{prefix}{'+--' if is_last else '+--'}")
                 print_node(child_id, indent + 1, child_prefix)
 
         for root_id in roots:
@@ -782,18 +782,18 @@ class ExecutionTracer:
             time_str = f"+{delta:>6.2f}s"
 
             if event_type == "start":
-                lines.append(f"  {time_str}  ▶ {obj.name} started")
+                lines.append(f"  {time_str}  > {obj.name} started")
             elif event_type == "end":
-                status = "✓" if obj.status == NodeStatus.COMPLETED else "✗"
+                status = "[ok]" if obj.status == NodeStatus.COMPLETED else "[X]"
                 lines.append(
                     f"  {time_str}  {status} {obj.name} ({obj.duration_ms:.0f}ms)"
                 )
             elif event_type == "tool_start":
                 lines.append(
-                    f"  {time_str}    → {obj.tool_name}({_truncate(str(obj.args), 50)})"
+                    f"  {time_str}    -> {obj.tool_name}({_truncate(str(obj.args), 50)})"
                 )
             elif event_type == "tool_end":
-                status = "✓" if not obj.error else "✗"
+                status = "[ok]" if not obj.error else "[X]"
                 lines.append(
                     f"  {time_str}    {status} {obj.tool_name} ({obj.duration_ms:.0f}ms)"
                 )
@@ -956,11 +956,11 @@ class ExecutionTracer:
     def _print_span_start(self, span: ExecutionSpan) -> None:
         depth = len(self._span_stack)
         indent = "  " * depth
-        self.stream.write(f"{indent}{self._c('cyan', '▶')} {span.name}\n")
+        self.stream.write(f"{indent}{self._c('cyan', '>')} {span.name}\n")
         self.stream.flush()
 
     def _print_span_end(self, span: ExecutionSpan) -> None:
-        status = self._c("green", "✓") if span.status == "ok" else self._c("red", "✗")
+        status = self._c("green", "[ok]") if span.status == "ok" else self._c("red", "[X]")
         self.stream.write(
             f"  {status} {span.name} {self._c('dim', f'({span.duration_ms:.0f}ms)')}\n"
         )
@@ -968,11 +968,11 @@ class ExecutionTracer:
 
     def _print_node_start(self, node: NodeTrace) -> None:
         type_icon = {
-            NodeType.AGENT: "🤖",
-            NodeType.TOOL: "🔧",
-            NodeType.DECISION: "◇",
-            NodeType.PARALLEL: "⫴",
-        }.get(node.type, "▶")
+            NodeType.AGENT: "[A]",
+            NodeType.TOOL: "[T]",
+            NodeType.DECISION: "[?]",
+            NodeType.PARALLEL: "[||]",
+        }.get(node.type, ">")
 
         self.stream.write(f"{type_icon} {self._c('bold', node.name)} started\n")
 
@@ -985,9 +985,9 @@ class ExecutionTracer:
 
     def _print_node_end(self, node: NodeTrace) -> None:
         status = (
-            self._c("green", "✓")
+            self._c("green", "[ok]")
             if node.status == NodeStatus.COMPLETED
-            else self._c("red", "✗")
+            else self._c("red", "[X]")
         )
         duration = self._c("dim", f"({node.duration_ms:.0f}ms)")
 
@@ -1006,12 +1006,12 @@ class ExecutionTracer:
     def _print_tool_start(self, trace: ToolTrace) -> None:
         args_str = _truncate(str(trace.args), 80)
         self.stream.write(
-            f"   {self._c('yellow', '→')} {trace.tool_name}({args_str})\n"
+            f"   {self._c('yellow', '->')} {trace.tool_name}({args_str})\n"
         )
         self.stream.flush()
 
     def _print_tool_end(self, trace: ToolTrace) -> None:
-        status = self._c("green", "✓") if not trace.error else self._c("red", "✗")
+        status = self._c("green", "[ok]") if not trace.error else self._c("red", "[X]")
         duration = self._c("dim", f"({trace.duration_ms:.0f}ms)")
 
         if trace.error:
@@ -1021,7 +1021,7 @@ class ExecutionTracer:
         else:
             result_str = _truncate(str(trace.result), 100) if trace.result else ""
             self.stream.write(
-                f"   {status} {trace.tool_name} {duration} → {result_str}\n"
+                f"   {status} {trace.tool_name} {duration} -> {result_str}\n"
             )
 
         self.stream.flush()

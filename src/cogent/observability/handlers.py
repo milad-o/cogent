@@ -33,50 +33,50 @@ class ConsoleEventHandler:
     # Icons for different event types
     ICONS: ClassVar[dict[TraceType, str]] = {
         # System
-        TraceType.SYSTEM_STARTED: "🚀",
-        TraceType.SYSTEM_STOPPED: "🏁",
-        TraceType.SYSTEM_ERROR: "💥",
+        TraceType.SYSTEM_STARTED: "[START]",
+        TraceType.SYSTEM_STOPPED: "[STOP]",
+        TraceType.SYSTEM_ERROR: "[ERROR]",
         # Tasks
-        TraceType.TASK_CREATED: "📝",
-        TraceType.TASK_SCHEDULED: "📋",
-        TraceType.TASK_STARTED: "▶️",
-        TraceType.TASK_COMPLETED: "✅",
-        TraceType.TASK_FAILED: "❌",
-        TraceType.TASK_CANCELLED: "🚫",
-        TraceType.TASK_BLOCKED: "⏸️",
-        TraceType.TASK_UNBLOCKED: "⏯️",
-        TraceType.TASK_RETRYING: "🔄",
+        TraceType.TASK_CREATED: "[+]",
+        TraceType.TASK_SCHEDULED: "[~]",
+        TraceType.TASK_STARTED: "[>]",
+        TraceType.TASK_COMPLETED: "[ok]",
+        TraceType.TASK_FAILED: "[FAIL]",
+        TraceType.TASK_CANCELLED: "[X]",
+        TraceType.TASK_BLOCKED: "[||]",
+        TraceType.TASK_UNBLOCKED: "[>>]",
+        TraceType.TASK_RETRYING: "[retry]",
         # Subtasks
-        TraceType.SUBTASK_SPAWNED: "🔀",
-        TraceType.SUBTASK_COMPLETED: "✔️",
-        TraceType.SUBTASKS_AGGREGATED: "📦",
+        TraceType.SUBTASK_SPAWNED: "[fork]",
+        TraceType.SUBTASK_COMPLETED: "[done]",
+        TraceType.SUBTASKS_AGGREGATED: "[join]",
         # Agents
-        TraceType.AGENT_REGISTERED: "🤖",
-        TraceType.AGENT_UNREGISTERED: "👋",
-        TraceType.AGENT_INVOKED: "📞",
-        TraceType.AGENT_THINKING: "🧠",
-        TraceType.AGENT_ACTING: "⚡",
-        TraceType.AGENT_RESPONDED: "💬",
-        TraceType.AGENT_ERROR: "🔥",
-        TraceType.AGENT_STATUS_CHANGED: "🔄",
+        TraceType.AGENT_REGISTERED: "[agent]",
+        TraceType.AGENT_UNREGISTERED: "[-agent]",
+        TraceType.AGENT_INVOKED: "[call]",
+        TraceType.AGENT_THINKING: "[think]",
+        TraceType.AGENT_ACTING: "[act]",
+        TraceType.AGENT_RESPONDED: "[resp]",
+        TraceType.AGENT_ERROR: "[ERR]",
+        TraceType.AGENT_STATUS_CHANGED: "[status]",
         # Tools
-        TraceType.TOOL_REGISTERED: "🔧",
-        TraceType.TOOL_CALLED: "🛠️",
-        TraceType.TOOL_RESULT: "📤",
-        TraceType.TOOL_ERROR: "⚠️",
+        TraceType.TOOL_REGISTERED: "[tool]",
+        TraceType.TOOL_CALLED: "[call]",
+        TraceType.TOOL_RESULT: "[result]",
+        TraceType.TOOL_ERROR: "[WARN]",
         # Planning
-        TraceType.PLAN_CREATED: "📊",
-        TraceType.PLAN_STEP_STARTED: "⚡",
-        TraceType.PLAN_STEP_COMPLETED: "✔️",
-        TraceType.PLAN_FAILED: "❌",
+        TraceType.PLAN_CREATED: "[plan]",
+        TraceType.PLAN_STEP_STARTED: "[step]",
+        TraceType.PLAN_STEP_COMPLETED: "[done]",
+        TraceType.PLAN_FAILED: "[FAIL]",
         # Messages
-        TraceType.MESSAGE_SENT: "📨",
-        TraceType.MESSAGE_RECEIVED: "📩",
-        TraceType.MESSAGE_BROADCAST: "📢",
+        TraceType.MESSAGE_SENT: "[->]",
+        TraceType.MESSAGE_RECEIVED: "[<-]",
+        TraceType.MESSAGE_BROADCAST: "[<<]",
         # Clients
-        TraceType.CLIENT_CONNECTED: "🔌",
-        TraceType.CLIENT_DISCONNECTED: "🔌",
-        TraceType.CLIENT_MESSAGE: "💬",
+        TraceType.CLIENT_CONNECTED: "[conn]",
+        TraceType.CLIENT_DISCONNECTED: "[disc]",
+        TraceType.CLIENT_MESSAGE: "[msg]",
     }
 
     def __init__(
@@ -99,7 +99,7 @@ class ConsoleEventHandler:
 
     def __call__(self, event: Trace) -> None:
         """Handle an event by logging to console."""
-        icon = self.ICONS.get(event.type, "•")
+        icon = self.ICONS.get(event.type, "*")
         timestamp = ""
         if self.show_timestamp:
             timestamp = f"[{event.timestamp.strftime('%H:%M:%S.%f')[:-3]}] "
@@ -132,7 +132,7 @@ class ConsoleEventHandler:
             case TraceType.TASK_CREATED:
                 name = data.get("name", data.get("task", {}).get("name", "unknown"))
                 deps = data.get("depends_on", [])
-                dep_str = f" → depends on {deps}" if deps else ""
+                dep_str = f" -> depends on {deps}" if deps else ""
                 return f"Created: {name}{dep_str}"
             case TraceType.TASK_STARTED:
                 task = data.get("task", {})
@@ -173,7 +173,7 @@ class ConsoleEventHandler:
             case TraceType.PLAN_STEP_STARTED:
                 step = data.get("step", "?")
                 count = data.get("task_count", 1)
-                parallel = " ⚡PARALLEL" if count > 1 else ""
+                parallel = " [PARALLEL]" if count > 1 else ""
                 return f"Step {step}: {count} task(s){parallel}"
             case TraceType.PLAN_STEP_COMPLETED:
                 return f"Step {data.get('step', '?')} completed"

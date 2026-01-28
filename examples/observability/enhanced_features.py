@@ -46,7 +46,7 @@ async def demo_structured_export():
     print("DEMO 2: Structured Export")
     print("═" * 60 + "\n")
 
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     agent = Agent(
         name="Researcher",
@@ -106,7 +106,7 @@ async def demo_error_context():
     print("═" * 60 + "\n")
 
     # Use DEBUG level to see suggestions
-    Observer.debug()
+    Observer(level="debug")
 
     print("Error context enhancement is automatic!")
     print("When errors occur at DEBUG level, you'll see:")
@@ -129,7 +129,7 @@ async def demo_state_diff():
     print("DEMO 5: State Change Diff Visualization")
     print("═" * 60 + "\n")
 
-    Observer.detailed()
+    Observer(level="detailed")
 
     print("State diff visualization is available for reactive agents!")
     print("When AGENT_STATUS_CHANGED events are emitted, you'll see:")

@@ -31,12 +31,12 @@ async def demo_levels():
 
     # Verbose - see what agents are thinking
     print("\n--- Level: verbose() - See Agent Thoughts ---")
-    flow = pipeline([analyst, writer], observer=Observer.verbose())
+    flow = pipeline([analyst, writer], observer=Observer(level="verbose"))
     await flow.run("Analyze: What's 2+2? Then summarize.")
 
     # JSON - structured, readable output
     print("\n--- Level: json() - Structured Output ---")
-    flow = pipeline([analyst, writer], observer=Observer.json())
+    flow = pipeline([analyst, writer], observer=Observer(level="json"))
     await flow.run("Explain why the sky is blue.")
 
 
@@ -49,7 +49,7 @@ async def demo_trace():
 
     # Trace - maximum observability
     print("\n--- Level: trace() - Deep Execution Tracing ---")
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     flow = pipeline([researcher, analyst, writer], observer=observer)
     await flow.run("Research the benefits of exercise, analyze the data, and write a summary.")

@@ -38,7 +38,7 @@ async def main():
     kg = KnowledgeGraph(backend="memory")
 
     # Create observer to trace tool usage
-    observer = Observer.trace()
+    observer = Observer(level="trace")
 
     # Create agent with knowledge graph
     agent = Agent(
