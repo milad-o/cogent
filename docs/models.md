@@ -518,6 +518,97 @@ embeddings = OllamaEmbedding(model="nomic-embed-text")
 
 ---
 
+## xAI (Grok)
+
+Grok models with reasoning capabilities:
+
+```python
+from cogent.models.xai import XAIChat
+
+# Flagship reasoning model (256K context)
+model = XAIChat(
+    model="grok-4",
+    api_key="...",  # Or XAI_API_KEY env var
+)
+
+# Fast agentic model (2M context, optimized for tools)
+model = XAIChat(model="grok-4-1-fast")
+
+# Non-reasoning variant (faster, cheaper)
+model = XAIChat(model="grok-4-1-fast-non-reasoning")
+
+# With reasoning effort control (grok-3-mini only)
+model = XAIChat(model="grok-3-mini", reasoning_effort="high")
+# or use with_reasoning()
+model = XAIChat(model="grok-3-mini").with_reasoning("high")
+
+response = await model.ainvoke([
+    {"role": "user", "content": "What is 101 * 3?"}
+])
+
+# Reasoning tokens tracked in metadata
+if response.metadata.tokens:
+    print(f"Reasoning tokens: {response.metadata.tokens.reasoning_tokens}")
+```
+
+**Available models:**
+
+| Model | Context | Description |
+|-------|---------|-------------|
+| `grok-4` | 256K | Flagship reasoning model |
+| `grok-4-1-fast` | 2M | Fast agentic, optimized for tools |
+| `grok-4-1-fast-reasoning` | 2M | With explicit reasoning |
+| `grok-4-1-fast-non-reasoning` | 2M | Without reasoning (faster) |
+| `grok-3-mini` | - | Supports `reasoning_effort` (low/high) |
+| `grok-2-vision-1212` | - | Image understanding |
+| `grok-code-fast-1` | - | Code-optimized |
+
+**Features:**
+- Function/tool calling (all models)
+- Structured outputs (JSON mode)
+- Reasoning (grok-4, grok-4-1-fast-reasoning, grok-3-mini)
+- Vision (grok-2-vision-1212)
+- 2M context window (grok-4-1-fast models)
+
+---
+
+## DeepSeek
+
+DeepSeek models with Chain of Thought reasoning:
+
+```python
+from cogent.models.deepseek import DeepSeekChat
+
+# Standard chat model
+model = DeepSeekChat(
+    model="deepseek-chat",
+    api_key="...",  # Or DEEPSEEK_API_KEY env var
+)
+
+# Reasoning model (exposes Chain of Thought)
+model = DeepSeekChat(model="deepseek-reasoner")
+
+response = await model.ainvoke("9.11 and 9.8, which is greater?")
+
+# Access reasoning content (Chain of Thought)
+if hasattr(response, 'reasoning'):
+    print("Reasoning:", response.reasoning)
+print("Answer:", response.content)
+```
+
+**Available models:**
+
+| Model | Tools | Description |
+|-------|-------|-------------|
+| `deepseek-chat` | ✅ | General chat model with tool support |
+| `deepseek-reasoner` | ❌ | Reasoning model with CoT (no tools) |
+
+**Note:** `deepseek-reasoner` does NOT support:
+- Function calling/tools
+- `temperature`, `top_p`, `presence_penalty`, `frequency_penalty`
+
+---
+
 ## Custom Endpoints
 
 Any OpenAI-compatible endpoint (vLLM, Together AI, etc.):
@@ -576,6 +667,13 @@ model = create_chat("gemini", model="gemini-2.0-flash")
 
 # Ollama
 model = create_chat("ollama", model="llama3.2")
+
+# xAI (Grok)
+model = create_chat("xai", model="grok-4-1-fast")
+
+# DeepSeek
+model = create_chat("deepseek", model="deepseek-chat")
+model = create_chat("deepseek", model="deepseek-reasoner")  # Reasoning model
 
 # Custom
 model = create_chat(
@@ -839,6 +937,346 @@ async for chunk in model.astream([
 
 ---
 
+## Thinking & Reasoning
+
+Several providers offer "reasoning" or "thinking" models that expose their chain-of-thought process. Cogent provides unified access to these capabilities.
+
+### Feature Comparison
+
+| Provider | Models | Control Parameter | Access Reasoning | Structured Output |
+|----------|--------|-------------------|------------------|-------------------|
+| **Anthropic** | `claude-sonnet-4`, `claude-opus-4` | `thinking_budget` | `msg.thinking` | ✅ via thinking |
+| **OpenAI** | `o1`, `o3`, `o4-mini` | `reasoning_effort` | Hidden | ✅ |
+| **Gemini** | `gemini-2.5-*` | `thinking_budget` | `msg.thinking` | ✅ |
+| **xAI** | `grok-3-mini` | `reasoning_effort` | Hidden | ✅ |
+| **DeepSeek** | `deepseek-reasoner` | Always on | `msg.reasoning` | ❌ |
+
+### Anthropic Extended Thinking
+
+Claude models support extended thinking with configurable token budgets:
+
+```python
+from cogent.models.anthropic import AnthropicChat
+
+# Enable extended thinking with budget
+model = AnthropicChat(
+    model="claude-sonnet-4-20250514",
+    thinking={"type": "enabled", "budget_tokens": 10000},
+)
+
+response = await model.ainvoke([
+    {"role": "user", "content": "Solve this step by step: 15! / (12! * 3!)"}
+])
+
+# Access thinking content
+if response.thinking:
+    print("Thinking:", response.thinking)
+print("Answer:", response.content)
+```
+
+**Using ReasoningConfig:**
+
+```python
+from cogent.models.anthropic import AnthropicChat
+from cogent.reasoning import ReasoningConfig
+
+# Create config
+config = ReasoningConfig(budget_tokens=10000)
+
+# Apply to model
+model = AnthropicChat(model="claude-sonnet-4-20250514")
+thinking_model = model.with_reasoning(config)
+
+response = await thinking_model.ainvoke(messages)
+```
+
+**Features:**
+- Thinking exposed in `msg.thinking` attribute
+- Works with streaming (thinking streamed first)
+- Compatible with `with_structured_output()` via thinking
+
+### OpenAI Reasoning Models
+
+OpenAI's o-series models (o1, o3, o4-mini) have built-in reasoning:
+
+```python
+from cogent.models.openai import OpenAIChat
+
+# Reasoning effort: "low", "medium", "high"
+model = OpenAIChat(
+    model="o4-mini",
+    reasoning_effort="high",  # More thorough reasoning
+)
+
+response = await model.ainvoke([
+    {"role": "user", "content": "Prove that sqrt(2) is irrational"}
+])
+```
+
+**Using ReasoningConfig:**
+
+```python
+from cogent.models.openai import OpenAIChat
+from cogent.reasoning import ReasoningConfig
+
+model = OpenAIChat(model="o4-mini")
+reasoning_model = model.with_reasoning(ReasoningConfig(effort="high"))
+```
+
+**Notes:**
+- Reasoning is internal (not exposed in response)
+- No thinking budget - use `reasoning_effort` instead
+- Supports structured output with `json_schema` response format
+
+### Gemini Thinking
+
+Gemini 2.5 models support thinking with budget control:
+
+```python
+from cogent.models.gemini import GeminiChat
+
+model = GeminiChat(
+    model="gemini-2.5-flash-preview-05-20",
+    thinking_budget=8000,  # Token budget for thinking
+)
+
+response = await model.ainvoke([
+    {"role": "user", "content": "What's the optimal strategy in this game?"}
+])
+
+# Access thinking
+if response.thinking:
+    print("Thought process:", response.thinking)
+```
+
+**Using ReasoningConfig:**
+
+```python
+from cogent.models.gemini import GeminiChat
+from cogent.reasoning import ReasoningConfig
+
+model = GeminiChat(model="gemini-2.5-flash-preview-05-20")
+thinking_model = model.with_reasoning(ReasoningConfig(budget_tokens=8000))
+```
+
+### xAI Reasoning
+
+Grok-3-mini supports reasoning effort control:
+
+```python
+from cogent.models.xai import XAIChat
+
+# Enable reasoning with effort level
+model = XAIChat(
+    model="grok-3-mini",
+    reasoning_effort="high",  # "low" or "high"
+)
+
+response = await model.ainvoke([
+    {"role": "user", "content": "Explain the halting problem"}
+])
+```
+
+**Using with_reasoning():**
+
+```python
+from cogent.models.xai import XAIChat
+
+model = XAIChat(model="grok-3-mini")
+reasoning_model = model.with_reasoning(effort="high")
+```
+
+**Notes:**
+- Only `grok-3-mini` and `grok-3-mini-beta` support reasoning_effort
+- Reasoning is internal (not exposed in response)
+
+### DeepSeek Reasoner
+
+DeepSeek's reasoner model exposes its chain-of-thought:
+
+```python
+from cogent.models.deepseek import DeepSeekChat
+
+model = DeepSeekChat(model="deepseek-reasoner")
+
+response = await model.ainvoke([
+    {"role": "user", "content": "Prove the Pythagorean theorem"}
+])
+
+# Access reasoning content
+if response.reasoning:
+    print("Chain of thought:", response.reasoning)
+print("Final answer:", response.content)
+```
+
+**Streaming reasoning:**
+
+```python
+async for chunk in model.astream(messages):
+    if chunk.reasoning:
+        print(f"[Reasoning] {chunk.reasoning}", end="", flush=True)
+    if chunk.content:
+        print(chunk.content, end="", flush=True)
+```
+
+**Notes:**
+- Reasoning always enabled for `deepseek-reasoner`
+- Does NOT support tools or structured output
+- Use `deepseek-chat` for non-reasoning use cases
+
+### ReasoningConfig
+
+Unified configuration for reasoning across providers:
+
+```python
+from cogent.reasoning import ReasoningConfig
+
+# Token budget (Anthropic, Gemini)
+config = ReasoningConfig(budget_tokens=10000)
+
+# Effort level (OpenAI, xAI)
+config = ReasoningConfig(effort="high")
+
+# Both (uses appropriate one per provider)
+config = ReasoningConfig(budget_tokens=10000, effort="high")
+```
+
+**Provider mapping:**
+
+| Provider | `budget_tokens` | `effort` |
+|----------|-----------------|----------|
+| Anthropic | ✅ `thinking.budget_tokens` | ❌ |
+| OpenAI | ❌ | ✅ `reasoning_effort` |
+| Gemini | ✅ `thinking_budget` | ❌ |
+| xAI | ❌ | ✅ `reasoning_effort` |
+| DeepSeek | ❌ (always on) | ❌ |
+
+---
+
+## Structured Output
+
+Chat models support structured output via `with_structured_output()` for type-safe JSON responses.
+
+### Provider Support
+
+| Provider | Method | Strict Mode |
+|----------|--------|-------------|
+| **OpenAI** | `json_schema` | ✅ |
+| **Anthropic** | Tool-based | ✅ |
+| **Gemini** | `response_schema` | ✅ |
+| **Groq** | `json_mode` | ❌ |
+| **xAI** | `json_schema` | ✅ |
+| **DeepSeek** | `deepseek-chat` only | ❌ |
+| **Ollama** | `json_mode` | ❌ |
+
+### Basic Usage
+
+```python
+from pydantic import BaseModel, Field
+from cogent.models.openai import OpenAIChat
+
+class Person(BaseModel):
+    name: str = Field(description="Full name")
+    age: int = Field(description="Age in years")
+
+# Configure model for structured output
+llm = OpenAIChat(model="gpt-4o").with_structured_output(Person)
+
+response = await llm.ainvoke([
+    {"role": "user", "content": "Extract: John Doe is 30 years old"}
+])
+
+# Response content is JSON matching schema
+import json
+data = json.loads(response.content)
+print(data)  # {"name": "John Doe", "age": 30}
+```
+
+### Schema Types
+
+```python
+from dataclasses import dataclass
+from typing import TypedDict
+
+# Pydantic (recommended)
+class PersonPydantic(BaseModel):
+    name: str
+    age: int
+
+# Dataclass
+@dataclass
+class PersonDataclass:
+    name: str
+    age: int
+
+# TypedDict
+class PersonTypedDict(TypedDict):
+    name: str
+    age: int
+
+# JSON Schema dict
+person_schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer"}
+    },
+    "required": ["name", "age"]
+}
+
+# All work with with_structured_output()
+llm.with_structured_output(PersonPydantic)
+llm.with_structured_output(PersonDataclass)
+llm.with_structured_output(PersonTypedDict)
+llm.with_structured_output(person_schema)
+```
+
+### Methods
+
+```python
+# json_schema (default, strict typing)
+llm.with_structured_output(Person, method="json_schema")
+
+# json_mode (less strict, more compatible)
+llm.with_structured_output(Person, method="json_mode")
+```
+
+### With Tools
+
+Structured output and tools can be combined (the model decides when to use each):
+
+```python
+@tool
+def get_weather(location: str) -> str:
+    """Get weather for a location."""
+    return f"Sunny in {location}"
+
+llm = OpenAIChat(model="gpt-4o")
+llm = llm.bind_tools([get_weather])
+llm = llm.with_structured_output(Person)
+```
+
+### Agent-Level Structured Output
+
+For most use cases, use the Agent's `output` parameter instead:
+
+```python
+from cogent import Agent
+
+agent = Agent(
+    name="Extractor",
+    model="gpt4",
+    output=Person,  # Automatic validation and retry
+)
+
+result = await agent.run("Extract: John Doe, 30 years old")
+print(result.data)  # Person(name="John Doe", age=30)
+```
+
+See [Agent Documentation](agent.md#structured-output) for more details.
+
+---
+
 ## Base Classes
 
 ### BaseChatModel
@@ -957,6 +1395,8 @@ class BaseEmbedding(ABC):
 | Anthropic | `AnthropicChat` | - |
 | Groq | `GroqChat` | - |
 | Gemini | `GeminiChat` | `GeminiEmbedding` |
+| xAI | `XAIChat` | - |
+| DeepSeek | `DeepSeekChat` | - |
 | Ollama | `OllamaChat` | `OllamaEmbedding` |
 | Custom | `CustomChat` | `CustomEmbedding` |
 

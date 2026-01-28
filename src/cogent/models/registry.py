@@ -77,6 +77,11 @@ MODEL_ALIASES: dict[str, str] = {
     # Legacy models
     "grok-3": "grok-3",
     "grok-3-mini": "grok-3-mini",
+    # DeepSeek
+    "deepseek": "deepseek-chat",
+    "deepseek-chat": "deepseek-chat",
+    "deepseek-reasoner": "deepseek-reasoner",
+    "deepseek-r1": "deepseek-reasoner",  # DeepSeek R1 = reasoner
 }
 
 # Provider detection patterns - model prefix to provider mapping
@@ -117,9 +122,10 @@ MODEL_PROVIDERS: dict[str, str] = {
     "mixtral-": "groq",
     "qwen-": "groq",
     "qwen2": "groq",
-    "deepseek-": "groq",
     "gemma-": "groq",
     "gemma2-": "groq",
+    # DeepSeek (native provider)
+    "deepseek-": "deepseek",
     # Mistral
     "mistral-": "mistral",
     "codestral-": "mistral",

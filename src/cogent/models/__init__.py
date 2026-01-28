@@ -113,6 +113,9 @@ from cogent.models.openai import OpenAIChat, OpenAIEmbedding
 # xAI models
 from cogent.models.xai import XAIChat
 
+# DeepSeek models
+from cogent.models.deepseek import DeepSeekChat
+
 # Model registry for high-level API
 from cogent.models.registry import (
     get_provider_for_model,
@@ -357,10 +360,15 @@ def create_chat(
 
         return XAIChat(model=model or "grok-4-1-fast", **kwargs)
 
+    elif provider == "deepseek":
+        from cogent.models.deepseek import DeepSeekChat
+
+        return DeepSeekChat(model=model or "deepseek-chat", **kwargs)
+
     else:
         raise ValueError(
             f"Unknown provider: {provider}. "
-            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, mistral, xai, custom"
+            f"Supported: openai, azure, azure-foundry, github, anthropic, groq, gemini, cohere, cloudflare, ollama, mistral, xai, deepseek, custom"
         )
 
 
