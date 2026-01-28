@@ -59,6 +59,52 @@ print(f"Entities: {len(acc.state.entities)}/{acc.state.max_entities}")
 print(f"Actions: {len(acc.state.actions)}/{acc.state.max_actions}")
 ```
 
+## Extraction Modes
+
+ACC supports two extraction modes:
+
+| Mode | Description | Speed | Quality |
+|------|-------------|-------|---------|
+| `heuristic` | Rule-based extraction (default) | ⚡ Fast | Good |
+| `model` | LLM-based semantic extraction | Slower | Better |
+
+### Heuristic Mode (Default)
+
+Fast, rule-based extraction using keyword matching and simple heuristics:
+
+```python
+acc = AgentCognitiveCompressor(
+    extraction_mode="heuristic",  # Default
+)
+```
+
+### Model Mode
+
+Uses an LLM to semantically extract constraints, entities, and actions:
+
+```python
+# Option 1: Specify a dedicated efficient model
+acc = AgentCognitiveCompressor(
+    extraction_mode="model",
+    model="gpt-4o-mini",  # Efficient model for extraction
+)
+
+# Option 2: Use agent's model (no model specified)
+acc = AgentCognitiveCompressor(
+    extraction_mode="model",
+    # model=None → Uses agent's model automatically
+)
+
+# Option 3: Pass any BaseChatModel
+from cogent.models import AnthropicChat
+acc = AgentCognitiveCompressor(
+    extraction_mode="model",
+    model=AnthropicChat(model="claude-3-haiku-20240307"),
+)
+```
+
+**Recommendation:** Use `extraction_mode="model"` with `model="gpt-4o-mini"` or similar efficient model for best quality/cost balance.
+
 ## When to Use ACC
 
 | Use ACC When | Don't Use When |
