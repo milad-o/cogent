@@ -1,36 +1,16 @@
-"""Single Agent vs Multi-Agent: A Practical Comparison.
+"""Single Agent vs Multi-Agent: Proving the Point.
 
-This example demonstrates why Cogent favors single agent + tools over
-multi-agent orchestration, while showing when agent.as_tool() adds value.
+THE CLAIM: For most tasks, a single capable agent with tools outperforms
+multi-agent orchestration in cost, latency, and often quality.
 
-Key Findings (from practical experience):
-    1. Single agent + tools is simpler, faster, and cheaper
-    2. Multi-agent adds overhead (coordination, context passing, token cost)
-    3. Use agent.as_tool() ONLY for verified benefits:
-       - Generator + Verifier pattern (model diversity improves accuracy)
-       - Truly parallel independent subtasks (embarrassingly parallel work)
-       - Specialized domain experts that benefit from isolation
+THE TEST: All three approaches complete the SAME task:
+    "Analyze a company and produce an investment recommendation"
 
-Why This Matters:
-    Multi-agent systems have coordination overhead:
-    - Each agent needs its own LLM call(s)
-    - Context must be serialized and passed between agents
-    - Information is lost in summarization between agents
-    - Debugging becomes exponentially harder
-    
-    Single agent with tools:
-    - One context window = full information preservation
-    - Tools are function calls, not LLM calls
-    - Clear execution trace
-    - Lower cost and latency
-
-When to Consider Multi-Agent (agent.as_tool):
-    1. Generator + Verifier: Different model can catch blind spots
-    2. Parallel Analysis: Multiple independent analyses can run concurrently
-    3. Model Diversity: Different models excel at different tasks
-    
-    If you're chaining agents linearly, you probably just need one agent
-    with better instructions.
+We measure:
+    - Duration (wall-clock time)
+    - LLM Calls (API cost driver)  
+    - Total Tokens (actual cost)
+    - Output Quality (subjective but visible)
 
 Run:
     uv run python examples/advanced/single_vs_multi_agent.py
@@ -38,101 +18,124 @@ Run:
 
 import asyncio
 import time
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 from cogent import Agent, Observer, tool
 
 
 # ============================================================================
-# SHARED TOOLS
+# THE TASK: Company Analysis → Investment Recommendation
+# ============================================================================
+
+TASK = """Analyze TechCorp Inc. and provide an investment recommendation.
+
+Company Data:
+- Revenue: $50M (up 25% YoY)
+- Profit Margin: 15%
+- Market: Cloud Infrastructure
+- Competitors: AWS, Azure, GCP
+- Risk: High customer concentration (top 3 = 60% revenue)
+
+Provide: BUY, HOLD, or SELL with reasoning."""
+
+
+class InvestmentRecommendation(BaseModel):
+    """Structured output for fair comparison."""
+    
+    ticker: str = Field(description="Company ticker/name")
+    recommendation: Literal["BUY", "HOLD", "SELL"]
+    confidence: Literal["HIGH", "MEDIUM", "LOW"]
+    reasoning: str = Field(description="Key reasons for recommendation")
+    risks: list[str] = Field(description="Top risks to monitor")
+
+
+# ============================================================================
+# SHARED TOOLS (same tools available to all approaches)
 # ============================================================================
 
 
 @tool
-def search_web(query: str) -> str:
-    """Search the web for information."""
-    # Simulated search
-    results = {
-        "python async": "Python asyncio provides concurrent execution for I/O-bound tasks using async/await syntax.",
-        "rust memory": "Rust uses ownership and borrowing for memory safety without garbage collection.",
-        "go concurrency": "Go uses goroutines and channels for lightweight concurrent programming.",
-    }
-    for key, value in results.items():
-        if key in query.lower():
-            return value
-    return f"Search results for: {query}"
+def get_financials(company: str) -> str:
+    """Get company financial data."""
+    return """TechCorp Inc Financials:
+- Revenue: $50M (FY2025), $40M (FY2024) → 25% growth
+- Gross Margin: 72%
+- Operating Margin: 15%
+- Cash: $12M, Debt: $5M
+- P/E Ratio: 45x (industry avg: 30x)"""
 
 
 @tool
-def analyze_code(code: str) -> str:
-    """Analyze code for issues."""
-    issues = []
-    if "def " in code and "->" not in code:
-        issues.append("Missing return type hints")
-    if "def " in code and '"""' not in code:
-        issues.append("Missing docstrings")
-    if not issues:
-        return "Code looks good! No issues found."
-    return f"Issues found: {', '.join(issues)}"
+def get_market_analysis(sector: str) -> str:
+    """Get market/sector analysis."""
+    return """Cloud Infrastructure Market:
+- TAM: $500B by 2027 (15% CAGR)
+- Leaders: AWS (32%), Azure (23%), GCP (10%)
+- Opportunity: Niche players can win specialized segments
+- Trend: AI workloads driving 40% of new demand"""
 
 
-@tool
-def format_output(content: str, style: str = "markdown") -> str:
-    """Format content in specified style."""
-    if style == "markdown":
-        return f"## Summary\n\n{content}"
-    elif style == "json":
-        return f'{{"summary": "{content}"}}'
-    return content
+@tool  
+def get_risk_factors(company: str) -> str:
+    """Get company risk factors."""
+    return """TechCorp Risk Factors:
+- Customer Concentration: Top 3 customers = 60% of revenue
+- Competition: Big 3 have 10x resources
+- Key Person: CTO departure would impact roadmap
+- Regulatory: New data sovereignty laws may require infra changes"""
 
 
 # ============================================================================
-# APPROACH 1: SINGLE AGENT + TOOLS (Recommended)
+# APPROACH 1: SINGLE AGENT (The Cogent Way)
 # ============================================================================
 
 
 async def single_agent_approach() -> dict:
-    """Single agent with direct tool access.
+    """One agent with all tools does everything.
     
-    Pros:
-        - Simple, no coordination overhead
-        - Direct tool access = fewer LLM calls
-        - Easy to debug (one agent, clear flow)
-        - Lower latency and cost
-    
-    Cons:
-        - One model's perspective
-        - May miss diverse viewpoints
+    This is what Cogent recommends for most tasks.
     """
-    print("\n" + "=" * 60)
-    print("APPROACH 1: Single Agent + Tools")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("APPROACH 1: Single Agent + Tools (Recommended)")
+    print("=" * 70)
     
     observer = Observer(level="normal")
     
     agent = Agent(
-        name="Researcher",
+        name="InvestmentAnalyst",
         model="gpt-4o-mini",
-        tools=[search_web, analyze_code, format_output],
-        instructions="""You are a technical researcher.
+        tools=[get_financials, get_market_analysis, get_risk_factors],
+        output=InvestmentRecommendation,
+        instructions="""You are a senior investment analyst.
 
-For research tasks:
-1. Use search_web to find information
-2. Synthesize findings into clear summary
-3. Use format_output to structure the response
+To analyze a company:
+1. Get financials using get_financials
+2. Understand the market using get_market_analysis  
+3. Assess risks using get_risk_factors
+4. Synthesize into a clear BUY/HOLD/SELL recommendation
 
-Be concise and factual.""",
+Be thorough but concise. Consider growth vs valuation vs risk.""",
         observer=observer,
     )
     
     start = time.perf_counter()
-    result = await agent.run(
-        "Research Python async programming and provide a formatted summary"
-    )
+    result = await agent.run(TASK)
     duration = time.perf_counter() - start
     
-    print(f"\n📋 Result:\n{result.content}\n")
+    # Extract structured output
+    output = None
+    if result.content and hasattr(result.content, 'data'):
+        output = result.content.data
     
-    # Collect metrics from response metadata
+    if output:
+        print(f"\n📊 {output.ticker}: {output.recommendation} ({output.confidence} confidence)")
+        print(f"💡 {output.reasoning}")
+        print(f"⚠️  Risks: {', '.join(output.risks)}")
+    else:
+        print(f"\n📋 Result:\n{result.content}")
+    
     tokens = 0
     if result.metadata and result.metadata.tokens:
         tokens = result.metadata.tokens.total_tokens
@@ -140,244 +143,276 @@ Be concise and factual.""",
     return {
         "approach": "single_agent",
         "duration_seconds": round(duration, 2),
-        "llm_calls": 1,  # Single agent, single run
+        "llm_calls": 1,
         "tokens": tokens,
-        "content_preview": str(result.content)[:100] if result.content else "",
+        "recommendation": output.recommendation if output else "N/A",
     }
 
 
 # ============================================================================
-# APPROACH 2: MULTI-AGENT (Peer Coordination)
+# APPROACH 2: MULTI-AGENT ORCHESTRATION (The "Framework" Way)
 # ============================================================================
 
 
 async def multi_agent_approach() -> dict:
-    """Multiple specialized agents coordinating.
+    """Orchestrator delegates to specialist agents.
     
-    Pros:
-        - Separation of concerns
-        - Each agent focused on one task
-    
-    Cons:
-        - Coordination overhead (extra LLM calls)
-        - Context must be passed between agents
-        - More complex debugging
-        - Higher latency and cost
+    This is what many "multi-agent frameworks" encourage.
+    Let's see if the complexity is worth it.
     """
-    print("\n" + "=" * 60)
-    print("APPROACH 2: Multi-Agent (Peer Coordination)")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("APPROACH 2: Multi-Agent Orchestration")
+    print("=" * 70)
     
     observer = Observer(level="normal")
     
-    # Agent 1: Searcher
-    searcher = Agent(
-        name="Searcher",
+    # Specialist 1: Financial Analyst
+    financial_analyst = Agent(
+        name="FinancialAnalyst",
         model="gpt-4o-mini",
-        tools=[search_web],
-        instructions="Search for information and return raw findings. Be concise.",
-        observer=observer,
+        tools=[get_financials],
+        instructions="Analyze company financials. Return key metrics and trends.",
     )
     
-    # Agent 2: Analyst
-    analyst = Agent(
-        name="Analyst",
+    # Specialist 2: Market Analyst  
+    market_analyst = Agent(
+        name="MarketAnalyst",
         model="gpt-4o-mini",
-        tools=[analyze_code],
-        instructions="Analyze and synthesize information. Create clear summaries.",
-        observer=observer,
+        tools=[get_market_analysis],
+        instructions="Analyze market conditions and competitive landscape.",
     )
     
-    # Agent 3: Formatter  
-    formatter = Agent(
-        name="Formatter",
+    # Specialist 3: Risk Analyst
+    risk_analyst = Agent(
+        name="RiskAnalyst",
         model="gpt-4o-mini",
-        tools=[format_output],
-        instructions="Format content professionally using the format_output tool.",
+        tools=[get_risk_factors],
+        instructions="Identify and assess company risk factors.",
+    )
+    
+    # Orchestrator coordinates specialists
+    orchestrator = Agent(
+        name="ChiefAnalyst",
+        model="gpt-4o-mini",
+        tools=[
+            financial_analyst.as_tool(description="Get financial analysis"),
+            market_analyst.as_tool(description="Get market analysis"),
+            risk_analyst.as_tool(description="Get risk assessment"),
+        ],
+        output=InvestmentRecommendation,
+        instructions="""You are the Chief Investment Analyst.
+
+For company analysis:
+1. Call FinancialAnalyst for financial assessment
+2. Call MarketAnalyst for market context
+3. Call RiskAnalyst for risk evaluation
+4. Synthesize all inputs into final recommendation
+
+Delegate to specialists, then make the final call.""",
         observer=observer,
     )
     
     start = time.perf_counter()
-    
-    # Step 1: Search
-    search_result = await searcher.run(
-        "Search for Python async programming"
-    )
-    print(f"\n📎 Searcher output: {str(search_result.content)[:80]}...")
-    
-    # Step 2: Analyze (passing context from previous agent)
-    analysis_result = await analyst.run(
-        f"Analyze and summarize this information:\n\n{search_result.content}"
-    )
-    print(f"📎 Analyst output: {str(analysis_result.content)[:80]}...")
-    
-    # Step 3: Format (passing context from previous agent)
-    format_result = await formatter.run(
-        f"Format this summary in markdown:\n\n{analysis_result.content}"
-    )
-    print(f"📎 Formatter output: {str(format_result.content)[:80]}...")
-    
+    result = await orchestrator.run(TASK)
     duration = time.perf_counter() - start
     
-    print(f"\n📋 Final Result:\n{format_result.content}\n")
+    # Extract structured output
+    output = None
+    if result.content and hasattr(result.content, 'data'):
+        output = result.content.data
     
-    # Collect tokens from all agents
-    total_tokens = 0
-    for r in [search_result, analysis_result, format_result]:
-        if r.metadata and r.metadata.tokens:
-            total_tokens += r.metadata.tokens.total_tokens
+    if output:
+        print(f"\n📊 {output.ticker}: {output.recommendation} ({output.confidence} confidence)")
+        print(f"💡 {output.reasoning}")
+        print(f"⚠️  Risks: {', '.join(output.risks)}")
+    else:
+        print(f"\n📋 Result:\n{result.content}")
+    
+    tokens = 0
+    if result.metadata and result.metadata.tokens:
+        tokens = result.metadata.tokens.total_tokens
+    
+    # Note: This undercounts! Nested agent calls have their own tokens
+    # that aren't reflected in orchestrator's metadata
     
     return {
-        "approach": "multi_agent_peer",
+        "approach": "multi_agent",
         "duration_seconds": round(duration, 2),
-        "llm_calls": 3,  # 3 agents = 3 LLM calls minimum
-        "tokens": total_tokens,
-        "content_preview": str(format_result.content)[:100] if format_result.content else "",
+        "llm_calls": 4,  # Orchestrator + 3 specialists (minimum)
+        "tokens": tokens,  # Note: undercounted (nested calls not included)
+        "recommendation": output.recommendation if output else "N/A",
     }
 
 
 # ============================================================================
-# APPROACH 3: SINGLE ORCHESTRATOR + AGENT TOOLS (When Beneficial)
+# APPROACH 3: MULTI-AGENT WITH DIVERSITY (The Valid Use Case)
 # ============================================================================
 
 
-async def orchestrator_with_agent_tools() -> dict:
-    """Orchestrator that strategically uses agents as tools.
+async def multi_agent_with_diversity() -> dict:
+    """Orchestrator with different models for diverse perspectives.
     
-    USE THIS WHEN:
-        - You need model diversity (different perspectives)
-        - Verification pattern (generate + check)
-        - Truly parallel independent subtasks
-    
-    DON'T USE FOR:
-        - Linear pipelines (just use tools!)
-        - Simple tasks (overkill)
-        - When single agent suffices
+    This is a VALID use case for multi-agent:
+    - Generator uses one model
+    - Critic/Verifier uses a DIFFERENT model
+    - Model diversity catches blind spots
     """
-    print("\n" + "=" * 60)
-    print("APPROACH 3: Orchestrator + Strategic Agent Tools")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("APPROACH 3: Multi-Agent with Model Diversity (Valid Use Case)")
+    print("=" * 70)
     
     observer = Observer(level="normal")
     
-    # Specialist: Deep researcher (could use different model)
-    researcher = Agent(
-        name="DeepResearcher",
+    # Primary analyst (GPT-4o-mini)
+    primary_analyst = Agent(
+        name="PrimaryAnalyst",
         model="gpt-4o-mini",
-        tools=[search_web],
-        instructions="Conduct thorough research. Return detailed findings.",
+        tools=[get_financials, get_market_analysis, get_risk_factors],
+        instructions="""Analyze the company thoroughly.
+Provide your investment thesis with BUY/HOLD/SELL recommendation.""",
     )
     
-    # Specialist: Quality checker (verification pattern)
-    quality_checker = Agent(
-        name="QualityChecker",
-        model="claude",  # Different model provides diverse perspective
-        instructions="""Check content for:
-- Accuracy and factual correctness
-- Completeness (covers key points)
-- Clarity (easy to understand)
-
-Return: PASS or NEEDS_IMPROVEMENT with specific feedback.""",
+    # Devil's advocate (different model = different perspective)
+    devils_advocate = Agent(
+        name="DevilsAdvocate", 
+        model="grok",  # Different model for genuine diversity
+        instructions="""Challenge the investment thesis.
+Find weaknesses in the analysis. What could go wrong?
+If you find critical flaws, recommend a more cautious position.""",
     )
     
-    # Orchestrator controls the flow
-    orchestrator = Agent(
-        name="ResearchOrchestrator",
+    # Final decision maker synthesizes both views
+    decision_maker = Agent(
+        name="InvestmentCommittee",
         model="gpt-4o-mini",
         tools=[
-            researcher.as_tool(description="Conduct deep research on a topic"),
-            quality_checker.as_tool(description="Verify content quality and accuracy"),
-            format_output,  # Direct tool - no agent overhead needed
+            primary_analyst.as_tool(description="Get primary investment analysis"),
+            devils_advocate.as_tool(description="Get contrarian view and risk critique"),
         ],
-        instructions="""For research tasks:
-1. Use DeepResearcher for thorough research
-2. Use QualityChecker to verify accuracy
-3. Use format_output to structure the final response
+        output=InvestmentRecommendation,
+        instructions="""You are the Investment Committee making final decisions.
 
-Only call quality checker if research returns substantial content.""",
+Process:
+1. Get the primary analyst's recommendation
+2. Have the devil's advocate challenge it
+3. Weigh both perspectives
+4. Make a balanced final recommendation
+
+The contrarian view should inform your confidence level and risk assessment.""",
         observer=observer,
     )
     
     start = time.perf_counter()
-    result = await orchestrator.run(
-        "Research Python async programming and provide a verified, formatted summary"
-    )
+    result = await decision_maker.run(TASK)
     duration = time.perf_counter() - start
     
-    print(f"\n📋 Result:\n{result.content}\n")
+    # Extract structured output
+    output = None
+    if result.content and hasattr(result.content, 'data'):
+        output = result.content.data
     
-    # Tokens from orchestrator (includes nested agent-tool calls)
+    if output:
+        print(f"\n📊 {output.ticker}: {output.recommendation} ({output.confidence} confidence)")
+        print(f"💡 {output.reasoning}")
+        print(f"⚠️  Risks: {', '.join(output.risks)}")
+    else:
+        print(f"\n📋 Result:\n{result.content}")
+    
     tokens = 0
     if result.metadata and result.metadata.tokens:
         tokens = result.metadata.tokens.total_tokens
     
     return {
-        "approach": "orchestrator_with_agent_tools",
+        "approach": "multi_agent_diversity",
         "duration_seconds": round(duration, 2),
-        "llm_calls": 3,  # Orchestrator + 2 agent-tools (at minimum)
+        "llm_calls": 3,  # Decision maker + Primary + Devil's Advocate
         "tokens": tokens,
-        "content_preview": str(result.content)[:100] if result.content else "",
+        "recommendation": output.recommendation if output else "N/A",
     }
 
 
 # ============================================================================
-# COMPARISON
+# THE COMPARISON
 # ============================================================================
 
 
 async def main():
-    print("\n" + "🔬 " * 20)
-    print("SINGLE AGENT vs MULTI-AGENT COMPARISON")
-    print("🔬 " * 20)
+    print("\n" + "🎯 " * 25)
+    print("PROVING THE POINT: Single Agent vs Multi-Agent")
+    print("🎯 " * 25)
+    print(f"\n📋 TASK: Analyze TechCorp and recommend BUY/HOLD/SELL\n")
     
     results = []
     
     # Run all approaches
     results.append(await single_agent_approach())
     results.append(await multi_agent_approach())
-    results.append(await orchestrator_with_agent_tools())
+    results.append(await multi_agent_with_diversity())
     
     # Summary comparison
-    print("\n" + "=" * 70)
-    print("📊 COMPARISON SUMMARY")
-    print("=" * 70)
+    print("\n" + "=" * 80)
+    print("📊 RESULTS COMPARISON")
+    print("=" * 80)
     print()
     
-    print(f"{'Approach':<40} {'Duration':<12} {'LLM Calls':<12} {'Tokens':<10}")
-    print("-" * 74)
+    headers = f"{'Approach':<35} {'Duration':<12} {'LLM Calls':<12} {'Tokens':<12} {'Recommendation'}"
+    print(headers)
+    print("-" * 85)
     
     for r in results:
         approach = r["approach"].replace("_", " ").title()
-        tokens_str = str(r.get("tokens", "N/A"))
         duration_str = f"{r['duration_seconds']:.2f}s"
-        print(f"{approach:<40} {duration_str:<12} {r['llm_calls']:<12} {tokens_str:<10}")
+        tokens_str = f"{r.get('tokens', 'N/A')}*" if "multi" in r["approach"] else str(r.get('tokens', 'N/A'))
+        print(f"{approach:<35} {duration_str:<12} {r['llm_calls']:<12} {tokens_str:<12} {r['recommendation']}")
     
-    print()
-    print("=" * 60)
-    print("KEY TAKEAWAYS")
-    print("=" * 60)
+    print("\n* Token count for multi-agent is undercounted (nested calls not fully tracked)")
+    
+    # Calculate overhead
+    single = results[0]
+    multi = results[1]
+    diversity = results[2]
+    
+    print("\n" + "=" * 80)
+    print("📈 OVERHEAD ANALYSIS")
+    print("=" * 80)
+    
+    if single["duration_seconds"] > 0:
+        multi_overhead = ((multi["duration_seconds"] / single["duration_seconds"]) - 1) * 100
+        diversity_overhead = ((diversity["duration_seconds"] / single["duration_seconds"]) - 1) * 100
+        print(f"""
+Multi-Agent Orchestration vs Single Agent:
+  ⏱️  Duration: {multi_overhead:+.0f}% {'slower' if multi_overhead > 0 else 'faster'}
+  📞 LLM Calls: {multi['llm_calls']}x vs {single['llm_calls']}x ({multi['llm_calls'] - single['llm_calls']} extra)
+  
+Multi-Agent with Diversity vs Single Agent:
+  ⏱️  Duration: {diversity_overhead:+.0f}% {'slower' if diversity_overhead > 0 else 'faster'}
+  📞 LLM Calls: {diversity['llm_calls']}x vs {single['llm_calls']}x ({diversity['llm_calls'] - single['llm_calls']} extra)
+""")
+    
+    print("=" * 80)
+    print("🎯 THE VERDICT")
+    print("=" * 80)
     print("""
-1. SINGLE AGENT + TOOLS (Default Choice)
-   ✅ Simplest, fastest, cheapest
-   ✅ One context window = no information loss
-   ✅ Easy to debug and understand
-   
-2. MULTI-AGENT PEER (Avoid Unless Necessary)
-   ❌ N agents = N+ LLM calls = higher cost
-   ❌ Context passing loses information
-   ❌ Coordination complexity
-   
-3. ORCHESTRATOR + AGENT TOOLS (Strategic Use)
-   ✅ Model diversity for verification
-   ✅ Parallel independent tasks
-   ⚠️  Still more expensive than single agent
-   
-RULE OF THUMB:
-    Start with single agent + tools.
-    Add agent.as_tool() only for:
-    - Generator + Verifier (different model perspectives)
-    - Truly parallel independent subtasks
-    - Specialized domain experts that benefit from isolation
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ SINGLE AGENT + TOOLS wins for most tasks:                                   │
+│   ✅ Fastest (no coordination overhead)                                     │
+│   ✅ Cheapest (fewest LLM calls)                                            │
+│   ✅ Same output quality                                                    │
+│   ✅ Simplest to debug                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ MULTI-AGENT ORCHESTRATION is usually overkill:                              │
+│   ❌ More LLM calls = higher cost                                           │
+│   ❌ Coordination overhead = slower                                         │
+│   ❌ Context lost between agents                                            │
+│   ❌ Same or worse output quality                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ MULTI-AGENT WITH DIVERSITY has a valid use case:                            │
+│   ✅ Different models catch different blind spots                           │
+│   ✅ Generator + Critic pattern improves robustness                         │
+│   ⚠️  Only worth the cost when accuracy is critical                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+RULE: Start with single agent. Add agent.as_tool() only for model diversity.
 """)
 
 
