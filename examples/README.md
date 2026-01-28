@@ -126,11 +126,14 @@ Advanced patterns for production systems.
 
 | Example | Description |
 |---------|-------------|
+| [acc.py](advanced/acc.py) | Agentic Context Compression - prevents drift in long conversations |
+| [semantic_cache.py](advanced/semantic_cache.py) | Semantic caching for tool outputs |
 | [human_in_the_loop.py](advanced/human_in_the_loop.py) | Tool approval workflows |
 | [deferred_tools.py](advanced/deferred_tools.py) | Webhook/callback-based tools |
 | [reasoning.py](advanced/reasoning.py) | Extended thinking with AI-controlled rounds |
 | [interceptors.py](advanced/interceptors.py) | BudgetGuard, PII masking, rate limiting |
 | [context_layer.py](advanced/context_layer.py) | RunContext, ToolGate, Failover |
+| [taskboard.py](advanced/taskboard.py) | Task tracking for multi-step workflows |
 
 **Reasoning Features:**
 - Basic: `reasoning=True` enables default config

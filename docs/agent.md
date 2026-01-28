@@ -435,29 +435,62 @@ agent = Agent(
 
 See `examples/advanced/taskboard.py` for a complete example.
 
-## Memory
+## Memory (4-Layer Architecture)
 
-Enable conversation memory for multi-turn interactions:
+Cogent provides a 4-layer memory architecture:
+
+| Layer | Parameter | Purpose |
+|-------|-----------|---------|
+| 1 | `conversation=True` | Thread-based message history (default ON) |
+| 2 | `acc=True` | Agentic Context Compression - prevents drift |
+| 3 | `memory=True` | Long-term memory with remember/recall tools |
+| 4 | `cache=True` | Semantic cache for tool outputs |
+
+### Basic Usage
 
 ```python
-from cogent.agent import InMemorySaver
+# Layer 1: Conversation memory (default ON)
+agent = Agent(name="Assistant", model="gpt4")
+await agent.run("Hi, I'm Alice", thread_id="conv-1")
+await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
 
+# Layer 2: ACC for long conversations (prevents drift)
+agent = Agent(name="Assistant", model="gpt4", acc=True)
+
+# Layer 3: Long-term memory with tools
+agent = Agent(name="Assistant", model="gpt4", memory=True)
+# Agent gets remember(), recall(), forget() tools
+
+# Layer 4: Semantic cache for expensive tools
+agent = Agent(name="Assistant", model="gpt4", cache=True)
+
+# All layers together
 agent = Agent(
-    name="Assistant",
-    model=model,
-    memory=InMemorySaver(),
+    name="SuperAgent",
+    model="gpt4",
+    acc=True,     # Prevents context drift
+    memory=True,  # Long-term facts
+    cache=True,   # Cache tool outputs
 )
-
-# Run with thread-based memory
-response = await agent.run("Hi, I'm Alice", thread_id="conv-1")
-response = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
 ```
 
-### Memory Backends
+### ACC (Agentic Context Compression)
 
-- **InMemorySaver**: In-memory storage (for testing)
-- **SqliteSaver**: SQLite-based persistence (coming soon)
-- **Custom**: Implement `AgentMemory` protocol
+For long conversations (>10 turns), enable ACC to prevent memory drift:
+
+```python
+from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+
+# Simple: Enable with defaults
+agent = Agent(name="Assistant", model="gpt4", acc=True)
+
+# Advanced: Custom ACC instance with specific bounds
+state = BoundedMemoryState(max_constraints=5, max_entities=20)
+acc = AgentCognitiveCompressor(state=state)
+agent = Agent(name="Assistant", model="gpt4", acc=acc)
+```
+
+See [docs/acc.md](acc.md) for detailed ACC documentation.
 
 ## Resilience
 

@@ -47,6 +47,7 @@ from cogent.tools.base import BaseTool
 
 if TYPE_CHECKING:
     from cogent.memory import MemorySaver, MemorySnapshot, InMemorySaver
+    from cogent.memory.acc import AgentCognitiveCompressor
     from cogent.agent.resilience import ResilienceConfig, ToolResilience
     from cogent.agent.streaming import StreamChunk, StreamEvent
     from cogent.graph import GraphView
@@ -157,7 +158,7 @@ class Agent:
         tool_registry: ToolRegistry | None = None,
         # Memory and state (4-layer architecture)
         conversation: bool = True,  # Layer 1: Thread-based message history (always on by default)
-        bounded_memory: bool = False,  # Layer 2: ACC for drift prevention
+        acc: bool | AgentCognitiveCompressor = False,  # Layer 2: ACC for drift prevention
         memory: bool | Any = False,  # Layer 3: Long-term memory with remember/recall tools (or Memory object)
         cache: bool = False,  # Layer 4: Semantic cache for tool outputs
         # HITL and streaming
@@ -190,11 +191,12 @@ class Agent:
                 - Maintains conversation context across turns
                 - Thread-scoped with thread_id parameter
                 - Always enabled for natural multi-turn conversations
-            bounded_memory: Layer 2 - Agent Cognitive Compressor (default: False)
+            acc: Layer 2 - Agent Cognitive Compressor (default: False)
                 - Prevents memory poisoning and context drift
                 - Replaces full transcript with bounded internal state
                 - Based on arXiv:2601.11653
                 - Enable for long conversations (>10 turns)
+                - Can pass True (auto-create) or AgentCognitiveCompressor instance
             memory: Layer 3 - Long-term memory with tools (default: False, or Memory object)
                 - Adds remember/recall tools for persistent facts
                 - Cross-thread memory retrieval
@@ -232,7 +234,7 @@ class Agent:
             response = await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
 
             # Layer 2: Bounded memory (ACC) for long conversations
-            agent = Agent(name="Assistant", model=model, bounded_memory=True)
+            agent = Agent(name="Assistant", model=model, acc=True)
             # Prevents drift in 50+ turn conversations
 
             # Layer 3: Long-term memory with tools
@@ -255,7 +257,7 @@ class Agent:
                 name="SuperAgent",
                 model=model,
                 conversation=True,     # Default - thread-based history
-                bounded_memory=True,   # ACC for drift prevention
+                acc=True,              # ACC for drift prevention
                 memory=True,           # Long-term facts
                 cache=True,            # Cache tool outputs
             )
@@ -341,7 +343,7 @@ class Agent:
         # Setup memory (4-layer architecture)
         self._setup_memory(
             conversation=conversation,
-            bounded_memory=bounded_memory,
+            acc=acc,
             long_term_memory=memory,
             semantic_cache=cache,
         )
@@ -922,7 +924,7 @@ class Agent:
         self,
         *,
         conversation: bool = True,
-        bounded_memory: bool = False,
+        acc: bool | AgentCognitiveCompressor = False,
         long_term_memory: bool | Any = False,
         semantic_cache: bool = False,
     ) -> None:
@@ -930,11 +932,16 @@ class Agent:
 
         Args:
             conversation: Layer 1 - Thread-based message history (default: True)
-            bounded_memory: Layer 2 - Agent Cognitive Compressor (default: False)
+            acc: Layer 2 - Agent Cognitive Compressor (bool or ACC instance)
             long_term_memory: Layer 3 - Long-term memory with tools (bool or Memory object)
             semantic_cache: Layer 4 - Semantic cache for tool outputs (default: False)
         """
         from cogent.memory import Memory, InMemorySaver
+        from cogent.memory.acc import AgentCognitiveCompressor
+
+        # Determine ACC configuration
+        acc_enabled = bool(acc)
+        acc_instance = acc if isinstance(acc, AgentCognitiveCompressor) else None
 
         # Check if user passed a Memory object directly
         if isinstance(long_term_memory, Memory):
@@ -947,7 +954,8 @@ class Agent:
             backend = InMemorySaver() if conversation else None
             self._memory = Memory(
                 saver=backend,  # Checkpointing for conversation
-                acc_enabled=bounded_memory,  # Layer 2: ACC
+                acc_enabled=acc_enabled,  # Layer 2: ACC
+                acc_instance=acc_instance,  # Optional pre-configured ACC
             )
 
             # Layer 3: Long-term memory with remember/recall tools

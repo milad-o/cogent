@@ -132,6 +132,7 @@ class Memory:
         event_bus: TraceBus | None = None,
         saver: Any | None = None,  # MemorySaver for checkpointing
         acc_enabled: bool = False,  # Agent Cognitive Compressor
+        acc_instance: Any | None = None,  # Pre-configured ACC instance
     ) -> None:
         """Initialize Memory.
 
@@ -142,6 +143,7 @@ class Memory:
             event_bus: TraceBus for observability. Optional.
             saver: MemorySaver for conversation checkpointing. Optional.
             acc_enabled: Enable Agent Cognitive Compressor (bounded memory).
+            acc_instance: Optional pre-configured AgentCognitiveCompressor instance.
 
         Memory is always agentic - it automatically exposes tools to agents.
         When an Agent receives a Memory instance, tools are auto-added.
@@ -160,7 +162,8 @@ class Memory:
         self._version_counters: dict[str, int] = {}
         
         # ACC (Agent Cognitive Compressor) support
-        self._acc_enabled = acc_enabled
+        self._acc_enabled = acc_enabled or (acc_instance is not None)
+        self._acc_instance = acc_instance  # Pre-configured instance (optional)
         self._acc_states: dict[str, Any] = {}  # thread_id -> ACC
 
     @property
@@ -227,11 +230,16 @@ class Memory:
             ACC compressor for this thread.
         """
         if not self._acc_enabled:
-            raise RuntimeError("ACC is not enabled. Set bounded_memory=True when creating Agent.")
+            raise RuntimeError("ACC is not enabled. Set acc=True when creating Agent.")
         
         # Return existing ACC if in cache
         if thread_id in self._acc_states:
             return self._acc_states[thread_id]
+        
+        # Use pre-configured instance if provided (for first thread)
+        if self._acc_instance is not None and not self._acc_states:
+            self._acc_states[thread_id] = self._acc_instance
+            return self._acc_instance
         
         # Create new ACC
         from cogent.memory.acc import (
