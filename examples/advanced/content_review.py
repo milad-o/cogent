@@ -10,6 +10,13 @@ This example shows a realistic content review pipeline:
 - Editor orchestrates with structured output and iterates until approved
 - Full revision history tracked via Observer events
 
+Features demonstrated:
+- agent.as_tool() for multi-agent coordination
+- Memory for long-term knowledge storage
+- ACC (Attentional Context Control) for bounded context
+- Semantic caching for faster repeated queries
+- Observer with capture for event history
+
 Run: uv run python examples/advanced/content_review.py
 """
 
@@ -20,6 +27,8 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from cogent import Agent, Observer, tool
+from cogent.memory import Memory
+from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
 
 load_dotenv()
 
@@ -98,10 +107,30 @@ async def main():
     print("=" * 60)
     print(f"Acceptance threshold: {ACCEPTANCE_THRESHOLD}/10")
     print(f"Max revisions: {MAX_REVISIONS}")
+    print("Features: Memory + ACC + Semantic Cache")
 
     # Observer for full execution visibility
     # capture= automatically stores matching events for later retrieval
     observer = Observer(level="trace", capture=["tool.result"])
+
+    # Memory for long-term knowledge storage
+    # Editor can remember past decisions, brand preferences, common issues
+    memory = Memory()
+    
+    # Pre-populate memory with editorial knowledge
+    await memory.remember("brand_voice", "Professional but friendly, never salesy")
+    await memory.remember("common_issues", "Superlatives, pressure tactics, excessive emojis")
+    await memory.remember("past_decision_smartwatch", "Approved at 8/10 after 1 revision")
+
+    # ACC for bounded context - prevents memory drift in long sessions
+    # Custom bounds for content review workflow
+    acc_state = BoundedMemoryState(
+        max_constraints=10,   # Editorial guidelines
+        max_entities=30,      # Products, brand rules, reviewer feedback
+        max_actions=20,       # Past review outcomes
+        max_context=15,       # Recent copy versions
+    )
+    acc = AgentCognitiveCompressor(state=acc_state)
 
     # Writer Agent: Creates content using research tools
     writer = Agent(
@@ -148,6 +177,7 @@ Return a structured review:
     )
 
     # Editor Agent: Orchestrates with iteration
+    # Features: Memory (long-term), ACC (bounded context), Semantic Cache (fast repeated queries)
     editor = Agent(
         name="ContentEditor",
         model="gpt4",
@@ -165,6 +195,9 @@ Return a structured review:
 ACCEPTANCE THRESHOLD: {ACCEPTANCE_THRESHOLD}/10
 MAX REVISIONS: {MAX_REVISIONS}
 
+You have access to long-term memory. Use search_memories() to find relevant past decisions.
+Use remember() to store important outcomes for future reference.
+
 Process:
 1. Use CopyWriter to create initial copy for the product
 2. Use ContentReviewer to review the copy
@@ -177,6 +210,9 @@ Process:
 
 Track revision_count in your response.""",
         observer=observer,
+        memory=memory,      # Long-term knowledge storage
+        acc=acc,            # Bounded context (prevents drift in long sessions)
+        cache=True,         # Semantic cache (faster repeated similar queries)
     )
 
     # Run the pipeline
@@ -243,6 +279,29 @@ Track revision_count in your response.""",
     print("=" * 60)
     print(f"\n{observer.summary()}")
     print(f"Captured events: {len(observer.captured)}")
+    
+    # Show cache metrics if available
+    if editor.cache:
+        metrics = editor.cache.get_metrics()
+        print(f"\n📊 Semantic Cache:")
+        print(f"   Hit rate: {metrics['cache_hit_rate']:.0%}")
+        print(f"   Hits: {metrics['cache_hits']}, Misses: {metrics['cache_misses']}")
+    
+    # Show ACC state
+    print(f"\n🧠 ACC Bounded Memory:")
+    print(f"   Constraints: {len(acc_state.constraints)}/{acc_state.max_constraints}")
+    print(f"   Entities: {len(acc_state.entities)}/{acc_state.max_entities}")
+    print(f"   Actions: {len(acc_state.actions)}/{acc_state.max_actions}")
+    print(f"   Context: {len(acc_state.context)}/{acc_state.max_context}")
+    
+    # Show memory contents
+    print(f"\n💾 Memory (long-term knowledge):")
+    keys = await memory.keys()
+    for key in keys:
+        if not key.startswith("thread:") and not key.startswith("_"):
+            value = await memory.recall(key)
+            preview = str(value)[:50] + "..." if len(str(value)) > 50 else value
+            print(f"   • {key}: {preview}")
 
 
 if __name__ == "__main__":
