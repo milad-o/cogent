@@ -410,6 +410,23 @@ wheels = [
 ]
 
 [[package]]
+name = "cerebras-cloud-sdk"
+version = "1.64.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/52/98/96fa7704e101b5b33c7030a61d081f07c6c117f96d742852d7e06da56345/cerebras_cloud_sdk-1.64.1.tar.gz", hash = "sha256:7200b0cbafaff32e4e6bcb88d5342fc19295435a7a7681fa10156018d79ae67a", size = 131448, upload-time = "2025-12-31T17:54:55.402Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f3/96/138ed6ecf48f3b17f68ca06bb5c2b506d34c84d73502c9e3a620da7d44a9/cerebras_cloud_sdk-1.64.1-py3-none-any.whl", hash = "sha256:c9c049586e89dcc4e4a8d726d4725bdba28acb9e8b0f2a9640138b24b92444a0", size = 97798, upload-time = "2025-12-31T17:54:54.072Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.11.12"
 source = { registry = "https://pypi.org/simple" }
@@ -575,6 +592,7 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "anthropic" },
     { name = "azure-ai-inference" },
+    { name = "cerebras-cloud-sdk" },
     { name = "ddgs" },
     { name = "google-genai" },
     { name = "greenlet" },
@@ -734,6 +752,7 @@ requires-dist = [
     { name = "azure-ai-inference", specifier = ">=1.0.0b9" },
     { name = "azure-identity", marker = "extra == 'azure'", specifier = ">=1.25.1" },
     { name = "beautifulsoup4", marker = "extra == 'web'", specifier = ">=4.14.2" },
+    { name = "cerebras-cloud-sdk", specifier = ">=1.64.1" },
     { name = "cogent", extras = ["all-providers", "all-backend", "analytics", "api", "browser", "document", "mcp", "web"], marker = "extra == 'all'" },
     { name = "cogent", extras = ["anthropic", "azure", "cohere", "groq"], marker = "extra == 'all-providers'" },
     { name = "cogent", extras = ["vector-stores", "retrieval", "database", "infrastructure"], marker = "extra == 'all-backend'" },

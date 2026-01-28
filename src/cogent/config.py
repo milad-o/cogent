@@ -174,6 +174,7 @@ def get_api_key(provider: str, explicit_key: str | None = None) -> str | None:
         "together": ["TOGETHER_API_KEY"],
         "xai": ["XAI_API_KEY"],
         "deepseek": ["DEEPSEEK_API_KEY"],
+        "cerebras": ["CEREBRAS_API_KEY"],
     }
 
     provider_lower = provider.lower()
