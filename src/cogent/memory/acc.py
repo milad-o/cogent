@@ -509,8 +509,8 @@ class AgentCognitiveCompressor:
         
         # Resolve string model spec
         if isinstance(self._model_spec, str):
-            from cogent.models import create_model
-            self._resolved_model = create_model(self._model_spec)
+            from cogent.models.registry import resolve_and_create_model
+            self._resolved_model = resolve_and_create_model(self._model_spec)
         else:
             self._resolved_model = self._model_spec
         
