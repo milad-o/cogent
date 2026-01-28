@@ -74,16 +74,8 @@ nav:
       - Agent: agent.md
       - Core: core.md
       - Models: models.md
-      - Tools: tools.md
-      - Building Tools: tool-building.md
-      - Tool Composition: tool-composition.md
+      - Tools: tool-building.md
       - Context: context.md
-      - Executors: executors.md
-  - Multi-Agent:
-      - Flow: flow.md
-      - Reactors: reactors.md
-      - Tasks: tasks.md
-      - A2A Communication: a2a.md
   - Capabilities:
       - Overview: capabilities.md
       - Graph Visualization: graph.md
@@ -94,14 +86,10 @@ nav:
       - Memory: memory.md
       - ACC Memory Control: acc.md
   - Advanced:
-      - Events: events.md
       - Interceptors: interceptors.md
       - Resilience: resilience.md
       - Streaming: streaming.md
-      - Transport: transport.md
       - Observability: observability.md
-      - Testing: testing.md
-      - Testing: testing.md
 
 extra:
   social:

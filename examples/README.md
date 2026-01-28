@@ -118,21 +118,6 @@ Core concepts every user should know.
 
 ---
 
-### [flow/](flow/) — Orchestration
-
-Event-driven multi-agent patterns.
-
-| Example | Description |
-|---------|-------------|
-| [flow_basics.py](flow/flow_basics.py) | Introduction to Flow |
-| [unified_flow.py](flow/unified_flow.py) | Unified orchestration |
-| [event_sources.py](flow/event_sources.py) | External event sources |
-| [checkpointing.py](flow/checkpointing.py) | State persistence |
-| [source_filtering.py](flow/source_filtering.py) | Filter events by source |
-| [pattern_syntax.py](flow/pattern_syntax.py) | Pattern matching (`event@source`) |
-
----
-
 ### [capabilities/](capabilities/) — Agent Tools
 
 Pre-built tools that give agents superpowers.
@@ -203,7 +188,7 @@ Power-user features for production systems.
 
 ### Intermediate (1 hour)
 
-5. **[flow_basics.py](flow/flow_basics.py)** — Multi-agent orchestration
+5. **[content_review.py](advanced/content_review.py)** — Multi-agent with agent.as_tool()
 6. **[filesystem.py](capabilities/filesystem.py)** — Give agents file access
 7. **[retrievers.py](retrieval/retrievers.py)** — Add knowledge with RAG
 8. **[streaming.py](basics/streaming.py)** — Real-time responses
@@ -212,7 +197,7 @@ Power-user features for production systems.
 
 9. **[interceptors.py](advanced/interceptors.py)** — Production safeguards
 10. **[reasoning.py](advanced/reasoning.py)** — Extended thinking
-11. **[unified_flow.py](flow/unified_flow.py)** — Complex orchestration
+11. **[context_layer.py](advanced/context_layer.py)** — Runtime configuration
 12. **[custom_formatter.py](observability/custom_formatter.py)** — Custom observability
 
 ---

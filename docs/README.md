@@ -139,28 +139,6 @@ async def fetch_data(url: str) -> str:
 - Sync and async support
 - Context injection via `ctx: RunContext`
 
-### Multi-Agent Flow
-
-Coordinate multiple agents with built-in patterns:
-
-```python
-from cogent.flow import pipeline, supervisor, mesh
-
-researcher = Agent(name="Researcher", model=model, instructions="Research thoroughly.")
-writer = Agent(name="Writer", model=model, instructions="Write clearly.")
-editor = Agent(name="Editor", model=model, instructions="Review and polish.")
-
-# Sequential processing
-flow = pipeline([researcher, writer, editor])
-
-result = await flow.run("Create a blog post about quantum computing")
-```
-
-**Patterns:**
-- **Pipeline** — Sequential agent execution
-- **Supervisor** — Leader agent delegates to workers
-- **Mesh** — Agents communicate peer-to-peer
-
 ---
 
 ## Model Providers
@@ -251,14 +229,12 @@ observer = Observer(level="trace")      # Maximum detail
 observer = Observer(level="verbose")    # Key events
 observer = Observer(level="minimal")    # Errors only
 
-flow = Flow(
-    agents=[...],
-    observer=observer,
-)
+# Use observer with agent runs
+result = await agent.run("Query", observer=observer)
 
-# Access execution traces
-for event in observer.events():
-    print(f"{event.type}: {event.message}")
+# Access event history
+for event in observer.history():
+    print(f"{event.type}: {event.data}")
 ```
 
 ---
@@ -286,7 +262,7 @@ agent = Agent(
 ## Next Steps
 
 - [Agent Documentation](agent.md) — Deep dive into agents
-- [Multi-Agent Flow](flow.md) — Build coordinated systems
+- [Agent as Tool](agent.md#agent-as-tool) — Build coordinated multi-agent systems
 - [Capabilities](capabilities.md) — Explore built-in tools
 - [Graph Visualization](graph.md) — Visualize your agents
 - [RAG & Retrieval](retrievers.md) — Build RAG systems
@@ -312,17 +288,6 @@ agent = Agent(
 
 ---
 
-## Event-Driven Architecture
-
-| Module | Description |
-|--------|-------------|
-| [Events](events.md) | Event types, EventBus, event-driven orchestration |
-| [Flow](flow.md) | Event-driven reactive agent flows with patterns and reactors |
-| [Reactors](reactors.md) | Reactor types and orchestration building blocks |
-| [A2A Communication](a2a.md) | **Agent-to-agent delegation across all flow types** 🆕 |
-| [Streaming](streaming.md) | Real-time token streaming from Flow executions |
-| [Transport](transport.md) | Distributed event transport (LocalTransport, RedisTransport) |
-
 ---
 
 ## Observability & State
@@ -331,7 +296,7 @@ agent = Agent(
 |--------|-------------|
 | [Observability](observability.md) | Events, tracing, metrics, progress output, dashboards |
 | [Memory](memory.md) | Persistent memory with scoping and fuzzy matching |
-| [Graph](graph.md) | Visualization for agents, patterns, and flows |
+| [Graph](graph.md) | Visualization for agents and execution traces |
 
 ---
 
@@ -344,7 +309,6 @@ cogent/
 ├── core/           # Enums, message types, utilities
 ├── document/       # Document processing
 ├── executors/      # Code execution environments
-├── flow/           # Event-driven orchestration + patterns
 ├── context.py      # RunContext for DI
 ├── graph/          # Visualization
 ├── interceptors/   # Middleware (security, budgets, etc.)
@@ -394,21 +358,6 @@ agent = Agent(
 )
 
 result = await agent.run("Find info about AI trends")
-```
-
-### Multi-Agent Pipeline
-
-```python
-from cogent import Agent
-from cogent.flow import pipeline
-
-researcher = Agent(name="researcher", model=model)
-writer = Agent(name="writer", model=model)
-editor = Agent(name="editor", model=model)
-
-flow = pipeline([researcher, writer, editor])
-
-result = await flow.run("Create an article about quantum computing")
 ```
 
 ### Agent with Memory
@@ -480,7 +429,10 @@ pip install cogent[faiss]      # FAISS vector store
 pip install cogent[all]        # All optional deps
 ```
 
-flow = pipeline([researcher, writer, editor])
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
 | `OPENAI_API_KEY` | OpenAI API key |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `GROQ_API_KEY` | Groq API key |

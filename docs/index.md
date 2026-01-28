@@ -51,7 +51,7 @@ uv add git+https://github.com/milad-o/cogent.git
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
 - **Memory & Persistence** — Conversation history, long-term memory with fuzzy matching
-- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents, patterns, and flows
+- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents and patterns
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
 - **Resilience** — Retry policies, circuit breakers, fallbacks
@@ -64,7 +64,7 @@ uv add git+https://github.com/milad-o/cogent.git
 
 - [Getting Started](getting-started.md) — Get started in 5 minutes
 - [Agent Documentation](agent.md) — Learn about the core Agent class
-- [Multi-Agent Flow](flow.md) — Build coordinated multi-agent systems
+- [Multi-Agent](agent.md#agent-as-tool) — Build coordinated multi-agent systems
 - [Capabilities](capabilities.md) — Explore built-in capabilities
 - [Examples](https://github.com/milad-o/cogent/tree/main/examples) — See working examples
 
