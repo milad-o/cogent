@@ -245,93 +245,6 @@ Delegate to specialists, then make the final call.""",
 
 
 # ============================================================================
-# APPROACH 3: MULTI-AGENT WITH DIVERSITY (The Valid Use Case)
-# ============================================================================
-
-
-async def multi_agent_with_diversity() -> dict:
-    """Orchestrator with different models for diverse perspectives.
-    
-    This is a VALID use case for multi-agent:
-    - Generator uses one model
-    - Critic/Verifier uses a DIFFERENT model
-    - Model diversity catches blind spots
-    """
-    print("\n" + "=" * 70)
-    print("APPROACH 3: Multi-Agent with Model Diversity (Valid Use Case)")
-    print("=" * 70)
-    
-    observer = Observer(level="normal")
-    
-    # Primary analyst (GPT-4o-mini)
-    primary_analyst = Agent(
-        name="PrimaryAnalyst",
-        model="gpt-4o-mini",
-        tools=[get_financials, get_market_analysis, get_risk_factors],
-        instructions="""Analyze the company thoroughly.
-Provide your investment thesis with BUY/HOLD/SELL recommendation.""",
-    )
-    
-    # Devil's advocate (different model = different perspective)
-    devils_advocate = Agent(
-        name="DevilsAdvocate", 
-        model="grok",  # Different model for genuine diversity
-        instructions="""Challenge the investment thesis.
-Find weaknesses in the analysis. What could go wrong?
-If you find critical flaws, recommend a more cautious position.""",
-    )
-    
-    # Final decision maker synthesizes both views
-    decision_maker = Agent(
-        name="InvestmentCommittee",
-        model="gpt-4o-mini",
-        tools=[
-            primary_analyst.as_tool(description="Get primary investment analysis"),
-            devils_advocate.as_tool(description="Get contrarian view and risk critique"),
-        ],
-        output=InvestmentRecommendation,
-        instructions="""You are the Investment Committee making final decisions.
-
-Process:
-1. Get the primary analyst's recommendation
-2. Have the devil's advocate challenge it
-3. Weigh both perspectives
-4. Make a balanced final recommendation
-
-The contrarian view should inform your confidence level and risk assessment.""",
-        observer=observer,
-    )
-    
-    start = time.perf_counter()
-    result = await decision_maker.run(TASK)
-    duration = time.perf_counter() - start
-    
-    # Extract structured output
-    output = None
-    if result.content and hasattr(result.content, 'data'):
-        output = result.content.data
-    
-    if output:
-        print(f"\n📊 {output.ticker}: {output.recommendation} ({output.confidence} confidence)")
-        print(f"💡 {output.reasoning}")
-        print(f"⚠️  Risks: {', '.join(output.risks)}")
-    else:
-        print(f"\n📋 Result:\n{result.content}")
-    
-    tokens = 0
-    if result.metadata and result.metadata.tokens:
-        tokens = result.metadata.tokens.total_tokens
-    
-    return {
-        "approach": "multi_agent_diversity",
-        "duration_seconds": round(duration, 2),
-        "llm_calls": 3,  # Decision maker + Primary + Devil's Advocate
-        "tokens": tokens,
-        "recommendation": output.recommendation if output else "N/A",
-    }
-
-
-# ============================================================================
 # THE COMPARISON
 # ============================================================================
 
@@ -344,10 +257,9 @@ async def main():
     
     results = []
     
-    # Run all approaches
+    # Run both approaches
     results.append(await single_agent_approach())
     results.append(await multi_agent_approach())
-    results.append(await multi_agent_with_diversity())
     
     # Summary comparison
     print("\n" + "=" * 80)
@@ -370,7 +282,6 @@ async def main():
     # Calculate overhead
     single = results[0]
     multi = results[1]
-    diversity = results[2]
     
     print("\n" + "=" * 80)
     print("📈 OVERHEAD ANALYSIS")
@@ -378,41 +289,11 @@ async def main():
     
     if single["duration_seconds"] > 0:
         multi_overhead = ((multi["duration_seconds"] / single["duration_seconds"]) - 1) * 100
-        diversity_overhead = ((diversity["duration_seconds"] / single["duration_seconds"]) - 1) * 100
         print(f"""
 Multi-Agent Orchestration vs Single Agent:
   ⏱️  Duration: {multi_overhead:+.0f}% {'slower' if multi_overhead > 0 else 'faster'}
   📞 LLM Calls: {multi['llm_calls']}x vs {single['llm_calls']}x ({multi['llm_calls'] - single['llm_calls']} extra)
-  
-Multi-Agent with Diversity vs Single Agent:
-  ⏱️  Duration: {diversity_overhead:+.0f}% {'slower' if diversity_overhead > 0 else 'faster'}
-  📞 LLM Calls: {diversity['llm_calls']}x vs {single['llm_calls']}x ({diversity['llm_calls'] - single['llm_calls']} extra)
-""")
-    
-    print("=" * 80)
-    print("🎯 THE VERDICT")
-    print("=" * 80)
-    print("""
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ SINGLE AGENT + TOOLS wins for most tasks:                                   │
-│   ✅ Fastest (no coordination overhead)                                     │
-│   ✅ Cheapest (fewest LLM calls)                                            │
-│   ✅ Same output quality                                                    │
-│   ✅ Simplest to debug                                                      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ MULTI-AGENT ORCHESTRATION is usually overkill:                              │
-│   ❌ More LLM calls = higher cost                                           │
-│   ❌ Coordination overhead = slower                                         │
-│   ❌ Context lost between agents                                            │
-│   ❌ Same or worse output quality                                           │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ MULTI-AGENT WITH DIVERSITY has a valid use case:                            │
-│   ✅ Different models catch different blind spots                           │
-│   ✅ Generator + Critic pattern improves robustness                         │
-│   ⚠️  Only worth the cost when accuracy is critical                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-RULE: Start with single agent. Add agent.as_tool() only for model diversity.
+  💰 Tokens: {multi['tokens']}* vs {single['tokens']} (actual cost much higher)
 """)
 
 
