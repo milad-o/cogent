@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from cogent import Agent, Observer, tool
 from cogent.memory import Memory
-from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+from cogent.memory.acc import AgentCognitiveCompressor
 
 load_dotenv()
 
@@ -38,9 +38,8 @@ async def main():
 
     observer = Observer(level="trace")
 
-    # ACC with custom bounds
-    acc_state = BoundedMemoryState(max_constraints=5, max_entities=15, max_actions=10, max_context=10)
-    acc = AgentCognitiveCompressor(state=acc_state)
+    # ACC with custom bounds (state is internal)
+    acc = AgentCognitiveCompressor(max_constraints=5, max_entities=15, max_actions=10, max_context=10)
     memory = Memory(acc=acc)
 
     # Writer agent
@@ -91,7 +90,7 @@ async def main():
 
     # Stats
     print(f"\n📊 Cache: {editor.cache.get_metrics()['cache_hit_rate']:.0%} hit rate" if editor.cache else "")
-    print(f"🧠 ACC: {len(acc_state.entities)} entities, {len(acc_state.actions)} actions")
+    print(f"🧠 ACC: {len(acc.state.entities)} entities, {len(acc.state.actions)} actions")
 
 
 if __name__ == "__main__":

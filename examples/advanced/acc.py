@@ -14,7 +14,7 @@ Total: ~110 items regardless of conversation length.
 import asyncio
 
 from cogent import Agent
-from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+from cogent.memory.acc import AgentCognitiveCompressor
 from cogent.observability import Observer
 
 
@@ -41,14 +41,13 @@ async def demo_custom_acc():
     """Pass a custom ACC instance with specific bounds."""
     print("\n--- Custom ACC Instance ---")
     
-    # Create custom ACC with smaller bounds
-    state = BoundedMemoryState(
+    # Create custom ACC with smaller bounds (state is internal)
+    acc = AgentCognitiveCompressor(
         max_constraints=5,
         max_entities=20,
         max_actions=10,
         max_context=10,
     )
-    acc = AgentCognitiveCompressor(state=state)
     
     agent = Agent(
         name="Assistant",
@@ -60,7 +59,7 @@ async def demo_custom_acc():
     await agent.run("Remember: Always respond in JSON format.", thread_id="custom")
     await agent.run("What format should responses be in?", thread_id="custom")
     
-    print(f"ACC state - Constraints: {len(state.constraints)}, Entities: {len(state.entities)}")
+    print(f"ACC state - Constraints: {len(acc.state.constraints)}, Entities: {len(acc.state.entities)}")
     print("✓ Custom ACC bounds applied")
 
 

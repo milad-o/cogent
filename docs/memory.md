@@ -682,21 +682,20 @@ agent = Agent(name="Assistant", model="gpt-4o", memory=memory)
 
 ### Custom ACC Bounds
 
-For fine-grained control, pass an `AgentCognitiveCompressor` instance:
+For fine-grained control, pass custom bounds directly:
 
 ```python
 from cogent import Agent
 from cogent.memory import Memory
-from cogent.memory.acc import AgentCognitiveCompressor, BoundedMemoryState
+from cogent.memory.acc import AgentCognitiveCompressor
 
-# Create custom bounds
-state = BoundedMemoryState(
+# Create ACC with custom bounds
+acc = AgentCognitiveCompressor(
     max_constraints=10,  # Rules, guidelines
     max_entities=30,     # Facts, knowledge
     max_actions=20,      # Past actions
     max_context=15,      # Relevant context
 )
-acc = AgentCognitiveCompressor(state=state)
 
 # Pass to Memory
 memory = Memory(acc=acc)

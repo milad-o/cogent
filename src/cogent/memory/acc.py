@@ -427,9 +427,15 @@ class AgentCognitiveCompressor:
     
     Example:
         ```python
-        state = BoundedMemoryState()
-        gate = SemanticForgetGate()
-        acc = AgentCognitiveCompressor(state=state, forget_gate=gate)
+        # Simple: Use defaults
+        acc = AgentCognitiveCompressor()
+        
+        # Custom bounds
+        acc = AgentCognitiveCompressor(
+            max_constraints=5,
+            max_entities=20,
+            max_actions=15,
+        )
         
         # Update from conversation turn
         await acc.update_from_turn(
@@ -446,7 +452,12 @@ class AgentCognitiveCompressor:
 
     def __init__(
         self,
-        state: BoundedMemoryState,
+        state: BoundedMemoryState | None = None,
+        *,
+        max_constraints: int = 10,
+        max_entities: int = 50,
+        max_actions: int = 30,
+        max_context: int = 20,
         forget_gate: SemanticForgetGate | None = None,
         vectorstore: VectorStore | None = None,
         extractor_model: BaseChatModel | None = None,
@@ -454,12 +465,25 @@ class AgentCognitiveCompressor:
         """Initialize ACC.
         
         Args:
-            state: Bounded memory state to manage
+            state: Bounded memory state (optional, created from bounds if not provided)
+            max_constraints: Max constraints to track (default: 10)
+            max_entities: Max entities to track (default: 50)
+            max_actions: Max actions to track (default: 30)
+            max_context: Max context items to track (default: 20)
             forget_gate: Forget gate for relevance-based pruning
             vectorstore: Optional vectorstore for artifact recall
             extractor_model: Optional model for memory extraction
         """
-        self.state = state
+        # Create state from bounds if not provided
+        if state is not None:
+            self.state = state
+        else:
+            self.state = BoundedMemoryState(
+                max_constraints=max_constraints,
+                max_entities=max_entities,
+                max_actions=max_actions,
+                max_context=max_context,
+            )
         self.forget_gate = forget_gate or SemanticForgetGate()
         self.vectorstore = vectorstore
         self.extractor_model = extractor_model
