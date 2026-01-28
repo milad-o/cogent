@@ -68,9 +68,9 @@ class RevisionHistory:
             lines.append(f"\n{'='*50}")
             lines.append(f"VERSION {entry.version} (from {entry.tool_name})")
             lines.append("="*50)
-            lines.append(f"\n📝 Copy:\n{entry.copy[:300]}{'...' if len(entry.copy) > 300 else ''}")
+            lines.append(f"\n📝 Copy:\n{entry.copy}")
             if entry.review:
-                lines.append(f"\n📋 Review:\n{entry.review[:300]}{'...' if len(entry.review) > 300 else ''}")
+                lines.append(f"\n📋 Review:\n{entry.review}")
         return "\n".join(lines)
 
 
