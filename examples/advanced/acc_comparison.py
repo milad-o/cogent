@@ -1,7 +1,7 @@
-"""ACC Comparison - Heuristic vs Model Extraction.
+"""ACC Demo - Bounded Memory vs Transcript Replay.
 
-Demonstrates the importance of ACC (Agentic Context Compression) and
-compares heuristic vs model-based extraction modes.
+Shows the REAL difference: ACC maintains fixed-size state while
+transcript replay grows unbounded.
 
 Run: uv run python examples/advanced/acc_comparison.py
 """
@@ -16,146 +16,106 @@ from cogent.memory.acc import AgentCognitiveCompressor
 
 load_dotenv()
 
+# Simulate a long conversation
+CONVERSATION = [
+    "My name is Alice and I'm a software engineer",
+    "I prefer dark mode and vim keybindings",
+    "My favorite language is Python",
+    "I work at TechCorp on the payments team",
+    "Our main product is a payment gateway API",
+    "We use PostgreSQL and Redis for storage",
+    "I need help refactoring our auth module",
+    "The current code uses JWT tokens",
+    "We want to add OAuth2 support",
+    "Security is critical - we handle credit cards",
+]
 
-async def run_without_acc():
-    """Run agent WITHOUT ACC - no context between turns."""
+
+async def run_with_transcript_replay():
+    """Memory stores FULL transcript - grows with every turn."""
     print("\n" + "=" * 60)
-    print("❌ WITHOUT ACC (No memory between turns)")
+    print("📜 TRANSCRIPT REPLAY (Memory without ACC)")
     print("=" * 60)
 
+    memory = Memory()
     agent = Agent(
         name="Assistant",
         model="gpt-4o-mini",
-        instructions="You are a helpful assistant. Be concise.",
-    )
-
-    # Turn 1
-    r1 = await agent.run("My name is Alice and I prefer dark mode")
-    print(f"\nTurn 1: {r1}")
-
-    # Turn 2 - Agent has NO memory of turn 1!
-    r2 = await agent.run("What's my name and what do I prefer?")
-    print(f"Turn 2: {r2}")
-
-
-async def run_with_acc_heuristic():
-    """Run agent WITH ACC (heuristic mode) - fast, rule-based extraction."""
-    print("\n" + "=" * 60)
-    print("✅ WITH ACC - Heuristic Mode (Fast, Rule-based)")
-    print("=" * 60)
-
-    acc = AgentCognitiveCompressor(
-        max_constraints=5,
-        max_entities=10,
-        max_actions=5,
-        max_context=5,
-        extraction_mode="heuristic",  # Fast, rule-based
-    )
-    memory = Memory(acc=acc)
-
-    agent = Agent(
-        name="Assistant",
-        model="gpt-4o-mini",
-        instructions="You are a helpful assistant. Be concise.",
+        instructions="You are a helpful assistant. Be very brief.",
         memory=memory,
     )
 
-    # Turn 1
-    r1 = await agent.run("My name is Alice and I prefer dark mode", thread_id="session-h")
-    print(f"\nTurn 1: {r1}")
-    print(f"   ACC State: {len(acc.state.entities)} entities, {len(acc.state.context)} context")
+    # Run conversation
+    for i, msg in enumerate(CONVERSATION, 1):
+        await agent.run(msg, thread_id="transcript")
+        history = await memory.get_messages("transcript")
+        print(f"Turn {i:2d}: {len(history):3d} messages stored")
 
-    # Turn 2 - ACC remembers context!
-    r2 = await agent.run("What's my name and what do I prefer?", thread_id="session-h")
-    print(f"Turn 2: {r2}")
-    print(f"   ACC State: {len(acc.state.entities)} entities, {len(acc.state.context)} context")
+    # Final question
+    result = await agent.run("What's my name, company, and what am I working on?", thread_id="transcript")
+    history = await memory.get_messages("transcript")
 
-    # Show what was extracted
-    print("\n📋 Extracted Entities (heuristic):")
-    for item in acc.state.entities[:3]:
-        print(f"   • {item.content[:80]}...")
-
-    return acc
+    print(f"\n📊 Final: {len(history)} messages (grows forever)")
+    print(f"💬 Answer: {result.content}")
+    return len(history)
 
 
-async def run_with_acc_model():
-    """Run agent WITH ACC (model mode) - LLM-based semantic extraction."""
+async def run_with_acc():
+    """ACC stores bounded state - never exceeds limits."""
     print("\n" + "=" * 60)
-    print("✅ WITH ACC - Model Mode (LLM-based Semantic Extraction)")
+    print("🧠 ACC (Bounded Compression)")
     print("=" * 60)
 
     acc = AgentCognitiveCompressor(
-        max_constraints=5,
-        max_entities=10,
-        max_actions=5,
-        max_context=5,
-        extraction_mode="model",      # LLM-based extraction
-        model="gpt-4o-mini",          # Efficient model
+        max_constraints=10,
+        max_entities=20,
+        max_actions=10,
+        max_context=10,
+        extraction_mode="model",
+        model="gpt-4o-mini",
     )
     memory = Memory(acc=acc)
-
     agent = Agent(
         name="Assistant",
         model="gpt-4o-mini",
-        instructions="You are a helpful assistant. Be concise.",
+        instructions="You are a helpful assistant. Be very brief.",
         memory=memory,
     )
 
-    # Turn 1
-    r1 = await agent.run("My name is Alice and I prefer dark mode", thread_id="session-m")
-    print(f"\nTurn 1: {r1}")
-    print(f"   ACC State: {len(acc.state.entities)} entities, {len(acc.state.context)} context")
+    # Run conversation
+    for i, msg in enumerate(CONVERSATION, 1):
+        await agent.run(msg, thread_id="acc")
+        total = acc.state.total_items
+        print(f"Turn {i:2d}: {total:3d} items stored (max: 50)")
 
-    # Turn 2 - ACC remembers context!
-    r2 = await agent.run("What's my name and what do I prefer?", thread_id="session-m")
-    print(f"Turn 2: {r2}")
-    print(f"   ACC State: {len(acc.state.entities)} entities, {len(acc.state.context)} context")
+    # Final question
+    result = await agent.run("What's my name, company, and what am I working on?", thread_id="acc")
 
-    # Show what was extracted
-    print("\n📋 Extracted Entities (model):")
-    for item in acc.state.entities[:3]:
-        print(f"   • {item.content[:80]}")
-
-    return acc
+    print(f"\n📊 Final: {acc.state.total_items} items (bounded at 50 max)")
+    print(f"   Entities: {[e.content[:50] for e in acc.state.entities[:3]]}")
+    print(f"💬 Answer: {result.content}")
+    return acc.state.total_items
 
 
 async def main():
-    print("🧠 ACC (Agentic Context Compression) Comparison")
+    print("🔬 ACC vs Transcript Replay - Actual Comparison")
     print("=" * 60)
-    print("""
-ACC maintains bounded internal state instead of unbounded transcript replay.
-This prevents context drift, memory poisoning, and context overflow.
+    print(f"Running {len(CONVERSATION)} turns of conversation...\n")
 
-Extraction Modes:
-  • heuristic - Fast, rule-based (keyword matching, capitalization)
-  • model - LLM-based semantic extraction (better quality, slower)
-""")
+    transcript_size = await run_with_transcript_replay()
+    acc_size = await run_with_acc()
 
-    # 1. Without ACC - agent forgets between turns
-    await run_without_acc()
-
-    # 2. With ACC (heuristic) - fast extraction
-    acc_h = await run_with_acc_heuristic()
-
-    # 3. With ACC (model) - semantic extraction
-    acc_m = await run_with_acc_model()
-
-    # Summary
     print("\n" + "=" * 60)
-    print("📊 SUMMARY")
+    print("📊 RESULT")
     print("=" * 60)
     print(f"""
-| Mode       | Entities | Context | Quality | Speed  |
-|------------|----------|---------|---------|--------|
-| No ACC     | 0        | 0       | N/A     | N/A    |
-| Heuristic  | {len(acc_h.state.entities):<8} | {len(acc_h.state.context):<7} | Good    | ⚡ Fast |
-| Model      | {len(acc_m.state.entities):<8} | {len(acc_m.state.context):<7} | Better  | Slower |
+After {len(CONVERSATION)} turns:
+  • Transcript: {transcript_size} messages (and growing)
+  • ACC:        {acc_size} items (bounded at 50)
 
-Key Benefits of ACC:
-  ✅ Bounded memory - ~110 items max regardless of conversation length
-  ✅ Prevents context drift - constraints persist across turns
-  ✅ Prevents memory poisoning - verified artifacts only
-  ✅ Semantic compression - keeps what matters, forgets noise
+After 100 turns:
+  • Transcript: ~200+ messages → may hit token limits
+  • ACC:        ~50 items max → always fits
 """)
 
 
