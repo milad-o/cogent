@@ -597,13 +597,18 @@ Pass a `SemanticCache` instance for custom settings:
 ```python
 from cogent import Agent
 from cogent.memory import SemanticCache
+from cogent.models import create_embedding
+
+# Create embedding model
+embed = create_embedding("openai", "text-embedding-3-small")
 
 agent = Agent(
     model="gpt-4o-mini",
     cache=SemanticCache(
+        embedding=embed,            # Embedding model (required for custom)
         similarity_threshold=0.90,  # Stricter matching (default: 0.85)
-        max_size=5000,              # Larger cache (default: 1000)
-        ttl=3600,                   # 1 hour TTL (default: None)
+        max_entries=5000,           # Cache size (default: 10000)
+        default_ttl=3600,           # 1 hour TTL (default: 86400)
     ),
 )
 ```
