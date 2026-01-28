@@ -201,314 +201,81 @@ This is primarily used internally by the Observer. Most users should use the Obs
 
 ---
 
-## Observing Event-Driven Flows
+## Event History Capture
 
-Different observer levels reveal different aspects of flow execution:
-
-#### SILENT
-No output whatsoever.
+Capture and query events for later analysis:
 
 ```python
-observer = Observer(level="silent")
-flow = Flow(observer=observer)
-await flow.run("task")
-# → (no output)
-```
+from cogent.observability import Observer
 
-#### PROGRESS
-Basic flow progress only - good for production monitoring.
+# Create observer with capture patterns
+observer = Observer(
+    level="progress",
+    capture=["tool.result", "agent.*"],  # Capture matching events
+)
 
-```python
-observer = Observer(level="progress")
-flow = Flow(observer=observer)
-await flow.run("task")
-```
+# Run agent
+result = await agent.run("Do something", observer=observer)
 
-**Output**:
-```
-⚡ Flow started (3 agents registered)
-⏱️  Round 1...
-⏱️  Round 2...
-✅ Flow completed in 2.3s
-```
+# Access captured event history
+for event in observer.history():
+    print(f"{event.type}: {event.data}")
 
-#### VERBOSE
-Flow progress + agent outputs - shows what's happening.
+# Filter history by pattern
+tool_events = observer.history("tool.*")
+agent_events = observer.history("agent.completed")
 
-```python
-observer = Observer(level="verbose")
-flow = Flow(observer=observer)
-await flow.run("task")
-```
-
-**Output**:
-```
-⚡ Flow started
-📤 Event emitted: task.created
-🤖 researcher triggered by task.created
-📝 researcher: "Based on my research..."
-📤 Event emitted: research.done
-🤖 writer triggered by research.done
-📝 writer: "Here's the article..."
-✅ Flow completed
-```
-
-#### DEBUG
-Detailed execution - includes events, conditions, reactor matching.
-
-```python
-observer = Observer(level="debug")
-flow = Flow(observer=observer)
-await flow.run("task")
-```
-
-**Output**:
-```
-⚡ REACTIVE_FLOW_STARTED
-  task: "Write about quantum computing"
-  agents: [researcher, writer]
-  
-📤 REACTIVE_EVENT_EMITTED: task.created
-  data: {type: "research"}
-  
-🔍 Matching reactors...
-  ✓ researcher matches (priority: 0)
-  
-🤖 REACTIVE_AGENT_TRIGGERED: researcher
-  trigger: on="task.created"
-  condition: None
-  
-💬 Agent thinking...
-
-📝 REACTIVE_AGENT_COMPLETED: researcher
-  output: "Based on my research..."
-  duration: 1.2s
-  
-📤 REACTIVE_EVENT_EMITTED: research.done
-  auto_emit: True
-  
-⏱️  REACTIVE_ROUND_COMPLETED
-  round: 1
-  events_processed: 1
-  duration: 1.2s
-```
-
-#### TRACE
-Everything + execution graphs and full event history.
-
-```python
-observer = Observer(level="trace")
-flow = Flow(observer=observer)
-await flow.run("task")
-
-# Access full trace history
-for trace in observer.traces:
-    if trace.type.startswith("reactive"):
-        print(f"{trace.timestamp}: {trace.type}")
-        print(f"  Data: {trace.data}")
+# Clear history when done
+observer.clear_history()
 ```
 
 ### Common Observability Patterns
 
-#### 1. Debugging Event Flow
-
-See which events triggered which reactors:
+#### 1. Tracking Tool Usage
 
 ```python
-observer = Observer(level="debug")
-flow = Flow(observer=observer)
+observer = Observer(capture=["tool.*"])
+result = await agent.run("Research topic", observer=observer)
 
-result = await flow.run("task")
-
-# Filter reactive events
-reactive_events = [
-    observed.event for observed in observer.events()
-    if observed.event.type.value.startswith("reactive")
-]
-
-for event in reactive_events:
-    print(f"{event.type}: {event.data.get('event_type', 'N/A')}")
+for event in observer.history("tool.result"):
+    print(f"Tool: {event.data.get('tool_name')}")
+    print(f"Result: {event.data.get('result')[:100]}...")
 ```
 
-#### 2. Tracking Performance
-
-Identify slow reactors and bottlenecks:
+#### 2. Performance Analysis
 
 ```python
-observer = Observer(level="trace")
-flow = Flow(observer=observer)
+observer = Observer(level="debug", capture=["agent.completed"])
+result = await agent.run("Complex task", observer=observer)
 
-result = await flow.run("task")
-
-# Find slow agent executions
-slow_agents = [
-    observed.event for observed in observer.events()
-    if observed.event.type == TraceType.REACTIVE_AGENT_COMPLETED
-    and observed.event.data.get("duration_ms", 0) > 1000  # > 1 second
-]
-
-for event in slow_agents:
-    agent = event.data["agent"]
-    duration = event.data["duration_ms"]
-    print(f"{agent} took {duration:.0f}ms")
+for event in observer.history():
+    if "duration" in event.data:
+        print(f"Duration: {event.data['duration']:.2f}s")
+    if "tokens" in event.data:
+        print(f"Tokens: {event.data['tokens']}")
 ```
 
-#### 3. Understanding Event Chains
-
-See how events flow through the system:
+#### 3. Multi-Agent Tracking
 
 ```python
-observer = Observer(level="trace")
-flow = Flow(observer=observer)
+observer = Observer(capture=["agent.*"])
 
-result = await flow.run("task")
+# Run multiple agents with same observer
+await researcher.run("Research topic", observer=observer)
+await writer.run("Write article", observer=observer)
 
-# Build event chain
-events = [
-    observed.event for observed in observer.events()
-    if observed.event.type == TraceType.REACTIVE_EVENT_EMITTED
-]
-
-print("Event Chain:")
-for i, event in enumerate(events, 1):
-    event_type = event.data["event_type"]
-    source = event.data.get("source", "system")
-    print(f"{i}. {event_type} (from {source})")
-```
-
-#### 4. Detecting Issues
-
-Find events that didn't match any reactors:
-
-```python
-observer = Observer(level="debug")
-flow = Flow(observer=observer)
-
-result = await flow.run("task")
-
-# Find unmatched events
-unmatched = [
-    observed.event for observed in observer.events()
-    if observed.event.type == TraceType.REACTIVE_NO_MATCH
-]
-
-if unmatched:
-    print("⚠️  Events with no matching reactors:")
-    for event in unmatched:
-        event_type = event.data["event_type"]
-        available = event.data.get("available_reactors", [])
-        print(f"  - {event_type} (available: {available})")
-```
-
-#### 5. Exporting Traces
-
-Save flow execution for later analysis:
-
-```python
-observer = Observer(level="trace")
-flow = Flow(observer=observer)
-
-result = await flow.run("task")
-
-# Export to JSON
-import json
-from pathlib import Path
-
-traces_data = [
-    {
-        "type": observed.event.type.value,
-        "timestamp": observed.event.timestamp.isoformat(),
-        "data": observed.event.data,
-    }
-    for observed in observer.events()
-    if observed.event.type.value.startswith("reactive")
-]
-
-Path("flow_traces.json").write_text(json.dumps(traces_data, indent=2))
-print(f"✅ Exported {len(traces_data)} traces")
-```
-
-### Working with Multiple Flows
-
-Share an observer across multiple flow executions:
-
-```python
-observer = Observer(level="debug")
-
-# Flow 1
-flow1 = Flow(observer=observer)
-result1 = await flow1.run("task 1")
-
-# Flow 2
-flow2 = Flow(observer=observer)
-result2 = await flow2.run("task 2")
-
-# Observer sees both flows
-all_flows = [
-    observed.event for observed in observer.events()
-    if observed.event.type == TraceType.REACTIVE_FLOW_STARTED
-]
-
-print(f"Total flows observed: {len(all_flows)}")
+# See all agent activity
+for event in observer.history():
+    print(f"{event.data.get('agent_name')}: {event.type}")
 ```
 
 ### Best Practices
 
 1. **Start with PROGRESS**: Use `Observer(level="progress")` for production
 2. **DEBUG for development**: Use `Observer(level="debug")` during development
-3. **TRACE for troubleshooting**: Use `Observer(level="trace")` when debugging issues
-4. **Filter traces**: Don't process all traces - filter by type
-5. **Export for analysis**: Save traces to JSON for offline analysis
-6. **Monitor performance**: Track `duration_ms` in traces to find bottlenecks
-7. **Check for NO_MATCH**: Indicates misconfigured reactors
-
-### Example: Full Flow Observability
-
-```python
-from cogent import Agent, Flow
-from cogent.observability import Observer, TraceType
-
-# Setup
-model = get_model()
-researcher = Agent(name="researcher", model=model)
-writer = Agent(name="writer", model=model)
-
-observer = Observer(level="debug")
-flow = Flow(observer=observer)
-
-flow.register(researcher, on="task.created", emits="research.done")
-flow.register(writer, on="research.done", emits="flow.done")
-
-# Execute
-result = await flow.run("Write about quantum computing")
-
-# Analyze
-print("\n=== Execution Summary ===")
-print(f"Output: {result.output[:100]}...")
-print(f"Events processed: {len([o for o in observer.events() if 'EVENT' in o.event.type.value])}")
-print(f"Agents triggered: {len([o for o in observer.events() if o.event.type == TraceType.REACTIVE_AGENT_TRIGGERED])}")
-
-# Performance analysis
-agent_times = {}
-for observed in observer.events():
-    if observed.event.type == TraceType.REACTIVE_AGENT_COMPLETED:
-        agent = observed.event.data["agent"]
-        duration = observed.event.data["duration_ms"]
-        agent_times[agent] = duration
-
-print("\n=== Performance ===")
-for agent, duration in agent_times.items():
-    print(f"{agent}: {duration:.0f}ms")
-
-# Event chain
-print("\n=== Event Chain ===")
-events = [
-    observed.event.data["event_type"]
-    for observed in observer.events()
-    if observed.event.type == TraceType.REACTIVE_EVENT_EMITTED
-]
-print(" → ".join(events))
-```
+3. **Use capture patterns**: Only capture events you need for analysis
+4. **Clear history**: Call `observer.clear_history()` between runs if reusing
+5. **Export for analysis**: Save captured events to JSON for offline analysis
 
 ---
 
@@ -759,7 +526,7 @@ observer = TracingObserver(
     export_path="traces/",
 )
 
-result = await flow.run("Task", observer=observer)
+result = await agent.run("Task", observer=observer)
 ```
 
 ---

@@ -1,6 +1,6 @@
 # Memory Module
 
-The `cogent.memory` module provides a memory-first architecture where memory is a first-class citizen that can be wired to any entity (Agent, Team, Flow).
+The `cogent.memory` module provides a memory-first architecture where memory is a first-class citizen that can be wired to any agent.
 
 ## Overview
 

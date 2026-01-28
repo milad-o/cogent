@@ -1,506 +1,285 @@
-# Streaming Reactions
+# Streaming
 
-Real-time token-by-token streaming from event-driven Flow executions.
+Real-time token-by-token streaming from agent executions.
 
 ## Overview
 
-Streaming reactions enable Flow to yield output progressively as agents generate tokens, rather than waiting for complete responses. This provides:
+Streaming enables agents to yield output progressively as tokens are generated, rather than waiting for complete responses. This provides:
 
 - **Real-time feedback** during long-running agent operations
 - **Better UX** with progressive output display
 - **Lower perceived latency** by showing immediate progress
-- **Agent tracking** to see which agent is currently active
 - **Cancellation support** for in-flight operations
 
 ## Quick Start
 
 ```python
-from cogent import Agent, Flow, react_to
-from cogent.models import ChatModel
+from cogent import Agent
 
-# Create agents with streaming-capable models
-researcher = Agent(
-    name="researcher",
-    model=ChatModel(model="gpt-4o"),
-    system_prompt="You research topics thoroughly.",
-)
-
-writer = Agent(
+agent = Agent(
     name="writer",
-    model=ChatModel(model="gpt-4o"),
-    system_prompt="You write engaging content.",
+    model="gpt-4o",
+    stream=True,  # Enable streaming
 )
 
-# Create flow
-flow = Flow()
-flow.register(researcher, [react_to("task.created").emits("researcher.completed")])
-flow.register(writer, [react_to("researcher.completed")])
-
-# Stream execution - tokens arrive in real-time
-async for chunk in flow.run_streaming("Research quantum computing"):
-    print(f"[{chunk.agent_name}] {chunk.content}", end="", flush=True)
-    
-    if chunk.is_final:
-        print()  # Newline after agent completes
+# Stream tokens as they arrive
+async for chunk in agent.run_stream("Write a poem about AI"):
+    print(chunk.content, end="", flush=True)
 ```
 
-## Core Concepts
+## Agent Streaming
+
+### Enabling Streaming
+
+Two ways to enable streaming:
+
+```python
+# Option 1: Set on agent creation
+agent = Agent(
+    name="writer",
+    model="gpt-4o",
+    stream=True,
+)
+
+result = await agent.run("Write about AI")  # Still works normally
+async for chunk in agent.run_stream("Write a poem"):  # Stream tokens
+    print(chunk.content, end="", flush=True)
+
+# Option 2: Stream on demand (any agent)
+agent = Agent(name="writer", model="gpt-4o")
+
+async for chunk in agent.run_stream("Write a poem"):
+    print(chunk.content, end="", flush=True)
+```
 
 ### StreamChunk
 
-Each streaming chunk contains full context about the flow execution:
+Each streaming chunk contains:
 
 ```python
 @dataclass
 class StreamChunk:
-    agent_name: str           # Which agent is streaming
-    event_id: str             # Event that triggered this agent
-    event_name: str           # Type of triggering event
     content: str              # Token content
     delta: str                # Incremental text (same as content)
-    is_final: bool           # Last chunk from this agent?
-    finish_reason: str | None # Why stopped (stop, length, error)
-    metadata: dict | None     # Additional context
+    is_final: bool           # Last chunk?
+    finish_reason: str | None # Why stopped (stop, length, tool_calls)
+    metadata: dict | None     # Token usage, model info
 ```
 
 **Key Properties**:
-- `agent_name` — Identifies which agent in the flow is currently streaming
-- `event_id` / `event_name` — Event context that triggered this agent
-- `is_final` — True when agent completes (useful for UI formatting)
-- `finish_reason` — "stop" (complete), "length" (max tokens), "error" (failed)
-- `metadata` — **NEW in v1.14.2**: Includes model metadata with token usage, model name, response ID, timestamp
+- `content` — The token text
+- `delta` — Incremental text (alias for content)
+- `is_final` — True when streaming completes
+- `finish_reason` — "stop" (complete), "length" (max tokens), "tool_calls" (tool invocation)
+- `metadata` — Includes token usage when available
 
-**Streaming Metadata** (v1.14.2+):
+### Streaming with Metadata
 
-All chat providers now return complete metadata during streaming:
+Access model metadata during streaming:
 
 ```python
-async for chunk in flow.run_streaming("Analyze data"):
+async for chunk in agent.run_stream("Analyze data"):
     print(chunk.content, end="")
     
-    # Access LLM metadata from the underlying model
-    # Note: metadata is from the model's response, not the Flow chunk itself
-    if hasattr(chunk, 'raw_response') and chunk.raw_response:
-        msg_metadata = chunk.raw_response.metadata
-        if msg_metadata:
-            print(f"\nModel: {msg_metadata.model}")
-            print(f"Tokens: {msg_metadata.tokens}")  # TokenUsage(prompt, completion, total)
+    if chunk.is_final and chunk.metadata:
+        print(f"\nModel: {chunk.metadata.get('model')}")
+        print(f"Tokens: {chunk.metadata.get('tokens')}")
 ```
 
-For direct model streaming (without Flow), see [Models - Streaming](models.md#streaming) for full metadata details.
+---
 
-### run_streaming() vs run()
+## run_stream() vs run()
 
-| Feature | `run()` | `run_streaming()` |
-|---------|---------|-------------------|
-| **Returns** | `FlowResult` | `AsyncIterator[FlowStreamChunk]` |
+| Feature | `run()` | `run_stream()` |
+|---------|---------|----------------|
+| **Returns** | `Response` | `AsyncIterator[StreamChunk]` |
 | **Output** | Complete final output | Progressive tokens |
 | **Latency** | Wait for completion | Immediate feedback |
 | **Use Case** | Batch processing | Interactive UX |
-| **Agent Execution** | Parallel (up to max_concurrent) | Sequential (preserves order) |
 
 **When to use streaming**:
 - Interactive applications (CLIs, web UIs, chatbots)
-- Long-running multi-agent workflows
+- Long-running agent operations
 - Progress tracking and status updates
 - User experience is priority
 
 **When to use regular run()**:
 - Batch processing or automation
 - Final result is all that matters
-- Parallel agent execution preferred
 - Simpler code (no async iteration)
+
+---
 
 ## Usage Patterns
 
 ### Basic Streaming
 
-Simple single-agent streaming:
-
 ```python
-from cogent import Flow, react_to
+from cogent import Agent
 
-agent = Agent(name="assistant", model=model)
-flow = Flow()
-flow.register(agent, [react_to("task.created")])
+agent = Agent(name="assistant", model="gpt-4o")
 
 # Stream tokens as they arrive
-async for chunk in flow.run_streaming("Explain streaming"):
+async for chunk in agent.run_stream("Explain quantum computing"):
     print(chunk.content, end="", flush=True)
+
+print()  # Newline at end
 ```
 
-### Multi-Agent Streaming
-
-Track which agent is speaking:
+### Collecting Streamed Output
 
 ```python
-current_agent = None
+full_response = []
 
-async for chunk in flow.run_streaming("Multi-step task"):
-    # Detect agent transitions
-    if chunk.agent_name != current_agent:
-        if current_agent is not None:
-            print()  # Newline before new agent
-        print(f"\n[{chunk.agent_name}]:", end=" ")
-        current_agent = chunk.agent_name
+async for chunk in agent.run_stream("Write a story"):
+    full_response.append(chunk.content)
+    print(chunk.content, end="", flush=True)
+
+final_text = "".join(full_response)
+```
+
+### Progress Tracking
+
+```python
+async for chunk in agent.run_stream("Long analysis task"):
+    print(chunk.content, end="", flush=True)
     
-    print(chunk.content, end="", flush=True)
-```
-
-### Progress Indicators
-
-Show pipeline progress:
-
-```python
-agents_completed = 0
-total_agents = 3
-current_agent = None
-
-async for chunk in flow.run_streaming("Build web scraper"):
-    # Update progress when agent changes
-    if chunk.agent_name != current_agent:
-        if current_agent is not None:
-            agents_completed += 1
-        
-        current_agent = chunk.agent_name
-        progress = f"[{agents_completed + 1}/{total_agents}]"
-        print(f"\n{progress} {chunk.agent_name}:")
-        print("-" * 50)
-    
-    print(chunk.content, end="", flush=True)
-```
-
-### Conditional Routing
-
-Different agents stream based on event data:
-
-```python
-flow = Flow()
-
-# Python expert handles Python questions
-flow.register(
-    python_expert,
-    [react_to("question.asked").when(lambda e: "python" in str(e.data).lower())],
-)
-
-# JavaScript expert handles JS questions
-flow.register(
-    js_expert,
-    [react_to("question.asked").when(lambda e: "javascript" in str(e.data).lower())],
-)
-
-# Route based on question content
-async for chunk in flow.run_streaming(
-    "How do I use async/await in Python?",
-    initial_event="question.asked",
-    initial_data={"language": "python"},
-):
-    print(chunk.content, end="", flush=True)
+    if chunk.is_final:
+        print("\n✅ Complete!")
 ```
 
 ### Error Handling
 
-Gracefully handle errors during streaming:
-
 ```python
 try:
-    async for chunk in flow.run_streaming("Task with potential errors"):
+    async for chunk in agent.run_stream("Query"):
         print(chunk.content, end="", flush=True)
         
-        # Check for error metadata
-        if chunk.metadata and chunk.metadata.get("error"):
-            print(f"\n⚠️ Error: {chunk.metadata['error']}")
-        
-        if chunk.is_final:
-            if chunk.finish_reason == "error":
-                print("\n❌ Stream ended with error")
-            else:
-                print("\n✅ Stream completed")
-
+        if chunk.finish_reason == "length":
+            print("\n⚠️ Response truncated (max tokens reached)")
 except Exception as e:
-    print(f"\n❌ Exception during streaming: {e}")
+    print(f"\n❌ Streaming error: {e}")
 ```
 
-## Architecture
+---
 
-### How It Works
+## Streaming with Tools
 
-1. **Event Loop**: `run_streaming()` processes events like regular `run()`
-2. **Agent Triggers**: Events trigger matching agents (same matching logic)
-3. **Streaming Execution**: Agents execute with `stream=True` parameter
-4. **Chunk Conversion**: Agent `StreamChunk` → `FlowStreamChunk` with event context
-5. **Sequential Flow**: Agents execute sequentially to preserve output order
-6. **Yield to Caller**: Each chunk is yielded immediately as it arrives
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Flow.run_streaming("task")                                  │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  ▼
-         ┌────────────────┐
-         │ Event Loop     │ Processes events in rounds
-         └────────┬───────┘
-                  │
-                  ▼
-         ┌────────────────┐
-         │ Match Agents   │ Find agents triggered by event
-         └────────┬───────┘
-                  │
-                  ▼
-         ┌─────────────────────────────────┐
-         │ Execute Agent (stream=True)     │ Sequential execution
-         └────────┬────────────────────────┘
-                  │
-                  ▼
-         ┌──────────────────────────┐
-         │ Agent Streams Tokens     │ token1, token2, token3...
-         └────────┬─────────────────┘
-                  │
-                  ▼
-         ┌──────────────────────────────────┐
-         │ Convert to FlowStreamChunk       │ Add event context
-         └────────┬─────────────────────────┘
-                  │
-                  ▼
-         ┌──────────────────────────┐
-         │ Yield to Caller          │ Immediate feedback
-         └──────────────────────────┘
-```
-
-### Integration with Agent Streaming
-
-Flow streaming leverages the existing agent streaming infrastructure:
-
-- **Agent.run(stream=True)** — Returns `AsyncIterator[StreamChunk]`
-- **StreamChunk** — Token content from LLM provider
-- **FlowStreamChunk** — Wraps StreamChunk with flow event context
-
-This means:
-- ✅ No duplicate streaming logic
-- ✅ All LLM providers supported (OpenAI, Anthropic, etc.)
-- ✅ Agent-level streaming configuration respected
-- ✅ Consistent behavior with imperative Flow.stream()
-
-## Performance Considerations
-
-### Sequential vs Parallel Execution
-
-**Regular `run()`** executes agents in parallel (up to `max_concurrent_agents`):
-```python
-# Agents run in parallel
-result = await flow.run("task")  
-# ⚡ Faster completion
-# ❌ No real-time feedback
-```
-
-**`run_streaming()`** executes agents sequentially:
-```python
-# Agents run one at a time
-async for chunk in flow.run_streaming("task"):
-    print(chunk.content)
-# ✅ Real-time feedback
-# ⏱️ Slower completion (sequential)
-```
-
-**Trade-off**: Streaming sacrifices parallel speedup for user experience.
-
-### Memory Usage
-
-Streaming is more memory-efficient than batching:
-- Regular `run()` accumulates full output in memory
-- `run_streaming()` yields chunks immediately, allowing garbage collection
-
-For very long outputs, streaming prevents memory buildup.
-
-## Configuration
-
-### Flow Configuration
-
-Streaming respects `FlowConfig` settings:
+When an agent calls tools during streaming, the stream may pause while tools execute:
 
 ```python
-from cogent import FlowConfig
+from cogent import Agent, tool
 
-config = FlowConfig(
-    max_rounds=100,          # Maximum event processing rounds
-    event_timeout=30.0,      # Timeout for waiting on events
-    stop_on_idle=True,       # Stop when no more events
-    stop_events=frozenset({"flow.completed"}),  # Events that end flow
-)
+@tool
+def search(query: str) -> str:
+    """Search for information."""
+    return f"Results for: {query}"
 
-flow = Flow(config=config)
+agent = Agent(name="researcher", model="gpt-4o", tools=[search])
 
-# Streaming obeys these limits
-async for chunk in flow.run_streaming("task"):
-    print(chunk.content)
-```
-
-### Agent Configuration
-
-Enable streaming by default for specific agents:
-
-```python
-agent = Agent(
-    name="assistant",
-    model=model,
-    stream=True,  # Always stream (even in non-streaming flows)
-)
-
-# This agent will stream in both run() and run_streaming()
-```
-
-## Examples
-
-See [examples/basics/streaming.py](../examples/basics/streaming.py) for comprehensive demonstrations:
-
-1. **Basic Streaming** — Simple token-by-token display
-2. **Multi-Agent Streaming** — Track agent transitions
-3. **Progress Indicators** — Pipeline progress visualization
-4. **Conditional Streaming** — Event-driven routing
-5. **Error Handling** — Graceful failure recovery
-
-Run:
-```bash
-uv run python examples/basics/streaming.py
-```
-
-## Testing
-
-```python
-import pytest
-from cogent import Flow
-from cogent.flow.streaming import FlowStreamChunk
-
-@pytest.mark.asyncio
-async def test_streaming():
-    flow = Flow()
-    flow.register(agent, [react_to("task.created")])
+async for chunk in agent.run_stream("Search for AI news and summarize"):
+    if chunk.content:
+        print(chunk.content, end="", flush=True)
     
-    chunks = []
-    async for chunk in flow.run_streaming("Test"):
-        assert isinstance(chunk, FlowStreamChunk)
-        assert chunk.agent_name == "agent"
-        chunks.append(chunk)
-    
-    assert len(chunks) > 1  # Multiple chunks received
+    if chunk.finish_reason == "tool_calls":
+        print("\n[Tool calling...]")
 ```
 
-See [tests/test_streaming.py](../tests/test_streaming.py) for full test suite.
+---
+
+## Web UI Integration
+
+### FastAPI Streaming Endpoint
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+
+@app.post("/chat/stream")
+async def chat_stream(message: str):
+    async def generate():
+        async for chunk in agent.run_stream(message):
+            yield chunk.content
+    
+    return StreamingResponse(generate(), media_type="text/plain")
+```
+
+### Server-Sent Events (SSE)
+
+```python
+from fastapi import FastAPI
+from sse_starlette.sse import EventSourceResponse
+
+@app.post("/chat/sse")
+async def chat_sse(message: str):
+    async def event_stream():
+        async for chunk in agent.run_stream(message):
+            yield {"event": "token", "data": chunk.content}
+        yield {"event": "done", "data": ""}
+    
+    return EventSourceResponse(event_stream())
+```
+
+---
+
+## Model Streaming Support
+
+All major model providers support streaming:
+
+| Provider | Streaming Support |
+|----------|-------------------|
+| OpenAI | ✅ Full support |
+| Anthropic | ✅ Full support |
+| Gemini | ✅ Full support |
+| Groq | ✅ Full support |
+| Ollama | ✅ Full support |
+| Azure OpenAI | ✅ Full support |
+
+---
 
 ## API Reference
 
-### Flow.run_streaming()
+### Agent.run_stream()
 
 ```python
-async def run_streaming(
+async def run_stream(
     self,
-    task: str,
+    message: str,
     *,
-    initial_event: str = "task.created",
-    initial_data: dict[str, Any] | None = None,
-    context: dict[str, Any] | None = None,
-) -> AsyncIterator[FlowStreamChunk]:
+    context: dict | None = None,
+) -> AsyncIterator[StreamChunk]:
     """
-    Execute event-driven flow with streaming output.
+    Stream agent response token-by-token.
     
     Args:
-        task: The task/prompt to execute
-        initial_event: Event type to emit at start
-        initial_data: Additional data for initial event
-        context: Shared context available to all agents
+        message: The user message to process.
+        context: Optional context dictionary.
         
     Yields:
-        FlowStreamChunk: Streaming chunks from agent executions
-        
-    Example:
-        async for chunk in flow.run_streaming("Research topic"):
-            print(f"[{chunk.agent_name}] {chunk.content}", end="")
+        StreamChunk objects with progressive tokens.
     """
 ```
 
-### FlowStreamChunk
+### StreamChunk
 
 ```python
 @dataclass
-class FlowStreamChunk:
-    """Streaming chunk from event-driven agent execution."""
-    
-    agent_name: str
-    """Name of the agent generating this chunk."""
-    
-    event_id: str
-    """ID of the event that triggered this agent."""
-    
-    event_name: str
-    """Name/type of the event that triggered this agent."""
-    
-    content: str
-    """The text content of this streaming chunk."""
-    
-    delta: str
-    """Incremental text added (same as content)."""
-    
-    is_final: bool = False
-    """True if this is the last chunk from this reaction."""
-    
-    metadata: dict[str, Any] | None = None
-    """Additional context about the streaming execution."""
-    
-    finish_reason: str | None = None
-    """Reason streaming stopped (stop, length, tool_calls, error, etc.)."""
+class StreamChunk:
+    content: str              # Token content
+    delta: str                # Alias for content
+    is_final: bool           # True on last chunk
+    finish_reason: str | None # "stop", "length", "tool_calls"
+    metadata: dict | None     # Model metadata
 ```
 
-## Comparison with Imperative Flow Streaming
-
-| Feature | Flow.run_streaming() | Flow.stream() |
-|---------|----------------------|---------------|
-| **Paradigm** | Event-driven | Imperative/Topology-based |
-| **Chunk Type** | `FlowStreamChunk` | Status updates |
-| **Agent Coordination** | Event triggers | Topology structure |
-| **Event Context** | Full event metadata | Limited |
-| **Use Case** | Reactive orchestration | Pipeline/Supervisor flows |
-
-Both support real-time streaming, but `run_streaming()` provides richer event context.
+---
 
 ## Best Practices
 
-1. **Show agent names** — Help users understand which agent is active
-2. **Handle transitions** — Add newlines/separators when agents change
-3. **Progress indicators** — Show completion percentage for pipelines
-4. **Error recovery** — Check `finish_reason` and `metadata` for errors
-5. **Cancellation** — Use `asyncio.timeout()` to limit streaming duration
-6. **Memory cleanup** — Process chunks immediately, don't accumulate all
-
-```python
-# ✅ Good - process immediately
-async for chunk in flow.run_streaming("task"):
-    await send_to_ui(chunk.content)
-
-# ❌ Bad - accumulates memory
-chunks = []
-async for chunk in flow.run_streaming("task"):
-    chunks.append(chunk)  # Memory grows
-```
-
-## Limitations
-
-1. **Sequential execution** — Agents run one at a time in streaming mode
-2. **No checkpointing** — Streaming flows don't support checkpoint saving (yet)
-3. **Order dependency** — Agent order determined by event trigger order
-4. **Token overhead** — More network roundtrips than batch mode
-
-## Future Enhancements
-
-- Parallel streaming with chunk interleaving
-- Checkpoint support during streaming
-- Stream pausing and resumption
-- Custom chunk transformers/filters
-- Streaming metrics and observability
-
-## See Also
-
-- [Flow Guide](flow.md) — Event-driven orchestration
-- [Agent Streaming](agent.md#streaming) — Agent-level streaming
-- [Transport](transport.md) — Distributed event transport
-- [Examples](../examples/basics/streaming.py) — Streaming example
+1. **Use `end=""` and `flush=True`** — Ensure tokens display immediately
+2. **Handle `is_final`** — Add newline or summary after completion
+3. **Check `finish_reason`** — Detect truncation or tool calls
+4. **Collect output** — Append chunks for final text if needed
+5. **Error handling** — Wrap iteration in try/except for robustness

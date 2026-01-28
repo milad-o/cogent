@@ -324,26 +324,6 @@ async def handle_with_retries(task_id: str):
 - `next_attempt(key: str) -> int` — Increment and return attempt count (0-based)
 - `can_retry(key: str) -> bool` — Check if more retries available
 
-### emit_later
-
-Schedule delayed event emission:
-
-```python
-from cogent.core import emit_later
-
-# In a Flow
-async def handle_timeout(event, ctx):
-    # Schedule a timeout event
-    ctx.flow.spawn(
-        emit_later(
-            flow=ctx.flow,
-            delay_seconds=30.0,
-            event_name="task.timeout",
-            data={"task_id": event.data["task_id"]},
-        )
-    )
-```
-
 ### jittered_delay
 
 Calculate exponential backoff with jitter:
@@ -540,7 +520,7 @@ data = response.to_dict()
 ```python
 from cogent.events import Event
 
-# Convert response to event for flow orchestration
+# Create event from response
 event = Event.from_response(
     response,
     name="analysis.done",
@@ -550,22 +530,6 @@ event = Event.from_response(
 # Event includes response metadata
 assert event.data["content"] == response.content
 assert event.metadata["tokens"]["total"] == response.metadata.tokens.total_tokens
-```
-
-#### A2A Integration
-
-```python
-from cogent.flow.a2a import AgentResponse
-
-# Create A2A response from agent Response
-a2a_response = AgentResponse.from_response(
-    response,
-    from_agent="analyst",
-    to_agent="coordinator",
-)
-
-# Access underlying Response
-core_response = a2a_response.unwrap()
 ```
 
 ### Benefits
@@ -588,8 +552,7 @@ core_response = a2a_response.unwrap()
 - Unified metadata structure
 
 **Integration:**
-- Seamless conversion to Events for flow orchestration
-- Compatible with A2A communication protocol
+- Seamless conversion to Events for orchestration
 - Works with all executor types (Native, ReAct, ChainOfThought)
 
 ---

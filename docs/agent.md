@@ -321,7 +321,7 @@ data_analyst = Agent(
     instructions="Analyze datasets and create visualizations",
 )
 
-# In a Flow, supervisor coordinates workers
+# In multi-agent setup, supervisor coordinates workers
 ```
 
 **SUPERVISOR** - Team coordination:

@@ -83,7 +83,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 - **Memory & Persistence** — Conversation history, long-term memory with fuzzy matching ([docs/memory.md](docs/memory.md))
 - **Memory Control (ACC)** — Bio-inspired bounded memory prevents drift ([docs/acc.md](docs/acc.md))
 - **Semantic Caching** — Cache reasoning artifacts at 80%+ hit rates ([docs/memory.md#semantic-cache](docs/memory.md#semantic-cache))
-- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents, patterns, and flows
+- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents and patterns
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
 - **Resilience** — Retry policies, circuit breakers, fallbacks
@@ -299,37 +299,6 @@ executor = TreeSearchExecutor(
 result = await executor.execute("Complex multi-step task")
 ```
 
-### `cogent.flow.patterns` — Multi-Agent Patterns
-
-Coordination patterns for multi-agent workflows with built-in **A2A delegation**.
-
-| Pattern | Description | Use Case |
-|---------|-------------|----------|
-| `Supervisor` | Coordinator delegates to workers | Task routing, orchestration |
-| `Pipeline` | Sequential A → B → C | Content creation, ETL |
-| `Mesh` | All agents collaborate in rounds | Brainstorming, consensus |
-| `Hierarchical` | Tree structure with team leads | Large organizations |
-
-**Modern Pattern API:**
-
-```python
-from cogent import pipeline, supervisor, mesh
-
-# Pipeline: Sequential processing
-flow = pipeline([researcher, writer, editor])
-result = await flow.run("Write a blog post about AI")
-
-# Supervisor: Coordinator delegates to workers  
-flow = supervisor(coordinator=manager, workers=[researcher, writer])
-result = await flow.run("Research and write about quantum computing")
-
-# Mesh: Collaborative multi-agent rounds
-flow = mesh([analyst, strategist, critic])
-result = await flow.run("Develop a go-to-market strategy")
-```
-
-**See [docs/flow.md](docs/flow.md) for pattern usage examples.**
-
 ### `cogent.interceptors` — Middleware
 
 Composable middleware for cross-cutting concerns.
@@ -368,7 +337,7 @@ Comprehensive monitoring for understanding system behavior.
 | `ExecutionTracer` | Deep execution tracing with spans |
 | `MetricsCollector` | Counter, Gauge, Histogram, Timer |
 | `ProgressTracker` | Real-time progress output |
-| `Observer` | Unified observability for flows |
+| `Observer` | Unified observability with history capture |
 | `Dashboard` | Visual inspection interface |
 | `Inspectors` | Agent, Task, Event inspection |
 
@@ -385,7 +354,7 @@ async with tracer.trace("my-operation") as span:
 
 ### `cogent.graph` — Visualization
 
-Unified visualization API for agents, patterns, and flows.
+Unified visualization API for agents and execution traces.
 
 **Backends:**
 
@@ -579,20 +548,6 @@ async def main():
 asyncio.run(main())
 ```
 
-### Multi-Agent Pipeline
-
-```python
-from cogent import Agent
-from cogent.flow import pipeline
-
-researcher = Agent(name="Researcher", model="gpt-4o", instructions="Research topics thoroughly.")
-writer = Agent(name="Writer", model="gpt-4o", instructions="Write clear, engaging content.")
-editor = Agent(name="Editor", model="gpt-4o", instructions="Review and polish the content.")
-
-flow = pipeline([researcher, writer, editor])
-result = await flow.run("Create a blog post about quantum computing")
-```
-
 ## Streaming
 
 ```python
@@ -630,8 +585,8 @@ except InterruptedException as e:
 ## Observability
 
 ```python
-from cogent import Agent, Flow
-from cogent.observability import ObservabilityLevel
+from cogent import Agent
+from cogent.observability import Observer, ObservabilityLevel
 
 # Verbosity levels for agents
 agent = Agent(
@@ -647,19 +602,13 @@ agent = Agent(model=model, verbosity=4)  # Int (0-5)
 # Boolean shorthand
 agent = Agent(model=model, verbosity=True)  # → PROGRESS level
 
-# Or for flows
-flow = Flow(
-    agents=[...],
-    verbosity=True,  # Progress output with timing
-)
+# With observer for history capture
+observer = Observer(level="detailed", capture=["tool.result", "agent.*"])
+result = await agent.run("Query", observer=observer)
 
-# Advanced: Custom observer
-from cogent.observability import Observer
-
-flow = Flow(
-    agents=[...],
-    observer=Observer(level="detailed"),
-)
+# Access captured events
+for event in observer.history():
+    print(event)
 ```
 
 ## Interceptors

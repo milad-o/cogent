@@ -165,28 +165,6 @@ async def fetch_data(url: str) -> str:
 - Sync and async support
 - Context injection via `ctx: RunContext`
 
-### Multi-Agent Flow
-
-Coordinate multiple agents with built-in patterns:
-
-```python
-from cogent.flow import pipeline, supervisor, mesh
-
-researcher = Agent(name="Researcher", model=model, instructions="Research thoroughly.")
-writer = Agent(name="Writer", model=model, instructions="Write clearly.")
-editor = Agent(name="Editor", model=model, instructions="Review and polish.")
-
-# Sequential processing
-flow = pipeline([researcher, writer, editor])
-
-result = await flow.run("Create a blog post about quantum computing")
-```
-
-**Patterns:**
-- **Pipeline** — Sequential agent execution
-- **Supervisor** — Leader agent delegates to workers
-- **Mesh** — Agents communicate peer-to-peer
-
 ---
 
 ## Model Providers
@@ -277,14 +255,12 @@ observer = Observer(level="trace")      # Maximum detail
 observer = Observer(level="verbose")    # Key events
 observer = Observer(level="minimal")    # Errors only
 
-flow = Flow(
-    agents=[...],
-    observer=observer,
-)
+# Use observer with agent
+result = await agent.run("Query", observer=observer)
 
-# Access execution traces
-for event in observer.events():
-    print(f"{event.type}: {event.message}")
+# Access event history
+for event in observer.history():
+    print(f"{event.type}: {event.data}")
 ```
 
 ---
@@ -314,9 +290,9 @@ agent = Agent(
 Now that you know the basics, explore:
 
 - **[Agent Documentation](agent.md)** — Deep dive into agents, instructions, and configuration
-- **[Multi-Agent Flow](flow.md)** — Build coordinated multi-agent systems
+- **[Multi-Agent](agent.md#agent-as-tool)** — Build coordinated multi-agent systems
 - **[Capabilities](capabilities.md)** — Explore built-in tools and capabilities
-- **[Graph Visualization](graph.md)** — Visualize your agents and flows
+- **[Graph Visualization](graph.md)** — Visualize your agents
 - **[RAG & Retrieval](retrievers.md)** — Build retrieval-augmented generation systems
 - **[Examples](https://github.com/milad-o/cogent/tree/main/examples)** — See working examples
 
