@@ -189,16 +189,17 @@ Power-user features for production systems.
 ### Intermediate (1 hour)
 
 5. **[content_review.py](advanced/content_review.py)** — Multi-agent with agent.as_tool()
-6. **[filesystem.py](capabilities/filesystem.py)** — Give agents file access
-7. **[retrievers.py](retrieval/retrievers.py)** — Add knowledge with RAG
-8. **[streaming.py](basics/streaming.py)** — Real-time responses
+6. **[single_vs_multi_agent.py](advanced/single_vs_multi_agent.py)** — Compare single vs multi-agent efficiency
+7. **[filesystem.py](capabilities/filesystem.py)** — Give agents file access
+8. **[retrievers.py](retrieval/retrievers.py)** — Add knowledge with RAG
+9. **[streaming.py](basics/streaming.py)** — Real-time responses
 
 ### Advanced (2+ hours)
 
-9. **[interceptors.py](advanced/interceptors.py)** — Production safeguards
-10. **[reasoning.py](advanced/reasoning.py)** — Extended thinking
-11. **[context_layer.py](advanced/context_layer.py)** — Runtime configuration
-12. **[custom_formatter.py](observability/custom_formatter.py)** — Custom observability
+10. **[interceptors.py](advanced/interceptors.py)** — Production safeguards
+11. **[reasoning.py](advanced/reasoning.py)** — Extended thinking
+12. **[context_layer.py](advanced/context_layer.py)** — Runtime configuration
+13. **[custom_formatter.py](observability/custom_formatter.py)** — Custom observability
 
 ---
 
