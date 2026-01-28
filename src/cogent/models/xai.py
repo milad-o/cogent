@@ -17,6 +17,11 @@ Usage:
     # Non-reasoning variant (faster, cheaper)
     llm = XAIChat(model="grok-4-1-fast-non-reasoning")
 
+    # With reasoning effort control (grok-3-mini only)
+    llm = XAIChat(model="grok-3-mini", reasoning_effort="high")
+    response = await llm.ainvoke("What is 101 * 3?")
+    print(response.metadata.tokens.reasoning_tokens)
+
     # With tools
     bound = llm.bind_tools([search_tool])
     response = await bound.ainvoke(messages)
@@ -42,7 +47,7 @@ Available models:
 
     Legacy:
     - grok-3, grok-3-beta: Previous flagship
-    - grok-3-mini, grok-3-mini-beta: Smaller, faster
+    - grok-3-mini, grok-3-mini-beta: Smaller, faster (supports reasoning_effort)
 
     Vision:
     - grok-2-vision-1212: Image understanding
@@ -54,6 +59,7 @@ Features:
     - Function/tool calling
     - Structured outputs (JSON mode)
     - Reasoning (model thinks before responding)
+    - Reasoning effort control (grok-3-mini: low/high)
     - Image understanding (vision models)
     - 2M context window (grok-4-1-fast models)
     - Streaming support
@@ -65,7 +71,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from cogent.core.messages import MessageMetadata, TokenUsage
 from cogent.models.base import (
@@ -86,6 +92,14 @@ REASONING_MODELS = {
     "grok-4-1-fast",
     "grok-4-1-fast-reasoning",
     "grok-4-1-fast-reasoning-latest",
+    "grok-3-mini",
+    "grok-3-mini-beta",
+}
+
+# Models that support reasoning_effort parameter (low/high)
+REASONING_EFFORT_MODELS = {
+    "grok-3-mini",
+    "grok-3-mini-beta",
 }
 
 # Models that don't support temperature/presence_penalty/frequency_penalty
@@ -190,26 +204,40 @@ class XAIChat(BaseChatModel):
         # Non-reasoning (faster, cheaper)
         llm = XAIChat(model="grok-4-1-fast-non-reasoning")
 
+        # With reasoning effort (grok-3-mini only)
+        llm = XAIChat(model="grok-3-mini", reasoning_effort="high")
+        response = await llm.ainvoke("What is 101 * 3?")
+        print(response.metadata.tokens.reasoning_tokens)
+
         response = await llm.ainvoke([{"role": "user", "content": "Hello!"}])
 
     Available models:
         - grok-4: Flagship reasoning model (256K context)
         - grok-4-1-fast: Agentic model optimized for tools (2M context)
         - grok-4-1-fast-non-reasoning: Fast without reasoning
-        - grok-3, grok-3-mini: Legacy models
+        - grok-3, grok-3-mini: Legacy models (grok-3-mini supports reasoning_effort)
         - grok-2-vision-1212: Image understanding
         - grok-code-fast-1: Code-optimized
 
     Features:
         - Function calling (all models)
         - Structured outputs (JSON mode)
-        - Reasoning (grok-4, grok-4-1-fast-reasoning)
+        - Reasoning (grok-4, grok-4-1-fast-reasoning, grok-3-mini)
+        - Reasoning effort control (grok-3-mini: low/high)
         - Vision (grok-2-vision-1212)
         - 2M context (grok-4-1-fast models)
+
+    Attributes:
+        model: Model name (default: grok-4-1-fast).
+        reasoning_effort: Reasoning effort for grok-3-mini models.
+            - "low": Minimal thinking, fewer tokens, faster
+            - "high": Maximum thinking, more tokens, better for complex problems
+            - None: Use model default
     """
 
     model: str = "grok-4-1-fast"
     base_url: str = XAI_BASE_URL
+    reasoning_effort: Literal["low", "high"] | None = field(default=None)
 
     _tool_choice: str | dict[str, Any] | None = field(default=None, repr=False)
     _parallel_tool_calls: bool = field(default=True, repr=False)
@@ -276,10 +304,65 @@ class XAIChat(BaseChatModel):
             base_url=self.base_url,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            reasoning_effort=self.reasoning_effort,
         )
         new_model._tools = tools
         new_model._tool_choice = tool_choice
         new_model._parallel_tool_calls = parallel_tool_calls
+        new_model._client = self._client
+        new_model._async_client = self._async_client
+        new_model._initialized = True
+        return new_model
+
+    def with_reasoning(
+        self,
+        effort: Literal["low", "high"] = "high",
+    ) -> XAIChat:
+        """Enable reasoning with specified effort level.
+
+        Only supported on grok-3-mini models. Other models have
+        reasoning enabled by default and cannot be controlled.
+
+        Args:
+            effort: Reasoning effort level.
+                - "low": Minimal thinking, faster responses
+                - "high": Maximum thinking, better for complex problems
+
+        Returns:
+            New XAIChat instance with reasoning enabled.
+
+        Example:
+            llm = XAIChat(model="grok-3-mini").with_reasoning("high")
+            response = await llm.ainvoke("What is 127 * 893?")
+            print(response.metadata.tokens.reasoning_tokens)
+
+        Note:
+            - Only supported on grok-3-mini models
+            - Reasoning tokens are tracked in response metadata
+        """
+        self._ensure_initialized()
+
+        # Validate model supports reasoning_effort
+        if self.model not in REASONING_EFFORT_MODELS:
+            raise ValueError(
+                f"Model {self.model} does not support reasoning_effort. "
+                f"Only grok-3-mini supports this parameter. "
+                f"Other models (grok-4, grok-4-1-fast) have reasoning enabled by default."
+            )
+
+        new_model = XAIChat(
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            api_key=self.api_key,
+            base_url=self.base_url,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+            reasoning_effort=effort,
+        )
+        new_model._tools = getattr(self, "_tools", [])
+        new_model._tool_choice = self._tool_choice
+        new_model._parallel_tool_calls = self._parallel_tool_calls
         new_model._client = self._client
         new_model._async_client = self._async_client
         new_model._initialized = True
@@ -310,6 +393,10 @@ class XAIChat(BaseChatModel):
         # Max tokens
         if self.max_tokens is not None:
             params["max_tokens"] = self.max_tokens
+
+        # Reasoning effort (grok-3-mini only)
+        if self.reasoning_effort and self.model in REASONING_EFFORT_MODELS:
+            params["reasoning_effort"] = self.reasoning_effort
 
         # Tools
         if self._tools:
@@ -488,11 +575,14 @@ class XAIChat(BaseChatModel):
             base_url=self.base_url,
             timeout=self.timeout,
             max_retries=self.max_retries,
+            reasoning_effort=self.reasoning_effort,
         )
         new_model._client = self._client
         new_model._async_client = self._async_client
         new_model._initialized = True
         new_model._tools = self._tools
+        new_model._tool_choice = self._tool_choice
+        new_model._parallel_tool_calls = self._parallel_tool_calls
 
         # Build response format
         if method == "json_mode":
