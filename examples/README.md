@@ -113,8 +113,7 @@ Core concepts every user should know.
 | [response.py](basics/response.py) | Response protocol with metadata |
 | [memory.py](basics/memory.py) | Conversation memory |
 | [streaming.py](basics/streaming.py) | Token-by-token streaming |
-| [structured_output.py](basics/structured_output.py) | Pydantic/TypedDict responses |
-| [literal_responses.py](basics/literal_responses.py) | Bare types: str, int, Literal |
+| [structured_output.py](basics/structured_output.py) | Bare types, Pydantic, TypedDict |
 | [roles.py](basics/roles.py) | Agent roles (worker, supervisor) |
 
 ---
