@@ -667,6 +667,11 @@ agent = Agent(name="Reviewer", model="gpt-4o-mini", output=Literal["APPROVE", "R
 result = await agent.run("Review this code")
 print(result.content.data)  # "APPROVE" (bare string)
 
+# Dynamic structure - agent decides fields
+agent = Agent(name="Analyzer", model="gpt-4o-mini", output=dict)
+result = await agent.run("Analyze user feedback")
+print(result.content.data)  # {"sentiment": "positive", "score": 8, ...}
+
 # Other bare types: str, int, bool, float
 agent = Agent(name="Counter", model="gpt-4o-mini", output=int)
 result = await agent.run("Count the items")
