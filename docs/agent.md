@@ -669,6 +669,11 @@ agent = Agent(name="Reviewer", model=model, output=Literal["PROCEED", "REVISE"])
 result = await agent.run("Review this code")
 print(result.content.data)  # "PROCEED" (bare string, not wrapped)
 
+# Dynamic structure - agent decides fields
+agent = Agent(name="Analyzer", model=model, output=dict)
+result = await agent.run("Analyze user feedback")
+print(result.content.data)  # {"sentiment": "positive", "score": 8, ...}
+
 # Other bare types: str, int, bool, float
 agent = Agent(name="Counter", model=model, output=int)
 result = await agent.run("How many items?")
@@ -681,6 +686,7 @@ Supported schema types:
 - **TypedDict** - Typed dictionaries
 - **Bare primitives** - `str`, `int`, `bool`, `float`
 - **Bare Literal** - `Literal["A", "B", ...]` for constrained choices
+- **dict** - Agent-decided dynamic structure (any fields)
 - **JSON Schema** - Raw JSON Schema dicts
 
 ## TaskBoard

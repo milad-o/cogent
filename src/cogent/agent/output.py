@@ -6,6 +6,7 @@ Cogent's approach to structured output:
 - Supports Pydantic, dataclass, TypedDict, and JSON Schema
 - Supports bare primitive types: str, int, bool, float
 - Supports bare Literal types: Literal["A", "B", ...]
+- Supports dict type for agent-decided dynamic structures
 - Automatic validation with configurable retry
 - Provider-native support where available (OpenAI, Anthropic)
 - Fallback to tool-based extraction for other providers
@@ -36,6 +37,11 @@ Usage:
     agent = Agent(name="Reviewer", model=OpenAIChat(), output=Literal["PROCEED", "REVISE"])
     result = await agent.run("Review this code change")
     # result.content.data -> "PROCEED" (bare string, not wrapped in model)
+    
+    # Dynamic structure - agent decides fields
+    agent = Agent(name="Analyzer", model=OpenAIChat(), output=dict)
+    result = await agent.run("Analyze user feedback")
+    # result.content.data -> {"sentiment": "positive", "score": 8, ...} (any fields)
 """
 
 from __future__ import annotations
@@ -263,7 +269,8 @@ def schema_to_json(schema: type | dict[str, Any]) -> dict[str, Any]:
     - TypedDict (converts to JSON Schema)
     - Primitive types (str, int, bool, float)
     - Literal types (Literal["A", "B"])
-    - dict (assumes already JSON Schema)
+    - dict type (flexible object with any properties)
+    - dict instance (assumes already JSON Schema)
 
     Args:
         schema: The schema to convert.
@@ -274,9 +281,13 @@ def schema_to_json(schema: type | dict[str, Any]) -> dict[str, Any]:
     Raises:
         TypeError: If schema type is not supported.
     """
-    # Already JSON Schema
+    # Already JSON Schema (dict instance)
     if isinstance(schema, dict):
         return schema
+
+    # dict type - flexible object with any properties
+    if schema is dict:
+        return {"type": "object"}
 
     # Pydantic model
     if is_pydantic_model(schema):
@@ -297,7 +308,7 @@ def schema_to_json(schema: type | dict[str, Any]) -> dict[str, Any]:
 
     raise TypeError(
         f"Unsupported schema type: {type(schema).__name__}. "
-        "Use Pydantic BaseModel, dataclass, TypedDict, primitive type, Literal, or JSON Schema dict."
+        "Use Pydantic BaseModel, dataclass, TypedDict, dict, primitive type, Literal, or JSON Schema dict."
     )
 
 
@@ -580,7 +591,17 @@ def validate_and_parse[T](
 
     # Validate based on schema type
     if isinstance(schema, dict):
-        # JSON Schema - just return the data (no runtime validation)
+        # JSON Schema dict - just return the data (no runtime validation)
+        return data
+    
+    if schema is dict:
+        # dict type - flexible object, just validate it's a dict
+        if not isinstance(data, dict):
+            raise OutputValidationError(
+                f"Expected dict, got {type(data).__name__}",
+                schema=schema,
+                raw_output=raw if isinstance(raw, str) else str(raw),
+            )
         return data
 
     if is_pydantic_model(schema):

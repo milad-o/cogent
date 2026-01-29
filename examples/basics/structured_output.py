@@ -21,7 +21,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from cogent import Agent
-from cogent.agent.output import OutputMethod, ResponseSchema
 
 # =============================================================================
 # Example 1: Bare Types - Simplest Possible
@@ -230,6 +229,9 @@ async def example_advanced_config():
     print("Example 5: Advanced Config with Validation Retry")
     print("=" * 60)
 
+    # Import only when needed for advanced use cases
+    from cogent.agent.output import OutputMethod, ResponseSchema
+
     # Full control over structured output behavior
     config = ResponseSchema(
         schema=ProductReview,
@@ -327,6 +329,43 @@ async def example_json_schema():
 
 
 # =============================================================================
+# Example 7: Dynamic Agent-Decided Structure
+# =============================================================================
+
+async def example_dynamic_structure():
+    """Let the agent decide the output structure dynamically."""
+    print("\n" + "=" * 60)
+    print("Example 7: Agent-Decided Dynamic Structure")
+    print("=" * 60)
+
+    # Use dict for flexible JSON structure - agent decides fields
+    agent = Agent(
+        name="FlexibleAnalyzer",
+        model="gpt-4o-mini",
+        output=dict,  # Agent can return any dict structure
+        instructions=(
+            "Analyze the data and create a JSON response with whatever fields "
+            "and structure you think best represents the information."
+        ),
+    )
+
+    result = await agent.run("User feedback: Great UI, slow loading, missing dark mode, love the features")
+    structured = result.content
+    
+    if structured.valid:
+        analysis = structured.data
+        print(f"\n  Agent-decided structure:")
+        print(f"  Chose these fields: {list(analysis.keys())}")
+        print(f"  Full response: {analysis}")
+
+    # Compare: Predefined schema (from Example 3)
+    print(f"\n  Contrast with Example 3 (predefined):")
+    print(f"    Fixed fields: sentiment, confidence, key_phrases, summary")
+    print(f"  vs Example 7 (dynamic):")
+    print(f"    Agent chooses fields based on content")
+
+
+# =============================================================================
 # Main
 # =============================================================================
 
@@ -340,6 +379,7 @@ async def main():
     await example_meeting_actions()
     await example_advanced_config()
     await example_json_schema()
+    await example_dynamic_structure()
 
     print("\n" + "=" * 60)
     print("✅ All examples completed!")
