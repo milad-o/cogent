@@ -13,7 +13,7 @@ Usage: uv run python examples/retrieval/retrievers.py
 
 import asyncio
 
-from cogent.models import OpenAIEmbedding
+from cogent import create_chat, create_embedding
 from cogent.retriever import (
     AttributeInfo,
     BM25Retriever,
@@ -100,7 +100,7 @@ async def demo_dense_retriever() -> None:
     print("1. DENSE RETRIEVER (Semantic Search)")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
@@ -136,7 +136,7 @@ async def demo_hybrid_retriever() -> None:
     print("3. HYBRID RETRIEVER (Metadata + Content)")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
@@ -163,7 +163,7 @@ async def demo_ensemble_retriever() -> None:
     print("4. ENSEMBLE RETRIEVER (Dense + Sparse)")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
@@ -191,7 +191,7 @@ async def demo_parent_document_retriever() -> None:
     print("5. PARENT DOCUMENT RETRIEVER")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     retriever = ParentDocumentRetriever(
@@ -217,7 +217,7 @@ async def demo_sentence_window_retriever() -> None:
     print("6. SENTENCE WINDOW RETRIEVER")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     retriever = SentenceWindowRetriever(
@@ -242,11 +242,11 @@ async def demo_summary_index() -> None:
     print("7. SUMMARY INDEX (LLM-Generated)")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = SummaryIndex(
-        llm="gpt4",
+        llm=create_chat("gpt-4o-mini"),
         vectorstore=vectorstore,
         extract_entities=True,
         extract_keywords=True,
@@ -269,7 +269,7 @@ async def demo_keyword_table_index() -> None:
     print("8. KEYWORD TABLE INDEX")
     print("=" * 60)
 
-    index = KeywordTableIndex(llm="gpt4", max_keywords_per_doc=8)
+    index = KeywordTableIndex(llm=create_chat("gpt-4o-mini"), max_keywords_per_doc=8)
 
     print("\nExtracting keywords...")
     await index.add_documents(DOCUMENTS[:2])
@@ -288,13 +288,13 @@ async def demo_self_query_retriever() -> None:
     print("9. SELF-QUERY RETRIEVER (NL → Filters)")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
     retriever = SelfQueryRetriever(
         vectorstore=vectorstore,
-        llm="gpt4",
+        llm=create_chat("gpt-4o-mini"),
         attribute_info=[
             AttributeInfo("category", "Document type: release, guide, policy, incident", "string"),
             AttributeInfo("author", "Author or team name", "string"),
@@ -315,7 +315,7 @@ async def demo_time_based_index() -> None:
     print("10. TIME-BASED INDEX (Recency-Aware)")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = TimeBasedIndex(
@@ -342,12 +342,12 @@ async def demo_multi_representation_index() -> None:
     print("11. MULTI-REPRESENTATION INDEX")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
 
     index = MultiRepresentationIndex(
         vectorstore=vectorstore,
-        llm="gpt4",
+        llm=create_chat("gpt-4o-mini"),
         representations=["original", "summary", "detailed"],
     )
 
@@ -368,12 +368,12 @@ async def demo_reranker() -> None:
     print("12. LLM RERANKER")
     print("=" * 60)
 
-    embeddings = OpenAIEmbedding(model="text-embedding-3-small")
+    embeddings = create_embedding("openai:text-embedding-3-small")
     vectorstore = VectorStore(embeddings=embeddings)
     await vectorstore.add_documents(DOCUMENTS)
 
     retriever = DenseRetriever(vectorstore)
-    reranker = LLMReranker(model="gpt4")
+    reranker = LLMReranker(model=create_chat("gpt-4o-mini"))
 
     query = "How do I handle too many API requests?"
 
