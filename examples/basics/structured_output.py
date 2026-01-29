@@ -11,9 +11,6 @@ Key features:
 - Provider-native support where available (OpenAI, Anthropic)
 - Clean API: just pass `output=YourSchema` to Agent
 
-For bare type examples (str, int, Literal), see:
-  examples/basics/literal_responses.py
-
 Run: uv run python examples/basics/structured_output.py
 """
 
@@ -27,7 +24,56 @@ from cogent import Agent
 from cogent.agent.output import OutputMethod, ResponseSchema
 
 # =============================================================================
-# Example 1: Simple Extraction with Pydantic
+# Example 1: Bare Types - Simplest Possible
+# =============================================================================
+
+async def example_bare_types():
+    """Bare types return values directly without wrapping."""
+    print("=" * 60)
+    print("Example 1: Bare Types (Direct Values)")
+    print("=" * 60)
+    
+    # Bare Literal - constrained choices
+    agent = Agent(
+        name="Reviewer",
+        model="gpt-4o-mini",
+        output=Literal["PROCEED", "REVISE"],
+        instructions="Review the implementation status and decide.",
+    )
+    result = await agent.run("Auth system 80% done, missing password reset")
+    print(f"\n  Bare Literal: {result.content.data}")  # Direct value: "REVISE"
+    
+    # Bare str
+    agent = Agent(
+        name="Summarizer",
+        model="gpt-4o-mini",
+        output=str,
+        instructions="Summarize in one word.",
+    )
+    result = await agent.run("Python is a programming language")
+    print(f"  Bare str: {result.content.data}")  # Direct value: "Python"
+    
+    # Bare int
+    agent = Agent(
+        name="Counter",
+        model="gpt-4o-mini",
+        output=int,
+        instructions="Count items.",
+    )
+    result = await agent.run("How many words: Hello world test")
+    print(f"  Bare int: {result.content.data}")  # Direct value: 3
+    
+    # Single-field models (when you need named fields)
+    class Priority(BaseModel):
+        level: Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+    
+    agent = Agent(name="Prioritizer", model="gpt-4o-mini", output=Priority)
+    result = await agent.run("DB errors affecting 5% users")
+    print(f"  Single-field model: {result.content.data.level}")  # Access via field name
+
+
+# =============================================================================
+# Example 2: Contact Extraction with Pydantic
 # =============================================================================
 
 class ContactInfo(BaseModel):
@@ -41,8 +87,8 @@ class ContactInfo(BaseModel):
 
 async def example_contact_extraction():
     """Extract structured contact info from text."""
-    print("=" * 60)
-    print("Example 1: Contact Extraction with Pydantic")
+    print("\n" + "=" * 60)
+    print("Example 2: Contact Extraction with Pydantic")
     print("=" * 60)
 
     agent = Agent(
@@ -75,7 +121,7 @@ async def example_contact_extraction():
 
 
 # =============================================================================
-# Example 2: Data Classification with Enum
+# Example 3: Data Classification with Enum
 # =============================================================================
 
 class SentimentAnalysis(BaseModel):
@@ -90,7 +136,7 @@ class SentimentAnalysis(BaseModel):
 async def example_sentiment_analysis():
     """Classify sentiment with structured output."""
     print("\n" + "=" * 60)
-    print("Example 2: Sentiment Analysis with Enum")
+    print("Example 3: Sentiment Analysis with Enum")
     print("=" * 60)
 
     agent = Agent(
@@ -119,7 +165,7 @@ async def example_sentiment_analysis():
 
 
 # =============================================================================
-# Example 3: Using Dataclass
+# Example 4: Using Dataclass
 # =============================================================================
 
 @dataclass
@@ -135,7 +181,7 @@ class MeetingAction:
 async def example_meeting_actions():
     """Extract action items using dataclass schema."""
     print("\n" + "=" * 60)
-    print("Example 3: Meeting Actions with Dataclass")
+    print("Example 4: Meeting Actions with Dataclass")
     print("=" * 60)
 
     agent = Agent(
@@ -165,7 +211,7 @@ async def example_meeting_actions():
 
 
 # =============================================================================
-# Example 4: Advanced Config with Retry
+# Example 5: Advanced Config with Retry
 # =============================================================================
 
 class ProductReview(BaseModel):
@@ -181,7 +227,7 @@ class ProductReview(BaseModel):
 async def example_advanced_config():
     """Use ResponseSchema for fine-grained control."""
     print("\n" + "=" * 60)
-    print("Example 4: Advanced Config with Validation Retry")
+    print("Example 5: Advanced Config with Validation Retry")
     print("=" * 60)
 
     # Full control over structured output behavior
@@ -235,13 +281,13 @@ async def example_advanced_config():
 
 
 # =============================================================================
-# Example 5: JSON Schema (for maximum flexibility)
+# Example 6: JSON Schema (for maximum flexibility)
 # =============================================================================
 
 async def example_json_schema():
     """Use raw JSON Schema for dynamic schemas."""
     print("\n" + "=" * 60)
-    print("Example 5: Dynamic JSON Schema")
+    print("Example 6: Dynamic JSON Schema")
     print("=" * 60)
 
     # Define schema as JSON Schema dict (useful for dynamic schemas)
@@ -288,6 +334,7 @@ async def main():
     """Run all examples."""
     print("\n🔧 Cogent Structured Output Examples\n")
 
+    await example_bare_types()
     await example_contact_extraction()
     await example_sentiment_analysis()
     await example_meeting_actions()
