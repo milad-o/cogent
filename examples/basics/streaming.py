@@ -28,7 +28,7 @@ import asyncio
 from cogent import Agent
 from cogent.tools import tool
 
-
+MODEL = "grok-4-1-fast-non-reasoning"  # Streaming-capable model
 # =============================================================================
 # Demo 1: Basic Streaming
 # =============================================================================
@@ -41,7 +41,7 @@ async def basic_streaming():
 
     agent = Agent(
         name="Assistant",
-        model="gpt4",
+        model=MODEL,
         instructions="You are a helpful assistant. Be concise.",
     )
 
@@ -87,7 +87,7 @@ async def streaming_with_tools():
 
     agent = Agent(
         name="WeatherBot",
-        model="gpt4",
+        model=MODEL,
         tools=[get_weather, get_time],
         instructions="You help with weather and time queries. Be brief.",
     )
@@ -115,7 +115,7 @@ async def streaming_with_conversation():
 
     agent = Agent(
         name="ChatBot",
-        model="gpt4",
+        model=MODEL,
         instructions="You are a friendly assistant. Remember what the user tells you.",
     )
 

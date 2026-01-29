@@ -284,12 +284,15 @@ def _parse_response(response: Any, include_thoughts: bool = False) -> AIMessage:
     tool_calls = []
 
     # Handle the response structure
-    candidate = response.candidates[0] if response.candidates else None
+    if not hasattr(response, "candidates") or not response.candidates:
+        return AIMessage(content="")
+    
+    candidate = response.candidates[0]
     if not candidate:
         return AIMessage(content="")
 
     # Gemini can return None for content when blocked or failed
-    if not candidate.content or not hasattr(candidate.content, "parts"):
+    if not candidate.content or not hasattr(candidate.content, "parts") or candidate.content.parts is None:
         return AIMessage(content="")
 
     for part in candidate.content.parts:

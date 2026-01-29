@@ -39,6 +39,11 @@ dependencies = [
     "rapidfuzz>=3.14.3",
     "rank-bm25>=0.2.2",
     "cerebras-cloud-sdk>=1.64.1",
+    "cohere>=5.20.0",
+    "mcp>=1.22.0",
+    "websockets>=15.0.1",
+    "starlette>=0.50.0",
+    "uvicorn>=0.38.0",
 ]
 
 [project.optional-dependencies]
