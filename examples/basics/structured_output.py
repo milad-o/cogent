@@ -6,9 +6,13 @@ response schemas on agent outputs.
 
 Key features:
 - Schema enforcement with Pydantic, dataclass, TypedDict, or JSON Schema
+- Bare type support: str, int, bool, float, Literal[...]
 - Automatic validation with retry on errors
 - Provider-native support where available (OpenAI, Anthropic)
 - Clean API: just pass `output=YourSchema` to Agent
+
+For bare type examples (str, int, Literal), see:
+  examples/basics/literal_responses.py
 
 Run: uv run python examples/basics/structured_output.py
 """

@@ -643,8 +643,10 @@ Type-safe responses with automatic validation:
 
 ```python
 from pydantic import BaseModel
+from typing import Literal
 from cogent import Agent
 
+# Structured models
 class Analysis(BaseModel):
     sentiment: str
     confidence: float
@@ -657,8 +659,18 @@ agent = Agent(
 )
 
 result = await agent.run("Analyze: I love this product!")
-print(result.data.sentiment)   # "positive"
-print(result.data.confidence)  # 0.95
+print(result.content.data.sentiment)   # "positive"
+print(result.content.data.confidence)  # 0.95
+
+# Bare types - return primitive values directly
+agent = Agent(name="Reviewer", model="gpt-4o-mini", output=Literal["APPROVE", "REJECT"])
+result = await agent.run("Review this code")
+print(result.content.data)  # "APPROVE" (bare string)
+
+# Other bare types: str, int, bool, float
+agent = Agent(name="Counter", model="gpt-4o-mini", output=int)
+result = await agent.run("Count the items")
+print(result.content.data)  # 5 (bare int)
 ```
 
 ## Reasoning

@@ -4,7 +4,7 @@ Tests for executors.
 Tests the execution strategies including:
 - NativeExecutor (parallel execution)
 - SequentialExecutor (sequential execution)
-- TreeSearchExecutor (LATS-style tree search)
+- TreeSearchExecutor (REMOVED - was part of multi-agent orchestration)
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -17,11 +17,11 @@ from cogent.executors import (
     ExecutionPlan,
     ExecutionStrategy,
     NativeExecutor,
-    NodeState,
-    SearchNode,
+    # NodeState,  # REMOVED - was part of TreeSearch multi-agent orchestration
+    # SearchNode,  # REMOVED - was part of TreeSearch multi-agent orchestration
     SequentialExecutor,
     ToolCall,
-    TreeSearchExecutor,
+    # TreeSearchExecutor,  # REMOVED - was part of TreeSearch multi-agent orchestration
     create_executor,
 )
 
@@ -222,217 +222,12 @@ class TestCreateExecutor:
         executor = create_executor(mock_agent, ExecutionStrategy.SEQUENTIAL)
         assert isinstance(executor, SequentialExecutor)
 
-    def test_create_tree_search(self, mock_agent: MagicMock) -> None:
-        """Test creating TreeSearch executor."""
-        executor = create_executor(mock_agent, ExecutionStrategy.TREE_SEARCH)
-        assert isinstance(executor, TreeSearchExecutor)
+    # def test_create_tre e_search(self, mock_agent: MagicMock) -> None:
+    #     """Test creating TreeSearch executor."""
+    #     executor = create_executor(mock_agent, ExecutionStrategy.TREE_SEARCH)
+    #     assert isinstance(executor, TreeSearchExecutor)
 
     def test_default_is_native(self, mock_agent: MagicMock) -> None:
         """Test default strategy is NATIVE."""
         executor = create_executor(mock_agent)
         assert isinstance(executor, NativeExecutor)
-
-
-class TestSearchNode:
-    """Tests for SearchNode dataclass."""
-
-    def test_create_node(self) -> None:
-        """Test creating a search node."""
-        node = SearchNode(id="node_1", action={"type": "tool_call", "tool": "search"})
-        assert node.id == "node_1"
-        assert node.state == NodeState.PENDING
-        assert node.value == 0.5
-        assert node.visits == 0
-
-    def test_is_leaf(self) -> None:
-        """Test leaf node detection."""
-        node = SearchNode(id="node_1")
-        assert node.is_leaf() is True
-
-        child = SearchNode(id="node_2", parent=node)
-        node.children.append(child)
-        assert node.is_leaf() is False
-
-    def test_is_terminal(self) -> None:
-        """Test terminal node detection."""
-        node = SearchNode(id="node_1")
-        assert node.is_terminal() is False
-
-        node.state = NodeState.SUCCESS
-        assert node.is_terminal() is True
-
-        node.state = NodeState.FAILED
-        assert node.is_terminal() is True
-
-    def test_ucb1_score_unvisited(self) -> None:
-        """Test UCB1 score for unvisited node."""
-        node = SearchNode(id="node_1")
-        assert node.ucb1_score() == float("inf")
-
-    def test_ucb1_score_visited(self) -> None:
-        """Test UCB1 score for visited node."""
-        parent = SearchNode(id="parent")
-        parent.visits = 10
-
-        node = SearchNode(id="node_1", parent=parent, value=0.7)
-        node.visits = 5
-
-        score = node.ucb1_score()
-        # Should be value + exploration bonus
-        assert score > 0.7  # Greater than just exploitation
-        assert score < 2.0  # But reasonable
-
-    def test_backpropagate(self) -> None:
-        """Test value backpropagation."""
-        root = SearchNode(id="root")
-        child = SearchNode(id="child", parent=root)
-        grandchild = SearchNode(id="grandchild", parent=child)
-
-        # Backpropagate a value
-        grandchild.backpropagate(0.8)
-
-        assert grandchild.visits == 1
-        assert child.visits == 1
-        assert root.visits == 1
-
-        # Values should be updated
-        assert grandchild.value == 0.8  # First visit, takes the value directly
-
-    def test_get_path(self) -> None:
-        """Test path from root to node."""
-        root = SearchNode(id="root")
-        child = SearchNode(id="child", parent=root)
-        grandchild = SearchNode(id="grandchild", parent=child)
-
-        path = grandchild.get_path()
-        assert len(path) == 3
-        assert path[0].id == "root"
-        assert path[1].id == "child"
-        assert path[2].id == "grandchild"
-
-    def test_to_dict(self) -> None:
-        """Test node serialization."""
-        node = SearchNode(
-            id="node_1",
-            action={"type": "tool_call"},
-            observation="Result",
-            state=NodeState.SUCCESS,
-            value=0.9,
-            visits=3,
-        )
-
-        data = node.to_dict()
-        assert data["id"] == "node_1"
-        assert data["state"] == "success"
-        assert data["value"] == 0.9
-        assert data["visits"] == 3
-
-
-class TestTreeSearchExecutor:
-    """Tests for TreeSearchExecutor (LATS)."""
-
-    @pytest.fixture
-    def mock_agent(self) -> MagicMock:
-        """Create a mock agent."""
-        agent = MagicMock(spec=Agent)
-        agent.name = "test-agent"
-        agent.config = AgentConfig(name="test-agent")
-        agent._taskboard = TaskBoard()
-        agent.think = AsyncMock()
-        agent.act = AsyncMock()
-        agent._get_tool = MagicMock(return_value=None)
-        agent.get_tool_descriptions = MagicMock(return_value="search: Search for info")
-        return agent
-
-    def test_executor_creation(self, mock_agent: MagicMock) -> None:
-        """Test creating TreeSearchExecutor."""
-        executor = TreeSearchExecutor(mock_agent)
-        assert executor.max_depth == 5
-        assert executor.num_candidates == 3
-        assert executor.enable_reflection is True
-
-    def test_executor_custom_params(self, mock_agent: MagicMock) -> None:
-        """Test TreeSearchExecutor with custom parameters."""
-        executor = TreeSearchExecutor(mock_agent)
-        executor.max_depth = 3
-        executor.num_candidates = 5
-        executor.exploration_weight = 2.0
-
-        assert executor.max_depth == 3
-        assert executor.num_candidates == 5
-        assert executor.exploration_weight == 2.0
-
-    def test_parse_candidate_actions(self, mock_agent: MagicMock) -> None:
-        """Test parsing candidate actions from LLM response."""
-        executor = TreeSearchExecutor(mock_agent)
-
-        response = """
-ACTION 1:
-First approach reasoning
-TOOL: search({"query": "test"})
-
-ACTION 2:
-Second approach reasoning
-FINAL ANSWER: The answer is 42
-
-ACTION 3:
-Third approach
-TOOL: process({"data": "input"})
-"""
-
-        actions = executor._parse_candidate_actions(response)
-
-        assert len(actions) == 3
-
-        # First action is tool call
-        assert actions[0]["type"] == "tool_call"
-        assert actions[0]["tool"] == "search"
-
-        # Second action is final answer
-        assert actions[1]["type"] == "final_answer"
-        assert "42" in actions[1]["answer"]
-
-        # Third action is tool call
-        assert actions[2]["type"] == "tool_call"
-        assert actions[2]["tool"] == "process"
-
-    def test_select_ucb1(self, mock_agent: MagicMock) -> None:
-        """Test UCB1-based node selection."""
-        executor = TreeSearchExecutor(mock_agent)
-
-        # Create a simple tree
-        root = SearchNode(id="root", state=NodeState.EXPANDED)
-        root.visits = 10
-
-        child1 = SearchNode(id="child1", parent=root, value=0.8)
-        child1.visits = 5
-
-        child2 = SearchNode(id="child2", parent=root, value=0.3)
-        child2.visits = 1  # Less visited, higher exploration bonus
-
-        root.children = [child1, child2]
-
-        # Selection should favor less-visited node due to exploration
-        selected = executor._select(root)
-
-        # Should select one of the children (both are leaves)
-        assert selected in [child1, child2]
-
-    def test_format_path(self, mock_agent: MagicMock) -> None:
-        """Test path formatting for prompts."""
-        executor = TreeSearchExecutor(mock_agent)
-
-        root = SearchNode(id="root", action={"type": "root", "task": "Test"})
-        child = SearchNode(
-            id="child",
-            parent=root,
-            action={"type": "tool_call", "tool": "search", "args": {"query": "test"}},
-            observation="Found result",
-            depth=1,
-        )
-
-        path = child.get_path()
-        formatted = executor._format_path(path)
-
-        assert "search" in formatted
-        assert "Found result" in formatted

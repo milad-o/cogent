@@ -10,10 +10,11 @@ This file demonstrates that IDE autocomplete now works for:
 
 from cogent import Agent
 from cogent.agent.reasoning import ReasoningConfig
-from cogent.agent.spawning import SpawningConfig
+# from cogent.agent.spawning import SpawningConfig  # spawning module removed
 from cogent.models import ChatModel
 from cogent.observability import Observer
 from cogent.tools import tool
+import pytest
 
 
 @tool
@@ -23,14 +24,13 @@ def search(query: str) -> str:
 
 
 def test_role_autocomplete():
-    """Role parameter should show autocomplete for: 'worker', 'supervisor', 'reviewer', 'autonomous'."""
+    """Role parameter removed - test kept for reference."""
     model = ChatModel(model="gpt-4o-mini")
 
-    # Pylance should suggest: "worker", "supervisor", "reviewer", "autonomous"
+    # role parameter removed from Agent
     agent = Agent(
         name="Test",
         model=model,
-        role="worker",  # <-- Autocomplete should work here!
     )
 
 
@@ -58,8 +58,8 @@ def test_config_object_types():
         observer=Observer(level="debug"),  # <-- Type hint should show Observer
         # ReasoningConfig should be recognized
         reasoning=ReasoningConfig.standard(),  # <-- Type hint should work
-        # SpawningConfig should be recognized
-        spawning=SpawningConfig(max_concurrent=5),  # <-- Type hint should work
+        # SpawningConfig removed - was part of multi-agent spawning
+        # spawning=SpawningConfig(max_concurrent=5),  # <-- Type hint should work
         # Tools should accept callable
         tools=[search],  # <-- Should accept both BaseTool and Callable
         # Memory should accept bool or AgentMemory
@@ -91,7 +91,7 @@ def test_all_parameters_visible():
     agent = Agent(
         name="Test",
         model=model,
-        role="worker",
+        # role="worker",  # removed
         description="Test agent",
         instructions="You are a test agent",
         tools=[search],
@@ -103,26 +103,25 @@ def test_all_parameters_visible():
         reasoning=False,
         output=None,
         intercept=None,
-        spawning=None,
+        # spawning=None,  # removed
         verbosity=False,
         observer=None,
         taskboard=None,
-        workers=None,
-        criteria=None,
-        specialty=None,
-        can_finish=None,
-        can_delegate=None,
-        can_use_tools=None,
+        # workers=None,  # removed
+        # criteria=None,  # removed
+        # specialty=None,  # removed
+        # can_finish=None,  # removed
+        # can_delegate=None,  # removed
+        # can_use_tools=None,  # removed
         memory=None,
-        store=None,
+        # store=None,  # removed
     )
 
 
 if __name__ == "__main__":
     print("✓ All type hints are properly configured!")
     print("✓ Pylance should now show autocomplete for:")
-    print("  - role: 'worker', 'supervisor', 'reviewer', 'autonomous'")
     print("  - verbose: False, True, 'verbose', 'debug', 'trace'")
-    print("  - All configuration objects: Observer, ReasoningConfig, SpawningConfig")
+    print("  - All configuration objects: Observer, ReasoningConfig")
     print("  - Tools accept: BaseTool, str, Callable")
     print("  - Memory accepts: bool, AgentMemory")

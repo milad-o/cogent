@@ -319,23 +319,6 @@ class TestResponse:
         assert result["error"]["type"] == "Error"
         assert result["success"] is False
 
-    def test_response_to_event(self):
-        """Test converting Response to Event."""
-        tokens = TokenUsage(total_tokens=100)
-        metadata = ResponseMetadata(
-            agent="agent1", tokens=tokens, correlation_id="corr-123"
-        )
-        response = Response(content="done", metadata=metadata)
-
-        event = response.to_event(name="task.done", source="agent1")
-
-        assert event.name == "task.done"
-        assert event.source == "agent1"
-        assert event.data["content"] == "done"
-        assert event.data["success"] is True
-        assert event.correlation_id == "corr-123"
-        assert event.metadata["agent"] == "agent1"
-
     def test_response_generic_type_preservation(self):
         """Test that Response preserves generic type."""
         metadata = ResponseMetadata(agent="test")

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-01-29
+
+### Added
+
+- **Bare Type Support for Structured Output** — Agents can now output primitive types directly
+  - `output=str` — Return bare string values
+  - `output=int` — Return bare integers
+  - `output=bool` — Return bare booleans
+  - `output=float` — Return bare floats
+  - `output=Literal["A", "B"]` — Return bare Literal choices
+  - Access with `result.content.data` (returns value directly, not wrapped in model)
+  - LLM responses automatically unwrapped from single-key JSON dicts
+  - Example: `examples/basics/literal_responses.py` demonstrates both bare types and single-field models
+
+### Changed
+
+- **Schema validation** — `schema_to_json()` now handles primitive types and Literal
+- **Output parsing** — `validate_and_parse()` extracts values from single-key JSON objects
+
 ## [1.0.2] - 2026-01-28
 
 ### Added
