@@ -667,6 +667,39 @@ agent = Agent(name="Reviewer", model="gpt-4o-mini", output=Literal["APPROVE", "R
 result = await agent.run("Review this code")
 print(result.content.data)  # "APPROVE" (bare string)
 
+# Collections - wrap in models for reliability
+class Tags(BaseModel):
+    items: list[str]
+
+agent = Agent(name="Tagger", model="gpt-4o-mini", output=Tags)
+result = await agent.run("Extract tags from: Python async FastAPI")
+print(result.content.data.items)  # ["Python", "async", "FastAPI"]
+
+# Union types - polymorphic responses
+from typing import Union
+
+class Success(BaseModel):
+    status: Literal["success"] = "success"
+    result: str
+
+class Error(BaseModel):
+    status: Literal["error"] = "error"
+    message: str
+
+agent = Agent(name="Handler", model="gpt-4o-mini", output=Union[Success, Error])
+# Agent chooses schema based on content
+
+# Enum types
+from enum import Enum
+
+class Priority(str, Enum):
+    LOW = "low"
+    HIGH = "high"
+
+agent = Agent(name="Prioritizer", model="gpt-4o-mini", output=Priority)
+result = await agent.run("Server is down!")
+print(result.content.data)  # Priority.HIGH
+
 # Dynamic structure - agent decides fields
 agent = Agent(name="Analyzer", model="gpt-4o-mini", output=dict)
 result = await agent.run("Analyze user feedback")
