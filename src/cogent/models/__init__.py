@@ -75,6 +75,14 @@ from __future__ import annotations
 
 from typing import Any
 
+# Auto-load .env file if present
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, rely on system env vars
+
 # Message types and metadata
 from cogent.core.messages import (
     BaseMessage,

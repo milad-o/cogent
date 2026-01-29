@@ -17,13 +17,13 @@ async def main():
     # Simple string model - API key loaded automatically from .env
     assistant = Agent(
         name="Assistant",
-        model="gpt4",  # or "gemini", "claude", etc.
+        model="xai:grok-4-1-fast-non-reasoning",
         instructions="You are a helpful assistant. Be concise.",
     )
 
     # Simple agent call
     result = await assistant.run(
-        "Name three European countries with their capitals.",
+        "Name three European countries and a short description for each.",
     )
     print(f"\n{result.content}")
 

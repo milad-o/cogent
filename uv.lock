@@ -593,10 +593,12 @@ dependencies = [
     { name = "anthropic" },
     { name = "azure-ai-inference" },
     { name = "cerebras-cloud-sdk" },
+    { name = "cohere" },
     { name = "ddgs" },
     { name = "google-genai" },
     { name = "greenlet" },
     { name = "httpx" },
+    { name = "mcp" },
     { name = "networkx" },
     { name = "openai" },
     { name = "pydantic-settings" },
@@ -605,7 +607,10 @@ dependencies = [
     { name = "rank-bm25" },
     { name = "rapidfuzz" },
     { name = "sqlalchemy" },
+    { name = "starlette" },
     { name = "structlog" },
+    { name = "uvicorn" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -756,6 +761,7 @@ requires-dist = [
     { name = "cogent", extras = ["all-providers", "all-backend", "analytics", "api", "browser", "document", "mcp", "web"], marker = "extra == 'all'" },
     { name = "cogent", extras = ["anthropic", "azure", "cohere", "groq"], marker = "extra == 'all-providers'" },
     { name = "cogent", extras = ["vector-stores", "retrieval", "database", "infrastructure"], marker = "extra == 'all-backend'" },
+    { name = "cohere", specifier = ">=5.20.0" },
     { name = "cohere", marker = "extra == 'cohere'", specifier = ">=5.20.0" },
     { name = "crewai", marker = "extra == 'benchmark'", specifier = ">=1.6.0" },
     { name = "ddgs", specifier = ">=9.9.1" },
@@ -766,6 +772,7 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.2.4" },
     { name = "groq", marker = "extra == 'groq'", specifier = ">=0.15.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "mcp", specifier = ">=1.22.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.22.0" },
     { name = "networkx", specifier = ">=3.6" },
     { name = "openai", specifier = ">=1.0.0" },
@@ -790,8 +797,11 @@ requires-dist = [
     { name = "sentence-transformers", marker = "extra == 'retrieval'", specifier = ">=5.2.0" },
     { name = "sqlalchemy", specifier = ">=2.0.44" },
     { name = "sqlalchemy", marker = "extra == 'database'", specifier = ">=2.0.44" },
+    { name = "starlette", specifier = ">=0.50.0" },
     { name = "structlog", specifier = ">=25.5.0" },
+    { name = "uvicorn", specifier = ">=0.38.0" },
     { name = "uvicorn", marker = "extra == 'api'", specifier = ">=0.32.0" },
+    { name = "websockets", specifier = ">=15.0.1" },
     { name = "websockets", marker = "extra == 'mcp'", specifier = ">=15.0.1" },
 ]
 provides-extras = ["anthropic", "azure", "cohere", "groq", "vector-stores", "retrieval", "database", "infrastructure", "analytics", "api", "browser", "document", "mcp", "web", "all-providers", "all-backend", "all", "benchmark"]
