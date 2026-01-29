@@ -77,19 +77,18 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
 
 - **Native Executor** — High-performance parallel tool execution with zero framework overhead
 - **Native Model Support** — OpenAI, Azure, Anthropic, Gemini, Groq, Ollama, Custom endpoints
-- **Multi-Agent Patterns** — Supervisor, Pipeline, Mesh, Hierarchical
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
 - **Memory & Persistence** — Conversation history, long-term memory with fuzzy matching ([docs/memory.md](docs/memory.md))
 - **Memory Control (ACC)** — Bio-inspired bounded memory prevents drift ([docs/acc.md](docs/acc.md))
 - **Semantic Caching** — Cache reasoning artifacts at 80%+ hit rates ([docs/memory.md#semantic-cache](docs/memory.md#semantic-cache))
-- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents and patterns
 - **Observability** — Tracing, metrics, progress tracking, structured logging
+- **TaskBoard** — Built-in task tracking for complex multi-step workflows
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
 - **Resilience** — Retry policies, circuit breakers, fallbacks
 - **Human-in-the-Loop** — Tool approval, guidance, interruption handling
 - **Streaming** — Real-time token streaming with callbacks
-- **Structured Output** — Type-safe responses with Pydantic schemas
+- **Structured Output** — Type-safe responses (Pydantic, dataclass, TypedDict, primitives, Literal, Union, Enum, collections, dict, None)
 - **Reasoning** — Extended thinking mode with chain-of-thought
 
 ---
@@ -123,9 +122,10 @@ agent = Agent("Helper", model="claude")
 agent = Agent("Helper", model="gemini")
 
 # 2. Factory functions
-from cogent.models import create_chat
-model = create_chat("gpt4")  # One argument
-model = create_chat("anthropic", "claude-sonnet-4")  # Two arguments
+from cogent import create_chat, create_embedding
+model = create_chat("gpt4")  # String alias
+model = create_chat("gpt-4o-mini")  # Model name
+embeddings = create_embedding("openai:text-embedding-3-small")  # Explicit provider:model
 
 # 3. Direct instantiation (full control)
 from cogent.models import OpenAIChat
@@ -228,16 +228,17 @@ Semantic search with pluggable backends and embedding providers.
 
 | Provider | Model Examples |
 |----------|----------------|
-| `OpenAIEmbeddings` | `text-embedding-3-small`, `text-embedding-3-large` |
-| `OllamaEmbeddings` | `nomic-embed-text`, `mxbai-embed-large` |
-| `MockEmbeddings` | Testing only |
+| `OpenAI` | `openai:text-embedding-3-small`, `openai:text-embedding-3-large` |
+| `Ollama` | `ollama:nomic-embed-text`, `ollama:mxbai-embed-large` |
+| `Mock` | Testing only |
 
 ```python
-from cogent.vectorstore import VectorStore, OpenAIEmbeddings
+from cogent import create_embedding
+from cogent.vectorstore import VectorStore
 from cogent.vectorstore.backends import FAISSBackend
 
 store = VectorStore(
-    embeddings=OpenAIEmbeddings(model="text-embedding-3-large"),
+    embeddings=create_embedding("openai:text-embedding-3-large"),
     backend=FAISSBackend(dimension=3072),
 )
 ```
@@ -272,7 +273,6 @@ Pluggable execution strategies that define HOW agents process tasks.
 |----------|----------|----------|
 | `NativeExecutor` | Parallel tool execution | Default, high performance |
 | `SequentialExecutor` | Sequential tool execution | Ordered dependencies |
-| `TreeSearchExecutor` | LATS Monte Carlo tree search | Best accuracy, complex reasoning |
 
 **Standalone execution** — bypass Agent class entirely:
 
@@ -284,19 +284,6 @@ result = await run(
     tools=[search, summarize],
     model="gpt-4o-mini",
 )
-```
-
-**Tree Search (LATS)** — explores multiple reasoning paths with backtracking:
-
-```python
-from cogent.executors import TreeSearchExecutor
-
-executor = TreeSearchExecutor(
-    agent,
-    max_iterations=10,
-    exploration_weight=1.414,  # UCB1 exploration constant
-)
-result = await executor.execute("Complex multi-step task")
 ```
 
 ### `cogent.interceptors` — Middleware
@@ -350,27 +337,6 @@ tracer = ExecutionTracer()
 async with tracer.trace("my-operation") as span:
     span.set_attribute("user_id", user_id)
     result = await do_work()
-```
-
-### `cogent.graph` — Visualization
-
-Unified visualization API for agents and execution traces.
-
-**Backends:**
-
-| Method | Output |
-|--------|--------|
-| `.mermaid()` | Mermaid diagram code |
-| `.ascii()` | Terminal-friendly text |
-| `.dot()` | Graphviz DOT format |
-| `.url()` | mermaid.ink shareable URL |
-| `.html()` | Embeddable HTML |
-| `.save()` | PNG, SVG, PDF, HTML |
-
-```python
-view = agent.graph()
-print(view.mermaid())
-view.save("diagram.png")
 ```
 
 ---
@@ -639,11 +605,22 @@ agent = Agent(
 
 ## Structured Output
 
-Type-safe responses with automatic validation:
+Type-safe responses with comprehensive type support and automatic validation:
+
+**Supported Types:**
+- **Structured Models**: `BaseModel`, `dataclass`, `TypedDict`
+- **Primitives**: `str`, `int`, `bool`, `float`
+- **Constrained**: `Literal["A", "B", "C"]`
+- **Collections**: `list[T]`, `set[T]`, `tuple[T, ...]` (wrap in models for reliability)
+- **Polymorphic**: `Union[A, B]` (agent chooses schema)
+- **Enumerations**: `Enum` types
+- **Dynamic**: `dict` (agent decides structure)
+- **Confirmation**: `None` type
 
 ```python
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Union
+from enum import Enum
 from cogent import Agent
 
 # Structured models
@@ -790,48 +767,82 @@ OLLAMA_HOST=http://localhost:11434
 
 ## Examples
 
-See `examples/` for complete examples:
+See `examples/` for complete examples organized by category:
+
+### Basics (`examples/basics/`)
 
 | Example | Description |
 |---------|-------------|
-| `01_basic_usage.py` | Simple agent with tools |
-| `flow/flow_basics.py` | Multi-agent patterns |
-| `03_flow.py` | Flow orchestration |
-| `04_events.py` | Event system |
-| `05_observability.py` | Tracing and metrics |
-| `06_memory.py` | Conversation persistence |
-| `07_roles.py` | Agent roles |
-| `08_mesh_writers.py` | Mesh collaboration |
-| `09_hierarchical_roles.py` | Hierarchical teams |
-| `10_agentic_rag.py` | RAG with agents |
-| `11_supervisor_chat.py` | Supervisor pattern |
-| `12_knowledge_graph.py` | Knowledge graphs |
-| `13_codebase_analyzer.py` | Code analysis |
-| `14_filesystem.py` | File operations |
-| `15_web_search.py` | Web search capability |
-| `16_code_sandbox.py` | Safe code execution |
-| `17_ssis_analyzer.py` | SSIS analysis |
-| `18_human_in_the_loop.py` | Approval workflows |
-| `19_streaming.py` | Real-time streaming |
-| `20_mcp.py` | MCP server integration |
-| `21_deferred_tools.py` | Deferred tool execution |
-| `22_rag_pipelines.py` | RAG pipelines |
-| `23_pdf.py` | PDF processing |
-| `24_structured_output.py` | Type-safe responses |
-| `25_browser.py` | Web browsing |
-| `26_spreadsheet.py` | Excel/CSV operations |
-| `27_deep_observability.py` | Deep tracing |
-| `28_reasoning.py` | Extended thinking |
-| `29_interceptors.py` | Middleware patterns |
-| `30_shell.py` | Shell commands |
-| `31_context_layer.py` | Context management |
-| `32_spawning_agents.py` | Dynamic agent creation |
-| `33_graph_api.py` | Visualization API |
-| `34_pdf_markdown.py` | PDF to Markdown |
-| `35_pdf_html.py` | PDF to HTML (complex tables) |
-| `35_pdf_rag.py` | PDF RAG pipeline |
-| `36_summarizer.py` | Document summarization |
-| `37_pdf_summarizer.py` | PDF summarization |
+| `hello_world.py` | Simple agent with tools |
+| `memory.py` | Conversation persistence |
+| `memory_layers.py` | Multi-layer memory management |
+| `memory_semantic_search.py` | Semantic memory search |
+| `streaming.py` | Real-time token streaming |
+| `structured_output.py` | Type-safe responses (12 patterns) |
+
+### Capabilities (`examples/capabilities/`)
+
+| Example | Description |
+|---------|-------------|
+| `browser.py` | Web browsing with Playwright |
+| `code_sandbox.py` | Safe Python execution |
+| `codebase_analyzer.py` | Code analysis agent |
+| `data_validator.py` | Schema validation |
+| `database_agent.py` | SQL database operations |
+| `filesystem.py` | File system operations |
+| `http_agent.py` | HTTP client capability |
+| `kg_agent_viz.py` | Knowledge graph visualization |
+| `knowledge_graph.py` | Knowledge graph construction |
+| `mcp_example.py` | Model Context Protocol integration |
+| `shell.py` | Shell command execution |
+| `spreadsheet.py` | Excel/CSV operations |
+| `web_search.py` | Web search with caching |
+
+### Advanced (`examples/advanced/`)
+
+| Example | Description |
+|---------|-------------|
+| `acc.py` | Adaptive Context Control (bounded memory) |
+| `acc_comparison.py` | ACC vs standard memory comparison |
+| `complex_task.py` | Multi-step task handling |
+| `content_review.py` | Content moderation |
+| `context_layer.py` | Context management |
+| `deferred_tools.py` | Deferred tool execution |
+| `executors_demo.py` | Executor strategies (Sequential, Tree Search) |
+| `human_in_the_loop.py` | Approval workflows |
+| `interceptors.py` | Middleware patterns |
+| `model_thinking.py` | Extended thinking mode |
+| `reasoning.py` | Reasoning strategies |
+| `semantic_cache.py` | Semantic caching demo |
+| `single_vs_multi_agent.py` | Single vs delegated agents |
+| `tactical_delegation.py` | Dynamic agent spawning |
+| `taskboard.py` | TaskBoard for complex workflows |
+
+### Retrieval (`examples/retrieval/`)
+
+| Example | Description |
+|---------|-------------|
+| `finance_table_example.py` | Financial data extraction |
+| `hyde.py` | Hypothetical Document Embeddings |
+| `pdf_summarizer.py` | PDF document summarization |
+| `pdf_vision_showcase.py` | Vision-based PDF extraction |
+| `retrievers.py` | 12 retriever strategies (Dense, BM25, Hybrid, etc.) |
+| `summarizer.py` | Document summarization strategies |
+
+### Observability (`examples/observability/`)
+
+| Example | Description |
+|---------|-------------|
+| `agent_lifecycle.py` | Agent lifecycle events |
+| `custom_formatter.py` | Custom log formatting |
+| `custom_sink.py` | Custom logging sinks |
+| `deep_tracing.py` | Deep execution tracing |
+| `enhanced_features.py` | Enhanced observability features |
+| `observer.py` | Observer pattern usage |
+| `reasoning_observability.py` | Reasoning mode observability |
+| `response_metadata.py` | Response metadata tracking |
+| `thinking_observability.py` | Extended thinking observability |
+| `tool_resilience.py` | Tool resilience monitoring |
 
 ## Development
 
