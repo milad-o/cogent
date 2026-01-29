@@ -647,7 +647,8 @@ Enforce response schemas with validation:
 
 ```python
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, Union
+from enum import Enum
 
 # Structured models
 class ContactInfo(BaseModel):
@@ -669,10 +670,44 @@ agent = Agent(name="Reviewer", model=model, output=Literal["PROCEED", "REVISE"])
 result = await agent.run("Review this code")
 print(result.content.data)  # "PROCEED" (bare string, not wrapped)
 
+# Collections - wrap in models for reliability
+class Tags(BaseModel):
+    items: list[str]
+
+agent = Agent(name="Tagger", model=model, output=Tags)
+result = await agent.run("Extract tags")
+print(result.content.data.items)  # ["tag1", "tag2", ...]
+
+# Union types - polymorphic responses
+class Success(BaseModel):
+    status: Literal["success"] = "success"
+    result: str
+
+class Error(BaseModel):
+    status: Literal["error"] = "error"
+    message: str
+
+agent = Agent(name="Handler", model=model, output=Union[Success, Error])
+# Agent chooses which schema based on content
+
+# Enum types
+class Priority(str, Enum):
+    LOW = "low"
+    HIGH = "high"
+
+agent = Agent(name="Prioritizer", model=model, output=Priority)
+result = await agent.run("Critical issue!")
+print(result.content.data)  # Priority.HIGH
+
 # Dynamic structure - agent decides fields
 agent = Agent(name="Analyzer", model=model, output=dict)
 result = await agent.run("Analyze user feedback")
 print(result.content.data)  # {"sentiment": "positive", "score": 8, ...}
+
+# None type - confirmations
+agent = Agent(name="Executor", model=model, output=type(None))
+result = await agent.run("Delete temp files")
+print(result.content.data)  # None
 
 # Other bare types: str, int, bool, float
 agent = Agent(name="Counter", model=model, output=int)
@@ -686,6 +721,10 @@ Supported schema types:
 - **TypedDict** - Typed dictionaries
 - **Bare primitives** - `str`, `int`, `bool`, `float`
 - **Bare Literal** - `Literal["A", "B", ...]` for constrained choices
+- **Collections** - `list[T]`, `set[T]`, `tuple[T, ...]` (wrap in models for reliability)
+- **Union types** - `Union[A, B]` for polymorphic responses
+- **Enum types** - `class MyEnum(str, Enum)` for type-safe choices
+- **None type** - `type(None)` for confirmation responses
 - **dict** - Agent-decided dynamic structure (any fields)
 - **JSON Schema** - Raw JSON Schema dicts
 

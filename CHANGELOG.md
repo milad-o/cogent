@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Comprehensive structured output types** — Full type system support
+  - Collections: `list[T]`, `set[T]`, `tuple[T, ...]` (wrap in models for reliability)
+  - Union types: `Union[A, B]` for polymorphic responses where agent chooses schema
+  - Enum types: `class Priority(str, Enum)` for type-safe choices with behavior
+  - None type: `type(None)` for confirmation responses
+  - All types work with automatic validation and retry
+  
 - **dict type support for dynamic schemas** — `output=dict` allows agent to decide structure
   - Agent chooses fields and structure based on content
   - Useful when output structure varies or is unknown beforehand
