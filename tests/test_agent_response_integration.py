@@ -116,23 +116,6 @@ class TestAgentResponseIntegration:
         assert data["error"] is None
 
     @pytest.mark.asyncio
-    async def test_response_to_event(self):
-        """Test converting response to event."""
-        agent = Agent(
-            name="TestAgent",
-            model=MockChatModel(responses=["Result"]),
-        )
-
-        response = await agent.think("Test", correlation_id="corr-456")
-        event = response.to_event("task.done", "TestAgent")
-
-        assert event.name == "task.done"
-        assert event.source == "TestAgent"
-        assert event.data["content"] == "Result"
-        assert event.data["success"] is True
-        assert event.correlation_id == "corr-456"
-
-    @pytest.mark.asyncio
     async def test_response_includes_messages(self):
         """Test that response includes conversation messages."""
         agent = Agent(

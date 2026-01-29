@@ -647,7 +647,9 @@ Enforce response schemas with validation:
 
 ```python
 from pydantic import BaseModel, Field
+from typing import Literal
 
+# Structured models
 class ContactInfo(BaseModel):
     name: str = Field(description="Full name")
     email: str = Field(description="Email address")
@@ -660,8 +662,26 @@ agent = Agent(
 )
 
 result = await agent.run("Extract: John Doe, john@acme.com")
-print(result.data)  # ContactInfo(name="John Doe", ...)
+print(result.content.data)  # ContactInfo(name="John Doe", ...)
+
+# Bare types - return primitive values directly
+agent = Agent(name="Reviewer", model=model, output=Literal["PROCEED", "REVISE"])
+result = await agent.run("Review this code")
+print(result.content.data)  # "PROCEED" (bare string, not wrapped)
+
+# Other bare types: str, int, bool, float
+agent = Agent(name="Counter", model=model, output=int)
+result = await agent.run("How many items?")
+print(result.content.data)  # 42 (bare int)
 ```
+
+Supported schema types:
+- **Pydantic models** - Full validation with `BaseModel`
+- **Dataclasses** - Standard Python dataclasses
+- **TypedDict** - Typed dictionaries
+- **Bare primitives** - `str`, `int`, `bool`, `float`
+- **Bare Literal** - `Literal["A", "B", ...]` for constrained choices
+- **JSON Schema** - Raw JSON Schema dicts
 
 ## TaskBoard
 

@@ -210,30 +210,31 @@ class Response[T]:
             raise ResponseError(self.error.message, response=self)
         return self.content
 
-    def to_event(self, name: str, source: str) -> Event:
-        """Convert response to event with full metadata.
-
-        Args:
-            name: Event name (e.g., "task.done")
-            source: Event source (e.g., agent name)
-
-        Returns:
-            Event with response data and metadata
-        """
-        from cogent.events import Event
-
-        return Event(
-            name=name,
-            source=source,
-            data={
-                "content": self.content,
-                "metadata": self.metadata.to_dict(),
-                "tool_calls": [tc.to_dict() for tc in self.tool_calls],
-                "success": self.success,
-            },
-            correlation_id=self.metadata.correlation_id,
-            metadata=self.metadata.to_dict(),
-        )
+    # REMOVED: to_event method - cogent.events module removed
+    # def to_event(self, name: str, source: str) -> Event:
+    #     """Convert response to event with full metadata.
+    #
+    #     Args:
+    #         name: Event name (e.g., "task.done")
+    #         source: Event source (e.g., agent name)
+    #
+    #     Returns:
+    #         Event with response data and metadata
+    #     """
+    #     from cogent.events import Event
+    #
+    #     return Event(
+    #         name=name,
+    #         source=source,
+    #         data={
+    #             "content": self.content,
+    #             "metadata": self.metadata.to_dict(),
+    #             "tool_calls": [tc.to_dict() for tc in self.tool_calls],
+    #             "success": self.success,
+    #         },
+    #         correlation_id=self.metadata.correlation_id,
+    #         metadata=self.metadata.to_dict(),
+    #     )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""

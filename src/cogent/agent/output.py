@@ -4,15 +4,19 @@ Structured Output - enforce response schemas on agent outputs.
 Cogent's approach to structured output:
 - Agent-level configuration via `output` parameter
 - Supports Pydantic, dataclass, TypedDict, and JSON Schema
+- Supports bare primitive types: str, int, bool, float
+- Supports bare Literal types: Literal["A", "B", ...]
 - Automatic validation with configurable retry
 - Provider-native support where available (OpenAI, Anthropic)
 - Fallback to tool-based extraction for other providers
 
 Usage:
     from pydantic import BaseModel, Field
+    from typing import Literal
     from cogent import Agent
     from cogent.models.openai import OpenAIChat
 
+    # Structured model
     class ContactInfo(BaseModel):
         '''Contact information extracted from text.'''
         name: str = Field(description="Person's full name")
@@ -26,7 +30,12 @@ Usage:
     )
 
     result = await agent.run("Extract: John Doe, john@acme.com, 555-1234")
-    # result.structured -> ContactInfo(name="John Doe", email="john@acme.com", phone="555-1234")
+    # result.content.data -> ContactInfo(name="John Doe", email="john@acme.com", phone="555-1234")
+    
+    # Bare types
+    agent = Agent(name="Reviewer", model=OpenAIChat(), output=Literal["PROCEED", "REVISE"])
+    result = await agent.run("Review this code change")
+    # result.content.data -> "PROCEED" (bare string, not wrapped in model)
 """
 
 from __future__ import annotations
@@ -252,6 +261,8 @@ def schema_to_json(schema: type | dict[str, Any]) -> dict[str, Any]:
     - Pydantic models (uses model_json_schema)
     - Dataclasses (converts to JSON Schema)
     - TypedDict (converts to JSON Schema)
+    - Primitive types (str, int, bool, float)
+    - Literal types (Literal["A", "B"])
     - dict (assumes already JSON Schema)
 
     Args:
@@ -279,9 +290,14 @@ def schema_to_json(schema: type | dict[str, Any]) -> dict[str, Any]:
     if is_typed_dict(schema):
         return _typed_dict_to_json_schema(schema)
 
+    # Bare primitive types and Literal
+    origin = get_origin(schema)
+    if origin is not None or schema in (str, int, bool, float):
+        return _python_type_to_json_schema(schema)
+
     raise TypeError(
         f"Unsupported schema type: {type(schema).__name__}. "
-        "Use Pydantic BaseModel, dataclass, TypedDict, or JSON Schema dict."
+        "Use Pydantic BaseModel, dataclass, TypedDict, primitive type, Literal, or JSON Schema dict."
     )
 
 
@@ -486,7 +502,70 @@ def validate_and_parse[T](
     Raises:
         OutputValidationError: If validation fails.
     """
-    # Parse if string
+    # Handle bare primitive types - raw might already be the value
+    if schema in (str, int, bool, float):
+        if isinstance(raw, str):
+            try:
+                # Try parsing as JSON first (for "true", "123", etc.)
+                data = parse_json_output(raw)
+                # If it's a dict with one key, extract the value
+                if isinstance(data, dict) and len(data) == 1:
+                    data = list(data.values())[0]
+            except json.JSONDecodeError:
+                # If not JSON, use the raw string value
+                data = raw
+        else:
+            data = raw
+            # If it's a dict with one key, extract the value
+            if isinstance(data, dict) and len(data) == 1:
+                data = list(data.values())[0]
+        
+        # Validate type
+        try:
+            if schema is str:
+                return str(data)
+            elif schema is int:
+                return int(data)
+            elif schema is bool:
+                return bool(data)
+            elif schema is float:
+                return float(data)
+        except (ValueError, TypeError) as e:
+            raise OutputValidationError(
+                f"Failed to convert to {schema.__name__}: {e}",
+                schema=schema,
+                raw_output=raw if isinstance(raw, str) else str(raw),
+            ) from e
+    
+    # Handle Literal types
+    origin = get_origin(schema)
+    if origin is not None:
+        from typing import Literal
+        if origin is Literal:
+            args = get_args(schema)
+            if isinstance(raw, str):
+                try:
+                    data = parse_json_output(raw)
+                    # If it's a dict with one key, extract the value
+                    if isinstance(data, dict) and len(data) == 1:
+                        data = list(data.values())[0]
+                except json.JSONDecodeError:
+                    data = raw
+            else:
+                data = raw
+                # If it's a dict with one key, extract the value
+                if isinstance(data, dict) and len(data) == 1:
+                    data = list(data.values())[0]
+            
+            if data not in args:
+                raise OutputValidationError(
+                    f"Value must be one of {args}, got: {data}",
+                    schema=schema,
+                    raw_output=raw if isinstance(raw, str) else str(raw),
+                )
+            return data
+    
+    # Parse if string (for structured types)
     if isinstance(raw, str):
         try:
             data = parse_json_output(raw)
