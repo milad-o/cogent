@@ -4,9 +4,9 @@ This example demonstrates the Generator + Verifier pattern based on:
 arXiv:2601.14652 - Multi-agent only helps for verification + parallel tasks
 
 Features:
-- Orchestrator with reasoning (o3-mini) manages the workflow
-- TaskBoard for explicit state/task tracking
-- Writer and Judge as agent-tools (different models for diversity)
+- Orchestrator (Gemini 2.5 Flash) manages the workflow with TaskBoard
+- Writer agents at different complexity tiers (Flash/Flash/Pro)
+- Judge agent (Gemini 2.5 Flash) for quality verification
 - Dynamic model selection based on content complexity
 - HITL when judge escalates
 
@@ -20,7 +20,6 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from cogent import Agent, HumanDecision, InterruptedException, Observer
-from cogent.agent import ReasoningConfig
 from cogent.tools.base import tool
 
 
@@ -39,7 +38,7 @@ class ComplexityAssessment(BaseModel):
         description="Factors contributing to complexity"
     )
     recommended_model: str = Field(
-        description="Recommended model: gpt4-mini for simple, gpt4 for moderate, o3-mini for complex"
+        description="Recommended model: gemini-2.0-flash for simple, gemini-2.5-flash for moderate, gemini-2.5-pro for complex"
     )
 
 
@@ -74,7 +73,7 @@ async def main() -> None:
     # -------------------------------------------------------------------------
     complexity_assessor = Agent(
         name="ComplexityAssessor",
-        model="gpt4-mini",  # Fast, cheap for assessment
+        model="gemini-2.0-flash",  # Fast, cheap for assessment
         output=ComplexityAssessment,
         instructions="""Assess content brief complexity.
 
@@ -83,9 +82,9 @@ moderate: Multiple features, nuanced tone, some constraints
 complex: Sensitive topics, legal/regulatory, multiple stakeholders, ambiguity
 
 Recommend model based on complexity:
-- simple → gpt4-mini (fast, cost-effective)
-- moderate → gpt4 (balanced)
-- complex → o3-mini (reasoning for nuanced content)""",
+- simple → gemini-2.0-flash (fast, cost-effective)
+- moderate → gemini-2.5-flash (balanced)
+- complex → gemini-2.5-pro (reasoning for nuanced content)""",
     )
 
     # -------------------------------------------------------------------------
@@ -93,14 +92,14 @@ Recommend model based on complexity:
     # -------------------------------------------------------------------------
     writer_simple = Agent(
         name="ContentWriter-Fast",
-        model="gpt4-mini",
+        model="gemini-2.0-flash",
         instructions="""You are a marketing copywriter for straightforward content.
 Write clear, professional content. Follow the brief exactly.""",
     )
 
     writer_standard = Agent(
         name="ContentWriter-Standard",
-        model="gpt4",
+        model="gemini-2.5-flash",
         instructions="""You are a marketing copywriter.
 Write compelling, professional content. Balance creativity with clarity.
 If feedback provided, address ALL issues.""",
@@ -108,7 +107,7 @@ If feedback provided, address ALL issues.""",
 
     writer_complex = Agent(
         name="ContentWriter-Advanced",
-        model="o3-mini",  # Reasoning model for complex/sensitive content
+        model="gemini-2.5-pro",  # Pro model for complex/sensitive content
         instructions="""You are a senior marketing copywriter for sensitive content.
 Think carefully about tone, implications, and audience perception.
 Balance marketing goals with accuracy and responsibility.""",
@@ -119,7 +118,7 @@ Balance marketing goals with accuracy and responsibility.""",
     # -------------------------------------------------------------------------
     judge = Agent(
         name="QualityJudge",
-        model="gemini",
+        model="gemini-2.5-flash",
         output=JudgeVerdict,
         instructions="""You are a content quality judge.
 
@@ -148,8 +147,7 @@ Decisions:
     # -------------------------------------------------------------------------
     orchestrator = Agent(
         name="ContentOrchestrator",
-        model="gpt4",  # GPT-4 with reasoning config
-        reasoning=ReasoningConfig.standard(),  # Enable reasoning for orchestration
+        model="gemini-2.5-flash",  # Gemini 2.5 Flash
         tools=[
             complexity_assessor.as_tool(
                 name="assess_complexity",
@@ -179,30 +177,28 @@ WORKFLOW (use taskboard to track each step):
 
 1. ASSESS: Use assess_complexity to determine brief complexity
    → Add task: "Assess complexity"
-   → Result tells you which writer to use
+   → Execute assess_complexity
+   → Update task to completed with result
 
 2. DRAFT: Use the appropriate writer based on complexity
    - simple → draft_simple
    - moderate → draft_standard  
    - complex → draft_complex
    → Add task: "Generate draft"
-   → SAVE the generated content for the next step
+   → Execute the writer
+   → Update task to completed, SAVE the generated content
 
 3. JUDGE: Use judge_content to evaluate
-   → IMPORTANT: Pass BOTH the original brief AND the full content to judge_content
-   → Format: "Brief: [brief]\n\nContent to evaluate:\n[full content]"
    → Add task: "Quality review"
-   → If APPROVE: Complete workflow
+   → Pass BOTH brief AND full content: "Brief: [brief]\n\nContent:\n[content]"
+   → Update task to completed with verdict
+   → If APPROVE: Go to step 4
    → If REVISE: Go back to step 2 with feedback (max 3 attempts)
    → If ESCALATE: Use escalate_to_human tool
 
 4. COMPLETE: Return final approved content
 
-CRITICAL: When calling judge_content, you MUST include the actual content text.
-Do not just describe the content - pass the full text.
-
-Use add_note to record important observations (complexity factors, judge feedback).
-Use verify_task after each major step.""",
+IMPORTANT: Always update_task to 'completed' BEFORE moving to next step or finishing.""",
         taskboard=True,  # Enable taskboard for state tracking
         interrupt_on={"escalate_to_human": True},
         observer=observer,
