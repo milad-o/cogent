@@ -76,9 +76,12 @@ print(response.content)
 - **OpenAI:** `gpt-`, `o1-`, `o3-`, `o4-`, `text-embedding-`, `gpt-audio`, `gpt-realtime`, `sora-`
 - **Gemini:** `gemini-`, `text-embedding-`
 - **Anthropic:** `claude-`
+- **xAI:** `grok-`
+- **DeepSeek:** `deepseek-`
+- **Cerebras:** `llama3.1-`, `llama-3.3-`, `qwen-3-`, `gpt-oss-`
 - **Mistral:** `mistral-`, `ministral-`, `magistral-`, `devstral-`, `codestral-`, `voxtral-`, `ocr-`
 - **Cohere:** `command-`, `c4ai-aya-`, `embed-`, `rerank-`
-- **Groq:** `llama-`, `mixtral-`, `qwen-`, `deepseek-`, `gemma-`
+- **Groq:** `llama-`, `mixtral-`, `qwen-`, `gemma-`
 - **Cloudflare:** `@cf/`
 
 ### Tier 3: Low-Level (Direct Model Classes)
@@ -296,6 +299,153 @@ bound = model.bind_tools([search])
 response = await bound.ainvoke([
     {"role": "user", "content": "Search for AI news"}
 ])
+
+if response.tool_calls:
+    print(response.tool_calls)
+```
+
+---
+
+## xAI (Grok)
+
+```python
+from cogent.models import XAIChat
+
+# Latest flagship model
+model = XAIChat(model="grok-4", api_key="xai-...")
+
+# Fast agentic model (2M context)
+model = XAIChat(model="grok-4-1-fast")
+
+# Vision model
+model = XAIChat(model="grok-2-vision-1212")
+
+# With reasoning effort (grok-3-mini only)
+model = XAIChat(model="grok-3-mini", reasoning_effort="high")
+response = await model.ainvoke("What is 101 * 3?")
+print(response.metadata.tokens.reasoning_tokens)
+```
+
+**Available Models:**
+- `grok-4` (alias: `grok-4-0709`): Latest reasoning model, 256K context
+- `grok-4-1-fast`: Frontier multimodal, 2M context, optimized for tool calling
+- `grok-4-1-fast-reasoning`: With explicit reasoning
+- `grok-4-1-fast-non-reasoning`: Faster, no reasoning
+- `grok-3`, `grok-3-mini`: Previous generation
+- `grok-2-vision-1212`: Vision model
+
+**Environment Variable:** `XAI_API_KEY`
+
+---
+
+## DeepSeek
+
+```python
+from cogent.models import DeepSeekChat
+
+# Standard chat model
+model = DeepSeekChat(model="deepseek-chat", api_key="sk-...")
+
+# Reasoning model with Chain of Thought
+model = DeepSeekChat(model="deepseek-reasoner")
+response = await model.ainvoke("9.11 and 9.8, which is greater?")
+
+# Access reasoning content
+if hasattr(response, 'reasoning'):
+    print("Reasoning:", response.reasoning)
+print("Answer:", response.content)
+```
+
+**Available Models:**
+- `deepseek-chat`: General chat model with function calling
+- `deepseek-reasoner`: Reasoning model with Chain of Thought (no function calling)
+
+**Environment Variable:** `DEEPSEEK_API_KEY`
+
+**Note:** DeepSeek Reasoner does NOT support function calling, temperature, or sampling parameters.
+
+---
+
+## Cerebras (Ultra-Fast Inference)
+
+```python
+from cogent.models import CerebrasChat
+
+# Llama 3.1 8B (default)
+model = CerebrasChat(model="llama3.1-8b", api_key="csk-...")
+
+# Llama 3.3 70B
+model = CerebrasChat(model="llama-3.3-70b")
+
+# Streaming
+async for chunk in model.astream(messages):
+    print(chunk.content, end="")
+```
+
+**Available Models:**
+- `llama3.1-8b`: Llama 3.1 8B (default)
+- `llama-3.3-70b`: Llama 3.3 70B
+- `qwen-3-32b`: Qwen 3 32B
+- `gpt-oss-120b`: GPT OSS 120B (reasoning model)
+
+**Environment Variable:** `CEREBRAS_API_KEY`
+
+**Note:** Cerebras provides industry-leading inference speed using Wafer-Scale Engine (WSE-3).
+
+---
+
+## Cloudflare Workers AI
+
+```python
+from cogent.models import CloudflareChat, CloudflareEmbedding
+
+# Chat models
+model = CloudflareChat(
+    model="@cf/meta/llama-3.3-70b-instruct",
+    account_id="...",
+    api_key="...",
+)
+
+# Embeddings
+embeddings = CloudflareEmbedding(
+    model="@cf/baai/bge-base-en-v1.5",
+    account_id="...",
+    api_key="...",
+)
+```
+
+**Available Models:** All Cloudflare Workers AI models with `@cf/` prefix
+
+**Environment Variables:** `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`
+
+---
+
+## Azure AI Foundry (GitHub Models)
+
+```python
+from cogent.models.azure import AzureAIFoundryChat
+
+# GitHub Models
+model = AzureAIFoundryChat.from_github(
+    model="meta/Meta-Llama-3.1-8B-Instruct",
+    token=os.getenv("GITHUB_TOKEN"),
+)
+
+# Azure AI Foundry endpoint
+model = AzureAIFoundryChat(
+    model="gpt-4o-mini",
+    endpoint="https://...",
+    api_key="...",
+)
+```
+
+**Available via GitHub Models:** Llama, Phi, Mistral, Cohere, and more
+
+**Environment Variable:** `GITHUB_TOKEN`
+
+---
+
+## Previous Provider Sections Continue Below
 
 if response.tool_calls:
     for call in response.tool_calls:
