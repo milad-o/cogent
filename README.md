@@ -104,12 +104,17 @@ Native SDK wrappers for all major LLM providers with zero abstraction overhead.
 | Provider | Chat | Embeddings | String Alias | Notes |
 |----------|------|------------|--------------|-------|
 | **OpenAI** | `OpenAIChat` | `OpenAIEmbedding` | `"gpt4"`, `"gpt-4o"`, `"gpt-4o-mini"` | GPT-4o series, o1, o3 |
-| **Azure** | `AzureOpenAIChat` | `AzureOpenAIEmbedding` | — | Managed Identity, Azure AD support |
+| **Azure** | `AzureOpenAIChat` | `AzureOpenAIEmbedding` | — | Managed Identity, Entra ID auth |
+| **Azure AI Foundry** | `AzureAIFoundryChat` | — | — | GitHub Models integration |
 | **Anthropic** | `AnthropicChat` | — | `"claude"`, `"claude-opus"` | Claude 3.5 Sonnet, extended thinking |
-| **Gemini** | `GeminiChat` | `GeminiEmbedding` | `"gemini"`, `"gemini-pro"` | Gemini 1.5 Pro/Flash, Gemini 2.0 |
+| **Gemini** | `GeminiChat` | `GeminiEmbedding` | `"gemini"`, `"gemini-pro"` | Gemini 2.5 Pro/Flash |
 | **Groq** | `GroqChat` | — | `"llama"`, `"mixtral"` | Fast inference, Llama 3.3, Mixtral |
+| **xAI** | `XAIChat` | — | `"grok"` | Grok 4, Grok 3, vision models |
+| **DeepSeek** | `DeepSeekChat` | — | `"deepseek"` | DeepSeek Chat, DeepSeek Reasoner |
+| **Cerebras** | `CerebrasChat` | — | `"cerebras"` | Ultra-fast inference with WSE-3 |
 | **Mistral** | `MistralChat` | `MistralEmbedding` | `"mistral"`, `"codestral"` | Mistral Large, Ministral |
 | **Cohere** | `CohereChat` | `CohereEmbedding` | `"command"`, `"command-r"` | Command R+, Aya |
+| **Cloudflare** | `CloudflareChat` | `CloudflareEmbedding` | — | Workers AI (@cf/...) |
 | **Ollama** | `OllamaChat` | `OllamaEmbedding` | `"ollama"` | Local models, any GGUF |
 | **Custom** | `CustomChat` | `CustomEmbedding` | — | vLLM, Together AI, any OpenAI-compatible |
 
@@ -125,11 +130,16 @@ agent = Agent("Helper", model="gemini")
 from cogent import create_chat, create_embedding
 model = create_chat("gpt4")  # String alias
 model = create_chat("gpt-4o-mini")  # Model name
+model = create_chat("claude-sonnet-4")  # Auto-detects provider
+model = create_chat("grok-4")  # xAI Grok
+model = create_chat("deepseek-chat")  # DeepSeek
 embeddings = create_embedding("openai:text-embedding-3-small")  # Explicit provider:model
 
 # 3. Direct instantiation (full control)
-from cogent.models import OpenAIChat
+from cogent.models import OpenAIChat, XAIChat, DeepSeekChat
 model = OpenAIChat(model="gpt-4o", temperature=0.7, api_key="sk-...")
+model = XAIChat(model="grok-4", api_key="xai-...")
+model = DeepSeekChat(model="deepseek-reasoner", api_key="sk-...")
 ```
 
 ### `cogent.capabilities` — Agent Capabilities
