@@ -372,10 +372,15 @@ class GeminiChat(BaseChatModel):
     Available models:
     - gemini-2.5-pro-preview-05-06 (thinking with budget)
     - gemini-2.5-flash-preview-05-20 (fast thinking with budget)
-    - gemini-2.0-flash (latest non-thinking)
+    - gemini-2.0-flash (latest stable non-thinking)
     - gemini-2.0-flash-exp (experimental)
     - gemini-1.5-pro
     - gemini-1.5-flash
+    
+    Gemini 3 (Preview - Not Production Ready):
+    - gemini-3-pro-preview (most capable, 1M context)
+    - gemini-3-flash-preview (fast, 1M context)
+    - gemini-3-pro-image-preview (Nano Banana Pro, 131K context)
 
     Example:
         from cogent.models.gemini import GeminiChat

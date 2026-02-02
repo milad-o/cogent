@@ -30,9 +30,11 @@ agent = Agent("Helper", model="openai:gpt-4o")
 **30+ Model Aliases:**
 - `gpt4`, `gpt4-mini`, `gpt4-turbo`, `gpt35`
 - `claude`, `claude-opus`, `claude-haiku`
-- `gemini`, `gemini-flash`, `gemini-pro`
+- `gemini`, `gemini-flash`, `gemini-pro`, `gemini3` ⚠️
 - `llama`, `llama-70b`, `llama-8b`, `mixtral`
 - `ollama`
+
+⚠️ = Preview model (not production-ready)
 
 **API Key Loading** (Priority Order):
 1. Explicit `api_key=` parameter (highest)
@@ -639,9 +641,18 @@ response = await model.ainvoke([
     {"role": "user", "content": "What is the capital of France?"}
 ])
 
+# Gemini 3 Preview (Not Production Ready)
+model = GeminiChat(model="gemini-3-flash-preview")
+# ⚠️ WARNING: Preview models may have breaking changes or be removed
+
 # Embeddings
 embeddings = GeminiEmbedding(model="text-embedding-004")
 ```
+
+**Available Models:**
+- `gemini-2.5-pro`, `gemini-2.5-flash` (Stable, 1M context)
+- `gemini-2.0-flash` (Stable)
+- `gemini-3-pro-preview`, `gemini-3-flash-preview` ⚠️ (Preview only)
 
 ---
 

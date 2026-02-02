@@ -41,6 +41,11 @@ class TestModelAliases:
         assert resolve_model("gemini") == ("gemini", "gemini-2.5-flash")
         assert resolve_model("gemini-flash") == ("gemini", "gemini-2.5-flash")
         assert resolve_model("gemini-pro") == ("gemini", "gemini-2.5-pro")
+        # Gemini 3 preview models
+        assert resolve_model("gemini3") == ("gemini", "gemini-3-pro-preview")
+        assert resolve_model("gemini-3") == ("gemini", "gemini-3-pro-preview")
+        assert resolve_model("gemini-3-pro") == ("gemini", "gemini-3-pro-preview")
+        assert resolve_model("gemini-3-flash") == ("gemini", "gemini-3-flash-preview")
 
     def test_groq_aliases(self):
         """Test Groq model aliases."""

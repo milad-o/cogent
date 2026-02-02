@@ -37,9 +37,12 @@ MODEL_ALIASES: dict[str, str] = {
     "gemini-flash": "gemini-2.5-flash",
     "gemini-pro": "gemini-2.5-pro",
     "gemini-exp": "gemini-2.0-flash-thinking-exp-1219",
-    "gemini3": "gemini-3-pro",
-    "gemini-3": "gemini-3-pro",
-    "gemini-3-flash": "gemini-3-flash",
+    # Gemini 3 (Preview - Not Production Ready)
+    "gemini3": "gemini-3-pro-preview",
+    "gemini-3": "gemini-3-pro-preview",
+    "gemini-3-pro": "gemini-3-pro-preview",
+    "gemini-3-flash": "gemini-3-flash-preview",
+    "gemini-3-image": "gemini-3-pro-image-preview",  # Nano Banana Pro
     # Groq (fast inference)
     "llama": "llama-3.3-70b-versatile",
     "llama-70b": "llama-3.3-70b-versatile",
