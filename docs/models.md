@@ -633,7 +633,7 @@ Google's Gemini models:
 from cogent.models.gemini import GeminiChat, GeminiEmbedding
 
 model = GeminiChat(
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",  # Default (upgraded from 2.0)
     api_key="...",  # Or GOOGLE_API_KEY env var
 )
 
@@ -645,10 +645,10 @@ response = await model.ainvoke([
 model = GeminiChat(model="gemini-3-flash-preview")
 # ⚠️ WARNING: Preview models may have breaking changes or be removed
 
-# With thinking (Gemini 3 supports thinking_budget)
+# Native Thinking (opt-in for cost efficiency)
 model = GeminiChat(
-    model="gemini-3-flash-preview",
-    thinking_budget=8192,  # Enable thinking
+    model="gemini-2.5-flash",
+    thinking_budget=16384,  # Enable thinking (default: 0 = disabled)
 )
 
 # Embeddings
@@ -659,6 +659,24 @@ embeddings = GeminiEmbedding(model="text-embedding-004")
 - `gemini-2.5-pro`, `gemini-2.5-flash` (Stable, 1M context, thinking support)
 - `gemini-2.0-flash` (Stable)
 - `gemini-3-pro-preview`, `gemini-3-flash-preview` ⚠️ (Preview only, thinking support)
+
+**Native Thinking:**
+- **Default:** `thinking_budget=0` (disabled) - cost-efficient for most tasks
+- **Enable:** Set `thinking_budget > 0` (recommended: 8192-16384 tokens)
+- **Cost:** Thinking tokens are billed separately - only enable when needed
+- **Use Cases:** Complex reasoning, multi-step problems, strategic planning
+
+**Pass via Agent:**
+```python
+from cogent import Agent
+
+# Enable thinking for this agent
+agent = Agent(
+    name="Thinker",
+    model="gemini-2.5-flash",
+    model_kwargs={"thinking_budget": 16384},
+)
+```
 
 ---
 

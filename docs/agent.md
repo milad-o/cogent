@@ -827,11 +827,95 @@ agent = Agent(name="Worker", model=model, observer=observer)
 
 | Method | Description |
 |--------|-------------|
-| `run(task)` | Execute a task and return result |
+| `run(task, context)` | Execute a task with optional context |
 | `chat(message, thread_id)` | Chat with memory support |
 | `think(prompt)` | Single reasoning step |
 | `stream_chat(message)` | Streaming chat response |
 | `resume(state, decision)` | Resume after HITL interrupt |
+| `as_tool(isolate_context)` | Convert agent to callable tool |
+
+### Agent-as-Tool
+
+Use `agent.as_tool()` to delegate work to specialized agents:
+
+```python
+from cogent import Agent, RunContext, tool
+
+# Specialist agent with domain expertise
+specialist = Agent(
+    name="permission_checker",
+    model="gpt4",
+    instructions="Check user permissions and return clear authorization status.",
+    tools=[check_db, verify_role],
+)
+
+# Orchestrator delegates to specialist
+orchestrator = Agent(
+    name="orchestrator",
+    model="gpt4",
+    tools=[specialist.as_tool()],  # Context flows automatically
+    instructions="Coordinate tasks using available specialist agents.",
+)
+
+# Run with context - flows through entire delegation chain
+result = await orchestrator.run(
+    "Can user 123 delete files?",
+    context=UserContext(user_id="123", permissions={"read"}),
+)
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `isolate_context` | `bool` | `False` | If `True`, don't pass RunContext to delegated agent |
+| `name` | `str \| None` | `None` | Override tool name (default: agent name) |
+| `description` | `str \| None` | `None` | Override tool description (auto-generated if None) |
+
+**Context Propagation:**
+
+By default, `RunContext` flows to delegated agents (like regular tools):
+
+```python
+# Context flows automatically (default)
+specialist_tool = specialist.as_tool()
+
+# Explicit isolation - creates fresh context boundary
+isolated_tool = specialist.as_tool(isolate_context=True)
+```
+
+See [docs/context.md](context.md) for context patterns.
+
+### Model-Specific Configuration
+
+Pass model-specific parameters via `model_kwargs`:
+
+```python
+from cogent import Agent
+
+# Gemini with thinking enabled
+agent = Agent(
+    name="Thinker",
+    model="gemini-2.5-flash",
+    model_kwargs={"thinking_budget": 16384},  # Enable native thinking
+)
+
+# OpenAI with specific settings
+agent = Agent(
+    name="Assistant",
+    model="gpt-4o",
+    model_kwargs={"seed": 42, "logprobs": True},
+)
+
+# Any model-specific parameter
+agent = Agent(
+    name="Custom",
+    model="anthropic:claude-sonnet-4",
+    model_kwargs={"top_k": 10},
+)
+```
+
+**Note:** `model_kwargs` only applies when using string model names. Ignored when passing `ChatModel` instances (configure the instance directly instead).
 
 ### AgentConfig Fields
 
@@ -839,7 +923,8 @@ agent = Agent(name="Worker", model=model, observer=observer)
 |-------|------|-------------|
 | `name` | `str` | Agent name |
 | `role` | `AgentRole` | Agent role |
-| `model` | `BaseChatModel` | Chat model |
+| `model` | `str \| BaseChatModel` | Chat model (string or instance) |
+| `model_kwargs` | `dict \| None` | Model-specific parameters (for string models) |
 | `tools` | `list[str]` | Tool names |
 | `system_prompt` | `str` | System instructions |
 | `resilience_config` | `ResilienceConfig` | Fault tolerance |

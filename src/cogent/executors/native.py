@@ -385,6 +385,13 @@ class NativeExecutor(BaseExecutor):
             run_context = RunContext(metadata=context)
             context_dict = context
 
+        # Auto-populate query field if empty (task lineage tracking)
+        if not run_context.query:
+            # Create a copy with query set (preserve immutability principle)
+            import copy
+            run_context = copy.copy(run_context)
+            run_context.query = task
+
         # Set agent reference on context for tool access (e.g., cache)
         run_context.agent = self.agent
 

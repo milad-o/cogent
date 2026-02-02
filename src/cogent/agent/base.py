@@ -143,6 +143,7 @@ class Agent:
         # Core parameters
         name: str,
         model: BaseChatModel | str | None = None,
+        model_kwargs: dict[str, Any] | None = None,
         description: str = "",
         instructions: str | None = None,
         tools: Sequence[BaseTool | str | Callable] | None = None,
@@ -177,6 +178,12 @@ class Agent:
         Args:
             name: Agent name
             model: Chat model - string (e.g., "gpt4", "claude"), provider:model (e.g., "anthropic:claude-sonnet-4"), or BaseChatModel instance
+            model_kwargs: Additional model-specific parameters (when model is a string).
+                Examples:
+                - Gemini: model_kwargs={"thinking_budget": 0} to disable native thinking
+                - OpenAI: model_kwargs={"temperature": 0.7, "max_tokens": 1000}
+                - DeepSeek: model_kwargs={"reasoning_mode": "off"}
+                Note: Use Agent's 'reasoning' parameter for framework-level chain-of-thought (works on any model).
             description: Agent description
             instructions: Instructions for the agent - defines behavior and personality
             tools: List of tools - BaseTool objects, strings, or callables
@@ -294,6 +301,12 @@ class Agent:
         effective_prompt = (
             instructions or system_prompt or "You are a helpful AI assistant."
         )
+
+        # Convert string model to BaseChatModel if needed
+        if isinstance(model, str):
+            from cogent.models import create_chat
+            model_kwargs_dict = model_kwargs or {}
+            model = create_chat(model, **model_kwargs_dict)
 
         # Create config from parameters (internal use only)
         config = AgentConfig(
@@ -2963,7 +2976,7 @@ class Agent:
         name: str | None = None,
         description: str | None = None,
         return_full_response: bool = False,
-        propagate_context: bool = False,
+        isolate_context: bool = False,
     ) -> BaseTool:
         """Convert this agent into a callable tool for tactical delegation.
 
@@ -2979,9 +2992,9 @@ class Agent:
             description: Tool description (default: agent description)
             return_full_response: If True, returns full Response object;
                                  if False, returns just content string
-            propagate_context: If True, automatically passes parent agent's
-                              RunContext to this agent. Useful for sharing
-                              user session, permissions, DB connections, etc.
+            isolate_context: If True, prevents context propagation to this agent.
+                            Default False - context flows automatically (like regular tools).
+                            Set to True only for explicit isolation (testing, security).
 
         Returns:
             BaseTool that wraps this agent's execution
@@ -3078,26 +3091,27 @@ class Agent:
             task: str = Field(
                 default="",
                 description=(
-                    f"The task or question to delegate to the {self.name} agent. "
-                    "Be specific about what you want the agent to do. "
-                    f"Example: 'analyze the data', 'check user permissions', 'process the request'"
+                    f"[REQUIRED] Specific task or question for {self.name}. "
+                    "Be clear and detailed about what you want the agent to do. "
+                    f"Examples: 'check if user has delete permission', "
+                    f"'analyze Q4 revenue data', 'extract contact information'"
                 )
             )
 
         # Create tool function that wraps agent execution
         async def execute_agent_task(task: str = "", ctx: RunContext | None = None) -> str | dict:
             """Execute agent and return result."""
-            # If no task provided, return helpful error
+            # Validate required task parameter - raise exception to trigger retry
             if not task or not task.strip():
-                return (
-                    f"Error: No task provided to {self.name}. "
-                    f"Please specify what you want the agent to do. "
-                    f"Example: 'check permissions', 'analyze data', etc."
+                raise ValueError(
+                    f"Missing required 'task' parameter for {self.name}. "
+                    f"You must specify what you want the agent to do. "
+                    f"Examples: 'check if user can delete files', 'analyze the data', 'extract user info'"
                 )
             
             try:
-                # Propagate context if enabled and context is available
-                context_to_pass = ctx if (propagate_context and ctx is not None) else None
+                # Propagate context unless explicitly isolated
+                context_to_pass = ctx if (not isolate_context and ctx is not None) else None
                 response = await self.run(task, context=context_to_pass)
 
                 # If response failed, return error info
@@ -3134,17 +3148,17 @@ class Agent:
         # Create and return tool
         # Smart description that guides proper tool usage
         if description is None:
-            # Auto-generate description with clear task parameter guidance
+            # Auto-generate description with STRONG task parameter guidance
             tool_description = (
-                f"Delegate tasks to the {self.name} agent. "
-                f"Specify what you want the agent to do in the 'task' parameter. "
-                f"Example task values: 'analyze the data', 'check user permissions', 'generate a report'."
+                f"Delegate to {self.name} agent. "
+                f"REQUIRED: You MUST provide a specific 'task' describing what the agent should do. "
+                f"Examples: 'check if user can delete files', 'analyze the sales data', 'extract user information'."
             )
         else:
-            # User provided description - append task parameter guidance
+            # User provided description - append STRONG task parameter guidance
             tool_description = (
-                f"{description} "
-                f"Provide your request in the 'task' parameter."
+                f"{description}. "
+                f"REQUIRED: Provide specific instructions in the 'task' parameter."
             )
         
         tool = BaseTool(

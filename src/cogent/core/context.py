@@ -51,6 +51,9 @@ class RunContext:
     - Immutable during execution (create new instance to change)
 
     Attributes:
+        query: The original user query that initiated execution.
+            Auto-populated by the framework on first agent.run() call.
+            Preserved across agent delegations for task lineage tracking.
         metadata: Optional dict for untyped extension data.
         agent: Internal reference to the executing agent (set by executor).
 
@@ -73,6 +76,7 @@ class RunContext:
             return f"Performed: {action}"
     """
 
+    query: str = field(default="", repr=False)
     metadata: dict[str, Any] = field(default_factory=dict)
     agent: Agent | None = field(default=None, repr=False, init=False)
 

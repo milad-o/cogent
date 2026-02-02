@@ -4,7 +4,7 @@ The `cogent.context` module provides invocation-scoped context for dependency in
 
 ## Overview
 
-RunContext enables passing typed data to tools and interceptors at invocation time without global state:
+RunContext enables passing typed data to tools and interceptors at invocation time without global state. Context automatically includes the original user query for task lineage tracking.
 
 ```python
 from dataclasses import dataclass
@@ -20,6 +20,8 @@ class AppContext(RunContext):
 def get_user_data(ctx: RunContext) -> str:
     """Get data for the current user."""
     user = ctx.db.get_user(ctx.user_id)
+    # Access original query
+    print(f"Original query: {ctx.query}")
     return f"User: {user.name}"
 
 agent = Agent(name="assistant", model=model, tools=[get_user_data])
@@ -29,6 +31,34 @@ result = await agent.run(
     context=AppContext(user_id="123", db=db, api_key=key),
 )
 ```
+
+---
+
+## Built-in Context Fields
+
+The base `RunContext` provides framework-managed fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `query` | `str` | Original user query that initiated execution. Auto-populated on first `agent.run()`. |
+| `metadata` | `dict` | Extension dict for untyped data. |
+| `agent` | `Agent \| None` | Internal reference to executing agent. |
+
+### Query Field
+
+The `query` field tracks the original user request through agent delegations:
+
+```python
+# Top-level agent
+result = await orchestrator.run("Can I delete files?", context=ctx)
+# ctx.query = "Can I delete files?"
+
+# Delegated sub-agent (via agent.as_tool())
+# Still has: ctx.query = "Can I delete files?"
+# But receives different task parameter: "check user permissions"
+```
+
+This enables sub-agents to understand the broader context while working on their specific subtask.
 
 ---
 
@@ -158,6 +188,76 @@ new_ctx = ctx.with_metadata(
     version="1.0",
 )
 ```
+
+---
+
+## Agent-as-Tool Context Propagation
+
+When using `agent.as_tool()`, context flows automatically to delegated agents (like regular tools):
+
+```python
+from cogent import Agent, tool
+from dataclasses import dataclass
+
+@dataclass
+class UserContext(RunContext):
+    user_id: str
+    permissions: set[str]
+
+@tool
+def check_permissions(ctx: RunContext) -> str:
+    """Check if user has required permissions."""
+    print(f"Original query: {ctx.query}")
+    if "admin" in ctx.permissions:
+        return "Permission granted"
+    return "Permission denied"
+
+# Specialist agent receives context automatically
+specialist = Agent(
+    name="permission_checker",
+    model=model,
+    tools=[check_permissions],
+)
+
+# Orchestrator delegates to specialist
+orchestrator = Agent(
+    name="orchestrator",
+    model=model,
+    tools=[specialist.as_tool()],  # Context flows automatically
+)
+
+# Context passes through entire delegation chain
+result = await orchestrator.run(
+    "Can I delete files?",
+    context=UserContext(user_id="123", permissions={"read"}),
+)
+```
+
+### Isolating Context
+
+Use `isolate_context=True` to create explicit context boundaries:
+
+```python
+# Delegate without context (fresh boundary)
+specialist_tool = specialist.as_tool(isolate_context=True)
+
+orchestrator = Agent(
+    name="orchestrator",
+    model=model,
+    tools=[specialist_tool],
+)
+
+# Specialist runs without access to UserContext
+result = await orchestrator.run(
+    "Process data",
+    context=UserContext(...),
+)
+```
+
+Use isolation when:
+- Sub-agent operates on different data domains
+- Security boundaries required
+- Independent execution needed
 
 ---
 
