@@ -385,6 +385,235 @@ async def test_tool_with_context(test_context):
 
 ---
 
+## Common Patterns
+
+### Tracking Delegation Depth
+
+Prevent infinite delegation loops and adapt behavior based on depth:
+
+```python
+from dataclasses import dataclass, field
+from cogent import Agent, RunContext, tool
+
+@dataclass
+class DelegationContext(RunContext):
+    depth: int = 0
+    max_depth: int = 3
+
+@tool
+def process_task(ctx: DelegationContext) -> str:
+    """Process a task with depth awareness."""
+    if ctx.depth >= ctx.max_depth:
+        return "Maximum delegation depth reached - handling directly"
+    
+    # Different strategy based on depth
+    if ctx.depth == 0:
+        return "Top-level processing"
+    else:
+        return f"Sub-task processing at depth {ctx.depth}"
+
+# When delegating, increment depth
+specialist = Agent(name="specialist", model=model, tools=[process_task])
+
+# In orchestrator, increment depth when delegating
+@tool
+def delegate_task(task: str, ctx: DelegationContext) -> str:
+    """Delegate to specialist with incremented depth."""
+    new_ctx = DelegationContext(
+        query=ctx.query,
+        depth=ctx.depth + 1,
+        max_depth=ctx.max_depth,
+        metadata=ctx.metadata,
+    )
+    return specialist.run(task, context=new_ctx).output
+```
+
+### Retry Tracking
+
+Track retry attempts to implement fallback strategies:
+
+```python
+@dataclass
+class RetryContext(RunContext):
+    retry_count: int = 0
+    max_retries: int = 3
+    is_retry: bool = False
+
+@tool
+def fetch_data(url: str, ctx: RetryContext) -> str:
+    """Fetch data with retry awareness."""
+    if ctx.is_retry:
+        # Use more conservative approach on retry
+        timeout = 10 + (ctx.retry_count * 5)  # Increase timeout
+        print(f"Retry #{ctx.retry_count} with timeout={timeout}s")
+    else:
+        timeout = 5
+    
+    # Fetch logic...
+    return f"Data from {url}"
+
+# On retry, create new context
+if failed and retry_count < max_retries:
+    retry_ctx = RetryContext(
+        query=ctx.query,
+        retry_count=retry_count + 1,
+        is_retry=True,
+        metadata=ctx.metadata,
+    )
+    result = agent.run(task, context=retry_ctx)
+```
+
+### Task Lineage Tracking
+
+Track parent-child task relationships:
+
+```python
+from cogent.core import generate_id
+
+@dataclass
+class TaskContext(RunContext):
+    task_id: str = field(default_factory=generate_id)
+    parent_task_id: str | None = None
+    task_chain: list[str] = field(default_factory=list)
+    
+    @property
+    def is_root_task(self) -> bool:
+        return self.parent_task_id is None
+    
+    @property
+    def depth(self) -> int:
+        return len(self.task_chain)
+
+@tool
+def analyze_lineage(ctx: TaskContext) -> str:
+    """Show task lineage information."""
+    if ctx.is_root_task:
+        return f"Root task: {ctx.task_id}"
+    else:
+        chain = " → ".join(ctx.task_chain + [ctx.task_id])
+        return f"Task chain ({ctx.depth} deep): {chain}"
+
+# When delegating, build chain
+def delegate_with_lineage(task: str, ctx: TaskContext) -> str:
+    child_ctx = TaskContext(
+        query=ctx.query,
+        task_id=generate_id(),
+        parent_task_id=ctx.task_id,
+        task_chain=ctx.task_chain + [ctx.task_id],
+        metadata=ctx.metadata,
+    )
+    return specialist.run(task, context=child_ctx).output
+```
+
+### Execution Timing
+
+Track execution duration and deadlines:
+
+```python
+from datetime import datetime, timedelta
+from cogent.core import now_utc
+
+@dataclass
+class TimedContext(RunContext):
+    started_at: datetime = field(default_factory=now_utc)
+    deadline: datetime | None = None
+    
+    @property
+    def elapsed_seconds(self) -> float:
+        return (now_utc() - self.started_at).total_seconds()
+    
+    @property
+    def is_overdue(self) -> bool:
+        if self.deadline is None:
+            return False
+        return now_utc() > self.deadline
+    
+    @property
+    def remaining_seconds(self) -> float | None:
+        if self.deadline is None:
+            return None
+        return (self.deadline - now_utc()).total_seconds()
+
+@tool
+def long_running_task(ctx: TimedContext) -> str:
+    """Task that respects deadlines."""
+    if ctx.is_overdue:
+        return "Task deadline exceeded - aborting"
+    
+    remaining = ctx.remaining_seconds
+    if remaining and remaining < 5:
+        return "Running in fast mode - deadline approaching"
+    
+    return f"Normal execution (elapsed: {ctx.elapsed_seconds:.1f}s)"
+
+# Create context with deadline
+ctx = TimedContext(
+    deadline=now_utc() + timedelta(seconds=30)
+)
+result = agent.run("Perform task", context=ctx)
+```
+
+### Combining Patterns
+
+Compose multiple patterns for comprehensive tracking:
+
+```python
+@dataclass
+class ExecutionContext(RunContext):
+    """Rich execution context combining common patterns."""
+    
+    # Task identity
+    task_id: str = field(default_factory=generate_id)
+    parent_task_id: str | None = None
+    
+    # Delegation tracking
+    depth: int = 0
+    max_depth: int = 5
+    
+    # Retry tracking
+    retry_count: int = 0
+    is_retry: bool = False
+    
+    # Timing
+    started_at: datetime = field(default_factory=now_utc)
+    deadline: datetime | None = None
+    
+    # Helper methods
+    @property
+    def can_delegate(self) -> bool:
+        return self.depth < self.max_depth
+    
+    @property
+    def elapsed_seconds(self) -> float:
+        return (now_utc() - self.started_at).total_seconds()
+    
+    def create_child_context(self) -> "ExecutionContext":
+        """Create context for delegated task."""
+        return ExecutionContext(
+            query=self.query,
+            task_id=generate_id(),
+            parent_task_id=self.task_id,
+            depth=self.depth + 1,
+            max_depth=self.max_depth,
+            metadata=self.metadata,
+            started_at=now_utc(),
+            deadline=self.deadline,  # Propagate deadline
+        )
+
+@tool
+def smart_task(ctx: ExecutionContext) -> str:
+    """Task that uses comprehensive context."""
+    if not ctx.can_delegate:
+        return "Max delegation depth reached"
+    
+    if ctx.is_retry:
+        return f"Retry attempt #{ctx.retry_count}"
+    
+    return f"Task {ctx.task_id} at depth {ctx.depth} (elapsed: {ctx.elapsed_seconds:.1f}s)"
+```
+
+---
+
 ## API Reference
 
 ### RunContext
@@ -392,6 +621,7 @@ async def test_tool_with_context(test_context):
 ```python
 @dataclass
 class RunContext:
+    query: str = field(default="", repr=False)
     metadata: dict[str, Any] = field(default_factory=dict)
     
     def get(self, key: str, default: Any = None) -> Any:
@@ -410,3 +640,4 @@ class RunContext:
 | Interceptor access | `context.run_context` |
 | Metadata access | `ctx.get("key")` or `ctx.metadata["key"]` |
 | Extend context | `ctx.with_metadata(key="value")` |
+| Subclass context | `class MyContext(RunContext)` |
