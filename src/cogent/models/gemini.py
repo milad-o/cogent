@@ -22,7 +22,9 @@ Usage:
 
 Thinking-enabled models:
     - gemini-2.5-pro-preview-05-06: Most capable, uses thinking_budget
-    - gemini-2.5-flash-preview-05-20: Fast, uses thinking_budget  
+    - gemini-2.5-flash-preview-05-20: Fast, uses thinking_budget
+    - gemini-3-flash-preview: Gemini 3 Flash (Preview), uses thinking_budget
+    - gemini-3-pro-preview: Gemini 3 Pro (Preview), uses thinking_budget
     - gemini-2.0-flash-thinking-exp-01-21: Uses thinking_level
 """
 
@@ -48,12 +50,17 @@ from cogent.models.base import (
     normalize_input,
 )
 
-# Models that support thinking_budget (Gemini 2.5)
+# Models that support thinking_budget (Gemini 2.5 and 3.0)
 THINKING_BUDGET_MODELS = {
+    # Gemini 2.5
     "gemini-2.5-pro-preview-05-06",
     "gemini-2.5-pro",
     "gemini-2.5-flash-preview-05-20",
     "gemini-2.5-flash",
+    # Gemini 3.0 (Preview)
+    "gemini-3-pro-preview",
+    "gemini-3-flash-preview",
+    "gemini-3-pro-image-preview",
 }
 
 # Models that use thinking_level instead (experimental)
@@ -378,9 +385,9 @@ class GeminiChat(BaseChatModel):
     - gemini-1.5-flash
     
     Gemini 3 (Preview - Not Production Ready):
-    - gemini-3-pro-preview (most capable, 1M context)
-    - gemini-3-flash-preview (fast, 1M context)
-    - gemini-3-pro-image-preview (Nano Banana Pro, 131K context)
+    - gemini-3-pro-preview (most capable, 1M context, thinking support)
+    - gemini-3-flash-preview (fast, 1M context, thinking support)
+    - gemini-3-pro-image-preview (Nano Banana Pro, 131K context, thinking support)
 
     Example:
         from cogent.models.gemini import GeminiChat

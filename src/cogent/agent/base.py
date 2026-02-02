@@ -46,6 +46,7 @@ from cogent.tools.base import BaseTool
 if TYPE_CHECKING:
     from cogent.agent.resilience import ResilienceConfig, ToolResilience
     from cogent.agent.streaming import StreamChunk, StreamEvent
+    from cogent.core.context import RunContext
     from cogent.graph import GraphView
     from cogent.memory.acc import AgentCognitiveCompressor
     from cogent.memory.cache import SemanticCache
@@ -2872,7 +2873,7 @@ class Agent:
         self,
         task: str,
         *,
-        context: dict[str, Any] | None = None,
+        context: dict[str, Any] | RunContext | None = None,
         thread_id: str | None = None,
         stream: bool = False,
         max_iterations: int = 25,
@@ -2962,6 +2963,7 @@ class Agent:
         name: str | None = None,
         description: str | None = None,
         return_full_response: bool = False,
+        propagate_context: bool = False,
     ) -> BaseTool:
         """Convert this agent into a callable tool for tactical delegation.
 
@@ -2977,6 +2979,9 @@ class Agent:
             description: Tool description (default: agent description)
             return_full_response: If True, returns full Response object;
                                  if False, returns just content string
+            propagate_context: If True, automatically passes parent agent's
+                              RunContext to this agent. Useful for sharing
+                              user session, permissions, DB connections, etc.
 
         Returns:
             BaseTool that wraps this agent's execution
@@ -3070,13 +3075,30 @@ class Agent:
         class AgentToolInput(BaseModel):
             """Input for agent-as-tool."""
 
-            task: str = Field(description="Task description for the agent")
+            task: str = Field(
+                default="",
+                description=(
+                    f"The task or question to delegate to the {self.name} agent. "
+                    "Be specific about what you want the agent to do. "
+                    f"Example: 'analyze the data', 'check user permissions', 'process the request'"
+                )
+            )
 
         # Create tool function that wraps agent execution
-        async def execute_agent_task(task: str) -> str | dict:
+        async def execute_agent_task(task: str = "", ctx: RunContext | None = None) -> str | dict:
             """Execute agent and return result."""
+            # If no task provided, return helpful error
+            if not task or not task.strip():
+                return (
+                    f"Error: No task provided to {self.name}. "
+                    f"Please specify what you want the agent to do. "
+                    f"Example: 'check permissions', 'analyze data', etc."
+                )
+            
             try:
-                response = await self.run(task)
+                # Propagate context if enabled and context is available
+                context_to_pass = ctx if (propagate_context and ctx is not None) else None
+                response = await self.run(task, context=context_to_pass)
 
                 # If response failed, return error info
                 if not response.success and response.error:
@@ -3110,11 +3132,24 @@ class Agent:
                 return f"Agent execution failed: {str(e)}"
 
         # Create and return tool
+        # Smart description that guides proper tool usage
+        if description is None:
+            # Auto-generate description with clear task parameter guidance
+            tool_description = (
+                f"Delegate tasks to the {self.name} agent. "
+                f"Specify what you want the agent to do in the 'task' parameter. "
+                f"Example task values: 'analyze the data', 'check user permissions', 'generate a report'."
+            )
+        else:
+            # User provided description - append task parameter guidance
+            tool_description = (
+                f"{description} "
+                f"Provide your request in the 'task' parameter."
+            )
+        
         tool = BaseTool(
             name=name or self.name,
-            description=description
-            or self.config.description
-            or f"Execute task using {self.name} agent",
+            description=tool_description,
             func=execute_agent_task,
             args_schema=AgentToolInput,
         )
@@ -3125,7 +3160,7 @@ class Agent:
         self,
         task: str,
         *,
-        context: dict[str, Any] | None = None,
+        context: dict[str, Any] | RunContext | None = None,
         thread_id: str | None = None,
         max_iterations: int = 25,
         reasoning: bool | ReasoningConfig | None = None,

@@ -591,7 +591,7 @@ async def single_agent_approach() -> dict:
     
     agent = Agent(
         name="DueDiligenceAnalyst",
-        model="openai:gpt-4o",
+        model="gemini:gemini-2.5-pro",
         tools=ALL_TOOLS,
         output=DueDiligenceReport,
         instructions="""You are a senior M&A analyst performing comprehensive due diligence.
@@ -680,7 +680,7 @@ async def multi_agent_approach() -> dict:
     # Document Research Specialist
     doc_researcher = Agent(
         name="DocumentResearcher",
-        model="openai:gpt-4o",
+        model="gemini:gemini-2.5-pro",
         tools=DISCOVERY_TOOLS,
         instructions="""You are a document research specialist.
 
@@ -697,7 +697,7 @@ Search broadly - use category names as queries to find all documents.""",
     # Customer Analyst
     customer_analyst = Agent(
         name="CustomerAnalyst",
-        model="openai:gpt-4o",
+        model="gemini:gemini-2.5-pro",
         tools=CUSTOMER_TOOLS,
         instructions="""You are a customer analysis specialist.
 
@@ -713,7 +713,7 @@ Do NOT filter on first call - you need to see all customers.""",
     # HR/Team Analyst
     team_analyst = Agent(
         name="TeamAnalyst",
-        model="openai:gpt-4o",
+        model="gemini:gemini-2.5-pro",
         tools=EMPLOYEE_TOOLS,
         instructions="""You are an HR and team analysis specialist.
 
@@ -729,7 +729,7 @@ Note: critical_only should be the string "true" not a boolean.""",
     # Technology Analyst
     tech_analyst = Agent(
         name="TechAnalyst",
-        model="openai:gpt-4o",
+        model="gemini:gemini-2.5-pro",
         tools=TECH_TOOLS,
         instructions="""You are a technology due diligence specialist.
 Use list_codebases to find all repositories.
@@ -741,7 +741,7 @@ Provide total remediation cost and timeline.""",
     # Financial Investigator
     financial_analyst = Agent(
         name="FinancialAnalyst",
-        model="openai:gpt-4o",
+        model="gemini:gemini-2.5-pro",
         tools=FINANCIAL_TOOLS,
         instructions="""You are a financial due diligence specialist.
 Use get_financial_summary to get overview and identify issues.
@@ -753,25 +753,27 @@ Provide complete picture of financial health and risks.""",
     # Orchestrator coordinates all specialists
     orchestrator = Agent(
         name="ChiefStrategyOfficer",
-        model="openai:gpt-4o",
+        model="gemini:gemini-2.5-pro",
         tools=[
-            doc_researcher.as_tool(description="Research documents in data room - finds and reads key documents"),
-            customer_analyst.as_tool(description="Analyze customer base - details and risks for each customer"),
-            team_analyst.as_tool(description="Analyze team and key personnel - retention risks and dependencies"),
-            tech_analyst.as_tool(description="Technology assessment - codebase quality and remediation needs"),
-            financial_analyst.as_tool(description="Financial investigation - summary and issue deep-dives"),
+            doc_researcher.as_tool(description="Research documents in data room - finds and reads key documents. Pass a task describing what to research."),
+            customer_analyst.as_tool(description="Analyze customer base - details and risks for each customer. Pass a task describing what to analyze."),
+            team_analyst.as_tool(description="Analyze team and key personnel - retention risks and dependencies. Pass a task describing what to analyze."),
+            tech_analyst.as_tool(description="Technology assessment - codebase quality and remediation needs. Pass a task describing what to assess."),
+            financial_analyst.as_tool(description="Financial investigation - summary and issue deep-dives. Pass a task describing what to investigate."),
         ],
         output=DueDiligenceReport,
         instructions="""You are the Chief Strategy Officer leading M&A due diligence.
 
-You have 5 specialist analysts. Each will do thorough investigation in their domain:
-1. DocumentResearcher - Searches and reads key documents from data room
-2. CustomerAnalyst - Analyzes each customer, assesses risks
-3. TeamAnalyst - Identifies critical employees and retention risks
-4. TechAnalyst - Evaluates each codebase, estimates remediation
-5. FinancialAnalyst - Reviews financials, investigates issues
+You have 5 specialist analysts. When calling each specialist, you MUST provide a 'task' parameter with specific instructions.
 
-DELEGATE TO ALL 5 SPECIALISTS. They will each do multi-step investigation.
+Example calls:
+- DocumentResearcher(task="Search and read all financial, legal, compliance, technology, hr, and market documents")
+- CustomerAnalyst(task="Analyze all customers, get details and risk assessment for each one")
+- TeamAnalyst(task="Identify all critical employees and assess retention risks")
+- TechAnalyst(task="Analyze all codebases and estimate remediation for any with high tech debt")
+- FinancialAnalyst(task="Review financial summary and investigate all concerning items")
+
+CALL ALL 5 SPECIALISTS IN PARALLEL with specific task instructions.
 Then synthesize their findings into a complete DueDiligenceReport.
 
 The board needs a complete picture for this $600M decision.""",

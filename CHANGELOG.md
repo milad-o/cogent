@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Gemini 3 thinking support** — Gemini 3 models now support thinking with `thinking_budget`
+  - Added `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-3-pro-image-preview` to `THINKING_BUDGET_MODELS`
+  - `thought_signature` field now parsed and stored in Gemini responses
+  - Use `thinking_budget` parameter to control thinking token budget (e.g., 8192)
+
 - **Comprehensive structured output types** — Full type system support
   - Collections: `list[T]`, `set[T]`, `tuple[T, ...]` (wrap in models for reliability)
   - Union types: `Union[A, B]` for polymorphic responses where agent chooses schema

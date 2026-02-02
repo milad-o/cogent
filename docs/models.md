@@ -645,14 +645,20 @@ response = await model.ainvoke([
 model = GeminiChat(model="gemini-3-flash-preview")
 # ⚠️ WARNING: Preview models may have breaking changes or be removed
 
+# With thinking (Gemini 3 supports thinking_budget)
+model = GeminiChat(
+    model="gemini-3-flash-preview",
+    thinking_budget=8192,  # Enable thinking
+)
+
 # Embeddings
 embeddings = GeminiEmbedding(model="text-embedding-004")
 ```
 
 **Available Models:**
-- `gemini-2.5-pro`, `gemini-2.5-flash` (Stable, 1M context)
+- `gemini-2.5-pro`, `gemini-2.5-flash` (Stable, 1M context, thinking support)
 - `gemini-2.0-flash` (Stable)
-- `gemini-3-pro-preview`, `gemini-3-flash-preview` ⚠️ (Preview only)
+- `gemini-3-pro-preview`, `gemini-3-flash-preview` ⚠️ (Preview only, thinking support)
 
 ---
 
@@ -1191,13 +1197,13 @@ reasoning_model = model.with_reasoning(ReasoningConfig(effort="high"))
 
 ### Gemini Thinking
 
-Gemini 2.5 models support thinking with budget control:
+Gemini 2.5 and 3.0 models support thinking with budget control:
 
 ```python
 from cogent.models.gemini import GeminiChat
 
 model = GeminiChat(
-    model="gemini-2.5-flash-preview-05-20",
+    model="gemini-2.5-flash-preview-05-20",  # or gemini-3-flash-preview
     thinking_budget=8000,  # Token budget for thinking
 )
 
