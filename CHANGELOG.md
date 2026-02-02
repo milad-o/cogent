@@ -26,6 +26,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Useful when output structure varies or is unknown beforehand
   - Example: `output=dict` returns `{"sentiment": "positive", "score": 8, ...}`
 
+## [1.0.4] - 2026-02-02
+
+### Added
+
+- **Context Propagation** — RunContext now flows automatically through agent delegations
+  - Added `query` field to RunContext for tracking original user request
+  - Auto-populated by native executor on first `agent.run()` call
+  - Accessible in sub-agents via `ctx.query` throughout delegation chain
+  - Enables sub-agents to understand broader context while working on subtasks
+
+- **Agent.as_tool() API Improvements** — Better semantics for context handling
+  - Changed parameter: `propagate_context` → `isolate_context` (inverted logic)
+  - Default behavior: context flows automatically (`isolate_context=False`)
+  - Makes agent-as-tool consistent with regular tools
+  - Use `isolate_context=True` to create explicit context boundaries
+
+- **model_kwargs Parameter** — Pass model-specific configuration to agents
+  - New `Agent(model_kwargs={...})` parameter for model-specific settings
+  - Only applies when using string model names
+  - Example: `model_kwargs={"thinking_budget": 16384}` for Gemini thinking
+  - Ignored when passing ChatModel instances (configure instance directly)
+
+- **Common Context Patterns Documentation** — Practical extension patterns
+  - Delegation depth tracking with `max_depth` protection
+  - Retry tracking with adaptive strategies
+  - Task lineage with parent-child relationships
+  - Execution timing with deadlines
+  - Composable patterns for comprehensive tracking
+
+### Changed
+
+- **Gemini Defaults** — Cost-efficient defaults for production use
+  - Default model: `gemini-2.0-flash` → `gemini-2.5-flash` (latest stable)
+  - Default `thinking_budget`: `None` → `0` (opt-in for cost efficiency)
+  - Thinking only enables when `thinking_budget > 0` or `thinking_level` set
+  - Prevents `thought_signature` errors with `budget=0`
+
+- **Tool Calling Reliability** — Improved guidance for better LLM compliance
+  - Added `[REQUIRED]` prefix to task parameter descriptions in agent-as-tool
+  - Raises `ValueError` when task is empty to trigger retry mechanism
+  - Auto-generates descriptive tool names with usage examples
+
+### Breaking Changes
+
+- `Agent.as_tool(propagate_context=True)` → `as_tool(isolate_context=False)`
+  - Logic inverted: context flows by default now (like regular tools)
+  - Migration: `propagate_context=False` → `isolate_context=True`
+  - Migration: `propagate_context=True` → remove parameter (it's the default)
+
+- `GeminiChat` thinking_budget default changed from `None` to `0`
+  - Must explicitly enable: `thinking_budget > 0` (recommended: 8192-16384)
+  - Cost-efficient default prevents accidental thinking token charges
+
 ## [1.0.3] - 2026-01-29
 
 ### Added

@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/milad-o/cogent/releases"><img src="https://img.shields.io/badge/version-1.0.1-blue.svg" alt="Version"></a>
+  <a href="https://github.com/milad-o/cogent/releases"><img src="https://img.shields.io/badge/version-1.0.4-blue.svg" alt="Version"></a>
   <a href="https://github.com/milad-o/cogent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python"></a>
   <a href="https://milad-o.github.io/cogent"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
@@ -49,24 +49,27 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.0.1 - January 2026)
+## 🎉 Latest Changes (v1.0.4)
 
-**TaskBoard & Observability** 📋
-- ✨ **TaskBoard** — Built-in task tracking system for complex multi-step workflows
-- 🔧 **Token aggregation** — Fixed token usage reporting to aggregate from all executor messages
-- 📊 **Observer(level="detailed")** — New preset for detailed observability output
+**Context Propagation & Query Tracking** 🔄
+- ✨ **RunContext.query** — Track original user request through entire delegation chain
+- 🔧 **Agent.as_tool()** — Context flows automatically (like regular tools)
+- 📝 **model_kwargs** — Pass model-specific config (e.g., `thinking_budget` for Gemini)
+- 💡 **Common Patterns** — Docs for delegation depth, retry tracking, task lineage
 
-**TaskBoard tools:**
-- `add_task` — Add tasks with optional dependencies
-- `update_task` — Update task status (pending → in_progress → completed/blocked)
-- `add_note` — Add observations and notes during execution
-- `verify_task` — Verify task completion with evidence
-- `get_taskboard_status` — Get full taskboard state
+**API Improvements:**
+- `isolate_context=False` (default) — Context flows automatically to sub-agents
+- `ctx.query` — Access original user request in delegated agents
+- `Agent(model_kwargs={"thinking_budget": 16384})` — Model-specific configuration
+- Gemini defaults: `gemini-2.5-flash` model, `thinking_budget=0` (opt-in)
 
 ```python
-# Enable TaskBoard for complex tasks
-agent = Agent(name="Planner", model="gpt-4o", taskboard=True)
-result = await agent.run("Design a REST API with authentication")
+# Context flows automatically through delegation
+specialist = Agent(name="Expert", model="gpt-4o", tools=[...])
+orchestrator = Agent(name="Main", model="gpt-4o", tools=[specialist.as_tool()])
+
+# Sub-agents can access ctx.query (original user request)
+result = await orchestrator.run("Can I delete files?", context=ctx)
 ```
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history and migration guide.
