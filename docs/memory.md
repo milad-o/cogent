@@ -27,6 +27,155 @@ agent = Agent(name="assistant", model=model, memory=memory)
 memory = Memory(acc=True)
 ```
 
+---
+
+## 4-Layer Memory Architecture
+
+Cogent provides four distinct memory mechanisms that work together:
+
+| Layer | Parameter | Mechanism | When to Use |
+|-------|-----------|-----------|-------------|
+| 1 | `conversation=True` | Automatic message concatenation | Short sessions, full context needed |
+| 2 | `acc=True` | Agentic Context Compression | Long conversations, prevent drift |
+| 3 | `memory=True` | Explicit remember/recall tools | Persistent knowledge, semantic search |
+| 4 | `cache=True` | Semantic tool output cache | Expensive/slow tool calls |
+
+### Layer 1: Conversation History (Automatic)
+
+Raw message concatenation - all previous messages automatically sent to LLM:
+
+```python
+agent = Agent(name="Assistant", model="gpt4")  # conversation=True by default
+
+await agent.run("Hi, I'm Alice", thread_id="session1")
+await agent.run("What's my name?", thread_id="session1")
+
+# Internally sends to LLM:
+# [
+#   {"role": "user", "content": "Hi, I'm Alice"},
+#   {"role": "assistant", "content": "Hello Alice!"},
+#   {"role": "user", "content": "What's my name?"}  # <-- Full history
+# ]
+```
+
+**Characteristics:**
+- ✅ **Automatic** - No tools needed, no LLM decision required
+- ✅ **Works immediately** - LLM sees full context
+- ✅ **Perfect recall** - Nothing lost from conversation
+- ❌ **Grows unbounded** - Context window fills up over time
+- ❌ **No semantic search** - Just chronological concatenation
+- ❌ **Session-bound** - Lost when thread ends
+
+**When to use:** Short sessions where full context fits in window.
+
+### Layer 2: ACC (Agentic Context Compression)
+
+Compresses growing conversation history into structured constraints and entities:
+
+```python
+agent = Agent(name="Assistant", model="gpt4", acc=True)
+
+# After many messages, ACC compresses into:
+# Constraints: ["User prefers dark mode", "User timezone is EST", "Project deadline: March 1"]
+# Entities: ["Alice (user)", "Project Alpha (active)", "Bob (team lead)"]
+# Only compressed context sent to LLM, not full 50-message history
+```
+
+**Characteristics:**
+- ✅ **Bounded context** - Prevents window overflow
+- ✅ **Automatic** - No LLM tool calls needed
+- ✅ **Prevents drift** - Maintains key facts across long sessions
+- ✅ **Structured** - Constraints + Entities format
+- ❌ **Lossy** - Some details discarded during compression
+
+**When to use:** Long conversations that exceed context window.
+
+### Layer 3: Long-Term Memory (Explicit Tools)
+
+LLM must explicitly call `remember()`, `recall()`, `forget()` tools:
+
+```python
+agent = Agent(name="Assistant", model="gpt4", memory=True)
+
+# Agent gets memory tools automatically
+# LLM decides when to use them:
+
+await agent.run("Remember that I prefer dark mode")
+# LLM calls: remember(key="user_preference", value="dark mode")
+
+await agent.run("What's my UI preference?")  
+# LLM calls: recall(query="user preference")
+# Returns: "dark mode"
+
+# Next session (different thread_id)
+await agent.run("What do I prefer?", thread_id="new_session")
+# LLM can still recall: "dark mode" (survives sessions!)
+```
+
+**Characteristics:**
+- ✅ **Semantic search** - Finds relevant memories by meaning
+- ✅ **Persistent** - Survives across sessions/threads
+- ✅ **Scoped** - Can isolate per-user, per-team, etc.
+- ✅ **Selective** - LLM stores only important info
+- ❌ **Requires LLM decision** - LLM must choose to call tools
+- ❌ **Not automatic** - Won't use unless LLM decides to
+- ❌ **Tool call overhead** - Adds latency when used
+
+**When to use:** Persistent knowledge across sessions, user preferences, facts that should survive.
+
+### Layer 4: Semantic Cache (Tool Outputs)
+
+Caches tool results by semantic similarity to avoid redundant calls:
+
+```python
+agent = Agent(name="Assistant", model="gpt4", cache=True)
+
+# First call
+await agent.run("Search for Python tutorials")  
+# Calls search_tool(), caches result
+
+# Similar query (different wording)
+await agent.run("Find Python learning resources")  
+# Cache hit! Returns previous result without calling search_tool()
+```
+
+**Characteristics:**
+- ✅ **Speeds up repeated queries** - Avoids slow/expensive tool calls
+- ✅ **Semantic matching** - Recognizes similar queries
+- ✅ **Transparent** - LLM doesn't know cache is used
+- ❌ **Can return stale data** - Cached results may be outdated
+- ❌ **Storage overhead** - Caches all tool outputs
+
+**When to use:** Expensive API calls, slow database queries, rate-limited services.
+
+---
+
+### Layer Comparison: Automatic vs Explicit
+
+The key distinction is **who decides** to use memory:
+
+```python
+# Layer 1: Conversation history (AUTOMATIC)
+agent = Agent(name="Assistant", model="gpt4")  # conversation=True default
+await agent.run("I'm Alice", thread_id="s1")
+await agent.run("My name?", thread_id="s1")  
+# ✅ Works! History automatically sent to LLM
+# No tool calls, no LLM decision needed
+
+# Layer 3: Memory tools (EXPLICIT - LLM decides)
+agent = Agent(name="Assistant", model="gpt4", memory=True)
+await agent.run("Remember I'm Alice")  
+# ⚠️ LLM may or may not call remember() - it decides
+
+await agent.run("My name?")            
+# ⚠️ LLM may or may not call recall() - it decides
+# If LLM doesn't call the tool, memory isn't used!
+```
+
+**Recommendation:** Use Layer 1 (conversation) for short-term context, Layer 3 (memory tools) for long-term persistent knowledge.
+
+---
+
 ## Core Classes
 
 ### Memory

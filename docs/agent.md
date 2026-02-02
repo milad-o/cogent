@@ -446,16 +446,7 @@ Cogent provides a 4-layer memory architecture:
 | 3 | `memory=True` | Long-term memory with remember/recall tools |
 | 4 | `cache=True` | Semantic cache for tool outputs |
 
-### Basic Usage
-
-```python
-# Layer 1: Conversation memory (default ON)
-agent = Agent(name="Assistant", model="gpt4")
-await agent.run("Hi, I'm Alice", thread_id="conv-1")
-await agent.run("What's my name?", thread_id="conv-1")  # Remembers!
-
-# Layer 2: ACC for long conversations (prevents drift)
-agent = Agent(name="Assistant", model="gpt4", acc=True)
+See [Memory Module](./memory.md) for detailed explanation of how each layer works.
 
 # Layer 3: Long-term memory with tools
 agent = Agent(name="Assistant", model="gpt4", memory=True)

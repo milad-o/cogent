@@ -86,6 +86,7 @@ async def main() -> None:
         tools=[specialist.as_tool()],
         instructions="Use PermissionChecker to answer permission questions.",
         observer=observer,
+        memory=True,  # ADD MEMORY
     )
 
     ctx = DelegationContext(
@@ -96,8 +97,13 @@ async def main() -> None:
         max_depth=3,
     )
 
-    result = await orchestrator.run("Can I delete files?", context=ctx)
-    print(f"\nResult: {result.content}\n")
+    # First question
+    result1 = await orchestrator.run("Can I delete files?", context=ctx, thread_id="session1")
+    print(f"\nResult 1: {result1.content}\n")
+    
+    # Second question - orchestrator remembers first question, specialist doesn't
+    result2 = await orchestrator.run("What about the previous action?", context=ctx, thread_id="session1")
+    print(f"\nResult 2: {result2.content}\n")
 
 
 if __name__ == "__main__":
