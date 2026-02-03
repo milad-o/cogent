@@ -527,6 +527,44 @@ async def main():
 asyncio.run(main())
 ```
 
+### Multi-Agent with Subagents
+
+```python
+from cogent import Agent
+
+# Create specialist agents
+data_analyst = Agent(
+    name="data_analyst",
+    model="gpt-4o-mini",
+    instructions="Analyze data and provide statistical insights.",
+)
+
+market_researcher = Agent(
+    name="market_researcher",
+    model="gpt-4o-mini",
+    instructions="Research market trends and competitive landscape.",
+)
+
+# Coordinator delegates to specialists
+coordinator = Agent(
+    name="coordinator",
+    model="gpt-4o-mini",
+    instructions="""Coordinate research tasks:
+- Use data_analyst for numerical analysis
+- Use market_researcher for market trends
+Synthesize their findings.""",
+    subagents={
+        "data_analyst": data_analyst,
+        "market_researcher": market_researcher,
+    },
+)
+
+# Full metadata preserved (tokens, duration, delegation chain)
+result = await coordinator.run("Analyze Q4 2025 e-commerce growth")
+print(f"Total tokens: {result.metadata.tokens.total_tokens}")  # Includes all subagents
+print(f"Subagent calls: {len(result.subagent_responses)}")
+```
+
 ## Streaming
 
 ```python

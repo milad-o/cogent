@@ -772,6 +772,79 @@ agent = Agent(
 result = await agent.run("Research and write about AI")
 ```
 
+## Subagents (Native Delegation)
+
+**New in v0.x.x**: Native subagent support with full metadata preservation.
+
+Delegate tasks to specialist agents while preserving Response metadata (tokens, duration, delegation chain):
+
+```python
+from cogent import Agent
+
+# Create specialist agents
+data_analyst = Agent(
+    name="data_analyst",
+    model="gpt-4o-mini",
+    instructions="Analyze data and provide statistical insights.",
+)
+
+market_researcher = Agent(
+    name="market_researcher",
+    model="gpt-4o-mini",
+    instructions="Research market trends and competitive landscape.",
+)
+
+# Create coordinator with subagents
+coordinator = Agent(
+    name="coordinator",
+    model="gpt-4o-mini",
+    instructions="""Coordinate research tasks:
+- Use data_analyst for numerical analysis
+- Use market_researcher for market trends
+Synthesize their findings.""",
+    subagents={
+        "data_analyst": data_analyst,
+        "market_researcher": market_researcher,
+    },
+)
+
+# Coordinator delegates automatically
+response = await coordinator.run("Analyze Q4 2025 e-commerce growth")
+
+# Full metadata preserved
+print(f"Total tokens: {response.metadata.tokens.total_tokens}")  # Includes all subagents
+print(f"Subagent calls: {len(response.subagent_responses)}")
+for sub_resp in response.subagent_responses:
+    print(f"  {sub_resp.metadata.agent}: {sub_resp.metadata.tokens.total_tokens} tokens")
+```
+
+**Key Benefits:**
+- ✅ Accurate token counting (coordinator + all subagents)
+- ✅ Full delegation chain tracking
+- ✅ Context propagates automatically
+- ✅ Observable with `[subagent-call]`, `[subagent-result]` events
+- ✅ Zero LLM behavior changes (uses existing tool calling)
+
+**Migration from `agent.as_tool()`:**
+
+```python
+# ❌ Old: Loses metadata
+coordinator = Agent(
+    name="coordinator",
+    model="gpt-4o",
+    tools=[specialist.as_tool()],  # Response → string
+)
+
+# ✅ New: Preserves metadata
+coordinator = Agent(
+    name="coordinator",
+    model="gpt-4o",
+    subagents={"specialist": specialist},  # Full Response preserved
+)
+```
+
+See [docs/subagents.md](subagents.md) for complete documentation.
+
 ## Observability
 
 Built-in observability for standalone usage:

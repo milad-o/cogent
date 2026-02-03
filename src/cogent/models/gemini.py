@@ -230,6 +230,14 @@ def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
                 "properties": {},
             }
 
+            # Handle Pydantic models (convert to JSON schema first)
+            if hasattr(schema, "model_json_schema"):
+                # Pydantic v2
+                schema = schema.model_json_schema()
+            elif hasattr(schema, "schema"):
+                # Pydantic v1
+                schema = schema.schema()
+
             # Handle both formats: {"properties": {...}} and flat {param: schema}
             if isinstance(schema, dict):
                 if "properties" in schema:

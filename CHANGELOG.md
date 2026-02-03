@@ -7,7 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-02-03
+
 ### Added
+
+- **Native Subagent Support** — Built-in multi-agent coordination via `subagents=` parameter
+  - New `Agent(subagents={"name": agent})` parameter for delegation to specialized agents
+  - LLM automatically calls subagents as tools - no custom syntax needed
+  - Full metadata preservation: tokens, model calls, and delegation chain tracking
+  - Automatic metadata aggregation across all agents in the hierarchy
+  - New response fields: `response.metadata.subagent_calls`, `response.metadata.delegation_chain`
+  - Comprehensive documentation: See [Multi-Agent Guide](https://docs.cogent.ai/subagents.html)
+
+- **Enhanced Observability for Subagents** — Clear distinction between tools and subagents
+  - Observability events now include `is_subagent` flag
+  - Console formatter shows `[subagent-call]` and `[subagent-result]` labels
+  - Tool decision events separate subagents from regular tools
+  - Better visibility into delegation patterns and agent interactions
 
 - **Gemini 3 thinking support** — Gemini 3 models now support thinking with `thinking_budget`
   - Added `gemini-3-pro-preview`, `gemini-3-flash-preview`, `gemini-3-pro-image-preview` to `THINKING_BUDGET_MODELS`
@@ -25,6 +41,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Agent chooses fields and structure based on content
   - Useful when output structure varies or is unknown beforehand
   - Example: `output=dict` returns `{"sentiment": "positive", "score": 8, ...}`
+
+### Deprecated
+
+- **Agent.as_tool()** — Deprecated in favor of native `subagents=` parameter
+  - Will be removed in v2.0.0
+  - Migration: Replace `tools=[agent.as_tool()]` with `subagents={"name": agent}`
+  - Benefits of migration:
+    - Accurate token counting across all agents
+    - Full Response metadata preserved (not just content string)
+    - Automatic delegation chain tracking
+    - Better observability with `[subagent-call]` labels
+  - See migration guide: [Subagents Documentation](https://docs.cogent.ai/subagents.html#migration-guide)
+
+### Fixed
+
+- **Gemini tool schema conversion** — Pydantic BaseModel schemas now properly converted
+  - Fixed `_tools_to_gemini()` to handle Pydantic models via `model_json_schema()`
+  - LLMs now receive correct parameter schemas including required fields
+  - Resolves issues with empty `{}` arguments on tool calls
 
 ## [1.0.4] - 2026-02-02
 

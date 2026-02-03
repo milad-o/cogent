@@ -148,6 +148,7 @@ class Agent:
         instructions: str | None = None,
         tools: Sequence[BaseTool | str | Callable] | None = None,
         capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
+        subagents: dict[str, Agent] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
         # Advanced parameters
@@ -297,6 +298,21 @@ class Agent:
                     # Try to get name attribute
                     tool_names.append(getattr(tool, "name", str(tool)))
 
+        # Initialize subagent registry
+        from cogent.agent.subagent import SubagentRegistry
+        
+        self._subagent_registry = SubagentRegistry()
+        
+        if subagents:
+            for subagent_name, subagent in subagents.items():
+                # Register subagent in registry
+                self._subagent_registry.register(subagent_name, subagent)
+                
+                # Create tool wrapper for LLM
+                subagent_tool = self._create_subagent_tool(subagent_name, subagent)
+                tool_names.append(subagent_tool.name)
+                self._direct_tools.append(subagent_tool)
+
         # instructions takes priority over system_prompt
         effective_prompt = (
             instructions or system_prompt or "You are a helpful AI assistant."
@@ -416,6 +432,44 @@ class Agent:
         self._resilience = ToolResilience(
             config=resilience_config,
             fallback_registry=fallback_registry,
+        )
+
+    def _create_subagent_tool(self, name: str, agent: Agent) -> BaseTool:
+        """Create a tool wrapper for a subagent.
+        
+        The tool is callable by the LLM via normal tool calling, but the
+        executor will intercept and handle it specially to preserve Response metadata.
+        
+        Args:
+            name: Name to register the subagent tool under
+            agent: The subagent Agent instance
+            
+        Returns:
+            BaseTool that wraps the subagent
+        """
+        from pydantic import BaseModel, Field
+        
+        class SubagentInput(BaseModel):
+            """Input schema for subagent delegation."""
+            task: str = Field(
+                description=f"Specific task or question for {name} to handle. Be clear and detailed."
+            )
+        
+        # Placeholder function - actual execution happens in executor
+        async def _subagent_placeholder(task: str) -> str:
+            """Placeholder - executor intercepts subagent calls."""
+            raise RuntimeError(
+                f"Subagent {name} execution must be handled by executor. "
+                "This should never be called directly."
+            )
+        
+        description = agent.config.description or f"Delegate task to {name} specialist agent"
+        
+        return BaseTool(
+            name=name,
+            description=description,
+            func=_subagent_placeholder,
+            args_schema=SubagentInput,
         )
 
     def _setup_verbosity_observer(self, verbosity: bool | str | int) -> None:
@@ -1368,6 +1422,12 @@ class Agent:
 
             memory_prompt = get_memory_prompt_addition(has_tools=True)
             result = f"{result}\n\n{memory_prompt}"
+
+        # Add subagent documentation if subagents are registered
+        if self._subagent_registry and self._subagent_registry.count > 0:
+            subagent_docs = self._subagent_registry.generate_documentation()
+            if subagent_docs:
+                result = f"{result}\n\n{subagent_docs}"
 
         return result
 
@@ -2980,6 +3040,26 @@ class Agent:
     ) -> BaseTool:
         """Convert this agent into a callable tool for tactical delegation.
 
+        .. deprecated:: 1.15.0
+           Use the ``subagents=`` parameter instead for better metadata preservation.
+           This method will be removed in v2.0.0.
+
+           Migration example::
+
+               # Old approach (loses Response metadata)
+               coordinator = Agent(
+                   name="coordinator",
+                   tools=[specialist.as_tool()]
+               )
+
+               # New approach (preserves full metadata)
+               coordinator = Agent(
+                   name="coordinator",
+                   subagents={"specialist": specialist}
+               )
+
+           See: https://docs.cogent.ai/subagents.html
+
         Use this SPARINGLY - only when research shows multi-agent helps:
         1. Verification workflows (generator + checker)
         2. Truly parallel independent tasks
@@ -3246,11 +3326,31 @@ class Agent:
             executor = create_executor(self, strategy=self.config.execution_strategy)
             executor.max_iterations = max_iterations
 
+            # Clear subagent responses from previous runs
+            if hasattr(self, "_subagent_registry") and self._subagent_registry:
+                self._subagent_registry.clear()
+
             # Execute task
             result = await executor.execute(task, context)
 
             # Get messages from executor for token aggregation
             executor_messages = getattr(executor, "_last_messages", None) or []
+
+            # Get subagent responses if any were executed
+            subagent_responses = []
+            delegation_chain = []
+            if hasattr(self, "_subagent_registry") and self._subagent_registry:
+                subagent_responses = self._subagent_registry.get_responses()
+                
+                # Build delegation chain metadata
+                for resp in subagent_responses:
+                    if resp.metadata:
+                        delegation_chain.append({
+                            "agent": resp.metadata.agent,
+                            "model": resp.metadata.model,
+                            "tokens": resp.metadata.tokens.total_tokens if resp.metadata.tokens else 0,
+                            "duration": resp.metadata.duration,
+                        })
 
             # Save to conversation history if thread_id provided
             if thread_id:
@@ -3281,8 +3381,22 @@ class Agent:
             # Build Response object
             duration_ms = (now_utc() - start_time).total_seconds() * 1000
 
-            # Aggregate token usage from all AI messages
-            total_tokens = self._aggregate_tokens_from_messages(executor_messages)
+            # Aggregate token usage from coordinator messages
+            coordinator_tokens = self._aggregate_tokens_from_messages(executor_messages)
+            
+            # Aggregate tokens from all subagent responses
+            total_tokens = coordinator_tokens
+            if subagent_responses:
+                for resp in subagent_responses:
+                    if resp.metadata and resp.metadata.tokens:
+                        if total_tokens:
+                            total_tokens = TokenUsage(
+                                prompt_tokens=total_tokens.prompt_tokens + resp.metadata.tokens.prompt_tokens,
+                                completion_tokens=total_tokens.completion_tokens + resp.metadata.tokens.completion_tokens,
+                                total_tokens=total_tokens.total_tokens + resp.metadata.tokens.total_tokens,
+                            )
+                        else:
+                            total_tokens = resp.metadata.tokens
 
             metadata = ResponseMetadata(
                 agent=self.name,
@@ -3290,6 +3404,7 @@ class Agent:
                 tokens=total_tokens,
                 duration=duration_ms / 1000,
                 correlation_id=None,
+                delegation_chain=delegation_chain if delegation_chain else None,
             )
 
             response_obj = Response(
@@ -3299,6 +3414,7 @@ class Agent:
                 messages=executor_messages,  # Use executor's messages with token info
                 events=list(self.state.emitted_events),
                 error=None,
+                subagent_responses=subagent_responses if subagent_responses else None,
             )
 
             # Emit AGENT_RESPONDED event with Response metadata

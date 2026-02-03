@@ -140,6 +140,9 @@ class ToolFormatter(BaseFormatter):
 
         agent_prefix = f"{s.agent(self.format_name(agent_name))} " if agent_name else ""
         action = event.action
+        
+        # Check if this is a subagent delegation
+        is_subagent = event.get("is_subagent", False)
 
         if action == "called":
             args = event.get("args", {})
@@ -152,7 +155,10 @@ class ToolFormatter(BaseFormatter):
                 if config.truncate:
                     args_preview = self.truncate(args_preview, config.truncate)
                 args_str = f"\n  {s.dim(args_preview)}"
-            return f"{agent_prefix}{s.dim('[tool-call]')} {id_str}{s.tool(tool_name)}{args_str}"
+            
+            # Use different label for subagent delegation
+            label = "[subagent-call]" if is_subagent else "[tool-call]"
+            return f"{agent_prefix}{s.dim(label)} {id_str}{s.tool(tool_name)}{args_str}"
 
         elif action == "result":
             duration_str = ""
@@ -170,7 +176,9 @@ class ToolFormatter(BaseFormatter):
                 result_formatted = self._format_result(result)
                 result_str = f"\n  {s.dim(result_formatted)}"
 
-            return f"{agent_prefix}{s.success('[tool-result]')} {id_str}{s.tool(tool_name)}{s.success(duration_str)}{result_str}"
+            # Use different label for subagent results
+            label = "[subagent-result]" if is_subagent else "[tool-result]"
+            return f"{agent_prefix}{s.success(label)} {id_str}{s.tool(tool_name)}{s.success(duration_str)}{result_str}"
 
         elif action == "error":
             id_str = f"{s.dim(short_id)} " if short_id else ""
@@ -293,17 +301,36 @@ class LLMFormatter(BaseFormatter):
 
         elif action == "tool_decision":
             tools = event.get("tools_selected", [])
+            subagents = event.get("subagents_selected", [])
+            regular_tools = event.get("regular_tools_selected", [])
             reasoning = event.get("reasoning", "")
-            tools_str = ", ".join(tools[:5])
-            if len(tools) > 5:
-                tools_str += f"... (+{len(tools) - 5})"
+            
+            # Format output based on what was selected
+            output_parts = []
+            if subagents:
+                subagents_str = ", ".join(subagents)
+                output_parts.append(f"{s.dim('[subagent-decision]')} {s.tool(subagents_str)}")
+            if regular_tools:
+                tools_str = ", ".join(regular_tools[:5])
+                if len(regular_tools) > 5:
+                    tools_str += f"... (+{len(regular_tools) - 5})"
+                output_parts.append(f"{s.dim('[tool-decision]')} {s.tool(tools_str)}")
+            
+            # Fallback if categorization failed
+            if not output_parts:
+                tools_str = ", ".join(tools[:5])
+                if len(tools) > 5:
+                    tools_str += f"... (+{len(tools) - 5})"
+                output_parts.append(f"{s.dim('[tool-decision]')} {s.tool(tools_str)}")
+            
             reason_str = ""
             if reasoning:
                 reason_text = reasoning
                 if config.truncate:
                     reason_text = self.truncate(reasoning, config.truncate)
                 reason_str = f"\n  {s.dim(reason_text)}"
-            return f"{s.agent(formatted_name)} {s.dim('[tool-decision]')} {s.tool(tools_str)}{reason_str}"
+            
+            return f"{s.agent(formatted_name)} {' '.join(output_parts)}{reason_str}"
 
         return f"{s.agent(formatted_name)} {s.dim(f'[llm.{action}]')}"
 

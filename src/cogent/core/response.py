@@ -119,6 +119,7 @@ class ResponseMetadata:
         timestamp_iso: ISO 8601 formatted timestamp (human-readable)
         correlation_id: ID linking related operations
         trace_id: ID for distributed tracing
+        delegation_chain: List of subagent delegations with metadata
     """
 
     agent: str
@@ -129,10 +130,11 @@ class ResponseMetadata:
     timestamp_iso: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     correlation_id: str | None = None
     trace_id: str | None = None
+    delegation_chain: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        result = {
             "agent": self.agent,
             "model": self.model,
             "tokens": self.tokens.to_dict() if self.tokens else None,
@@ -142,6 +144,9 @@ class ResponseMetadata:
             "correlation_id": self.correlation_id,
             "trace_id": self.trace_id,
         }
+        if self.delegation_chain is not None:
+            result["delegation_chain"] = self.delegation_chain
+        return result
 
 
 @dataclass
@@ -161,6 +166,7 @@ class Response[T]:
         events: Events emitted during execution
         messages: Full conversation history (system, user, assistant, tool messages)
         error: Error information if execution failed
+        subagent_responses: Responses from delegated subagents (for metadata aggregation)
 
     Examples:
         # Basic usage
@@ -181,6 +187,11 @@ class Response[T]:
         # Inspect conversation
         for msg in response.messages:
             print(f"{msg.role}: {msg.content[:100]}")
+        
+        # Access subagent data
+        if response.subagent_responses:
+            for sub_resp in response.subagent_responses:
+                print(f"Subagent {sub_resp.metadata.agent}: {sub_resp.metadata.tokens.total_tokens} tokens")
     """
 
     content: T
@@ -191,6 +202,7 @@ class Response[T]:
         default_factory=list
     )  # Will be list[BaseMessage] at runtime
     error: ErrorInfo | None = None
+    subagent_responses: list[Response] | None = None
 
     @property
     def success(self) -> bool:
@@ -238,7 +250,7 @@ class Response[T]:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        result = {
             "content": self.content,
             "metadata": self.metadata.to_dict(),
             "tool_calls": [tc.to_dict() for tc in self.tool_calls],
@@ -249,6 +261,11 @@ class Response[T]:
             "error": self.error.to_dict() if self.error else None,
             "success": self.success,
         }
+        if self.subagent_responses is not None:
+            result["subagent_responses"] = [
+                sr.to_dict() for sr in self.subagent_responses
+            ]
+        return result
 
 
 class ResponseError(Exception):

@@ -13,7 +13,7 @@ from __future__ import annotations
 import fnmatch
 import sys
 from collections.abc import Callable, Iterator
-from typing import TYPE_CHECKING, TextIO, overload
+from typing import TYPE_CHECKING, Literal, TextIO, overload
 
 from cogent.observability.core.bus import EventBus
 from cogent.observability.core.config import (
@@ -101,7 +101,7 @@ class Observer:
         self,
         config: ObserverConfig | None = None,
         *,
-        level: str | Level | None = None,
+        level: Literal["off", "result", "progress", "detailed", "debug", "trace"] | Level | None = None,
         stream: TextIO | None = None,
         capture: list[str] | None = None,
     ) -> None:
@@ -110,7 +110,7 @@ class Observer:
 
         Args:
             config: Full configuration object
-            level: Level preset name or Level enum (shortcut for config)
+            level: Level name ("off", "result", "progress", "detailed", "debug", "trace") or Level enum
             stream: Output stream (shortcut for config)
             capture: Event patterns to capture for history (e.g., ["tool.result", "agent.*"])
         """

@@ -1026,12 +1026,28 @@ class NativeExecutor(BaseExecutor):
 
             # Emit tool decision event if tools were selected
             if tool_calls and (event_bus or observer):
+                # Separate tools into subagents and regular tools
+                tools_selected = [tc.get("name", "?") for tc in tool_calls]
+                subagents_selected = []
+                regular_tools_selected = []
+                
+                if hasattr(self.agent, "_subagent_registry"):
+                    for tool_name in tools_selected:
+                        if self.agent._subagent_registry.has_subagent(tool_name):
+                            subagents_selected.append(tool_name)
+                        else:
+                            regular_tools_selected.append(tool_name)
+                else:
+                    regular_tools_selected = tools_selected
+                
                 await emit_event(
                     TraceType.LLM_TOOL_DECISION.value,
                     {
                         "agent_name": agent_name,
                         "iteration": iteration + 1,
-                        "tools_selected": [tc.get("name", "?") for tc in tool_calls],
+                        "tools_selected": tools_selected,
+                        "subagents_selected": subagents_selected,
+                        "regular_tools_selected": regular_tools_selected,
                         "reasoning": (response.content or "")[:200]
                         if response.content
                         else "",
@@ -1107,6 +1123,10 @@ class NativeExecutor(BaseExecutor):
             for i, tc in enumerate(response.tool_calls):
                 tool_name = tc.get("name", "unknown")
                 call_id = tool_call_ids[i]
+                
+                # Check if this is a subagent
+                is_subagent = hasattr(self.agent, "_subagent_registry") and self.agent._subagent_registry.has_subagent(tool_name)
+                
                 await emit_event(
                     "tool.called",
                     {
@@ -1116,6 +1136,7 @@ class NativeExecutor(BaseExecutor):
                         "tool_name": tool_name,
                         "call_id": call_id,
                         "args": tc.get("args", {}),
+                        "is_subagent": is_subagent,
                     },
                 )
 
@@ -1154,6 +1175,10 @@ class NativeExecutor(BaseExecutor):
                 tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
                 tool_name = tc.get("name", "unknown")
                 call_id = tool_call_ids[i] if i < len(tool_call_ids) else ""
+                
+                # Check if this is a subagent
+                is_subagent = hasattr(self.agent, "_subagent_registry") and self.agent._subagent_registry.has_subagent(tool_name)
+                
                 await emit_event(
                     "tool.result",
                     {
@@ -1165,6 +1190,7 @@ class NativeExecutor(BaseExecutor):
                         "result": result.content[:500]
                         if len(result.content) > 500
                         else result.content,
+                        "is_subagent": is_subagent,
                     },
                 )
 
@@ -1504,6 +1530,100 @@ class NativeExecutor(BaseExecutor):
 
         return messages
 
+    async def _run_subagent(
+        self,
+        subagent_name: str,
+        args: dict[str, object],
+        tool_id: str,
+        run_context: RunContext | None = None,
+    ) -> ToolMessage:
+        """Execute a subagent and preserve Response metadata.
+
+        Args:
+            subagent_name: Name of the subagent to execute.
+            args: Arguments dict (should contain 'task' key).
+            tool_id: Tool call ID for the ToolMessage.
+            run_context: Optional RunContext to propagate.
+
+        Returns:
+            ToolMessage with the subagent's response content.
+        """
+        import time
+
+        from cogent.core import ToolCall
+
+        # Extract task from args
+        task = args.get("task", "")
+        if not task or not isinstance(task, str):
+            error_msg = f"Missing or invalid 'task' parameter for subagent {subagent_name}"
+            
+            # Track failed subagent call
+            if hasattr(self.agent, "state"):
+                self.agent.state.tool_calls.append(
+                    ToolCall(
+                        tool_name=subagent_name,
+                        arguments=args,
+                        result=None,
+                        duration=0.0,
+                        success=False,
+                        error=error_msg,
+                    )
+                )
+            
+            return ToolMessage(content=f"Error: {error_msg}", tool_call_id=tool_id)
+
+        start_time = time.time()
+        try:
+            # Execute subagent via registry (preserves Response object)
+            response = await self.agent._subagent_registry.execute(
+                subagent_name,
+                task,
+                context=run_context,
+            )
+            
+            duration = time.time() - start_time
+
+            # Track successful subagent call in agent state
+            if hasattr(self.agent, "state"):
+                self.agent.state.tool_calls.append(
+                    ToolCall(
+                        tool_name=subagent_name,
+                        arguments=args,
+                        result=response.content,
+                        duration=duration,
+                        success=response.success,
+                        error=response.error.message if response.error else None,
+                    )
+                )
+
+            # Return content as ToolMessage (LLM sees string, but Response is cached)
+            content = str(response.content) if response.content is not None else ""
+            
+            # If subagent failed, include error info
+            if response.error:
+                content = f"Subagent error: {response.error.message}\n\n{content}"
+            
+            return ToolMessage(content=content, tool_call_id=tool_id)
+
+        except Exception as e:
+            duration = time.time() - start_time
+            error_msg = f"Subagent execution failed: {str(e)}"
+
+            # Track failed subagent call
+            if hasattr(self.agent, "state"):
+                self.agent.state.tool_calls.append(
+                    ToolCall(
+                        tool_name=subagent_name,
+                        arguments=args,
+                        result=None,
+                        duration=duration,
+                        success=False,
+                        error=error_msg,
+                    )
+                )
+
+            return ToolMessage(content=f"Error: {error_msg}", tool_call_id=tool_id)
+
     async def _run_single_tool(
         self,
         tool_call: dict[str, object],
@@ -1528,6 +1648,10 @@ class NativeExecutor(BaseExecutor):
 
         # Track for metrics (but don't emit events)
         self._track_tool_call(tool_name, args)
+
+        # Check if this is a subagent call
+        if hasattr(self.agent, "_subagent_registry") and self.agent._subagent_registry.has_subagent(tool_name):
+            return await self._run_subagent(tool_name, args, tool_id, run_context)
 
         # Get tool from cache
         tool = self._tool_map.get(tool_name)
