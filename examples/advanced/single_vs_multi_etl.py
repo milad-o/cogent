@@ -484,12 +484,8 @@ Work independently - generate what's needed for the database setup.""",
 - DatabaseSpecialist: Creates database schemas and migration plans
 
 Delegate to specialists as needed to complete the migration plan. You decide who to call, when, and with what information. Work naturally - the workflow should emerge from what you discover.""",
-        subagents={
-            "DataAnalyst": analyst,
-            "CleanupExpert": cleaner,
-            "QATester": tester,
-            "DatabaseSpecialist": db_specialist,
-        },
+        # Simply pass the agents - their names become the tool names
+        subagents=[analyst, cleaner, tester, db_specialist],
         observer=observer,
     )
 

@@ -85,10 +85,8 @@ coordinator = Agent(
 - Use data_analyst for numerical analysis
 - Use market_researcher for market trends
 Synthesize their findings.""",
-    subagents={
-        "data_analyst": data_analyst,
-        "market_researcher": market_researcher,
-    },
+    # Simply pass the agents - their names become tool names
+    subagents=[data_analyst, market_researcher],
 )
 
 # Run task - coordinator will delegate automatically
@@ -99,6 +97,18 @@ response = await coordinator.run(
 
 print(response.content)
 print(f"Total tokens: {response.metadata.tokens.total_tokens}")
+```
+
+**Note:** You can also use a dict to override tool names:
+```python
+# Dict form: explicit tool names (optional)
+subagents={
+    "data_analyst": data_analyst,      # Tool name = "data_analyst"
+    "market_researcher": market_researcher,  # Tool name = "market_researcher"
+}
+
+# List form: uses agent.name (simpler!)
+subagents=[data_analyst, market_researcher]  # Uses agent names automatically
 ```
 
 ### Accessing Metadata
@@ -127,24 +137,32 @@ for delegation in response.metadata.delegation_chain:
 Agent(
     name: str,
     model: str | BaseChatModel,
-    subagents: dict[str, Agent] | None = None,
+    subagents: dict[str, Agent] | Sequence[Agent] | None = None,
     **kwargs
 )
 ```
 
 **Parameters:**
-- `subagents`: Dictionary mapping tool names to Agent instances
-  - Keys become tool names the LLM can call
-  - Values are the specialist agents to delegate to
+- `subagents`: Specialized agents for delegation
+  - **dict form**: Explicit tool names `{"tool_name": agent}`
+  - **list/tuple form**: Uses `agent.name` as tool name `[agent1, agent2]`
 
-**Example:**
+**Examples:**
 ```python
+# List form (recommended) - uses agent names
+coordinator = Agent(
+    name="coordinator",
+    model="gpt-4o",
+    subagents=[analyst_agent, researcher_agent],
+)
+
+# Dict form - override tool names if needed
 coordinator = Agent(
     name="coordinator",
     model="gpt-4o",
     subagents={
-        "analyst": analyst_agent,
-        "researcher": researcher_agent,
+        "custom_analyst_name": analyst_agent,
+        "custom_researcher_name": researcher_agent,
     },
 )
 ```

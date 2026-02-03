@@ -30,9 +30,8 @@ async def main():
         instructions="""You are a helpful assistant.
 For math problems, delegate to the math_expert.
 For other questions, answer directly.""",
-        subagents={
-            "math_expert": math_expert,
-        },
+        # Simply pass the agent - uses its name as the tool name
+        subagents=[math_expert],
         observer=observer,
     )
     

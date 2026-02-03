@@ -148,7 +148,7 @@ class Agent:
         instructions: str | None = None,
         tools: Sequence[BaseTool | str | Callable] | None = None,
         capabilities: Sequence[BaseTool | str | Callable | type] | None = None,
-        subagents: dict[str, Agent] | None = None,
+        subagents: dict[str, Agent] | Sequence[Agent] | None = None,
         system_prompt: str | None = None,
         resilience: ResilienceConfig | None = None,
         # Advanced parameters
@@ -189,6 +189,9 @@ class Agent:
             instructions: Instructions for the agent - defines behavior and personality
             tools: List of tools - BaseTool objects, strings, or callables
             capabilities: Additional capabilities to enable
+            subagents: Specialized agents for delegation
+                - dict: Explicit tool names {"tool_name": agent}
+                - list/tuple: Uses agent.name as tool name [agent1, agent2]
             system_prompt: System prompt (alias for instructions)
             resilience: ResilienceConfig for retry logic and circuit breakers
             trace_bus: TraceBus for event communication (optional)
@@ -303,8 +306,15 @@ class Agent:
         
         self._subagent_registry = SubagentRegistry()
         
+        # Normalize subagents to dict (supports dict, list, or tuple)
         if subagents:
-            for subagent_name, subagent in subagents.items():
+            if isinstance(subagents, dict):
+                subagents_dict = subagents
+            else:
+                # Sequence (list/tuple) - use agent.name as key
+                subagents_dict = {agent.config.name: agent for agent in subagents}
+            
+            for subagent_name, subagent in subagents_dict.items():
                 # Register subagent in registry
                 self._subagent_registry.register(subagent_name, subagent)
                 

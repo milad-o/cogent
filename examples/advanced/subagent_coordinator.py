@@ -52,11 +52,8 @@ Workflow:
 3. Synthesize their findings into a cohesive final response
 
 Be strategic about delegation - use specialists when their expertise adds value.""",
-        subagents={
-            "data_analyst": data_analyst,
-            "market_researcher": market_researcher,
-            "technical_writer": technical_writer,
-        },
+        # Simply pass the agents - uses their names automatically
+        subagents=[data_analyst, market_researcher, technical_writer],
         observer=observer,
     )
     

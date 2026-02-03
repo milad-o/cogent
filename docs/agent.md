@@ -802,10 +802,8 @@ coordinator = Agent(
 - Use data_analyst for numerical analysis
 - Use market_researcher for market trends
 Synthesize their findings.""",
-    subagents={
-        "data_analyst": data_analyst,
-        "market_researcher": market_researcher,
-    },
+    # Simply pass the agents - uses their names automatically
+    subagents=[data_analyst, market_researcher],
 )
 
 # Coordinator delegates automatically
@@ -835,11 +833,18 @@ coordinator = Agent(
     tools=[specialist.as_tool()],  # Response → string
 )
 
-# ✅ New: Preserves metadata
+# ✅ New: Preserves metadata (list syntax)
 coordinator = Agent(
     name="coordinator",
     model="gpt-4o",
-    subagents={"specialist": specialist},  # Full Response preserved
+    subagents=[specialist],  # Uses specialist.name as tool name
+)
+
+# ✅ New: Preserves metadata (dict syntax for custom names)
+coordinator = Agent(
+    name="coordinator",
+    model="gpt-4o",
+    subagents={"custom_name": specialist},  # Override tool name
 )
 ```
 

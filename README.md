@@ -553,10 +553,8 @@ coordinator = Agent(
 - Use data_analyst for numerical analysis
 - Use market_researcher for market trends
 Synthesize their findings.""",
-    subagents={
-        "data_analyst": data_analyst,
-        "market_researcher": market_researcher,
-    },
+    # Simply pass the agents - uses their names automatically
+    subagents=[data_analyst, market_researcher],
 )
 
 # Full metadata preserved (tokens, duration, delegation chain)

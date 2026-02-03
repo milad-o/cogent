@@ -12,7 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Native Subagent Support** — Built-in multi-agent coordination via `subagents=` parameter
-  - New `Agent(subagents={"name": agent})` parameter for delegation to specialized agents
+  - New `Agent(subagents={"name": agent})` or `Agent(subagents=[agent1, agent2])` parameter
+  - **List/tuple syntax**: Uses `agent.name` automatically — no redundancy!
+  - **Dict syntax**: Override tool names when needed `{"custom_name": agent}`
   - LLM automatically calls subagents as tools - no custom syntax needed
   - Full metadata preservation: tokens, model calls, and delegation chain tracking
   - Automatic metadata aggregation across all agents in the hierarchy
