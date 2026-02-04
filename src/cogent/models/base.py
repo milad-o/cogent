@@ -6,6 +6,7 @@ All chat and embedding models inherit from these base classes.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 from abc import ABC, abstractmethod
@@ -309,14 +310,62 @@ class BaseChatModel(ABC):
     _client: object = field(default=None, repr=False)
     _async_client: object = field(default=None, repr=False)
     _initialized: bool = field(default=False, repr=False)
+    _init_lock: asyncio.Lock | None = field(default=None, repr=False)
+
+    async def _ensure_initialized_async(self) -> None:
+        """Async-safe lazy initialization with locking."""
+        # Create lock on first use (can't create in __init__ due to event loop)
+        # MUST be outside the _initialized check to ensure all tasks use the same lock!
+        if self._init_lock is None:
+            self._init_lock = asyncio.Lock()
+        
+        if not self._initialized:
+            async with self._init_lock:
+                # Double-check after acquiring lock
+                if not self._initialized:
+                    with contextlib.suppress(Exception):
+                        __import__("cogent.config")
+                    try:
+                        self._init_client()
+                        # Validate that initialization actually succeeded
+                        if self._client is None and self._async_client is None:
+                            raise RuntimeError(
+                                f"{self.__class__.__name__} failed to initialize: "
+                                "both _client and _async_client are None. "
+                                "Check API key and network connection."
+                            )
+                        self._initialized = True
+                    except Exception:
+                        # Reset state on failure to allow retry
+                        self._client = None
+                        self._async_client = None
+                        self._initialized = False
+                        raise
 
     def _ensure_initialized(self) -> None:
-        """Lazily initialize clients on first use."""
+        """Lazily initialize clients on first use (sync version).
+        
+        Note: Not async-safe. Use _ensure_initialized_async() for async contexts.
+        """
         if not self._initialized:
             with contextlib.suppress(Exception):
                 __import__("cogent.config")
-            self._init_client()
-            self._initialized = True
+            try:
+                self._init_client()
+                # Validate that initialization actually succeeded
+                if self._client is None and self._async_client is None:
+                    raise RuntimeError(
+                        f"{self.__class__.__name__} failed to initialize: "
+                        "both _client and _async_client are None. "
+                        "Check API key and network connection."
+                    )
+                self._initialized = True
+            except Exception:
+                # Reset state on failure to allow retry
+                self._client = None
+                self._async_client = None
+                self._initialized = False
+                raise
 
     @abstractmethod
     def _init_client(self) -> None:

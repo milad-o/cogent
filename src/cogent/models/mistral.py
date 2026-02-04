@@ -206,7 +206,7 @@ class MistralChat(BaseChatModel):
         Returns:
             AIMessage with response content and any tool calls.
         """
-        self._ensure_initialized()
+        await self._ensure_initialized_async()
 
         # Convert messages to dict format
         converted_messages = convert_messages(normalize_input(messages))
@@ -392,9 +392,11 @@ class MistralChat(BaseChatModel):
         new_model._tools = tools
         new_model._tool_choice = tool_choice
         new_model._parallel_tool_calls = parallel_tool_calls
-        new_model._client = self._client
-        new_model._async_client = self._async_client
-        new_model._initialized = True
+        # Only copy initialization state if original was actually initialized
+        if self._initialized and (self._client is not None or self._async_client is not None):
+            new_model._client = self._client
+            new_model._async_client = self._async_client
+            new_model._initialized = True
         return new_model
 
 

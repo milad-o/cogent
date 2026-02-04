@@ -708,12 +708,6 @@ mcp = [
     { name = "mcp" },
     { name = "websockets" },
 ]
-notebooks = [
-    { name = "ipykernel" },
-    { name = "matplotlib" },
-    { name = "pandas" },
-    { name = "seaborn" },
-]
 retrieval = [
     { name = "rank-bm25" },
     { name = "sentence-transformers" },
@@ -721,6 +715,11 @@ retrieval = [
 vector-stores = [
     { name = "faiss-cpu" },
     { name = "qdrant-client" },
+]
+visualization = [
+    { name = "matplotlib" },
+    { name = "pandas" },
+    { name = "seaborn" },
 ]
 web = [
     { name = "beautifulsoup4" },
@@ -782,14 +781,13 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.2.4" },
     { name = "groq", marker = "extra == 'groq'", specifier = ">=0.15.0" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "ipykernel", marker = "extra == 'notebooks'", specifier = ">=6.29.0" },
-    { name = "matplotlib", marker = "extra == 'notebooks'", specifier = ">=3.9.0" },
+    { name = "matplotlib", marker = "extra == 'visualization'", specifier = ">=3.9.0" },
     { name = "mcp", specifier = ">=1.22.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.22.0" },
     { name = "networkx", specifier = ">=3.6" },
     { name = "openai", specifier = ">=1.0.0" },
     { name = "openai-agents", marker = "extra == 'benchmark'", specifier = ">=0.6.1" },
-    { name = "pandas", marker = "extra == 'notebooks'", specifier = ">=2.2.0" },
+    { name = "pandas", marker = "extra == 'visualization'", specifier = ">=2.2.0" },
     { name = "pdfplumber", marker = "extra == 'document'", specifier = ">=0.11.8" },
     { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.56.0" },
     { name = "psycopg2-binary", marker = "extra == 'database'", specifier = ">=2.9.11" },
@@ -807,7 +805,7 @@ requires-dist = [
     { name = "rapidfuzz", specifier = ">=3.14.3" },
     { name = "redis", marker = "extra == 'infrastructure'", specifier = ">=5.0.0" },
     { name = "reportlab", marker = "extra == 'document'", specifier = ">=4.4.5" },
-    { name = "seaborn", marker = "extra == 'notebooks'", specifier = ">=0.13.0" },
+    { name = "seaborn", marker = "extra == 'visualization'", specifier = ">=0.13.0" },
     { name = "sentence-transformers", marker = "extra == 'retrieval'", specifier = ">=5.2.0" },
     { name = "sqlalchemy", specifier = ">=2.0.44" },
     { name = "sqlalchemy", marker = "extra == 'database'", specifier = ">=2.0.44" },
@@ -818,7 +816,7 @@ requires-dist = [
     { name = "websockets", specifier = ">=15.0.1" },
     { name = "websockets", marker = "extra == 'mcp'", specifier = ">=15.0.1" },
 ]
-provides-extras = ["anthropic", "azure", "cohere", "groq", "vector-stores", "retrieval", "database", "infrastructure", "analytics", "api", "browser", "document", "mcp", "web", "notebooks", "all-providers", "all-backend", "all", "benchmark"]
+provides-extras = ["anthropic", "azure", "cohere", "groq", "vector-stores", "retrieval", "database", "infrastructure", "analytics", "api", "browser", "document", "mcp", "web", "visualization", "all-providers", "all-backend", "all", "benchmark"]
 
 [package.metadata.requires-dev]
 dev = [

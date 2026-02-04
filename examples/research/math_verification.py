@@ -36,7 +36,8 @@ import pandas as pd
 import seaborn as sns
 from pydantic import BaseModel, Field
 
-from cogent import Agent, tool
+from cogent import Agent, Observer, tool
+from cogent.agent.resilience import ResilienceConfig
 
 # Configure matplotlib for SVG output and better styling
 sns.set_theme(style="whitegrid", palette="husl")
@@ -217,6 +218,9 @@ MODELS = {
         "name": "xAI Grok-4",
         "orchestrator": "grok-4",
         "specialist": "grok-4-1-fast",
+        "resilience": ResilienceConfig(
+            timeout_seconds=180.0,  # 3 minutes for slower responses
+        ),
     },
     "claude": {
         "name": "Claude Sonnet 4",
@@ -227,6 +231,9 @@ MODELS = {
         "name": "Mistral Large",
         "orchestrator": "mistral-large-latest",
         "specialist": "mistral-small-latest",
+        "resilience": ResilienceConfig(
+            timeout_seconds=90.0,
+        ),
     },
     "gemini": {
         "name": "Gemini 2.5 Pro",
@@ -245,6 +252,12 @@ def create_agents(model_config: dict) -> tuple[Agent, Agent]:
     """Create single and multi-agent systems for a model."""
     orchestrator_model = model_config["orchestrator"]
     specialist_model = model_config["specialist"]
+    
+    # Get resilience config if specified (for slow models like Grok)
+    resilience = model_config.get("resilience")
+
+    # Create observer for detailed visibility
+    observer = Observer(level="progress")
 
     # Single agent with all tools
     single_agent = Agent(
@@ -262,6 +275,8 @@ Show your reasoning clearly, then provide the final numerical answer.""",
             calculate_average,
             solve_linear_equation,
         ],
+        observer=observer,
+        resilience=resilience,
     )
 
     # Specialists
@@ -273,6 +288,7 @@ Show your reasoning clearly, then provide the final numerical answer.""",
 Use the calculator and percentage tools to perform calculations accurately.
 Show each step of your work clearly.""",
         tools=[calculator, calculate_percentage],
+        resilience=resilience,
     )
 
     growth_expert = Agent(
@@ -283,6 +299,7 @@ Show each step of your work clearly.""",
 Use growth rate and compound growth tools to analyze changes over time.
 Calculate averages when needed.""",
         tools=[calculate_growth_rate, calculate_compound_growth, calculate_average],
+        resilience=resilience,
     )
 
     equation_expert = Agent(
@@ -293,6 +310,7 @@ Calculate averages when needed.""",
 Solve linear equations using the provided tool.
 Explain the solution process.""",
         tools=[solve_linear_equation],
+        resilience=resilience,
     )
 
     # Orchestrator
@@ -308,6 +326,7 @@ Break down complex problems and delegate to specialists:
 
 Synthesize their results into a final answer with clear reasoning.""",
         subagents=[arithmetic_expert, growth_expert, equation_expert],
+        resilience=resilience,
     )
 
     return single_agent, multi_agent_orchestrator
@@ -364,15 +383,25 @@ async def evaluate_approach(agent: Agent, problem: MathProblem) -> EvaluationRes
         for sub_resp in response.subagent_responses:
             tool_calls += len(sub_resp.tool_calls)
 
+    # Get token counts (some providers may not report tokens)
+    if response.metadata.tokens:
+        input_tokens = response.metadata.tokens.prompt_tokens
+        output_tokens = response.metadata.tokens.completion_tokens
+        total_tokens = response.metadata.tokens.total_tokens
+    else:
+        input_tokens = 0
+        output_tokens = 0
+        total_tokens = 0
+
     return EvaluationResult(
         problem_description=problem.description,
         ground_truth=problem.ground_truth,
         agent_answer=answer,
         reasoning=reasoning,
         duration=duration,
-        input_tokens=response.metadata.tokens.prompt_tokens,
-        output_tokens=response.metadata.tokens.completion_tokens,
-        total_tokens=response.metadata.tokens.total_tokens,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
         tool_calls=tool_calls,
         correct=correct,
     )
