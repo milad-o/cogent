@@ -647,13 +647,22 @@ class ContactInfo(BaseModel):
     email: str = Field(description="Email address")
     phone: str | None = Field(None, description="Phone number")
 
+# Configure on agent (all calls use this schema)
 agent = Agent(
     name="Extractor",
     model=model,
-    output=ContactInfo,  # Enforce schema
+    output=ContactInfo,  # Enforce schema on all runs
 )
 
 result = await agent.run("Extract: John Doe, john@acme.com")
+print(result.content.data)  # ContactInfo(name="John Doe", ...)
+
+# OR: Per-call override (more flexible)
+agent = Agent(name="Extractor", model=model)  # No default schema
+result = await agent.run(
+    "Extract: John Doe, john@acme.com",
+    output=ContactInfo,  # Schema for this call only
+)
 print(result.content.data)  # ContactInfo(name="John Doe", ...)
 
 # Bare types - return primitive values directly

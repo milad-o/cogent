@@ -678,19 +678,31 @@ class Analysis(BaseModel):
     confidence: float
     topics: list[str]
 
+# Configure on agent (all calls use schema)
 agent = Agent(
     name="Analyzer",
     model="gpt-4o-mini",
-    output=Analysis,  # Enforce schema
+    output=Analysis,  # Enforce schema on all runs
 )
 
 result = await agent.run("Analyze: I love this product!")
 print(result.content.data.sentiment)   # "positive"
 print(result.content.data.confidence)  # 0.95
 
+# OR: Per-call override (more flexible)
+agent = Agent(name="Analyzer", model="gpt-4o-mini")  # No default schema
+result = await agent.run(
+    "Analyze: I love this product!",
+    output=Analysis,  # Schema for this call only
+)
+print(result.content.data.sentiment)   # "positive"
+
 # Bare types - return primitive values directly
-agent = Agent(name="Reviewer", model="gpt-4o-mini", output=Literal["APPROVE", "REJECT"])
-result = await agent.run("Review this code")
+agent = Agent(name="Reviewer", model="gpt-4o-mini")
+result = await agent.run(
+    "Review this code",
+    output=Literal["APPROVE", "REJECT"],  # Per-call schema
+)
 print(result.content.data)  # "APPROVE" (bare string)
 
 # Collections - wrap in models for reliability

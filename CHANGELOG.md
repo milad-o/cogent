@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-02-04
+
+### Added
+
+- **Per-call structured output override** — `run(output=Schema)` parameter for flexible schema control
+  - New `output` parameter on `Agent.run()` for per-call structured output configuration
+  - Overrides agent-level `output=` setting when provided
+  - Enables dynamic schema selection without recreating agents
+  - Example: `await agent.run(task, output=MathSolution)` uses `MathSolution` for this call only
+  - Follows same pattern as existing `reasoning` parameter override
+  - Structured output result accessible via `response.content.data` (wrapped in `StructuredResult`)
+
+### Changed
+
+- **Documentation updated** — All structured output examples show both agent-level and per-call syntax
+  - Updated `docs/agent.md` with per-call override examples
+  - Updated `README.md` to demonstrate flexible usage patterns
+  - No breaking changes — agent-level `output=` still works as before
+
 ## [1.15.0] - 2026-02-03
 
 ### Added

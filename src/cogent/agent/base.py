@@ -2961,6 +2961,7 @@ class Agent:
         stream: bool = False,
         max_iterations: int = 25,
         reasoning: bool | ReasoningConfig | None = None,
+        output: type | dict | ResponseSchema | None = None,
     ) -> Coroutine[Any, Any, Response[Any]] | AsyncIterator[StreamChunk]:
         """
         Execute a task with full agent capabilities.
@@ -2986,6 +2987,11 @@ class Agent:
                 - True: Enable reasoning with default config
                 - False: Disable reasoning for this call
                 - ReasoningConfig: Enable with custom config
+            output: Override structured output for this call:
+                - None: Use agent's configured output schema (default)
+                - Pydantic/dataclass/TypedDict class: Enforce this schema
+                - dict: JSON Schema
+                - ResponseSchema: Full configuration control
 
         Returns:
             If stream=False: Awaitable that yields the final result when awaited.
@@ -3030,6 +3036,7 @@ class Agent:
                 thread_id=thread_id,
                 max_iterations=max_iterations,
                 reasoning=reasoning,
+                output=output,
             )
 
         # Non-streaming: return coroutine (must be awaited)
@@ -3039,6 +3046,7 @@ class Agent:
             thread_id=thread_id,
             max_iterations=max_iterations,
             reasoning=reasoning,
+            output=output,
         )
 
     def as_tool(
@@ -3268,6 +3276,7 @@ class Agent:
         thread_id: str | None = None,
         max_iterations: int = 25,
         reasoning: bool | ReasoningConfig | None = None,
+        output: type | dict | ResponseSchema | None = None,
     ) -> Response[Any]:
         """Internal implementation of non-streaming run()."""
         import traceback as tb
@@ -3323,14 +3332,19 @@ class Agent:
                     for msg in history:
                         self.state.add_message(msg)
 
-        # Apply reasoning override for this call
+        # Apply reasoning and output overrides for this call
         original_reasoning = self._reasoning_config
+        original_output = self._output_config
         start_time = now_utc()
 
         try:
             if reasoning is not None:
                 # Override reasoning for this call
                 self._apply_reasoning_override(reasoning)
+            
+            if output is not None:
+                # Override output schema for this call
+                self._setup_output(output)
 
             # Create executor based on config.execution_strategy
             executor = create_executor(self, strategy=self.config.execution_strategy)
@@ -3469,9 +3483,11 @@ class Agent:
                 ),
             )
         finally:
-            # Restore original reasoning config
+            # Restore original configs
             if reasoning is not None:
                 self._reasoning_config = original_reasoning
+            if output is not None:
+                self._output_config = original_output
 
     async def _run_stream(
         self,
@@ -3481,6 +3497,7 @@ class Agent:
         thread_id: str | None = None,
         max_iterations: int = 25,
         reasoning: bool | ReasoningConfig | None = None,
+        output: type | dict | ResponseSchema | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Internal streaming implementation of run()."""
         from cogent.agent.streaming import StreamChunk
@@ -3492,12 +3509,17 @@ class Agent:
         if self._capabilities and not self._capabilities_initialized:
             await self.initialize_capabilities()
 
-        # Apply reasoning override for this call
+        # Apply reasoning and output overrides for this call
         original_reasoning = self._reasoning_config
+        original_output = self._output_config
         try:
             if reasoning is not None:
                 # Override reasoning for this call
                 self._apply_reasoning_override(reasoning)
+            
+            if output is not None:
+                # Override output schema for this call
+                self._setup_output(output)
 
             # Build messages with optional conversation history
             messages = await self._build_run_messages(task, thread_id)
@@ -3572,9 +3594,11 @@ class Agent:
             if thread_id and accumulated_content:
                 await self._save_to_thread(thread_id, task, accumulated_content)
         finally:
-            # Restore original reasoning config
+            # Restore original configs
             if reasoning is not None:
                 self._reasoning_config = original_reasoning
+            if output is not None:
+                self._output_config = original_output
 
     async def _build_run_messages(
         self,
