@@ -2370,7 +2370,7 @@
 </span><span id="__span-28-35"><a id="__codelineno-28-35" name="__codelineno-28-35" href="#__codelineno-28-35"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">sub_resp</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">agent</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">sub_resp</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">tokens</span><span class="o">.</span><span class="n">total_tokens</span><span class="si">}</span><span class="s2"> tokens&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p><strong>Key Benefits:</strong>
-- ✅ Accurate token counting (coordinator + all subagents)
+- ✅ Accurate token counting (coordinator + all subagents, including reasoning tokens)
 - ✅ Full delegation chain tracking
 - ✅ Context propagates automatically
 - ✅ Observable with <code>[subagent-call]</code>, <code>[subagent-result]</code> events

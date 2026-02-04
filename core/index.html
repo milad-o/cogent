@@ -2585,14 +2585,24 @@
 </span></code></pre></div>
 <h3 id="response-types">Response Types<a class="headerlink" href="#response-types" title="Permanent link">&para;</a></h3>
 <h4 id="tokenusage">TokenUsage<a class="headerlink" href="#tokenusage" title="Permanent link">&para;</a></h4>
-<p>Token consumption tracking:</p>
+<p>Token consumption tracking with full breakdown:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cogent.core.response</span><span class="w"> </span><span class="kn">import</span> <span class="n">TokenUsage</span>
 </span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
 </span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="n">tokens</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">tokens</span>
 </span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prompt: </span><span class="si">{</span><span class="n">tokens</span><span class="o">.</span><span class="n">prompt_tokens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Completion: </span><span class="si">{</span><span class="n">tokens</span><span class="o">.</span><span class="n">completion_tokens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total: </span><span class="si">{</span><span class="n">tokens</span><span class="o">.</span><span class="n">total_tokens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="c1"># Reasoning tokens (if model supports it)</span>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="k">if</span> <span class="n">tokens</span><span class="o">.</span><span class="n">reasoning_tokens</span><span class="p">:</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reasoning: </span><span class="si">{</span><span class="n">tokens</span><span class="o">.</span><span class="n">reasoning_tokens</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
+<p><strong>Attributes:</strong>
+- <code>prompt_tokens</code>: Input tokens
+- <code>completion_tokens</code>: Output tokens<br />
+- <code>total_tokens</code>: Sum of prompt + completion
+- <code>reasoning_tokens</code>: Reasoning/thinking tokens (o1, o3, deepseek-reasoner, Claude extended thinking, Gemini thinking, Grok)</p>
+<p><strong>Note:</strong> In multi-agent scenarios, all token categories are aggregated across coordinator and subagents.</p>
 <h4 id="toolcall">ToolCall<a class="headerlink" href="#toolcall" title="Permanent link">&para;</a></h4>
 <p>Tool invocation tracking with timing:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cogent.core.response</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolCall</span>

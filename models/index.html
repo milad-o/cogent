@@ -3591,7 +3591,9 @@
 </span><span id="__span-35-14"><a id="__codelineno-35-14" name="__codelineno-35-14" href="#__codelineno-35-14"></a>    <span class="n">prompt_tokens</span><span class="p">:</span> <span class="nb">int</span>
 </span><span id="__span-35-15"><a id="__codelineno-35-15" name="__codelineno-35-15" href="#__codelineno-35-15"></a>    <span class="n">completion_tokens</span><span class="p">:</span> <span class="nb">int</span>
 </span><span id="__span-35-16"><a id="__codelineno-35-16" name="__codelineno-35-16" href="#__codelineno-35-16"></a>    <span class="n">total_tokens</span><span class="p">:</span> <span class="nb">int</span>
+</span><span id="__span-35-17"><a id="__codelineno-35-17" name="__codelineno-35-17" href="#__codelineno-35-17"></a>    <span class="n">reasoning_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># Reasoning tokens (if available)</span>
 </span></code></pre></div>
+<p><strong>Note:</strong> <code>reasoning_tokens</code> is populated by models that support reasoning/thinking (o1/o3, deepseek-reasoner, Claude extended thinking, Gemini thinking, Grok).</p>
 <p><strong>Streaming Pattern</strong>:</p>
 <ol>
 <li><strong>Content chunks</strong> — Include partial metadata (model, response_id, timestamp)</li>
