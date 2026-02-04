@@ -88,9 +88,8 @@ document = [
 mcp = ["mcp>=1.22.0", "websockets>=15.0.1"]
 web = ["beautifulsoup4>=4.14.2", "ddgs>=9.9.1"]
 
-# --- Jupyter Notebooks & Visualization ---
-notebooks = [
-    "ipykernel>=6.29.0",
+# --- Data Visualization & Analysis ---
+visualization = [
     "matplotlib>=3.9.0",
     "seaborn>=0.13.0",
     "pandas>=2.2.0",
