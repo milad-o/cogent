@@ -826,7 +826,7 @@ for sub_resp in response.subagent_responses:
 ```
 
 **Key Benefits:**
-- ✅ Accurate token counting (coordinator + all subagents)
+- ✅ Accurate token counting (coordinator + all subagents, including reasoning tokens)
 - ✅ Full delegation chain tracking
 - ✅ Context propagates automatically
 - ✅ Observable with `[subagent-call]`, `[subagent-result]` events

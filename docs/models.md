@@ -955,7 +955,10 @@ class TokenUsage:
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
+    reasoning_tokens: int | None  # Reasoning tokens (if available)
 ```
+
+**Note:** `reasoning_tokens` is populated by models that support reasoning/thinking (o1/o3, deepseek-reasoner, Claude extended thinking, Gemini thinking, Grok).
 
 **Streaming Pattern**:
 

@@ -440,7 +440,7 @@ except ResponseError as e:
 
 #### TokenUsage
 
-Token consumption tracking:
+Token consumption tracking with full breakdown:
 
 ```python
 from cogent.core.response import TokenUsage
@@ -449,7 +449,19 @@ tokens = response.metadata.tokens
 print(f"Prompt: {tokens.prompt_tokens}")
 print(f"Completion: {tokens.completion_tokens}")
 print(f"Total: {tokens.total_tokens}")
+
+# Reasoning tokens (if model supports it)
+if tokens.reasoning_tokens:
+    print(f"Reasoning: {tokens.reasoning_tokens}")
 ```
+
+**Attributes:**
+- `prompt_tokens`: Input tokens
+- `completion_tokens`: Output tokens  
+- `total_tokens`: Sum of prompt + completion
+- `reasoning_tokens`: Reasoning/thinking tokens (o1, o3, deepseek-reasoner, Claude extended thinking, Gemini thinking, Grok)
+
+**Note:** In multi-agent scenarios, all token categories are aggregated across coordinator and subagents.
 
 #### ToolCall
 

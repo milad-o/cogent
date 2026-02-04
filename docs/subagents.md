@@ -115,12 +115,18 @@ subagents=[data_analyst, market_researcher]  # Uses agent names automatically
 
 ```python
 # Token aggregation (coordinator + all subagents)
-total_tokens = response.metadata.tokens.total_tokens
-print(f"Total cost: {total_tokens}")
+tokens = response.metadata.tokens
+print(f"Total tokens: {tokens.total_tokens}")
+print(f"  Prompt: {tokens.prompt_tokens}")
+print(f"  Completion: {tokens.completion_tokens}")
+if tokens.reasoning_tokens:
+    print(f"  Reasoning: {tokens.reasoning_tokens}")
 
 # Individual subagent responses
 for sub_resp in response.subagent_responses:
     print(f"{sub_resp.metadata.agent}: {sub_resp.metadata.tokens.total_tokens} tokens")
+    if sub_resp.metadata.tokens.reasoning_tokens:
+        print(f"  └─ Reasoning: {sub_resp.metadata.tokens.reasoning_tokens}")
 
 # Delegation chain
 for delegation in response.metadata.delegation_chain:
@@ -439,11 +445,23 @@ specialist = Agent(
 
 **Debug:**
 ```python
-print(f"Coordinator: {response.metadata.tokens.total_tokens}")
+tokens = response.metadata.tokens
+print(f"Coordinator total: {tokens.total_tokens}")
+print(f"  Prompt: {tokens.prompt_tokens}")
+print(f"  Completion: {tokens.completion_tokens}")
+if tokens.reasoning_tokens:
+    print(f"  Reasoning: {tokens.reasoning_tokens}")
+
 for sub in response.subagent_responses:
-    print(f"{sub.metadata.agent}: {sub.metadata.tokens.total_tokens}")
+    sub_tokens = sub.metadata.tokens
+    print(f"{sub.metadata.agent}: {sub_tokens.total_tokens} tokens")
+    if sub_tokens.reasoning_tokens:
+        print(f"  └─ Reasoning: {sub_tokens.reasoning_tokens}")
+
 print(f"Delegation chain: {response.metadata.delegation_chain}")
 ```
+
+**Note:** Token counts include prompt + completion + reasoning (when available). All categories are aggregated across coordinator and all subagents.
 
 ### Subagent errors
 

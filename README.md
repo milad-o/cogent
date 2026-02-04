@@ -560,6 +560,10 @@ Synthesize their findings.""",
 # Full metadata preserved (tokens, duration, delegation chain)
 result = await coordinator.run("Analyze Q4 2025 e-commerce growth")
 print(f"Total tokens: {result.metadata.tokens.total_tokens}")  # Includes all subagents
+print(f"  Prompt: {result.metadata.tokens.prompt_tokens}")
+print(f"  Completion: {result.metadata.tokens.completion_tokens}")
+if result.metadata.tokens.reasoning_tokens:
+    print(f"  Reasoning: {result.metadata.tokens.reasoning_tokens}")
 print(f"Subagent calls: {len(result.subagent_responses)}")
 ```
 

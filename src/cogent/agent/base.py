@@ -3414,10 +3414,15 @@ class Agent:
                 for resp in subagent_responses:
                     if resp.metadata and resp.metadata.tokens:
                         if total_tokens:
+                            # Aggregate reasoning tokens if present in either
+                            total_reasoning = (total_tokens.reasoning_tokens or 0) + (resp.metadata.tokens.reasoning_tokens or 0)
+                            reasoning_tokens = total_reasoning if total_reasoning > 0 else None
+                            
                             total_tokens = TokenUsage(
                                 prompt_tokens=total_tokens.prompt_tokens + resp.metadata.tokens.prompt_tokens,
                                 completion_tokens=total_tokens.completion_tokens + resp.metadata.tokens.completion_tokens,
                                 total_tokens=total_tokens.total_tokens + resp.metadata.tokens.total_tokens,
+                                reasoning_tokens=reasoning_tokens,
                             )
                         else:
                             total_tokens = resp.metadata.tokens
