@@ -598,16 +598,16 @@ class TestBaseRetriever:
 
     @pytest.mark.asyncio
     async def test_multi_representation_as_tool(self) -> None:
-        """Test MultiRepresentationIndex.as_tool() with custom parameters."""
+        """Test MultiRepresentationRetriever.as_tool() with custom parameters."""
         from cogent.models import MockChatModel
         from cogent.retriever.multi_representation import (
-            MultiRepresentationIndex,
+            MultiRepresentationRetriever,
         )
         from cogent.vectorstore import VectorStore
 
         model = MockChatModel()
         vs = VectorStore(embeddings=MockEmbedding())
-        index = MultiRepresentationIndex(llm=model, vectorstore=vs)
+        index = MultiRepresentationRetriever(llm=model, vectorstore=vs)
 
         # Add a test document
         docs = [VectorStoreDocument(text="Python is a programming language", metadata={})]
@@ -644,13 +644,13 @@ class TestBaseRetriever:
 
     @pytest.mark.asyncio
     async def test_time_based_index_as_tool(self) -> None:
-        """Test TimeBasedIndex.as_tool() with time-aware parameters."""
+        """Test TimeBasedRetriever.as_tool() with time-aware parameters."""
 
-        from cogent.retriever.temporal import TimeBasedIndex
+        from cogent.retriever.temporal import TimeBasedRetriever
         from cogent.vectorstore import VectorStore
 
         vs = VectorStore(embeddings=MockEmbedding())
-        index = TimeBasedIndex(vectorstore=vs)
+        index = TimeBasedRetriever(vectorstore=vs)
 
         # Add documents with timestamps
         docs = [
@@ -1173,14 +1173,14 @@ class TestEnsembleRetriever:
         # Test RRF
         ensemble_rrf = EnsembleRetriever(
             retrievers=[dense, sparse],
-            fusion_strategy=FusionStrategy.RRF,
+            fusion=FusionStrategy.RRF,
         )
         results_rrf = await ensemble_rrf.retrieve("Python", k=3)
 
         # Test MAX
         ensemble_max = EnsembleRetriever(
             retrievers=[dense, sparse],
-            fusion_strategy=FusionStrategy.MAX,
+            fusion=FusionStrategy.MAX,
         )
         results_max = await ensemble_max.retrieve("Python", k=3)
 
@@ -1714,15 +1714,15 @@ class TestLLMAdapter:
 
     @pytest.mark.asyncio
     async def test_summary_index_auto_adapts_chat_model(self) -> None:
-        """Test SummaryIndex automatically adapts chat models."""
+        """Test SummaryRetriever automatically adapts chat models."""
         from cogent.models import MockChatModel
-        from cogent.retriever import SummaryIndex
+        from cogent.retriever import SummaryRetriever
         from cogent.vectorstore import Document, VectorStore
 
         # Create index with chat model (no manual adapter needed)
         model = MockChatModel()
         vs = VectorStore(embeddings=MockEmbedding())
-        index = SummaryIndex(llm=model, vectorstore=vs)
+        index = SummaryRetriever(llm=model, vectorstore=vs)
 
         # Should work without error (adapter created internally)
         docs = [Document(text="Test document about machine learning and AI.")]

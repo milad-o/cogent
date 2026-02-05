@@ -1,10 +1,10 @@
-"""Summary-based retrieval indexes.
+"""Summary-based retrieval.
 
-These indexes use LLM summarization for efficient retrieval over large documents:
+These retrievers use LLM summarization for efficient retrieval over large documents:
 
-- SummaryIndex: Creates summaries of documents for quick scanning
-- TreeIndex: Hierarchical tree of summaries for very large documents
-- KeywordTableIndex: Keyword extraction with document mapping
+- SummaryRetriever: Creates summaries of documents for quick scanning
+- TreeRetriever: Hierarchical tree of summaries for very large documents
+- KeywordTableRetriever: Keyword extraction with document mapping
 
 These are particularly useful when:
 1. Documents are too large for direct embedding
@@ -41,8 +41,8 @@ class DocumentSummary:
     metadata: dict[str, object] = field(default_factory=dict)
 
 
-class SummaryIndex(BaseRetriever):
-    """Index that summarizes documents for efficient retrieval.
+class SummaryRetriever(BaseRetriever):
+    """Retriever that summarizes documents for efficient retrieval.
 
     Creates LLM-generated summaries of each document, then retrieves
     by searching summaries. Returns full documents for matched summaries.
@@ -54,10 +54,10 @@ class SummaryIndex(BaseRetriever):
 
     Example:
         ```python
-        from cogent.retriever import SummaryIndex
+        from cogent.retriever import SummaryRetriever
         from cogent.models import OpenAIModel
 
-        index = SummaryIndex(
+        index = SummaryRetriever(
             llm=OpenAIModel(),
             vectorstore=vectorstore,  # For summary embeddings
             extract_entities=True,    # For KG integration
@@ -112,7 +112,7 @@ Respond in JSON format:
         verbose: bool = False,
         logger: object | None = None,
     ) -> None:
-        """Create a summary index.
+        """Create a summary retriever.
 
         Args:
             llm: Language model for generating summaries.
@@ -124,7 +124,7 @@ Respond in JSON format:
             name: Optional custom name.
             verbose: If True, emit structured logs via ObservabilityLogger.
             logger: Optional ObservabilityLogger instance. If provided, overrides
-                `verbose` and will be used for all SummaryIndex logs.
+                `verbose` and will be used for all SummaryRetriever logs.
         """
         self._llm: LLMProtocol = adapt_llm(llm)  # Auto-adapt chat models
         self._vectorstore = vectorstore
@@ -143,7 +143,7 @@ Respond in JSON format:
                 level=LogLevel.DEBUG,
             )
             self._log.set_context(
-                retriever="SummaryIndex",
+                retriever="SummaryRetriever",
                 extract_entities=extract_entities,
                 extract_keywords=extract_keywords,
                 has_vectorstore=vectorstore is not None,
@@ -453,8 +453,8 @@ Respond in JSON format:
         return keyword_map
 
 
-class TreeIndex(BaseRetriever):
-    """Hierarchical tree index for very large documents.
+class TreeRetriever(BaseRetriever):
+    """Hierarchical tree retriever for very large documents.
 
     Builds a tree of summaries where:
     - Leaf nodes are chunks of the original document
@@ -470,9 +470,9 @@ class TreeIndex(BaseRetriever):
 
     Example:
         ```python
-        from cogent.retriever import TreeIndex
+        from cogent.retriever import TreeRetriever
 
-        index = TreeIndex(
+        index = TreeRetriever(
             llm=OpenAIModel(),
             chunk_size=2000,
             max_children=4,  # 4-ary tree
@@ -529,7 +529,7 @@ Summary:"""
         self._max_children = max_children
 
         # Tree storage
-        self._nodes: dict[str, TreeIndex.TreeNode] = {}
+        self._nodes: dict[str, TreeRetriever.TreeNode] = {}
         self._root_ids: list[str] = []
         self._documents: dict[str, Document] = {}
 
@@ -665,7 +665,7 @@ Summary:"""
         # Score all nodes
         query_lower = query.lower()
 
-        def score_node(node: TreeIndex.TreeNode) -> float:
+        def score_node(node: TreeRetriever.TreeNode) -> float:
             text = (node.summary or node.text).lower()
             score = 0.0
             for word in query_lower.split():
@@ -713,7 +713,7 @@ Summary:"""
         return results
 
 
-class KeywordTableIndex(BaseRetriever):
+class KeywordTableRetriever(BaseRetriever):
     """Keyword-based index with document mapping.
 
     Extracts keywords from documents using LLM or simple extraction,
@@ -726,9 +726,9 @@ class KeywordTableIndex(BaseRetriever):
 
     Example:
         ```python
-        from cogent.retriever import KeywordTableIndex
+        from cogent.retriever import KeywordTableRetriever
 
-        index = KeywordTableIndex(
+        index = KeywordTableRetriever(
             llm=model,  # Optional: for better keyword extraction
             max_keywords_per_doc=20,
         )
@@ -953,8 +953,8 @@ Keywords (JSON array):"""
         }
 
 
-class KnowledgeGraphIndex(BaseRetriever):
-    """Index that integrates with KnowledgeGraph capability.
+class KnowledgeGraphRetriever(BaseRetriever):
+    """Retriever that integrates with KnowledgeGraph capability.
 
     Extracts entities and relationships from documents and stores them
     in a KnowledgeGraph, enabling graph-based retrieval.
@@ -967,12 +967,12 @@ class KnowledgeGraphIndex(BaseRetriever):
 
     Example:
         ```python
-        from cogent.retriever import KnowledgeGraphIndex
+        from cogent.retriever import KnowledgeGraphRetriever
         from cogent.capabilities import KnowledgeGraph
 
         kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
 
-        index = KnowledgeGraphIndex(
+        index = KnowledgeGraphRetriever(
             llm=model,
             knowledge_graph=kg,
             vectorstore=vectorstore,  # Optional for hybrid

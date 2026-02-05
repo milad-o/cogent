@@ -141,8 +141,8 @@ Advanced retrieval patterns for RAG systems.
 | Example | Description |
 |---------|-------------|
 | [basic_retrievers.py](retrieval/basic_retrievers.py) | Dense, BM25, Hybrid, Ensemble, ParentDocument |
-| [advanced_retrievers.py](retrieval/advanced_retrievers.py) | HyDE, SelfQuery, SentenceWindow, TimeBasedIndex |
-| [indexes.py](retrieval/indexes.py) | Summary, Tree, KeywordTable, KG, MultiRepresentation |
+| [advanced_retrievers.py](retrieval/advanced_retrievers.py) | HyDE, SelfQuery, SentenceWindow, TimeBasedRetriever |
+| [llm_retrievers.py](retrieval/llm_retrievers.py) | Summary, Tree, KeywordTable, KG, MultiRepresentation |
 | [reranking.py](retrieval/reranking.py) | CrossEncoder, Cohere, LLM rerankers |
 | [hyde.py](retrieval/hyde.py) | Hypothetical Document Embeddings (detailed) |
 

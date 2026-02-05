@@ -23,7 +23,7 @@ results = await retriever.retrieve(
     include_scores=True,
 )
 
-# Retriever-specific args (e.g., TimeBasedIndex)
+# Retriever-specific args (e.g., TimeBasedRetriever)
 results = await retriever.retrieve(
     "recent news",
     k=5,
@@ -42,14 +42,14 @@ results = await retriever.retrieve(
 | | `HybridRetriever` | Metadata filtering + content search |
 | **Contextual** | `ParentDocumentRetriever` | Precise chunks → full context |
 | | `SentenceWindowRetriever` | Sentence-level → paragraph context |
-| **LLM-Powered** | `SummaryIndex` | Document summaries |
-| | `TreeIndex` | Hierarchical summary tree |
-| | `KeywordTableIndex` | Keyword extraction + lookup |
-| | `KnowledgeGraphIndex` | Entity-based retrieval |
+| **LLM-Powered** | `SummaryRetriever` | Document summaries |
+| | `TreeRetriever` | Hierarchical summary tree |
+| | `KeywordTableRetriever` | Keyword extraction + lookup |
+| | `KnowledgeGraphRetriever` | Entity-based retrieval |
 | | `SelfQueryRetriever` | Natural language → filters |
-| **Specialized** | `HierarchicalIndex` | Structured docs (markdown/html) |
-| | `TimeBasedIndex` | Recency-aware retrieval |
-| | `MultiRepresentationIndex` | Multiple embeddings per doc |
+| **Specialized** | `HierarchicalRetriever` | Structured docs (markdown/html) |
+| | `TimeBasedRetriever` | Recency-aware retrieval |
+| | `MultiRepresentationRetriever` | Multiple embeddings per doc |
 
 ---
 
@@ -285,14 +285,14 @@ for r in results:
 
 ## LLM-Powered Indexes
 
-### SummaryIndex
+### SummaryRetriever
 
 Generate LLM summaries of documents for efficient high-level retrieval.
 
 ```python
-from cogent.retriever import SummaryIndex
+from cogent.retriever import SummaryRetriever
 
-index = SummaryIndex(
+index = SummaryRetriever(
     llm=model,
     vectorstore=vectorstore,
     extract_entities=True,   # For knowledge graph
@@ -317,14 +317,14 @@ for doc_id, summary in index.summaries.items():
 
 ---
 
-### TreeIndex
+### TreeRetriever
 
 Hierarchical tree of summaries for very large documents or corpora.
 
 ```python
-from cogent.retriever import TreeIndex
+from cogent.retriever import TreeRetriever
 
-index = TreeIndex(
+index = TreeRetriever(
     llm=model,
     vectorstore=vectorstore,
     max_children=5,      # Children per node
@@ -344,14 +344,14 @@ results = await index.retrieve("specific topic", k=5)
 
 ---
 
-### KeywordTableIndex
+### KeywordTableRetriever
 
 Extract keywords with LLM and build inverted index for fast lookup.
 
 ```python
-from cogent.retriever import KeywordTableIndex
+from cogent.retriever import KeywordTableRetriever
 
-index = KeywordTableIndex(
+index = KeywordTableRetriever(
     llm=model,
     max_keywords_per_doc=10,
 )
@@ -406,14 +406,14 @@ results = await retriever.retrieve(
 
 ## Specialized Indexes
 
-### HierarchicalIndex
+### HierarchicalRetriever
 
 Respect and leverage document structure (headers, sections).
 
 ```python
-from cogent.retriever import HierarchicalIndex
+from cogent.retriever import HierarchicalRetriever
 
-index = HierarchicalIndex(
+index = HierarchicalRetriever(
     vectorstore=vectorstore,
     llm=model,
     structure_type="markdown",  # or "html"
@@ -437,14 +437,14 @@ for r in results:
 
 ---
 
-### TimeBasedIndex
+### TimeBasedRetriever
 
 Prioritize recent information with time-decay scoring.
 
 ```python
-from cogent.retriever import TimeBasedIndex, TimeRange, DecayFunction
+from cogent.retriever import TimeBasedRetriever, TimeRange, DecayFunction
 
-index = TimeBasedIndex(
+index = TimeBasedRetriever(
     vectorstore=vectorstore,
     decay_function=DecayFunction.EXPONENTIAL,
     decay_rate=0.01,  # Halve score every ~70 days
@@ -483,14 +483,14 @@ results = await index.retrieve(
 
 ---
 
-### MultiRepresentationIndex
+### MultiRepresentationRetriever
 
 Store multiple embeddings per document for diverse query handling.
 
 ```python
-from cogent.retriever import MultiRepresentationIndex, QueryType
+from cogent.retriever import MultiRepresentationRetriever, QueryType
 
-index = MultiRepresentationIndex(
+index = MultiRepresentationRetriever(
     vectorstore=vectorstore,
     llm=model,
     representations=["original", "summary", "detailed", "questions"],
@@ -685,10 +685,10 @@ Answer:"""
                               ▼                 │
                     ┌─────────────────────┐    │
                     │  Time-sensitive?    │    │
-                    │  → TimeBasedIndex   │    │
+                    │  → TimeBasedRetriever   │    │
                     ├─────────────────────┤    │
                     │  Structured docs?   │    │
-                    │  → HierarchicalIndex│    │
+                    │  → HierarchicalRetriever│    │
                     ├─────────────────────┤    │
                     │  Need full context? │    │
                     │  → ParentDocument   │    │
@@ -702,7 +702,7 @@ Answer:"""
                               │ → SelfQueryRetriever        │
                               ├─────────────────────────────┤
                               │ Very long documents?        │
-                              │ → SummaryIndex / TreeIndex  │
+                              │ → SummaryRetriever / TreeRetriever  │
                               └─────────────────────────────┘
 ```
 

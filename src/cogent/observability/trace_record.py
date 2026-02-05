@@ -132,7 +132,7 @@ class TraceType(StrEnum):
     RERANK_COMPLETE = "retrieval.rerank.complete"  # Reranking finished
     FUSION_APPLIED = "retrieval.fusion"  # Ensemble fusion applied
 
-    # Retrieval index events (build-time indexing, e.g., SummaryIndex)
+    # Retrieval index events (build-time indexing, e.g., SummaryRetriever)
     SUMMARY_INDEX_START = "retrieval.summary_index.start"  # Summary indexing started
     SUMMARY_INDEX_DOCUMENT_SUMMARIZED = (
         "retrieval.summary_index.document_summarized"  # One document/page summarized

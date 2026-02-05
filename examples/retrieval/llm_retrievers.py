@@ -1,31 +1,31 @@
-"""LLM-Powered Indexes - Advanced indexing with LLMs.
+"""LLM-Powered Retrievers - Advanced retrieval using LLMs.
 
-Demonstrates specialized indexes that use LLMs for enhanced retrieval:
-1. SummaryIndex - Query-time summarization
-2. TreeIndex - Hierarchical summary tree
-3. KeywordTableIndex - LLM-extracted keyword index
-4. KnowledgeGraphIndex - Graph-based retrieval
-5. HierarchicalIndex - Multi-level structured retrieval
-6. MultiRepresentationIndex - Multiple embeddings per doc
+Demonstrates LLM-powered retrievers that use language models for enhanced retrieval:
+1. SummaryRetriever - Query-time summarization
+2. TreeRetriever - Hierarchical summary tree
+3. KeywordTableRetriever - LLM-extracted keyword index
+4. KnowledgeGraphRetriever - Graph-based retrieval
+5. HierarchicalRetriever - Multi-level structured retrieval
+6. MultiRepresentationRetriever - Multiple embeddings per doc
 
-These indexes are ideal for large documents and complex queries.
+These retrievers are ideal for large documents and complex queries.
 
 Usage:
-    uv run python examples/retrieval/indexes.py
+    uv run python examples/retrieval/llm_retrievers.py
 """
 
 import asyncio
 
 from cogent import create_chat
 from cogent.retriever import (
-    HierarchicalIndex,
-    KeywordTableIndex,
-    KnowledgeGraphIndex,
-    MultiRepresentationIndex,
+    HierarchicalRetriever,
+    KeywordTableRetriever,
+    KnowledgeGraphRetriever,
+    MultiRepresentationRetriever,
     QueryType,
     RepresentationType,
-    SummaryIndex,
-    TreeIndex,
+    SummaryRetriever,
+    TreeRetriever,
     Document,
 )
 
@@ -38,16 +38,16 @@ from _shared import (
 )
 
 
-async def demo_summary_index() -> None:
+async def demo_summary_retriever() -> None:
     """Query-time summarization of all documents."""
-    print_header("1. Summary Index (LLM Summaries)")
+    print_header("1. Summary Retriever (LLM Summaries)")
     
     docs = [
         Document(text=f"Section {i}: " + KNOWLEDGE_BASE[i * 200 : (i + 1) * 200])
         for i in range(5)
     ]
     
-    index = SummaryIndex(
+    index = SummaryRetriever(
         llm=create_chat("gpt-4o-mini"),
         vectorstore=create_vectorstore(),
     )
@@ -62,9 +62,9 @@ async def demo_summary_index() -> None:
         print(f"\n  Summary: {r.text[:150]}...")
 
 
-async def demo_tree_index() -> None:
+async def demo_tree_retriever() -> None:
     """Hierarchical tree of summaries for large documents."""
-    print_header("2. Tree Index (Hierarchical Summaries)")
+    print_header("2. Tree Retriever (Hierarchical Summaries)")
     
     # Simulate large document with multiple sections
     sections = [
@@ -72,7 +72,7 @@ async def demo_tree_index() -> None:
     ]
     docs = [Document(text=section) for section in sections]
     
-    tree = TreeIndex(
+    tree = TreeRetriever(
         llm=create_chat("gpt-4o-mini"),
         chunk_size=200,
         max_children=3,
@@ -88,9 +88,9 @@ async def demo_tree_index() -> None:
         print(f"\n  Leaf summary: {r.text[:120]}...")
 
 
-async def demo_keyword_table_index() -> None:
+async def demo_keyword_table_retriever() -> None:
     """LLM-extracted keyword inverted index."""
-    print_header("3. Keyword Table Index (LLM Keywords)")
+    print_header("3. Keyword Table Retriever (LLM Keywords)")
     
     docs = [
         Document(
@@ -107,7 +107,7 @@ async def demo_keyword_table_index() -> None:
         ),
     ]
     
-    index = KeywordTableIndex(
+    index = KeywordTableRetriever(
         llm=create_chat("gpt-4o-mini"),
     )
     await index.add_documents(docs)
@@ -121,9 +121,9 @@ async def demo_keyword_table_index() -> None:
         print(f"  [{r.score:.3f}] {r.document.metadata['source']}: {r.document.text}")
 
 
-async def demo_knowledge_graph_index() -> None:
+async def demo_knowledge_graph_retriever() -> None:
     """Extract and query knowledge graph from documents."""
-    print_header("4. Knowledge Graph Index")
+    print_header("4. Knowledge Graph Retriever")
     
     docs = [
         Document(text="The Amazon rainforest is located in South America. It produces 20% of Earth's oxygen."),
@@ -131,7 +131,7 @@ async def demo_knowledge_graph_index() -> None:
         Document(text="Mount Everest is in the Himalayas. It is the tallest mountain on Earth."),
     ]
     
-    index = KnowledgeGraphIndex(
+    index = KnowledgeGraphRetriever(
         llm=create_chat("gpt-4o-mini"),
     )
     await index.add_documents(docs)
@@ -145,9 +145,9 @@ async def demo_knowledge_graph_index() -> None:
         print(f"  {r.text}")
 
 
-async def demo_hierarchical_index() -> None:
+async def demo_hierarchical_retriever() -> None:
     """Structured document retrieval respecting hierarchy."""
-    print_header("6. Hierarchical Index (Structured Docs)")
+    print_header("5. Hierarchical Retriever (Structured Docs)")
     
     # Markdown document with headers
     md_doc = Document(text="""# Astronomy Guide
@@ -169,7 +169,7 @@ Massive stars collapse into black holes. Nothing escapes their gravity.
 """, metadata={"source": "astronomy_guide.md"})
     
     vs = create_vectorstore()
-    index = HierarchicalIndex(
+    index = HierarchicalRetriever(
         vectorstore=vs,
         llm=create_chat("gpt-4o-mini"),
         structure_type="markdown",
@@ -189,13 +189,13 @@ Massive stars collapse into black holes. Nothing escapes their gravity.
         print(f"  Content: {r.document.text[:100]}...")
 
 
-async def demo_multi_representation_index() -> None:
+async def demo_multi_representation_retriever() -> None:
     """Multiple embeddings per document for better retrieval."""
-    print_header("6. Multi-Representation Index")
+    print_header("6. Multi-Representation Retriever")
     
     vs = create_vectorstore()
     
-    index = MultiRepresentationIndex(
+    index = MultiRepresentationRetriever(
         vectorstore=vs,
         llm=create_chat("gpt-4o-mini"),
         representations=[
@@ -222,15 +222,16 @@ async def demo_multi_representation_index() -> None:
 
 
 async def main() -> None:
-    """Run all index examples."""
-    await demo_summary_index()
-    await demo_tree_index()
-    await demo_keyword_table_index()
-    await demo_knowledge_graph_index()
-    await demo_multi_representation_index()
+    """Run all LLM retriever examples."""
+    await demo_summary_retriever()
+    await demo_tree_retriever()
+    await demo_keyword_table_retriever()
+    await demo_knowledge_graph_retriever()
+    await demo_hierarchical_retriever()
+    await demo_multi_representation_retriever()
     
     print("\n" + "=" * 60)
-    print("✓ All index examples completed!")
+    print("✓ All LLM retriever examples completed!")
     print("=" * 60)
 
 

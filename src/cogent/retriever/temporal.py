@@ -93,8 +93,8 @@ class TimeRange:
         return True
 
 
-class TimeBasedIndex(BaseRetriever):
-    """Index with time-aware retrieval and decay scoring.
+class TimeBasedRetriever(BaseRetriever):
+    """Retriever with time-aware retrieval and decay scoring.
 
     Features:
     - Automatic timestamp extraction from content
@@ -112,9 +112,9 @@ class TimeBasedIndex(BaseRetriever):
 
     Example:
         ```python
-        from cogent.retriever import TimeBasedIndex, TimeRange, DecayFunction
+        from cogent.retriever import TimeBasedRetriever, TimeRange, DecayFunction
 
-        index = TimeBasedIndex(
+        index = TimeBasedRetriever(
             vectorstore=vs,
             decay_function=DecayFunction.EXPONENTIAL,
             decay_rate=0.01,  # Halve score every ~70 days

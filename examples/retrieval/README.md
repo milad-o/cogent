@@ -13,9 +13,10 @@ Focused, minimal examples demonstrating each retrieval pattern in Cogent.
 
 ### Retrieval Patterns
 
-- **[basic_retrievers.py](basic_retrievers.py)** - Fundamental retrieval (5 examples)
+- **[basic_retrievers.py](basic_retrievers.py)** - Fundamental retrieval (6 examples)
   - `DenseRetriever` - Semantic vector search
   - `BM25Retriever` - Keyword-based sparse retrieval
+  - `TFIDFRetriever` - TF-IDF sparse retrieval
   - `HybridRetriever` - Metadata + content fusion
   - `EnsembleRetriever` - Combine multiple strategies
   - `ParentDocumentRetriever` - Index chunks, return full docs
@@ -24,14 +25,15 @@ Focused, minimal examples demonstrating each retrieval pattern in Cogent.
   - `HyDERetriever` - Hypothetical Document Embeddings
   - `SelfQueryRetriever` - Natural language → filters
   - `SentenceWindowRetriever` - Sentence-level with context
-  - `TimeBasedIndex` - Time-decay for recency scoring
+  - `TimeBasedRetriever` - Time-decay for recency scoring
 
-- **[indexes.py](indexes.py)** - LLM-powered indexes (5 examples)
-  - `SummaryIndex` - Query-time summarization
-  - `TreeIndex` - Hierarchical summary trees
-  - `KeywordTableIndex` - LLM-extracted keywords
-  - `KnowledgeGraphIndex` - Graph-based retrieval
-  - `MultiRepresentationIndex` - Multiple embeddings per doc
+- **[llm_retrievers.py](llm_retrievers.py)** - LLM-powered retrievers (6 examples)
+  - `SummaryRetriever` - Query-time summarization
+  - `TreeRetriever` - Hierarchical summary trees
+  - `KeywordTableRetriever` - LLM-extracted keywords
+  - `KnowledgeGraphRetriever` - Graph-based retrieval
+  - `HierarchicalRetriever` - Structured document retrieval
+  - `MultiRepresentationRetriever` - Multiple embeddings per doc
 
 - **[reranking.py](reranking.py)** - Precision refinement (4 examples)
   - `CrossEncoderReranker` - Local neural reranker
@@ -55,8 +57,8 @@ uv run python examples/retrieval/basic_retrievers.py
 # Advanced patterns
 uv run python examples/retrieval/advanced_retrievers.py
 
-# LLM-powered indexes
-uv run python examples/retrieval/indexes.py
+# LLM-powered retrievers
+uv run python examples/retrieval/llm_retrievers.py
 
 # Reranking strategies
 uv run python examples/retrieval/reranking.py
@@ -72,7 +74,7 @@ uv run python examples/retrieval/reranking.py
 | **Ensemble** | Best of multiple strategies | Combine dense + BM25 |
 | **HyDE** | Abstract queries | "How to prevent bugs?" |
 | **SelfQuery** | Natural language filters | "Critical security issues" |
-| **Summary Index** | Large doc collections | Query-time summarization |
+| **Summary Retriever** | Large doc collections | Query-time summarization |
 | **Knowledge Graph** | Entity relationships | "Landmarks in capitals?" |
 | **Reranking** | Improve precision | Retrieve 20 → rerank to 3 |
 

@@ -12,14 +12,14 @@ This module provides a comprehensive retrieval system with multiple strategies.
 - ParentDocumentRetriever: Index chunks, retrieve full parent documents
 - SentenceWindowRetriever: Index sentences, return with surrounding context
 
-**Specialized Indexes:**
-- SummaryIndex: LLM-generated summaries for efficient retrieval
-- TreeIndex: Hierarchical tree of summaries for large documents
-- KeywordTableIndex: Inverted keyword index for fast lookup
-- KnowledgeGraphIndex: Graph-based retrieval with KG integration
-- HierarchicalIndex: Multi-level structure (doc → section → chunk)
-- TimeBasedIndex: Time-decay scoring for recency-aware retrieval
-- MultiRepresentationIndex: Multiple embeddings per document
+**LLM-Powered Retrievers:**
+- SummaryRetriever: LLM-generated summaries for efficient retrieval
+- TreeRetriever: Hierarchical tree of summaries for large documents
+- KeywordTableRetriever: Inverted keyword index for fast lookup
+- KnowledgeGraphRetriever: Graph-based retrieval with KG integration
+- HierarchicalRetriever: Multi-level structure (doc → section → chunk)
+- TimeBasedRetriever: Time-decay scoring for recency-aware retrieval
+- MultiRepresentationRetriever: Multiple embeddings per document
 
 **Advanced Retrievers:**
 - SelfQueryRetriever: LLM-parsed natural language to structured filters
@@ -87,7 +87,7 @@ from cogent.retriever.contextual import (
 from cogent.retriever.dense import DenseRetriever
 from cogent.retriever.ensemble import EnsembleRetriever
 from cogent.retriever.hierarchical import (
-    HierarchicalIndex,
+    HierarchicalRetriever,
     HierarchyLevel,
     HierarchyNode,
 )
@@ -98,7 +98,7 @@ from cogent.retriever.hybrid import (
 )
 from cogent.retriever.hyde import HyDERetriever
 from cogent.retriever.multi_representation import (
-    MultiRepresentationIndex,
+    MultiRepresentationRetriever,
     QueryType,
     RepresentationType,
 )
@@ -118,14 +118,14 @@ from cogent.retriever.self_query import (
 from cogent.retriever.sparse import BM25Retriever, TFIDFRetriever
 from cogent.retriever.summary import (
     DocumentSummary,
-    KeywordTableIndex,
-    KnowledgeGraphIndex,
-    SummaryIndex,
-    TreeIndex,
+    KeywordTableRetriever,
+    KnowledgeGraphRetriever,
+    SummaryRetriever,
+    TreeRetriever,
 )
 from cogent.retriever.temporal import (
     DecayFunction,
-    TimeBasedIndex,
+    TimeBasedRetriever,
     TimeRange,
 )
 from cogent.retriever.utils import (
@@ -178,22 +178,22 @@ __all__ = [
     # Contextual retrievers
     "ParentDocumentRetriever",
     "SentenceWindowRetriever",
-    # Summary-based indexes
-    "SummaryIndex",
-    "TreeIndex",
-    "KeywordTableIndex",
-    "KnowledgeGraphIndex",
+    # LLM-powered retrievers
+    "SummaryRetriever",
+    "TreeRetriever",
+    "KeywordTableRetriever",
+    "KnowledgeGraphRetriever",
     "DocumentSummary",
-    # Hierarchical index
-    "HierarchicalIndex",
+    # Hierarchical retriever
+    "HierarchicalRetriever",
     "HierarchyLevel",
     "HierarchyNode",
-    # Temporal index
-    "TimeBasedIndex",
+    # Temporal retriever
+    "TimeBasedRetriever",
     "DecayFunction",
     "TimeRange",
-    # Multi-representation index
-    "MultiRepresentationIndex",
+    # Multi-representation retriever
+    "MultiRepresentationRetriever",
     "QueryType",
     "RepresentationType",
     # Advanced retrievers

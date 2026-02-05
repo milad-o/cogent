@@ -1,7 +1,7 @@
 """LLM adapter utilities for retrievers.
 
 Provides automatic adaptation of chat models to the simple .generate() interface
-expected by LLM-powered retrievers (SummaryIndex, KeywordTableIndex, etc.).
+expected by LLM-powered retrievers (SummaryRetriever, KeywordTableRetriever, etc.).
 """
 
 from __future__ import annotations
@@ -33,11 +33,11 @@ class ChatModelAdapter:
     Example:
         ```python
         from cogent.models import ChatModel
-        from cogent.retriever import SummaryIndex
+        from cogent.retriever import SummaryRetriever
 
-        # No adapter needed - SummaryIndex auto-wraps chat models
+        # No adapter needed - SummaryRetriever auto-wraps chat models
         llm = ChatModel(model="gpt-4o-mini")
-        index = SummaryIndex(llm=llm, vectorstore=vs)
+        index = SummaryRetriever(llm=llm, vectorstore=vs)
 
         # The adapter is created internally, transparent to the user
         ```

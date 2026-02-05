@@ -63,8 +63,8 @@ class DocumentRepresentations:
     metadata: dict[str, object] = field(default_factory=dict)
 
 
-class MultiRepresentationIndex(BaseRetriever):
-    """Index with multiple embeddings per document.
+class MultiRepresentationRetriever(BaseRetriever):
+    """Retriever with multiple embeddings per document.
 
     Each document is embedded in multiple ways:
     - Original: Raw text embedding
@@ -84,9 +84,9 @@ class MultiRepresentationIndex(BaseRetriever):
 
     Example:
         ```python
-        from cogent.retriever import MultiRepresentationIndex, QueryType
+        from cogent.retriever import MultiRepresentationRetriever, QueryType
 
-        index = MultiRepresentationIndex(
+        index = MultiRepresentationRetriever(
             vectorstore=vs,
             llm=model,
             representations=["summary", "detailed", "questions"],

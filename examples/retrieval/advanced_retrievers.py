@@ -4,7 +4,7 @@ Demonstrates advanced retrieval strategies:
 1. HyDERetriever - Hypothetical Document Embeddings
 2. SelfQueryRetriever - Natural language to structured filters
 3. SentenceWindowRetriever - Sentence-level with context
-4. TimeBasedIndex - Time-decay scoring for recency
+4. TimeBasedRetriever - Time-decay scoring for recency
 
 Each example showcases unique capabilities for specific use cases.
 
@@ -23,7 +23,7 @@ from cogent.retriever import (
     HyDERetriever,
     SelfQueryRetriever,
     SentenceWindowRetriever,
-    TimeBasedIndex,
+    TimeBasedRetriever,
     Document,
 )
 
@@ -107,9 +107,9 @@ async def demo_sentence_window_retriever() -> None:
         print(f"  Context window: {r.document.text[:200]}...")
 
 
-async def demo_time_based_index() -> None:
+async def demo_time_based_retriever() -> None:
     """Score documents with time-decay for recency."""
-    print_header("4. Time-Based Index (Recency Scoring)")
+    print_header("4. Time-Based Retriever (Recency Scoring)")
     
     # Create docs with different timestamps
     now = datetime.now(UTC)
@@ -128,7 +128,7 @@ async def demo_time_based_index() -> None:
         ),
     ]
     
-    time_index = TimeBasedIndex(
+    time_index = TimeBasedRetriever(
         vectorstore=create_vectorstore(),
         decay_function=DecayFunction.EXPONENTIAL,
         decay_rate=0.1,  # Faster decay = more recent bias
@@ -156,7 +156,7 @@ async def main() -> None:
     await demo_hyde_retriever()
     await demo_self_query_retriever()
     await demo_sentence_window_retriever()
-    await demo_time_based_index()
+    await demo_time_based_retriever()
     
     print("\n" + "=" * 60)
     print("✓ All advanced retriever examples completed!")

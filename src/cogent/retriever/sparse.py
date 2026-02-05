@@ -17,8 +17,8 @@ from cogent.retriever.base import BaseRetriever, RetrievalResult
 
 
 @dataclass
-class BM25Index:
-    """In-memory BM25 index for sparse retrieval.
+class BM25Engine:
+    """In-memory BM25 engine for sparse retrieval.
 
     Implements the Okapi BM25 ranking function.
 
@@ -217,7 +217,7 @@ class BM25Retriever(BaseRetriever):
             name: Optional custom name.
             score_threshold: Minimum score threshold.
         """
-        self._index = BM25Index(k1=k1, b=b)
+        self._index = BM25Engine(k1=k1, b=b)
         self.score_threshold = score_threshold
 
         if name:

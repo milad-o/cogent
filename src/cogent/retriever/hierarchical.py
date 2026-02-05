@@ -56,8 +56,8 @@ class HierarchyNode:
     depth: int = 0  # 0 = document, 1 = section, etc.
 
 
-class HierarchicalIndex(BaseRetriever):
-    """Index that respects and leverages document structure.
+class HierarchicalRetriever(BaseRetriever):
+    """Retriever that respects and leverages document structure.
 
     Parses document structure (Markdown headers, HTML tags, or custom markers)
     and builds a hierarchy. Retrieval first finds relevant high-level sections,
@@ -71,9 +71,9 @@ class HierarchicalIndex(BaseRetriever):
 
     Example:
         ```python
-        from cogent.retriever import HierarchicalIndex
+        from cogent.retriever import HierarchicalRetriever
 
-        index = HierarchicalIndex(
+        index = HierarchicalRetriever(
             vectorstore=vs,
             llm=model,  # Optional: for section summaries
             structure_type="markdown",  # or "html", "custom"
