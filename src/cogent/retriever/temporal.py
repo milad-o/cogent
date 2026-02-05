@@ -114,25 +114,25 @@ class TimeBasedRetriever(BaseRetriever):
         ```python
         from cogent.retriever import TimeBasedRetriever, TimeRange, DecayFunction
 
-        index = TimeBasedRetriever(
+        retriever = TimeBasedRetriever(
             vectorstore=vs,
             decay_function=DecayFunction.EXPONENTIAL,
             decay_rate=0.01,  # Halve score every ~70 days
         )
 
-        await index.add_documents(docs)
+        await retriever.add_documents(docs)
 
         # Recent docs score higher
-        results = await index.retrieve("market trends")
+        results = await retriever.retrieve("market trends")
 
         # Filter to last 30 days
-        results = await index.retrieve(
+        results = await retriever.retrieve(
             "market trends",
             time_range=TimeRange.last_days(30),
         )
 
         # Point-in-time query
-        results = await index.retrieve(
+        results = await retriever.retrieve(
             "company policy",
             time_range=TimeRange.year(2023),
         )

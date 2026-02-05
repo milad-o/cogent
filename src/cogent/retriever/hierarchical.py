@@ -73,16 +73,16 @@ class HierarchicalRetriever(BaseRetriever):
         ```python
         from cogent.retriever import HierarchicalRetriever
 
-        index = HierarchicalRetriever(
+        retriever = HierarchicalRetriever(
             vectorstore=vs,
             llm=model,  # Optional: for section summaries
             structure_type="markdown",  # or "html", "custom"
         )
 
-        await index.add_documents(docs)
+        await retriever.add_documents(docs)
 
         # Retrieval finds section first, then relevant chunks
-        results = await index.retrieve("installation instructions")
+        results = await retriever.retrieve("installation instructions")
 
         # Results include hierarchy context
         for r in results:

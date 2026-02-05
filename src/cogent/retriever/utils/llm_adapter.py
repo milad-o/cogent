@@ -37,7 +37,7 @@ class ChatModelAdapter:
 
         # No adapter needed - SummaryRetriever auto-wraps chat models
         llm = ChatModel(model="gpt-4o-mini")
-        index = SummaryRetriever(llm=llm, vectorstore=vs)
+        retriever = SummaryRetriever(llm=llm, vectorstore=vs)
 
         # The adapter is created internally, transparent to the user
         ```

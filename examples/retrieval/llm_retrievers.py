@@ -47,17 +47,17 @@ async def demo_summary_retriever() -> None:
         for i in range(5)
     ]
     
-    index = SummaryRetriever(
+    retriever = SummaryRetriever(
         llm=create_chat("gpt-4o-mini"),
         vectorstore=create_vectorstore(),
     )
-    await index.add_documents(docs)
+    await retriever.add_documents(docs)
     
     query = "How does water return to the ocean?"
     print(f"\nQuery: '{query}'")
     print("(LLM generates summary from all relevant docs)")
     
-    results = await index.retrieve(query, k=2)
+    results = await retriever.retrieve(query, k=2)
     for r in results:
         print(f"\n  Summary: {r.text[:150]}...")
 
@@ -72,18 +72,18 @@ async def demo_tree_retriever() -> None:
     ]
     docs = [Document(text=section) for section in sections]
     
-    tree = TreeRetriever(
+    retriever = TreeRetriever(
         llm=create_chat("gpt-4o-mini"),
         chunk_size=200,
         max_children=3,
     )
-    await tree.add_documents(docs)
+    await retriever.add_documents(docs)
     
     query = "Explain the complete water cycle process"
     print(f"\nQuery: '{query}'")
     print("(Builds summary tree, traverses from root to leaves)")
     
-    results = await tree.retrieve(query, k=2)
+    results = await retriever.retrieve(query, k=2)
     for r in results:
         print(f"\n  Leaf summary: {r.text[:120]}...")
 
@@ -107,16 +107,16 @@ async def demo_keyword_table_retriever() -> None:
         ),
     ]
     
-    index = KeywordTableRetriever(
+    retriever = KeywordTableRetriever(
         llm=create_chat("gpt-4o-mini"),
     )
-    await index.add_documents(docs)
+    await retriever.add_documents(docs)
     
     query = "quantum particle behavior and correlation"
     print(f"\nQuery: '{query}'")
     print("(LLM extracts keywords from query, matches to doc keywords)")
     
-    results = await index.retrieve(query, k=2, include_scores=True)
+    results = await retriever.retrieve(query, k=2, include_scores=True)
     for r in results:
         print(f"  [{r.score:.3f}] {r.document.metadata['source']}: {r.document.text}")
 
@@ -131,16 +131,16 @@ async def demo_knowledge_graph_retriever() -> None:
         Document(text="Mount Everest is in the Himalayas. It is the tallest mountain on Earth."),
     ]
     
-    index = KnowledgeGraphRetriever(
+    retriever = KnowledgeGraphRetriever(
         llm=create_chat("gpt-4o-mini"),
     )
-    await index.add_documents(docs)
+    await retriever.add_documents(docs)
     
     query = "What natural ecosystems are found in different regions?"
     print(f"\nQuery: '{query}'")
     print("(Extracts entities/relations, queries graph)")
     
-    results = await index.retrieve(query, k=3)
+    results = await retriever.retrieve(query, k=3)
     for r in results:
         print(f"  {r.text}")
 
@@ -169,20 +169,20 @@ Massive stars collapse into black holes. Nothing escapes their gravity.
 """, metadata={"source": "astronomy_guide.md"})
     
     vs = create_vectorstore()
-    index = HierarchicalRetriever(
+    retriever = HierarchicalRetriever(
         vectorstore=vs,
         llm=create_chat("gpt-4o-mini"),
         structure_type="markdown",
         chunk_size=200,
     )
     
-    await index.add_documents([md_doc])
+    await retriever.add_documents([md_doc])
     
     query = "how do planets form and orbit"
     print(f"\nQuery: '{query}'")
     print("(Finds relevant section, then retrieves chunks)")
     
-    results = await index.retrieve(query, k=2, include_scores=True)
+    results = await retriever.retrieve(query, k=2, include_scores=True)
     for r in results:
         section = r.metadata.get("section_title", "Unknown")
         print(f"\n  [{r.score:.3f}] Section: {section}")
@@ -195,7 +195,7 @@ async def demo_multi_representation_retriever() -> None:
     
     vs = create_vectorstore()
     
-    index = MultiRepresentationRetriever(
+    retriever = MultiRepresentationRetriever(
         vectorstore=vs,
         llm=create_chat("gpt-4o-mini"),
         representations=[
@@ -209,13 +209,13 @@ async def demo_multi_representation_retriever() -> None:
         Document(text=KNOWLEDGE_BASE),
         Document(text=LONG_DOCUMENT.text),
     ]
-    await index.add_documents(docs)
+    await retriever.add_documents(docs)
     
     query = "coral reef biodiversity and species"
     print(f"\nQuery: '{query}'")
     print("(Searches across original, summary, and keyword embeddings)")
     
-    results = await index.retrieve(query, k=2, query_type=QueryType.AUTO, include_scores=True)
+    results = await retriever.retrieve(query, k=2, query_type=QueryType.AUTO, include_scores=True)
     for r in results:
         print(f"\n  Matched: {r.document.text[:100]}...")
         print(f"  Metadata: {r.document.metadata}")

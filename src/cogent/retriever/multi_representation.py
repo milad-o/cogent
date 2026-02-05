@@ -86,25 +86,25 @@ class MultiRepresentationRetriever(BaseRetriever):
         ```python
         from cogent.retriever import MultiRepresentationRetriever, QueryType
 
-        index = MultiRepresentationRetriever(
+        retriever = MultiRepresentationRetriever(
             vectorstore=vs,
             llm=model,
             representations=["summary", "detailed", "questions"],
         )
 
-        await index.add_documents(docs)
+        await retriever.add_documents(docs)
 
         # Auto-detect query type and route
-        results = await index.retrieve("What is machine learning?")
+        results = await retriever.retrieve("What is machine learning?")
 
         # Force specific representation
-        results = await index.retrieve(
+        results = await retriever.retrieve(
             "neural network backpropagation algorithm",
             query_type=QueryType.SPECIFIC,
         )
 
         # Search all representations and fuse
-        results = await index.retrieve(
+        results = await retriever.retrieve(
             "AI applications",
             query_type=QueryType.AUTO,
             search_all=True,

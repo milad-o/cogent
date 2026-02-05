@@ -607,14 +607,14 @@ class TestBaseRetriever:
 
         model = MockChatModel()
         vs = VectorStore(embeddings=MockEmbedding())
-        index = MultiRepresentationRetriever(llm=model, vectorstore=vs)
+        retriever = MultiRepresentationRetriever(llm=model, vectorstore=vs)
 
         # Add a test document
         docs = [VectorStoreDocument(text="Python is a programming language", metadata={})]
-        await index.add_documents(docs)
+        await retriever.add_documents(docs)
 
         # Create tool with custom parameters
-        tool = index.as_tool(
+        tool = retriever.as_tool(
             name="search_multi",
             k_default=2,
             include_scores=True,
@@ -650,7 +650,7 @@ class TestBaseRetriever:
         from cogent.vectorstore import VectorStore
 
         vs = VectorStore(embeddings=MockEmbedding())
-        index = TimeBasedRetriever(vectorstore=vs)
+        retriever = TimeBasedRetriever(vectorstore=vs)
 
         # Add documents with timestamps
         docs = [
@@ -663,10 +663,10 @@ class TestBaseRetriever:
                 metadata={"timestamp": "2024-01-01T10:00:00Z"},
             ),
         ]
-        await index.add_documents(docs)
+        await retriever.add_documents(docs)
 
         # Create tool with time parameters
-        tool = index.as_tool(
+        tool = retriever.as_tool(
             name="search_temporal",
             k_default=2,
             include_scores=True,
@@ -1719,15 +1719,15 @@ class TestLLMAdapter:
         from cogent.retriever import SummaryRetriever
         from cogent.vectorstore import Document, VectorStore
 
-        # Create index with chat model (no manual adapter needed)
+        # Create retriever with chat model (no manual adapter needed)
         model = MockChatModel()
         vs = VectorStore(embeddings=MockEmbedding())
-        index = SummaryRetriever(llm=model, vectorstore=vs)
+        retriever = SummaryRetriever(llm=model, vectorstore=vs)
 
         # Should work without error (adapter created internally)
         docs = [Document(text="Test document about machine learning and AI.")]
-        await index.add_documents(docs)
+        await retriever.add_documents(docs)
 
         # Verify summaries were created
-        assert len(index.summaries) == 1
+        assert len(retriever.summaries) == 1
 

@@ -57,17 +57,17 @@ class SummaryRetriever(BaseRetriever):
         from cogent.retriever import SummaryRetriever
         from cogent.models import OpenAIModel
 
-        index = SummaryRetriever(
+        retriever = SummaryRetriever(
             llm=OpenAIModel(),
             vectorstore=vectorstore,  # For summary embeddings
             extract_entities=True,    # For KG integration
         )
 
-        await index.add_documents(long_documents)
-        results = await index.retrieve("machine learning concepts")
+        await retriever.add_documents(long_documents)
+        results = await retriever.retrieve("machine learning concepts")
 
         # Access extracted entities for KG
-        for summary in index.summaries.values():
+        for summary in retriever.summaries.values():
             for entity in summary.entities:
                 kg.add_entity(entity["name"], entity["type"])
         ```
@@ -472,14 +472,14 @@ class TreeRetriever(BaseRetriever):
         ```python
         from cogent.retriever import TreeRetriever
 
-        index = TreeRetriever(
+        retriever = TreeRetriever(
             llm=OpenAIModel(),
             chunk_size=2000,
             max_children=4,  # 4-ary tree
         )
 
-        await index.add_document(very_long_document)
-        results = await index.retrieve("specific topic")
+        await retriever.add_document(very_long_document)
+        results = await retriever.retrieve("specific topic")
         ```
     """
 
@@ -728,13 +728,13 @@ class KeywordTableRetriever(BaseRetriever):
         ```python
         from cogent.retriever import KeywordTableRetriever
 
-        index = KeywordTableRetriever(
+        retriever = KeywordTableRetriever(
             llm=model,  # Optional: for better keyword extraction
             max_keywords_per_doc=20,
         )
 
-        await index.add_documents(documents)
-        results = await index.retrieve("machine learning neural network")
+        await retriever.add_documents(documents)
+        results = await retriever.retrieve("machine learning neural network")
         ```
     """
 
@@ -972,16 +972,16 @@ class KnowledgeGraphRetriever(BaseRetriever):
 
         kg = KnowledgeGraph(backend="sqlite", path="knowledge.db")
 
-        index = KnowledgeGraphRetriever(
+        retriever = KnowledgeGraphRetriever(
             llm=model,
             knowledge_graph=kg,
             vectorstore=vectorstore,  # Optional for hybrid
         )
 
-        await index.add_documents(documents)
+        await retriever.add_documents(documents)
 
         # Graph-based retrieval
-        results = await index.retrieve("Who works at Acme Corp?")
+        results = await retriever.retrieve("Who works at Acme Corp?")
 
         # Direct graph queries
         kg.query("? -works_at-> Acme Corp")

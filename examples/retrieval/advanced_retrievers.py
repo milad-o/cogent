@@ -128,19 +128,19 @@ async def demo_time_based_retriever() -> None:
         ),
     ]
     
-    time_index = TimeBasedRetriever(
+    time_retriever = TimeBasedRetriever(
         vectorstore=create_vectorstore(),
         decay_function=DecayFunction.EXPONENTIAL,
         decay_rate=0.1,  # Faster decay = more recent bias
     )
     
-    await time_index.add_documents(time_docs)
+    await time_retriever.add_documents(time_docs)
     
     query = "exoplanet discoveries"
     print(f"\nQuery: '{query}'")
     print("(Recent docs scored higher with exponential decay)")
     
-    results = await time_index.retrieve(query, k=3, include_scores=True)
+    results = await time_retriever.retrieve(query, k=3, include_scores=True)
     for r in results:
         ts_str = r.document.metadata.get("timestamp")
         if ts_str:
