@@ -134,16 +134,17 @@ Pre-built tools that give agents superpowers.
 
 ---
 
-### [retrieval/](retrieval/) — RAG
+### [retrieval/](retrieval/) — RAG & Retrieval
 
-Retrieval-Augmented Generation patterns.
+Advanced retrieval patterns for RAG systems.
 
 | Example | Description |
 |---------|-------------|
-| [retrievers.py](retrieval/retrievers.py) | Dense, sparse, hybrid retrievers |
-| [hyde.py](retrieval/hyde.py) | Hypothetical Document Embeddings |
-| [summarizer.py](retrieval/summarizer.py) | Document summarization |
-| [pdf_summarizer.py](retrieval/pdf_summarizer.py) | PDF processing |
+| [basic_retrievers.py](retrieval/basic_retrievers.py) | Dense, BM25, Hybrid, Ensemble, ParentDocument |
+| [advanced_retrievers.py](retrieval/advanced_retrievers.py) | HyDE, SelfQuery, SentenceWindow, TimeBasedIndex |
+| [indexes.py](retrieval/indexes.py) | Summary, Tree, KeywordTable, KG, MultiRepresentation |
+| [reranking.py](retrieval/reranking.py) | CrossEncoder, Cohere, LLM rerankers |
+| [hyde.py](retrieval/hyde.py) | Hypothetical Document Embeddings (detailed) |
 
 ---
 

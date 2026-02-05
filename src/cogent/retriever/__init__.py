@@ -115,7 +115,7 @@ from cogent.retriever.self_query import (
     ParsedQuery,
     SelfQueryRetriever,
 )
-from cogent.retriever.sparse import BM25Retriever
+from cogent.retriever.sparse import BM25Retriever, TFIDFRetriever
 from cogent.retriever.summary import (
     DocumentSummary,
     KeywordTableIndex,

@@ -194,29 +194,64 @@ results = await ensemble.retrieve("query", k=10)
 
 ### ParentDocumentRetriever
 
-Index small chunks for precise matching, but return full parent documents for context.
+Index small chunks for precise matching, but return full parent documents for context. Solves the **embedding dilution problem**.
+
+**The Problem:**
+- **Large chunks** → Embeddings average across many topics → Imprecise matching
+- **Small chunks** → Focused embeddings → Precise matching but missing context
+
+**The Solution:**
+ParentDocumentRetriever indexes small chunks (for precise matching) but returns entire parent documents (for complete context). Best of both worlds.
 
 ```python
 from cogent.retriever import ParentDocumentRetriever
 
 retriever = ParentDocumentRetriever(
     vectorstore=vectorstore,
-    chunk_size=500,     # Small chunks for precise matching
-    chunk_overlap=50,
+    chunk_size=150,     # Small chunks for precise matching
+    chunk_overlap=20,
 )
 
-# Add full documents (automatically chunked)
-await retriever.add_documents(large_documents)
+# Add full documents (automatically chunked internally)
+await retriever.add_documents(documents)
 
 # Search finds chunks, returns parents
 results = await retriever.retrieve("specific concept", k=3)
 # Each result is a full document, not a chunk
 ```
 
+**Example:**
+```python
+# Document: 1000-char database performance guide covering:
+#   - Connection pooling
+#   - Query optimization  
+#   - Index strategies
+
+# Without ParentDocumentRetriever:
+# Embedding averages ALL topics → diluted, score 0.35
+
+# With ParentDocumentRetriever:
+# Chunk 1: Pure connection pooling content (150 chars)
+# Query: "connection pool timeouts"
+# Match: Focused embedding → score 0.58 ✓
+# Return: Full 1000-char parent document with complete context
+```
+
 **When to use:**
+- Medium-sized documents (1-5 pages, ~1-10KB)
 - LLM needs more context than a single chunk
 - Documents have interconnected information
 - You want precise matching with comprehensive results
+
+**When NOT to use:**
+- ❌ Very long documents (books, 50+ page PDFs)
+- ❌ Documents exceeding LLM context window (100K+ tokens)
+- ❌ When only specific excerpts are needed
+
+**Alternatives for very long documents:**
+- `SentenceWindowRetriever` - Returns chunk + configurable surrounding sentences
+- `DenseRetriever` with larger chunks (500-1000 tokens)
+- Hierarchical chunking with summaries
 
 ---
 
