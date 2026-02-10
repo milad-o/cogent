@@ -13,7 +13,6 @@ Usage:
 from __future__ import annotations
 
 from collections import deque
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from cogent import Agent
@@ -173,7 +172,9 @@ class MetricsSink(BaseSink):
                         if i + 2 < len(parts):
                             self.tool_calls.append(parts[i + 2])
         elif "[completed]" in output:
-            self.event_counts["completions"] = self.event_counts.get("completions", 0) + 1
+            self.event_counts["completions"] = (
+                self.event_counts.get("completions", 0) + 1
+            )
 
     def flush(self) -> None:
         pass

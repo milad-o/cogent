@@ -134,13 +134,13 @@ class ToolFormatter(BaseFormatter):
         tool_name = event.get("tool_name", event.get("tool", "tool"))
         agent_name = event.get("agent_name", "")
         call_id = event.get("call_id", "")
-        
+
         # Short ID for display (first 8 chars)
         short_id = call_id[:8] if call_id else ""
 
         agent_prefix = f"{s.agent(self.format_name(agent_name))} " if agent_name else ""
         action = event.action
-        
+
         # Check if this is a subagent delegation
         is_subagent = event.get("is_subagent", False)
 
@@ -155,7 +155,7 @@ class ToolFormatter(BaseFormatter):
                 if config.truncate:
                     args_preview = self.truncate(args_preview, config.truncate)
                 args_str = f"\n  {s.dim(args_preview)}"
-            
+
             # Use different label for subagent delegation
             label = "[subagent-call]" if is_subagent else "[tool-call]"
             return f"{agent_prefix}{s.dim(label)} {id_str}{s.tool(tool_name)}{args_str}"
@@ -190,7 +190,7 @@ class ToolFormatter(BaseFormatter):
     def _format_result(self, result: str) -> str:
         """Format result value, handling dict-like strings."""
         import ast
-        
+
         # Try to parse as Python literal (dict, list, etc.)
         try:
             parsed = ast.literal_eval(result)
@@ -286,9 +286,9 @@ class LLMFormatter(BaseFormatter):
             # Dedicated thinking event
             thinking_content = event.get("thinking", event.get("content", ""))
             thinking_tokens = event.get("thinking_tokens", 0)
-            
+
             tokens_str = f" ({thinking_tokens} tokens)" if thinking_tokens else ""
-            
+
             if thinking_content:
                 preview = thinking_content
                 if config.truncate:
@@ -304,32 +304,34 @@ class LLMFormatter(BaseFormatter):
             subagents = event.get("subagents_selected", [])
             regular_tools = event.get("regular_tools_selected", [])
             reasoning = event.get("reasoning", "")
-            
+
             # Format output based on what was selected
             output_parts = []
             if subagents:
                 subagents_str = ", ".join(subagents)
-                output_parts.append(f"{s.dim('[subagent-decision]')} {s.tool(subagents_str)}")
+                output_parts.append(
+                    f"{s.dim('[subagent-decision]')} {s.tool(subagents_str)}"
+                )
             if regular_tools:
                 tools_str = ", ".join(regular_tools[:5])
                 if len(regular_tools) > 5:
                     tools_str += f"... (+{len(regular_tools) - 5})"
                 output_parts.append(f"{s.dim('[tool-decision]')} {s.tool(tools_str)}")
-            
+
             # Fallback if categorization failed
             if not output_parts:
                 tools_str = ", ".join(tools[:5])
                 if len(tools) > 5:
                     tools_str += f"... (+{len(tools) - 5})"
                 output_parts.append(f"{s.dim('[tool-decision]')} {s.tool(tools_str)}")
-            
+
             reason_str = ""
             if reasoning:
                 reason_text = reasoning
                 if config.truncate:
                     reason_text = self.truncate(reasoning, config.truncate)
                 reason_str = f"\n  {s.dim(reason_text)}"
-            
+
             return f"{s.agent(formatted_name)} {' '.join(output_parts)}{reason_str}"
 
         return f"{s.agent(formatted_name)} {s.dim(f'[llm.{action}]')}"
@@ -340,7 +342,7 @@ class LLMFormatter(BaseFormatter):
             return ""
 
         parts = []
-        
+
         # Total tokens
         total = tokens.get("total", tokens.get("total_tokens", 0))
         if total:

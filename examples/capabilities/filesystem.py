@@ -19,6 +19,7 @@ from pathlib import Path
 # Programmatic Demo (no LLM needed)
 # ============================================================
 
+
 def programmatic_demo():
     """Demonstrate FileSystem capability without an agent."""
     print("=" * 60)
@@ -54,12 +55,12 @@ def programmatic_demo():
         # Create files
         fs.write(
             str(workspace_path / "README.md"),
-            "# My Project\n\nA sample project demonstrating FileSystem capability.\n"
+            "# My Project\n\nA sample project demonstrating FileSystem capability.\n",
         )
 
         fs.write(
             str(workspace_path / "src" / "__init__.py"),
-            '"""My project package."""\n\n__version__ = "1.0.0"\n'
+            '"""My project package."""\n\n__version__ = "1.0.0"\n',
         )
 
         fs.write(
@@ -76,7 +77,7 @@ def calculate(a: int, b: int) -> int:
 
 if __name__ == "__main__":
     print(greet("World"))
-'''
+''',
         )
 
         fs.write(
@@ -90,12 +91,12 @@ def test_greet():
 
 def test_calculate():
     assert calculate(2, 3) == 5
-'''
+''',
         )
 
         fs.write(
             str(workspace_path / "config.json"),
-            '{\n  "debug": true,\n  "version": "1.0.0"\n}\n'
+            '{\n  "debug": true,\n  "version": "1.0.0"\n}\n',
         )
 
         print("   ✓ Created project files")
@@ -142,7 +143,7 @@ def test_calculate():
         print("📋 Copying main.py to backup.py:")
         fs.copy(
             str(workspace_path / "src" / "main.py"),
-            str(workspace_path / "src" / "backup.py")
+            str(workspace_path / "src" / "backup.py"),
         )
         print("   ✓ Copied successfully")
 
@@ -150,9 +151,7 @@ def test_calculate():
         print("\n" + "-" * 40)
         print("✏️  Appending to README.md:")
         fs.write(
-            str(workspace_path / "README.md"),
-            "\n## License\n\nMIT\n",
-            append=True
+            str(workspace_path / "README.md"), "\n## License\n\nMIT\n", append=True
         )
         print("   ✓ Appended license section")
 
@@ -174,6 +173,7 @@ def test_calculate():
 # Agent Demo (requires LLM)
 # ============================================================
 
+
 async def agent_demo():
     """Demonstrate FileSystem capability with an agent."""
     print("🤖 Agent with FileSystem Demo")
@@ -189,7 +189,6 @@ async def agent_demo():
     if not data_dir.exists():
         print(f"⚠️  Data directory not found: {data_dir}")
         return
-
 
     fs = FileSystem(
         allowed_paths=[str(data_dir.resolve())],
@@ -233,6 +232,7 @@ async def agent_demo():
 # ============================================================
 # Security Demo
 # ============================================================
+
 
 def security_demo():
     """Demonstrate FileSystem security features."""

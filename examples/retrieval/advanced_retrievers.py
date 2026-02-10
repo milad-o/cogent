@@ -15,18 +15,6 @@ Usage:
 import asyncio
 from datetime import UTC, datetime, timedelta
 
-from cogent import create_chat
-from cogent.retriever import (
-    AttributeInfo,
-    DecayFunction,
-    DenseRetriever,
-    HyDERetriever,
-    SelfQueryRetriever,
-    SentenceWindowRetriever,
-    TimeBasedRetriever,
-    Document,
-)
-
 from _shared import (
     LONG_DOCUMENT,
     SAMPLE_DOCS,
@@ -35,26 +23,38 @@ from _shared import (
     print_results,
 )
 
+from cogent import create_chat
+from cogent.retriever import (
+    AttributeInfo,
+    DecayFunction,
+    DenseRetriever,
+    Document,
+    HyDERetriever,
+    SelfQueryRetriever,
+    SentenceWindowRetriever,
+    TimeBasedRetriever,
+)
+
 
 async def demo_hyde_retriever() -> None:
     """Generate hypothetical answer, then search with it."""
     print_header("1. HyDE Retriever (Hypothetical Documents)")
-    
+
     # Create and populate vectorstore
     vs = create_vectorstore()
     await vs.add_documents(SAMPLE_DOCS)
     base = DenseRetriever(vs)
-    
+
     # Wrap with HyDE
     hyde = HyDERetriever(
         base_retriever=base,
         model=create_chat("gpt-4o-mini"),
     )
-    
+
     query = "How do coral reefs protect coastlines?"
     print(f"\nQuery: '{query}'")
     print("(HyDE generates hypothetical answer, then searches)")
-    
+
     results = await hyde.retrieve(query, k=2, include_scores=True)
     print_results(results)
 
@@ -62,25 +62,31 @@ async def demo_hyde_retriever() -> None:
 async def demo_self_query_retriever() -> None:
     """Parse natural language into semantic query + metadata filters."""
     print_header("2. Self-Query Retriever (NL → Filters)")
-    
+
     # Create and populate vectorstore
     vs = create_vectorstore()
     await vs.add_documents(SAMPLE_DOCS)
-    
+
     retriever = SelfQueryRetriever(
         vectorstore=vs,
         llm=create_chat("gpt-4o-mini"),
         attribute_info=[
-            AttributeInfo("category", "Type: astronomy, nature, history, biology, physics", "string"),
+            AttributeInfo(
+                "category",
+                "Type: astronomy, nature, history, biology, physics",
+                "string",
+            ),
             AttributeInfo("author", "Author or team name", "string"),
-            AttributeInfo("severity", "Severity level: low, medium, high, critical", "string"),
+            AttributeInfo(
+                "severity", "Severity level: low, medium, high, critical", "string"
+            ),
         ],
     )
-    
+
     query = "What are the critical biological processes?"
     print(f"\nQuery: '{query}'")
     print("(Automatically extracts filter: severity='critical')")
-    
+
     results = await retriever.retrieve(query, k=2, include_scores=True)
     print_results(results)
 
@@ -88,19 +94,19 @@ async def demo_self_query_retriever() -> None:
 async def demo_sentence_window_retriever() -> None:
     """Index sentences, return with surrounding context window."""
     print_header("3. Sentence Window Retriever")
-    
+
     vs = create_vectorstore()
     retriever = SentenceWindowRetriever(
         vectorstore=vs,
         window_size=2,  # 2 sentences before + after
     )
-    
+
     await retriever.add_documents([LONG_DOCUMENT])
-    
+
     query = "zooxanthellae symbiotic relationship"
     print(f"\nQuery: '{query}'")
     print("(Matches sentence, returns with ±2 sentence context)")
-    
+
     results = await retriever.retrieve(query, k=1, include_scores=True)
     for r in results:
         print(f"  Score: {r.score:.3f}")
@@ -110,7 +116,7 @@ async def demo_sentence_window_retriever() -> None:
 async def demo_time_based_retriever() -> None:
     """Score documents with time-decay for recency."""
     print_header("4. Time-Based Retriever (Recency Scoring)")
-    
+
     # Create docs with different timestamps
     now = datetime.now(UTC)
     time_docs = [
@@ -127,19 +133,19 @@ async def demo_time_based_retriever() -> None:
             metadata={"timestamp": (now - timedelta(days=180)).isoformat()},
         ),
     ]
-    
+
     time_retriever = TimeBasedRetriever(
         vectorstore=create_vectorstore(),
         decay_function=DecayFunction.EXPONENTIAL,
         decay_rate=0.1,  # Faster decay = more recent bias
     )
-    
+
     await time_retriever.add_documents(time_docs)
-    
+
     query = "exoplanet discoveries"
     print(f"\nQuery: '{query}'")
     print("(Recent docs scored higher with exponential decay)")
-    
+
     results = await time_retriever.retrieve(query, k=3, include_scores=True)
     for r in results:
         ts_str = r.document.metadata.get("timestamp")
@@ -157,7 +163,7 @@ async def main() -> None:
     await demo_self_query_retriever()
     await demo_sentence_window_retriever()
     await demo_time_based_retriever()
-    
+
     print("\n" + "=" * 60)
     print("✓ All advanced retriever examples completed!")
     print("=" * 60)

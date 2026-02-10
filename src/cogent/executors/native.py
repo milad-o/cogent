@@ -370,8 +370,6 @@ class NativeExecutor(BaseExecutor):
         """
         import time
 
-        from cogent.observability.trace_record import TraceType
-
         # Normalize context: convert dict to RunContext with metadata
         run_context: RunContext
         context_dict: dict[str, object] | None = None
@@ -389,6 +387,7 @@ class NativeExecutor(BaseExecutor):
         if not run_context.query:
             # Create a copy with query set (preserve immutability principle)
             import copy
+
             run_context = copy.copy(run_context)
             run_context.query = task
 
@@ -902,24 +901,24 @@ class NativeExecutor(BaseExecutor):
                 {
                     "agent_name": agent_name,
                     "model": model_identifier(self.agent.model),
-                        "messages": [
-                            {
-                                "role": getattr(m, "role", "unknown"),
-                                "content": str(getattr(m, "content", ""))[:500],
-                            }
-                            for m in messages
-                        ],
-                        "message_count": len(messages),
-                        "system_prompt": (current_prompt or "")[:300]
-                        if current_prompt
-                        else "",
-                        "tools_available": [t.name for t in current_tools]
-                        if current_tools
-                        else [],
-                        "prompt": task,
-                        "iteration": iteration + 1,
-                    },
-                )
+                    "messages": [
+                        {
+                            "role": getattr(m, "role", "unknown"),
+                            "content": str(getattr(m, "content", ""))[:500],
+                        }
+                        for m in messages
+                    ],
+                    "message_count": len(messages),
+                    "system_prompt": (current_prompt or "")[:300]
+                    if current_prompt
+                    else "",
+                    "tools_available": [t.name for t in current_tools]
+                    if current_tools
+                    else [],
+                    "prompt": task,
+                    "iteration": iteration + 1,
+                },
+            )
 
             loop_start = time.perf_counter()
 
@@ -959,11 +958,11 @@ class NativeExecutor(BaseExecutor):
             for i, tc in enumerate(tool_calls):
                 if isinstance(tc, dict) and not tc.get("id"):
                     tc["id"] = f"call_{iteration + 1}_{i}"
-            
+
             # Extract thinking/reasoning content if available
             thinking_content = getattr(response, "thinking", None)
             thoughts_content = getattr(response, "thoughts", None)
-            
+
             # Extract token usage including reasoning tokens
             token_data = {}
             if hasattr(response, "metadata") and response.metadata:
@@ -975,7 +974,7 @@ class NativeExecutor(BaseExecutor):
                         "total": meta.tokens.total_tokens,
                         "reasoning": meta.tokens.reasoning_tokens,
                     }
-            
+
             if event_bus or observer:
                 llm_response_data = {
                     "agent_name": agent_name,
@@ -996,7 +995,7 @@ class NativeExecutor(BaseExecutor):
                     "duration_ms": loop_duration_ms,
                     "tokens": token_data,
                 }
-                
+
                 # Add thinking preview if available
                 if thinking_content:
                     llm_response_data["thinking_preview"] = thinking_content[:300]
@@ -1004,12 +1003,12 @@ class NativeExecutor(BaseExecutor):
                 elif thoughts_content:
                     llm_response_data["thinking_preview"] = thoughts_content[:300]
                     llm_response_data["thinking_length"] = len(thoughts_content)
-                
+
                 await emit_event(
                     TraceType.LLM_RESPONSE.value,
                     llm_response_data,
                 )
-                
+
                 # Emit dedicated thinking event if extended thinking was used
                 # or if reasoning tokens are present (OpenAI o-series)
                 reasoning_tokens = token_data.get("reasoning", 0)
@@ -1030,7 +1029,7 @@ class NativeExecutor(BaseExecutor):
                 tools_selected = [tc.get("name", "?") for tc in tool_calls]
                 subagents_selected = []
                 regular_tools_selected = []
-                
+
                 if hasattr(self.agent, "_subagent_registry"):
                     for tool_name in tools_selected:
                         if self.agent._subagent_registry.has_subagent(tool_name):
@@ -1039,7 +1038,7 @@ class NativeExecutor(BaseExecutor):
                             regular_tools_selected.append(tool_name)
                 else:
                     regular_tools_selected = tools_selected
-                
+
                 await emit_event(
                     TraceType.LLM_TOOL_DECISION.value,
                     {
@@ -1117,16 +1116,19 @@ class NativeExecutor(BaseExecutor):
 
             # Generate UUIDs for tool calls (for proper observability tracking)
             import uuid
+
             tool_call_ids = [str(uuid.uuid4())[:8] for _ in response.tool_calls]
 
             # Emit tool call events
             for i, tc in enumerate(response.tool_calls):
                 tool_name = tc.get("name", "unknown")
                 call_id = tool_call_ids[i]
-                
+
                 # Check if this is a subagent
-                is_subagent = hasattr(self.agent, "_subagent_registry") and self.agent._subagent_registry.has_subagent(tool_name)
-                
+                is_subagent = hasattr(
+                    self.agent, "_subagent_registry"
+                ) and self.agent._subagent_registry.has_subagent(tool_name)
+
                 await emit_event(
                     "tool.called",
                     {
@@ -1175,10 +1177,12 @@ class NativeExecutor(BaseExecutor):
                 tc = response.tool_calls[i] if i < len(response.tool_calls) else {}
                 tool_name = tc.get("name", "unknown")
                 call_id = tool_call_ids[i] if i < len(tool_call_ids) else ""
-                
+
                 # Check if this is a subagent
-                is_subagent = hasattr(self.agent, "_subagent_registry") and self.agent._subagent_registry.has_subagent(tool_name)
-                
+                is_subagent = hasattr(
+                    self.agent, "_subagent_registry"
+                ) and self.agent._subagent_registry.has_subagent(tool_name)
+
                 await emit_event(
                     "tool.result",
                     {
@@ -1555,8 +1559,10 @@ class NativeExecutor(BaseExecutor):
         # Extract task from args
         task = args.get("task", "")
         if not task or not isinstance(task, str):
-            error_msg = f"Missing or invalid 'task' parameter for subagent {subagent_name}"
-            
+            error_msg = (
+                f"Missing or invalid 'task' parameter for subagent {subagent_name}"
+            )
+
             # Track failed subagent call
             if hasattr(self.agent, "state"):
                 self.agent.state.tool_calls.append(
@@ -1569,7 +1575,7 @@ class NativeExecutor(BaseExecutor):
                         error=error_msg,
                     )
                 )
-            
+
             return ToolMessage(content=f"Error: {error_msg}", tool_call_id=tool_id)
 
         start_time = time.time()
@@ -1580,7 +1586,7 @@ class NativeExecutor(BaseExecutor):
                 task,
                 context=run_context,
             )
-            
+
             duration = time.time() - start_time
 
             # Track successful subagent call in agent state
@@ -1598,11 +1604,11 @@ class NativeExecutor(BaseExecutor):
 
             # Return content as ToolMessage (LLM sees string, but Response is cached)
             content = str(response.content) if response.content is not None else ""
-            
+
             # If subagent failed, include error info
             if response.error:
                 content = f"Subagent error: {response.error.message}\n\n{content}"
-            
+
             return ToolMessage(content=content, tool_call_id=tool_id)
 
         except Exception as e:
@@ -1650,7 +1656,9 @@ class NativeExecutor(BaseExecutor):
         self._track_tool_call(tool_name, args)
 
         # Check if this is a subagent call
-        if hasattr(self.agent, "_subagent_registry") and self.agent._subagent_registry.has_subagent(tool_name):
+        if hasattr(
+            self.agent, "_subagent_registry"
+        ) and self.agent._subagent_registry.has_subagent(tool_name):
             return await self._run_subagent(tool_name, args, tool_id, run_context)
 
         # Get tool from cache

@@ -18,16 +18,16 @@ async def main():
     print("Agent Observability with OpenAI Reasoning")
     print("=" * 60)
     print()
-    
+
     # Create observer at debug level to see LLM events
     observer = Observer(level="debug")
-    
+
     # Create model with reasoning effort
     llm = OpenAIChat(
         model="o3-mini",
         reasoning_effort="medium",
     )
-    
+
     # Create agent with observer attached
     agent = Agent(
         name="ReasoningAgent",
@@ -35,24 +35,24 @@ async def main():
         instructions="You are a helpful assistant that reasons through problems.",
         observer=observer,
     )
-    
+
     # Make a request that triggers reasoning
     prompt = "What is the sum of the first 10 prime numbers?"
-    
+
     print(f"Prompt: {prompt}")
     print()
     print("-" * 60)
     print("Agent Events (debug level):")
     print("-" * 60)
-    
+
     response = await agent.run(prompt)
-    
+
     print()
     print("-" * 60)
     print("Response:")
     print("-" * 60)
     print(response.content)
-    
+
     print()
     print("-" * 60)
     print("Token Usage:")

@@ -30,7 +30,7 @@ class TestConfigFileDiscovery:
         config_file = tmp_path / "cogent.toml"
         config_file.write_text("[models]\ndefault = 'gpt4'")
 
-        with patch('pathlib.Path.cwd', return_value=tmp_path):
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
             found = find_config_file()
             assert found == config_file
 
@@ -39,7 +39,7 @@ class TestConfigFileDiscovery:
         config_file = tmp_path / "cogent.yaml"
         config_file.write_text("models:\n  default: gpt4")
 
-        with patch('pathlib.Path.cwd', return_value=tmp_path):
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
             found = find_config_file()
             assert found == config_file
 
@@ -50,7 +50,7 @@ class TestConfigFileDiscovery:
         toml_file.write_text("[models]\ndefault = 'gpt4'")
         yaml_file.write_text("models:\n  default: claude")
 
-        with patch('pathlib.Path.cwd', return_value=tmp_path):
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
             found = find_config_file()
             assert found == toml_file
 
@@ -60,15 +60,15 @@ class TestConfigFileDiscovery:
         user_config.parent.mkdir(parents=True)
         user_config.write_text("[models]\ndefault = 'gpt4'")
 
-        with patch('pathlib.Path.cwd', return_value=tmp_path):
-            with patch('pathlib.Path.home', return_value=tmp_path):
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            with patch("pathlib.Path.home", return_value=tmp_path):
                 found = find_config_file()
                 assert found == user_config
 
     def test_no_config_found(self, tmp_path):
         """Test behavior when no config file exists."""
-        with patch('pathlib.Path.cwd', return_value=tmp_path):
-            with patch('pathlib.Path.home', return_value=tmp_path):
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            with patch("pathlib.Path.home", return_value=tmp_path):
                 found = find_config_file()
                 assert found is None
 
@@ -159,6 +159,7 @@ models:
 
         # Need to patch at module level before import
         import cogent.config as config_module
+
         original_yaml = config_module.yaml
         try:
             config_module.yaml = None
@@ -175,19 +176,23 @@ class TestApiKeyResolution:
         """Test that explicit API key has highest priority."""
         explicit_key = "sk-explicit-key"
 
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-env-key"}):
-            with patch('cogent.config.get_provider_config', return_value={"api_key": "sk-config-key"}):
-                key = get_api_key("openai", explicit_key)
-                assert key == explicit_key
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-env-key"}), patch(
+            "cogent.config.get_provider_config",
+            return_value={"api_key": "sk-config-key"},
+        ):
+            key = get_api_key("openai", explicit_key)
+            assert key == explicit_key
 
     def test_env_var_second_priority(self):
         """Test that env var has second priority."""
         env_key = "sk-env-key"
 
-        with patch.dict(os.environ, {"OPENAI_API_KEY": env_key}):
-            with patch('cogent.config.get_provider_config', return_value={"api_key": "sk-config-key"}):
-                key = get_api_key("openai", None)
-                assert key == env_key
+        with patch.dict(os.environ, {"OPENAI_API_KEY": env_key}), patch(
+            "cogent.config.get_provider_config",
+            return_value={"api_key": "sk-config-key"},
+        ):
+            key = get_api_key("openai", None)
+            assert key == env_key
 
     def test_config_file_lowest_priority(self, tmp_path):
         """Test that config file has lowest priority."""
@@ -199,8 +204,8 @@ api_key = "sk-config-key"
 """)
 
         with patch.dict(os.environ, {}, clear=True):
-            with patch('pathlib.Path.home', return_value=tmp_path):
-                with patch('pathlib.Path.cwd', return_value=tmp_path):
+            with patch("pathlib.Path.home", return_value=tmp_path):
+                with patch("pathlib.Path.cwd", return_value=tmp_path):
                     # Should load from config file
                     key = get_api_key("openai", None)
                     assert key == "sk-config-key"
@@ -208,8 +213,8 @@ api_key = "sk-config-key"
     def test_no_key_available(self, tmp_path):
         """Test behavior when no API key is available."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch('pathlib.Path.home', return_value=tmp_path):
-                with patch('cogent.config.get_provider_config', return_value={}):
+            with patch("pathlib.Path.home", return_value=tmp_path):
+                with patch("cogent.config.get_provider_config", return_value={}):
                     key = get_api_key("openai", None)
                     assert key is None
 
@@ -242,7 +247,7 @@ temperature = 0.7
 max_tokens = 2000
 """)
 
-        with patch('cogent.config.find_config_file', return_value=config_file):
+        with patch("cogent.config.find_config_file", return_value=config_file):
             config = get_provider_config("openai")
             assert config["api_key"] == "sk-test"
             assert config["organization"] == "org-test"
@@ -251,7 +256,7 @@ max_tokens = 2000
 
     def test_get_config_no_file(self):
         """Test getting config when no file exists."""
-        with patch('cogent.config.find_config_file', return_value=None):
+        with patch("cogent.config.find_config_file", return_value=None):
             config = get_provider_config("openai")
             assert config == {}
 
@@ -263,7 +268,7 @@ max_tokens = 2000
 api_key = "sk-test"
 """)
 
-        with patch('cogent.config.find_config_file', return_value=config_file):
+        with patch("cogent.config.find_config_file", return_value=config_file):
             config = get_provider_config("anthropic")
             assert config == {}
 
@@ -285,7 +290,7 @@ temperature = 0.5
         explicit_key = "sk-explicit"
         env_key = "sk-env"
 
-        with patch('cogent.config.find_config_file', return_value=config_file):
+        with patch("cogent.config.find_config_file", return_value=config_file):
             # Test explicit wins
             with patch.dict(os.environ, {"OPENAI_API_KEY": env_key}):
                 key = get_api_key("openai", explicit_key)
@@ -315,7 +320,7 @@ api_key = "sk-ant"
 api_key = "gemini-key"
 """)
 
-        with patch('cogent.config.find_config_file', return_value=config_file):
+        with patch("cogent.config.find_config_file", return_value=config_file):
             with patch.dict(os.environ, {}, clear=True):
                 assert get_api_key("openai", None) == "sk-openai"
                 assert get_api_key("anthropic", None) == "sk-ant"
@@ -329,7 +334,7 @@ class TestDotenvIntegration:
         """Test that .env is loaded on module import."""
         # This is tested implicitly by the module loading .env on import
         # We can verify by checking if environment variables are accessible
-        with patch('cogent.config.load_dotenv') as mock_load:
+        with patch("cogent.config.load_dotenv") as mock_load:
             # Re-import would call load_dotenv
             # In practice, this is already done, so we test behavior
             pass
@@ -342,6 +347,7 @@ class TestDotenvIntegration:
 
         # Load it
         from dotenv import load_dotenv
+
         with patch.dict(os.environ, {}, clear=True):
             load_dotenv(env_file, override=True)
 
@@ -373,7 +379,8 @@ class TestErrorHandling:
         """Test handling of permission errors."""
         # Skip on Windows as chmod doesn't work the same way
         import sys
-        if sys.platform == 'win32':
+
+        if sys.platform == "win32":
             pytest.skip("Permission test not applicable on Windows")
 
         config_file = tmp_path / "protected.toml"

@@ -123,7 +123,6 @@ MODEL_PROVIDERS: dict[str, str] = {
     "gemini-exp": "gemini",
     "models/gemini": "gemini",
     "nano-banana": "gemini",
-    "text-embedding-": "gemini",  # Gemini also has text-embedding models
     # Groq
     "llama-": "groq",
     "llama3": "groq",
@@ -161,7 +160,6 @@ MODEL_PROVIDERS: dict[str, str] = {
     "grok": "xai",
     # Cerebras (ultra-fast inference)
     "llama3.1-": "cerebras",  # Cerebras uses llama3.1-8b format
-    "gpt-oss-": "cerebras",  # Cerebras reasoning model
 }
 
 

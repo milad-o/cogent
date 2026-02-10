@@ -43,11 +43,23 @@ from cogent.vectorstore import Document as VectorStoreDocument
 def sample_documents() -> list[VectorStoreDocument]:
     """Create sample documents for testing."""
     return [
-        VectorStoreDocument(text="Python is a programming language", metadata={"id": "1", "topic": "python"}),
-        VectorStoreDocument(text="Machine learning uses algorithms", metadata={"id": "2", "topic": "ml"}),
-        VectorStoreDocument(text="Deep learning is a subset of ML", metadata={"id": "3", "topic": "ml"}),
-        VectorStoreDocument(text="JavaScript runs in browsers", metadata={"id": "4", "topic": "js"}),
-        VectorStoreDocument(text="Python is great for data science", metadata={"id": "5", "topic": "python"}),
+        VectorStoreDocument(
+            text="Python is a programming language",
+            metadata={"id": "1", "topic": "python"},
+        ),
+        VectorStoreDocument(
+            text="Machine learning uses algorithms", metadata={"id": "2", "topic": "ml"}
+        ),
+        VectorStoreDocument(
+            text="Deep learning is a subset of ML", metadata={"id": "3", "topic": "ml"}
+        ),
+        VectorStoreDocument(
+            text="JavaScript runs in browsers", metadata={"id": "4", "topic": "js"}
+        ),
+        VectorStoreDocument(
+            text="Python is great for data science",
+            metadata={"id": "5", "topic": "python"},
+        ),
     ]
 
 
@@ -187,7 +199,9 @@ class TestDocumentLoader:
     async def test_load_html_file(self, temp_dir: Path) -> None:
         """Test loading an HTML file."""
         html_file = temp_dir / "test.html"
-        html_file.write_text("<html><head><title>Test</title></head><body><p>Content</p></body></html>")
+        html_file.write_text(
+            "<html><head><title>Test</title></head><body><p>Content</p></body></html>"
+        )
 
         loader = DocumentLoader()
         docs = await loader.load(html_file)
@@ -217,10 +231,12 @@ class TestDocumentLoader:
         (temp_dir / "file2.txt").write_text("Content 2")
 
         loader = DocumentLoader()
-        docs = await loader.load_many([
-            temp_dir / "file1.txt",
-            temp_dir / "file2.txt",
-        ])
+        docs = await loader.load_many(
+            [
+                temp_dir / "file1.txt",
+                temp_dir / "file2.txt",
+            ]
+        )
 
         assert len(docs) == 2
 
@@ -261,7 +277,11 @@ class TestDocumentLoader:
         custom_file.write_text("custom content")
 
         async def custom_loader(path: Path) -> list[Document]:
-            return [Document(text=f"CUSTOM: {path.read_text()}", metadata={"source": str(path)})]
+            return [
+                Document(
+                    text=f"CUSTOM: {path.read_text()}", metadata={"source": str(path)}
+                )
+            ]
 
         loader = DocumentLoader()
         loader.register_loader(".custom", custom_loader)
@@ -480,25 +500,37 @@ class TestSplitTextFunction:
     def test_recursive_splitter(self) -> None:
         """Test using recursive splitter type."""
         text = "Content " * 100
-        chunks = split_text(text, chunk_size=500, chunk_overlap=50, splitter_type="recursive")
+        chunks = split_text(
+            text, chunk_size=500, chunk_overlap=50, splitter_type="recursive"
+        )
         assert len(chunks) >= 1
 
     def test_sentence_splitter(self) -> None:
         """Test using sentence splitter type."""
         text = "First. Second. Third. Fourth."
-        chunks = split_text(text, chunk_size=100, chunk_overlap=10, splitter_type="sentence")
+        chunks = split_text(
+            text, chunk_size=100, chunk_overlap=10, splitter_type="sentence"
+        )
         assert len(chunks) >= 1
 
     def test_markdown_splitter(self) -> None:
         """Test using markdown splitter type."""
         text = "# Title\n\nContent"
-        chunks = split_text(text, chunk_size=500, chunk_overlap=50, splitter_type="markdown")
+        chunks = split_text(
+            text, chunk_size=500, chunk_overlap=50, splitter_type="markdown"
+        )
         assert len(chunks) >= 1
 
     def test_code_splitter(self) -> None:
         """Test using code splitter type."""
         code = "def foo():\n    pass"
-        chunks = split_text(code, chunk_size=500, chunk_overlap=50, splitter_type="code", language="python")
+        chunks = split_text(
+            code,
+            chunk_size=500,
+            chunk_overlap=50,
+            splitter_type="code",
+            language="python",
+        )
         assert len(chunks) >= 1
 
     def test_invalid_splitter_type(self) -> None:
@@ -579,9 +611,13 @@ class TestBaseRetriever:
         class DummyRetriever(BaseRetriever):
             _name = "dummy"
 
-            async def retrieve_with_scores(self, query: str, k: int = 4, filter: dict | None = None, **kwargs):
+            async def retrieve_with_scores(
+                self, query: str, k: int = 4, filter: dict | None = None, **kwargs
+            ):
                 doc = Document(text=f"doc for {query}", metadata={"id": "1"})
-                return [RetrievalResult(document=doc, score=0.9, retriever_name=self.name)]
+                return [
+                    RetrievalResult(document=doc, score=0.9, retriever_name=self.name)
+                ]
 
         retriever = DummyRetriever()
         tool = retriever.as_tool(name="search_docs", k_default=3, include_scores=True)
@@ -610,7 +646,9 @@ class TestBaseRetriever:
         retriever = MultiRepresentationRetriever(llm=model, vectorstore=vs)
 
         # Add a test document
-        docs = [VectorStoreDocument(text="Python is a programming language", metadata={})]
+        docs = [
+            VectorStoreDocument(text="Python is a programming language", metadata={})
+        ]
         await retriever.add_documents(docs)
 
         # Create tool with custom parameters
@@ -627,15 +665,24 @@ class TestBaseRetriever:
         assert "query" in tool.args_schema
         assert "query_type" in tool.args_schema
         assert "search_all" in tool.args_schema
-        assert tool.args_schema["query_type"]["enum"] == ["broad", "specific", "keyword", "question", "entity", "auto"]
+        assert tool.args_schema["query_type"]["enum"] == [
+            "broad",
+            "specific",
+            "keyword",
+            "question",
+            "entity",
+            "auto",
+        ]
 
         # Invoke with query_type parameter
-        result = await tool.ainvoke({
-            "query": "programming",
-            "k": 1,
-            "query_type": "broad",
-            "search_all": False,
-        })
+        result = await tool.ainvoke(
+            {
+                "query": "programming",
+                "k": 1,
+                "query_type": "broad",
+                "search_all": False,
+            }
+        )
 
         assert isinstance(result, list)
         assert len(result) > 0
@@ -683,13 +730,15 @@ class TestBaseRetriever:
         assert tool.args_schema["apply_decay"]["default"] is True
 
         # Invoke with time range
-        result = await tool.ainvoke({
-            "query": "news",
-            "k": 2,
-            "time_start": "2024-11-01T00:00:00Z",
-            "time_end": "2024-12-31T23:59:59Z",
-            "apply_decay": True,
-        })
+        result = await tool.ainvoke(
+            {
+                "query": "news",
+                "k": 2,
+                "time_start": "2024-11-01T00:00:00Z",
+                "time_end": "2024-12-31T23:59:59Z",
+                "apply_decay": True,
+            }
+        )
 
         assert isinstance(result, list)
         assert len(result) > 0
@@ -846,12 +895,16 @@ class TestFuseResults:
         ]
 
         # Test WITHOUT normalization
-        fused = fuse_results(results_list, strategy=FusionStrategy.MAX, normalize_output=False)
+        fused = fuse_results(
+            results_list, strategy=FusionStrategy.MAX, normalize_output=False
+        )
 
         assert len(fused) == 1
         assert fused[0].score == 0.9
         # Raw score preserved in metadata
-        assert fused[0].metadata.get("raw_score") is None  # No raw_score when not normalizing
+        assert (
+            fused[0].metadata.get("raw_score") is None
+        )  # No raw_score when not normalizing
 
         # Test WITH normalization (default) - single result = 1.0
         fused_norm = fuse_results(results_list, strategy=FusionStrategy.MAX)
@@ -1011,7 +1064,9 @@ class TestBM25Retriever:
         assert any("python" in t for t in texts)
 
     @pytest.mark.asyncio
-    async def test_bm25_as_tool_with_keywords(self, sample_documents: list[Document]) -> None:
+    async def test_bm25_as_tool_with_keywords(
+        self, sample_documents: list[Document]
+    ) -> None:
         """Test BM25 as_tool() exposes keywords parameter."""
         from cogent.retriever.sparse import BM25Retriever
 
@@ -1056,12 +1111,23 @@ class TestHybridRetriever:
 
         # Add metadata to documents
         docs_with_meta = [
-            Document(text="Python is a programming language", metadata={"category": "programming", "author": "guido"}),
-            Document(text="JavaScript runs in browsers", metadata={"category": "programming", "author": "brendan"}),
-            Document(text="Machine learning uses algorithms", metadata={"category": "ml", "author": "andrew"}),
+            Document(
+                text="Python is a programming language",
+                metadata={"category": "programming", "author": "guido"},
+            ),
+            Document(
+                text="JavaScript runs in browsers",
+                metadata={"category": "programming", "author": "brendan"},
+            ),
+            Document(
+                text="Machine learning uses algorithms",
+                metadata={"category": "ml", "author": "andrew"},
+            ),
         ]
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
         await vs.add_documents(docs_with_meta)
 
         dense = DenseRetriever(vs)
@@ -1092,7 +1158,9 @@ class TestHybridRetriever:
             Document(text="Java is verbose", metadata={"category": "java"}),
         ]
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
         await vs.add_documents(docs_with_meta)
 
         dense = DenseRetriever(vs)
@@ -1138,7 +1206,9 @@ class TestEnsembleRetriever:
         from cogent.vectorstore import VectorStore
         from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
         await vs.add_documents(sample_documents)
 
         dense = DenseRetriever(vs)
@@ -1154,7 +1224,9 @@ class TestEnsembleRetriever:
         assert len(results) <= 3
 
     @pytest.mark.asyncio
-    async def test_ensemble_fusion_strategies(self, sample_documents: list[Document]) -> None:
+    async def test_ensemble_fusion_strategies(
+        self, sample_documents: list[Document]
+    ) -> None:
         """Test ensemble with different fusion strategies."""
         pytest.importorskip("rank_bm25")
         from cogent.retriever.dense import DenseRetriever
@@ -1163,7 +1235,9 @@ class TestEnsembleRetriever:
         from cogent.vectorstore import VectorStore
         from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
         await vs.add_documents(sample_documents)
 
         dense = DenseRetriever(vs)
@@ -1203,12 +1277,14 @@ class TestParentDocumentRetriever:
         from cogent.vectorstore import VectorStore
         from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
 
         # Large parent document
         parent_doc = VectorStoreDocument(
-            text="This is a long document about Python. " * 50 +
-                 "Python is great for machine learning. " * 50,
+            text="This is a long document about Python. " * 50
+            + "Python is great for machine learning. " * 50,
             metadata={"id": "parent1", "topic": "python"},
         )
 
@@ -1260,11 +1336,13 @@ class TestSentenceWindowRetriever:
         from cogent.vectorstore import VectorStore
         from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
 
         doc = VectorStoreDocument(
             text="First sentence. Second sentence about Python. Third sentence. "
-                 "Fourth sentence. Fifth sentence.",
+            "Fourth sentence. Fifth sentence.",
             metadata={"id": "1"},
         )
 
@@ -1299,13 +1377,17 @@ class TestSelfQueryRetriever:
         return MockLLM()
 
     @pytest.mark.asyncio
-    async def test_self_query_basic(self, mock_llm, sample_documents: list[Document]) -> None:
+    async def test_self_query_basic(
+        self, mock_llm, sample_documents: list[Document]
+    ) -> None:
         """Test basic self-query retrieval."""
         from cogent.retriever.self_query import AttributeInfo, SelfQueryRetriever
         from cogent.vectorstore import VectorStore
         from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
         await vs.add_documents(sample_documents)
 
         retriever = SelfQueryRetriever(
@@ -1322,13 +1404,17 @@ class TestSelfQueryRetriever:
         assert isinstance(results, list)
 
     @pytest.mark.asyncio
-    async def test_self_query_verbose(self, mock_llm, sample_documents: list[Document]) -> None:
+    async def test_self_query_verbose(
+        self, mock_llm, sample_documents: list[Document]
+    ) -> None:
         """Test self-query with verbose output."""
         from cogent.retriever.self_query import AttributeInfo, SelfQueryRetriever
         from cogent.vectorstore import VectorStore
         from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
         await vs.add_documents(sample_documents)
 
         retriever = SelfQueryRetriever(
@@ -1502,11 +1588,14 @@ class TestHyDERetriever:
     def mock_model(self):
         """Create a mock chat model for hypothesis generation."""
         from cogent.models.mock import MockChatModel
-        return MockChatModel(responses=[
-            "Python is a versatile programming language used for web development, "
-            "data science, machine learning, and automation. It features clean syntax "
-            "and a vast ecosystem of libraries.",
-        ])
+
+        return MockChatModel(
+            responses=[
+                "Python is a versatile programming language used for web development, "
+                "data science, machine learning, and automation. It features clean syntax "
+                "and a vast ecosystem of libraries.",
+            ]
+        )
 
     @pytest.fixture
     async def base_retriever(self, sample_documents: list[Document]):
@@ -1515,7 +1604,9 @@ class TestHyDERetriever:
         from cogent.vectorstore import VectorStore
         from cogent.vectorstore.backends.inmemory import InMemoryBackend
 
-        vs = VectorStore(embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend())
+        vs = VectorStore(
+            embeddings=MockEmbedding(dimensions=64), backend=InMemoryBackend()
+        )
         await vs.add_documents(sample_documents)
         return DenseRetriever(vs)
 
@@ -1586,11 +1677,13 @@ class TestHyDERetriever:
         from cogent.retriever.hyde import HyDERetriever
 
         # Model that returns different responses
-        model = MockChatModel(responses=[
-            "Python is great for beginners and experts alike.",
-            "Python powers data science and machine learning.",
-            "Python is used in web development with Django and Flask.",
-        ])
+        model = MockChatModel(
+            responses=[
+                "Python is great for beginners and experts alike.",
+                "Python powers data science and machine learning.",
+                "Python is used in web development with Django and Flask.",
+            ]
+        )
 
         hyde = HyDERetriever(
             base_retriever,
@@ -1604,7 +1697,9 @@ class TestHyDERetriever:
         assert len(results) <= 3
 
     @pytest.mark.asyncio
-    async def test_hyde_include_original_query(self, mock_model, base_retriever) -> None:
+    async def test_hyde_include_original_query(
+        self, mock_model, base_retriever
+    ) -> None:
         """Test HyDE with original query included in search."""
         from cogent.retriever.hyde import HyDERetriever
 
@@ -1731,4 +1826,3 @@ class TestLLMAdapter:
 
         # Verify summaries were created
         assert len(retriever.summaries) == 1
-

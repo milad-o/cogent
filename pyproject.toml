@@ -4,7 +4,7 @@ version = "1.16.0"
 description = "Production AI agent framework with memory control and semantic caching"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 authors = [{ name = "Milad Olad" }]
 keywords = ["agents", "ai", "llm", "memory", "caching", "reasoning", "tools"]
 classifiers = [
@@ -44,6 +44,7 @@ dependencies = [
     "websockets>=15.0.1",
     "starlette>=0.50.0",
     "uvicorn>=0.38.0",
+    "faiss-cpu>=1.13.2",
 ]
 
 [project.optional-dependencies]
@@ -182,7 +183,7 @@ ignore = ["E501"]
 known-first-party = ["cogent"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 strict = true
 warn_return_any = true
 warn_unused_ignores = true

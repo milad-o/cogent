@@ -175,7 +175,9 @@ def _parse_response(response: Any) -> AIMessage:
     metadata = MessageMetadata(
         model=response.model if hasattr(response, "model") else None,
         tokens=tokens,
-        finish_reason=choice.finish_reason if hasattr(choice, "finish_reason") else None,
+        finish_reason=choice.finish_reason
+        if hasattr(choice, "finish_reason")
+        else None,
         response_id=response.id if hasattr(response, "id") else None,
     )
 
@@ -411,7 +413,12 @@ class XAIChat(BaseChatModel):
 
         # Apply any overrides (but filter restricted params for reasoning models)
         for key, value in kwargs.items():
-            if is_restricted and key in ("temperature", "presence_penalty", "frequency_penalty", "stop"):
+            if is_restricted and key in (
+                "temperature",
+                "presence_penalty",
+                "frequency_penalty",
+                "stop",
+            ):
                 continue  # Skip restricted params for reasoning models
             params[key] = value
 
@@ -510,7 +517,10 @@ class XAIChat(BaseChatModel):
                 # Include reasoning tokens if available
                 if hasattr(chunk.usage, "completion_tokens_details"):
                     details = chunk.usage.completion_tokens_details
-                    if hasattr(details, "reasoning_tokens") and details.reasoning_tokens:
+                    if (
+                        hasattr(details, "reasoning_tokens")
+                        and details.reasoning_tokens
+                    ):
                         tokens.reasoning_tokens = details.reasoning_tokens
 
                 metadata = MessageMetadata(

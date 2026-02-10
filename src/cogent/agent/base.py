@@ -303,9 +303,9 @@ class Agent:
 
         # Initialize subagent registry
         from cogent.agent.subagent import SubagentRegistry
-        
+
         self._subagent_registry = SubagentRegistry()
-        
+
         # Normalize subagents to dict (supports dict, list, or tuple)
         if subagents:
             if isinstance(subagents, dict):
@@ -313,11 +313,11 @@ class Agent:
             else:
                 # Sequence (list/tuple) - use agent.name as key
                 subagents_dict = {agent.config.name: agent for agent in subagents}
-            
+
             for subagent_name, subagent in subagents_dict.items():
                 # Register subagent in registry
                 self._subagent_registry.register(subagent_name, subagent)
-                
+
                 # Create tool wrapper for LLM
                 subagent_tool = self._create_subagent_tool(subagent_name, subagent)
                 tool_names.append(subagent_tool.name)
@@ -331,6 +331,7 @@ class Agent:
         # Convert string model to BaseChatModel if needed
         if isinstance(model, str):
             from cogent.models import create_chat
+
             model_kwargs_dict = model_kwargs or {}
             model = create_chat(model, **model_kwargs_dict)
 
@@ -446,25 +447,26 @@ class Agent:
 
     def _create_subagent_tool(self, name: str, agent: Agent) -> BaseTool:
         """Create a tool wrapper for a subagent.
-        
+
         The tool is callable by the LLM via normal tool calling, but the
         executor will intercept and handle it specially to preserve Response metadata.
-        
+
         Args:
             name: Name to register the subagent tool under
             agent: The subagent Agent instance
-            
+
         Returns:
             BaseTool that wraps the subagent
         """
         from pydantic import BaseModel, Field
-        
+
         class SubagentInput(BaseModel):
             """Input schema for subagent delegation."""
+
             task: str = Field(
                 description=f"Specific task or question for {name} to handle. Be clear and detailed."
             )
-        
+
         # Placeholder function - actual execution happens in executor
         async def _subagent_placeholder(task: str) -> str:
             """Placeholder - executor intercepts subagent calls."""
@@ -472,9 +474,11 @@ class Agent:
                 f"Subagent {name} execution must be handled by executor. "
                 "This should never be called directly."
             )
-        
-        description = agent.config.description or f"Delegate task to {name} specialist agent"
-        
+
+        description = (
+            agent.config.description or f"Delegate task to {name} specialist agent"
+        )
+
         return BaseTool(
             name=name,
             description=description,
@@ -689,7 +693,10 @@ class Agent:
                         total_completion += tokens.completion_tokens or 0
                         found_any = True
                         # Aggregate reasoning tokens if present
-                        if hasattr(tokens, "reasoning_tokens") and tokens.reasoning_tokens:
+                        if (
+                            hasattr(tokens, "reasoning_tokens")
+                            and tokens.reasoning_tokens
+                        ):
                             total_reasoning += tokens.reasoning_tokens
                             has_reasoning = True
 
@@ -1786,7 +1793,7 @@ class Agent:
             # Extract thinking/reasoning content if available
             thinking_content = getattr(response, "thinking", None)
             thoughts_content = getattr(response, "thoughts", None)
-            
+
             # Extract token usage including reasoning tokens
             token_data = {}
             if hasattr(response, "metadata") and response.metadata:
@@ -1810,7 +1817,7 @@ class Agent:
                 and bool(response.tool_calls),
                 "tokens": token_data,
             }
-            
+
             # Add thinking preview if available
             if thinking_content:
                 llm_response_data["thinking_preview"] = thinking_content[:300]
@@ -1818,13 +1825,13 @@ class Agent:
             elif thoughts_content:
                 llm_response_data["thinking_preview"] = thoughts_content[:300]
                 llm_response_data["thinking_length"] = len(thoughts_content)
-            
+
             await self._emit_event(
                 "llm.response",
                 llm_response_data,
                 correlation_id,
             )
-            
+
             # Emit dedicated thinking event if extended thinking was used
             if thinking_content or thoughts_content:
                 await self._emit_event(
@@ -3193,11 +3200,13 @@ class Agent:
                     "Be clear and detailed about what you want the agent to do. "
                     f"Examples: 'check if user has delete permission', "
                     f"'analyze Q4 revenue data', 'extract contact information'"
-                )
+                ),
             )
 
         # Create tool function that wraps agent execution
-        async def execute_agent_task(task: str = "", ctx: RunContext | None = None) -> str | dict:
+        async def execute_agent_task(
+            task: str = "", ctx: RunContext | None = None
+        ) -> str | dict:
             """Execute agent and return result."""
             # Validate required task parameter - raise exception to trigger retry
             if not task or not task.strip():
@@ -3206,10 +3215,12 @@ class Agent:
                     f"You must specify what you want the agent to do. "
                     f"Examples: 'check if user can delete files', 'analyze the data', 'extract user info'"
                 )
-            
+
             try:
                 # Propagate context unless explicitly isolated
-                context_to_pass = ctx if (not isolate_context and ctx is not None) else None
+                context_to_pass = (
+                    ctx if (not isolate_context and ctx is not None) else None
+                )
                 response = await self.run(task, context=context_to_pass)
 
                 # If response failed, return error info
@@ -3258,7 +3269,7 @@ class Agent:
                 f"{description}. "
                 f"REQUIRED: Provide specific instructions in the 'task' parameter."
             )
-        
+
         tool = BaseTool(
             name=name or self.name,
             description=tool_description,
@@ -3304,7 +3315,7 @@ class Agent:
             if self._memory._acc_enabled:
                 # ACC: Load bounded memory state instead of full transcript
                 acc = await self._memory.get_acc_state(thread_id)
-                
+
                 # Pass agent's model to ACC if it needs one for AI extraction
                 if (
                     hasattr(acc, "extraction_mode")
@@ -3313,7 +3324,7 @@ class Agent:
                     and self.model is not None
                 ):
                     acc.set_model(self.model)
-                
+
                 memory_context = acc.format_for_prompt(task)
 
                 # Add formatted memory as system message
@@ -3341,7 +3352,7 @@ class Agent:
             if reasoning is not None:
                 # Override reasoning for this call
                 self._apply_reasoning_override(reasoning)
-            
+
             if output is not None:
                 # Override output schema for this call
                 self._setup_output(output)
@@ -3365,16 +3376,20 @@ class Agent:
             delegation_chain = []
             if hasattr(self, "_subagent_registry") and self._subagent_registry:
                 subagent_responses = self._subagent_registry.get_responses()
-                
+
                 # Build delegation chain metadata
                 for resp in subagent_responses:
                     if resp.metadata:
-                        delegation_chain.append({
-                            "agent": resp.metadata.agent,
-                            "model": resp.metadata.model,
-                            "tokens": resp.metadata.tokens.total_tokens if resp.metadata.tokens else 0,
-                            "duration": resp.metadata.duration,
-                        })
+                        delegation_chain.append(
+                            {
+                                "agent": resp.metadata.agent,
+                                "model": resp.metadata.model,
+                                "tokens": resp.metadata.tokens.total_tokens
+                                if resp.metadata.tokens
+                                else 0,
+                                "duration": resp.metadata.duration,
+                            }
+                        )
 
             # Save to conversation history if thread_id provided
             if thread_id:
@@ -3407,7 +3422,7 @@ class Agent:
 
             # Aggregate token usage from coordinator messages
             coordinator_tokens = self._aggregate_tokens_from_messages(executor_messages)
-            
+
             # Aggregate tokens from all subagent responses
             total_tokens = coordinator_tokens
             if subagent_responses:
@@ -3415,13 +3430,20 @@ class Agent:
                     if resp.metadata and resp.metadata.tokens:
                         if total_tokens:
                             # Aggregate reasoning tokens if present in either
-                            total_reasoning = (total_tokens.reasoning_tokens or 0) + (resp.metadata.tokens.reasoning_tokens or 0)
-                            reasoning_tokens = total_reasoning if total_reasoning > 0 else None
-                            
+                            total_reasoning = (total_tokens.reasoning_tokens or 0) + (
+                                resp.metadata.tokens.reasoning_tokens or 0
+                            )
+                            reasoning_tokens = (
+                                total_reasoning if total_reasoning > 0 else None
+                            )
+
                             total_tokens = TokenUsage(
-                                prompt_tokens=total_tokens.prompt_tokens + resp.metadata.tokens.prompt_tokens,
-                                completion_tokens=total_tokens.completion_tokens + resp.metadata.tokens.completion_tokens,
-                                total_tokens=total_tokens.total_tokens + resp.metadata.tokens.total_tokens,
+                                prompt_tokens=total_tokens.prompt_tokens
+                                + resp.metadata.tokens.prompt_tokens,
+                                completion_tokens=total_tokens.completion_tokens
+                                + resp.metadata.tokens.completion_tokens,
+                                total_tokens=total_tokens.total_tokens
+                                + resp.metadata.tokens.total_tokens,
                                 reasoning_tokens=reasoning_tokens,
                             )
                         else:
@@ -3521,7 +3543,7 @@ class Agent:
             if reasoning is not None:
                 # Override reasoning for this call
                 self._apply_reasoning_override(reasoning)
-            
+
             if output is not None:
                 # Override output schema for this call
                 self._setup_output(output)

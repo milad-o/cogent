@@ -583,15 +583,17 @@ class AgentMemory:
         thread_id: str,
     ) -> AgentCognitiveCompressor:
         """Get or create ACC state for a thread.
-        
+
         Args:
             thread_id: Thread identifier.
-        
+
         Returns:
             ACC compressor for this thread.
         """
         if not self._acc_enabled:
-            raise RuntimeError("ACC is not enabled. Set acc_enabled=True when creating AgentMemory.")
+            raise RuntimeError(
+                "ACC is not enabled. Set acc_enabled=True when creating AgentMemory."
+            )
 
         # Return existing ACC if in cache
         if thread_id in self._acc_states:
@@ -640,7 +642,7 @@ class AgentMemory:
         acc: AgentCognitiveCompressor,
     ) -> None:
         """Save ACC state for a thread.
-        
+
         Args:
             thread_id: Thread identifier.
             acc: ACC compressor to save.
@@ -782,4 +784,3 @@ class InMemorySaver:
         for key in keys_to_delete:
             self._storage.pop(key, None)
             self._metadata.pop(key, None)
-

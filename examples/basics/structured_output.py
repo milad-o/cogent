@@ -44,12 +44,13 @@ from cogent import Agent
 # Example 1: Bare Types - Simplest Possible
 # =============================================================================
 
+
 async def example_bare_types():
     """Bare types return values directly without wrapping."""
     print("=" * 60)
     print("Example 1: Bare Types (Direct Values)")
     print("=" * 60)
-    
+
     # Bare Literal - constrained choices
     agent = Agent(
         name="Reviewer",
@@ -59,7 +60,7 @@ async def example_bare_types():
     )
     result = await agent.run("Auth system 80% done, missing password reset")
     print(f"\n  Bare Literal: {result.content.data}")  # Direct value: "REVISE"
-    
+
     # Bare str
     agent = Agent(
         name="Summarizer",
@@ -69,7 +70,7 @@ async def example_bare_types():
     )
     result = await agent.run("Python is a programming language")
     print(f"  Bare str: {result.content.data}")  # Direct value: "Python"
-    
+
     # Bare int
     agent = Agent(
         name="Counter",
@@ -79,11 +80,11 @@ async def example_bare_types():
     )
     result = await agent.run("How many words: Hello world test")
     print(f"  Bare int: {result.content.data}")  # Direct value: 3
-    
+
     # Single-field models (when you need named fields)
     class Priority(BaseModel):
         level: Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"]
-    
+
     agent = Agent(name="Prioritizer", model="gpt-4o-mini", output=Priority)
     result = await agent.run("DB errors affecting 5% users")
     print(f"  Single-field model: {result.content.data.level}")  # Access via field name
@@ -92,6 +93,7 @@ async def example_bare_types():
 # =============================================================================
 # Example 2: Contact Extraction with Pydantic
 # =============================================================================
+
 
 class ContactInfo(BaseModel):
     """Contact information extracted from text."""
@@ -141,6 +143,7 @@ async def example_contact_extraction():
 # Example 3: Data Classification with Enum
 # =============================================================================
 
+
 class SentimentAnalysis(BaseModel):
     """Sentiment analysis result."""
 
@@ -176,7 +179,9 @@ async def example_sentiment_analysis():
 
         if structured.valid:
             analysis = structured.data
-            print(f"  Sentiment: {analysis.sentiment} ({analysis.confidence:.0%} confidence)")
+            print(
+                f"  Sentiment: {analysis.sentiment} ({analysis.confidence:.0%} confidence)"
+            )
             print(f"  Key phrases: {', '.join(analysis.key_phrases)}")
             print(f"  Summary: {analysis.summary}")
 
@@ -184,6 +189,7 @@ async def example_sentiment_analysis():
 # =============================================================================
 # Example 4: Using Dataclass
 # =============================================================================
+
 
 @dataclass
 class MeetingAction:
@@ -231,6 +237,7 @@ async def example_meeting_actions():
 # Example 5: Advanced Config with Retry
 # =============================================================================
 
+
 class ProductReview(BaseModel):
     """Validated product review."""
 
@@ -254,9 +261,9 @@ async def example_advanced_config():
     config = ResponseSchema(
         schema=ProductReview,
         method=OutputMethod.AUTO,  # Let Cogent choose best method
-        retry_on_error=True,       # Retry if validation fails
-        max_retries=2,             # Up to 2 retries
-        include_raw=True,          # Include raw response in result
+        retry_on_error=True,  # Retry if validation fails
+        max_retries=2,  # Up to 2 retries
+        include_raw=True,  # Include raw response in result
     )
 
     agent = Agent(
@@ -304,6 +311,7 @@ async def example_advanced_config():
 # Example 6: JSON Schema (for maximum flexibility)
 # =============================================================================
 
+
 async def example_json_schema():
     """Use raw JSON Schema for dynamic schemas."""
     print("\n" + "=" * 60)
@@ -318,7 +326,10 @@ async def example_json_schema():
             "title": {"type": "string", "description": "Event title"},
             "date": {"type": "string", "description": "Date in YYYY-MM-DD format"},
             "time": {"type": "string", "description": "Time in HH:MM format"},
-            "duration_minutes": {"type": "integer", "description": "Duration in minutes"},
+            "duration_minutes": {
+                "type": "integer",
+                "description": "Duration in minutes",
+            },
             "attendees": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -350,6 +361,7 @@ async def example_json_schema():
 # Example 7: Dynamic Agent-Decided Structure
 # =============================================================================
 
+
 async def example_dynamic_structure():
     """Let the agent decide the output structure dynamically."""
     print("\n" + "=" * 60)
@@ -367,29 +379,32 @@ async def example_dynamic_structure():
         ),
     )
 
-    result = await agent.run("User feedback: Great UI, slow loading, missing dark mode, love the features")
+    result = await agent.run(
+        "User feedback: Great UI, slow loading, missing dark mode, love the features"
+    )
     structured = result.content
-    
+
     if structured.valid:
         analysis = structured.data
-        print(f"\n  Agent-decided structure:")
+        print("\n  Agent-decided structure:")
         print(f"  Chose these fields: {list(analysis.keys())}")
         print(f"  Full response: {analysis}")
 
     # Compare: Predefined schema (from Example 3)
-    print(f"\n  Contrast with Example 3 (predefined):")
-    print(f"    Fixed fields: sentiment, confidence, key_phrases, summary")
-    print(f"  vs Example 7 (dynamic):")
-    print(f"    Agent chooses fields based on content")
+    print("\n  Contrast with Example 3 (predefined):")
+    print("    Fixed fields: sentiment, confidence, key_phrases, summary")
+    print("  vs Example 7 (dynamic):")
+    print("    Agent chooses fields based on content")
 
 
 # =============================================================================
 # Example 8: Collections - Lists, Sets, Tuples
 # =============================================================================
 
+
 async def example_collections():
     """Collections - agent returns arrays with optional type constraints.
-    
+
     Note: Bare collections (list, set, tuple) work best when wrapped in a model
     due to LLM API limitations with root-level arrays. Use bare collections for
     simple cases, or wrap in Pydantic models for reliability.
@@ -397,12 +412,13 @@ async def example_collections():
     print("\n" + "=" * 60)
     print("Example 8: Collections (list, set, tuple)")
     print("=" * 60)
-    
+
     # For bare collections, wrap in a model for reliability
     class Tags(BaseModel):
         """Tags extracted from text."""
+
         items: list[str]
-    
+
     agent = Agent(
         name="TagExtractor",
         model="gpt-4o-mini",
@@ -411,12 +427,13 @@ async def example_collections():
     )
     result = await agent.run("Article about Python async programming with FastAPI")
     print(f"\n  list[str] in model: {result.content.data.items}")
-    
+
     # set - unique items (wrapped)
     class UniqueCategories(BaseModel):
         """Unique categories extracted."""
+
         categories: set[str]
-    
+
     agent = Agent(
         name="UniqueExtractor",
         model="gpt-4o-mini",
@@ -426,12 +443,13 @@ async def example_collections():
     result = await agent.run("Tags: ai, python, ai, automation, python, llm")
     print(f"\n  set[str] in model: {result.content.data.categories}")
     print(f"    Type: {type(result.content.data.categories)}")
-    
+
     # tuple - fixed-length sequence (wrapped)
     class PlayerInfo(BaseModel):
         """Player information tuple."""
+
         data: tuple[str, int, float]
-    
+
     agent = Agent(
         name="TripletExtractor",
         model="gpt-4o-mini",
@@ -447,42 +465,44 @@ async def example_collections():
 # Example 9: Union Types - Polymorphic Responses
 # =============================================================================
 
+
 async def example_union_types():
     """Union types - agent chooses which schema based on content."""
     print("\n" + "=" * 60)
     print("Example 9: Union Types (Polymorphic)")
     print("=" * 60)
-    
-    from typing import Union
-    
+
+
     class Success(BaseModel):
         """Successful operation result."""
+
         status: Literal["success"] = "success"
         result: str
         details: str | None = None
-    
+
     class Failure(BaseModel):
         """Failed operation result."""
+
         status: Literal["failure"] = "failure"
         error: str
         code: int
-    
+
     agent = Agent(
         name="OperationHandler",
         model="gpt-4o-mini",
-        output=Union[Success, Failure],
+        output=Success | Failure,
         instructions="Analyze the operation and return appropriate status.",
     )
-    
+
     # Should return Success
     result1 = await agent.run("Payment processed successfully, transaction ID: TXN-123")
-    print(f"\n  Success case:")
+    print("\n  Success case:")
     print(f"    Type: {type(result1.content.data).__name__}")
     print(f"    Data: {result1.content.data}")
-    
+
     # Should return Failure
     result2 = await agent.run("Payment failed: insufficient funds, error code 402")
-    print(f"\n  Failure case:")
+    print("\n  Failure case:")
     print(f"    Type: {type(result2.content.data).__name__}")
     print(f"    Data: {result2.content.data}")
 
@@ -491,28 +511,30 @@ async def example_union_types():
 # Example 10: Enum Types - Type-Safe Choices
 # =============================================================================
 
+
 async def example_enum_types():
     """Enum types - strongly typed choices with behavior."""
     print("\n" + "=" * 60)
     print("Example 10: Enum Types")
     print("=" * 60)
-    
+
     from enum import Enum
-    
+
     class Priority(str, Enum):
         """Task priority levels."""
+
         LOW = "low"
         MEDIUM = "medium"
         HIGH = "high"
         CRITICAL = "critical"
-    
+
     agent = Agent(
         name="PriorityAssigner",
         model="gpt-4o-mini",
         output=Priority,
         instructions="Assign priority level based on task urgency.",
     )
-    
+
     result = await agent.run("Production server down, users can't login")
     print(f"\n  Enum value: {result.content.data}")
     print(f"    Type: {type(result.content.data)}")
@@ -524,19 +546,20 @@ async def example_enum_types():
 # Example 11: None Type - Confirmation Responses
 # =============================================================================
 
+
 async def example_none_type():
     """None type - for actions that just need confirmation."""
     print("\n" + "=" * 60)
     print("Example 11: None Type (Confirmations)")
     print("=" * 60)
-    
+
     agent = Agent(
         name="ActionExecutor",
         model="gpt-4o-mini",
         output=type(None),
         instructions="Acknowledge the action. Just confirm completion.",
     )
-    
+
     result = await agent.run("Delete temporary files from cache")
     print(f"\n  Return value: {result.content.data}")
     print(f"    Type: {type(result.content.data)}")
@@ -547,50 +570,52 @@ async def example_none_type():
 # Example 12: Complex Nested Structures
 # =============================================================================
 
+
 async def example_nested_structures():
     """Complex nested types - combining all features."""
     print("\n" + "=" * 60)
     print("Example 12: Complex Nested Structures")
     print("=" * 60)
-    
+
     from enum import Enum
-    from typing import Union
-    
+
     class TaskStatus(str, Enum):
         TODO = "todo"
         IN_PROGRESS = "in_progress"
         DONE = "done"
-    
+
     @dataclass
     class Task:
         """A task in a project."""
+
         title: str
         status: TaskStatus
         tags: set[str]
         priority: int  # 1-5
-    
+
     class ProjectAnalysis(BaseModel):
         """Analysis of a project's tasks."""
+
         total_tasks: int
         tasks: list[Task]
         completion_rate: float
         high_priority: list[str]  # Task titles
-    
+
     agent = Agent(
         name="ProjectAnalyzer",
         model="gpt-4o-mini",
         output=ProjectAnalysis,
         instructions="Analyze the project and extract structured task data.",
     )
-    
+
     result = await agent.run(
         "Project status: "
         "1. Implement auth (in progress, high priority, tags: backend, security) "
         "2. Design UI (todo, medium priority, tags: frontend, design) "
         "3. Write tests (done, low priority, tags: testing, backend)"
     )
-    
-    print(f"\n  Nested structure:")
+
+    print("\n  Nested structure:")
     analysis = result.content.data
     print(f"    Total: {analysis.total_tasks} tasks")
     print(f"    Completion: {analysis.completion_rate:.0%}")
@@ -602,6 +627,7 @@ async def example_nested_structures():
 # =============================================================================
 # Main
 # =============================================================================
+
 
 async def main():
     """Run all examples."""

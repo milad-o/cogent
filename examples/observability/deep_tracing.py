@@ -70,7 +70,9 @@ async def main():
     # Run query that uses tools
     print("\n🔍 Query: 'What's the weather in London and convert it to Fahrenheit?'\n")
 
-    result = await agent.run("What's the weather in London? Convert the temperature to Fahrenheit.")
+    result = await agent.run(
+        "What's the weather in London? Convert the temperature to Fahrenheit."
+    )
 
     print("-" * 60)
     print(f"\n✅ Final Result: {result.unwrap()}")

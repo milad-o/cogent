@@ -18,7 +18,9 @@ from cogent.capabilities import Shell
 async def main() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create sample files for the agent to analyze
-        (Path(tmpdir) / "main.py").write_text("def hello():\n    print('Hello')\n\nhello()\n")
+        (Path(tmpdir) / "main.py").write_text(
+            "def hello():\n    print('Hello')\n\nhello()\n"
+        )
         (Path(tmpdir) / "utils.py").write_text("def add(a, b):\n    return a + b\n")
         (Path(tmpdir) / "README.md").write_text("# Sample Project\n\nA demo project.\n")
 

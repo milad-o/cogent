@@ -374,7 +374,6 @@ class HITLException(Exception):
     """Base exception for HITL operations."""
 
 
-
 class InterruptedException(HITLException):
     """
     Raised when agent execution is interrupted for human input.

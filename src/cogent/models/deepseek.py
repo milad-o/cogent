@@ -13,7 +13,7 @@ Usage:
     # Reasoning model (exposes Chain of Thought)
     llm = DeepSeekChat(model="deepseek-reasoner")
     response = await llm.ainvoke("9.11 and 9.8, which is greater?")
-    
+
     # Access reasoning content (Chain of Thought)
     if hasattr(response, 'reasoning'):
         print("Reasoning:", response.reasoning)
@@ -88,11 +88,11 @@ def _format_tools(tools: list[Any]) -> list[dict[str, Any]]:
 
 def _parse_response(response: Any, is_reasoner: bool = False) -> AIMessage:
     """Parse DeepSeek response into AIMessage with metadata.
-    
+
     Args:
         response: DeepSeek API response.
         is_reasoner: Whether this is from deepseek-reasoner model.
-    
+
     Returns:
         AIMessage with content, tool_calls, reasoning (if reasoner), and metadata.
     """
@@ -131,7 +131,9 @@ def _parse_response(response: Any, is_reasoner: bool = False) -> AIMessage:
     metadata = MessageMetadata(
         model=response.model if hasattr(response, "model") else None,
         tokens=tokens,
-        finish_reason=choice.finish_reason if hasattr(choice, "finish_reason") else None,
+        finish_reason=choice.finish_reason
+        if hasattr(choice, "finish_reason")
+        else None,
         response_id=response.id if hasattr(response, "id") else None,
     )
 
@@ -142,7 +144,11 @@ def _parse_response(response: Any, is_reasoner: bool = False) -> AIMessage:
     )
 
     # Extract reasoning content from deepseek-reasoner
-    if is_reasoner and hasattr(message, "reasoning_content") and message.reasoning_content:
+    if (
+        is_reasoner
+        and hasattr(message, "reasoning_content")
+        and message.reasoning_content
+    ):
         msg.reasoning = message.reasoning_content
 
     return msg
@@ -164,7 +170,7 @@ class DeepSeekChat(BaseChatModel):
         # Reasoning model with Chain of Thought
         llm = DeepSeekChat(model="deepseek-reasoner")
         response = await llm.ainvoke("9.11 and 9.8, which is greater?")
-        
+
         # Access reasoning (Chain of Thought)
         if hasattr(response, 'reasoning'):
             print("Reasoning:", response.reasoning)
@@ -303,7 +309,12 @@ class DeepSeekChat(BaseChatModel):
 
         # Apply any overrides (but filter restricted params for reasoner)
         for key, value in kwargs.items():
-            if is_reasoner and key in ("temperature", "top_p", "presence_penalty", "frequency_penalty"):
+            if is_reasoner and key in (
+                "temperature",
+                "top_p",
+                "presence_penalty",
+                "frequency_penalty",
+            ):
                 continue  # Skip restricted params for reasoner
             params[key] = value
 
@@ -362,7 +373,7 @@ class DeepSeekChat(BaseChatModel):
 
         Yields:
             AIMessage objects with incremental content. Final chunk has metadata.
-            
+
         Note:
             For deepseek-reasoner, reasoning_content is streamed before content.
         """
@@ -423,9 +434,13 @@ class DeepSeekChat(BaseChatModel):
             # Handle delta content
             if chunk.choices and chunk.choices[0].delta:
                 delta = chunk.choices[0].delta
-                
+
                 # Handle reasoning content (deepseek-reasoner)
-                if is_reasoner and hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                if (
+                    is_reasoner
+                    and hasattr(delta, "reasoning_content")
+                    and delta.reasoning_content
+                ):
                     accumulated_reasoning += delta.reasoning_content
                     # Yield reasoning chunk
                     metadata = MessageMetadata(

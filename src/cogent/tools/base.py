@@ -113,12 +113,12 @@ class BaseTool:
 
         # No caching - normal execution
         if self._needs_context and ctx is not None:
-            if asyncio.iscoroutinefunction(self.func):
+            if inspect.iscoroutinefunction(self.func):
                 return await self.func(**args, ctx=ctx)
             else:
                 return await asyncio.to_thread(self.func, **args, ctx=ctx)
         else:
-            if asyncio.iscoroutinefunction(self.func):
+            if inspect.iscoroutinefunction(self.func):
                 return await self.func(**args)
             else:
                 return await asyncio.to_thread(self.func, **args)
@@ -173,6 +173,8 @@ class BaseTool:
 
 def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
     """Convert Python type hint to JSON schema type."""
+    import types
+
     type_map = {
         str: {"type": "string"},
         int: {"type": "integer"},
@@ -182,10 +184,45 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
         dict: {"type": "object"},
     }
 
-    # Handle Optional, Union, etc.
+    # Handle Union types (including | syntax in Python 3.10+)
+    # Check if the type itself is a UnionType
+    if isinstance(py_type, types.UnionType):
+        args = py_type.__args__
+        # Filter out None for Optional handling
+        non_none_args = [arg for arg in args if arg is not type(None)]
+
+        if len(non_none_args) == 1:
+            # Just Optional[T] - use the single type
+            return _python_type_to_json_schema(non_none_args[0])
+        else:
+            # True union - use anyOf
+            return {
+                "anyOf": [_python_type_to_json_schema(arg) for arg in non_none_args]
+            }
+
+    # Handle typing.Union (older style)
     origin = getattr(py_type, "__origin__", None)
+    args = getattr(py_type, "__args__", ())
+
+    if (
+        origin is not None
+        and hasattr(origin, "__name__")
+        and origin.__name__ == "Union"
+    ):
+        # Filter out None for Optional handling
+        non_none_args = [arg for arg in args if arg is not type(None)]
+
+        if len(non_none_args) == 1:
+            # Just Optional[T] - use the single type
+            return _python_type_to_json_schema(non_none_args[0])
+        else:
+            # True union - use anyOf
+            return {
+                "anyOf": [_python_type_to_json_schema(arg) for arg in non_none_args]
+            }
+
+    # Handle generic types like list[str]
     if origin is list:
-        args = getattr(py_type, "__args__", (Any,))
         return {
             "type": "array",
             "items": _python_type_to_json_schema(args[0]) if args else {},
@@ -342,13 +379,39 @@ def _extract_schema_from_function(func: Callable[..., Any]) -> dict[str, Any]:
         # Try to extract description from docstring
         doc = func.__doc__ or ""
         # Look for :param name: or Args: name: patterns
-        for line in doc.split("\n"):
-            line = line.strip()
-            if f"{param_name}:" in line or f":param {param_name}:" in line:
-                # Extract description after the colon
-                parts = line.split(":", 2)
+        lines = doc.split("\n")
+        for i, line in enumerate(lines):
+            stripped_line = line.strip()
+            if (
+                f"{param_name}:" in stripped_line
+                or f":param {param_name}:" in stripped_line
+            ):
+                # Found the parameter -extract description
+                parts = stripped_line.split(":", 2)
                 if len(parts) >= 2:
-                    param_schema["description"] = parts[-1].strip()
+                    desc_parts = [parts[-1].strip()]
+
+                    # Continue collecting lines that are indented (continuation)
+                    for next_line in lines[i + 1 :]:
+                        next_stripped = next_line.strip()
+                        # Stop if we hit another parameter or section
+                        if next_stripped and (
+                            ":" in next_stripped or next_stripped.startswith("-")
+                        ):
+                            # Check if it's another parameter
+                            if any(
+                                p + ":" in next_stripped
+                                for p in ["Args", "Returns", "Raises", "Example"]
+                            ) or (
+                                next_stripped.split(":")[0].replace("_", "").isalnum()
+                            ):
+                                break
+                        if next_stripped:
+                            desc_parts.append(next_stripped)
+                        elif desc_parts:  # Empty line after content - stop
+                            break
+
+                    param_schema["description"] = " ".join(desc_parts)
                 break
 
         schema[param_name] = param_schema

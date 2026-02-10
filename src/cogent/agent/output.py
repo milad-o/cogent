@@ -43,32 +43,32 @@ Usage:
 
     result = await agent.run("Extract: John Doe, john@acme.com, 555-1234")
     # result.content.data -> ContactInfo(name="John Doe", email="john@acme.com", phone="555-1234")
-    
+
     # Bare types
     agent = Agent(name="Reviewer", model=OpenAIChat(), output=Literal["PROCEED", "REVISE"])
     result = await agent.run("Review this code change")
     # result.content.data -> "PROCEED" (bare string, not wrapped in model)
-    
+
     # Collections (wrapped in model for reliability)
     class Tags(BaseModel):
         items: list[str]
-    
+
     agent = Agent(name="Lister", model=OpenAIChat(), output=Tags)
     result = await agent.run("List 3 pros and cons")
     # result.content.data.items -> ["Pro 1", "Pro 2", "Con 1", ...]
-    
+
     # Union types - polymorphic responses
     class Success(BaseModel):
         status: Literal["success"] = "success"
         result: str
-    
+
     class Error(BaseModel):
         status: Literal["error"] = "error"
         message: str
-    
+
     agent = Agent(name="Handler", model=OpenAIChat(), output=Union[Success, Error])
     # Agent chooses which schema based on content
-    
+
     # Dynamic structure - agent decides fields
     agent = Agent(name="Analyzer", model=OpenAIChat(), output=dict)
     result = await agent.run("Analyze user feedback")
@@ -323,19 +323,19 @@ def schema_to_json(schema: type | dict[str, Any]) -> dict[str, Any]:
     # dict type - flexible object with any properties
     if schema is dict:
         return {"type": "object"}
-    
+
     # list type - array with any items
     if schema is list:
         return {"type": "array"}
-    
+
     # set type - array with unique items
     if schema is set:
         return {"type": "array", "uniqueItems": True}
-    
+
     # tuple type - array
     if schema is tuple:
         return {"type": "array"}
-    
+
     # None type - null
     if schema is type(None):
         return {"type": "null"}
@@ -446,12 +446,12 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
     if origin is list:
         item_schema = _python_type_to_json_schema(args[0]) if args else {}
         return {"type": "array", "items": item_schema}
-    
+
     # Set - array with unique items
     if origin is set:
         item_schema = _python_type_to_json_schema(args[0]) if args else {}
         return {"type": "array", "items": item_schema, "uniqueItems": True}
-    
+
     # Tuple - array with prefixItems for fixed-length
     if origin is tuple:
         if args:
@@ -460,13 +460,17 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
                 # Check if last arg is Ellipsis (tuple[str, ...])
                 if args[-1] is ...:
                     # Variable length tuple
-                    item_schema = _python_type_to_json_schema(args[0]) if len(args) > 1 else {}
+                    item_schema = (
+                        _python_type_to_json_schema(args[0]) if len(args) > 1 else {}
+                    )
                     return {"type": "array", "items": item_schema}
                 else:
                     # Fixed length tuple
                     return {
                         "type": "array",
-                        "prefixItems": [_python_type_to_json_schema(arg) for arg in args],
+                        "prefixItems": [
+                            _python_type_to_json_schema(arg) for arg in args
+                        ],
                         "minItems": len(args),
                         "maxItems": len(args),
                     }
@@ -602,7 +606,7 @@ def validate_and_parse[T](
                 data = raw
         else:
             data = raw
-        
+
         if data is not None and data != "null":
             raise OutputValidationError(
                 f"Expected None, got {data}",
@@ -610,7 +614,7 @@ def validate_and_parse[T](
                 raw_output=raw if isinstance(raw, str) else str(raw),
             )
         return None
-    
+
     # Handle bare primitive types - raw might already be the value
     if schema in (str, int, bool, float):
         if isinstance(raw, str):
@@ -628,7 +632,7 @@ def validate_and_parse[T](
             # If it's a dict with one key, extract the value
             if isinstance(data, dict) and len(data) == 1:
                 data = list(data.values())[0]
-        
+
         # Validate type
         try:
             if schema is str:
@@ -645,7 +649,7 @@ def validate_and_parse[T](
                 schema=schema,
                 raw_output=raw if isinstance(raw, str) else str(raw),
             ) from e
-    
+
     # Handle bare list type
     if schema is list:
         if isinstance(raw, str):
@@ -659,7 +663,7 @@ def validate_and_parse[T](
                 ) from e
         else:
             data = raw
-        
+
         if not isinstance(data, list):
             raise OutputValidationError(
                 f"Expected list, got {type(data).__name__}",
@@ -667,7 +671,7 @@ def validate_and_parse[T](
                 raw_output=raw if isinstance(raw, str) else str(raw),
             )
         return data
-    
+
     # Handle bare set type
     if schema is set:
         if isinstance(raw, str):
@@ -681,7 +685,7 @@ def validate_and_parse[T](
                 ) from e
         else:
             data = raw
-        
+
         if not isinstance(data, list):
             raise OutputValidationError(
                 f"Expected array for set, got {type(data).__name__}",
@@ -689,7 +693,7 @@ def validate_and_parse[T](
                 raw_output=raw if isinstance(raw, str) else str(raw),
             )
         return set(data)
-    
+
     # Handle bare tuple type
     if schema is tuple:
         if isinstance(raw, str):
@@ -703,7 +707,7 @@ def validate_and_parse[T](
                 ) from e
         else:
             data = raw
-        
+
         if not isinstance(data, list):
             raise OutputValidationError(
                 f"Expected array for tuple, got {type(data).__name__}",
@@ -711,7 +715,7 @@ def validate_and_parse[T](
                 raw_output=raw if isinstance(raw, str) else str(raw),
             )
         return tuple(data)
-    
+
     # Handle Enum types
     if isinstance(schema, type) and issubclass(schema, Enum):
         if isinstance(raw, str):
@@ -727,23 +731,23 @@ def validate_and_parse[T](
             # If it's a dict with one key, extract the value
             if isinstance(data, dict) and len(data) == 1:
                 data = list(data.values())[0]
-        
+
         # Find matching enum member
         for member in schema:
             if member.value == data:
                 return member
-        
+
         raise OutputValidationError(
             f"Value must be one of {[e.value for e in schema]}, got: {data}",
             schema=schema,
             raw_output=raw if isinstance(raw, str) else str(raw),
         )
-    
+
     # Handle generic types (Literal, Union, list[T], etc.)
     origin = get_origin(schema)
     if origin is not None:
         from typing import Literal
-        
+
         # Literal types
         if origin is Literal:
             args = get_args(schema)
@@ -760,7 +764,7 @@ def validate_and_parse[T](
                 # If it's a dict with one key, extract the value
                 if isinstance(data, dict) and len(data) == 1:
                     data = list(data.values())[0]
-            
+
             if data not in args:
                 raise OutputValidationError(
                     f"Value must be one of {args}, got: {data}",
@@ -768,7 +772,7 @@ def validate_and_parse[T](
                     raw_output=raw if isinstance(raw, str) else str(raw),
                 )
             return data
-        
+
         # Union types - try each type
         if origin is Union:
             args = get_args(schema)
@@ -790,7 +794,7 @@ def validate_and_parse[T](
                     ) from e
             else:
                 data = raw
-            
+
             # Try each type with parsed data
             errors = []
             for arg_type in args:
@@ -799,13 +803,13 @@ def validate_and_parse[T](
                 except (OutputValidationError, Exception) as e:
                     errors.append(f"{arg_type}: {e}")
                     continue
-            
+
             raise OutputValidationError(
                 f"Failed to match any Union type. Tried: {', '.join(errors)}",
                 schema=schema,
                 raw_output=raw if isinstance(raw, str) else str(raw),
             )
-        
+
         # list[T] - typed list
         if origin is list:
             args = get_args(schema)
@@ -820,14 +824,14 @@ def validate_and_parse[T](
                     ) from e
             else:
                 data = raw
-            
+
             if not isinstance(data, list):
                 raise OutputValidationError(
                     f"Expected list, got {type(data).__name__}",
                     schema=schema,
                     raw_output=raw if isinstance(raw, str) else str(raw),
                 )
-            
+
             # Validate each item if type specified
             if args:
                 item_type = args[0]
@@ -840,7 +844,7 @@ def validate_and_parse[T](
                         raw_output=raw if isinstance(raw, str) else str(raw),
                     ) from e
             return data
-        
+
         # set[T] - typed set
         if origin is set:
             args = get_args(schema)
@@ -855,19 +859,21 @@ def validate_and_parse[T](
                     ) from e
             else:
                 data = raw
-            
+
             if not isinstance(data, list):
                 raise OutputValidationError(
                     f"Expected array for set, got {type(data).__name__}",
                     schema=schema,
                     raw_output=raw if isinstance(raw, str) else str(raw),
                 )
-            
+
             # Validate each item if type specified
             if args:
                 item_type = args[0]
                 try:
-                    validated_items = [validate_and_parse(item, item_type) for item in data]
+                    validated_items = [
+                        validate_and_parse(item, item_type) for item in data
+                    ]
                     return set(validated_items)
                 except (OutputValidationError, Exception) as e:
                     raise OutputValidationError(
@@ -876,7 +882,7 @@ def validate_and_parse[T](
                         raw_output=raw if isinstance(raw, str) else str(raw),
                     ) from e
             return set(data)
-        
+
         # tuple[T, U, ...] - typed tuple
         if origin is tuple:
             args = get_args(schema)
@@ -891,14 +897,14 @@ def validate_and_parse[T](
                     ) from e
             else:
                 data = raw
-            
+
             if not isinstance(data, list):
                 raise OutputValidationError(
                     f"Expected array for tuple, got {type(data).__name__}",
                     schema=schema,
                     raw_output=raw if isinstance(raw, str) else str(raw),
                 )
-            
+
             # Validate each item if types specified
             if args and args[-1] is not ...:
                 # Fixed-length tuple
@@ -909,7 +915,10 @@ def validate_and_parse[T](
                         raw_output=raw if isinstance(raw, str) else str(raw),
                     )
                 try:
-                    validated_items = [validate_and_parse(item, arg_type) for item, arg_type in zip(data, args)]
+                    validated_items = [
+                        validate_and_parse(item, arg_type)
+                        for item, arg_type in zip(data, args)
+                    ]
                     return tuple(validated_items)
                 except (OutputValidationError, Exception) as e:
                     raise OutputValidationError(
@@ -921,7 +930,9 @@ def validate_and_parse[T](
                 # Variable-length tuple
                 item_type = args[0]
                 try:
-                    validated_items = [validate_and_parse(item, item_type) for item in data]
+                    validated_items = [
+                        validate_and_parse(item, item_type) for item in data
+                    ]
                     return tuple(validated_items)
                 except (OutputValidationError, Exception) as e:
                     raise OutputValidationError(
@@ -930,7 +941,7 @@ def validate_and_parse[T](
                         raw_output=raw if isinstance(raw, str) else str(raw),
                     ) from e
             return tuple(data)
-    
+
     # Parse if string (for structured types)
     if isinstance(raw, str):
         try:
@@ -948,7 +959,7 @@ def validate_and_parse[T](
     if isinstance(schema, dict):
         # JSON Schema dict - just return the data (no runtime validation)
         return data
-    
+
     if schema is dict:
         # dict type - flexible object, just validate it's a dict
         if not isinstance(data, dict):

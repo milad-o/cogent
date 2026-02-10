@@ -37,6 +37,7 @@ from cogent.interceptors.security import (
 # Test InterceptResult
 # =============================================================================
 
+
 class TestInterceptResult:
     """Test InterceptResult factory methods."""
 
@@ -77,6 +78,7 @@ class TestInterceptResult:
 # =============================================================================
 # Test InterceptContext
 # =============================================================================
+
 
 class TestInterceptContext:
     """Test InterceptContext creation."""
@@ -128,6 +130,7 @@ class TestInterceptContext:
 # Test Phase Enum
 # =============================================================================
 
+
 class TestPhase:
     """Test Phase enum."""
 
@@ -144,6 +147,7 @@ class TestPhase:
 # =============================================================================
 # Test Interceptor Base Class
 # =============================================================================
+
 
 class TestInterceptorBase:
     """Test Interceptor base class."""
@@ -187,10 +191,14 @@ class TestInterceptorBase:
         interceptor = TrackingInterceptor()
         mock_agent = MagicMock()
 
-        ctx1 = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx1 = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
         await interceptor.intercept(ctx1)
 
-        ctx2 = InterceptContext(agent=mock_agent, phase=Phase.PRE_THINK, task="", messages=[])
+        ctx2 = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_THINK, task="", messages=[]
+        )
         await interceptor.intercept(ctx2)
 
         assert interceptor.called_phases == ["pre_run", "pre_think"]
@@ -206,13 +214,16 @@ class TestInterceptorBase:
 # Test run_interceptors
 # =============================================================================
 
+
 class TestRunInterceptors:
     """Test the run_interceptors function."""
 
     @pytest.mark.asyncio
     async def test_empty_list_returns_ok(self):
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
         result = await run_interceptors([], ctx)
         assert result.proceed is True
 
@@ -223,7 +234,9 @@ class TestRunInterceptors:
                 return InterceptResult.ok()
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
         result = await run_interceptors([SimpleInterceptor()], ctx)
         assert result.proceed is True
 
@@ -243,7 +256,9 @@ class TestRunInterceptors:
 
         never = NeverCalled()
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
 
         result = await run_interceptors([Stopper(), never], ctx)
 
@@ -255,14 +270,18 @@ class TestRunInterceptors:
     async def test_modifications_accumulate(self):
         class ModifyMessages(Interceptor):
             async def pre_run(self, ctx):
-                return InterceptResult.modify_messages([{"role": "system", "content": "modified"}])
+                return InterceptResult.modify_messages(
+                    [{"role": "system", "content": "modified"}]
+                )
 
         class ModifyTask(Interceptor):
             async def pre_run(self, ctx):
                 return InterceptResult(proceed=True, modified_task="new task")
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="old", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="old", messages=[]
+        )
 
         result = await run_interceptors([ModifyMessages(), ModifyTask()], ctx)
 
@@ -276,7 +295,9 @@ class TestRunInterceptors:
                 raise StopExecution("Emergency stop!", "test reason")
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
 
         result = await run_interceptors([RaiseStop()], ctx)
 
@@ -288,13 +309,14 @@ class TestRunInterceptors:
 # Test BudgetGuard
 # =============================================================================
 
+
 class TestBudgetGuard:
     """Test BudgetGuard interceptor."""
 
     def test_default_values(self):
         guard = BudgetGuard()
         assert guard.model_calls == 0  # unlimited
-        assert guard.tool_calls == 0   # unlimited
+        assert guard.tool_calls == 0  # unlimited
         assert guard.exit_behavior == ExitBehavior.STOP
 
     def test_custom_values(self):
@@ -310,7 +332,9 @@ class TestBudgetGuard:
         guard._current_tool_calls = 10
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
 
         await guard.pre_run(ctx)
 
@@ -322,7 +346,9 @@ class TestBudgetGuard:
         guard = BudgetGuard(model_calls=10)
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.POST_THINK, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.POST_THINK, task="", messages=[]
+        )
 
         await guard.post_think(ctx)
 
@@ -333,7 +359,9 @@ class TestBudgetGuard:
         guard = BudgetGuard(tool_calls=10)
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.POST_ACT, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.POST_ACT, task="", messages=[]
+        )
 
         await guard.post_act(ctx)
 
@@ -345,7 +373,9 @@ class TestBudgetGuard:
         guard._current_model_calls = 2  # Already at limit
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_THINK, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_THINK, task="", messages=[]
+        )
 
         result = await guard.pre_think(ctx)
 
@@ -358,7 +388,9 @@ class TestBudgetGuard:
         guard._current_tool_calls = 5  # Already at limit
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_ACT, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_ACT, task="", messages=[]
+        )
 
         result = await guard.pre_act(ctx)
 
@@ -371,7 +403,9 @@ class TestBudgetGuard:
         guard._current_model_calls = 1  # At limit
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_THINK, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_THINK, task="", messages=[]
+        )
 
         with pytest.raises(BudgetExhaustedError) as exc_info:
             await guard.pre_think(ctx)
@@ -397,6 +431,7 @@ class TestBudgetGuard:
 # Test StopExecution Exception
 # =============================================================================
 
+
 class TestStopExecution:
     """Test StopExecution exception."""
 
@@ -415,6 +450,7 @@ class TestStopExecution:
 # =============================================================================
 # Integration Test: Multiple Interceptors
 # =============================================================================
+
 
 class TestInterceptorChaining:
     """Test chaining multiple interceptors."""
@@ -440,7 +476,9 @@ class TestInterceptorChaining:
                 return InterceptResult.ok()
 
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
 
         await run_interceptors([First(), Second(), Third()], ctx)
 
@@ -465,7 +503,9 @@ class TestInterceptorChaining:
 
         reader = Reader()
         mock_agent = MagicMock()
-        ctx = InterceptContext(agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[])
+        ctx = InterceptContext(
+            agent=mock_agent, phase=Phase.PRE_RUN, task="", messages=[]
+        )
 
         await run_interceptors([Writer(), reader], ctx)
 
@@ -475,6 +515,7 @@ class TestInterceptorChaining:
 # =============================================================================
 # Test ContextCompressor
 # =============================================================================
+
 
 class TestContextCompressor:
     """Test ContextCompressor interceptor."""
@@ -542,7 +583,12 @@ class TestTokenLimiter:
 
         mock_agent = MagicMock()
         # This message is ~60+ chars / 4 = ~15+ tokens, well above limit of 5
-        messages = [{"role": "user", "content": "This is a much longer message that definitely exceeds limit tokens"}]
+        messages = [
+            {
+                "role": "user",
+                "content": "This is a much longer message that definitely exceeds limit tokens",
+            }
+        ]
         ctx = InterceptContext(
             agent=mock_agent,
             phase=Phase.PRE_THINK,
@@ -577,6 +623,7 @@ class TestTokenEstimation:
 # =============================================================================
 # Test PIIShield
 # =============================================================================
+
 
 class TestPIIShield:
     """Test PIIShield interceptor."""
@@ -713,6 +760,7 @@ class TestPIIShield:
 # Test ContentFilter
 # =============================================================================
 
+
 class TestContentFilter:
     """Test ContentFilter interceptor."""
 
@@ -775,6 +823,7 @@ class TestContentFilter:
 # =============================================================================
 # Test RateLimiter
 # =============================================================================
+
 
 class TestRateLimiter:
     """Test RateLimiter interceptor."""
@@ -870,6 +919,7 @@ class TestThrottleInterceptor:
         )
 
         import time
+
         start = time.monotonic()
         result = await throttle.pre_act(ctx)
         elapsed = time.monotonic() - start
@@ -881,6 +931,7 @@ class TestThrottleInterceptor:
 # =============================================================================
 # Test Auditor
 # =============================================================================
+
 
 class TestAuditor:
     """Test Auditor interceptor."""
@@ -1085,6 +1136,7 @@ class TestToolGate:
     @pytest.mark.asyncio
     async def test_pre_run_filters_tools(self):
         """ToolGate subclass filters tools via filter method."""
+
         class TestGate(ToolGate):
             async def filter(self, tools, ctx):
                 return [t for t in tools if t.name != "banned"]

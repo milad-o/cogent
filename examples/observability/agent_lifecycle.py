@@ -53,7 +53,10 @@ def get_info(topic: Literal["python", "async", "agents"]) -> str:
         "async": "Async programming in Python enables concurrent execution using asyncio, allowing non-blocking I/O operations",
         "agents": "AI agents are autonomous programs that can reason, make decisions, and act to achieve goals",
     }
-    return info.get(topic, "Topic not recognized. Please choose from 'python', 'async', or 'agents'.")
+    return info.get(
+        topic,
+        "Topic not recognized. Please choose from 'python', 'async', or 'agents'.",
+    )
 
 
 class AgentLifecycleObserver(Observer):
@@ -95,14 +98,14 @@ class AgentLifecycleObserver(Observer):
         # Agent lifecycle events - print our own summaries
         if event.type == TraceType.AGENT_INVOKED:
             self.agent_invocations += 1
-            agent_name = event.data.get('agent_name', 'Unknown')
-            task = event.data.get('task', 'No task specified')
+            agent_name = event.data.get("agent_name", "Unknown")
+            task = event.data.get("task", "No task specified")
             print(f"🚀 [AGENT INVOKED] {agent_name}")
             print(f"   Task: {task}")
             print()
 
         elif event.type == TraceType.AGENT_THINKING:
-            agent_name = event.data.get('agent_name', 'Unknown')
+            agent_name = event.data.get("agent_name", "Unknown")
             if agent_name in self._seen_thinking:
                 return
             self._seen_thinking.add(agent_name)
@@ -110,25 +113,31 @@ class AgentLifecycleObserver(Observer):
 
         elif event.type == TraceType.LLM_REQUEST:
             self.llm_requests += 1
-            model = event.data.get('model', 'Unknown')
-            messages = event.data.get('messages', [])
+            model = event.data.get("model", "Unknown")
+            messages = event.data.get("messages", [])
             print(f"💬 [LLM REQUEST #{self.llm_requests}] Model: {model}")
             print(f"   Messages: {len(messages)} in conversation")
 
         elif event.type == TraceType.LLM_RESPONSE:
-            content = str(event.data.get('content', ''))
+            content = str(event.data.get("content", ""))
             content_clean = content.replace("\n", " ").strip()
             if not content_clean and event.data.get("has_tool_calls"):
                 tool_calls = event.data.get("tool_calls", [])
-                tools = ", ".join(tc.get("name", "?") for tc in tool_calls) if tool_calls else "(unknown)"
+                tools = (
+                    ", ".join(tc.get("name", "?") for tc in tool_calls)
+                    if tool_calls
+                    else "(unknown)"
+                )
                 print(f"✨ [LLM RESPONSE] (tool_calls: {tools})")
             else:
                 print(f"✨ [LLM RESPONSE] {self._truncate(content_clean)}")
 
         elif event.type == TraceType.LLM_TOOL_DECISION:
-            tools_selected = event.data.get('tools_selected', [])
+            tools_selected = event.data.get("tools_selected", [])
             if tools_selected:
-                print(f"🔧 [TOOL DECISION] Agent decided to call {len(tools_selected)} tool(s):")
+                print(
+                    f"🔧 [TOOL DECISION] Agent decided to call {len(tools_selected)} tool(s):"
+                )
                 for tool_name in tools_selected:
                     print(f"   - {tool_name}")
             else:
@@ -136,27 +145,29 @@ class AgentLifecycleObserver(Observer):
 
         elif event.type == TraceType.TOOL_CALLED:
             self.tool_calls += 1
-            tool_name = event.data.get('tool_name') or event.data.get('tool', 'Unknown')
-            args = event.data.get('args', {})
+            tool_name = event.data.get("tool_name") or event.data.get("tool", "Unknown")
+            args = event.data.get("args", {})
             print(f"⚙️  [TOOL CALL #{self.tool_calls}] {tool_name}")
             print(f"   Args: {args}")
 
         elif event.type == TraceType.TOOL_RESULT:
-            tool_name = event.data.get('tool_name') or event.data.get('tool', 'Unknown')
-            result = str(event.data.get('result', ''))
-            print(f"✓ [TOOL RESULT] {tool_name}: {self._truncate(result.replace('\n', ' ').strip())}")
+            tool_name = event.data.get("tool_name") or event.data.get("tool", "Unknown")
+            result = str(event.data.get("result", ""))
+            print(
+                f"✓ [TOOL RESULT] {tool_name}: {self._truncate(result.replace('\n', ' ').strip())}"
+            )
 
         elif event.type == TraceType.AGENT_RESPONDED:
-            agent_name = event.data.get('agent_name', 'Unknown')
-            response = str(event.data.get('response', ''))
+            agent_name = event.data.get("agent_name", "Unknown")
+            response = str(event.data.get("response", ""))
             self._seen_thinking.discard(agent_name)
             print(f"✅ [AGENT RESPONDED] {agent_name}")
             print(f"   Response: {self._truncate(response.replace('\n', ' ').strip())}")
             print()
 
         elif event.type == TraceType.AGENT_ERROR:
-            agent_name = event.data.get('agent_name', 'Unknown')
-            error = event.data.get('error', 'Unknown error')
+            agent_name = event.data.get("agent_name", "Unknown")
+            error = event.data.get("error", "Unknown error")
             print(f"❌ [AGENT ERROR] {agent_name}")
             print(f"   Error: {error}")
             print()

@@ -155,7 +155,9 @@ class TestMCPProperties:
         mcp = MCP(
             servers=[
                 MCPServerConfig(transport=MCPTransport.STDIO, command="server1"),
-                MCPServerConfig(transport=MCPTransport.HTTP, url="https://example.com/mcp"),
+                MCPServerConfig(
+                    transport=MCPTransport.HTTP, url="https://example.com/mcp"
+                ),
             ]
         )
         assert "2 servers" in mcp.description
@@ -190,8 +192,12 @@ class TestMCPServerManagement:
         mcp = MCP(
             servers=[
                 MCPServerConfig(transport=MCPTransport.STDIO, command="local-server"),
-                MCPServerConfig(transport=MCPTransport.HTTP, url="https://remote1.com/mcp"),
-                MCPServerConfig(transport=MCPTransport.HTTP, url="https://remote2.com/mcp"),
+                MCPServerConfig(
+                    transport=MCPTransport.HTTP, url="https://remote1.com/mcp"
+                ),
+                MCPServerConfig(
+                    transport=MCPTransport.HTTP, url="https://remote2.com/mcp"
+                ),
             ]
         )
         assert len(mcp.servers) == 3
@@ -227,8 +233,12 @@ class TestMCPToolNaming:
         """Test tool naming cleans special characters from server name."""
         mcp = MCP(
             servers=[
-                MCPServerConfig(transport=MCPTransport.HTTP, url="https://api.example.com/mcp"),
-                MCPServerConfig(transport=MCPTransport.HTTP, url="https://other.com/mcp"),
+                MCPServerConfig(
+                    transport=MCPTransport.HTTP, url="https://api.example.com/mcp"
+                ),
+                MCPServerConfig(
+                    transport=MCPTransport.HTTP, url="https://other.com/mcp"
+                ),
             ]
         )
         name = mcp._make_tool_name("search", "https://api.example.com/mcp")
@@ -309,7 +319,11 @@ class TestMCPArgsSchema:
         input_schema = {
             "properties": {
                 "query": {"type": "string", "description": "Search query"},
-                "limit": {"type": "integer", "description": "Max results", "default": 10},
+                "limit": {
+                    "type": "integer",
+                    "description": "Max results",
+                    "default": 10,
+                },
             },
             "required": ["query"],
         }
@@ -341,7 +355,9 @@ class TestMCPToDict:
         """Test to_dict with configured servers."""
         mcp = MCP(
             servers=[
-                MCPServerConfig(transport=MCPTransport.STDIO, command="server1", name="local"),
+                MCPServerConfig(
+                    transport=MCPTransport.STDIO, command="server1", name="local"
+                ),
                 MCPServerConfig(transport=MCPTransport.HTTP, url="https://api.com/mcp"),
             ]
         )
@@ -493,7 +509,9 @@ class TestMCPToolExecution:
         mock_mcp_tool.description = "Get weather"
         mock_mcp_tool.inputSchema = {}
 
-        native_tool = mcp._create_native_tool(mock_mcp_tool, "test-server", "get_weather")
+        native_tool = mcp._create_native_tool(
+            mock_mcp_tool, "test-server", "get_weather"
+        )
 
         # Execute the tool
         result = await native_tool.ainvoke({"city": "San Francisco"})
@@ -511,7 +529,9 @@ class TestMCPToolExecution:
         mock_mcp_tool.description = "Test"
         mock_mcp_tool.inputSchema = {}
 
-        native_tool = mcp._create_native_tool(mock_mcp_tool, "unknown-server", "test_tool")
+        native_tool = mcp._create_native_tool(
+            mock_mcp_tool, "unknown-server", "test_tool"
+        )
 
         result = await native_tool.ainvoke({})
 
@@ -538,7 +558,9 @@ class TestMCPToolExecution:
         mock_mcp_tool.description = "Get weather"
         mock_mcp_tool.inputSchema = {}
 
-        native_tool = mcp._create_native_tool(mock_mcp_tool, "test-server", "get_weather")
+        native_tool = mcp._create_native_tool(
+            mock_mcp_tool, "test-server", "get_weather"
+        )
         result = await native_tool.ainvoke({})
 
         assert "Success" in result

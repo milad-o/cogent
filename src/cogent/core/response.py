@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from cogent.events import Event
+    pass
 
 
 @dataclass
@@ -187,7 +187,7 @@ class Response[T]:
         # Inspect conversation
         for msg in response.messages:
             print(f"{msg.role}: {msg.content[:100]}")
-        
+
         # Access subagent data
         if response.subagent_responses:
             for sub_resp in response.subagent_responses:

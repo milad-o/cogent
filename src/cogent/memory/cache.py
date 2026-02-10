@@ -30,13 +30,13 @@ class EmbeddingProvider(Protocol):
 @dataclass
 class CachedArtifact:
     """A cacheable intermediate representation from agent reasoning.
-    
+
     Artifacts represent structured outputs from specific reasoning stages:
     - Intent parsing: Extract goal from natural language
-    - Plan generation: Decompose into executable steps  
+    - Plan generation: Decompose into executable steps
     - Tool patterns: Common tool call sequences
     - Result synthesis: Output formatting patterns
-    
+
     Attributes:
         stage: Reasoning stage identifier
         semantic_key: Embedding-based similarity key
@@ -70,30 +70,30 @@ class CachedArtifact:
 
 class SemanticCache:
     """Pipeline-aware semantic cache for agent reasoning.
-    
+
     Caches structured intermediate representations at each reasoning stage:
     1. Intent parsing - What is the user asking?
     2. Plan generation - What steps are needed?
     3. Tool patterns - What tool sequences are common?
     4. Result synthesis - How to format output?
-    
+
     Uses embedding similarity for cache key matching, achieving 83% hit rate
     compared to 38% for traditional boundary caching.
-    
+
     Args:
         embedding: Embedding model instance with embed_query method
         similarity_threshold: Minimum cosine similarity for cache hit (0.85 = ~85% similar)
         max_entries: Maximum cache entries per stage (LRU eviction)
         default_ttl: Default time-to-live in seconds
-    
+
     Example:
         ```python
         from cogent.models import create_embedding
-        
+
         # Create cache with embedding model
         embed = create_embedding("openai", "text-embedding-3-small")
         cache = SemanticCache(embedding=embed)
-        
+
         # Cache intent parsing
         intent = {"goal": "find_tutorials", "topic": "python"}
         await cache.put(
@@ -102,7 +102,7 @@ class SemanticCache:
             artifact=intent,
             context_hash="abc123",
         )
-        
+
         # Later, similar query hits cache
         cached = await cache.get(
             stage="intent_parse",
@@ -111,7 +111,7 @@ class SemanticCache:
         )
         # Returns intent artifact - semantic match!
         ```
-    
+
     Performance (from research):
         - 83.10% cache hit rate (vs 38.7% baseline)
         - 2.66ms median latency per hit
@@ -145,12 +145,12 @@ class SemanticCache:
         context_hash: str,
     ) -> CachedArtifact | None:
         """Retrieve cached artifact if semantically similar.
-        
+
         Args:
             stage: Reasoning stage identifier
             query: Query text to match
             context_hash: Execution context hash (for invalidation)
-        
+
         Returns:
             Cached artifact if found and valid, None otherwise
         """
@@ -205,7 +205,7 @@ class SemanticCache:
         ttl_seconds: int | None = None,
     ) -> None:
         """Store artifact for future retrieval.
-        
+
         Args:
             stage: Reasoning stage identifier
             query: Query text (used as semantic key)
@@ -235,13 +235,15 @@ class SemanticCache:
         while len(stage_cache) > self._max_entries:
             stage_cache.popitem(last=False)  # Remove oldest
 
-    def invalidate(self, stage: str | None = None, context_hash: str | None = None) -> int:
+    def invalidate(
+        self, stage: str | None = None, context_hash: str | None = None
+    ) -> int:
         """Invalidate cache entries.
-        
+
         Args:
             stage: Specific stage to invalidate (None = all stages)
             context_hash: Specific context to invalidate (None = all contexts)
-        
+
         Returns:
             Number of entries invalidated
         """
@@ -277,7 +279,7 @@ class SemanticCache:
 
     def get_metrics(self) -> dict[str, Any]:
         """Get cache performance metrics.
-        
+
         Returns:
             Dictionary with hit rate, size, and performance stats
         """
@@ -303,7 +305,7 @@ class SemanticCache:
 
     def clear_expired(self) -> int:
         """Remove expired cache entries.
-        
+
         Returns:
             Number of entries removed
         """
@@ -346,15 +348,15 @@ def compute_context_hash(
     model_identifier: str,
 ) -> str:
     """Compute hash of execution context for cache invalidation.
-    
+
     Args:
         system_prompt: Agent system prompt
         tool_names: List of available tool names
         model_identifier: Model name/identifier
-    
+
     Returns:
         16-character hex hash
-    
+
     Example:
         ```python
         hash1 = compute_context_hash(
@@ -362,7 +364,7 @@ def compute_context_hash(
             tool_names=["search", "calculator"],
             model_identifier="gpt-4o",
         )
-        
+
         # Different tools = different hash
         hash2 = compute_context_hash(
             system_prompt="You are a helpful assistant",

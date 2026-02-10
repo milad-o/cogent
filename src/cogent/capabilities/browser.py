@@ -271,15 +271,6 @@ class Browser(BaseCapability):
         self._browser = None
         self._playwright = None
 
-    async def __aenter__(self) -> Browser:
-        """Async context manager entry."""
-        await self._ensure_browser()
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Async context manager exit."""
-        await self._close_browser()
-
     # =========================================================================
     # Browser Operations
     # =========================================================================

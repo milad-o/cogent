@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "type": "Node",
+      "id": "nx1",
+      "data": {
+        "content": "NetworkX backend test",
+        "role": "system"
+      },
+      "metadata": {
+        "type": "test"
+      }
+    }
+  ],
+  "edges": []
+}

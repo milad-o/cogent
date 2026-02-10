@@ -351,7 +351,9 @@ class TestShellCapability:
         if sys.platform == "win32":
             # PowerShell sleep command (timeout doesn't pause on Windows, so use Start-Sleep)
             shell = Shell(allowed_commands=["powershell"])
-            result = await shell._run_command("powershell -Command Start-Sleep -Seconds 10", timeout=1)
+            result = await shell._run_command(
+                "powershell -Command Start-Sleep -Seconds 10", timeout=1
+            )
         else:
             shell = Shell(allowed_commands=["sleep"])
             result = await shell._run_command("sleep 10", timeout=1)

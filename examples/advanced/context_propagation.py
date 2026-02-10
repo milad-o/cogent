@@ -17,7 +17,7 @@ class UserContext(RunContext):
     user_id: str = ""
     user_name: str = ""
     permissions: list[str] = field(default_factory=list)
-    
+
     def has_permission(self, perm: str) -> bool:
         return perm in self.permissions
 
@@ -30,10 +30,10 @@ def check_permissions(action: str, ctx: RunContext) -> str:
             result = f"✅ User '{ctx.user_name}' has '{action}' permission"
         else:
             result = f"❌ User '{ctx.user_name}' lacks '{action}' permission"
-        
+
         if ctx.query:
             result += f"\n📝 Original query: {ctx.query}"
-        
+
         return result
     return "No context available"
 

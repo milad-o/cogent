@@ -332,7 +332,9 @@ class TestResponse:
         assert isinstance(int_response.content, int)
 
         # Dict response
-        dict_response: Response[dict] = Response(content={"key": "value"}, metadata=metadata)
+        dict_response: Response[dict] = Response(
+            content={"key": "value"}, metadata=metadata
+        )
         assert isinstance(dict_response.content, dict)
 
 

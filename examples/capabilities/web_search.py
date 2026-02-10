@@ -25,6 +25,7 @@ from cogent.capabilities import FileSystem, KnowledgeGraph, WebSearch
 # API-Level Usage
 # ============================================================
 
+
 def api_usage_example():
     """Demonstrate direct WebSearch API usage."""
     print("\n" + "=" * 60)
@@ -74,12 +75,12 @@ def api_usage_example():
 # Agent-Based Research
 # ============================================================
 
+
 async def agent_research_example():
     """Demonstrate agent-based research with WebSearch and KnowledgeGraph."""
     print("\n" + "=" * 60)
     print("Agent Research Example: AI-Powered Web Research")
     print("=" * 60)
-
 
     # Combine WebSearch with KnowledgeGraph for research + memory
     ws = WebSearch(max_results=5)
@@ -110,10 +111,10 @@ async def agent_research_example():
         print(f"\n✓ Response received ({len(response)} chars)")
 
 
-
 # ============================================================
 # Multi-Capability Research Workflow
 # ============================================================
+
 
 async def multi_capability_example():
     """Demonstrate multi-capability research workflow."""
@@ -122,7 +123,6 @@ async def multi_capability_example():
     print("\n" + "=" * 60)
     print("Multi-Capability Example: Web + Memory + Files")
     print("=" * 60)
-
 
     with tempfile.TemporaryDirectory() as workspace:
         workspace_path = Path(workspace).resolve()
@@ -149,7 +149,9 @@ async def multi_capability_example():
 
         all_tools = ws.tools + kg.tools + fs.tools
         print(f"\n✓ Agent '{agent.name}' configured")
-        print(f"  Capabilities: WebSearch ({len(ws.tools)}), KnowledgeGraph ({len(kg.tools)}), FileSystem ({len(fs.tools)})")
+        print(
+            f"  Capabilities: WebSearch ({len(ws.tools)}), KnowledgeGraph ({len(kg.tools)}), FileSystem ({len(fs.tools)})"
+        )
         print(f"  Total tools: {len(all_tools)}")
 
         # Multi-step research task
@@ -184,8 +186,11 @@ async def multi_capability_example():
 
         # Show execution graph
         print("\n" + "=" * 60)
+
+
 # Main Entry Point
 # ============================================================
+
 
 async def main() -> None:
     """Run all WebSearch capability examples."""
@@ -214,4 +219,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

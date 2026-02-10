@@ -170,7 +170,7 @@ class OpenAIChat(BaseChatModel):
             reasoning_effort="high",  # low, medium, or high
         )
         response = await llm.ainvoke("Solve this step by step...")
-        
+
         # Access reasoning token usage
         if response.metadata.tokens:
             print(f"Reasoning tokens: {response.metadata.tokens.reasoning_tokens}")
@@ -252,43 +252,43 @@ class OpenAIChat(BaseChatModel):
         new_model._async_client = self._async_client
         new_model._initialized = True
         return new_model
-    
+
     def with_reasoning(
         self,
         effort: Literal["low", "medium", "high"] = "medium",
     ) -> OpenAIChat:
         """Enable reasoning with specified effort level.
-        
+
         Reasoning allows o-series models to think through complex problems
         before providing a response.
-        
+
         Args:
             effort: Reasoning effort level.
                 - "low": Faster, less thorough
                 - "medium": Balanced (default)
                 - "high": Most thorough reasoning
-        
+
         Returns:
             New OpenAIChat instance with reasoning enabled.
-        
+
         Example:
             llm = OpenAIChat(model="o3-mini").with_reasoning("high")
             response = await llm.ainvoke("What is 127 * 893?")
             print(response.metadata.tokens.reasoning_tokens)
-        
+
         Note:
             - Only supported on o-series models (o3-mini, o1, etc.)
             - Reasoning tokens are tracked in response metadata
         """
         self._ensure_initialized()
-        
+
         # Validate model supports reasoning
         if self.model not in REASONING_MODELS:
             raise ValueError(
                 f"Model {self.model} does not support reasoning. "
                 f"Use o3, o3-mini, o1, o1-mini, or o1-preview."
             )
-        
+
         new_model = OpenAIChat(
             model=self.model,
             temperature=self.temperature,
@@ -447,7 +447,7 @@ class OpenAIChat(BaseChatModel):
         is_reasoning_model = any(
             prefix in model_lower for prefix in ("o1", "o3", "gpt-5")
         )
-        
+
         # Only include temperature for models that support it
         # o1, o3, gpt-5 series don't support temperature
         if not is_reasoning_model and self.temperature is not None:
@@ -459,11 +459,11 @@ class OpenAIChat(BaseChatModel):
                 kwargs["max_completion_tokens"] = self.max_tokens
             else:
                 kwargs["max_tokens"] = self.max_tokens
-        
+
         # Reasoning effort for o3-mini and supported models
         if self.reasoning_effort and self.model in REASONING_EFFORT_MODELS:
             kwargs["reasoning_effort"] = self.reasoning_effort
-        
+
         # Tools
         if self._tools:
             kwargs["tools"] = _format_tools(self._tools)

@@ -61,7 +61,9 @@ class TestInMemoryGraph:
         assert len(rels) == 2
 
         # Filter by relation
-        rels = graph.get_relationships("Alice", relation="works_at", direction="outgoing")
+        rels = graph.get_relationships(
+            "Alice", relation="works_at", direction="outgoing"
+        )
         assert len(rels) == 1
         assert rels[0].target_id == "Acme"
 
@@ -179,11 +181,13 @@ class TestKnowledgeGraphCapability:
         kg = KnowledgeGraph()
         remember = next(t for t in kg.tools if t.name == "remember")
 
-        result = remember.invoke({
-            "entity": "Alice",
-            "entity_type": "Person",
-            "attributes": '{"role": "engineer"}'
-        })
+        result = remember.invoke(
+            {
+                "entity": "Alice",
+                "entity_type": "Person",
+                "attributes": '{"role": "engineer"}',
+            }
+        )
 
         assert "Remembered" in result
         assert "Alice" in result
@@ -215,11 +219,9 @@ class TestKnowledgeGraphCapability:
         kg = KnowledgeGraph()
         connect = next(t for t in kg.tools if t.name == "connect")
 
-        result = connect.invoke({
-            "source": "Alice",
-            "relation": "works_at",
-            "target": "Acme"
-        })
+        result = connect.invoke(
+            {"source": "Alice", "relation": "works_at", "target": "Acme"}
+        )
 
         assert "Connected" in result
 
@@ -235,7 +237,9 @@ class TestKnowledgeGraphCapability:
         kg.graph.add_relationship("Alice", "works_at", "Acme")
 
         query = next(t for t in kg.tools if t.name == "query_knowledge")
-        result = query.invoke({"source": "Alice", "relation": "works_at", "target": None})
+        result = query.invoke(
+            {"source": "Alice", "relation": "works_at", "target": None}
+        )
 
         assert "Acme" in result
 
@@ -569,6 +573,7 @@ class TestJSONFileGraph:
         # File shouldn't exist yet (or should be empty if created on init)
         if file_path.exists():
             import json
+
             data = json.loads(file_path.read_text())
             assert len(data.get("entities", [])) == 0
 
@@ -576,6 +581,7 @@ class TestJSONFileGraph:
         graph.save()
 
         import json
+
         data = json.loads(file_path.read_text())
         assert len(data["entities"]) == 1
 
@@ -771,11 +777,13 @@ class TestKnowledgeGraphBatchOperations:
 
         with KnowledgeGraph(backend="sqlite", path=db_path) as kg:
             # Add entities first
-            kg.add_entities_batch([
-                ("Alice", "Person", None),
-                ("Bob", "Person", None),
-                ("Acme", "Company", None),
-            ])
+            kg.add_entities_batch(
+                [
+                    ("Alice", "Person", None),
+                    ("Bob", "Person", None),
+                    ("Acme", "Company", None),
+                ]
+            )
 
             # Batch add relationships
             relationships = [
@@ -844,10 +852,12 @@ class TestKnowledgeGraphBatchOperations:
             assert len(page3) == 20
 
             # Filter + paginate
-            kg.add_entities_batch([
-                ("P1", "Person", None),
-                ("P2", "Person", None),
-            ])
+            kg.add_entities_batch(
+                [
+                    ("P1", "Person", None),
+                    ("P2", "Person", None),
+                ]
+            )
 
             people = kg.get_entities(entity_type="Person", limit=10)
             assert len(people) == 2

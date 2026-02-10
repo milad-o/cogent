@@ -262,8 +262,13 @@ class TestInMemoryBackend:
     async def test_search_with_filter(self, backend: InMemoryBackend) -> None:
         """Test search with metadata filter."""
         docs = [
-            Document(text="Python", metadata=DocumentMetadata(custom={"lang": "python"})),
-            Document(text="JavaScript", metadata=DocumentMetadata(custom={"lang": "javascript"})),
+            Document(
+                text="Python", metadata=DocumentMetadata(custom={"lang": "python"})
+            ),
+            Document(
+                text="JavaScript",
+                metadata=DocumentMetadata(custom={"lang": "javascript"}),
+            ),
             Document(text="Rust", metadata=DocumentMetadata(custom={"lang": "rust"})),
         ]
         embeddings = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
@@ -272,7 +277,9 @@ class TestInMemoryBackend:
         await backend.add(ids, embeddings, docs)
 
         # Filter for only Python
-        results = await backend.search([0.5, 0.5, 0.5], k=10, filter={"custom": {"lang": "python"}})
+        results = await backend.search(
+            [0.5, 0.5, 0.5], k=10, filter={"custom": {"lang": "python"}}
+        )
 
         assert len(results) == 1
         assert results[0].document.metadata.custom["lang"] == "python"
@@ -459,6 +466,7 @@ class TestSimilarityMetrics:
         backend = InMemoryBackend(metric="euclidean")
 
         from cogent.vectorstore.backends.inmemory import SimilarityMetric
+
         assert backend.metric == SimilarityMetric.EUCLIDEAN
 
 
@@ -575,11 +583,13 @@ class TestVectorStore:
     @pytest.mark.asyncio
     async def test_search(self, store: VectorStore) -> None:
         """Test basic search."""
-        await store.add_texts([
-            "Python is a programming language",
-            "JavaScript runs in browsers",
-            "Rust is memory safe",
-        ])
+        await store.add_texts(
+            [
+                "Python is a programming language",
+                "JavaScript runs in browsers",
+                "Rust is memory safe",
+            ]
+        )
 
         results = await store.search("programming", k=2)
         assert len(results) == 2
@@ -598,7 +608,9 @@ class TestVectorStore:
             ],
         )
 
-        results = await store.search("language", k=10, filter={"custom": {"category": "systems"}})
+        results = await store.search(
+            "language", k=10, filter={"custom": {"category": "systems"}}
+        )
         assert len(results) == 1
         assert results[0].document.metadata.custom["category"] == "systems"
 
@@ -681,11 +693,13 @@ class TestVectorStoreWithMockEmbeddings:
         """Test that similar texts are more similar."""
         store = VectorStore.with_mock_embeddings()
 
-        await store.add_texts([
-            "The quick brown fox",
-            "A fast brown fox",  # Similar
-            "Hello world",  # Different
-        ])
+        await store.add_texts(
+            [
+                "The quick brown fox",
+                "A fast brown fox",  # Similar
+                "Hello world",  # Different
+            ]
+        )
 
         results = await store.search("The quick brown fox", k=3)
 
@@ -700,11 +714,13 @@ class TestVectorStoreWithMockEmbeddings:
         from cogent.retriever.dense import DenseRetriever
 
         store = VectorStore.with_mock_embeddings()
-        await store.add_texts([
-            "Python is a programming language",
-            "JavaScript is popular for web development",
-            "Machine learning is a subset of AI",
-        ])
+        await store.add_texts(
+            [
+                "Python is a programming language",
+                "JavaScript is popular for web development",
+                "Machine learning is a subset of AI",
+            ]
+        )
 
         # Convert to retriever
         retriever = store.as_retriever()
@@ -740,10 +756,12 @@ class TestVectorStoreWithMockEmbeddings:
     async def test_as_retriever_chained_with_as_tool(self) -> None:
         """Test chaining as_retriever().as_tool()."""
         store = VectorStore.with_mock_embeddings()
-        await store.add_texts([
-            "Python is great",
-            "JavaScript rocks",
-        ])
+        await store.add_texts(
+            [
+                "Python is great",
+                "JavaScript rocks",
+            ]
+        )
 
         # Chain as_retriever() and as_tool()
         tool = store.as_retriever().as_tool(

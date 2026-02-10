@@ -50,7 +50,9 @@ async def run_with_transcript_replay():
         print(f"Turn {i:2d}: {len(history):3d} messages stored")
 
     # Final question
-    result = await agent.run("What's my name, company, and what am I working on?", thread_id="transcript")
+    result = await agent.run(
+        "What's my name, company, and what am I working on?", thread_id="transcript"
+    )
     history = await memory.get_messages("transcript")
 
     print(f"\n📊 Final: {len(history)} messages (grows forever)")
@@ -89,7 +91,9 @@ async def run_with_acc():
         print(f"Turn {i:2d}: {total:3d} items stored (max: 50)")
 
     # Final question
-    result = await agent.run("What's my name, company, and what am I working on?", thread_id="acc")
+    result = await agent.run(
+        "What's my name, company, and what am I working on?", thread_id="acc"
+    )
 
     print(f"\n📊 Final: {acc.state.total_items} items (bounded at 50 max)")
     print(f"   Entities: {[e.content[:50] for e in acc.state.entities[:3]]}")

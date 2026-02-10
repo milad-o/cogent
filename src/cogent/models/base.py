@@ -318,7 +318,7 @@ class BaseChatModel(ABC):
         # MUST be outside the _initialized check to ensure all tasks use the same lock!
         if self._init_lock is None:
             self._init_lock = asyncio.Lock()
-        
+
         if not self._initialized:
             async with self._init_lock:
                 # Double-check after acquiring lock
@@ -344,7 +344,7 @@ class BaseChatModel(ABC):
 
     def _ensure_initialized(self) -> None:
         """Lazily initialize clients on first use (sync version).
-        
+
         Note: Not async-safe. Use _ensure_initialized_async() for async contexts.
         """
         if not self._initialized:
@@ -526,21 +526,27 @@ class BaseEmbedding(ABC):
         """
         return await self.embed(texts)
 
-    async def embed_query(self, query: str) -> EmbeddingResult:
-        """Embed a search query for VectorStore.
+    async def embed_query(self, query: str | list[str]) -> EmbeddingResult:
+        """Embed search query(s) for VectorStore.
 
         Protocol method with semantic meaning for query embedding.
         Some models (e.g., Cohere) embed queries differently than documents.
+        Accepts single query or batch for efficient multi-query search.
 
         Args:
-            query: Query text to embed.
+            query: Single query text or list of queries to embed.
 
         Returns:
-            EmbeddingResult with vector and metadata.
+            EmbeddingResult with vector(s) and metadata.
 
         Example:
+            # Single query
             result = await embedder.embed_query("search query")
             vector = result.embeddings[0]
+
+            # Batch queries (40x faster for multiple searches!)
+            result = await embedder.embed_query(["query 1", "query 2", "query 3"])
+            vectors = result.embeddings
         """
         return await self.embed(query)
 

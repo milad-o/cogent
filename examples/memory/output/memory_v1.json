@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "type": "Node",
+      "id": "incremental_1",
+      "data": {
+        "step": 1,
+        "description": "Step 1 completed"
+      },
+      "metadata": {
+        "version": 1
+      }
+    }
+  ],
+  "edges": []
+}

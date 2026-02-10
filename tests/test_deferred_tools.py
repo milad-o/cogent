@@ -375,7 +375,11 @@ class TestDeferredWaiter:
             callback = mock_event_bus.subscribe_all.call_args[0][0]
             # Create mock event
             mock_event = MagicMock()
-            mock_event.data = {"event_name": "custom", "job_id": "test-4", "result": "success!"}
+            mock_event.data = {
+                "event_name": "custom",
+                "job_id": "test-4",
+                "result": "success!",
+            }
             callback(mock_event)
 
         asyncio.create_task(trigger_event())
@@ -402,14 +406,24 @@ class TestDeferredWaiter:
 
             # Non-matching event (wrong request_id)
             wrong_event = MagicMock()
-            wrong_event.data = {"event_name": "custom", "request_id": "xyz", "type": "complete", "result": "wrong"}
+            wrong_event.data = {
+                "event_name": "custom",
+                "request_id": "xyz",
+                "type": "complete",
+                "result": "wrong",
+            }
             callback(wrong_event)
 
             await asyncio.sleep(0.02)
 
             # Matching event
             correct_event = MagicMock()
-            correct_event.data = {"event_name": "custom", "request_id": "abc123", "type": "complete", "result": "correct!"}
+            correct_event.data = {
+                "event_name": "custom",
+                "request_id": "abc123",
+                "type": "complete",
+                "result": "correct!",
+            }
             callback(correct_event)
 
         asyncio.create_task(trigger_events())
@@ -428,6 +442,7 @@ class TestDeferredToolIntegration:
 
     async def test_deferred_result_detection(self) -> None:
         """Test that DeferredResult is properly detected."""
+
         # Simulate a tool that returns DeferredResult
         async def webhook_tool(url: str) -> DeferredResult:
             return DeferredResult(

@@ -34,7 +34,10 @@ class TestModelAliases:
         assert resolve_model("claude") == ("anthropic", "claude-sonnet-4-20250514")
         assert resolve_model("claude-opus") == ("anthropic", "claude-opus-4-20250514")
         assert resolve_model("claude-haiku") == ("anthropic", "claude-haiku-4-20250323")
-        assert resolve_model("claude-sonnet") == ("anthropic", "claude-sonnet-4-20250514")
+        assert resolve_model("claude-sonnet") == (
+            "anthropic",
+            "claude-sonnet-4-20250514",
+        )
 
     def test_gemini_aliases(self):
         """Test Gemini model aliases."""
@@ -109,7 +112,10 @@ class TestProviderPrefix:
         """Test explicit provider prefix parsing."""
         assert resolve_model("openai:gpt-4o") == ("openai", "gpt-4o")
         # When provider is explicit, model part is kept as-is
-        assert resolve_model("anthropic:claude-sonnet-4") == ("anthropic", "claude-sonnet-4")
+        assert resolve_model("anthropic:claude-sonnet-4") == (
+            "anthropic",
+            "claude-sonnet-4",
+        )
         assert resolve_model("gemini:gemini-2.5-pro") == ("gemini", "gemini-2.5-pro")
         # Provider prefix with alias still resolves the alias
         assert resolve_model("groq:llama-70b") == ("groq", "llama-3.3-70b-versatile")
@@ -225,7 +231,9 @@ class TestRegistryCompleteness:
 
                 # Check for circular loops
                 if next_alias in visited:
-                    pytest.fail(f"Circular reference: {' -> '.join(path + [next_alias])}")
+                    pytest.fail(
+                        f"Circular reference: {' -> '.join(path + [next_alias])}"
+                    )
 
                 visited.add(next_alias)
                 path.append(next_alias)

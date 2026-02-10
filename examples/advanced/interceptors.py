@@ -71,7 +71,9 @@ async def demo_budget_guard():
     )
 
     print("\nRunning task with budget limits...")
-    result = await agent.run("Search for Python tips, calculate 2+2, get weather in NYC")
+    result = await agent.run(
+        "Search for Python tips, calculate 2+2, get weather in NYC"
+    )
 
     text = result.unwrap()
     print(f"\nResult: {str(text)[:200]}...")
@@ -122,7 +124,7 @@ class ValidationInterceptor(Interceptor):
             print("  ❌ Blocked: Message contains forbidden content")
             return InterceptResult(
                 stop=True,
-                response="I cannot process messages containing forbidden content."
+                response="I cannot process messages containing forbidden content.",
             )
 
         return InterceptResult()
@@ -193,8 +195,8 @@ async def demo_rate_limiter():
 
     print("\nExecuting multiple requests...")
     for i in range(3):
-        result = await agent.run(f"Request {i+1}: What is {i}+{i}?")
-        print(f"  Request {i+1}: {result.unwrap()[:50]}...")
+        result = await agent.run(f"Request {i + 1}: What is {i}+{i}?")
+        print(f"  Request {i + 1}: {result.unwrap()[:50]}...")
 
 
 async def demo_token_limiter():

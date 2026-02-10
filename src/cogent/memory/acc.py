@@ -17,10 +17,10 @@ Example:
 
     # Create bounded state
     state = BoundedMemoryState()
-    
+
     # Create compressor
     acc = AgentCognitiveCompressor(state=state)
-    
+
     # Update from conversation turn
     await acc.update_from_turn(
         user_message="What's the weather?",
@@ -28,7 +28,7 @@ Example:
         tool_calls=[],
         current_task="Help with weather queries",
     )
-    
+
     # Format for LLM context
     context = acc.format_for_prompt("Check weather tomorrow")
     ```
@@ -56,7 +56,7 @@ if TYPE_CHECKING:
 @dataclass
 class MemoryItem:
     """Single item in bounded memory state.
-    
+
     Each item has:
     - content: The actual memory content
     - type: Category (constraint, entity, action, context)
@@ -126,15 +126,15 @@ class MemoryItem:
 @dataclass
 class BoundedMemoryState:
     """Fixed-size internal state for agent memory.
-    
+
     Instead of unbounded transcript replay, we maintain bounded memory
     across 4 categories:
-    
+
     1. Constraints (max 10): Task requirements, goals, rules
     2. Entities (max 50): Facts, names, data, knowledge
     3. Actions (max 30): What worked/failed, execution history
     4. Context (max 20): Relevant conversation snippets
-    
+
     Total bounded size: ~110 items regardless of conversation length.
     """
 
@@ -219,7 +219,9 @@ class BoundedMemoryState:
     def from_dict(cls, data: dict) -> BoundedMemoryState:
         """Deserialize from dict."""
         return cls(
-            constraints=[MemoryItem.from_dict(item) for item in data.get("constraints", [])],
+            constraints=[
+                MemoryItem.from_dict(item) for item in data.get("constraints", [])
+            ],
             entities=[MemoryItem.from_dict(item) for item in data.get("entities", [])],
             actions=[MemoryItem.from_dict(item) for item in data.get("actions", [])],
             context=[MemoryItem.from_dict(item) for item in data.get("context", [])],
@@ -237,21 +239,21 @@ class BoundedMemoryState:
 
 class SemanticForgetGate:
     """Decides what to keep/discard from bounded memory.
-    
+
     Uses relevance scoring based on:
     - Semantic similarity to current task (if embedder available)
     - Time decay (older memories fade)
     - Access frequency (frequently used memories stay)
     - Type priority (constraints > entities > actions > context)
-    
+
     Example:
         ```python
         gate = SemanticForgetGate(decay_rate=0.1)
-        
+
         # Update relevance scores
         for item in memory_items:
             item.relevance = gate.compute_relevance(item, current_task, now())
-        
+
         # Prune to max size
         kept = gate.prune_memory(memory_items, max_size=50, current_task)
         ```
@@ -264,7 +266,7 @@ class SemanticForgetGate:
         type_weights: dict[str, float] | None = None,
     ):
         """Initialize forget gate.
-        
+
         Args:
             embedder: Optional model for computing semantic similarity
             decay_rate: How fast relevance decays over time (higher = faster)
@@ -286,17 +288,17 @@ class SemanticForgetGate:
         current_time: datetime | None = None,
     ) -> float:
         """Compute relevance score for memory item.
-        
+
         Combines multiple factors:
         - Semantic similarity to current task (40%)
         - Time decay (30%)
         - Type priority (30%)
-        
+
         Args:
             item: Memory item to score
             current_task: Current task/query for semantic matching
             current_time: Current time (defaults to now)
-        
+
         Returns:
             Relevance score 0.0-1.0
         """
@@ -329,7 +331,7 @@ class SemanticForgetGate:
 
     def _simple_similarity(self, text1: str, text2: str) -> float:
         """Simple keyword-based similarity (fallback when no embedder).
-        
+
         Computes Jaccard similarity on word sets.
         """
         words1 = set(text1.lower().split())
@@ -349,15 +351,15 @@ class SemanticForgetGate:
         threshold: float = 0.3,
     ) -> bool:
         """Whether to discard this memory item.
-        
+
         Forgets items that:
         - Have low relevance (below threshold)
         - Are not verified (prevents keeping unverified content)
-        
+
         Args:
             item: Memory item to check
             threshold: Relevance threshold (0.0-1.0)
-        
+
         Returns:
             True if item should be forgotten
         """
@@ -375,18 +377,18 @@ class SemanticForgetGate:
         current_task: str,
     ) -> list[MemoryItem]:
         """Remove least relevant items to stay within max_size.
-        
+
         Process:
         1. Update relevance scores for all items
         2. Sort by relevance (highest first)
         3. Keep top max_size items
         4. Mark accessed for kept items
-        
+
         Args:
             items: List of memory items
             max_size: Maximum items to keep
             current_task: Current task for relevance scoring
-        
+
         Returns:
             Pruned list of items (sorted by relevance)
         """
@@ -418,25 +420,25 @@ class SemanticForgetGate:
 
 class AgentCognitiveCompressor:
     """Bio-inspired memory controller for agents.
-    
+
     Implements the ACC algorithm from arXiv:2601.11653:
     1. Artifact Recall - Retrieve potential memories
     2. Verification - Check before committing (prevent poisoning)
     3. State Commitment - Selective update to bounded state
     4. Pruning - Maintain bounds via semantic forget gate
-    
+
     Example:
         ```python
         # Simple: Use defaults
         acc = AgentCognitiveCompressor()
-        
+
         # Custom bounds
         acc = AgentCognitiveCompressor(
             max_constraints=5,
             max_entities=20,
             max_actions=15,
         )
-        
+
         # Update from conversation turn
         await acc.update_from_turn(
             user_message="Book a flight to Paris",
@@ -444,7 +446,7 @@ class AgentCognitiveCompressor:
             tool_calls=[{"name": "search_flights", "args": {"destination": "Paris"}}],
             current_task="Help book travel",
         )
-        
+
         # Get formatted context for LLM
         context = acc.format_for_prompt("Check flight prices")
         ```
@@ -464,7 +466,7 @@ class AgentCognitiveCompressor:
         extraction_mode: Literal["heuristic", "model"] = "heuristic",
     ):
         """Initialize ACC.
-        
+
         Args:
             state: Bounded memory state (optional, created from bounds if not provided)
             max_constraints: Max constraints to track (default: 10)
@@ -490,35 +492,36 @@ class AgentCognitiveCompressor:
         self.forget_gate = forget_gate or SemanticForgetGate()
         self.vectorstore = vectorstore
         self.extraction_mode = extraction_mode
-        
+
         # Resolve model (lazy initialization for strings)
         self._model_spec = model  # Store spec for lazy resolution
         self._resolved_model: BaseChatModel | None = None
 
     def _get_model(self) -> BaseChatModel | None:
         """Get the resolved model for AI extraction.
-        
+
         Returns:
             Resolved model or None if not available.
         """
         if self._resolved_model is not None:
             return self._resolved_model
-        
+
         if self._model_spec is None:
             return None
-        
+
         # Resolve string model spec
         if isinstance(self._model_spec, str):
             from cogent.models.registry import resolve_and_create_model
+
             self._resolved_model = resolve_and_create_model(self._model_spec)
         else:
             self._resolved_model = self._model_spec
-        
+
         return self._resolved_model
 
     def set_model(self, model: BaseChatModel) -> None:
         """Set the model for AI extraction (called by agent if not set).
-        
+
         Args:
             model: The model to use for extraction.
         """
@@ -532,13 +535,13 @@ class AgentCognitiveCompressor:
         current_task: str,
     ) -> None:
         """Update memory state from a single conversation turn.
-        
+
         This is the core ACC algorithm:
         1. Extract memory artifacts from turn
         2. Verify artifacts (prevent poisoning)
         3. Commit to bounded state
         4. Prune to maintain bounds
-        
+
         Args:
             user_message: User's message this turn
             assistant_message: Assistant's response
@@ -569,14 +572,14 @@ class AgentCognitiveCompressor:
         tool_calls: list[dict],
     ) -> list[MemoryItem]:
         """Extract memory-worthy content from conversation turn.
-        
+
         Uses heuristic or AI extraction based on extraction_mode.
-        
+
         Args:
             user_message: User's message
             assistant_message: Assistant's response
             tool_calls: Tools called
-        
+
         Returns:
             List of memory artifacts
         """
@@ -595,7 +598,7 @@ class AgentCognitiveCompressor:
         tool_calls: list[dict],
     ) -> list[MemoryItem]:
         """Extract artifacts using LLM for semantic understanding.
-        
+
         Uses structured output to extract:
         - Constraints: Requirements, rules, goals
         - Entities: Names, facts, data
@@ -612,21 +615,25 @@ class AgentCognitiveCompressor:
 
         class ExtractedMemory(BaseModel):
             """Extracted memory items from conversation."""
+
             constraints: list[str] = Field(
                 default_factory=list,
-                description="Requirements, rules, goals, or must-do items"
+                description="Requirements, rules, goals, or must-do items",
             )
             entities: list[str] = Field(
                 default_factory=list,
-                description="Important names, facts, numbers, or knowledge"
+                description="Important names, facts, numbers, or knowledge",
             )
             key_actions: list[str] = Field(
-                default_factory=list,
-                description="Key decisions or actions taken"
+                default_factory=list, description="Key decisions or actions taken"
             )
 
         # Build extraction prompt
-        tool_calls_text = ", ".join(tc.get("name", "?") for tc in tool_calls) if tool_calls else "None"
+        tool_calls_text = (
+            ", ".join(tc.get("name", "?") for tc in tool_calls)
+            if tool_calls
+            else "None"
+        )
         extraction_prompt = f"""Extract key memory items from this conversation turn.
 
 USER: {user_message}
@@ -645,43 +652,51 @@ Be concise. Only extract what's truly important to remember."""
             response = await model.with_structured_output(ExtractedMemory).ainvoke(
                 extraction_prompt
             )
-            
+
             artifacts: list[MemoryItem] = []
-            
+
             # Convert to MemoryItems
             for constraint in response.constraints[:3]:  # Max 3 per turn
-                artifacts.append(MemoryItem(
-                    content=constraint,
-                    type="constraint",
-                    relevance=1.0,
-                    verified=False,
-                ))
-            
+                artifacts.append(
+                    MemoryItem(
+                        content=constraint,
+                        type="constraint",
+                        relevance=1.0,
+                        verified=False,
+                    )
+                )
+
             for entity in response.entities[:5]:  # Max 5 per turn
-                artifacts.append(MemoryItem(
-                    content=entity,
-                    type="entity",
-                    relevance=0.9,
-                    verified=False,
-                ))
-            
+                artifacts.append(
+                    MemoryItem(
+                        content=entity,
+                        type="entity",
+                        relevance=0.9,
+                        verified=False,
+                    )
+                )
+
             for action in response.key_actions[:3]:  # Max 3 per turn
-                artifacts.append(MemoryItem(
-                    content=action,
-                    type="action",
-                    relevance=0.8,
-                    verified=False,
-                ))
+                artifacts.append(
+                    MemoryItem(
+                        content=action,
+                        type="action",
+                        relevance=0.8,
+                        verified=False,
+                    )
+                )
 
             # Always add tool calls as actions
             for tool_call in tool_calls:
                 tool_name = tool_call.get("name", "unknown")
-                artifacts.append(MemoryItem(
-                    content=f"Called tool: {tool_name}",
-                    type="action",
-                    relevance=0.7,
-                    verified=False,
-                ))
+                artifacts.append(
+                    MemoryItem(
+                        content=f"Called tool: {tool_name}",
+                        type="action",
+                        relevance=0.7,
+                        verified=False,
+                    )
+                )
 
             return artifacts
 
@@ -698,19 +713,22 @@ Be concise. Only extract what's truly important to remember."""
         tool_calls: list[dict],
     ) -> list[MemoryItem]:
         """Extract artifacts using fast rule-based heuristics.
-        
+
         Args:
             user_message: User's message
             assistant_message: Assistant's response
             tool_calls: Tools called
-        
+
         Returns:
             List of memory artifacts
         """
         artifacts: list[MemoryItem] = []
 
         # Extract constraints from user message (simple heuristic)
-        if any(keyword in user_message.lower() for keyword in ["must", "need", "require", "should"]):
+        if any(
+            keyword in user_message.lower()
+            for keyword in ["must", "need", "require", "should"]
+        ):
             artifacts.append(
                 MemoryItem(
                     content=f"User requirement: {user_message}",
@@ -765,18 +783,18 @@ Be concise. Only extract what's truly important to remember."""
         artifacts: list[MemoryItem],
     ) -> list[MemoryItem]:
         """Verify artifacts before committing (prevent poisoning).
-        
+
         Simple verification for now:
         - Mark all as verified (basic implementation)
-        
+
         Future improvements:
         - Check consistency with existing verified memories
         - Detect hallucinations via fact-checking
         - Cross-reference with vectorstore
-        
+
         Args:
             artifacts: Unverified memory artifacts
-        
+
         Returns:
             Verified artifacts safe to commit
         """
@@ -795,7 +813,7 @@ Be concise. Only extract what's truly important to remember."""
         current_task: str,
     ) -> None:
         """Commit verified artifact to bounded state.
-        
+
         Args:
             artifact: Verified memory artifact
             current_task: Current task (unused for now)
@@ -812,7 +830,7 @@ Be concise. Only extract what's truly important to remember."""
 
     async def _prune_state(self, current_task: str) -> None:
         """Prune each memory category to stay within bounds.
-        
+
         Args:
             current_task: Current task for relevance scoring
         """
@@ -839,12 +857,12 @@ Be concise. Only extract what's truly important to remember."""
 
     def format_for_prompt(self, current_task: str) -> str:
         """Format bounded memory for LLM consumption.
-        
+
         Returns a structured prompt section with relevant memory organized by type.
-        
+
         Args:
             current_task: Current task for relevance filtering
-        
+
         Returns:
             Formatted memory context string
         """
@@ -894,7 +912,7 @@ Be concise. Only extract what's truly important to remember."""
 
     def get_stats(self) -> dict[str, object]:
         """Get memory statistics for monitoring.
-        
+
         Returns:
             Dict with memory stats (counts, utilization, etc.)
         """

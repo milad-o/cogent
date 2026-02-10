@@ -7,7 +7,7 @@ Cogent components without manual node/edge construction.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from cogent.graph.backends import Backend, MermaidBackend, get_default_backend
 from cogent.graph.config import GraphConfig

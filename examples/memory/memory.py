@@ -68,7 +68,9 @@ async def demo_memory_discovery():
     )
     print(f"  Agent: {response1.content}")
     if response1.tool_calls:
-        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response1.tool_calls]}")
+        print(
+            f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response1.tool_calls]}"
+        )
 
     # Test 2: Specific query that requires discovery
     print("\n  [Test: What programming language does the user prefer?]")
@@ -78,7 +80,9 @@ async def demo_memory_discovery():
     )
     print(f"  Agent: {response2.content}")
     if response2.tool_calls:
-        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response2.tool_calls]}")
+        print(
+            f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response2.tool_calls]}"
+        )
 
     # Show direct search vs recall
     print("\n  💡 Key Discovery Mechanism:")
@@ -103,7 +107,6 @@ async def demo_memory_discovery():
 async def demo_conversation_memory():
     """Show conversation memory with automatic fact storage."""
     print("\n--- Conversation Memory (Thread-Based) ---")
-
 
     # Memory is always agentic - tools are automatically available
     memory = Memory()
@@ -140,7 +143,9 @@ async def demo_conversation_memory():
     print("\n  User: What's my name and what do I do?")
     print(f"  Assistant: {response2.content}")
     if response2.tool_calls:
-        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response2.tool_calls]}")
+        print(
+            f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response2.tool_calls]}"
+        )
 
     # Show what's stored in long-term memory
     print("\n  📝 Long-term facts (stored via remember() tool):")
@@ -159,7 +164,9 @@ async def demo_conversation_memory():
     print("  User: What's my name and occupation?")
     print(f"  Assistant: {response3.content}")
     if response3.tool_calls:
-        print(f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response3.tool_calls]}")
+        print(
+            f"  Tools used: {[(tc.tool_name, tc.arguments) for tc in response3.tool_calls]}"
+        )
 
 
 async def demo_persistent_memory():
@@ -171,7 +178,6 @@ async def demo_persistent_memory():
     except ImportError:
         print("  ⚠ SQLAlchemy not installed. Run: uv add sqlalchemy aiosqlite")
         return
-
 
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "agent_memory.db"
@@ -271,7 +277,6 @@ async def demo_shared_memory():
     """Show multiple agents sharing memory."""
     print("\n--- Shared Memory (Multi-Agent) ---")
 
-
     # Create shared memory
     shared_memory = Memory()
 
@@ -322,11 +327,11 @@ async def main():
     print("  Memory is always agentic - tools auto-added")
     print("=" * 60)
 
-    await demo_memory_discovery()     # How agents discover keys
+    await demo_memory_discovery()  # How agents discover keys
     await demo_conversation_memory()  # Conversation + long-term memory
-    await demo_persistent_memory()    # SQLite persistence
-    await demo_memory_tools()         # Detailed tool usage
-    await demo_shared_memory()        # Multi-agent sharing
+    await demo_persistent_memory()  # SQLite persistence
+    await demo_memory_tools()  # Detailed tool usage
+    await demo_shared_memory()  # Multi-agent sharing
 
     print("\n" + "=" * 60)
     print("✅ All demos completed!")

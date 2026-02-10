@@ -101,7 +101,9 @@ class Observer:
         self,
         config: ObserverConfig | None = None,
         *,
-        level: Literal["off", "result", "progress", "detailed", "debug", "trace"] | Level | None = None,
+        level: Literal["off", "result", "progress", "detailed", "debug", "trace"]
+        | Level
+        | None = None,
         stream: TextIO | None = None,
         capture: list[str] | None = None,
     ) -> None:

@@ -50,7 +50,9 @@ def flaky_search(query: str) -> str:
     _flaky_search_attempts += 1
 
     if random.random() < 0.7:
-        raise ConnectionError(f"Search service unavailable (attempt {_flaky_search_attempts})")
+        raise ConnectionError(
+            f"Search service unavailable (attempt {_flaky_search_attempts})"
+        )
 
     return f"Search results for '{query}': Found 5 relevant articles"
 
@@ -71,6 +73,7 @@ def reliable_backup(query: str) -> str:
 # Demo Functions
 # =============================================================================
 
+
 async def demo_default_resilience():
     """Demo 1: Default resilience with direct .act() call."""
     print("\n" + "=" * 80)
@@ -79,7 +82,6 @@ async def demo_default_resilience():
 
     global _api_call_attempts
     _api_call_attempts = 0
-
 
     # Add observer to see resilience events
     observer = Observer(
@@ -95,7 +97,9 @@ async def demo_default_resilience():
         observer=observer,
     )
 
-    print(f"Config: retry_on_error={agent.config.retry_on_error}, max_retries={agent.config.max_retries}")
+    print(
+        f"Config: retry_on_error={agent.config.retry_on_error}, max_retries={agent.config.max_retries}"
+    )
     print("Calling unreliable_api (fails 2x, succeeds on 3rd attempt)...\n")
 
     try:
@@ -128,9 +132,11 @@ async def demo_aggressive_resilience():
         show_duration=True,
     )
 
-    print(f"Config: max_retries={aggressive_config.retry_policy.max_retries}, "
-          f"strategy={aggressive_config.retry_policy.strategy.value}, "
-          f"timeout={aggressive_config.timeout_seconds}s")
+    print(
+        f"Config: max_retries={aggressive_config.retry_policy.max_retries}, "
+        f"strategy={aggressive_config.retry_policy.strategy.value}, "
+        f"timeout={aggressive_config.timeout_seconds}s"
+    )
     print("Calling flaky_search (70% failure rate)...\n")
 
     agent = Agent(
@@ -179,9 +185,11 @@ async def demo_custom_retry_policy():
         learning_enabled=True,
     )
 
-    print(f"Policy: max_retries={custom_policy.max_retries}, "
-          f"strategy={custom_policy.strategy.value}, "
-          f"delays={custom_policy.base_delay}s-{custom_policy.max_delay}s")
+    print(
+        f"Policy: max_retries={custom_policy.max_retries}, "
+        f"strategy={custom_policy.strategy.value}, "
+        f"delays={custom_policy.base_delay}s-{custom_policy.max_delay}s"
+    )
     print("Calling unreliable_api...\n")
 
     agent = Agent(
@@ -210,7 +218,6 @@ async def demo_fallback_tools():
     print("Demo 4: Fallback Tool Chains")
     print("=" * 80)
 
-
     observer = Observer(
         level=ObservabilityLevel.DETAILED,
         show_timestamps=True,
@@ -229,7 +236,7 @@ async def demo_fallback_tools():
         model="gpt4",
         tools=[always_fails, reliable_backup],
         resilience=fallback_config,
-        observer=observer
+        observer=observer,
     )
 
     agent = Agent(
@@ -264,8 +271,10 @@ async def demo_fast_fail():
 
     fast_fail_config = ResilienceConfig.fast_fail()
 
-    print(f"Config: max_retries={fast_fail_config.retry_policy.max_retries}, "
-          f"timeout={fast_fail_config.timeout_seconds}s")
+    print(
+        f"Config: max_retries={fast_fail_config.retry_policy.max_retries}, "
+        f"timeout={fast_fail_config.timeout_seconds}s"
+    )
     print("Calling always_fails...\n")
 
     agent = Agent(
@@ -308,7 +317,9 @@ async def demo_resilience_comparison():
         strategy = config.retry_policy.strategy.value[:12]
         circuit = "YES" if config.circuit_breaker_enabled else "NO "
         learning = "YES" if config.learning_enabled else "NO "
-        print(f"│ {name:<15} │ {retries:^8} │ {strategy:<12} │ {circuit:^8} │ {learning:^7} │")
+        print(
+            f"│ {name:<15} │ {retries:^8} │ {strategy:<12} │ {circuit:^8} │ {learning:^7} │"
+        )
 
     print("└─────────────────┴──────────┴──────────────┴──────────┴─────────┘\n")
 

@@ -106,8 +106,14 @@ from cogent.models.base import (
     convert_messages,
     normalize_input,
 )
+
+# Cerebras models
+from cogent.models.cerebras import CerebrasChat
 from cogent.models.cloudflare import CloudflareChat, CloudflareEmbedding
 from cogent.models.cohere import CohereChat, CohereEmbedding
+
+# DeepSeek models
+from cogent.models.deepseek import DeepSeekChat
 from cogent.models.gemini import GeminiChat, GeminiEmbedding
 from cogent.models.groq import GroqChat
 
@@ -118,15 +124,6 @@ from cogent.models.ollama import OllamaChat, OllamaEmbedding
 # Default models (OpenAI)
 from cogent.models.openai import OpenAIChat, OpenAIEmbedding
 
-# xAI models
-from cogent.models.xai import XAIChat
-
-# DeepSeek models
-from cogent.models.deepseek import DeepSeekChat
-
-# Cerebras models
-from cogent.models.cerebras import CerebrasChat
-
 # Model registry for high-level API
 from cogent.models.registry import (
     get_provider_for_model,
@@ -134,6 +131,9 @@ from cogent.models.registry import (
     resolve_and_create_model,
     resolve_model,
 )
+
+# xAI models
+from cogent.models.xai import XAIChat
 
 # Aliases for convenience
 ChatModel = OpenAIChat

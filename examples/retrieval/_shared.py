@@ -148,7 +148,11 @@ Multiple factors contributed to Rome's fall: economic troubles, military defeats
 instability, and division into Eastern and Western empires. The Western Empire fell in 476 CE,
 but the Eastern Byzantine Empire continued for another millennium. Rome's influence endures
 in Western civilization's legal systems, languages, and architectural traditions.""",
-        metadata={"source": "roman_empire.md", "category": "history", "author": "Prof. Marcus Stone"},
+        metadata={
+            "source": "roman_empire.md",
+            "category": "history",
+            "author": "Prof. Marcus Stone",
+        },
     ),
     LONG_DOCUMENT,
     Document(
@@ -175,7 +179,11 @@ Quantum Applications
 Quantum mechanics enables modern technology: semiconductors in computers, lasers, MRI machines,
 and LED lights. Emerging quantum computers exploit superposition and entanglement to solve
 problems impossible for classical computers. Quantum cryptography promises unbreakable encryption.""",
-        metadata={"source": "quantum_mechanics.md", "category": "physics", "author": "Dr. Lisa Nakamura"},
+        metadata={
+            "source": "quantum_mechanics.md",
+            "category": "physics",
+            "author": "Dr. Lisa Nakamura",
+        },
     ),
 ]
 
@@ -256,7 +264,7 @@ def print_results(results: list, show_scores: bool = True, truncate: int = 80) -
         text_preview = r.document.text[:truncate].replace("\n", " ")
         if len(r.document.text) > truncate:
             text_preview += "..."
-        
+
         source = r.document.metadata.get("source", "unknown")
         print(f"  {i}. {score_str}{source}")
         print(f"     {text_preview}")

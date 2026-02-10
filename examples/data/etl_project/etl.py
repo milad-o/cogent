@@ -11,6 +11,7 @@ from typing import Any
 @dataclass
 class Record:
     """A single data record."""
+
     id: str
     name: str
     value: float

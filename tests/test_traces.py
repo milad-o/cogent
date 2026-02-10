@@ -94,15 +94,9 @@ class TestTraceBus:
         history = trace_bus.get_history(event_type=TraceType.TASK_CREATED)
         assert len(history) == 2
 
-    async def test_history_filter_by_correlation_id(
-        self, trace_bus: TraceBus
-    ) -> None:
-        await trace_bus.publish(
-            Trace(type=TraceType.TASK_CREATED, correlation_id="a")
-        )
-        await trace_bus.publish(
-            Trace(type=TraceType.TASK_CREATED, correlation_id="b")
-        )
+    async def test_history_filter_by_correlation_id(self, trace_bus: TraceBus) -> None:
+        await trace_bus.publish(Trace(type=TraceType.TASK_CREATED, correlation_id="a"))
+        await trace_bus.publish(Trace(type=TraceType.TASK_CREATED, correlation_id="b"))
         await trace_bus.publish(
             Trace(type=TraceType.TASK_COMPLETED, correlation_id="a")
         )
@@ -150,9 +144,7 @@ class TestTraceBus:
         assert stats["event_type_counts"]["task.created"] == 2
         assert stats["event_type_counts"]["task.completed"] == 1
 
-    async def test_handler_error_doesnt_break_bus(
-        self, trace_bus: TraceBus
-    ) -> None:
+    async def test_handler_error_doesnt_break_bus(self, trace_bus: TraceBus) -> None:
         def bad_handler(trace: Trace) -> None:
             raise RuntimeError("Handler failed!")
 

@@ -113,14 +113,10 @@ class DataValidator(BaseCapability):
         )
 
         # URL regex pattern
-        self._url_pattern = re.compile(
-            r"^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$"
-        )
+        self._url_pattern = re.compile(r"^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$")
 
         # Phone regex pattern (flexible)
-        self._phone_pattern = re.compile(
-            r"^[\d\s()+-]{10,}$"
-        )
+        self._phone_pattern = re.compile(r"^[\d\s()+-]{10,}$")
 
     @property
     def name(self) -> str:
@@ -369,7 +365,9 @@ class DataValidator(BaseCapability):
                 seen.add(value)
 
         if duplicates:
-            errors.append(f"{field_name} contains duplicates: {', '.join(duplicates[:5])}")
+            errors.append(
+                f"{field_name} contains duplicates: {', '.join(duplicates[:5])}"
+            )
             if len(duplicates) > 5:
                 errors.append(f"... and {len(duplicates) - 5} more")
 

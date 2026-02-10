@@ -113,7 +113,10 @@ class TestDocument:
 
     def test_document_from_dict(self) -> None:
         """Test creating document from dict."""
-        d = {"text": "Test", "metadata": {"source": "test.txt", "custom": {"key": "value"}}}
+        d = {
+            "text": "Test",
+            "metadata": {"source": "test.txt", "custom": {"key": "value"}},
+        }
         doc = Document.from_dict(d)
         assert doc.text == "Test"
         assert doc.metadata.custom["key"] == "value"
@@ -292,8 +295,14 @@ class TestRecursiveCharacterSplitter:
     def test_split_documents(self) -> None:
         """Test splitting multiple documents."""
         docs = [
-            Document(text="First document content", metadata=DocumentMetadata(custom={"id": "1"})),
-            Document(text="Second document content", metadata=DocumentMetadata(custom={"id": "2"})),
+            Document(
+                text="First document content",
+                metadata=DocumentMetadata(custom={"id": "1"}),
+            ),
+            Document(
+                text="Second document content",
+                metadata=DocumentMetadata(custom={"id": "2"}),
+            ),
         ]
         splitter = RecursiveCharacterSplitter(chunk_size=15, chunk_overlap=0)
         chunks = splitter.split_documents(docs)
@@ -381,7 +390,9 @@ class TestSplitTextFunction:
     def test_recursive_splitter(self) -> None:
         """Test using recursive splitter type."""
         text = "Content " * 100
-        chunks = split_text(text, chunk_size=500, chunk_overlap=50, splitter_type="recursive")
+        chunks = split_text(
+            text, chunk_size=500, chunk_overlap=50, splitter_type="recursive"
+        )
         assert len(chunks) >= 1
 
     def test_invalid_splitter_type(self) -> None:

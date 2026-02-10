@@ -283,11 +283,11 @@ def _tools_to_gemini(tools: list[Any], types: Any) -> list[Any]:
 
 def _parse_response(response: Any, include_thoughts: bool = False) -> AIMessage:
     """Parse Gemini response into AIMessage with metadata.
-    
+
     Args:
         response: Gemini API response.
         include_thoughts: Whether to include thought summaries in response.
-    
+
     Returns:
         AIMessage with content, tool_calls, thoughts (if enabled), and metadata.
     """
@@ -301,13 +301,17 @@ def _parse_response(response: Any, include_thoughts: bool = False) -> AIMessage:
     # Handle the response structure
     if not hasattr(response, "candidates") or not response.candidates:
         return AIMessage(content="")
-    
+
     candidate = response.candidates[0]
     if not candidate:
         return AIMessage(content="")
 
     # Gemini can return None for content when blocked or failed
-    if not candidate.content or not hasattr(candidate.content, "parts") or candidate.content.parts is None:
+    if (
+        not candidate.content
+        or not hasattr(candidate.content, "parts")
+        or candidate.content.parts is None
+    ):
         return AIMessage(content="")
 
     for part in candidate.content.parts:
@@ -367,13 +371,13 @@ def _parse_response(response: Any, include_thoughts: bool = False) -> AIMessage:
         tool_calls=tool_calls,
         metadata=metadata,
     )
-    
+
     # Add thoughts if present
     if thoughts and include_thoughts:
         msg.thoughts = thoughts
         if thought_signature:
             msg.thought_signature = thought_signature
-    
+
     return msg
 
 
@@ -391,7 +395,7 @@ class GeminiChat(BaseChatModel):
     - gemini-2.0-flash-exp (experimental)
     - gemini-1.5-pro
     - gemini-1.5-flash
-    
+
     Gemini 3 (Preview - Not Production Ready):
     - gemini-3-pro-preview (most capable, 1M context, thinking support)
     - gemini-3-flash-preview (fast, 1M context, thinking support)
@@ -431,10 +435,12 @@ class GeminiChat(BaseChatModel):
     """
 
     model: str = "gemini-2.5-flash"
-    thinking_budget: int | None = field(default=0)  # Default: disabled for cost efficiency
+    thinking_budget: int | None = field(
+        default=0
+    )  # Default: disabled for cost efficiency
     thinking_level: str | None = field(default=None)  # For experimental models
     include_thoughts: bool = field(default=True)
-    
+
     _tools: list[Any] = field(default_factory=list, repr=False)
     _parallel_tool_calls: bool = field(default=True, repr=False)
 
@@ -483,7 +489,7 @@ class GeminiChat(BaseChatModel):
         new_model._types = self._types
         new_model._initialized = True
         return new_model
-    
+
     def with_thinking(
         self,
         budget: int | None = 8192,
@@ -492,10 +498,10 @@ class GeminiChat(BaseChatModel):
         include_thoughts: bool = True,
     ) -> GeminiChat:
         """Enable Thinking with specified budget or level.
-        
+
         Thinking allows the model to reason through complex problems
         before providing a response.
-        
+
         Args:
             budget: Token budget for thinking (Gemini 2.5 models).
                 - 0: Dynamic thinking (model decides)
@@ -503,19 +509,19 @@ class GeminiChat(BaseChatModel):
             level: Thinking level for experimental models.
                 - "minimal", "low", "medium", "high"
             include_thoughts: Whether to include thought summaries (default True).
-        
+
         Returns:
             New GeminiChat instance with thinking enabled.
-        
+
         Example:
             # Gemini 2.5 with budget
             llm = GeminiChat(model="gemini-2.5-flash-preview-05-20").with_thinking(8192)
-            
+
             # Experimental model with level
             llm = GeminiChat(model="gemini-2.0-flash-thinking-exp").with_thinking(level="high")
         """
         self._ensure_initialized()
-        
+
         new_model = GeminiChat(
             model=self.model,
             temperature=self.temperature,
@@ -548,32 +554,35 @@ class GeminiChat(BaseChatModel):
 
         # Thinking configuration (Gemini 2.5 and experimental models)
         # Only enable thinking if explicitly configured (budget > 0 or level set)
-        if (self.thinking_budget is not None and self.thinking_budget > 0) or self.thinking_level is not None:
+        if (
+            self.thinking_budget is not None and self.thinking_budget > 0
+        ) or self.thinking_level is not None:
             thinking_config: dict[str, Any] = {}
-            
+
             # Gemini 2.5 models use thinking_budget
             if self.thinking_budget is not None and self.thinking_budget > 0:
                 thinking_config["thinking_budget"] = self.thinking_budget
-            
+
             # Experimental models use thinking_level
             if self.thinking_level is not None:
                 # Map string levels to SDK enum values
                 level_mapping = {
                     "minimal": "THINKING_LEVEL_MINIMAL",
-                    "low": "THINKING_LEVEL_LOW", 
+                    "low": "THINKING_LEVEL_LOW",
                     "medium": "THINKING_LEVEL_MEDIUM",
                     "high": "THINKING_LEVEL_HIGH",
                 }
                 thinking_config["thinking_level"] = level_mapping.get(
-                    self.thinking_level.lower(), 
-                    self.thinking_level
+                    self.thinking_level.lower(), self.thinking_level
                 )
-            
+
             # Include thought summaries in response
             if self.include_thoughts:
                 thinking_config["include_thoughts"] = True
-            
-            config_kwargs["thinking_config"] = self._types.ThinkingConfig(**thinking_config)
+
+            config_kwargs["thinking_config"] = self._types.ThinkingConfig(
+                **thinking_config
+            )
 
         if self._tools:
             function_declarations = _tools_to_gemini(self._tools, self._types)
@@ -616,8 +625,10 @@ class GeminiChat(BaseChatModel):
         )
         return _parse_response(
             response,
-            include_thoughts=self.include_thoughts and (
-                (self.thinking_budget is not None and self.thinking_budget > 0) or self.thinking_level is not None
+            include_thoughts=self.include_thoughts
+            and (
+                (self.thinking_budget is not None and self.thinking_budget > 0)
+                or self.thinking_level is not None
             ),
         )
 
@@ -643,8 +654,10 @@ class GeminiChat(BaseChatModel):
         )
         return _parse_response(
             response,
-            include_thoughts=self.include_thoughts and (
-                (self.thinking_budget is not None and self.thinking_budget > 0) or self.thinking_level is not None
+            include_thoughts=self.include_thoughts
+            and (
+                (self.thinking_budget is not None and self.thinking_budget > 0)
+                or self.thinking_level is not None
             ),
         )
 

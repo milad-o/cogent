@@ -27,9 +27,11 @@ from cogent.agent.output import (
 # Test Schemas
 # =============================================================================
 
+
 @dataclass
 class ContactInfo:
     """Contact information for a person."""
+
     name: str
     email: str
     phone: str | None = None
@@ -38,6 +40,7 @@ class ContactInfo:
 @dataclass
 class Review:
     """Product review with rating."""
+
     rating: int
     summary: str
     pros: list[str] = field(default_factory=list)
@@ -48,12 +51,14 @@ try:
 
     class PydanticContact(BaseModel):
         """Contact information using Pydantic."""
+
         name: str = Field(description="Person's full name")
         email: str = Field(description="Email address")
         phone: str | None = Field(None, description="Phone number")
 
     class PydanticReview(BaseModel):
         """Review with validation."""
+
         rating: int = Field(ge=1, le=5, description="Rating 1-5")
         sentiment: Literal["positive", "negative", "neutral"]
         summary: str = Field(description="Brief summary")
@@ -66,6 +71,7 @@ except ImportError:
 # =============================================================================
 # Schema Detection Tests
 # =============================================================================
+
 
 class TestSchemaDetection:
     """Test schema type detection functions."""
@@ -94,6 +100,7 @@ class TestSchemaDetection:
 # =============================================================================
 # Schema to JSON Tests
 # =============================================================================
+
 
 class TestSchemaToJson:
     """Test JSON schema generation."""
@@ -146,6 +153,7 @@ class TestSchemaToJson:
 # Schema Name/Description Tests
 # =============================================================================
 
+
 class TestSchemaMetadata:
     """Test schema metadata extraction."""
 
@@ -167,6 +175,7 @@ class TestSchemaMetadata:
 # =============================================================================
 # JSON Parsing Tests
 # =============================================================================
+
 
 class TestJsonParsing:
     """Test JSON extraction from LLM output."""
@@ -205,6 +214,7 @@ That's all!"""
 # =============================================================================
 # Validation Tests
 # =============================================================================
+
 
 class TestValidation:
     """Test schema validation."""
@@ -255,6 +265,7 @@ class TestValidation:
 # ResponseSchema Tests
 # =============================================================================
 
+
 class TestResponseSchema:
     """Test ResponseSchema creation and properties."""
 
@@ -294,6 +305,7 @@ class TestResponseSchema:
 # StructuredResult Tests
 # =============================================================================
 
+
 class TestStructuredResult:
     """Test StructuredResult behavior."""
 
@@ -325,6 +337,7 @@ class TestStructuredResult:
 # Prompt Building Tests
 # =============================================================================
 
+
 class TestPromptBuilding:
     """Test structured output prompt generation."""
 
@@ -353,11 +366,13 @@ class TestPromptBuilding:
 # Provider Detection Tests
 # =============================================================================
 
+
 class TestProviderDetection:
     """Test provider capability detection."""
 
     def test_openai_supports_native(self):
         """OpenAI models should support native structured output."""
+
         class MockOpenAI:
             pass
 
@@ -368,6 +383,7 @@ class TestProviderDetection:
 
     def test_unknown_provider(self):
         """Unknown providers should not support native."""
+
         class MockUnknown:
             pass
 
@@ -375,6 +391,7 @@ class TestProviderDetection:
 
     def test_get_best_method_auto(self):
         """Auto should detect best method."""
+
         class MockOpenAI:
             pass
 
@@ -387,6 +404,7 @@ class TestProviderDetection:
 
     def test_get_best_method_explicit(self):
         """Explicit method should be used."""
+
         class MockOpenAI:
             pass
 
@@ -402,13 +420,16 @@ class TestProviderDetection:
 # Integration Tests (without actual LLM)
 # =============================================================================
 
+
 class TestIntegration:
     """Integration tests for output processing."""
 
     def test_end_to_end_dataclass(self):
         """End-to-end test with dataclass."""
         config = ResponseSchema(schema=ContactInfo)
-        raw_output = '{"name": "John Doe", "email": "john@example.com", "phone": "555-1234"}'
+        raw_output = (
+            '{"name": "John Doe", "email": "john@example.com", "phone": "555-1234"}'
+        )
 
         data = validate_and_parse(raw_output, config.schema)
 
@@ -420,7 +441,9 @@ class TestIntegration:
     def test_end_to_end_pydantic(self):
         """End-to-end test with Pydantic."""
         config = ResponseSchema(schema=PydanticReview)
-        raw_output = '{"rating": 5, "sentiment": "positive", "summary": "Great product!"}'
+        raw_output = (
+            '{"rating": 5, "sentiment": "positive", "summary": "Great product!"}'
+        )
 
         data = validate_and_parse(raw_output, config.schema)
 

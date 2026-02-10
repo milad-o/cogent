@@ -19,7 +19,6 @@ from cogent.observability.core.event import Event
 from cogent.observability.formatters.base import BaseFormatter
 from cogent.tools import tool
 
-
 # === Tools for the demo ===
 
 

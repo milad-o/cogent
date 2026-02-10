@@ -252,7 +252,7 @@ def create_agents(model_config: dict) -> tuple[Agent, Agent]:
     """Create single and multi-agent systems for a model."""
     orchestrator_model = model_config["orchestrator"]
     specialist_model = model_config["specialist"]
-    
+
     # Get resilience config if specified (for slow models like Grok)
     resilience = model_config.get("resilience")
 
@@ -412,13 +412,13 @@ async def run_evaluation(model_key: str) -> tuple[str, pd.DataFrame]:
     model_config = MODELS[model_key]
     model_name = model_config["name"]
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Testing: {model_name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Create agents
     single_agent, multi_agent = create_agents(model_config)
-    print(f"✓ Agents created")
+    print("✓ Agents created")
 
     # Run all evaluations concurrently
     tasks = []
@@ -454,11 +454,13 @@ async def run_evaluation(model_key: str) -> tuple[str, pd.DataFrame]:
         }
     )
 
-    print(f"\n✓ Evaluation complete!")
+    print("\n✓ Evaluation complete!")
     print(df_detailed.to_string(index=False))
 
     # Save visualization
-    save_visualization(model_key, model_name, df_detailed, single_results, multi_results)
+    save_visualization(
+        model_key, model_name, df_detailed, single_results, multi_results
+    )
 
     return model_name, df_detailed
 
@@ -604,9 +606,7 @@ def save_visualization(
     ax6.tick_params(labelsize=8)
     ax6.set_xticklabels(ax6.get_xticklabels(), rotation=0)
 
-    plt.suptitle(
-        f"Single vs Multi-Agent: {model_name}", fontsize=11, fontweight="bold"
-    )
+    plt.suptitle(f"Single vs Multi-Agent: {model_name}", fontsize=11, fontweight="bold")
 
     # Save to file
     output_dir = Path(__file__).parent
@@ -667,9 +667,9 @@ async def main():
         except Exception as e:
             print(f"\n✗ Error testing {MODELS[model_key]['name']}: {e}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Completed {len(all_results)}/{len(models_to_test)} evaluations")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

@@ -191,27 +191,27 @@ class TestWebSearchOperations:
     """Test WebSearch operations."""
 
     @patch("cogent.capabilities.web_search.DuckDuckGoProvider.search")
-    def test_search(self, mock_search):
+    async def test_search(self, mock_search):
         """Test search operation."""
         mock_search.return_value = [
             SearchResult("Test", "https://test.com", "Snippet", "ddg", 1)
         ]
 
         ws = WebSearch()
-        results = ws.search("test query")
+        results = await ws.search("test query")
 
         assert len(results) == 1
         mock_search.assert_called_once_with("test query", max_results=10)
 
     @patch("cogent.capabilities.web_search.DuckDuckGoProvider.news")
-    def test_search_news(self, mock_news):
+    async def test_search_news(self, mock_news):
         """Test news search operation."""
         mock_news.return_value = [
             SearchResult("News", "https://news.com", "Breaking", "ddg", 1)
         ]
 
         ws = WebSearch()
-        results = ws.search_news("breaking", max_results=5)
+        results = await ws.search_news("breaking", max_results=5)
 
         assert len(results) == 1
         mock_news.assert_called_once_with("breaking", max_results=5)
@@ -287,8 +287,7 @@ class TestHTMLExtraction:
     """Test HTML content extraction."""
 
     @pytest.mark.skipif(
-        not importlib.util.find_spec("bs4"),
-        reason="beautifulsoup4 not installed"
+        not importlib.util.find_spec("bs4"), reason="beautifulsoup4 not installed"
     )
     def test_extract_html_with_beautifulsoup(self):
         """Test BeautifulSoup HTML extraction."""
@@ -315,7 +314,7 @@ class TestWebSearchToolExecution:
     """Test tool execution."""
 
     @patch("cogent.capabilities.web_search.DuckDuckGoProvider.search")
-    def test_web_search_tool(self, mock_search):
+    async def test_web_search_tool(self, mock_search):
         """Test web_search tool execution."""
         mock_search.return_value = [
             SearchResult("Result", "https://example.com", "Snippet", "ddg", 1)
@@ -324,25 +323,25 @@ class TestWebSearchToolExecution:
         ws = WebSearch()
         tools = {t.name: t for t in ws.tools}
 
-        result = tools["web_search"].invoke({"query": "test"})
+        result = await tools["web_search"].ainvoke({"query": "test"})
 
         assert "Result" in result
         assert "https://example.com" in result
 
     @patch("cogent.capabilities.web_search.DuckDuckGoProvider.search")
-    def test_web_search_tool_no_results(self, mock_search):
+    async def test_web_search_tool_no_results(self, mock_search):
         """Test web_search tool with no results."""
         mock_search.return_value = []
 
         ws = WebSearch()
         tools = {t.name: t for t in ws.tools}
 
-        result = tools["web_search"].invoke({"query": "nonexistent"})
+        result = await tools["web_search"].ainvoke({"query": "nonexistent"})
 
         assert "No results" in result
 
     @patch("cogent.capabilities.web_search.DuckDuckGoProvider.news")
-    def test_news_search_tool(self, mock_news):
+    async def test_news_search_tool(self, mock_news):
         """Test news_search tool execution."""
         mock_news.return_value = [
             SearchResult("News", "https://news.com", "Breaking", "ddg", 1)
@@ -351,7 +350,7 @@ class TestWebSearchToolExecution:
         ws = WebSearch()
         tools = {t.name: t for t in ws.tools}
 
-        result = tools["news_search"].invoke({"query": "news"})
+        result = await tools["news_search"].ainvoke({"query": "news"})
 
         assert "News" in result
 

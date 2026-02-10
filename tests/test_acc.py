@@ -107,7 +107,9 @@ class TestBoundedMemoryState:
     def test_serialization(self):
         """Test state serialization."""
         state = BoundedMemoryState()
-        state.constraints.append(MemoryItem(content="Test constraint", type="constraint"))
+        state.constraints.append(
+            MemoryItem(content="Test constraint", type="constraint")
+        )
         state.entities.append(MemoryItem(content="Test entity", type="entity"))
 
         # Serialize

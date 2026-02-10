@@ -27,6 +27,7 @@ def calculator(expression: str) -> float:
     """
     return eval(expression)
 
+
 @tool
 def get_weather(city: str) -> str:
     """Get weather information for a city.

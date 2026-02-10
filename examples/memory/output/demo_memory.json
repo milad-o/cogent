@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "type": "Node",
+      "id": "msg1",
+      "data": {
+        "content": "Alice works at TechCorp",
+        "role": "user"
+      },
+      "metadata": {
+        "thread_id": "session_1"
+      }
+    },
+    {
+      "type": "Node",
+      "id": "msg2",
+      "data": {
+        "content": "She is a senior engineer",
+        "role": "user"
+      },
+      "metadata": {
+        "thread_id": "session_1"
+      }
+    },
+    {
+      "type": "Node",
+      "id": "msg3",
+      "data": {
+        "content": "Her favorite language is Python",
+        "role": "user"
+      },
+      "metadata": {
+        "thread_id": "session_1"
+      }
+    }
+  ],
+  "edges": []
+}

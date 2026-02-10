@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from cogent.core.enums import AgentRole
 from cogent.executors.base import ExecutionStrategy
 
 if TYPE_CHECKING:

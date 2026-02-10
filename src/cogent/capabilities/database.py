@@ -143,10 +143,12 @@ class Database(BaseCapability):
         if self._tools_cache is None:
             tools = [self._query_tool()]
             if not self._read_only:
-                tools.extend([
-                    self._execute_tool(),
-                    self._insert_tool(),
-                ])
+                tools.extend(
+                    [
+                        self._execute_tool(),
+                        self._insert_tool(),
+                    ]
+                )
             return tools
         return self._tools_cache
 

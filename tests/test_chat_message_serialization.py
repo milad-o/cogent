@@ -1,4 +1,3 @@
-
 from cogent.core.messages import (
     AIMessage,
     HumanMessage,
@@ -8,7 +7,9 @@ from cogent.core.messages import (
 from cogent.models.base import convert_messages
 
 
-def test_convert_messages_assigns_missing_tool_call_ids_and_pairs_tool_message() -> None:
+def test_convert_messages_assigns_missing_tool_call_ids_and_pairs_tool_message() -> (
+    None
+):
     messages = [
         SystemMessage("sys"),
         HumanMessage("hi"),
@@ -53,10 +54,12 @@ def test_convert_messages_handles_multiple_tool_calls() -> None:
     messages = [
         SystemMessage("sys"),
         HumanMessage("hi"),
-        AIMessage(tool_calls=[
-            {"id": "call_1", "name": "search", "args": {"q": "x"}},
-            {"id": "call_2", "name": "calc", "args": {"expr": "1+1"}},
-        ]),
+        AIMessage(
+            tool_calls=[
+                {"id": "call_1", "name": "search", "args": {"q": "x"}},
+                {"id": "call_2", "name": "calc", "args": {"expr": "1+1"}},
+            ]
+        ),
         ToolMessage("result1", tool_call_id="call_1"),
         ToolMessage("result2", tool_call_id="call_2"),
     ]
@@ -75,7 +78,10 @@ def test_convert_messages_preserves_multimodal_content_parts() -> None:
             "role": "user",
             "content": [
                 {"type": "text", "text": "describe"},
-                {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "data:image/png;base64,AAAA"},
+                },
             ],
         }
     ]

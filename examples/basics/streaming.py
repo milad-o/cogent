@@ -24,6 +24,7 @@ Run:
 """
 
 import asyncio
+from datetime import UTC
 
 from cogent import Agent
 from cogent.tools import tool
@@ -32,6 +33,7 @@ MODEL = "grok-4-1-fast-non-reasoning"  # Streaming-capable model
 # =============================================================================
 # Demo 1: Basic Streaming
 # =============================================================================
+
 
 async def basic_streaming():
     """Demo 1: Basic streaming from an agent."""
@@ -61,6 +63,7 @@ async def basic_streaming():
 # Demo 2: Streaming with Tools
 # =============================================================================
 
+
 async def streaming_with_tools():
     """Demo 2: Streaming while using tools."""
     print("\n" + "=" * 70)
@@ -81,9 +84,10 @@ async def streaming_with_tools():
     @tool
     def get_time(city: str) -> str:
         """Get the current time in a city."""
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         # Simplified - just return current UTC time
-        return datetime.now(timezone.utc).strftime("%H:%M UTC")
+        return datetime.now(UTC).strftime("%H:%M UTC")
 
     agent = Agent(
         name="WeatherBot",
@@ -106,6 +110,7 @@ async def streaming_with_tools():
 # =============================================================================
 # Demo 3: Streaming with Conversation
 # =============================================================================
+
 
 async def streaming_with_conversation():
     """Demo 3: Streaming with conversation memory."""
@@ -155,6 +160,7 @@ async def streaming_with_conversation():
 # Main
 # =============================================================================
 
+
 async def main():
     """Run all streaming demos."""
     print("=" * 70)
@@ -172,4 +178,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

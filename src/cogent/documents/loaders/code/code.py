@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from cogent.core import Document
 from cogent.documents.loaders.base import BaseLoader

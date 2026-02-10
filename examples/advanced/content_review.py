@@ -21,6 +21,7 @@ MAX_REVISIONS = 1
 
 class ReviewDecision(BaseModel):
     """Editor's final decision."""
+
     status: Literal["approved", "needs_revision"]
     final_copy: str
     review_score: int = Field(ge=1, le=10)
@@ -94,19 +95,29 @@ async def main():
     if isinstance(result, Response) and isinstance(result.content, StructuredResult):
         if result.content.valid:
             d = result.content.data
-            print(f"✅ {d.status.upper()} | Score: {d.review_score}/10 | Revisions: {d.revision_count}")
+            print(
+                f"✅ {d.status.upper()} | Score: {d.review_score}/10 | Revisions: {d.revision_count}"
+            )
             print(f"\n{d.final_copy}")
     else:
         print(result)
 
     # Stats after first run
-    print(f"\n📊 Cache: {editor.cache.get_metrics()['cache_hit_rate']:.0%} hit rate" if editor.cache else "")
-    print(f"🧠 ACC: {len(acc.state.entities)} entities, {len(acc.state.actions)} actions")
+    print(
+        f"\n📊 Cache: {editor.cache.get_metrics()['cache_hit_rate']:.0%} hit rate"
+        if editor.cache
+        else ""
+    )
+    print(
+        f"🧠 ACC: {len(acc.state.entities)} entities, {len(acc.state.actions)} actions"
+    )
 
     # Second run - ACC should remember context from first run
     print("\n" + "=" * 40)
     print("Second run (ACC remembers context)...")
-    result2 = await editor.run("Now create a LinkedIn post for the same product", thread_id="session-1")
+    result2 = await editor.run(
+        "Now create a LinkedIn post for the same product", thread_id="session-1"
+    )
 
     if isinstance(result2, Response) and isinstance(result2.content, StructuredResult):
         if result2.content.valid:
@@ -114,7 +125,9 @@ async def main():
             print(f"✅ {d.status.upper()} | Score: {d.review_score}/10")
             print(f"\n{d.final_copy}")
 
-    print(f"\n🧠 ACC after 2 runs: {len(acc.state.entities)} entities, {len(acc.state.actions)} actions")
+    print(
+        f"\n🧠 ACC after 2 runs: {len(acc.state.entities)} entities, {len(acc.state.actions)} actions"
+    )
 
 
 if __name__ == "__main__":

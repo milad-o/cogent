@@ -16,7 +16,7 @@ async def main():
     print("\n" + "=" * 60)
     print("HTTP CLIENT CAPABILITY - AGENT DEMO")
     print("=" * 60)
-    
+
     agent = Agent(
         name="API Research Agent",
         model="gpt-4o-mini",
@@ -26,11 +26,11 @@ async def main():
 Use HTTP tools to fetch data from APIs and analyze the results.
 Always check response status and extract key information.""",
     )
-    
+
     print("\n" + "=" * 60)
     print("SCENARIO: Fetch and Analyze GitHub User Data")
     print("=" * 60)
-    
+
     task = """Fetch information about the GitHub user 'torvalds' using the GitHub API:
 https://api.github.com/users/torvalds
 
@@ -40,12 +40,12 @@ Then tell me:
 3. Number of followers
 4. Their bio
 5. When they joined GitHub"""
-    
+
     print(f"\nAgent task: {task}\n")
     print("-" * 60)
-    
+
     result = await agent.run(task)
-    
+
     print(f"\nAgent response:\n{result.content}")
     print("\n" + "=" * 60)
     print("DEMO COMPLETE!")

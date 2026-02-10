@@ -8,7 +8,7 @@ import asyncio
 import time
 
 from cogent import Agent
-from cogent.executors import ExecutionStrategy, SequentialExecutor, create_executor
+from cogent.executors import ExecutionStrategy, create_executor
 from cogent.tools import tool
 
 
@@ -36,11 +36,11 @@ async def fetch_data_c(source: str) -> str:
 
 async def compare_executors():
     """Compare NativeExecutor vs SequentialExecutor.
-    
+
     Key insight: NativeExecutor can achieve BOTH parallel and sequential execution.
     - Parallel: When LLM requests multiple tools in one turn
     - Sequential: When LLM naturally calls tools one at a time
-    
+
     SequentialExecutor FORCES sequential execution regardless of LLM behavior.
     """
     print("=" * 80)
@@ -105,14 +105,18 @@ async def compare_executors():
     print("-------------")
     print("• NativeExecutor: LLM decides parallel vs sequential based on prompt")
     print("• SequentialExecutor: Always sequential, even if LLM wants parallel")
-    print("• For sequential tasks: Use NativeExecutor + clear prompting (more flexible)")
-    print("• For strict ordering: Use SequentialExecutor only when you must guarantee order")
+    print(
+        "• For sequential tasks: Use NativeExecutor + clear prompting (more flexible)"
+    )
+    print(
+        "• For strict ordering: Use SequentialExecutor only when you must guarantee order"
+    )
     print("=" * 80 + "\n")
 
 
 async def direct_executor_usage():
     """Direct usage without factory pattern.
-    
+
     Demonstrates how NativeExecutor can achieve sequential execution
     through clear prompting (recommended approach).
     """
@@ -142,6 +146,7 @@ async def direct_executor_usage():
     print("LLM should naturally call tools one at a time based on prompt\n")
 
     import time
+
     start = time.time()
     result = await agent.run(task)
     elapsed = time.time() - start

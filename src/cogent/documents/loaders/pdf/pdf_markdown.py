@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cogent.core import Document, DocumentMetadata
 from cogent.documents.loaders.base import BaseLoader

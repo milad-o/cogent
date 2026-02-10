@@ -31,7 +31,7 @@ async def slow_lookup(query: str) -> str:
 async def demo_websearch_cache():
     """WebSearch with automatic caching (cache=True)."""
     print("\n--- WebSearch + Cache (auto) ---")
-    
+
     agent = Agent(
         name="Researcher",
         model="gpt-4o-mini",
@@ -58,7 +58,7 @@ async def demo_websearch_cache():
 async def demo_custom_cache_instance():
     """Pass a custom SemanticCache instance for full control."""
     print("\n--- Custom Cache Instance ---")
-    
+
     # Create custom cache with specific settings
     embed_model = create_embedding("openai", "text-embedding-3-small")
     custom_cache = SemanticCache(
@@ -67,7 +67,7 @@ async def demo_custom_cache_instance():
         max_entries=5000,
         default_ttl=3600,  # 1 hour TTL
     )
-    
+
     agent = Agent(
         name="Analyst",
         model="gpt-4o-mini",
@@ -96,17 +96,19 @@ def _print_metrics(cache):
     if not cache:
         return
     m = cache.get_metrics()
-    print(f"Cache: {m['cache_hit_rate']:.0%} hit rate, {m['cache_hits']} hits, {m['cache_misses']} misses")
+    print(
+        f"Cache: {m['cache_hit_rate']:.0%} hit rate, {m['cache_hits']} hits, {m['cache_misses']} misses"
+    )
 
 
 async def main():
     print("=" * 50)
     print("SEMANTIC CACHE DEMO")
     print("=" * 50)
-    
+
     await demo_websearch_cache()
     await demo_custom_cache_instance()
-    
+
     print("\n✓ Done")
 
 

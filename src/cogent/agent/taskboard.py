@@ -225,7 +225,11 @@ class TaskBoard:
                 }[status]
                 lines.append(f"{emoji} {status.value.upper()} ({len(tasks)}):")
                 for task in tasks:
-                    result_str = f" → {task.result[:50]}..." if task.result and len(task.result) > 50 else (f" → {task.result}" if task.result else "")
+                    result_str = (
+                        f" → {task.result[:50]}..."
+                        if task.result and len(task.result) > 50
+                        else (f" → {task.result}" if task.result else "")
+                    )
                     lines.append(f"   • {task.name}{result_str}")
                 lines.append("")
 
@@ -296,7 +300,9 @@ def create_taskboard_tools(taskboard: TaskBoard) -> list[BaseTool]:
             Confirmation message
         """
         if taskboard.update_task(task_id, status, result if result else None):
-            return f"Updated {task_id} to '{status}'" + (f" with result: {result}" if result else "")
+            return f"Updated {task_id} to '{status}'" + (
+                f" with result: {result}" if result else ""
+            )
         return f"Task {task_id} not found"
 
     @tool

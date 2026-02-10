@@ -23,7 +23,7 @@ async def demo_token_tracking():
     observer = Observer(
         level=ObservabilityLevel.DEBUG,
         show_token_usage=True,  # Show tokens in LLM events
-        track_tokens=True,       # Track cumulative usage
+        track_tokens=True,  # Track cumulative usage
     )
 
     agent = Agent(
@@ -174,6 +174,7 @@ async def main():
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

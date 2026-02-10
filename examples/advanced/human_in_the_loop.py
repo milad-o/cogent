@@ -100,35 +100,41 @@ async def demo_reject_edit():
     # Reject example
     print("\nSending email (will be rejected)...")
     try:
-        await agent.act("send_email", {
-            "to": "external@company.com",
-            "subject": "Confidential Data",
-            "body": "Here's the sensitive info..."
-        })
+        await agent.act(
+            "send_email",
+            {
+                "to": "external@company.com",
+                "subject": "Confidential Data",
+                "body": "Here's the sensitive info...",
+            },
+        )
     except InterruptedException as e:
         pending = e.state.pending_actions[0]
         print(f"  ⏸️  Pending: {pending.describe()}")
         print("  [Human REJECTS - too risky]")
 
-        decision = HumanDecision.reject(pending.action_id, feedback="Don't send confidential data externally")
+        decision = HumanDecision.reject(
+            pending.action_id, feedback="Don't send confidential data externally"
+        )
         result = await agent.resume_action(decision)
         print(f"  Result: {result}")
 
     # Edit example
     print("\nSending email (will be edited)...")
     try:
-        await agent.act("send_email", {
-            "to": "team@company.com",
-            "subject": "Update",
-            "body": "Quick update"
-        })
+        await agent.act(
+            "send_email",
+            {"to": "team@company.com", "subject": "Update", "body": "Quick update"},
+        )
     except InterruptedException as e:
         pending = e.state.pending_actions[0]
         print(f"  ⏸️  Pending: {pending.describe()}")
         print("  [Human EDITS - adds disclaimer]")
 
         new_args = dict(pending.args)
-        new_args["body"] = f"{new_args['body']}\n\n[Disclaimer: This is an automated message]"
+        new_args["body"] = (
+            f"{new_args['body']}\n\n[Disclaimer: This is an automated message]"
+        )
 
         decision = HumanDecision.edit(pending.action_id, new_args)
         result = await agent.resume_action(decision)
@@ -158,8 +164,7 @@ async def demo_abort():
         print("  [Human ABORTS - too risky!]")
 
         decision = HumanDecision.abort(
-            pending.action_id,
-            feedback="Operation too dangerous, stopping workflow"
+            pending.action_id, feedback="Operation too dangerous, stopping workflow"
         )
 
         try:
@@ -193,7 +198,7 @@ async def demo_guidance():
         guidance = HumanDecision.guide(
             pending.action_id,
             guidance="Don't delete directly. First backup to /backup/, verify, then delete.",
-            feedback="Critical data - be careful"
+            feedback="Critical data - be careful",
         )
 
         result = await agent.resume_action(guidance)
@@ -213,11 +218,8 @@ async def demo_guidance():
 
         response = HumanDecision.respond(
             pending.action_id,
-            response={
-                "path": "/reports/Q4-2024-Sales.csv",
-                "format": "csv"
-            },
-            feedback="Use this naming convention"
+            response={"path": "/reports/Q4-2024-Sales.csv", "format": "csv"},
+            feedback="Use this naming convention",
         )
 
         result = await agent.resume_action(response)
@@ -254,7 +256,11 @@ async def demo_interactive():
             pending = e.state.pending_actions[0]
             print(f"\n  ⏸️  Approval required: {pending.describe()}")
 
-            user_input = user_decisions[decision_idx] if decision_idx < len(user_decisions) else "y"
+            user_input = (
+                user_decisions[decision_idx]
+                if decision_idx < len(user_decisions)
+                else "y"
+            )
             decision_idx += 1
             print(f"  [Simulated input: '{user_input}']")
 

@@ -42,7 +42,9 @@ async def demo_research_agent() -> None:
     print("  Demo 1: Research Agent")
     print("=" * 60)
 
-    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    server_path = (
+        Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    )
 
     # Create MCP capability - tools are discovered automatically
     mcp = MCP.stdio(
@@ -64,7 +66,9 @@ Make ONE search, then respond with a concise answer citing sources.""",
     )
 
     try:
-        query = "What are the latest developments in AI agents? Brief summary with sources."
+        query = (
+            "What are the latest developments in AI agents? Brief summary with sources."
+        )
         print(f"\n  Query: {query}\n")
         print("-" * 60)
 
@@ -81,7 +85,9 @@ async def demo_news_analyst() -> None:
     print("  Demo 2: News Analyst Agent")
     print("=" * 60)
 
-    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    server_path = (
+        Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    )
 
     mcp = MCP.stdio(
         command="uv",
@@ -118,7 +124,9 @@ async def demo_fact_checker() -> None:
     print("  Demo 3: Fact-Checking Agent")
     print("=" * 60)
 
-    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    server_path = (
+        Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    )
 
     mcp = MCP.stdio(
         command="uv",
@@ -187,7 +195,9 @@ async def demo_stdio_subprocess() -> None:
     print("  Demo 5: Stdio Transport (Subprocess)")
     print("=" * 60)
 
-    server_path = Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    server_path = (
+        Path(__file__).parent.parent / "data" / "mcp_server" / "search_server.py"
+    )
 
     # Stdio transport - Cogent manages the subprocess
     mcp = MCP.stdio(

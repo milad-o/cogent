@@ -131,7 +131,8 @@ class Memory:
         namespace: str = "",
         event_bus: TraceBus | None = None,
         saver: Any | None = None,  # MemorySaver for checkpointing
-        acc: bool | Any = False,  # ACC: True to enable, or pass AgentCognitiveCompressor instance
+        acc: bool
+        | Any = False,  # ACC: True to enable, or pass AgentCognitiveCompressor instance
     ) -> None:
         """Initialize Memory.
 
@@ -162,6 +163,7 @@ class Memory:
         # ACC (Agent Cognitive Compressor) support
         # acc can be: False (disabled), True (auto-create), or ACC instance
         from cogent.memory.acc import AgentCognitiveCompressor
+
         self._acc_enabled = bool(acc)
         self._acc_instance = acc if isinstance(acc, AgentCognitiveCompressor) else None
         self._acc_states: dict[str, Any] = {}  # thread_id -> ACC
@@ -222,10 +224,10 @@ class Memory:
 
     async def get_acc_state(self, thread_id: str) -> Any:
         """Get or create ACC state for a thread.
-        
+
         Args:
             thread_id: Thread identifier.
-        
+
         Returns:
             ACC compressor for this thread.
         """
@@ -256,7 +258,7 @@ class Memory:
 
     async def save_acc_state(self, thread_id: str, acc: Any) -> None:
         """Save ACC state for a thread.
-        
+
         Args:
             thread_id: Thread identifier.
             acc: ACC compressor instance to save.
@@ -307,6 +309,7 @@ class Memory:
         # Also store in vectorstore for semantic search on keys
         if self._vectorstore:
             from cogent.core.document import Document, DocumentMetadata
+
             # Store as: "key: value" to enable semantic search on both
             text_content = f"{key}: {value}"
 

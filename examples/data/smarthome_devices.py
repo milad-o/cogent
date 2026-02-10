@@ -13,6 +13,7 @@ from typing import Any
 
 class DeviceState(Enum):
     """Possible states for a device."""
+
     ONLINE = "online"
     OFFLINE = "offline"
     PAIRING = "pairing"
@@ -22,6 +23,7 @@ class DeviceState(Enum):
 
 class DeviceType(Enum):
     """Categories of supported devices."""
+
     LIGHT = "light"
     SWITCH = "switch"
     THERMOSTAT = "thermostat"
@@ -35,6 +37,7 @@ class DeviceType(Enum):
 @dataclass
 class DeviceCapability:
     """Represents a capability that a device supports."""
+
     name: str
     type: str  # "boolean", "number", "string", "enum"
     read_only: bool = False
@@ -46,6 +49,7 @@ class DeviceCapability:
 @dataclass
 class Device:
     """Base device representation."""
+
     id: str
     name: str
     device_type: DeviceType
@@ -266,7 +270,9 @@ SAMPLE_DEVICES = [
         capabilities=[
             DeviceCapability("current_temp", "number", read_only=True),
             DeviceCapability("target_temp", "number", min_value=50, max_value=90),
-            DeviceCapability("mode", "enum", enum_values=["heat", "cool", "auto", "off"]),
+            DeviceCapability(
+                "mode", "enum", enum_values=["heat", "cool", "auto", "off"]
+            ),
         ],
     ),
     Device(

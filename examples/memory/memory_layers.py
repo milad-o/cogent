@@ -4,7 +4,7 @@ Demo: 4-Layer Memory Architecture
 Shows how to use all 4 memory layers in cogent agents:
 
 Layer 1: Conversation (default ON) - Thread-based message history
-Layer 2: Bounded Memory (ACC) - Prevents drift in long conversations  
+Layer 2: Bounded Memory (ACC) - Prevents drift in long conversations
 Layer 3: Long-term Memory - remember/recall tools for persistent facts
 Layer 4: Semantic Cache - Cache expensive tool outputs
 
@@ -143,7 +143,9 @@ async def layer4_semantic_cache():
     # Check cache stats
     if agent.cache:
         stats = agent.cache.get_metrics()
-        print(f"\n📊 Cache stats: {stats['cache_hits']} hits, {stats['cache_misses']} misses")
+        print(
+            f"\n📊 Cache stats: {stats['cache_hits']} hits, {stats['cache_misses']} misses"
+        )
         print(f"  Hit rate: {stats['cache_hit_rate']:.1%}\n")
 
 
@@ -159,10 +161,10 @@ async def all_layers_together():
     agent = Agent(
         name="SuperAgent",
         model="gpt4",
-        conversation=True,      # Layer 1: Thread-based history (default)
-        acc=True,               # Layer 2: ACC for drift prevention
-        memory=True,            # Layer 3: Long-term facts
-        cache=True,             # Layer 4: Semantic cache
+        conversation=True,  # Layer 1: Thread-based history (default)
+        acc=True,  # Layer 2: ACC for drift prevention
+        memory=True,  # Layer 3: Long-term facts
+        cache=True,  # Layer 4: Semantic cache
         capabilities=[WebSearch()],
         instructions="You are an advanced assistant with full memory capabilities.",
         observer=observer,

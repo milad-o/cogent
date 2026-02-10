@@ -393,7 +393,9 @@ class MistralChat(BaseChatModel):
         new_model._tool_choice = tool_choice
         new_model._parallel_tool_calls = parallel_tool_calls
         # Only copy initialization state if original was actually initialized
-        if self._initialized and (self._client is not None or self._async_client is not None):
+        if self._initialized and (
+            self._client is not None or self._async_client is not None
+        ):
             new_model._client = self._client
             new_model._async_client = self._async_client
             new_model._initialized = True

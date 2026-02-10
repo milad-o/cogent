@@ -244,7 +244,9 @@ class APITester(BaseCapability):
                 success=status_match,
                 status_code=response.status_code,
                 response_time_ms=elapsed_ms,
-                error=None if status_match else f"Expected {expected_status}, got {response.status_code}",
+                error=None
+                if status_match
+                else f"Expected {expected_status}, got {response.status_code}",
                 details={
                     "url": url,
                     "headers": dict(response.headers),
@@ -456,7 +458,9 @@ class APITester(BaseCapability):
                     failures += 1
 
         total_elapsed = (time.time() - start_time) * 1000
-        avg_response = sum(response_times) / len(response_times) if response_times else 0
+        avg_response = (
+            sum(response_times) / len(response_times) if response_times else 0
+        )
         min_response = min(response_times) if response_times else 0
         max_response = max(response_times) if response_times else 0
 
@@ -639,7 +643,9 @@ class APITester(BaseCapability):
                 lines.append(f"Status: {result.status_code}")
                 lines.append(f"Response time: {result.response_time_ms:.0f}ms")
                 if "validated_fields" in result.details:
-                    lines.append(f"Validated fields: {', '.join(result.details['validated_fields'])}")
+                    lines.append(
+                        f"Validated fields: {', '.join(result.details['validated_fields'])}"
+                    )
             else:
                 lines = [f"✗ Schema validation failed: {endpoint}"]
                 lines.append(f"Error: {result.error}")

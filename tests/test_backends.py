@@ -362,8 +362,12 @@ class TestFAISSBackend:
         ids = ["doc1", "doc2"]
         embeddings = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]]
         documents = [
-            Document(text="Document A", metadata=DocumentMetadata(custom={"type": "a"})),
-            Document(text="Document B", metadata=DocumentMetadata(custom={"type": "b"})),
+            Document(
+                text="Document A", metadata=DocumentMetadata(custom={"type": "a"})
+            ),
+            Document(
+                text="Document B", metadata=DocumentMetadata(custom={"type": "b"})
+            ),
         ]
 
         await backend.add(ids, embeddings, documents)
@@ -388,9 +392,17 @@ class TestFAISSBackend:
             [0.8, 0.2, 0.0, 0.0],
         ]
         documents = [
-            Document(text="Doc tech", metadata=DocumentMetadata(custom={"category": "tech"})),
-            Document(text="Doc science", metadata=DocumentMetadata(custom={"category": "science"})),
-            Document(text="Doc tech 2", metadata=DocumentMetadata(custom={"category": "tech"})),
+            Document(
+                text="Doc tech", metadata=DocumentMetadata(custom={"category": "tech"})
+            ),
+            Document(
+                text="Doc science",
+                metadata=DocumentMetadata(custom={"category": "science"}),
+            ),
+            Document(
+                text="Doc tech 2",
+                metadata=DocumentMetadata(custom={"category": "tech"}),
+            ),
         ]
 
         await backend.add(ids, embeddings, documents)
@@ -489,7 +501,12 @@ class TestChromaBackend:
         ids = ["doc1"]
         embeddings = [[1.0, 0.0, 0.0]]
         # Note: Chroma sanitizes metadata to only allow str/int/float/bool, so we store directly in metadata
-        documents = [Document(text="Document one", metadata=DocumentMetadata(source="test.txt", page=1))]
+        documents = [
+            Document(
+                text="Document one",
+                metadata=DocumentMetadata(source="test.txt", page=1),
+            )
+        ]
 
         await backend.add(ids, embeddings, documents)
 

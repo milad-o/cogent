@@ -554,10 +554,12 @@ class TestFileSystemTools:
         test_file = tmp_path / "output.txt"
 
         tools = {t.name: t for t in fs.tools}
-        result = tools["write_file"].invoke({
-            "path": str(test_file),
-            "content": "Written content",
-        })
+        result = tools["write_file"].invoke(
+            {
+                "path": str(test_file),
+                "content": "Written content",
+            }
+        )
 
         assert "Successfully wrote" in result
         assert test_file.read_text() == "Written content"
@@ -583,10 +585,12 @@ class TestFileSystemTools:
         (tmp_path / "other.txt").write_text("")
 
         tools = {t.name: t for t in fs.tools}
-        result = tools["search_files"].invoke({
-            "pattern": "*.py",
-            "path": str(tmp_path),
-        })
+        result = tools["search_files"].invoke(
+            {
+                "pattern": "*.py",
+                "path": str(tmp_path),
+            }
+        )
 
         assert "match.py" in result
         assert "other.txt" not in result

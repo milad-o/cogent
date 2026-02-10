@@ -66,7 +66,6 @@ async def demo():
     print("🧠 Knowledge Graph Capability Demo")
     print("=" * 60)
 
-
     # === Step 1: Load KnowledgeGraph from file ===
     print("\n📂 Step 1: Load Knowledge from File")
     print("-" * 40)
@@ -175,6 +174,7 @@ to trace the path and provide complete answers.""",
 
         # Create new graph and load
         from cogent.capabilities import KnowledgeGraph
+
         kg2 = KnowledgeGraph(backend="memory")
         kg2.load(save_path)
         print(f"✅ Loaded into new graph: {kg2.stats()}")
@@ -182,7 +182,9 @@ to trace the path and provide complete answers.""",
         # Demo 2: SQLite backend (persistent by default)
         db_path = Path(tmpdir) / "knowledge.db"
         with KnowledgeGraph(backend="sqlite", path=db_path) as kg_sqlite:
-            kg_sqlite.graph.add_entity("Test", "Demo", {"note": "SQLite persists automatically"})
+            kg_sqlite.graph.add_entity(
+                "Test", "Demo", {"note": "SQLite persists automatically"}
+            )
             print("\n✅ SQLite backend:")
             print(f"   Path: {db_path}")
             print(f"   Stats: {kg_sqlite.stats()}")
@@ -190,7 +192,9 @@ to trace the path and provide complete answers.""",
         # Reopen to verify persistence
         with KnowledgeGraph(backend="sqlite", path=db_path) as kg_sqlite2:
             test = kg_sqlite2.get_entity("Test")
-            print(f"   Reloaded: {test.id if test else 'Not found'} - {test.attributes if test else {}}")
+            print(
+                f"   Reloaded: {test.id if test else 'Not found'} - {test.attributes if test else {}}"
+            )
 
         # Demo 3: JSON backend (auto-saves)
         json_path = Path(tmpdir) / "knowledge.json"

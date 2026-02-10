@@ -128,11 +128,13 @@ class TestMemory:
 
     @pytest.mark.asyncio
     async def test_batch_remember_and_recall(self, memory: Memory) -> None:
-        await memory.remember_many({
-            "user:name": "Alice",
-            "user:age": "30",
-            "user:city": "NYC",
-        })
+        await memory.remember_many(
+            {
+                "user:name": "Alice",
+                "user:age": "30",
+                "user:city": "NYC",
+            }
+        )
 
         result = await memory.recall_many(["user:name", "user:city", "missing"])
         assert result == {
@@ -203,10 +205,12 @@ class TestScopedMemory:
     async def test_batch_operations_on_scoped(self, memory: Memory) -> None:
         user = memory.scoped("user:1")
 
-        await user.remember_many({
-            "name": "Alice",
-            "email": "alice@example.com",
-        })
+        await user.remember_many(
+            {
+                "name": "Alice",
+                "email": "alice@example.com",
+            }
+        )
 
         result = await user.recall_many(["name", "email"])
         assert result == {"name": "Alice", "email": "alice@example.com"}
@@ -287,7 +291,9 @@ class TestAgenticMemory:
         memory = Memory()
         tools = memory.tools
 
-        assert len(tools) == 5  # remember, recall, forget, search_memories, search_conversation
+        assert (
+            len(tools) == 5
+        )  # remember, recall, forget, search_memories, search_conversation
         tool_names = {t.name for t in tools}
         assert "remember" in tool_names
         assert "recall" in tool_names

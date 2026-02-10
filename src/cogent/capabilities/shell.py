@@ -37,7 +37,7 @@ import shlex
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from cogent.capabilities.base import BaseCapability
 from cogent.tools.base import tool
@@ -77,7 +77,6 @@ class CommandResult:
 
 class SecurityError(Exception):
     """Raised when a command violates security constraints."""
-
 
 
 class Shell(BaseCapability):

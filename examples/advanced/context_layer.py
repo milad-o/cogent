@@ -28,6 +28,7 @@ from cogent.tools.base import tool
 @dataclass
 class AppContext(RunContext):
     """Application-specific context passed to agent.run()."""
+
     user_id: str = ""
     user_role: str = "guest"
     department: str = ""
@@ -102,7 +103,9 @@ class RoleBasedGate(PermissionGate):
 
         allowed = self.ROLE_PERMISSIONS.get(role, [])
         is_allowed = "*" in allowed or tool_name in allowed
-        print(f"  🔒 {tool_name}: {'✓ allowed' if is_allowed else '✗ denied'} for {role}")
+        print(
+            f"  🔒 {tool_name}: {'✓ allowed' if is_allowed else '✗ denied'} for {role}"
+        )
         return is_allowed
 
 
@@ -137,11 +140,13 @@ async def demo_conversation_gate():
     print("3. ConversationGate - Progressive Tool Unlock")
     print("=" * 60)
 
-    gate = ConversationGate(stages={
-        0: ["search"],
-        3: ["search", "read_data"],
-        6: ["search", "read_data", "write_data"],
-    })
+    gate = ConversationGate(
+        stages={
+            0: ["search"],
+            3: ["search", "read_data"],
+            6: ["search", "read_data", "write_data"],
+        }
+    )
 
     agent = Agent(
         name="ProgressiveBot",
@@ -275,7 +280,9 @@ async def demo_combined():
         ],
     )
 
-    ctx = AppContext(user_id="enterprise_user", user_role="user", department="Operations")
+    ctx = AppContext(
+        user_id="enterprise_user", user_role="user", department="Operations"
+    )
 
     print(f"\nEnterprise context: {ctx.user_id} ({ctx.user_role})")
     result = await agent.run("Search for operational best practices", context=ctx)

@@ -160,10 +160,12 @@ class TestMockModelFlexibleInputs:
     async def test_mixed_input(self) -> None:
         """Model should accept mixed list."""
         model = MockChatModel(responses=["Response"])
-        response = await model.ainvoke([
-            SystemMessage(content="You are helpful"),
-            {"role": "user", "content": "Hello"},
-        ])
+        response = await model.ainvoke(
+            [
+                SystemMessage(content="You are helpful"),
+                {"role": "user", "content": "Hello"},
+            ]
+        )
         assert response.content == "Response"
 
     def test_sync_string_input(self) -> None:
@@ -175,10 +177,12 @@ class TestMockModelFlexibleInputs:
     def test_sync_message_object_input(self) -> None:
         """Sync invoke should accept message objects."""
         model = MockChatModel(responses=["Response"])
-        response = model.invoke([
-            SystemMessage(content="System"),
-            HumanMessage(content="User"),
-        ])
+        response = model.invoke(
+            [
+                SystemMessage(content="System"),
+                HumanMessage(content="User"),
+            ]
+        )
         assert response.content == "Response"
 
 

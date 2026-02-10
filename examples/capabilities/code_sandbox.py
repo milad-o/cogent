@@ -21,14 +21,15 @@ from cogent.capabilities import CodeSandbox
 
 
 def separator(title: str) -> None:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {title}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 # ============================================================
 # 1. BASIC CODE EXECUTION
 # ============================================================
+
 
 def basic_execution_demo():
     """Demonstrate basic code execution."""
@@ -64,6 +65,7 @@ result = squares
 # 2. FUNCTION EXECUTION
 # ============================================================
 
+
 def function_execution_demo():
     """Demonstrate function execution with arguments."""
     separator("Function Execution")
@@ -96,7 +98,7 @@ def greet(name, greeting="Hello", punctuation="!"):
         code_with_kwargs,
         "greet",
         args=["World"],
-        kwargs={"greeting": "Hi", "punctuation": "?"}
+        kwargs={"greeting": "Hi", "punctuation": "?"},
     )
     print(f"Greeting: {result.return_value}")
 
@@ -104,6 +106,7 @@ def greet(name, greeting="Hello", punctuation="!"):
 # ============================================================
 # 3. ALLOWED IMPORTS
 # ============================================================
+
 
 def imports_demo():
     """Demonstrate safe imports."""
@@ -124,7 +127,9 @@ result = {
 """)
     print("Math results:")
     for key, value in result.return_value.items():
-        print(f"  {key}: {value:.6f}" if isinstance(value, float) else f"  {key}: {value}")
+        print(
+            f"  {key}: {value:.6f}" if isinstance(value, float) else f"  {key}: {value}"
+        )
 
     # JSON processing
     result = sandbox.execute("""
@@ -158,6 +163,7 @@ result = {
 # ============================================================
 # 4. SECURITY RESTRICTIONS
 # ============================================================
+
 
 def security_demo():
     """Demonstrate security restrictions."""
@@ -194,6 +200,7 @@ def security_demo():
 # 5. RESOURCE LIMITS
 # ============================================================
 
+
 def resource_limits_demo():
     """Demonstrate resource limits."""
     separator("Resource Limits")
@@ -223,6 +230,7 @@ result = "completed"
 # 6. EXECUTION HISTORY
 # ============================================================
 
+
 def history_demo():
     """Demonstrate execution history."""
     separator("Execution History")
@@ -242,7 +250,9 @@ def history_demo():
 
     print(f"Execution history ({len(sandbox.history)} items):")
     for i, entry in enumerate(sandbox.history, 1):
-        print(f"  {i}. success={entry.success}, result={entry.return_value}, time={entry.execution_time_ms:.2f}ms")
+        print(
+            f"  {i}. success={entry.success}, result={entry.return_value}, time={entry.execution_time_ms:.2f}ms"
+        )
 
     # Clear history
     sandbox.clear_history()
@@ -252,6 +262,7 @@ def history_demo():
 # ============================================================
 # 7. USING TOOLS
 # ============================================================
+
 
 def tools_demo():
     """Demonstrate using sandbox as tools."""
@@ -267,7 +278,9 @@ def tools_demo():
     execute_tool = next(t for t in tools if t.name == "execute_python")
 
     # Use the tool directly
-    tool_result = execute_tool.invoke({"code": """
+    tool_result = execute_tool.invoke(
+        {
+            "code": """
 import math
 primes = []
 for n in range(2, 50):
@@ -275,7 +288,9 @@ for n in range(2, 50):
         primes.append(n)
 print(f"Found {len(primes)} primes: {primes}")
 result = primes
-"""})
+"""
+        }
+    )
 
     print(f"Tool result:\n{tool_result}")
 
@@ -284,10 +299,10 @@ result = primes
 # 8. AGENT WITH CODESANDBOX
 # ============================================================
 
+
 async def agent_demo():
     """Demonstrate agent using CodeSandbox for computation."""
     separator("Agent with CodeSandbox")
-
 
     sandbox = CodeSandbox(allow_imports=True, timeout=5)
 

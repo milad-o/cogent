@@ -145,11 +145,11 @@ def _tools_to_anthropic(tools: list[Any]) -> list[dict[str, Any]]:
 
 def _parse_response(response: Any, include_thinking: bool = False) -> AIMessage:
     """Parse Anthropic response into AIMessage with metadata.
-    
+
     Args:
         response: Anthropic API response.
         include_thinking: Whether to include thinking blocks in response.
-    
+
     Returns:
         AIMessage with content, tool_calls, thinking (if enabled), and metadata.
     """
@@ -210,13 +210,13 @@ def _parse_response(response: Any, include_thinking: bool = False) -> AIMessage:
         tool_calls=tool_calls,
         metadata=metadata,
     )
-    
+
     # Add thinking as attribute if present
     if thinking and include_thinking:
         msg.thinking = thinking
         if thinking_signature:
             msg.thinking_signature = thinking_signature
-    
+
     return msg
 
 
@@ -243,7 +243,7 @@ class AnthropicChat(BaseChatModel):
             thinking_budget=16000,  # Token budget for thinking (1024-32768+)
         )
         response = await llm.ainvoke([{"role": "user", "content": "Solve..."}])
-        
+
         # Access thinking process (if you want to see the reasoning)
         if hasattr(response, 'thinking'):
             print("Thinking:", response.thinking)
@@ -269,7 +269,7 @@ class AnthropicChat(BaseChatModel):
 
     model: str = "claude-sonnet-4-20250514"
     thinking_budget: int | None = field(default=None)
-    
+
     # Internal state
     _include_thinking_in_response: bool = field(default=True, repr=False)
 
@@ -321,7 +321,7 @@ class AnthropicChat(BaseChatModel):
         new_model._async_client = self._async_client
         new_model._initialized = True
         return new_model
-    
+
     def with_thinking(
         self,
         budget: int = 16000,
@@ -329,23 +329,23 @@ class AnthropicChat(BaseChatModel):
         include_in_response: bool = True,
     ) -> AnthropicChat:
         """Enable Extended Thinking with specified budget.
-        
+
         Extended Thinking allows the model to reason through complex problems
         before providing a response, significantly improving accuracy.
-        
+
         Args:
             budget: Token budget for thinking (minimum 1024, recommended 10000-32000).
             include_in_response: Whether to include thinking in response (default True).
-        
+
         Returns:
             New AnthropicChat instance with thinking enabled.
-        
+
         Example:
             llm = AnthropicChat().with_thinking(budget=16000)
             response = await llm.ainvoke("What's 127 * 893?")
             print(response.thinking)  # Shows reasoning steps
             print(response.content)   # Shows final answer
-        
+
         Note:
             - Extended Thinking requires temperature=1 (set automatically)
             - Minimum budget is 1024 tokens
@@ -353,9 +353,9 @@ class AnthropicChat(BaseChatModel):
         """
         if budget < 1024:
             raise ValueError("thinking_budget must be at least 1024 tokens")
-        
+
         self._ensure_initialized()
-        
+
         new_model = AnthropicChat(
             model=self.model,
             temperature=self.temperature,
@@ -385,7 +385,8 @@ class AnthropicChat(BaseChatModel):
         )
         return _parse_response(
             response,
-            include_thinking=self._include_thinking_in_response and self.thinking_budget is not None,
+            include_thinking=self._include_thinking_in_response
+            and self.thinking_budget is not None,
         )
 
     async def ainvoke(
@@ -402,7 +403,8 @@ class AnthropicChat(BaseChatModel):
         )
         return _parse_response(
             response,
-            include_thinking=self._include_thinking_in_response and self.thinking_budget is not None,
+            include_thinking=self._include_thinking_in_response
+            and self.thinking_budget is not None,
         )
 
     async def astream(
@@ -450,13 +452,13 @@ class AnthropicChat(BaseChatModel):
 
                 # Handle different event types
                 event_type = getattr(event, "type", None)
-                
+
                 # Thinking delta (Extended Thinking)
                 if event_type == "content_block_delta":
                     delta = getattr(event, "delta", None)
                     if delta:
                         delta_type = getattr(delta, "type", None)
-                        
+
                         # Thinking content
                         if delta_type == "thinking_delta":
                             thinking_text = getattr(delta, "thinking", "")
@@ -475,7 +477,7 @@ class AnthropicChat(BaseChatModel):
                                 msg = AIMessage(content="", metadata=metadata)
                                 msg.thinking = thinking_text
                                 yield msg
-                        
+
                         # Regular text content
                         elif delta_type == "text_delta":
                             text = getattr(delta, "text", "")
@@ -527,22 +529,27 @@ class AnthropicChat(BaseChatModel):
             "messages": anthropic_messages,
             "max_tokens": self.max_tokens or 4096,  # Anthropic requires max_tokens
         }
-        
+
         # Extended Thinking configuration
         if self.thinking_budget is not None:
             # Validate model supports thinking
             if self.model not in THINKING_MODELS:
                 # Check if it's a pattern match (e.g., claude-sonnet-4-* matches)
                 is_thinking_model = any(
-                    self.model.startswith(prefix) 
-                    for prefix in ("claude-opus-4", "claude-sonnet-4", "claude-3-7-sonnet", "claude-3-5-sonnet-2024")
+                    self.model.startswith(prefix)
+                    for prefix in (
+                        "claude-opus-4",
+                        "claude-sonnet-4",
+                        "claude-3-7-sonnet",
+                        "claude-3-5-sonnet-2024",
+                    )
                 )
                 if not is_thinking_model:
                     raise ValueError(
                         f"Model {self.model} does not support Extended Thinking. "
                         f"Use claude-opus-4-*, claude-sonnet-4-*, or claude-3-7-sonnet-*"
                     )
-            
+
             # Enable thinking with budget
             kwargs["thinking"] = {
                 "type": "enabled",
@@ -553,7 +560,7 @@ class AnthropicChat(BaseChatModel):
         else:
             # Normal mode - use specified temperature
             kwargs["temperature"] = self.temperature
-        
+
         if system:
             kwargs["system"] = system
         if self._tools:

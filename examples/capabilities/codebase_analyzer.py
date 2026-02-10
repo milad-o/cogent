@@ -43,7 +43,9 @@ def demo_programmatic():
     print("📦 Classes in ETL project:")
     for cls in analyzer.find_classes():
         bases = cls.attributes.get("bases", [])
-        print(f"  • {cls.attributes['name']}" + (f" (extends {bases})" if bases else ""))
+        print(
+            f"  • {cls.attributes['name']}" + (f" (extends {bases})" if bases else "")
+        )
 
     # Find all functions
     print("\n📋 Top-level functions:")
@@ -72,14 +74,18 @@ def demo_programmatic():
             print(f"   • {method.attributes['name']}()")
             # Check what it calls
             method_id = method.id
-            rels = analyzer.kg.get_relationships(method_id, "calls", direction="outgoing")
+            rels = analyzer.kg.get_relationships(
+                method_id, "calls", direction="outgoing"
+            )
             for rel in rels:
                 print(f"      → calls: {rel.target_id.replace('callable:', '')}")
 
     # Knowledge graph stats
     print("\n" + "-" * 40)
     kg_stats = analyzer.kg.stats()
-    print(f"📊 Knowledge Graph: {kg_stats['entities']} entities, {kg_stats['relationships']} relationships")
+    print(
+        f"📊 Knowledge Graph: {kg_stats['entities']} entities, {kg_stats['relationships']} relationships"
+    )
 
     return analyzer
 
@@ -91,7 +97,6 @@ async def demo_agent(analyzer):
     print("\n" + "=" * 60)
     print("🤖 Agent with CodebaseAnalyzer Demo")
     print("=" * 60)
-
 
     agent = Agent(
         name="CodeExpert",

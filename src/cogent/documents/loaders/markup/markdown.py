@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from cogent.core import Document
 from cogent.documents.loaders.base import BaseLoader
@@ -82,11 +83,8 @@ class MarkdownLoader(BaseLoader):
                 value = value.strip()
 
                 # Handle quoted strings
-                if (
-                    (value.startswith('"')
-                    and value.endswith('"'))
-                    or (value.startswith("'")
-                    and value.endswith("'"))
+                if (value.startswith('"') and value.endswith('"')) or (
+                    value.startswith("'") and value.endswith("'")
                 ):
                     value = value[1:-1]
 

@@ -22,7 +22,9 @@ async def main() -> None:
     )
 
     if not browser._has_playwright:
-        print("Install playwright to run this example: uv add playwright && playwright install chromium")
+        print(
+            "Install playwright to run this example: uv add playwright && playwright install chromium"
+        )
         return
 
     researcher = Agent(

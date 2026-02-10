@@ -1,6 +1,5 @@
 """Tests for CodeSandbox capability."""
 
-
 from cogent.capabilities.code_sandbox import (
     BLOCKED_BUILTINS,
     BLOCKED_IMPORTS,
@@ -58,9 +57,12 @@ class TestCodeValidator:
 
     def test_valid_simple_code(self):
         """Test valid simple code passes."""
-        validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False)
+        validator = CodeValidator(
+            BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False
+        )
 
         import ast
+
         tree = ast.parse("x = 1 + 2\nprint(x)")
         validator.visit(tree)
 
@@ -68,9 +70,12 @@ class TestCodeValidator:
 
     def test_blocks_import(self):
         """Test import is blocked when not allowed."""
-        validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False)
+        validator = CodeValidator(
+            BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False
+        )
 
         import ast
+
         tree = ast.parse("import math")
         validator.visit(tree)
 
@@ -82,6 +87,7 @@ class TestCodeValidator:
         validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=True)
 
         import ast
+
         tree = ast.parse("import os")
         validator.visit(tree)
 
@@ -93,6 +99,7 @@ class TestCodeValidator:
         validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=True)
 
         import ast
+
         tree = ast.parse("from subprocess import run")
         validator.visit(tree)
 
@@ -101,9 +108,12 @@ class TestCodeValidator:
 
     def test_blocks_eval(self):
         """Test eval is blocked."""
-        validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False)
+        validator = CodeValidator(
+            BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False
+        )
 
         import ast
+
         tree = ast.parse("eval('1+1')")
         validator.visit(tree)
 
@@ -112,9 +122,12 @@ class TestCodeValidator:
 
     def test_blocks_exec(self):
         """Test exec is blocked."""
-        validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False)
+        validator = CodeValidator(
+            BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False
+        )
 
         import ast
+
         tree = ast.parse("exec('x=1')")
         validator.visit(tree)
 
@@ -123,9 +136,12 @@ class TestCodeValidator:
 
     def test_blocks_open(self):
         """Test open is blocked."""
-        validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False)
+        validator = CodeValidator(
+            BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False
+        )
 
         import ast
+
         tree = ast.parse("open('file.txt')")
         validator.visit(tree)
 
@@ -134,9 +150,12 @@ class TestCodeValidator:
 
     def test_blocks_dangerous_attributes(self):
         """Test dangerous attribute access is blocked."""
-        validator = CodeValidator(BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False)
+        validator = CodeValidator(
+            BLOCKED_IMPORTS, BLOCKED_BUILTINS, allow_imports=False
+        )
 
         import ast
+
         tree = ast.parse("x.__class__.__bases__")
         validator.visit(tree)
 
@@ -428,11 +447,13 @@ class TestCodeSandboxTools:
         sandbox = CodeSandbox()
         tools = {t.name: t for t in sandbox.tools}
 
-        result = tools["run_function"].invoke({
-            "code": "def double(x): return x * 2",
-            "function_name": "double",
-            "arguments": "[5]",
-        })
+        result = tools["run_function"].invoke(
+            {
+                "code": "def double(x): return x * 2",
+                "function_name": "double",
+                "arguments": "[5]",
+            }
+        )
 
         assert "successful" in result.lower()
         assert "10" in result
@@ -442,11 +463,13 @@ class TestCodeSandboxTools:
         sandbox = CodeSandbox()
         tools = {t.name: t for t in sandbox.tools}
 
-        result = tools["run_function"].invoke({
-            "code": "def f(): pass",
-            "function_name": "f",
-            "arguments": "not json",
-        })
+        result = tools["run_function"].invoke(
+            {
+                "code": "def f(): pass",
+                "function_name": "f",
+                "arguments": "not json",
+            }
+        )
 
         assert "Invalid JSON" in result
 

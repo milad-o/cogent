@@ -10,11 +10,11 @@ This file demonstrates that IDE autocomplete now works for:
 
 from cogent import Agent
 from cogent.agent.reasoning import ReasoningConfig
+
 # from cogent.agent.spawning import SpawningConfig  # spawning module removed
 from cogent.models import ChatModel
 from cogent.observability import Observer
 from cogent.tools import tool
-import pytest
 
 
 @tool

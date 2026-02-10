@@ -29,7 +29,7 @@ import signal
 import traceback
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from cogent.capabilities.base import BaseCapability
 from cogent.tools.base import BaseTool, tool
@@ -63,10 +63,8 @@ class TimeoutError(Exception):
     """Raised when execution times out."""
 
 
-
 class SecurityError(Exception):
     """Raised when code violates security constraints."""
-
 
 
 # Dangerous modules/functions that should be blocked

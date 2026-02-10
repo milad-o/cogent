@@ -38,6 +38,7 @@ server = Server("search-server")
 # Tool Implementations
 # =============================================================================
 
+
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     """List available tools."""
@@ -117,7 +118,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Question or query for instant answer"},
+                    "query": {
+                        "type": "string",
+                        "description": "Question or query for instant answer",
+                    },
                 },
                 "required": ["query"],
             },
@@ -128,7 +132,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Partial query to get suggestions for"},
+                    "query": {
+                        "type": "string",
+                        "description": "Partial query to get suggestions for",
+                    },
                 },
                 "required": ["query"],
             },
@@ -174,7 +181,7 @@ async def _web_search(arguments: dict) -> list[TextContent]:
         output.append(f"\n{i}. {r.get('title', 'No title')}")
         output.append(f"   URL: {r.get('href', 'N/A')}")
         # Include full body for better context
-        body = r.get('body', 'No description')
+        body = r.get("body", "No description")
         output.append(f"   {body}")
 
     return [TextContent(type="text", text="\n".join(output))]
@@ -195,7 +202,9 @@ async def _news_search(arguments: dict) -> list[TextContent]:
     output = [f"News results for: {query}\n"]
     for i, r in enumerate(results, 1):
         output.append(f"\n{i}. {r.get('title', 'No title')}")
-        output.append(f"   Source: {r.get('source', 'Unknown')} | {r.get('date', 'N/A')}")
+        output.append(
+            f"   Source: {r.get('source', 'Unknown')} | {r.get('date', 'N/A')}"
+        )
         output.append(f"   URL: {r.get('url', 'N/A')}")
         output.append(f"   {r.get('body', 'No description')[:150]}...")
 
@@ -210,12 +219,14 @@ async def _image_search(arguments: dict) -> list[TextContent]:
     type_image = arguments.get("type_image")
 
     with DDGS() as ddgs:
-        results = list(ddgs.images(
-            query,
-            max_results=max_results,
-            size=size,
-            type_image=type_image,
-        ))
+        results = list(
+            ddgs.images(
+                query,
+                max_results=max_results,
+                size=size,
+                type_image=type_image,
+            )
+        )
 
     if not results:
         return [TextContent(type="text", text=f"No images found for: {query}")]
@@ -273,11 +284,13 @@ async def _get_suggestions(arguments: dict) -> list[TextContent]:
 # Transport Runners
 # =============================================================================
 
+
 async def run_stdio():
     """Run server with stdio transport (for local use)."""
     # IMPORTANT: Don't print to stdout - it's used for JSON-RPC!
     # Use stderr for any logging
     import sys
+
     print("Starting MCP Search Server (stdio)...", file=sys.stderr, flush=True)
 
     async with stdio_server() as (read_stream, write_stream):
@@ -306,7 +319,9 @@ async def run_http(host: str, port: int):
     async def handle_sse(request):
         """Handle SSE connection."""
         async with sse.connect_sse(
-            request.scope, request.receive, request._send  # type: ignore[reportPrivateUsage]
+            request.scope,
+            request.receive,
+            request._send,  # type: ignore[reportPrivateUsage]
         ) as streams:
             await server.run(
                 streams[0], streams[1], server.create_initialization_options()
@@ -357,7 +372,9 @@ async def run_websocket(host: str, port: int):
 
                 elif data.get("method") == "tools/call":
                     params = data.get("params", {})
-                    result = await call_tool(params.get("name"), params.get("arguments", {}))
+                    result = await call_tool(
+                        params.get("name"), params.get("arguments", {})
+                    )
                     response = {
                         "jsonrpc": "2.0",
                         "id": data.get("id"),
@@ -381,7 +398,10 @@ async def run_websocket(host: str, port: int):
                     response = {
                         "jsonrpc": "2.0",
                         "id": data.get("id"),
-                        "error": {"code": -32601, "message": f"Unknown method: {data.get('method')}"},
+                        "error": {
+                            "code": -32601,
+                            "message": f"Unknown method: {data.get('method')}",
+                        },
                     }
                     await websocket.send(json.dumps(response))
 
@@ -397,6 +417,7 @@ async def run_websocket(host: str, port: int):
 # Main
 # =============================================================================
 
+
 def main():
     parser = argparse.ArgumentParser(description="MCP Search Server (DuckDuckGo)")
     parser.add_argument(
@@ -406,8 +427,12 @@ def main():
         nargs="?",
         help="Transport type (default: stdio)",
     )
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8000, help="Port to bind (default: 8000)"
+    )
 
     args = parser.parse_args()
 

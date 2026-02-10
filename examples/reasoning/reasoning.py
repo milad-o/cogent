@@ -89,12 +89,18 @@ def calculate_metrics(
 def compare_companies(data_a: dict, data_b: dict) -> dict:
     """Compare two companies' metrics."""
     comparison = {
-        "revenue_leader": "A" if data_a.get("revenue", 0) > data_b.get("revenue", 0) else "B",
-        "growth_leader": "A" if data_a.get("growth_rate", 0) > data_b.get("growth_rate", 0) else "B",
-        "efficiency_leader": "A" if (
+        "revenue_leader": "A"
+        if data_a.get("revenue", 0) > data_b.get("revenue", 0)
+        else "B",
+        "growth_leader": "A"
+        if data_a.get("growth_rate", 0) > data_b.get("growth_rate", 0)
+        else "B",
+        "efficiency_leader": "A"
+        if (
             data_a.get("revenue", 0) / max(1, data_a.get("employees", 1))
             > data_b.get("revenue", 0) / max(1, data_b.get("employees", 1))
-        ) else "B",
+        )
+        else "B",
     }
     return comparison
 
@@ -109,7 +115,6 @@ async def example_basic_reasoning():
     print("\n" + "=" * 60)
     print("Example 1: Basic Reasoning")
     print("=" * 60)
-
 
     # Enable reasoning with True (uses default config)
     agent = Agent(
@@ -138,7 +143,6 @@ async def example_reasoning_styles():
     print("Example 2: Reasoning Styles")
     print("=" * 60)
 
-
     # Critical reasoning - questions assumptions
     agent = Agent(
         name="CriticalAnalyst",
@@ -165,7 +169,6 @@ async def example_deep_reasoning():
     print("\n" + "=" * 60)
     print("Example 3: Deep Reasoning")
     print("=" * 60)
-
 
     # Deep reasoning - requires 70% confidence to stop thinking
     agent = Agent(
@@ -194,7 +197,6 @@ async def example_quick_reasoning():
     print("\n" + "=" * 60)
     print("Example 4: Quick vs No Reasoning Comparison")
     print("=" * 60)
-
 
     # Agent with quick reasoning
     agent_reasoning = Agent(
@@ -238,7 +240,6 @@ async def example_custom_config():
     print("Example 5: Custom Reasoning Config")
     print("=" * 60)
 
-
     # Custom config: exploratory style, show thinking, 2 rounds
     custom_config = ReasoningConfig(
         enabled=True,
@@ -274,7 +275,6 @@ async def example_per_call_reasoning():
     print("\n" + "=" * 60)
     print("Example 6: Per-Call Reasoning Override")
     print("=" * 60)
-
 
     # Agent with NO reasoning by default
     agent = Agent(
