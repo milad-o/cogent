@@ -1,0 +1,7 @@
+# Generated output files
+*.mmd
+*.dot
+*.graphml
+*.json
+*.db
+!.gitkeep
