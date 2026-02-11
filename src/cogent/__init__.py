@@ -70,7 +70,7 @@ Simple Delegation (coming soon):
     ```
 """
 
-__version__ = "1.15.0"
+__version__ = "1.17.0"
 
 # Core enums and utilities
 # Graph API (unified visualization)
