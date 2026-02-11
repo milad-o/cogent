@@ -1,54 +1,16 @@
-"""
-Knowledge Graph data models.
+"""Compatibility aliases for graph data models."""
 
-Contains Entity and Relationship dataclasses.
-"""
-
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from typing import Any
+from cogent.graph.models import Entity as _GraphEntity
+from cogent.graph.models import Relationship as _GraphRelationship
 
 
-@dataclass
-class Entity:
-    """An entity in the knowledge graph."""
+# Expose the new graph models while keeping legacy attribute names.
+Entity = _GraphEntity
+Relationship = _GraphRelationship
 
-    id: str
-    type: str
-    attributes: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    source: str | None = None  # Where this fact came from
+# Backward compatibility: old code used .type instead of .entity_type.
+Entity.type = property(  # type: ignore[attr-defined]
+	lambda self: self.entity_type, lambda self, value: setattr(self, "entity_type", value)
+)
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "type": self.type,
-            "attributes": self.attributes,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-            "source": self.source,
-        }
-
-
-@dataclass
-class Relationship:
-    """A relationship between two entities."""
-
-    source_id: str
-    relation: str
-    target_id: str
-    attributes: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    source: str | None = None  # Where this fact came from
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "source": self.source_id,
-            "relation": self.relation,
-            "target": self.target_id,
-            "attributes": self.attributes,
-            "created_at": self.created_at.isoformat(),
-        }
+__all__ = ["Entity", "Relationship"]

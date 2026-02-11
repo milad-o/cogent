@@ -16,104 +16,29 @@ Key features demonstrated:
 """
 
 import asyncio
-import json
 import tempfile
 from pathlib import Path
-
-
-def load_knowledge_file(kg, filepath: str) -> dict:
-    """
-    Load entities and relationships from a knowledge file.
-
-    File format:
-    - entity|name|type|{"attr": "value"}
-    - rel|source|relation|target
-    - Lines starting with # are comments
-    """
-    stats = {"entities": 0, "relationships": 0}
-
-    with open(filepath) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-
-            parts = line.split("|")
-            if parts[0] == "entity" and len(parts) >= 3:
-                name = parts[1]
-                etype = parts[2]
-                attrs = json.loads(parts[3]) if len(parts) > 3 else {}
-                kg.add_entity(name, etype, attrs)
-                stats["entities"] += 1
-            elif parts[0] == "rel" and len(parts) >= 4:
-                source, relation, target = parts[1], parts[2], parts[3]
-                # Auto-create entities if they don't exist
-                if not kg.get_entity(source):
-                    kg.add_entity(source, "Unknown")
-                if not kg.get_entity(target):
-                    kg.add_entity(target, "Unknown")
-                kg.add_relationship(source, relation, target)
-                stats["relationships"] += 1
-
-    return stats
 
 
 async def demo():
     from cogent import Agent
     from cogent.capabilities import KnowledgeGraph
 
+    def response_text(value: object) -> str:
+        text = getattr(value, "content", value)
+        return str(text).strip()
+
     print("=" * 60)
     print("🧠 Knowledge Graph Capability Demo")
     print("=" * 60)
 
-    # === Step 1: Load KnowledgeGraph from file ===
-    print("\n📂 Step 1: Load Knowledge from File")
+    # === Step 1: Agent generates KnowledgeGraph from file ===
+    print("\n🤖 Step 1: Agent Generates KnowledgeGraph")
     print("-" * 40)
 
     kg = KnowledgeGraph()
-    data_file = Path(__file__).parent / "data" / "company_knowledge.txt"
-
-    stats = load_knowledge_file(kg, str(data_file))
-    print(f"✅ Loaded from {data_file.name}:")
-    print(f"   Entities: {stats['entities']}")
-    print(f"   Relationships: {stats['relationships']}")
-    print(f"   Graph stats: {kg.stats()}")
-
-    # === Step 2: Explore with direct API ===
-    print("\n🔍 Step 2: Direct API Exploration")
-    print("-" * 40)
-
-    # Get all people
-    people = kg.get_entities("Person")
-    print(f"People in the system: {[p.id for p in people]}")
-
-    # Get all projects
-    projects = kg.get_entities("Project")
-    print(f"Projects: {[p.id for p in projects]}")
-
-    # Query: Who works on ETL Pipeline?
-    results = kg.query_graph("? -works_on-> ETL Pipeline")
-    print("\nWho works on ETL Pipeline?")
-    for r in results:
-        print(f"  → {r}")
-
-    # === Step 3: Multi-hop exploration ===
-    print("\n🔗 Step 3: Multi-hop Exploration")
-    print("-" * 40)
-
-    # Find path from Bob to Eve
-    path = kg.find_path("Bob Smith", "Eve Wilson")
-    print(f"Path from Bob to Eve: {path}")
-
-    # Get Bob's relationships
-    bob_rels = kg.get_relationships("Bob Smith", direction="outgoing")
-    print("\nBob Smith's relationships:")
-    for rel in bob_rels:
-        print(f"  → {rel.relation} → {rel.target_id}")
-
-    # === Step 4: Create agent with KG ===
-    print("\n🤖 Step 4: Agent with KnowledgeGraph")
-    print("-" * 40)
+    data_file = Path(__file__).parent.parent / "data" / "company_knowledge.txt"
+    data_text = data_file.read_text()
 
     agent = Agent(
         name="CompanyExpert",
@@ -129,8 +54,42 @@ to trace the path and provide complete answers.""",
 
     print(f"Agent tools: {[t.name for t in agent.all_tools]}")
 
-    # === Step 5: Agent drills down to find answers ===
-    print("\n💬 Step 5: Agent Queries (Drill-down)")
+    ingest_prompt = f"""Load the following dataset into the knowledge graph.
+
+Rules:
+- Each line is either:
+  - entity|name|type|{{\"attr\": \"value\"}}
+  - rel|source|relation|target
+- Ignore empty lines and lines starting with #.
+- Use the tools only: `kg_remember` for entities, `kg_connect` for relationships.
+- If attributes JSON is missing, pass an empty dict.
+- After processing, reply with a short confirmation only.
+
+Dataset:
+{data_text}
+"""
+
+    response = await agent.run(ingest_prompt)
+    print(f"💡 {response_text(response)}")
+
+    print(f"✅ Loaded from {data_file.name}:")
+    print(f"   Graph stats: {kg.stats()}")
+
+    # === Step 2: Visualize the inferred graph ===
+    print("\n🗺️  Step 2: Knowledge Graph (Mermaid)")
+    print("-" * 40)
+    mermaid_code = kg.mermaid(direction="LR", group_by_type=True, max_entities=50)
+    print(mermaid_code)
+
+    svg_path = Path(__file__).parent / "knowledge_graph.svg"
+    print(f"\n🖼️  Saving SVG to: {svg_path}")
+    print("    (Requires Mermaid CLI: npm install -g @mermaid-js/mermaid-cli)")
+    from cogent.graph.visualization import render_mermaid_to_image
+
+    await render_mermaid_to_image(mermaid_code, str(svg_path), format="svg")
+
+    # === Step 3: Agent drills down to find answers ===
+    print("\n💬 Step 3: Agent Queries (Drill-down)")
     print("-" * 40)
 
     questions = [
@@ -141,18 +100,17 @@ to trace the path and provide complete answers.""",
 
     for q in questions:
         print(f"\n❓ {q}")
-        response = await agent.run(q, strategy="dag")
-        print(f"💡 {response}")
+        response = await agent.run(q)
+        print(f"💡 {response_text(response)}")
 
-    # === Step 6: Agent updates knowledge ===
-    print("\n➕ Step 6: Agent Adds Knowledge")
+    # === Step 4: Agent updates knowledge ===
+    print("\n➕ Step 4: Agent Adds Knowledge")
     print("-" * 40)
 
     response = await agent.run(
         "Remember that Frank Martinez is a new DevOps Engineer who joined Platform Team and is expert in Kubernetes",
-        strategy="dag",
     )
-    print(f"Response: {response}")
+    print(f"Response: {response_text(response)}")
 
     # Verify Frank was added
     frank = kg.get_entity("Frank Martinez")
@@ -161,8 +119,8 @@ to trace the path and provide complete answers.""",
         rels = kg.get_relationships("Frank Martinez", direction="outgoing")
         print(f"   Relationships: {[(r.relation, r.target_id) for r in rels]}")
 
-    # === Step 7: Persistence Demo ===
-    print("\n💾 Step 7: Persistence Demo")
+    # === Step 5: Persistence Demo ===
+    print("\n💾 Step 5: Persistence Demo")
     print("-" * 40)
 
     # Demo 1: Save memory graph to file
@@ -211,8 +169,6 @@ to trace the path and provide complete answers.""",
     print("   - Memory backend: explicit save/load")
     print("   - SQLite backend: auto-persistent, great for large graphs")
     print("   - JSON backend: auto-save on changes")
-    print("   - Clean API: kg.add_entity(), kg.get_relationships()")
-    print("   - Multi-hop queries with find_path()")
     print("   - Agents drill down through graph to find answers")
     print("=" * 60)
 

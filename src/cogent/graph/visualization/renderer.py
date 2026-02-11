@@ -13,7 +13,21 @@ from cogent.graph.models import Entity, Relationship
 from cogent.graph.visualization.styles import StyleScheme, get_scheme
 
 
-def entity_to_mermaid_node(entity: Entity, scheme: StyleScheme) -> str:
+def _safe_mermaid_id(raw_id: str) -> str:
+    safe = []
+    for ch in raw_id:
+        if ch.isalnum() or ch == "_":
+            safe.append(ch)
+        else:
+            safe.append("_")
+    return "".join(safe)
+
+
+def entity_to_mermaid_node(
+    entity: Entity,
+    scheme: StyleScheme,
+    node_id: str | None = None,
+) -> str:
     """Convert an entity to a Mermaid node definition.
 
     Args:
@@ -47,10 +61,16 @@ def entity_to_mermaid_node(entity: Entity, scheme: StyleScheme) -> str:
         brackets = ("[", "]")
 
     # Format: nodeId["Label"]
-    return f'{entity.id}{brackets[0]}"{display_label}"{brackets[1]}'
+    safe_id = node_id or _safe_mermaid_id(entity.id)
+    return f'{safe_id}{brackets[0]}"{display_label}"{brackets[1]}'
 
 
-def relationship_to_mermaid_edge(rel: Relationship, scheme: StyleScheme) -> str:
+def relationship_to_mermaid_edge(
+    rel: Relationship,
+    scheme: StyleScheme,
+    source_id: str | None = None,
+    target_id: str | None = None,
+) -> str:
     """Convert a relationship to a Mermaid edge definition.
 
     Args:
@@ -77,7 +97,9 @@ def relationship_to_mermaid_edge(rel: Relationship, scheme: StyleScheme) -> str:
     else:
         arrow = "-->|"  # Normal arrow
 
-    return f"{rel.source_id} {arrow}{rel.relation}| {rel.target_id}"
+    safe_source = source_id or _safe_mermaid_id(rel.source_id)
+    safe_target = target_id or _safe_mermaid_id(rel.target_id)
+    return f"{safe_source} {arrow}{rel.relation}| {safe_target}"
 
 
 def to_mermaid(
@@ -124,14 +146,21 @@ def to_mermaid(
     # Use flowchart instead of graph for better layout
     lines.append(f"flowchart {direction}")
 
+    safe_ids = {entity.id: _safe_mermaid_id(entity.id) for entity in entities}
+
     # Add all nodes (no subgraphs - they cause layout issues)
     for entity in entities:
-        node_def = entity_to_mermaid_node(entity, scheme)
+        node_def = entity_to_mermaid_node(entity, scheme, node_id=safe_ids[entity.id])
         lines.append(f"    {node_def}")
 
     # Add edges
     for rel in relationships:
-        edge_def = relationship_to_mermaid_edge(rel, scheme)
+        edge_def = relationship_to_mermaid_edge(
+            rel,
+            scheme,
+            source_id=safe_ids.get(rel.source_id, _safe_mermaid_id(rel.source_id)),
+            target_id=safe_ids.get(rel.target_id, _safe_mermaid_id(rel.target_id)),
+        )
         lines.append(f"    {edge_def}")
 
     # Add styling (color definitions)
@@ -146,7 +175,9 @@ def to_mermaid(
 
     # Apply styles to nodes
     for entity in entities:
-        lines.append(f"    class {entity.id} {entity.entity_type}Style")
+        lines.append(
+            f"    class {safe_ids[entity.id]} {entity.entity_type}Style"
+        )
 
     return "\n".join(lines)
 

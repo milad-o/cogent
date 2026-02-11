@@ -3,96 +3,61 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from cogent.capabilities.knowledge_graph.backends.base import GraphBackend
-from cogent.capabilities.knowledge_graph.backends.memory import InMemoryGraph
-from cogent.capabilities.knowledge_graph.models import Entity, Relationship
+from cogent.capabilities.knowledge_graph.backends.base import (
+    GraphBackend,
+    _SyncGraphBackend,
+)
+from cogent.graph import Graph
+from cogent.graph.storage import FileStorage
 
 
-class JSONFileGraph(GraphBackend):
-    """JSON file-backed graph with auto-save."""
+class JSONFileGraph(_SyncGraphBackend, GraphBackend):
+    """Synchronous facade over Graph+FileStorage."""
 
     def __init__(self, path: str | Path, auto_save: bool = True) -> None:
         self._path = Path(path)
         self._auto_save = auto_save
-        self._memory = InMemoryGraph()
-        self.load()
+        storage = FileStorage(str(self._path), format="json", auto_save=auto_save)
+        super().__init__(Graph(storage=storage))
 
     def _maybe_save(self) -> None:
-        """Auto-save if enabled."""
         if self._auto_save:
             self.save()
 
-    def add_entity(
-        self,
-        entity_id: str,
-        entity_type: str,
-        attributes: dict[str, Any] | None = None,
-        source: str | None = None,
-    ) -> Entity:
-        result = self._memory.add_entity(entity_id, entity_type, attributes, source)
+    def add_entity(self, *args, **kwargs):  # type: ignore[override]
+        entity = super().add_entity(*args, **kwargs)
         self._maybe_save()
-        return result
+        return entity
 
-    def get_entity(self, entity_id: str) -> Entity | None:
-        return self._memory.get_entity(entity_id)
-
-    def add_relationship(
-        self,
-        source_id: str,
-        relation: str,
-        target_id: str,
-        attributes: dict[str, Any] | None = None,
-        source: str | None = None,
-    ) -> Relationship:
-        result = self._memory.add_relationship(
-            source_id, relation, target_id, attributes, source
-        )
+    def add_relationship(self, *args, **kwargs):  # type: ignore[override]
+        rel = super().add_relationship(*args, **kwargs)
         self._maybe_save()
-        return result
+        return rel
 
-    def get_relationships(
-        self,
-        entity_id: str,
-        relation: str | None = None,
-        direction: str = "outgoing",
-    ) -> list[Relationship]:
-        return self._memory.get_relationships(entity_id, relation, direction)
-
-    def query(self, pattern: str) -> list[dict[str, Any]]:
-        return self._memory.query(pattern)
-
-    def find_path(
-        self, source_id: str, target_id: str, max_depth: int = 3
-    ) -> list[list[str]] | None:
-        return self._memory.find_path(source_id, target_id, max_depth)
-
-    def get_all_entities(
-        self,
-        entity_type: str | None = None,
-        limit: int | None = None,
-        offset: int = 0,
-    ) -> list[Entity]:
-        return self._memory.get_all_entities(entity_type, limit=limit, offset=offset)
-
-    def remove_entity(self, entity_id: str) -> bool:
-        result = self._memory.remove_entity(entity_id)
-        if result:
+    def remove_entity(self, entity_id: str) -> bool:  # type: ignore[override]
+        removed = super().remove_entity(entity_id)
+        if removed:
             self._maybe_save()
-        return result
+        return removed
 
-    def stats(self) -> dict[str, int]:
-        return self._memory.stats()
-
-    def clear(self) -> None:
-        self._memory.clear()
+    def clear(self) -> None:  # type: ignore[override]
+        super().clear()
         self._maybe_save()
 
     def save(self, path: str | Path | None = None) -> None:
-        """Save to JSON file."""
-        self._memory.save(path or self._path)
+        target = Path(path) if path else self._path
+        if target is None:
+            raise ValueError("Path required for JSONFileGraph.save()")
+        self._path = target
+        self._graph.storage.path = self._path  # type: ignore[attr-defined]
+        # FileStorage exposes async save
+        self._runner.run(self._graph.storage.save())  # type: ignore[attr-defined]
 
     def load(self, path: str | Path | None = None) -> None:
-        """Load from JSON file."""
-        self._memory.load(path or self._path)
+        target = Path(path) if path else self._path
+        if target is None or not target.exists():
+            return
+        self._path = target
+        self._graph.storage.path = self._path  # type: ignore[attr-defined]
+        self._runner.run(self._graph.storage.load())  # type: ignore[attr-defined]

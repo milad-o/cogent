@@ -16,9 +16,6 @@ from cogent.capabilities.knowledge_graph.backends import (
 from cogent.capabilities.knowledge_graph.models import Entity, Relationship
 from cogent.tools.base import BaseTool, tool
 
-if TYPE_CHECKING:
-    from cogent.graph import GraphView
-
 
 class KnowledgeGraph(BaseCapability):
     """
@@ -31,11 +28,12 @@ class KnowledgeGraph(BaseCapability):
     - Custom GraphBackend instance for your own implementation
 
     Provides tools for:
-    - remember: Store entities and facts
-    - recall: Retrieve entity information
-    - connect: Create relationships between entities
-    - query: Query the graph with patterns
-    - forget: Remove entities
+    - kg_remember: Store entities and facts
+    - kg_recall: Retrieve entity information
+    - kg_connect: Create relationships between entities
+    - kg_query: Query the graph with patterns
+    - kg_forget: Remove entities
+    - kg_list: List known entities
 
     Example:
         ```python
@@ -159,6 +157,7 @@ class KnowledgeGraph(BaseCapability):
             ```
         """
         # Create new backend
+        previous_graph = self.graph
         new_graph: GraphBackend
 
         if backend == "memory":
@@ -211,6 +210,12 @@ class KnowledgeGraph(BaseCapability):
         self.graph = new_graph
         self._backend = backend
         self._path = Path(path) if path else None
+
+        # Close the previous backend to release resources
+        try:
+            previous_graph.close()
+        except Exception:
+            pass
 
         # Clear tools cache to regenerate with new backend
         self._tools_cache = None
@@ -339,12 +344,12 @@ class KnowledgeGraph(BaseCapability):
         # Cache tools to avoid recreating them
         if self._tools_cache is None:
             self._tools_cache = {
-                "remember": self._remember_tool(),
-                "recall": self._recall_tool(),
-                "connect": self._connect_tool(),
-                "query": self._query_tool(),
-                "forget": self._forget_tool(),
-                "list": self._list_entities_tool(),
+                "kg_remember": self._remember_tool(),
+                "kg_recall": self._recall_tool(),
+                "kg_connect": self._connect_tool(),
+                "kg_query": self._query_tool(),
+                "kg_forget": self._forget_tool(),
+                "kg_list": self._list_entities_tool(),
             }
         return list(self._tools_cache.values())
 
@@ -356,7 +361,7 @@ class KnowledgeGraph(BaseCapability):
         """Remember an entity with attributes."""
         if self._tools_cache is None:
             _ = self.tools  # Initialize cache
-        return self._tools_cache["remember"].invoke(
+        return self._tools_cache["kg_remember"].invoke(
             {
                 "entity": entity,
                 "entity_type": entity_type,
@@ -368,13 +373,13 @@ class KnowledgeGraph(BaseCapability):
         """Recall information about an entity."""
         if self._tools_cache is None:
             _ = self.tools  # Initialize cache
-        return self._tools_cache["recall"].invoke({"entity": entity})
+        return self._tools_cache["kg_recall"].invoke({"entity": entity})
 
     def connect(self, source: str, relation: str, target: str) -> str:
         """Create a relationship between entities."""
         if self._tools_cache is None:
             _ = self.tools
-        return self._tools_cache["connect"].invoke(
+        return self._tools_cache["kg_connect"].invoke(
             {
                 "source": source,
                 "relation": relation,
@@ -406,7 +411,7 @@ class KnowledgeGraph(BaseCapability):
         relation = None if relation_str.strip() == "?" else relation_str.strip()
         target = None if target_str.strip() == "?" else target_str.strip()
 
-        return self._tools_cache["query"].invoke(
+        return self._tools_cache["kg_query"].invoke(
             {"source": source, "relation": relation, "target": target}
         )
 
@@ -414,19 +419,19 @@ class KnowledgeGraph(BaseCapability):
         """Remove an entity from the graph."""
         if self._tools_cache is None:
             _ = self.tools
-        return self._tools_cache["forget"].invoke({"entity": entity})
+        return self._tools_cache["kg_forget"].invoke({"entity": entity})
 
     def list_entities(self, entity_type: str = "") -> str:
         """List all known entities."""
         if self._tools_cache is None:
             _ = self.tools
-        return self._tools_cache["list"].invoke({"entity_type": entity_type})
+        return self._tools_cache["kg_list"].invoke({"entity_type": entity_type})
 
     def _remember_tool(self) -> BaseTool:
         graph = self.graph
 
-        @tool
-        def remember(
+        @tool(name="kg_remember")
+        def kg_remember(
             entity: str,
             entity_type: str,
             attributes: dict[str, Any] | str | None = None,
@@ -445,8 +450,8 @@ class KnowledgeGraph(BaseCapability):
                 Confirmation message
 
             Examples:
-                remember(entity="Alice", entity_type="Person", attributes={"role": "CEO", "age": 35})
-                remember(entity="TechCorp", entity_type="Company", attributes={"founded": 2015})
+                kg_remember(entity="Alice", entity_type="Person", attributes={"role": "CEO", "age": 35})
+                kg_remember(entity="TechCorp", entity_type="Company", attributes={"founded": 2015})
             """
             # Handle both dict and JSON string for compatibility
             if isinstance(attributes, str):
@@ -462,13 +467,13 @@ class KnowledgeGraph(BaseCapability):
             graph.add_entity(entity, entity_type, attrs)
             return f"Remembered: {entity} ({entity_type}) with {len(attrs)} attributes"
 
-        return remember
+        return kg_remember
 
     def _recall_tool(self) -> BaseTool:
         graph = self.graph
 
-        @tool
-        def recall(entity: str) -> str:
+        @tool(name="kg_recall")
+        def kg_recall(entity: str) -> str:
             """
             Recall information about an entity.
 
@@ -505,13 +510,13 @@ class KnowledgeGraph(BaseCapability):
 
             return "\n".join(info)
 
-        return recall
+        return kg_recall
 
     def _connect_tool(self) -> BaseTool:
         graph = self.graph
 
-        @tool
-        def connect(
+        @tool(name="kg_connect")
+        def kg_connect(
             source: str,
             relation: str,
             target: str,
@@ -536,13 +541,13 @@ class KnowledgeGraph(BaseCapability):
             graph.add_relationship(source, relation, target)
             return f"Connected: {source} --[{relation}]--> {target}"
 
-        return connect
+        return kg_connect
 
     def _query_tool(self) -> BaseTool:
         graph = self.graph
 
-        @tool
-        def query_knowledge(
+        @tool(name="kg_query")
+        def kg_query(
             source: str | None = None,
             relation: str | None = None,
             target: str | None = None,
@@ -558,13 +563,13 @@ class KnowledgeGraph(BaseCapability):
                 target: Target entity name (use None to find all targets)
 
             Examples:
-                - query_knowledge(source=None, relation="works_at", target="TechCorp")
+                                - kg_query(source=None, relation="works_at", target="TechCorp")
                   → Who works at TechCorp?
-                - query_knowledge(source="Alice", relation="works_at", target=None)
+                                - kg_query(source="Alice", relation="works_at", target=None)
                   → Where does Alice work?
-                - query_knowledge(source=None, relation="reports_to", target="Bob")
+                                - kg_query(source=None, relation="reports_to", target="Bob")
                   → Who reports to Bob?
-                - query_knowledge(source="Alice", relation=None, target=None)
+                                - kg_query(source="Alice", relation=None, target=None)
                   → All relationships from Alice
 
             Returns:
@@ -583,13 +588,13 @@ class KnowledgeGraph(BaseCapability):
 
             return json.dumps(results, indent=2, default=str)
 
-        return query_knowledge
+        return kg_query
 
     def _forget_tool(self) -> BaseTool:
         graph = self.graph
 
-        @tool
-        def forget(entity: str) -> str:
+        @tool(name="kg_forget")
+        def kg_forget(entity: str) -> str:
             """
             Remove an entity and all its relationships from memory.
 
@@ -604,13 +609,13 @@ class KnowledgeGraph(BaseCapability):
             else:
                 return f"Entity '{entity}' not found in memory"
 
-        return forget
+        return kg_forget
 
     def _list_entities_tool(self) -> BaseTool:
         graph = self.graph
 
-        @tool
-        def list_knowledge(entity_type: str = "") -> str:
+        @tool(name="kg_list")
+        def kg_list(entity_type: str = "") -> str:
             """
             List all known entities.
 
@@ -633,7 +638,7 @@ class KnowledgeGraph(BaseCapability):
 
             return "\n".join(lines)
 
-        return list_knowledge
+        return kg_list
 
     # =========================================================================
     # Convenience Methods - Direct access without tools
@@ -829,14 +834,22 @@ class KnowledgeGraph(BaseCapability):
         Get a specific tool by name.
 
         Args:
-            name: Tool name (remember, recall, connect, query, forget, list)
+            name: Tool name (kg_remember, kg_recall, kg_connect, kg_query, kg_forget, kg_list)
 
         Returns:
             The tool or None if not found
         """
         if self._tools_cache is None:
             _ = self.tools  # Initialize cache
-        return self._tools_cache.get(name)
+        tool = self._tools_cache.get(name)
+        if tool is not None:
+            return tool
+
+        for candidate in self._tools_cache.values():
+            if candidate.name == name:
+                return candidate
+
+        return None
 
     def stats(self) -> dict[str, int]:
         """
@@ -913,74 +926,15 @@ class KnowledgeGraph(BaseCapability):
 
     # === Visualization ===
 
-    def visualize(
+    def _collect_visualization_data(
         self,
         *,
-        layout: str = "hierarchical",
-        direction: str = "LR",
-        show_attributes: bool = False,
         max_entities: int | None = None,
-        group_by_type: bool = True,
-    ) -> GraphView:
-        """
-        Get a graph visualization of the knowledge graph.
-
-        Returns a GraphView that provides a unified interface for
-        rendering to Mermaid, Graphviz, ASCII, or other formats.
-
-        Args:
-            layout: Layout algorithm - "hierarchical", "circular", "force" (default: "hierarchical")
-            direction: Graph direction - "TB" (top-bottom), "LR" (left-right), "BT", "RL" (default: "LR")
-            show_attributes: Include entity attributes in labels (default: False)
-            max_entities: Maximum number of entities to show (default: all)
-            group_by_type: Group entities by type in subgraphs (default: True)
-
-        Returns:
-            GraphView instance for rendering.
-
-        Example:
-            ```python
-            # Build knowledge graph
-            kg = KnowledgeGraph()
-            kg.remember("Alice", "Person", {"role": "Engineer"})
-            kg.remember("Bob", "Person", {"role": "Manager"})
-            kg.connect("Alice", "reports_to", "Bob")
-
-            # Get visualization
-            view = kg.visualize()
-
-            # Render in different formats
-            print(view.mermaid())    # Mermaid diagram
-            print(view.ascii())      # Terminal-friendly
-            print(view.dot())        # Graphviz DOT
-
-            # Save to file
-            view.save("knowledge.png")
-
-            # Get shareable URL
-            print(view.url())
-            ```
-        """
-        from cogent.graph import GraphView
-        from cogent.graph.config import GraphConfig, GraphDirection
-        from cogent.graph.primitives import (
-            ClassDef,
-            Edge,
-            EdgeType,
-            Graph,
-            Node,
-            NodeShape,
-            NodeStyle,
-            Subgraph,
-        )
-
-        g = Graph()
-
-        # Get entities and relationships
-        stats = self.graph.stats()
+    ) -> tuple[list[Entity], list[Relationship]]:
         entities = self.graph.get_all_entities()
+        if max_entities and len(entities) > max_entities:
+            entities = entities[:max_entities]
 
-        # Collect all relationships by iterating through entities
         relationships: list[Relationship] = []
         seen_rels: set[tuple[str, str, str]] = set()
         for entity in entities:
@@ -991,280 +945,89 @@ class KnowledgeGraph(BaseCapability):
                     relationships.append(rel)
                     seen_rels.add(rel_key)
 
-        # Limit entities if specified
-        if max_entities and len(entities) > max_entities:
-            entities = entities[:max_entities]
-
-        # Group entities by type
-        entity_types: dict[str, list[Entity]] = {}
-        for entity in entities:
-            entity_type = entity.type
-            if entity_type not in entity_types:
-                entity_types[entity_type] = []
-            entity_types[entity_type].append(entity)
-
-        # Create nodes for each entity (with optional subgraphs)
-        if group_by_type and len(entity_types) > 1:
-            # Create subgraphs for each entity type
-            for entity_type, type_entities in sorted(entity_types.items()):
-                subgraph_id = f"type_{entity_type.replace(' ', '_')}"
-                subgraph_nodes = []
-
-                for entity in type_entities:
-                    node_id = entity.id.replace(" ", "_").replace(".", "_")
-                    subgraph_nodes.append(node_id)
-
-                    # Build label
-                    if show_attributes and entity.attributes:
-                        attr_str = "\\n".join(
-                            f"{k}: {str(v)[:20]}"
-                            for k, v in list(entity.attributes.items())[:3]
-                        )
-                        label = f"{entity.id}\\n<small>{attr_str}</small>"
-                    else:
-                        label = entity.id
-
-                    # Determine shape and class based on type
-                    shape = NodeShape.ROUNDED
-                    if entity.type.lower() in ("person", "user", "agent"):
-                        css_class = "person"
-                    elif entity.type.lower() in ("organization", "company", "org"):
-                        css_class = "org"
-                    elif entity.type.lower() in ("location", "place"):
-                        css_class = "location"
-                    elif entity.type.lower() in ("event", "action"):
-                        css_class = "event"
-                    else:
-                        css_class = "entity"
-
-                    g.add_node(
-                        Node(
-                            id=node_id,
-                            label=label,
-                            shape=shape,
-                            css_class=css_class,
-                        )
-                    )
-
-                # Add subgraph
-                g.add_subgraph(
-                    Subgraph(
-                        id=subgraph_id,
-                        label=entity_type,
-                        node_ids=subgraph_nodes,
-                    )
-                )
-        else:
-            # Create nodes without subgraphs
-            for entity in entities:
-                node_id = entity.id.replace(" ", "_").replace(".", "_")
-
-                # Build label
-                if show_attributes and entity.attributes:
-                    attr_str = "\\n".join(
-                        f"{k}: {str(v)[:20]}"
-                        for k, v in list(entity.attributes.items())[:3]
-                    )
-                    label = f"{entity.id}\\n<small><i>{entity.type}</i></small>\\n<small>{attr_str}</small>"
-                else:
-                    label = f"{entity.id}\\n<small><i>{entity.type}</i></small>"
-
-                # Determine shape and class based on type
-                shape = NodeShape.ROUNDED
-                if entity.type.lower() in ("person", "user", "agent"):
-                    css_class = "person"
-                elif entity.type.lower() in ("organization", "company", "org"):
-                    css_class = "org"
-                elif entity.type.lower() in ("location", "place"):
-                    css_class = "location"
-                elif entity.type.lower() in ("event", "action"):
-                    css_class = "event"
-                else:
-                    css_class = "entity"
-
-                g.add_node(
-                    Node(
-                        id=node_id,
-                        label=label,
-                        shape=shape,
-                        css_class=css_class,
-                    )
-                )
-
-        # Create edges for relationships
-        for rel in relationships:
-            source_id = rel.source_id.replace(" ", "_").replace(".", "_")
-            target_id = rel.target_id.replace(" ", "_").replace(".", "_")
-
-            # Only add edge if both nodes exist
-            if source_id in g.nodes and target_id in g.nodes:
-                edge_label = rel.relation
-
-                # Determine edge type based on relation
-                if "parent" in rel.relation.lower() or "child" in rel.relation.lower():
-                    edge_type = EdgeType.ARROW
-                elif (
-                    "knows" in rel.relation.lower() or "friend" in rel.relation.lower()
-                ):
-                    edge_type = EdgeType.BIDIRECTIONAL
-                else:
-                    edge_type = EdgeType.ARROW
-
-                g.add_edge(
-                    Edge(
-                        source=source_id,
-                        target=target_id,
-                        label=edge_label,
-                        edge_type=edge_type,
-                    )
-                )
-
-        # Add class definitions for styling
-        g.add_class_def(
-            ClassDef(
-                name="person",
-                style=NodeStyle(fill="#60a5fa", stroke="#3b82f6", color="#fff"),
-            )
-        )
-        g.add_class_def(
-            ClassDef(
-                name="org",
-                style=NodeStyle(fill="#7eb36a", stroke="#4a7a3d", color="#fff"),
-            )
-        )
-        g.add_class_def(
-            ClassDef(
-                name="location",
-                style=NodeStyle(fill="#f59e0b", stroke="#d97706", color="#fff"),
-            )
-        )
-        g.add_class_def(
-            ClassDef(
-                name="event",
-                style=NodeStyle(fill="#9b59b6", stroke="#7b3a96", color="#fff"),
-            )
-        )
-        g.add_class_def(
-            ClassDef(
-                name="entity",
-                style=NodeStyle(fill="#94a3b8", stroke="#64748b", color="#fff"),
-            )
-        )
-
-        # Create config without title in frontmatter (to avoid redundancy in inline rendering)
-        # Title is added separately in HTML rendering
-        title = f"Knowledge Graph ({stats['entities']} entities, {stats['relationships']} relationships)"
-
-        # Map direction string to GraphDirection enum
-        direction_map = {
-            "TB": GraphDirection.TOP_DOWN,
-            "LR": GraphDirection.LEFT_RIGHT,
-            "BT": GraphDirection.BOTTOM_UP,
-            "RL": GraphDirection.RIGHT_LEFT,
-        }
-        graph_direction = direction_map.get(direction.upper(), GraphDirection.TOP_DOWN)
-
-        config = GraphConfig(
-            title=title,
-            direction=graph_direction,
-        )
-
-        return GraphView(g, config)
+        return entities, relationships
 
     # =========================================================================
     # Convenience Visualization APIs (Low, Medium, High Level)
     # =========================================================================
 
-    def mermaid(self, **kwargs) -> str:
-        """Low-level API: Get Mermaid diagram code.
+    def mermaid(
+        self,
+        *,
+        direction: str = "LR",
+        group_by_type: bool = False,
+        scheme: str = "default",
+        title: str | None = None,
+        max_entities: int | None = None,
+    ) -> str:
+        """Get Mermaid diagram code for the knowledge graph."""
+        from cogent.graph.visualization import to_mermaid
 
-        This is the simplest API - just returns the raw Mermaid code string.
-        Use this when you want to copy/paste the diagram or save it to a file.
+        entities, relationships = self._collect_visualization_data(
+            max_entities=max_entities
+        )
+        return to_mermaid(
+            entities,
+            relationships,
+            direction=direction,
+            group_by_type=group_by_type,
+            scheme=scheme,
+            title=title,
+        )
 
-        Args:
-            **kwargs: Visualization options (direction, show_attributes, etc.)
+    def render(
+        self,
+        format: str = "mermaid",
+        *,
+        direction: str = "LR",
+        group_by_type: bool = False,
+        scheme: str = "default",
+        title: str | None = None,
+        max_entities: int | None = None,
+    ) -> str:
+        """Render the graph to Mermaid, Graphviz, GraphML, or JSON formats."""
+        from cogent.graph.visualization import (
+            to_cytoscape_json,
+            to_graphml,
+            to_graphviz,
+            to_json_graph,
+            to_mermaid,
+        )
 
-        Returns:
-            Mermaid diagram code as a string.
+        entities, relationships = self._collect_visualization_data(
+            max_entities=max_entities
+        )
 
-        Example:
-            ```python
-            kg = KnowledgeGraph()
-            kg.remember("Alice", "Person")
-            kg.remember("Bob", "Person")
-            kg.connect("Alice", "knows", "Bob")
+        normalized = format.lower()
+        if normalized in ("mermaid", "mmd"):
+            return to_mermaid(
+                entities,
+                relationships,
+                direction=direction,
+                group_by_type=group_by_type,
+                scheme=scheme,
+                title=title,
+            )
+        if normalized in ("graphviz", "dot"):
+            return to_graphviz(entities, relationships, scheme=scheme, title=title)
+        if normalized == "graphml":
+            return to_graphml(entities, relationships, title=title)
+        if normalized in ("cytoscape", "cytoscape_json"):
+            return to_cytoscape_json(entities, relationships)
+        if normalized in ("json", "json_graph"):
+            return to_json_graph(entities, relationships)
 
-            # Get mermaid code
-            code = kg.mermaid()
-            print(code)
-
-            # Save to file
-            with open("graph.mmd", "w") as f:
-                f.write(kg.mermaid())
-            ```
-        """
-        view = self.visualize(**kwargs)
-        return view.mermaid()
-
-    def render(self, format: str = "auto", **kwargs) -> str | bytes:
-        """Medium-level API: Render to various formats.
-
-        Choose from multiple output formats. Good for when you need
-        flexibility but don't want to deal with GraphView directly.
-
-        Args:
-            format: Output format - "auto", "mermaid", "ascii", "html", "png", "svg"
-            **kwargs: Visualization options (direction, show_attributes, etc.)
-
-        Returns:
-            Rendered content (string or bytes for images).
-
-        Example:
-            ```python
-            kg = KnowledgeGraph()
-            # ... add entities ...
-
-            # Get different formats
-            mermaid_code = kg.render("mermaid")
-            ascii_art = kg.render("ascii")
-            html = kg.render("html")
-            png_bytes = kg.render("png")
-
-            # Save PNG
-            with open("graph.png", "wb") as f:
-                f.write(kg.render("png"))
-            ```
-        """
-        view = self.visualize(**kwargs)
-        return view.render(format)
+        valid = ", ".join(
+            [
+                "mermaid",
+                "graphviz",
+                "graphml",
+                "cytoscape_json",
+                "json_graph",
+            ]
+        )
+        raise ValueError(f"Unsupported format: {format}. Valid: {valid}")
 
     def display(self, **kwargs) -> None:
-        """High-level API: Display graph in Jupyter notebook.
-
-        This is the easiest way to visualize in Jupyter - just call display()
-        and the graph will render inline with proper styling.
-
-        Args:
-            **kwargs: Visualization options (direction, show_attributes, etc.)
-
-        Example:
-            ```python
-            # In Jupyter notebook:
-            kg = KnowledgeGraph()
-            kg.remember("Alice", "Person", {"role": "Engineer"})
-            kg.remember("TechCorp", "Company")
-            kg.connect("Alice", "works_at", "TechCorp")
-
-            # Display inline
-            kg.display()
-
-            # Or with options
-            kg.display(direction="TB", show_attributes=True)
-
-            # Alternative: just call the object in Jupyter
-            view = kg.visualize()
-            view  # Automatically renders
-            ```
-        """
-        view = self.visualize(**kwargs)
-        view.display()
+        """Print Mermaid diagram code for inline display."""
+        print(self.mermaid(**kwargs))
