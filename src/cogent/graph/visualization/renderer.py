@@ -1,10 +1,13 @@
 """Graph visualization renderers for different output formats.
 
 This module provides functions to render knowledge graphs as Mermaid diagrams,
-Graphviz DOT files, and GraphML XML for various visualization tools.
+Graphviz DOT files, GraphML XML, Cytoscape.js JSON, and generic JSON formats.
+Also supports rendering Mermaid to images (PNG, SVG) via Playwright.
 """
 
 import html
+import json
+from typing import Any
 
 from cogent.graph.models import Entity, Relationship
 from cogent.graph.visualization.styles import StyleScheme, get_scheme
@@ -337,9 +340,9 @@ def save_diagram(
     """Save diagram content to a file.
 
     Args:
-        content: Diagram content (Mermaid, DOT, or GraphML).
+        content: Diagram content (Mermaid, DOT, GraphML, or JSON).
         file_path: Path to save the file.
-        format: Output format ("mermaid", "graphviz", "graphml").
+        format: Output format ("mermaid", "graphviz", "graphml", "cytoscape", "json").
 
     Raises:
         ValueError: If format is not recognized.
@@ -353,6 +356,8 @@ def save_diagram(
         "mermaid": ".mmd",
         "graphviz": ".dot",
         "graphml": ".graphml",
+        "cytoscape": ".json",
+        "json": ".json",
     }
 
     if format not in extensions:
@@ -367,3 +372,200 @@ def save_diagram(
     # Write file
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
+
+
+def to_cytoscape_json(
+    entities: list[Entity],
+    relationships: list[Relationship],
+) -> str:
+    """Render graph as Cytoscape.js JSON format.
+
+    Cytoscape.js is a popular JavaScript library for graph visualization in web browsers.
+    This format can be used with Cytoscape Desktop, Cytoscape.js, and other tools.
+
+    Args:
+        entities: List of entities to visualize.
+        relationships: List of relationships to visualize.
+
+    Returns:
+        JSON string in Cytoscape.js format.
+
+    Example:
+        >>> entities = [Entity("alice", "Person"), Entity("bob", "Person")]
+        >>> rels = [Relationship("alice", "knows", "bob")]
+        >>> json_str = to_cytoscape_json(entities, rels)
+        >>> import json
+        >>> data = json.loads(json_str)
+        >>> print(data["elements"]["nodes"][0])
+    """
+    elements = {"nodes": [], "edges": []}
+
+    # Add nodes (entities)
+    for entity in entities:
+        node = {
+            "data": {
+                "id": entity.id,
+                "label": entity.attributes.get("name", entity.id),
+                "type": entity.entity_type,
+                **entity.attributes,  # Include all attributes
+            }
+        }
+        elements["nodes"].append(node)
+
+    # Add edges (relationships)
+    edge_id = 0
+    for rel in relationships:
+        edge = {
+            "data": {
+                "id": f"e{edge_id}",
+                "source": rel.source_id,
+                "target": rel.target_id,
+                "label": rel.relation,
+                "relation": rel.relation,
+                **rel.attributes,  # Include all attributes
+            }
+        }
+        elements["edges"].append(edge)
+        edge_id += 1
+
+    return json.dumps({"elements": elements}, indent=2)
+
+
+def to_json_graph(
+    entities: list[Entity],
+    relationships: list[Relationship],
+) -> str:
+    """Render graph as generic JSON Graph Format.
+
+    This is a simple, standardized JSON format for representing graphs.
+    See: http://jsongraphformat.info/
+
+    Args:
+        entities: List of entities to visualize.
+        relationships: List of relationships to visualize.
+
+    Returns:
+        JSON string in JSON Graph Format.
+
+    Example:
+        >>> entities = [Entity("alice", "Person", {"age": 30})]
+        >>> rels = [Relationship("alice", "knows", "bob")]
+        >>> json_str = to_json_graph(entities, rels)
+    """
+    nodes = []
+    edges = []
+
+    # Add nodes
+    for entity in entities:
+        node = {
+            "id": entity.id,
+            "label": entity.attributes.get("name", entity.id),
+            "metadata": {
+                "type": entity.entity_type,
+                **entity.attributes,
+            },
+        }
+        nodes.append(node)
+
+    # Add edges
+    for rel in relationships:
+        edge = {
+            "source": rel.source_id,
+            "target": rel.target_id,
+            "relation": rel.relation,
+            "metadata": rel.attributes,
+        }
+        edges.append(edge)
+
+    graph = {
+        "graph": {
+            "directed": True,
+            "type": "knowledge_graph",
+            "nodes": nodes,
+            "edges": edges,
+        }
+    }
+
+    return json.dumps(graph, indent=2)
+
+
+async def render_mermaid_to_image(
+    mermaid_code: str,
+    output_path: str,
+    format: str = "png",
+    width: int = 1920,
+    height: int = 1080,
+) -> None:
+    """Render Mermaid diagram to image using Mermaid CLI.
+
+    This function requires Mermaid CLI to be installed via npm:
+        npm install -g @mermaid-js/mermaid-cli
+
+    Or using your system package manager:
+        brew install mermaid-cli  # macOS
+        apt install mermaid        # Debian/Ubuntu
+
+    Args:
+        mermaid_code: Mermaid diagram code.
+        output_path: Path to save the image.
+        format: Output format ("png", "svg", "pdf").
+        width: Viewport width in pixels.
+        height: Viewport height in pixels.
+
+    Raises:
+        FileNotFoundError: If Mermaid CLI (mmdc) is not installed.
+        RuntimeError: If rendering fails.
+
+    Example:
+        >>> diagram = to_mermaid(entities, relationships)
+        >>> await render_mermaid_to_image(diagram, "graph.png")
+    """
+    import asyncio
+    import tempfile
+    from pathlib import Path
+
+    # Validate format
+    if format not in ("png", "svg", "pdf"):
+        raise ValueError(f"format must be 'png', 'svg', or 'pdf', got: {format}")
+
+    # Create temporary file for Mermaid code
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".mmd", delete=False, encoding="utf-8"
+    ) as tmp:
+        tmp.write(mermaid_code)
+        tmp_path = tmp.name
+
+    try:
+        # Build mmdc command
+        cmd = [
+            "mmdc",
+            "-i", tmp_path,
+            "-o", output_path,
+            "-w", str(width),
+            "-H", str(height),
+        ]
+
+        # Add background color for better visibility
+        if format == "png":
+            cmd.extend(["-b", "white"])
+
+        # Run Mermaid CLI
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            if "command not found" in error_msg or "not found" in error_msg:
+                raise FileNotFoundError(
+                    "Mermaid CLI (mmdc) not found. Install with: npm install -g @mermaid-js/mermaid-cli"
+                )
+            raise RuntimeError(f"Mermaid rendering failed: {error_msg}")
+
+    finally:
+        # Clean up temporary file
+        Path(tmp_path).unlink(missing_ok=True)
+

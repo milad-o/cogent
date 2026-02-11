@@ -564,9 +564,107 @@ class Graph:
             )
         elif format == "graphml":
             content = await self.to_graphml(title=options.get("title"))
+        elif format == "cytoscape":
+            content = await self.to_cytoscape_json()
+        elif format == "json":
+            content = await self.to_json_graph()
         else:
             raise ValueError(
-                f"Unknown format: {format}. Use: mermaid, graphviz, or graphml"
+                f"Unknown format: {format}. Use: mermaid, graphviz, graphml, cytoscape, or json"
             )
 
         save_diagram(content, file_path, format=format)
+
+    async def to_cytoscape_json(self) -> str:
+        """Export graph as Cytoscape.js JSON format.
+
+        Cytoscape.js is a popular JavaScript library for graph visualization.
+        This format can be used with Cytoscape Desktop, Cytoscape.js, and other tools.
+
+        Returns:
+            JSON string in Cytoscape.js format.
+
+        Example:
+            >>> json_str = await graph.to_cytoscape_json()
+            >>> import json
+            >>> data = json.loads(json_str)
+            >>> print(data["elements"]["nodes"])
+        """
+        from cogent.graph.visualization import to_cytoscape_json
+
+        entities = await self.get_all_entities()
+        relationships = await self.get_relationships()
+
+        return to_cytoscape_json(entities, relationships)
+
+    async def to_json_graph(self) -> str:
+        """Export graph as generic JSON Graph Format.
+
+        This is a simple, standardized JSON format for representing graphs.
+        See: http://jsongraphformat.info/
+
+        Returns:
+            JSON string in JSON Graph Format.
+
+        Example:
+            >>> json_str = await graph.to_json_graph()
+            >>> import json
+            >>> data = json.loads(json_str)
+            >>> print(data["graph"]["nodes"])
+        """
+        from cogent.graph.visualization import to_json_graph
+
+        entities = await self.get_all_entities()
+        relationships = await self.get_relationships()
+
+        return to_json_graph(entities, relationships)
+
+    async def render_to_image(
+        self,
+        output_path: str,
+        format: str = "png",
+        diagram_format: str = "mermaid",
+        width: int = 1920,
+        height: int = 1080,
+        **diagram_options: Any,
+    ) -> None:
+        """Render graph to image file (PNG, SVG, PDF).
+
+        Requires Playwright to be installed:
+            uv add playwright
+            uv run playwright install chromium
+
+        Args:
+            output_path: Path to save the image.
+            format: Image format ("png", "svg", "pdf").
+            diagram_format: Diagram format to render ("mermaid" only for now).
+            width: Viewport width in pixels.
+            height: Viewport height in pixels.
+            **diagram_options: Options for diagram generation (direction, group_by_type, etc.).
+
+        Raises:
+            ImportError: If Playwright is not installed.
+            ValueError: If diagram format is not supported.
+
+        Example:
+            >>> await graph.render_to_image("graph.png", direction="TB", group_by_type=True)
+            >>> await graph.render_to_image("graph.svg", format="svg")
+            >>> await graph.render_to_image("graph.pdf", format="pdf")
+        """
+        if diagram_format != "mermaid":
+            raise ValueError("Only 'mermaid' diagram format is supported for image rendering")
+
+        from cogent.graph.visualization import render_mermaid_to_image
+
+        # Generate Mermaid diagram
+        diagram = await self.to_mermaid(
+            direction=diagram_options.get("direction", "LR"),
+            group_by_type=diagram_options.get("group_by_type", False),
+            scheme=diagram_options.get("scheme", "default"),
+            title=diagram_options.get("title"),
+        )
+
+        # Render to image
+        await render_mermaid_to_image(
+            diagram, output_path, format=format, width=width, height=height
+        )

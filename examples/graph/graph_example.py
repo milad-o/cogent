@@ -310,8 +310,38 @@ async def demonstrate_visualization(graph: Graph):
     await graph.save_diagram(str(graphml_file), format="graphml", title="TechCorp Knowledge Graph")
     print(f"   Saved to: {graphml_file}")
 
-    # --- 4. Show preview of Mermaid code ---
-    print("\n4. Mermaid code preview (first 15 lines):")
+    # --- 4. Cytoscape.js JSON ---
+    print("\n4. Generating Cytoscape.js JSON (for web viz)...")
+    cytoscape_file = output_dir / "company_graph_cytoscape.json"
+    await graph.save_diagram(str(cytoscape_file), format="cytoscape")
+    print(f"   Saved to: {cytoscape_file}")
+
+    # --- 5. JSON Graph Format ---
+    print("\n5. Generating JSON Graph Format (for APIs)...")
+    json_file = output_dir / "company_graph_simple.json"
+    await graph.save_diagram(str(json_file), format="json")
+    print(f"   Saved to: {json_file}")
+
+    # --- 6. Try rendering to PNG/SVG (requires Mermaid CLI) ---
+    print("\n6. Attempting image rendering (requires mmdc)...")
+    try:
+        png_path = output_dir / "company_graph.png"
+        svg_path = output_dir / "company_graph.svg"
+        
+        await graph.render_to_image(str(png_path), format="png")
+        print(f"   PNG saved to: {png_path}")
+        
+        await graph.render_to_image(str(svg_path), format="svg")
+        print(f"   SVG saved to: {svg_path}")
+    except FileNotFoundError:
+        print("   ⚠️  Mermaid CLI not installed. Install with:")
+        print("      npm install -g @mermaid-js/mermaid-cli")
+        print("   Skipping image generation...")
+    except Exception as e:
+        print(f"   ⚠️  Image rendering failed: {e}")
+
+    # --- 7. Show preview of Mermaid code ---
+    print("\n7. Mermaid code preview (first 15 lines):")
     for line in mermaid_code.splitlines()[:15]:
         print(f"   {line}")
     print("   ...")
@@ -402,11 +432,18 @@ async def main():
     print("EXAMPLE COMPLETE!")
     print("=" * 60)
     print("\nGenerated files in:", output_dir.absolute())
-    print("  - company_graph.mmd (Mermaid)")
-    print("  - company_graph.dot (Graphviz)")
-    print("  - company_graph.graphml (GraphML)")
+    print("\nVisualization formats:")
+    print("  - company_graph.mmd (Mermaid diagram)")
+    print("  - company_graph.dot (Graphviz DOT)")
+    print("  - company_graph.graphml (GraphML for Gephi/yEd)")
+    print("  - company_graph_cytoscape.json (Cytoscape.js)")
+    print("  - company_graph_simple.json (JSON Graph Format)")
+    if (output_dir / "company_graph.png").exists():
+        print("  - company_graph.png (PNG image)")
+        print("  - company_graph.svg (SVG vector image)")
+    print("\nStorage formats:")
     print("  - company_graph.json (File storage)")
-    print("  - company_graph.db (SQLite storage)")
+    print("  - company_graph.db (SQLite database)")
     print("\nTry opening the .mmd file in a Mermaid viewer!")
 
 
