@@ -110,12 +110,14 @@ def to_mermaid(
 
     lines = []
 
+    # Optional title (YAML front matter)
+    if title:
+        lines.append("---")
+        lines.append(f"title: {title}")
+        lines.append("---")
+
     # Diagram header
     lines.append(f"graph {direction}")
-
-    # Optional title
-    if title:
-        lines.append(f"    title {title}")
 
     # Group entities by type if requested
     if group_by_type:

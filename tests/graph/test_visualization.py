@@ -89,7 +89,8 @@ class TestMermaidRendering:
             sample_entities, sample_relationships, title="Test Graph"
         )
 
-        assert "title Test Graph" in diagram
+        assert "---" in diagram
+        assert "title: Test Graph" in diagram
 
     def test_to_mermaid_with_minimal_scheme(
         self, sample_entities, sample_relationships
@@ -298,7 +299,7 @@ class TestGraphVisualizationMethods:
 
         assert "graph TB" in diagram
         assert "subgraph Person" in diagram
-        assert "title My Graph" in diagram
+        assert "title: My Graph" in diagram
 
     @pytest.mark.asyncio
     async def test_graph_to_graphviz(self, sample_graph):
