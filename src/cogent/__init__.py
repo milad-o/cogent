@@ -74,7 +74,8 @@ __version__ = "1.15.0"
 
 # Core enums and utilities
 # Graph API (unified visualization)
-from cogent import graph
+# Temporarily commented out while rebuilding graph/kg modules
+# from cogent import graph
 
 # Agents (THIS IS WHERE WE ADD VALUE)
 from cogent.agent.base import Agent
@@ -143,12 +144,13 @@ from cogent.executors import (
     create_executor,
     run,
 )
-from cogent.graph import (
-    GraphConfig,
-    GraphDirection,
-    GraphTheme,
-    GraphView,
-)
+# Temporarily commented out while rebuilding graph/kg modules
+# from cogent.graph import (
+#     GraphConfig,
+#     GraphDirection,
+#     GraphTheme,
+#     GraphView,
+# )
 
 # Interceptors (execution flow control)
 from cogent.interceptors import (
@@ -255,13 +257,13 @@ from cogent.observability.trace_record import Trace, TraceType
 from cogent.tools.base import BaseTool, tool
 from cogent.tools.registry import ToolRegistry, create_tool_from_function
 
-# Backwards-compatible aliases for visualization module
-MermaidConfig = GraphConfig
-MermaidTheme = GraphTheme
-MermaidDirection = GraphDirection
-MermaidRenderer = GraphView  # Closest equivalent
-AgentDiagram = GraphView  # Use GraphView.from_agent() instead
-TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
+# Backwards-compatible aliases for visualization module (commented out temporarily)
+# MermaidConfig = GraphConfig
+# MermaidTheme = GraphTheme
+# MermaidDirection = GraphDirection
+# MermaidRenderer = GraphView  # Closest equivalent
+# AgentDiagram = GraphView  # Use GraphView.from_agent() instead
+# TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
 
 # Capabilities (composable tools for agents)
 # Document processing module
@@ -427,19 +429,19 @@ __all__ = [
     "create_executor_callback",
     "configure_output",
     "render_dag_ascii",
-    # Graph API (visualization)
-    "graph",
-    "GraphView",
-    "GraphConfig",
-    "GraphTheme",
-    "GraphDirection",
+    # Graph API (visualization) - temporarily commented out
+    # "graph",
+    # "GraphView",
+    # "GraphConfig",
+    # "GraphTheme",
+    # "GraphDirection",
     # Backwards-compatible visualization aliases
-    "MermaidConfig",
-    "MermaidRenderer",
-    "MermaidTheme",
-    "MermaidDirection",
-    "AgentDiagram",
-    "TopologyDiagram",
+    # "MermaidConfig",
+    # "MermaidRenderer",
+    # "MermaidTheme",
+    # "MermaidDirection",
+    # "AgentDiagram",
+    # "TopologyDiagram",
     # Capabilities
     "BaseCapability",
     "KnowledgeGraph",

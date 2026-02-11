@@ -1,32 +1,9 @@
-"""
-Cogent Graph API - Unified visualization for agents and topologies.
+"""Knowledge Graph module for Cogent.
 
-Simple API:
-    ```python
-    # Get a graph from any entity
-    view = agent.graph()
-    view = topology.graph()
-
-    # Render in any format
-    print(view.mermaid())    # Mermaid code (default)
-    print(view.ascii())      # Terminal-friendly text
-    print(view.dot())        # Graphviz DOT format
-    print(view.url())        # mermaid.ink URL
-    print(view.html())       # Embeddable HTML
-
-    # Save to file (format auto-detected)
-    view.save("diagram.png")
-    view.save("diagram.svg")
-    view.save("diagram.mmd")
-    ```
+This module provides a clean, modern API for building and querying knowledge graphs.
 """
 
-from cogent.graph.config import GraphConfig, GraphDirection, GraphTheme
-from cogent.graph.view import GraphView
+from cogent.graph.models import Entity, Relationship
+from cogent.graph.storage import Storage
 
-__all__ = [
-    "GraphView",
-    "GraphConfig",
-    "GraphTheme",
-    "GraphDirection",
-]
+__all__ = ["Entity", "Relationship", "Storage"]
