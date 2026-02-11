@@ -74,9 +74,20 @@ __version__ = "1.15.0"
 
 # Core enums and utilities
 # Graph API (unified visualization)
-from cogent import graph
+# Temporarily commented out while rebuilding graph/kg modules
+# from cogent import graph
 
 # Agents (THIS IS WHERE WE ADD VALUE)
+# Backwards-compatible aliases for visualization module (commented out temporarily)
+# MermaidConfig = GraphConfig
+# MermaidTheme = GraphTheme
+# MermaidDirection = GraphDirection
+# MermaidRenderer = GraphView  # Closest equivalent
+# AgentDiagram = GraphView  # Use GraphView.from_agent() instead
+# TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
+# Capabilities (composable tools for agents)
+# Document processing module
+from cogent import documents
 from cogent.agent.base import Agent
 from cogent.agent.config import AgentConfig
 from cogent.agent.hitl import (
@@ -121,6 +132,11 @@ from cogent.agent.streaming import (
     extract_tool_calls,
     print_stream,
 )
+from cogent.capabilities import (
+    BaseCapability,
+    KnowledgeGraph,
+)
+from cogent.core import Document, DocumentMetadata
 
 # Context - invocation-scoped data
 from cogent.core.context import EMPTY_CONTEXT, RunContext
@@ -130,6 +146,15 @@ from cogent.core.enums import (
     Priority,
     TaskStatus,
     get_role_capabilities,
+)
+
+# Native message types (from core.messages)
+from cogent.core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
 )
 from cogent.core.utils import generate_id, now_utc
 
@@ -143,13 +168,14 @@ from cogent.executors import (
     create_executor,
     run,
 )
-from cogent.graph import (
-    GraphConfig,
-    GraphDirection,
-    GraphTheme,
-    GraphView,
-)
 
+# Temporarily commented out while rebuilding graph/kg modules
+# from cogent.graph import (
+#     GraphConfig,
+#     GraphDirection,
+#     GraphTheme,
+#     GraphView,
+# )
 # Interceptors (execution flow control)
 from cogent.interceptors import (
     AuditEvent,
@@ -254,32 +280,6 @@ from cogent.observability.trace_record import Trace, TraceType
 # Tools
 from cogent.tools.base import BaseTool, tool
 from cogent.tools.registry import ToolRegistry, create_tool_from_function
-
-# Backwards-compatible aliases for visualization module
-MermaidConfig = GraphConfig
-MermaidTheme = GraphTheme
-MermaidDirection = GraphDirection
-MermaidRenderer = GraphView  # Closest equivalent
-AgentDiagram = GraphView  # Use GraphView.from_agent() instead
-TopologyDiagram = GraphView  # Use GraphView.from_topology() instead
-
-# Capabilities (composable tools for agents)
-# Document processing module
-from cogent import documents
-from cogent.capabilities import (
-    BaseCapability,
-    KnowledgeGraph,
-)
-from cogent.core import Document, DocumentMetadata
-
-# Native message types (from core.messages)
-from cogent.core.messages import (
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage,
-    ToolMessage,
-)
 
 # All public exports
 __all__ = [
@@ -427,19 +427,19 @@ __all__ = [
     "create_executor_callback",
     "configure_output",
     "render_dag_ascii",
-    # Graph API (visualization)
-    "graph",
-    "GraphView",
-    "GraphConfig",
-    "GraphTheme",
-    "GraphDirection",
+    # Graph API (visualization) - temporarily commented out
+    # "graph",
+    # "GraphView",
+    # "GraphConfig",
+    # "GraphTheme",
+    # "GraphDirection",
     # Backwards-compatible visualization aliases
-    "MermaidConfig",
-    "MermaidRenderer",
-    "MermaidTheme",
-    "MermaidDirection",
-    "AgentDiagram",
-    "TopologyDiagram",
+    # "MermaidConfig",
+    # "MermaidRenderer",
+    # "MermaidTheme",
+    # "MermaidDirection",
+    # "AgentDiagram",
+    # "TopologyDiagram",
     # Capabilities
     "BaseCapability",
     "KnowledgeGraph",

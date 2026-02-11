@@ -45,6 +45,10 @@ dependencies = [
     "starlette>=0.50.0",
     "uvicorn>=0.38.0",
     "faiss-cpu>=1.13.2",
+    "scipy>=1.17.0",
+    "asyncpg>=0.31.0",
+    "pyvis>=0.3.2",
+    "gravis>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -150,6 +154,11 @@ docs = [
     "mkdocs-material>=9.7.1",
     "mkdocs-redirects>=1.2.2",
     "pymdown-extensions>=10.20",
+    "ipykernel>=7.1.0",
+]
+
+# --- Notebook Tools ---
+notebook = [
     "ipykernel>=7.1.0",
 ]
 

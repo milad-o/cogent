@@ -81,6 +81,9 @@ examples/data/pdf_output/notebook-*.html
 examples/data/pdf_output/notebook_pdf_html_pages/
 examples/data/pdf_output/pdf_vision_showcase/
 
+# Knowledge graph outputs
+examples/capabilities/kg_outputs/
+
 # Agent
 .agent/
 task.md

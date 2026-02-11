@@ -223,7 +223,7 @@ async def agent_demo():
     for query in queries:
         print(f"\n❓ {query}")
         print("-" * 40)
-        response = await agent.run(query, strategy="dag")
+        response = await agent.run(query)
         # Clean up response
         answer = response.replace("FINAL ANSWER:", "").strip()
         print(f"💡 {answer[:600]}")

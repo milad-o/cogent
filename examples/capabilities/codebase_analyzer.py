@@ -125,7 +125,7 @@ When tracing code flow, follow the relationships to understand how data moves.""
     for q in questions:
         print(f"\n❓ {q}")
         print("-" * 40)
-        response = await agent.run(q, strategy="dag")
+        response = await agent.run(q)
         print(f"💡 {response}")
 
     print("\n" + "=" * 60)
