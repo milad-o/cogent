@@ -1568,13 +1568,13 @@
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># Render in any format</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">mermaid</span><span class="p">())</span>   <span class="c1"># Mermaid code</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">ascii</span><span class="p">())</span>     <span class="c1"># Terminal-friendly</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">dot</span><span class="p">())</span>       <span class="c1"># Graphviz DOT</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">url</span><span class="p">())</span>       <span class="c1"># mermaid.ink URL</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">html</span><span class="p">())</span>      <span class="c1"># Embeddable HTML</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1"># Save to file</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.png&quot;</span><span class="p">)</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.svg&quot;</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">url</span><span class="p">())</span>       <span class="c1"># mermaid.ink URL</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">html</span><span class="p">())</span>      <span class="c1"># Embeddable HTML</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># Save to file</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.png&quot;</span><span class="p">)</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.svg&quot;</span><span class="p">)</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.mmd&quot;</span><span class="p">)</span> <span class="c1"># Mermaid source</span>
 </span></code></pre></div>
 <hr />
 <h2 id="graphview-api">GraphView API<a class="headerlink" href="#graphview-api" title="Permanent link">&para;</a></h2>
@@ -1588,22 +1588,18 @@
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># ASCII art for terminal</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">ascii_art</span> <span class="o">=</span> <span class="n">view</span><span class="o">.</span><span class="n">ascii</span><span class="p">()</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Graphviz DOT format</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">dot_code</span> <span class="o">=</span> <span class="n">view</span><span class="o">.</span><span class="n">dot</span><span class="p">()</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># mermaid.ink URL (shareable)</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">url</span> <span class="o">=</span> <span class="n">view</span><span class="o">.</span><span class="n">url</span><span class="p">()</span>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># mermaid.ink URL (shareable)</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">url</span> <span class="o">=</span> <span class="n">view</span><span class="o">.</span><span class="n">url</span><span class="p">()</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># Embeddable HTML</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">html</span> <span class="o">=</span> <span class="n">view</span><span class="o">.</span><span class="n">html</span><span class="p">()</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># Embeddable HTML</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">html</span> <span class="o">=</span> <span class="n">view</span><span class="o">.</span><span class="n">html</span><span class="p">()</span>
 </span></code></pre></div>
 <h3 id="saving-diagrams">Saving Diagrams<a class="headerlink" href="#saving-diagrams" title="Permanent link">&para;</a></h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Auto-detect format from extension</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.png&quot;</span><span class="p">)</span>    <span class="c1"># PNG image</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.svg&quot;</span><span class="p">)</span>    <span class="c1"># SVG vector</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.mmd&quot;</span><span class="p">)</span>    <span class="c1"># Mermaid source</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.dot&quot;</span><span class="p">)</span>    <span class="c1"># Graphviz DOT</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.html&quot;</span><span class="p">)</span>   <span class="c1"># HTML page</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">view</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;diagram.html&quot;</span><span class="p">)</span>   <span class="c1"># HTML page</span>
 </span></code></pre></div>
 <hr />
 <h2 id="agent-graphs">Agent Graphs<a class="headerlink" href="#agent-graphs" title="Permanent link">&para;</a></h2>
@@ -1732,11 +1728,6 @@
 <td><code>ascii()</code></td>
 <td><code>str</code></td>
 <td>ASCII art diagram</td>
-</tr>
-<tr>
-<td><code>dot()</code></td>
-<td><code>str</code></td>
-<td>Graphviz DOT code</td>
 </tr>
 <tr>
 <td><code>url()</code></td>
