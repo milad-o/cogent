@@ -1031,3 +1031,131 @@ class KnowledgeGraph(BaseCapability):
     def display(self, **kwargs) -> None:
         """Print Mermaid diagram code for inline display."""
         print(self.mermaid(**kwargs))
+
+    def interactive(
+        self,
+        output_path: str | Path = "knowledge_graph.html",
+        *,
+        height: str = "600px",
+        width: str = "100%",
+        physics_config: dict[str, Any] | None = None,
+        entity_color: str = "#7BE382",
+        relationship_color: str = "#2B7CE9",
+        notebook: bool = False,
+        max_entities: int | None = None,
+    ) -> Path:
+        """
+        Generate interactive HTML visualization using PyVis and NetworkX.
+
+        Creates a force-directed graph with drag, zoom, and hover capabilities.
+        Perfect for interactive exploration, notebooks, and presentations.
+
+        Args:
+            output_path: Where to save the HTML file
+            height: Canvas height (e.g., "600px", "100vh")
+            width: Canvas width (e.g., "100%", "800px")
+            physics_config: Custom physics configuration for layout
+            entity_color: Default color for entities (hex)
+            relationship_color: Color for relationship edges (hex)
+            notebook: True if running in Jupyter notebook
+            max_entities: Limit number of entities to visualize
+
+        Returns:
+            Path to the generated HTML file
+
+        Example:
+            ```python
+            # Basic usage
+            kg.interactive("my_graph.html")
+
+            # Jupyter notebook
+            kg.interactive(notebook=True)
+
+            # Custom physics
+            kg.interactive(
+                physics_config={
+                    "barnesHut": {
+                        "gravitationalConstant": -3000,
+                        "centralGravity": 0.5,
+                        "springLength": 200
+                    }
+                }
+            )
+            ```
+        """
+        try:
+            import networkx as nx
+            from pyvis.network import Network
+        except ImportError as e:
+            raise ImportError(
+                "PyVis and NetworkX required for interactive visualization. "
+                "Install with: uv add networkx pyvis"
+            ) from e
+
+        # Collect graph data
+        entities, relationships = self._collect_visualization_data(
+            max_entities=max_entities
+        )
+
+        # Build NetworkX graph
+        G = nx.DiGraph()
+
+        # Add entities as nodes
+        for entity in entities:
+            G.add_node(
+                entity.id,
+                title=f"{entity.entity_type}: {entity.id}\n"
+                + "\n".join(f"{k}: {v}" for k, v in (entity.attributes or {}).items()),
+                color=entity_color,
+                label=entity.id,
+            )
+
+        # Add relationships as edges
+        for rel in relationships:
+            G.add_edge(
+                rel.source_id,
+                rel.target_id,
+                label=rel.relation,
+                title=rel.relation,
+                color=relationship_color,
+            )
+
+        # Create PyVis network
+        net = Network(
+            height=height,
+            width=width,
+            notebook=notebook,
+            directed=True,
+            cdn_resources="remote",
+        )
+        net.from_nx(G)
+
+        # Apply physics configuration
+        default_physics = {
+            "physics": {
+                "barnesHut": {
+                    "gravitationalConstant": -2000,
+                    "centralGravity": 0.3,
+                    "springLength": 150,
+                }
+            },
+            "edges": {
+                "font": {"size": 12, "align": "middle"},
+                "arrows": {"to": {"enabled": True}},
+            },
+        }
+
+        if physics_config:
+            # Merge user config with defaults
+            config = default_physics.copy()
+            config.update(physics_config)
+        else:
+            config = default_physics
+
+        net.set_options(f"var options = {json.dumps(config)}")
+
+        # Save and return path
+        output = Path(output_path)
+        net.save_graph(str(output))
+
+        return output
