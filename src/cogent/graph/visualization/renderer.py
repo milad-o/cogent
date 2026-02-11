@@ -908,3 +908,156 @@ def to_iplotx(
 
     return fig
 
+
+def to_gravis(
+    entities: list[Entity],
+    relationships: list[Relationship],
+    *,
+    mode: str = "2d",
+    renderer: str = "vis",
+    node_size_data: str | None = None,
+    node_label_data: str | None = None,
+    edge_curvature: float = 0.0,
+    zoom_factor: float = 0.75,
+    show_node_label: bool = True,
+    show_edge_label: bool = False,
+    layout_algorithm: str | None = None,
+    graph_height: int = 450,
+    **kwargs: Any,
+) -> Any:
+    """
+    Convert entities and relationships to interactive gravis visualization.
+
+    Creates web-based interactive 2D or 3D visualizations using d3.js, vis.js,
+    or three.js. Supports rich metadata, images in nodes, and flexible styling.
+
+    Args:
+        entities: List of Entity objects to visualize
+        relationships: List of Relationship objects to visualize
+        mode: Visualization mode - "2d" or "3d"
+        renderer: Rendering engine:
+            - "d3": d3.js-based 2D visualization
+            - "vis": vis.js-based 2D visualization (default, force-directed)
+            - "three": three.js-based 3D visualization
+        node_size_data: Entity attribute to map to node size (e.g., "degree")
+        node_label_data: Entity attribute to use for labels (default: "label")
+        edge_curvature: Curvature of edges (0.0 = straight, higher = more curved)
+        zoom_factor: Initial zoom level (default: 0.75)
+        show_node_label: Whether to show node labels
+        show_edge_label: Whether to show edge labels (relationship types)
+        layout_algorithm: Force layout algorithm (vis.js only):
+            - "barnesHut" (default)
+            - "forceAtlas2Based"
+            - "repulsion"
+            - "hierarchicalRepulsion"
+        graph_height: Height of visualization in pixels (default: 450)
+        **kwargs: Additional gravis parameters (node_size_factor, etc.)
+
+    Returns:
+        gravis Figure object with methods:
+            - .display() - Open in browser
+            - .export_html(path) - Save as standalone HTML
+            - .export_svg(path) - Save as SVG (2D only)
+            - .export_png(path) - Save as PNG (requires Selenium)
+            - .export_jpg(path) - Save as JPG (requires Selenium)
+
+    Raises:
+        ImportError: If gravis or networkx not installed
+
+    Example:
+        ```python
+        from cogent.graph.visualization import to_gravis
+
+        # Basic 2D interactive (vis.js)
+        fig = to_gravis(entities, relationships)
+        fig.display()  # Opens in browser
+
+        # 3D visualization
+        fig = to_gravis(entities, relationships, mode="3d", renderer="three")
+        fig.export_html("graph_3d.html")
+
+        # d3.js with custom styling
+        fig = to_gravis(
+            entities,
+            relationships,
+            renderer="d3",
+            node_size_data="degree",
+            edge_curvature=0.3,
+            zoom_factor=0.8
+        )
+        fig.export_svg("graph.svg")
+
+        # From KnowledgeGraph
+        entities = kg.get_all_entities()
+        relationships = kg.get_all_relationships()
+        fig = to_gravis(entities, relationships)
+        fig.display()
+        ```
+    """
+    try:
+        import gravis as gv
+        import networkx as nx
+    except ImportError as e:
+        raise ImportError(
+            "gravis and NetworkX required for interactive web visualization. "
+            "Install with: uv add gravis"
+        ) from e
+
+    # Build NetworkX graph
+    G = nx.DiGraph()
+
+    # Add entities as nodes with all attributes
+    for entity in entities:
+        node_attrs = {
+            "entity_type": entity.entity_type,
+            "label": entity.attributes.get("name", entity.id),
+            **entity.attributes,
+        }
+        G.add_node(entity.id, **node_attrs)
+
+    # Add relationships as edges
+    for rel in relationships:
+        edge_label = rel.relation if show_edge_label else ""
+        G.add_edge(
+            rel.source_id,
+            rel.target_id,
+            relation=rel.relation,
+            label=edge_label,
+        )
+
+    # Prepare kwargs for gravis
+    gravis_kwargs: dict[str, Any] = {
+        "graph_height": graph_height,
+        "zoom_factor": zoom_factor,
+        "show_node_label": show_node_label,
+        "show_edge_label": show_edge_label,
+    }
+
+    # Data source mappings
+    if node_size_data:
+        gravis_kwargs["node_size_data_source"] = node_size_data
+    if node_label_data:
+        gravis_kwargs["node_label_data_source"] = node_label_data
+    else:
+        gravis_kwargs["node_label_data_source"] = "label"
+
+    # Rendering options
+    if edge_curvature != 0.0:
+        gravis_kwargs["edge_curvature"] = edge_curvature
+
+    # Layout algorithm (vis.js only)
+    if renderer == "vis" and layout_algorithm:
+        gravis_kwargs["layout_algorithm"] = layout_algorithm
+
+    # Merge additional kwargs
+    gravis_kwargs.update(kwargs)
+
+    # Select renderer and create figure
+    if mode == "3d" or renderer == "three":
+        fig = gv.three(G, **gravis_kwargs)
+    elif renderer == "d3":
+        fig = gv.d3(G, **gravis_kwargs)
+    else:  # vis (default)
+        fig = gv.vis(G, **gravis_kwargs)
+
+    return fig

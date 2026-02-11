@@ -1197,3 +1197,136 @@ class KnowledgeGraph(BaseCapability):
 
         return fig
 
+    def visualize(
+        self,
+        *,
+        mode: str = "2d",
+        renderer: str = "vis",
+        output_path: str | Path | None = None,
+        max_entities: int | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Create interactive web visualization using gravis.
+
+        Generates interactive 2D or 3D visualizations powered by d3.js, vis.js,
+        or three.js. Supports pan, zoom, drag nodes, and rich metadata display.
+
+        Args:
+            mode: Visualization mode - "2d" or "3d"
+            renderer: Rendering engine:
+                - "vis": vis.js force-directed (default, best for exploration)
+                - "d3": d3.js-based (good for export to SVG)
+                - "three": three.js 3D visualization
+            output_path: Optional path to save HTML file
+            max_entities: Limit number of entities to visualize
+            **kwargs: Additional arguments passed to to_gravis():
+                - node_size_data: Attribute to map to node size
+                - node_label_data: Attribute for labels
+                - edge_curvature: Edge curvature (0.0-1.0)
+                - zoom_factor: Initial zoom level
+                - show_node_label: Show/hide node labels (bool)
+                - show_edge_label: Show/hide edge labels (bool)
+                - layout_algorithm: Force layout algorithm (vis only)
+                - graph_height: Height in pixels (int, default 450)
+
+        Returns:
+            gravis Figure object with methods:
+                - .display() - Open in browser
+                - .export_html(path) - Save as HTML
+                - .export_svg(path) - Save as SVG (2D only)
+                - .export_png(path) - Save as PNG (requires Selenium)
+
+        Example:
+            ```python
+            # Basic 2D interactive visualization
+            fig = kg.visualize()
+            fig.display()  # Opens in browser
+
+            # 3D visualization
+            fig = kg.visualize(mode="3d")
+            fig.export_html("graph_3d.html")
+
+            # Advanced 2D with styling
+            fig = kg.visualize(
+                renderer="d3",
+                edge_curvature=0.3,
+                zoom_factor=0.8,
+                show_edge_label=True
+            )
+            fig.export_svg("graph.svg")
+
+            # Auto-save to file
+            fig = kg.visualize(
+                output_path="knowledge_graph.html",
+                max_entities=100
+            )
+            ```
+        """
+        from cogent.graph.visualization import to_gravis
+
+        # Collect graph data
+        entities, relationships = self._collect_visualization_data(
+            max_entities=max_entities
+        )
+
+        # Create gravis visualization
+        fig = to_gravis(
+            entities,
+            relationships,
+            mode=mode,
+            renderer=renderer,
+            **kwargs,
+        )
+
+        # Save if path provided
+        if output_path:
+            path = Path(output_path)
+            fig.export_html(str(path))
+
+        return fig
+
+    def visualize_3d(
+        self,
+        *,
+        output_path: str | Path | None = None,
+        max_entities: int | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Create 3D interactive visualization using gravis + three.js.
+
+        Convenient shortcut for 3D graph exploration with physics simulation.
+
+        Args:
+            output_path: Optional path to save HTML file
+            max_entities: Limit number of entities to visualize
+            **kwargs: Additional arguments passed to to_gravis()
+
+        Returns:
+            gravis Figure object (call .display() or .export_html())
+
+        Example:
+            ```python
+            # Open 3D view in browser
+            fig = kg.visualize_3d()
+            fig.display()
+
+            # Save 3D visualization
+            fig = kg.visualize_3d(output_path="graph_3d.html")
+
+            # Custom zoom and labels
+            fig = kg.visualize_3d(
+                zoom_factor=1.5,
+                show_edge_label=True,
+            )
+            ```
+        """
+        return self.visualize(
+            mode="3d",
+            renderer="three",
+            output_path=output_path,
+            max_entities=max_entities,
+            **kwargs,
+        )
+

@@ -49,6 +49,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "pyvis>=0.3.2",
     "iplotx>=1.7.0",
+    "gravis>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -154,6 +155,11 @@ docs = [
     "mkdocs-material>=9.7.1",
     "mkdocs-redirects>=1.2.2",
     "pymdown-extensions>=10.20",
+    "ipykernel>=7.1.0",
+]
+
+# --- Notebook Tools ---
+notebook = [
     "ipykernel>=7.1.0",
 ]
 
