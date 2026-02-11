@@ -3,6 +3,7 @@
 Provides rendering capabilities for knowledge graphs in multiple formats:
 - Mermaid diagrams (with PNG/SVG/PDF image rendering via Mermaid CLI)
 - PyVis interactive HTML (with NetworkX force-directed layout)
+- iplotx publication-quality plots (matplotlib-based, advanced layouts)
 - Graphviz DOT files
 - GraphML XML
 - Cytoscape.js JSON
@@ -10,7 +11,7 @@ Provides rendering capabilities for knowledge graphs in multiple formats:
 
 Usage:
     >>> from cogent.graph import Graph
-    >>> from cogent.graph.visualization import to_mermaid, to_pyvis
+    >>> from cogent.graph.visualization import to_mermaid, to_pyvis, to_iplotx
     >>>
     >>> graph = Graph()
     >>> # ... add entities and relationships ...
@@ -30,6 +31,11 @@ Usage:
     >>> # Interactive PyVis visualization (requires networkx, pyvis)
     >>> net = to_pyvis(entities, relationships)
     >>> net.save_graph("graph.html")
+    >>>
+    >>> # Publication-quality iplotx visualization (requires iplotx)
+    >>> import matplotlib.pyplot as plt
+    >>> fig = to_iplotx(entities, relationships, layout="hierarchical")
+    >>> fig.savefig("graph.pdf", dpi=300)
 """
 
 from cogent.graph.visualization.renderer import (
@@ -40,6 +46,7 @@ from cogent.graph.visualization.renderer import (
     to_cytoscape_json,
     to_graphml,
     to_graphviz,
+    to_iplotx,
     to_json_graph,
     to_mermaid,
     to_pyvis,
@@ -62,6 +69,7 @@ __all__ = [
     "to_cytoscape_json",
     "to_json_graph",
     "to_pyvis",
+    "to_iplotx",
     "render_mermaid_to_image",
     "save_diagram",
     "entity_to_mermaid_node",

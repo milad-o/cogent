@@ -1108,3 +1108,92 @@ class KnowledgeGraph(BaseCapability):
         net.save_graph(str(output))
 
         return output
+
+    def plot(
+        self,
+        *,
+        layout: str = "spring",
+        figsize: tuple[float, float] = (10, 8),
+        node_color: str | dict[str, str] | None = None,
+        title: str | None = "Knowledge Graph",
+        save_path: str | Path | None = None,
+        max_entities: int | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Create publication-quality plot using iplotx and matplotlib.
+
+        Perfect for academic papers, presentations, and professional documentation.
+        Supports multiple layout algorithms and extensive customization.
+
+        Args:
+            layout: Layout algorithm - "spring", "circular", "kamada_kawai",
+                    "hierarchical", "tree", "multipartite", etc.
+            figsize: Figure size as (width, height) in inches
+            node_color: Node coloring strategy:
+                - Single color string (e.g., "#7BE382")
+                - Dict mapping entity types to colors
+                - None (default coloring)
+            title: Optional plot title
+            save_path: Optional path to save figure (supports .pdf, .png, .svg)
+            max_entities: Limit number of entities to visualize
+            **kwargs: Additional arguments passed to to_iplotx()
+
+        Returns:
+            matplotlib Figure object (call .show() or .savefig())
+
+        Example:
+            ```python
+            import matplotlib.pyplot as plt
+
+            # Basic plot
+            fig = kg.plot()
+            plt.show()
+
+            # Hierarchical layout with custom colors
+            fig = kg.plot(
+                layout="hierarchical",
+                node_color={
+                    "Person": "#90CAF9",
+                    "Company": "#FFCC80",
+                    "Project": "#A5D6A7"
+                },
+                figsize=(12, 8)
+            )
+            fig.savefig("knowledge_graph.pdf", dpi=300, bbox_inches="tight")
+
+            # Tree layout
+            fig = kg.plot(layout="tree")
+
+            # Circular layout with custom spring parameters
+            fig = kg.plot(
+                layout="spring",
+                layout_kwargs={"k": 0.3, "iterations": 50}
+            )
+            ```
+        """
+        from cogent.graph.visualization import to_iplotx
+
+        # Collect graph data
+        entities, relationships = self._collect_visualization_data(
+            max_entities=max_entities
+        )
+
+        # Create plot using renderer
+        fig = to_iplotx(
+            entities,
+            relationships,
+            layout=layout,
+            figsize=figsize,
+            node_color=node_color,
+            title=title,
+            **kwargs,
+        )
+
+        # Save if path provided
+        if save_path:
+            path = Path(save_path)
+            fig.savefig(str(path), dpi=300, bbox_inches="tight")
+
+        return fig
+

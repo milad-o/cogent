@@ -715,3 +715,196 @@ def to_pyvis(
     net.set_options(f"var options = {json.dumps(config)}")
 
     return net
+
+
+def to_iplotx(
+    entities: list[Entity],
+    relationships: list[Relationship],
+    *,
+    layout: str = "spring",
+    figsize: tuple[float, float] = (16, 12),
+    node_size: float = 120,
+    node_color: str | dict[str, str] | None = None,
+    edge_color: str = "#999999",
+    edge_width: float = 1.0,
+    with_labels: bool = True,
+    font_size: int = 11,
+    directed: bool = True,
+    title: str | None = "Knowledge Graph",
+    layout_kwargs: dict[str, Any] | None = None,
+    draw_kwargs: dict[str, Any] | None = None,
+) -> Any:
+    """
+    Convert entities and relationships to publication-quality plot using iplotx.
+
+    Creates matplotlib-based visualizations with advanced layouts perfect for
+    publications, presentations, and professional documentation.
+
+    Args:
+        entities: List of Entity objects to visualize
+        relationships: List of Relationship objects to visualize
+        layout: Layout algorithm - "spring", "force", "circular", "radial",
+            "kamada_kawai", "shell", "spectral", "hierarchical", "tree",
+            "multipartite", "clustered", etc.
+        figsize: Figure size as (width, height) in inches
+        node_size: Size of nodes
+        node_color: Color(s) for nodes. Can be:
+            - Single color string (e.g., "#7BE382")
+            - Dict mapping entity types to colors
+            - None (uses default coloring)
+        edge_color: Color for edges
+        edge_width: Width of edges
+        with_labels: Whether to show node labels
+        font_size: Size of node labels
+        directed: Whether to show directed edges (arrows)
+        title: Optional plot title
+        layout_kwargs: Additional kwargs for layout function
+        draw_kwargs: Additional kwargs for iplotx.network()
+
+    Returns:
+        matplotlib Figure object (call .savefig() to save or plt.show() to display)
+
+    Raises:
+        ImportError: If iplotx or networkx not installed
+
+    Example:
+        ```python
+        from cogent.graph.visualization import to_iplotx
+        import matplotlib.pyplot as plt
+
+        # Basic usage
+        fig = to_iplotx(entities, relationships)
+        plt.show()
+
+        # Publication figure
+        fig = to_iplotx(
+            entities,
+            relationships,
+            layout="hierarchical",
+            figsize=(12, 8),
+            node_color={"Person": "#90CAF9", "Company": "#FFCC80"},
+        )
+        fig.savefig("graph.pdf", dpi=300, bbox_inches="tight")
+
+        # Tree layout
+        fig = to_iplotx(entities, relationships, layout="tree")
+
+        # Custom spring layout
+        fig = to_iplotx(
+            entities,
+            relationships,
+            layout="spring",
+            layout_kwargs={"k": 0.3, "iterations": 50}
+        )
+        ```
+    """
+    try:
+        import matplotlib.pyplot as plt
+        import networkx as nx
+        import iplotx as ipx
+    except ImportError as e:
+        raise ImportError(
+            "iplotx, matplotlib, and NetworkX required for publication-quality visualization. "
+            "Install with: uv add iplotx"
+        ) from e
+
+    # Build NetworkX graph
+    G = nx.DiGraph() if directed else nx.Graph()
+
+    # Add entities as nodes
+    for entity in entities:
+        G.add_node(entity.id, entity_type=entity.entity_type, **entity.attributes or {})
+
+    # Add relationships as edges
+    for rel in relationships:
+        G.add_edge(rel.source_id, rel.target_id, relation=rel.relation)
+
+    # Prepare node colors
+    colors = None
+    if node_color:
+        if isinstance(node_color, dict):
+            # Map entity types to colors
+            colors = [
+                node_color.get(G.nodes[node].get("entity_type", "default"), "#7BE382")
+                for node in G.nodes()
+            ]
+        else:
+            # Single color for all nodes
+            colors = node_color
+
+    # Prepare layout kwargs
+    layout_kw = layout_kwargs or {}
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Apply layout and draw
+    if layout in ("spring", "force", "force_directed"):
+        if not layout_kw:
+            layout_kw = {"k": 0.8, "iterations": 200}
+        pos = nx.spring_layout(G, **layout_kw)
+    elif layout in ("circular", "radial"):
+        if not layout_kw:
+            layout_kw = {"scale": 1.0}
+        pos = nx.circular_layout(G, **layout_kw)
+    elif layout == "kamada_kawai":
+        pos = nx.kamada_kawai_layout(G, **layout_kw)
+    elif layout == "shell":
+        pos = nx.shell_layout(G, **layout_kw)
+    elif layout == "spectral":
+        pos = nx.spectral_layout(G, **layout_kw)
+    elif layout == "hierarchical" or layout == "tree":
+        # For hierarchical/tree layouts, use graphviz_layout if available
+        try:
+            pos = nx.nx_agraph.graphviz_layout(G, prog="dot", **layout_kw)
+        except (ImportError, AttributeError):
+            # Fallback to planar layout or spring
+            try:
+                pos = nx.planar_layout(G, **layout_kw)
+            except nx.NetworkXException:
+                pos = nx.spring_layout(G, **layout_kw)
+    elif layout in ("multipartite", "clustered"):
+        for node in G.nodes:
+            G.nodes[node]["subset"] = G.nodes[node].get("entity_type", "Other")
+        if not layout_kw:
+            layout_kw = {"scale": 1.0}
+        pos = nx.multipartite_layout(G, subset_key="subset", **layout_kw)
+    else:
+        # Custom layout or unknown - try spring as fallback
+        if not layout_kw:
+            layout_kw = {"k": 0.8, "iterations": 200}
+        pos = nx.spring_layout(G, **layout_kw)
+
+    # Build iplotx style
+    vertex_style: dict[str, Any] = {
+        "size": node_size,
+        "facecolor": colors or "#7BE382",
+        "label": {
+            "color": "black",
+            "size": font_size,
+        },
+    }
+    edge_style: dict[str, Any] = {
+        "linewidth": edge_width,
+        "color": edge_color,
+    }
+    style = {"vertex": vertex_style, "edge": edge_style}
+    if draw_kwargs:
+        style.update(draw_kwargs)
+
+    # Draw using iplotx
+    ipx.network(
+        G,
+        layout=pos,
+        ax=ax,
+        vertex_labels=with_labels,
+        style=style,
+    )
+
+    if title:
+        ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.axis("off")
+    plt.tight_layout()
+
+    return fig
+

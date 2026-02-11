@@ -10,11 +10,12 @@ Key features demonstrated:
 1. Load knowledge from a data file
 2. Visualize with Mermaid (static SVG)
 3. Visualize with PyVis (interactive HTML)
-4. Agent uses KG tools to explore and find answers
-5. Multi-hop reasoning through relationships
-6. Save/load for persistence
-7. Multiple storage backends (memory, sqlite, json)
-8. Clean programmatic API for direct access
+4. Visualize with iplotx (publication-quality plots)
+5. Agent uses KG tools to explore and find answers
+6. Multi-hop reasoning through relationships
+7. Save/load for persistence
+8. Multiple storage backends (memory, sqlite, json)
+9. Clean programmatic API for direct access
 """
 
 import asyncio
@@ -77,14 +78,18 @@ Dataset:
     print(f"✅ Loaded from {data_file.name}:")
     print(f"   Graph stats: {kg.stats()}")
 
+    # Create output directory for all visualizations
+    output_dir = Path(__file__).parent / "kg_outputs"
+    output_dir.mkdir(exist_ok=True)
+
     # === Step 2: Visualize the inferred graph ===
     print("\n🗺️  Step 2: Knowledge Graph (Mermaid)")
     print("-" * 40)
     mermaid_code = kg.mermaid(direction="LR", group_by_type=True, max_entities=50)
     print(mermaid_code)
 
-    svg_path = Path(__file__).parent / "knowledge_graph.svg"
-    print(f"\n🖼️  Saving SVG to: {svg_path}")
+    svg_path = output_dir / "knowledge_graph.svg"
+    print(f"\n🖼️  Saving SVG to: {output_dir.name}/knowledge_graph.svg")
     print("    (Requires Mermaid CLI: npm install -g @mermaid-js/mermaid-cli)")
     from cogent.graph.visualization import render_mermaid_to_image
 
@@ -94,14 +99,14 @@ Dataset:
     print("\n🌐 Step 3: Interactive Visualization (PyVis)")
     print("-" * 40)
     html_path = kg.interactive(
-        output_path=Path(__file__).parent / "knowledge_graph.html",
+        output_path=output_dir / "knowledge_graph.html",
         height="750px",
         width="100%",
         entity_color="#7BE382",
         relationship_color="#2B7CE9",
         max_entities=50,
     )
-    print(f"✅ Interactive HTML saved to: {html_path}")
+    print(f"✅ Interactive HTML saved to: {output_dir.name}/knowledge_graph.html")
     print("   Features:")
     print("   - Drag nodes to explore")
     print("   - Zoom and pan")
@@ -109,8 +114,41 @@ Dataset:
     print("   - Force-directed layout")
     print(f"   - Open in browser: file://{html_path.absolute()}")
 
-    # === Step 4: Agent drills down to find answers ===
-    print("\n💬 Step 4: Agent Queries (Drill-down)")
+    # === Step 4: Publication-quality visualization (iplotx) ===
+    print("\n📊 Step 4: Publication-Quality Plots (iplotx)")
+    print("-" * 40)
+
+    plot_layouts = {
+        "hierarchical": "hierarchical",
+        "radial": "radial",
+        "clustered": "clustered",
+        "force": "force",
+    }
+    plot_formats = ["pdf", "png", "svg"]
+
+    for label, layout in plot_layouts.items():
+        for ext in plot_formats:
+            plot_path = output_dir / f"knowledge_graph_{label}.{ext}"
+            kg.plot(
+                layout=layout,
+                node_color={
+                    "Person": "#90CAF9",
+                    "Team": "#E0E0E0",
+                    "Project": "#FFCC80",
+                    "Technology": "#C8E6C9",
+                },
+                figsize=(16, 12),
+                title=f"Knowledge Graph ({label} layout)",
+                save_path=plot_path,
+                max_entities=50,
+            )
+        print(f"✅ {label} plots saved: {output_dir.name}/knowledge_graph_{label}.*")
+    print(f"   📁 Output directory: {output_dir}")
+    print("   - Formats: PDF, PNG @300dpi, SVG")
+    print("   - Layouts: hierarchical, radial, clustered, force")
+
+    # === Step 5: Agent drills down to find answers ===
+    print("\n💬 Step 5: Agent Queries (Drill-down)")
     print("-" * 40)
 
     questions = [
@@ -124,8 +162,8 @@ Dataset:
         response = await agent.run(q)
         print(f"💡 {response_text(response)}")
 
-    # === Step 5: Agent updates knowledge ===
-    print("\n➕ Step 5: Agent Adds Knowledge")
+    # === Step 6: Agent updates knowledge ===
+    print("\n➕ Step 6: Agent Adds Knowledge")
     print("-" * 40)
 
     response = await agent.run(
@@ -140,8 +178,8 @@ Dataset:
         rels = kg.get_relationships("Frank Martinez", direction="outgoing")
         print(f"   Relationships: {[(r.relation, r.target_id) for r in rels]}")
 
-    # === Step 6: Persistence Demo ===
-    print("\n💾 Step 6: Persistence Demo")
+    # === Step 7: Persistence Demo ===
+    print("\n💾 Step 7: Persistence Demo")
     print("-" * 40)
 
     # Demo 1: Save memory graph to file
@@ -182,18 +220,6 @@ Dataset:
         print("\n✅ JSON backend (auto-save):")
         print(f"   Path: {json_path}")
         print(f"   File exists: {json_path.exists()}")
-
-    print("\n" + "=" * 60)
-    print("✅ Summary:")
-    print("   - Load knowledge from structured files")
-    print("   - Static visualization: Mermaid → SVG")
-    print("   - Interactive visualization: PyVis → HTML (drag, zoom, hover)")
-    print("   - Multiple backends: memory, sqlite, json")
-    print("   - Memory backend: explicit save/load")
-    print("   - SQLite backend: auto-persistent, great for large graphs")
-    print("   - JSON backend: auto-save on changes")
-    print("   - Agents drill down through graph to find answers")
-    print("=" * 60)
 
 
 if __name__ == "__main__":

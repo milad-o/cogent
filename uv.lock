@@ -551,6 +551,7 @@ dependencies = [
     { name = "google-genai" },
     { name = "greenlet" },
     { name = "httpx" },
+    { name = "iplotx" },
     { name = "mcp" },
     { name = "networkx" },
     { name = "openai" },
@@ -734,6 +735,7 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.2.4" },
     { name = "groq", marker = "extra == 'groq'", specifier = ">=0.15.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "iplotx", specifier = ">=1.7.0" },
     { name = "matplotlib", marker = "extra == 'visualization'", specifier = ">=3.9.0" },
     { name = "mcp", specifier = ">=1.22.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.22.0" },
@@ -1631,6 +1633,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/31/f0/7f31609ec2fb84b140ff573abf1cce78cd3a2a3c6479b60aa82b69d40d2a/instructor-1.13.0.tar.gz", hash = "sha256:bf838a5c503fafdd034a9b1f8544c5e1f62462eea9f89932bc75c116ad35ab5a", size = 69898121, upload-time = "2025-11-06T04:19:31.034Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/95/64/6542ac826a4c9b937b67c096a785af1aaa26b22fcb7c81223cfe4038205b/instructor-1.13.0-py3-none-any.whl", hash = "sha256:2b735b6ea0d3194548369a18254f1dde83cb5ec0b182de77adbadd8be73caddc", size = 160904, upload-time = "2025-11-06T04:19:24.674Z" },
+]
+
+[[package]]
+name = "iplotx"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pandas" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/89/41/56135240cac164b7060b2cd36e446f42572166985176213976e624567d42/iplotx-1.7.0.tar.gz", hash = "sha256:209bdbe7943384c44df000bd2559f1b60117aac7026816d7612af467e579e84d", size = 1990866, upload-time = "2026-02-04T00:51:43.257Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/02/1a7687fa0b48760540f5b23367347933af1e07115b2b2a9d81a1b21c383b/iplotx-1.7.0-py3-none-any.whl", hash = "sha256:3b3ae9a6ad4287edf6ded36237b4f0667a2a0ddc03a216bd759480de0b45bb86", size = 100595, upload-time = "2026-02-04T00:51:41.917Z" },
 ]
 
 [[package]]
