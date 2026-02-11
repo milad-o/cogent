@@ -451,15 +451,15 @@ results = await graph.match({
 | Phase | Status | Time | Deliverable |
 |-------|--------|------|-------------|
 | Phase 1: Models | ✅ | 1-2h | `models.py` (209 lines) ✅ |
-| Phase 2: Storage Protocol | ✅ | 1h | `storage.py` (263 lines) → `storage/base.py` ✅ |
-| Phase 3A: Engines | ⬜ | 3-4h | `engines/` (~600 lines) |
-| Phase 3B: Storage Impls | ⬜ | 3-4h | `storage/` (~850 lines) |
-| Phase 4: Base Graph | ⬜ | 2-3h | `graph.py` (~400 lines) |
-| Phase 5: Bundled Graphs | ⬜ | 2-3h | `neo4j_graph.py`, `falkordb_graph.py` (~750 lines) |
-| Phase 6: Query System | ⬜ | 2-3h | `query.py` (~300 lines) |
+| Phase 2: Storage Protocol | ✅ | 1h | `storage/base.py` (501 lines) ✅ |
+| Phase 3A: Engines | ✅ | 3-4h | `engines/` (814 lines) ✅ |
+| Phase 3B: Storage Impls | ✅ | 3-4h | `storage/` (1,475 lines) ✅ |
+| Phase 4: Base Graph | ✅ | 2-3h | `graph.py` (428 lines) ✅ |
+| Phase 5: Bundled Graphs | ⬜ SKIPPED | - | `neo4j_graph.py`, `falkordb_graph.py` |
+| Phase 6: Query System | ✅ | 2-3h | `query.py` (396 lines) ✅ |
 | Phase 7: Visualization | ⬜ | 3-4h | `visualization/` (~350 lines) |
 | Phase 8: Docs & Polish | ⬜ | 2-3h | README, examples, mkdocs |
-| **TOTAL** | **20%** | **19-27h** | **~3,500+ lines + tests + docs** |
+| **TOTAL** | **~70%** | **12-19h** | **~3,800+ lines + 211 tests** |
 
 ---
 
