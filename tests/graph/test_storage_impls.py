@@ -229,79 +229,6 @@ class TestMemoryStorage:
         assert all(rel.source_id == "alice" and rel.relation == "knows" for rel in rels)
 
     @pytest.mark.asyncio
-    async def test_find_path_simple(self, storage):
-        """Test finding a simple path between two entities."""
-        await storage.add_entity("alice", "Person", name="Alice")
-        await storage.add_entity("bob", "Person", name="Bob")
-        await storage.add_relationship("alice", "knows", "bob")
-
-        path = await storage.find_path("alice", "bob")
-
-        assert path == ["alice", "bob"]
-
-    @pytest.mark.asyncio
-    async def test_find_path_multi_hop(self, storage):
-        """Test finding a path with multiple hops."""
-        await storage.add_entity("alice", "Person", name="Alice")
-        await storage.add_entity("bob", "Person", name="Bob")
-        await storage.add_entity("charlie", "Person", name="Charlie")
-
-        await storage.add_relationship("alice", "knows", "bob")
-        await storage.add_relationship("bob", "knows", "charlie")
-
-        path = await storage.find_path("alice", "charlie")
-
-        assert path == ["alice", "bob", "charlie"]
-
-    @pytest.mark.asyncio
-    async def test_find_path_same_entity(self, storage):
-        """Test that finding path from entity to itself returns single-element list."""
-        await storage.add_entity("alice", "Person", name="Alice")
-
-        path = await storage.find_path("alice", "alice")
-
-        assert path == ["alice"]
-
-    @pytest.mark.asyncio
-    async def test_find_path_no_path_exists(self, storage):
-        """Test that finding path with no connection returns None."""
-        await storage.add_entity("alice", "Person", name="Alice")
-        await storage.add_entity("bob", "Person", name="Bob")
-
-        path = await storage.find_path("alice", "bob")
-
-        assert path is None
-
-    @pytest.mark.asyncio
-    async def test_find_path_nonexistent_entity(self, storage):
-        """Test that finding path with non-existent entity returns None."""
-        await storage.add_entity("alice", "Person", name="Alice")
-
-        path = await storage.find_path("alice", "nonexistent")
-
-        assert path is None
-
-    @pytest.mark.asyncio
-    async def test_find_path_with_max_depth(self, storage):
-        """Test finding path with max_depth constraint."""
-        await storage.add_entity("alice", "Person", name="Alice")
-        await storage.add_entity("bob", "Person", name="Bob")
-        await storage.add_entity("charlie", "Person", name="Charlie")
-        await storage.add_entity("dave", "Person", name="Dave")
-
-        await storage.add_relationship("alice", "knows", "bob")
-        await storage.add_relationship("bob", "knows", "charlie")
-        await storage.add_relationship("charlie", "knows", "dave")
-
-        # Path exists but exceeds max_depth
-        path = await storage.find_path("alice", "dave", max_depth=2)
-        assert path is None
-
-        # Path within max_depth
-        path = await storage.find_path("alice", "charlie", max_depth=2)
-        assert path == ["alice", "bob", "charlie"]
-
-    @pytest.mark.asyncio
     async def test_get_all_entities(self, storage):
         """Test retrieving all entities."""
         await storage.add_entity("alice", "Person", name="Alice")
@@ -458,10 +385,6 @@ class TestFileStorage:
         rels = await storage.get_relationships(source_id="alice")
         assert len(rels) == 1
 
-        # Test find_path
-        path = await storage.find_path("alice", "bob")
-        assert path == ["alice", "bob"]
-
         # Test get_all_entities
         entities = await storage.get_all_entities()
         assert len(entities) == 2
@@ -555,20 +478,6 @@ class TestSQLStorage:
 
         result = await storage.add_relationships(rels)
         assert len(result) == 2
-
-    @pytest.mark.asyncio
-    async def test_find_path_bfs(self, storage):
-        """Test BFS path finding in SQL storage."""
-        await storage.add_entity("alice", "Person", name="Alice")
-        await storage.add_entity("bob", "Person", name="Bob")
-        await storage.add_entity("charlie", "Person", name="Charlie")
-
-        await storage.add_relationship("alice", "knows", "bob")
-        await storage.add_relationship("bob", "knows", "charlie")
-
-        path = await storage.find_path("alice", "charlie")
-
-        assert path == ["alice", "bob", "charlie"]
 
     @pytest.mark.asyncio
     async def test_stats_and_clear(self, storage):

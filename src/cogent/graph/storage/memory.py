@@ -139,46 +139,6 @@ class MemoryStorage:
         # Placeholder implementation
         return []
 
-    async def find_path(
-        self,
-        source_id: str,
-        target_id: str,
-        max_depth: int | None = None,
-    ) -> list[str] | None:
-        """Find shortest path between two entities using BFS."""
-        if source_id not in self._entities or target_id not in self._entities:
-            return None
-
-        if source_id == target_id:
-            return [source_id]
-
-        # BFS
-        from collections import deque
-
-        queue: deque[tuple[str, list[str]]] = deque([(source_id, [source_id])])
-        visited: set[str] = {source_id}
-
-        while queue:
-            current_id, path = queue.popleft()
-
-            # Check max depth
-            if max_depth is not None and len(path) - 1 >= max_depth:
-                continue
-
-            # Get outgoing relationships
-            for rel in self._relationships:
-                if rel.source_id == current_id:
-                    next_id = rel.target_id
-
-                    if next_id == target_id:
-                        return path + [next_id]
-
-                    if next_id not in visited:
-                        visited.add(next_id)
-                        queue.append((next_id, path + [next_id]))
-
-        return None
-
     async def get_all_entities(self) -> list[Entity]:
         """Retrieve all entities."""
         return list(self._entities.values())

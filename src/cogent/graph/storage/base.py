@@ -205,28 +205,6 @@ class Storage(Protocol):
         """
         ...
 
-    async def find_path(
-        self,
-        source_id: str,
-        target_id: str,
-        max_depth: int = 5,
-    ) -> list[str] | None:
-        """Find shortest path between two entities.
-
-        Args:
-            source_id: Starting entity ID.
-            target_id: Destination entity ID.
-            max_depth: Maximum path length to search.
-
-        Returns:
-            List of entity IDs representing the path, or None if no path exists.
-
-        Example:
-            >>> path = await backend.find_path("person:alice", "person:charlie")
-            >>> # Returns ["person:alice", "person:bob", "person:charlie"]
-        """
-        ...
-
     async def get_all_entities(self) -> list[Entity]:
         """Retrieve all entities in the knowledge graph.
 
