@@ -1,7 +1,7 @@
 """Visualization styles for knowledge graphs.
 
 This module provides color schemes, shapes, and styling options for rendering
-knowledge graphs in different formats (Mermaid, Graphviz, etc.).
+knowledge graphs in different formats (Mermaid, PyVis, gravis, etc.).
 """
 
 from dataclasses import dataclass

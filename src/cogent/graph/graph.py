@@ -480,52 +480,6 @@ class Graph:
             title=title,
         )
 
-    async def to_graphviz(
-        self,
-        scheme: str = "default",
-        title: str | None = None,
-    ) -> str:
-        """Generate Graphviz DOT format for the graph.
-
-        Args:
-            scheme: Style scheme name ("default", "minimal").
-            title: Optional diagram title.
-
-        Returns:
-            DOT format string for Graphviz.
-
-        Example:
-            >>> dot = await graph.to_graphviz()
-            >>> # Save and render: dot -Tpng -o graph.png
-        """
-        from cogent.graph.visualization import to_graphviz
-
-        entities = await self.get_all_entities()
-        relationships = await self.get_relationships()
-
-        return to_graphviz(entities, relationships, scheme=scheme, title=title)
-
-    async def to_graphml(self, title: str | None = None) -> str:
-        """Generate GraphML XML format for the graph.
-
-        GraphML can be imported into yEd, Gephi, and Cytoscape.
-
-        Args:
-            title: Optional diagram title.
-
-        Returns:
-            GraphML XML string.
-
-        Example:
-            >>> xml = await graph.to_graphml(title="My Knowledge Graph")
-        """
-        from cogent.graph.visualization import to_graphml
-
-        entities = await self.get_all_entities()
-        relationships = await self.get_relationships()
-
-        return to_graphml(entities, relationships, title=title)
-
     async def save_diagram(
         self,
         file_path: str,
@@ -536,7 +490,7 @@ class Graph:
 
         Args:
             file_path: Path to save the file.
-            format: Output format ("mermaid", "graphviz", "graphml").
+            format: Output format ("mermaid").
             **options: Format-specific options (direction, group_by_type, scheme, title).
 
         Raises:
@@ -544,8 +498,6 @@ class Graph:
 
         Example:
             >>> await graph.save_diagram("graph.mmd", format="mermaid", direction="TB")
-            >>> await graph.save_diagram("graph.dot", format="graphviz")
-            >>> await graph.save_diagram("graph.graphml", format="graphml")
         """
         from cogent.graph.visualization import save_diagram
 
@@ -557,67 +509,12 @@ class Graph:
                 scheme=options.get("scheme", "default"),
                 title=options.get("title"),
             )
-        elif format == "graphviz":
-            content = await self.to_graphviz(
-                scheme=options.get("scheme", "default"),
-                title=options.get("title"),
-            )
-        elif format == "graphml":
-            content = await self.to_graphml(title=options.get("title"))
-        elif format == "cytoscape":
-            content = await self.to_cytoscape_json()
-        elif format == "json":
-            content = await self.to_json_graph()
         else:
             raise ValueError(
-                f"Unknown format: {format}. Use: mermaid, graphviz, graphml, cytoscape, or json"
+                f"Unknown format: {format}. Use: mermaid"
             )
 
         save_diagram(content, file_path, format=format)
-
-    async def to_cytoscape_json(self) -> str:
-        """Export graph as Cytoscape.js JSON format.
-
-        Cytoscape.js is a popular JavaScript library for graph visualization.
-        This format can be used with Cytoscape Desktop, Cytoscape.js, and other tools.
-
-        Returns:
-            JSON string in Cytoscape.js format.
-
-        Example:
-            >>> json_str = await graph.to_cytoscape_json()
-            >>> import json
-            >>> data = json.loads(json_str)
-            >>> print(data["elements"]["nodes"])
-        """
-        from cogent.graph.visualization import to_cytoscape_json
-
-        entities = await self.get_all_entities()
-        relationships = await self.get_relationships()
-
-        return to_cytoscape_json(entities, relationships)
-
-    async def to_json_graph(self) -> str:
-        """Export graph as generic JSON Graph Format.
-
-        This is a simple, standardized JSON format for representing graphs.
-        See: http://jsongraphformat.info/
-
-        Returns:
-            JSON string in JSON Graph Format.
-
-        Example:
-            >>> json_str = await graph.to_json_graph()
-            >>> import json
-            >>> data = json.loads(json_str)
-            >>> print(data["graph"]["nodes"])
-        """
-        from cogent.graph.visualization import to_json_graph
-
-        entities = await self.get_all_entities()
-        relationships = await self.get_relationships()
-
-        return to_json_graph(entities, relationships)
 
     async def render_to_image(
         self,

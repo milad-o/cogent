@@ -48,7 +48,6 @@ dependencies = [
     "scipy>=1.17.0",
     "asyncpg>=0.31.0",
     "pyvis>=0.3.2",
-    "iplotx>=1.7.0",
     "gravis>=0.1.0",
 ]
 

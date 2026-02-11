@@ -3,10 +3,7 @@
 Demonstrates all visualization capabilities:
 1. Mermaid diagrams (text-based, GitHub/docs friendly)
 2. PyVis interactive HTML (force-directed, physics simulation)
-3. iplotx publication-quality plots (PDF/PNG/SVG, multiple layouts)
-4. gravis interactive 2D/3D web visualizations (d3.js/vis.js/three.js)
-5. Graphviz DOT (for external tools)
-6. GraphML/Cytoscape (exchange formats)
+3. gravis interactive 2D/3D web visualizations (d3.js/vis.js/three.js)
 """
 
 import asyncio
@@ -108,44 +105,8 @@ async def demo_all_visualizations():
     print("   - Physics simulation (attractive/repulsive forces)")
     print(f"   - Open: file://{pyvis_path.absolute()}\n")
 
-    # === 3. iplotx Publication-Quality ===
-    print("3️⃣  iplotx Publication Plots (matplotlib)")
-    print("-" * 40)
-    from cogent.graph.visualization import to_iplotx
-
-    layouts = {
-        "spring": "Force-directed spring layout",
-        "circular": "Circular/radial layout",
-        "hierarchical": "Tree/hierarchical layout",
-    }
-
-    for layout, desc in layouts.items():
-        fig = to_iplotx(
-            entities,
-            relationships,
-            layout=layout,
-            figsize=(12, 8),
-            node_color={
-                "Person": "#90CAF9",
-                "Team": "#FFCC80",
-                "Technology": "#C8E6C9",
-            },
-            title=f"Knowledge Graph ({layout})",
-            font_size=11,
-        )
-
-        # Save in multiple formats
-        for fmt in ["pdf", "png", "svg"]:
-            path = output_dir / f"graph_{layout}.{fmt}"
-            fig.savefig(str(path), dpi=300, bbox_inches="tight")
-
-        print(f"✅ {layout:12} → graph_{layout}.{{pdf,png,svg}}")
-        print(f"   {desc}")
-
-    print()
-
-    # === 4. gravis Interactive 2D/3D ===
-    print("4️⃣  gravis Interactive Web (d3/vis.js/three.js)")
+    # === 3. gravis Interactive 2D/3D ===
+    print("3️⃣  gravis Interactive Web (d3/vis.js/three.js)")
     print("-" * 40)
     from cogent.graph.visualization import to_gravis
 
@@ -192,53 +153,6 @@ async def demo_all_visualizations():
     print(f"✅ 3D three.js → {gravis_3d_path.name}")
     print("   - Rotate, zoom, fly-through graph in 3D")
     print(f"   - Open: file://{gravis_2d_path.absolute()}\n")
-
-    # === 5. Graphviz DOT ===
-    print("5️⃣  Graphviz DOT (for external tools)")
-    print("-" * 40)
-    from cogent.graph.visualization import to_graphviz
-
-    dot_code = to_graphviz(entities, relationships)
-    dot_path = output_dir / "graph.dot"
-    dot_path.write_text(dot_code)
-    print(f"✅ Saved: {dot_path.name}")
-    print("   - Use with: dot -Tpng graph.dot -o graph.png")
-    print("   - Professional hierarchical layouts\n")
-
-    # === 6. GraphML/Cytoscape ===
-    print("6️⃣  GraphML & Cytoscape JSON (exchange formats)")
-    print("-" * 40)
-    from cogent.graph.visualization import to_cytoscape_json, to_graphml
-
-    # GraphML (XML format for Gephi, yEd, etc.)
-    graphml_code = to_graphml(entities, relationships)
-    graphml_path = output_dir / "graph.graphml"
-    graphml_path.write_text(graphml_code)
-    print(f"✅ GraphML → {graphml_path.name}")
-    print("   - Import into Gephi, yEd, Cytoscape Desktop")
-
-    # Cytoscape.js JSON
-    cytoscape_json = to_cytoscape_json(entities, relationships)
-    cytoscape_path = output_dir / "graph_cytoscape.json"
-    cytoscape_path.write_text(cytoscape_json)
-    print(f"✅ Cytoscape.js → {cytoscape_path.name}")
-    print("   - Use with Cytoscape.js web applications\n")
-
-    # === Summary ===
-    print("=" * 60)
-    print("📁 All files saved to:", output_dir)
-    print("=" * 60)
-    print("\n📊 Visualization Summary:")
-    print("   - Mermaid: Text-based, GitHub/docs friendly")
-    print("   - PyVis: Quick interactive HTML (force-directed)")
-    print("   - iplotx: Publication PDFs/PNGs (multiple layouts)")
-    print("   - gravis: Advanced 2D/3D interactive web")
-    print("   - Graphviz: Professional layouts (requires binary)")
-    print("   - GraphML/Cytoscape: Import into other tools")
-    print("\n✨ Pure Python (no system dependencies):")
-    print("   → PyVis, iplotx, gravis")
-    print("\n🔧 Requires external binaries:")
-    print("   → Mermaid CLI (mmdc), Graphviz (dot)")
 
 
 if __name__ == "__main__":

@@ -985,12 +985,8 @@ class KnowledgeGraph(BaseCapability):
         title: str | None = None,
         max_entities: int | None = None,
     ) -> str:
-        """Render the graph to Mermaid, Graphviz, GraphML, or JSON formats."""
+        """Render the graph to Mermaid format."""
         from cogent.graph.visualization import (
-            to_cytoscape_json,
-            to_graphml,
-            to_graphviz,
-            to_json_graph,
             to_mermaid,
         )
 
@@ -1008,25 +1004,8 @@ class KnowledgeGraph(BaseCapability):
                 scheme=scheme,
                 title=title,
             )
-        if normalized in ("graphviz", "dot"):
-            return to_graphviz(entities, relationships, scheme=scheme, title=title)
-        if normalized == "graphml":
-            return to_graphml(entities, relationships, title=title)
-        if normalized in ("cytoscape", "cytoscape_json"):
-            return to_cytoscape_json(entities, relationships)
-        if normalized in ("json", "json_graph"):
-            return to_json_graph(entities, relationships)
 
-        valid = ", ".join(
-            [
-                "mermaid",
-                "graphviz",
-                "graphml",
-                "cytoscape_json",
-                "json_graph",
-            ]
-        )
-        raise ValueError(f"Unsupported format: {format}. Valid: {valid}")
+        raise ValueError(f"Unsupported format: {format}. Valid: mermaid")
 
     def display(self, **kwargs) -> None:
         """Print Mermaid diagram code for inline display."""
