@@ -1,7 +1,8 @@
 """Graph visualization module.
 
 Provides rendering capabilities for knowledge graphs in multiple formats:
-- Mermaid diagrams (with PNG/SVG/PDF image rendering via Playwright)
+- Mermaid diagrams (with PNG/SVG/PDF image rendering via Mermaid CLI)
+- PyVis interactive HTML (with NetworkX force-directed layout)
 - Graphviz DOT files
 - GraphML XML
 - Cytoscape.js JSON
@@ -9,7 +10,7 @@ Provides rendering capabilities for knowledge graphs in multiple formats:
 
 Usage:
     >>> from cogent.graph import Graph
-    >>> from cogent.graph.visualization import to_mermaid
+    >>> from cogent.graph.visualization import to_mermaid, to_pyvis
     >>>
     >>> graph = Graph()
     >>> # ... add entities and relationships ...
@@ -22,9 +23,13 @@ Usage:
     >>> relationships = await graph.get_relationships()
     >>> diagram = to_mermaid(entities, relationships)
     >>>
-    >>> # Render to image (requires Playwright)
+    >>> # Render to image (requires Mermaid CLI)
     >>> from cogent.graph.visualization import render_mermaid_to_image
     >>> await render_mermaid_to_image(diagram, "graph.png")
+    >>>
+    >>> # Interactive PyVis visualization (requires networkx, pyvis)
+    >>> net = to_pyvis(entities, relationships)
+    >>> net.save_graph("graph.html")
 """
 
 from cogent.graph.visualization.renderer import (
@@ -37,6 +42,7 @@ from cogent.graph.visualization.renderer import (
     to_graphviz,
     to_json_graph,
     to_mermaid,
+    to_pyvis,
 )
 from cogent.graph.visualization.styles import (
     SCHEMES,
@@ -55,6 +61,7 @@ __all__ = [
     "to_graphml",
     "to_cytoscape_json",
     "to_json_graph",
+    "to_pyvis",
     "render_mermaid_to_image",
     "save_diagram",
     "entity_to_mermaid_node",

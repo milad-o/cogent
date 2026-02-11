@@ -587,3 +587,131 @@ async def render_mermaid_to_image(
         # Clean up temporary file
         Path(tmp_path).unlink(missing_ok=True)
 
+
+def to_pyvis(
+    entities: list[Entity],
+    relationships: list[Relationship],
+    *,
+    height: str = "600px",
+    width: str = "100%",
+    physics_config: dict[str, Any] | None = None,
+    entity_color: str = "#7BE382",
+    relationship_color: str = "#2B7CE9",
+    notebook: bool = False,
+    directed: bool = True,
+) -> Any:
+    """
+    Convert entities and relationships to a PyVis Network object.
+
+    Creates an interactive force-directed graph with drag, zoom, and hover capabilities.
+    Perfect for interactive exploration, notebooks, and presentations.
+
+    Args:
+        entities: List of Entity objects to visualize
+        relationships: List of Relationship objects to visualize
+        height: Canvas height (e.g., "600px", "100vh")
+        width: Canvas width (e.g., "100%", "800px")
+        physics_config: Custom physics configuration for layout
+        entity_color: Default color for entities (hex)
+        relationship_color: Color for relationship edges (hex)
+        notebook: True if running in Jupyter notebook
+        directed: Whether to show directed edges (arrows)
+
+    Returns:
+        PyVis Network object (call .save_graph(path) to export)
+
+    Raises:
+        ImportError: If networkx or pyvis not installed
+
+    Example:
+        ```python
+        from cogent.graph.visualization import to_pyvis
+
+        # Create network
+        net = to_pyvis(entities, relationships)
+        net.save_graph("graph.html")
+
+        # Custom physics
+        net = to_pyvis(
+            entities,
+            relationships,
+            physics_config={
+                "barnesHut": {
+                    "gravitationalConstant": -3000,
+                    "centralGravity": 0.5,
+                    "springLength": 200
+                }
+            }
+        )
+        ```
+    """
+    try:
+        import networkx as nx
+        from pyvis.network import Network
+    except ImportError as e:
+        raise ImportError(
+            "PyVis and NetworkX required for interactive visualization. "
+            "Install with: uv add networkx pyvis"
+        ) from e
+
+    # Build NetworkX graph
+    G = nx.DiGraph() if directed else nx.Graph()
+
+    # Add entities as nodes
+    for entity in entities:
+        attrs = entity.attributes or {}
+        tooltip_lines = [f"{entity.entity_type}: {entity.id}"]
+        tooltip_lines.extend(f"{k}: {v}" for k, v in attrs.items())
+
+        G.add_node(
+            entity.id,
+            title="\n".join(tooltip_lines),
+            color=entity_color,
+            label=entity.id,
+        )
+
+    # Add relationships as edges
+    for rel in relationships:
+        G.add_edge(
+            rel.source_id,
+            rel.target_id,
+            label=rel.relation,
+            title=rel.relation,
+            color=relationship_color,
+        )
+
+    # Create PyVis network
+    net = Network(
+        height=height,
+        width=width,
+        notebook=notebook,
+        directed=directed,
+        cdn_resources="remote",
+    )
+    net.from_nx(G)
+
+    # Apply physics configuration
+    default_physics = {
+        "physics": {
+            "barnesHut": {
+                "gravitationalConstant": -2000,
+                "centralGravity": 0.3,
+                "springLength": 150,
+            }
+        },
+        "edges": {
+            "font": {"size": 12, "align": "middle"},
+            "arrows": {"to": {"enabled": True}},
+        },
+    }
+
+    if physics_config:
+        # Merge user config with defaults
+        config = default_physics.copy()
+        config.update(physics_config)
+    else:
+        config = default_physics
+
+    net.set_options(f"var options = {json.dumps(config)}")
+
+    return net

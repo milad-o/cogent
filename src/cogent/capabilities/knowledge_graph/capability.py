@@ -1083,76 +1083,25 @@ class KnowledgeGraph(BaseCapability):
             )
             ```
         """
-        try:
-            import networkx as nx
-            from pyvis.network import Network
-        except ImportError as e:
-            raise ImportError(
-                "PyVis and NetworkX required for interactive visualization. "
-                "Install with: uv add networkx pyvis"
-            ) from e
+        from cogent.graph.visualization import to_pyvis
 
         # Collect graph data
         entities, relationships = self._collect_visualization_data(
             max_entities=max_entities
         )
 
-        # Build NetworkX graph
-        G = nx.DiGraph()
-
-        # Add entities as nodes
-        for entity in entities:
-            G.add_node(
-                entity.id,
-                title=f"{entity.entity_type}: {entity.id}\n"
-                + "\n".join(f"{k}: {v}" for k, v in (entity.attributes or {}).items()),
-                color=entity_color,
-                label=entity.id,
-            )
-
-        # Add relationships as edges
-        for rel in relationships:
-            G.add_edge(
-                rel.source_id,
-                rel.target_id,
-                label=rel.relation,
-                title=rel.relation,
-                color=relationship_color,
-            )
-
-        # Create PyVis network
-        net = Network(
+        # Create PyVis network using renderer
+        net = to_pyvis(
+            entities,
+            relationships,
             height=height,
             width=width,
+            physics_config=physics_config,
+            entity_color=entity_color,
+            relationship_color=relationship_color,
             notebook=notebook,
             directed=True,
-            cdn_resources="remote",
         )
-        net.from_nx(G)
-
-        # Apply physics configuration
-        default_physics = {
-            "physics": {
-                "barnesHut": {
-                    "gravitationalConstant": -2000,
-                    "centralGravity": 0.3,
-                    "springLength": 150,
-                }
-            },
-            "edges": {
-                "font": {"size": 12, "align": "middle"},
-                "arrows": {"to": {"enabled": True}},
-            },
-        }
-
-        if physics_config:
-            # Merge user config with defaults
-            config = default_physics.copy()
-            config.update(physics_config)
-        else:
-            config = default_physics
-
-        net.set_options(f"var options = {json.dumps(config)}")
 
         # Save and return path
         output = Path(output_path)
