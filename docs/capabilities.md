@@ -126,9 +126,8 @@ view.ascii()     # ASCII art
 view.url()       # Shareable mermaid.ink URL
 view.save("graph.mmd")   # Mermaid source
 view.save("graph.html")  # Interactive HTML
-view.save("graph.png")   # PNG image
-view.save("graph.svg")   # SVG vector
-view.save("graph.dot")   # Graphviz DOT
+view.save("graph.png")   # PNG image (requires Mermaid CLI)
+view.save("graph.svg")   # SVG vector (requires Mermaid CLI)
 ```
 
 **Visualization options:**

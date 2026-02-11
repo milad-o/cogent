@@ -146,11 +146,9 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     try:
         view.save(output_dir / "company_knowledge.mmd")
         view.save(output_dir / "company_knowledge.html")
-        view.save(output_dir / "company_knowledge.dot")
         print(f"\n✓ Saved visualizations to {output_dir}")
         print("  • company_knowledge.mmd (Mermaid source)")
         print("  • company_knowledge.html (interactive - open in browser!)")
-        print("  • company_knowledge.dot (Graphviz)")
 
     except Exception as e:
         print(f"✗ Error saving: {e}")
@@ -177,7 +175,6 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     print(f"\nCheck the saved files in: {output_dir}")
     print("  • company_knowledge.mmd (Mermaid source)")
     print("  • company_knowledge.html (interactive - open in browser!)")
-    print("  • company_knowledge.dot (Graphviz)")
     print("=" * 70)
 
 

@@ -8,7 +8,7 @@ Features demonstrated:
 - Querying with filters
 - Pattern matching
 - Path finding
-- Visualization (Mermaid, Graphviz, GraphML)
+- Visualization (Mermaid)
 - Storage backends (Memory, File, SQL)
 """
 
@@ -298,32 +298,8 @@ async def demonstrate_visualization(graph: Graph):
     print(f"   Saved to: {mermaid_file}")
     print(f"   Lines: {len(mermaid_code.splitlines())}")
 
-    # --- 2. Graphviz DOT format ---
-    print("\n2. Generating Graphviz DOT diagram...")
-    dot_file = output_dir / "company_graph.dot"
-    await graph.save_diagram(str(dot_file), format="graphviz", title="TechCorp Org Chart")
-    print(f"   Saved to: {dot_file}")
-
-    # --- 3. GraphML for graph analysis tools ---
-    print("\n3. Generating GraphML (for Gephi/yEd)...")
-    graphml_file = output_dir / "company_graph.graphml"
-    await graph.save_diagram(str(graphml_file), format="graphml", title="TechCorp Knowledge Graph")
-    print(f"   Saved to: {graphml_file}")
-
-    # --- 4. Cytoscape.js JSON ---
-    print("\n4. Generating Cytoscape.js JSON (for web viz)...")
-    cytoscape_file = output_dir / "company_graph_cytoscape.json"
-    await graph.save_diagram(str(cytoscape_file), format="cytoscape")
-    print(f"   Saved to: {cytoscape_file}")
-
-    # --- 5. JSON Graph Format ---
-    print("\n5. Generating JSON Graph Format (for APIs)...")
-    json_file = output_dir / "company_graph_simple.json"
-    await graph.save_diagram(str(json_file), format="json")
-    print(f"   Saved to: {json_file}")
-
-    # --- 6. Try rendering to PNG/SVG (requires Mermaid CLI) ---
-    print("\n6. Attempting image rendering (requires mmdc)...")
+    # --- 2. Try rendering to PNG/SVG (requires Mermaid CLI) ---
+    print("\n2. Attempting image rendering (requires mmdc)...")
     try:
         png_path = output_dir / "company_graph.png"
         svg_path = output_dir / "company_graph.svg"
@@ -340,8 +316,8 @@ async def demonstrate_visualization(graph: Graph):
     except Exception as e:
         print(f"   ⚠️  Image rendering failed: {e}")
 
-    # --- 7. Show preview of Mermaid code ---
-    print("\n7. Mermaid code preview (first 15 lines):")
+    # --- 3. Show preview of Mermaid code ---
+    print("\n3. Mermaid code preview (first 15 lines):")
     for line in mermaid_code.splitlines()[:15]:
         print(f"   {line}")
     print("   ...")
@@ -434,10 +410,6 @@ async def main():
     print("\nGenerated files in:", output_dir.absolute())
     print("\nVisualization formats:")
     print("  - company_graph.mmd (Mermaid diagram)")
-    print("  - company_graph.dot (Graphviz DOT)")
-    print("  - company_graph.graphml (GraphML for Gephi/yEd)")
-    print("  - company_graph_cytoscape.json (Cytoscape.js)")
-    print("  - company_graph_simple.json (JSON Graph Format)")
     if (output_dir / "company_graph.png").exists():
         print("  - company_graph.png (PNG image)")
         print("  - company_graph.svg (SVG vector image)")

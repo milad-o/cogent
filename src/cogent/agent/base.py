@@ -3982,7 +3982,7 @@ Structure your findings:
         """Get a graph visualization of this agent.
 
         Returns a GraphView that provides a unified interface for
-        rendering to Mermaid, Graphviz, or ASCII formats.
+        rendering to multiple formats (Mermaid, ASCII, HTML).
 
         Args:
             show_tools: Whether to show tools in the diagram.
@@ -3998,10 +3998,7 @@ Structure your findings:
             >>> # Get ASCII for terminal
             >>> print(agent.graph().ascii())
 
-            >>> # Get Graphviz DOT
-            >>> print(agent.graph().dot())
-
-            >>> # Save as PNG
+            >>> # Save as PNG (requires Mermaid CLI)
             >>> agent.graph().save("agent.png")
 
             >>> # Get shareable URL

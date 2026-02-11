@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-02-11
+
+### Removed
+
+- **Graph Visualization Cleanup** — Removed redundant and problematic visualization formats (BREAKING)
+  - ❌ Removed `iplotx` dependency and `KnowledgeGraph.plot()` method
+    - iplotx had confusing size parameters and poor rendering quality
+    - Migration: Use `kg.mermaid()` + Mermaid CLI for static diagrams, or `kg.interactive()` (PyVis), or `kg.visualize()` (gravis 2D/3D)
+  - ❌ Removed Graphviz DOT format support
+    - Removed `graph.to_graphviz()` method
+    - Removed `view.dot()` from GraphView API
+    - Removed `view.save("file.dot")` support
+    - Migration: Use `graph.to_mermaid()` and Mermaid CLI for diagram generation
+  - ❌ Removed exchange format APIs (GraphML, Cytoscape JSON, JSON Graph)
+    - Removed `graph.to_graphml()` — No direct replacement (rarely used)
+    - Removed `graph.to_cytoscape_json()` — Use PyVis for web visualizations instead
+    - Removed `graph.to_json_graph()` — No direct replacement
+  - **Rationale**: Streamlined API from 6+ formats down to 3 high-quality options
+    - Mermaid: Text-based, GitHub-friendly, PNG/SVG via CLI
+    - PyVis: Interactive HTML with force-directed layouts
+    - gravis: Modern 2D/3D web visualizations (d3.js/vis.js/three.js)
+  - **Impact**: ~725 lines removed, simpler API, better documentation, less maintenance
+
+### Changed
+
+- **Documentation Updated** — All graph visualization docs reflect streamlined API
+  - Updated `docs/graph.md` to show only Mermaid, PyVis, gravis examples
+  - Updated `docs/capabilities.md` KnowledgeGraph visualization section
+  - Updated `docs/index.md` features list
+  - Updated `examples/capabilities/knowledge_graph.py` — Removed iplotx section
+  - Updated `examples/graph/graph_example.py` — Removed 4 exchange format sections
+  - Updated `src/cogent/agent/base.py` docstrings
+  - Updated `src/cogent/graph/visualization/renderer.py` module docs
+
+### Migration Guide
+
+```python
+# OLD (removed)
+fig = kg.plot(layout="hierarchical", save_path="graph.pdf")
+dot_code = graph.to_graphviz()
+graphml = graph.to_graphml()
+cytoscape = graph.to_cytoscape_json()
+view.save("diagram.dot")
+
+# NEW (recommended alternatives)
+# For static diagrams → Use Mermaid + CLI
+mermaid_code = kg.mermaid(direction="TB", group_by_type=True)
+# Save to file, then: mmdc -i diagram.mmd -o diagram.pdf
+
+# For interactive web visualizations → Use PyVis
+html_path = kg.interactive(output_path="graph.html", height="800px")
+
+# For 3D exploration → Use gravis
+kg.visualize(mode="3d", renderer="three", output_path="graph_3d.html")
+
+# For simple workflows
+view = graph.visualize()
+view.save("diagram.mmd")   # Mermaid source
+view.save("diagram.html")  # Interactive HTML
+view.save("diagram.png")   # PNG (requires Mermaid CLI)
+```
+
 ## [1.16.0] - 2026-02-04
 
 ### Added

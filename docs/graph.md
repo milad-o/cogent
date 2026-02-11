@@ -17,13 +17,13 @@ view = agent.graph()
 # Render in any format
 print(view.mermaid())   # Mermaid code
 print(view.ascii())     # Terminal-friendly
-print(view.dot())       # Graphviz DOT
 print(view.url())       # mermaid.ink URL
 print(view.html())      # Embeddable HTML
 
 # Save to file
 view.save("diagram.png")
 view.save("diagram.svg")
+view.save("diagram.mmd") # Mermaid source
 ```
 
 ---
@@ -43,9 +43,6 @@ mermaid_code = view.mermaid()
 # ASCII art for terminal
 ascii_art = view.ascii()
 
-# Graphviz DOT format
-dot_code = view.dot()
-
 # mermaid.ink URL (shareable)
 url = view.url()
 
@@ -60,7 +57,6 @@ html = view.html()
 view.save("diagram.png")    # PNG image
 view.save("diagram.svg")    # SVG vector
 view.save("diagram.mmd")    # Mermaid source
-view.save("diagram.dot")    # Graphviz DOT
 view.save("diagram.html")   # HTML page
 ```
 
@@ -163,7 +159,6 @@ url = view.url()
 |--------|---------|-------------|
 | `mermaid()` | `str` | Mermaid diagram code |
 | `ascii()` | `str` | ASCII art diagram |
-| `dot()` | `str` | Graphviz DOT code |
 | `url()` | `str` | mermaid.ink URL |
 | `html()` | `str` | Embeddable HTML |
 | `save(path)` | `None` | Save to file |

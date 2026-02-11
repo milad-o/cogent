@@ -1,6 +1,6 @@
 [project]
 name = "cogent"
-version = "1.16.0"
+version = "1.17.0"
 description = "Production AI agent framework with memory control and semantic caching"
 readme = "README.md"
 license = { text = "MIT" }

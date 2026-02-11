@@ -1,8 +1,9 @@
 """Graph visualization renderers for different output formats.
 
-This module provides functions to render knowledge graphs as Mermaid diagrams,
-GraphML XML, Cytoscape.js JSON, and generic JSON formats.
-Also supports rendering Mermaid to images (PNG, SVG, PDF) via Mermaid CLI (mmdc).
+This module provides functions to render knowledge graphs as Mermaid diagrams.
+Supports rendering Mermaid to images (PNG, SVG, PDF) via Mermaid CLI (mmdc).
+
+For interactive visualizations, use PyVis (HTML) or gravis (2D/3D web).
 """
 
 import html

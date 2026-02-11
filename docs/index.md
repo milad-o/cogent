@@ -51,7 +51,7 @@ uv add git+https://github.com/milad-o/cogent.git
 - **Capabilities** — Filesystem, Web Search, Code Sandbox, Browser, PDF, Shell, MCP, Spreadsheet, and more
 - **RAG Pipeline** — Document loading, per-file-type splitting, embeddings, vector stores, retrievers
 - **Memory & Persistence** — Conversation history, long-term memory with fuzzy matching
-- **Graph Visualization** — Mermaid, Graphviz, ASCII diagrams for agents and patterns
+- **Graph Visualization** — Mermaid diagrams, PyVis (interactive HTML), gravis (2D/3D web)
 - **Observability** — Tracing, metrics, progress tracking, structured logging
 - **Interceptors** — Budget guards, rate limiting, PII protection, tool gates
 - **Resilience** — Retry policies, circuit breakers, fallbacks

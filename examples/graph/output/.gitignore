@@ -3,5 +3,8 @@
 *.dot
 *.graphml
 *.json
+*.html
+*.png
+*.svg
 *.db
 !.gitkeep

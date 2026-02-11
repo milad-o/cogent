@@ -4,8 +4,6 @@ import pytest
 from cogent.graph import Graph, Entity, Relationship
 from cogent.graph.visualization import (
     to_mermaid,
-    to_graphviz,
-    to_graphml,
     get_scheme,
     DefaultScheme,
     MinimalScheme,
