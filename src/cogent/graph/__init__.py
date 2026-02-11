@@ -7,6 +7,7 @@ from cogent.graph.models import Entity, Relationship
 from cogent.graph.storage import Storage, MemoryStorage, FileStorage, SQLStorage
 from cogent.graph.engines import Engine, NativeEngine
 from cogent.graph.graph import Graph
+from cogent.graph.query import QueryPattern, QueryResult, parse_pattern, match
 
 # Conditionally import NetworkXEngine
 try:
@@ -22,6 +23,10 @@ try:
         "MemoryStorage",
         "FileStorage",
         "SQLStorage",
+        "QueryPattern",
+        "QueryResult",
+        "parse_pattern",
+        "match",
     ]
 except ImportError:
     __all__ = [
@@ -34,4 +39,8 @@ except ImportError:
         "MemoryStorage",
         "FileStorage",
         "SQLStorage",
+        "QueryPattern",
+        "QueryResult",
+        "parse_pattern",
+        "match",
     ]

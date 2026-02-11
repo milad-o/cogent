@@ -359,6 +359,44 @@ class Graph:
 
         return all_entities
 
+    async def match(self, pattern: dict[str, Any]) -> Any:
+        """Execute a pattern-based query against the graph.
+
+        This method enables complex graph queries using dict-based patterns
+        instead of string query languages. Supports single-hop, multi-hop,
+        and entity filtering patterns.
+
+        Args:
+            pattern: Dict-based query pattern.
+
+        Returns:
+            QueryResult with matched entities, relationships, and metadata.
+
+        Examples:
+            >>> # Find all Person entities
+            >>> result = await graph.match({"type": "Person"})
+            >>> print(result.entities)
+            
+            >>> # Find specific relationship
+            >>> result = await graph.match({
+            ...     "source": {"id": "alice"},
+            ...     "relation": "knows",
+            ...     "target": {"type": "Person"}
+            ... })
+            >>> print(result.relationships)
+            
+            >>> # Multi-hop path query
+            >>> result = await graph.match({
+            ...     "path": [
+            ...         {"source": {"type": "Person"}, "relation": "works_at"},
+            ...         {"relation": "manages", "target": {"id": "project_x"}}
+            ...     ]
+            ... })
+            >>> print(f"Found {len(result.entities)} entities in path")
+        """
+        from cogent.graph.query import match as query_match
+        return await query_match(self, pattern)
+
     # --- Graph Statistics and Utilities ---
 
     async def stats(self) -> dict[str, int]:

@@ -1,6 +1,6 @@
 # Graph Module (/graph/) - Build Taskboard
 
-**Status:** 🔨 IN PROGRESS (Phase 1 ✅ Phase 2 ✅ Phase 3A ✅ Phase 3B ✅ Phase 4 ✅ + Refactoring ✅)  
+**Status:** 🔨 IN PROGRESS (Phase 1 ✅ Phase 2 ✅ Phase 3A ✅ Phase 3B ✅ Phase 4 ✅ + Refactoring ✅ Phase 6 ✅)  
 **Approach:** Build from scratch - **NO CODE COPYING**  
 **Timeline:** 19-27 hours (~3-4 days)
 
@@ -317,36 +317,45 @@
 ---
 
 ## 📋 Phase 6: Query System (2-3h)
-**Status:** ⬜ NOT STARTED  
+**Status:** ✅ COMPLETE  
 **Goal:** Pattern matching and complex queries
 
-- [ ] Create `graph/query.py`
-- [ ] Direct methods (already implemented in Graph class - validate):
-  - [ ] `find_entities(type=..., attributes=...)`
-  - [ ] `find_relationships(source=..., relation=..., target=...)`
-  - [ ] `find_path(start, end)`
-- [ ] Pattern matching (dict-based for complex queries):
-  - [ ] Single-hop: `{"source": {...}, "relation": "...", "target": {...}}`
-  - [ ] Multi-hop: `{"path": [{...}, {...}, {...}]}`
-  - [ ] Wildcards: `{"source": {"type": "Person"}, "target": {"id": "?"}}`
-- [ ] Write `parse_pattern(pattern: dict) -> QueryPlan`
-- [ ] Write `execute_pattern(graph, plan) -> list`
-- [ ] Query optimizer (simple heuristics):
-  - [ ] Index lookups first
-  - [ ] Filter early
-  - [ ] Minimize graph traversal
-- [ ] Return formatted results
-- [ ] Write `tests/graph/test_query.py`
-- [ ] Test direct methods
-- [ ] Test single-hop patterns
-- [ ] Test multi-hop patterns
-- [ ] Test wildcards
-- [ ] Test query optimization
-- [ ] ✅ Run tests → all passing
+- [x] Create `graph/query.py`
+- [x] Implement `QueryPattern` and `QueryResult` dataclasses
+- [x] Implement `parse_pattern()` for dict-based pattern parsing
+  - [x] Entity filter patterns: `{"type": "Person", "age": 30}`
+  - [x] Single-hop patterns: `{"source": {...}, "relation": "...", "target": {...}}`
+  - [x] Multi-hop patterns: `{"path": [{...}, {...}]}`
+- [x] Implement `execute_pattern()` with query execution
+  - [x] `_execute_entity_filter()` for entity queries
+  - [x] `_execute_single_hop()` for relationship queries
+  - [x] `_execute_multi_hop()` for path queries
+- [x] Query optimization:
+  - [x] Filter early (most restrictive first)
+  - [x] Minimize graph traversal
+  - [x] Reuse existing Graph methods (find_entities, get_relationships)
+- [x] Add `Graph.match(pattern)` method
+- [x] Support wildcards (`"?"` for any value)
+- [x] Direct methods (already implemented in Graph):
+  - [x] `find_entities(type=..., attributes=...)`
+  - [x] `get_relationships(source=..., relation=..., target=...)`
+  - [x] `find_path(start, end)`
+- [x] Write `tests/graph/test_query.py`
+- [x] Test pattern parsing (5 tests)
+- [x] Test entity filtering (5 tests)
+- [x] Test single-hop matching (6 tests)
+- [x] Test multi-hop paths (4 tests)
+- [x] Test wildcards (2 tests)
+- [x] Test Graph.match() integration (3 tests)
+- [x] Test edge cases (3 tests)
+- [x] ✅ Run tests → all 211 tests passing (28 new query tests)
 
-**Deliverable:**
-- `graph/query.py` (~300 lines)
-- `tests/graph/test_query.py` (~400 lines)
+**Deliverables:**
+- `graph/query.py` (396 lines)
+- `graph/graph.py` (updated with match() method)
+- `graph/__init__.py` (updated exports)
+- `tests/graph/test_query.py` (430 lines)
+- **Total: ~850 lines**
 
 ---
 
