@@ -288,13 +288,13 @@ async def demonstrate_visualization(graph: Graph):
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
 
-    # --- 1. Mermaid diagram (left-to-right, grouped by type) ---
-    print("\n1. Generating Mermaid diagram (grouped by type)...")
+    # --- 1. Mermaid diagram (left-to-right) ---
+    print("\n1. Generating Mermaid diagram...")
     mermaid_code = await graph.to_mermaid(
-        direction="LR", group_by_type=True, scheme="default", title="TechCorp Knowledge Graph"
+        direction="LR", scheme="default", title="TechCorp Knowledge Graph"
     )
     mermaid_file = output_dir / "company_graph.mmd"
-    await graph.save_diagram(str(mermaid_file), format="mermaid", group_by_type=True, title="TechCorp Knowledge Graph")
+    await graph.save_diagram(str(mermaid_file), format="mermaid", title="TechCorp Knowledge Graph")
     print(f"   Saved to: {mermaid_file}")
     print(f"   Lines: {len(mermaid_code.splitlines())}")
 

@@ -2,7 +2,7 @@
 
 This module provides functions to render knowledge graphs as Mermaid diagrams,
 Graphviz DOT files, GraphML XML, Cytoscape.js JSON, and generic JSON formats.
-Also supports rendering Mermaid to images (PNG, SVG) via Playwright.
+Also supports rendering Mermaid to images (PNG, SVG, PDF) via Mermaid CLI (mmdc).
 """
 
 import html
@@ -95,6 +95,8 @@ def to_mermaid(
         relationships: List of relationships to visualize.
         direction: Flow direction ("LR" for left-to-right, "TB" for top-to-bottom).
         group_by_type: If True, group entities by type in subgraphs.
+            Note: Subgraphs can create messy layouts with heavily interconnected graphs.
+            Consider using False for better visual layout (types still colored).
         scheme: Style scheme name or StyleScheme instance.
         title: Optional diagram title.
 
@@ -119,29 +121,13 @@ def to_mermaid(
         lines.append(f"title: {title}")
         lines.append("---")
 
-    # Diagram header
-    lines.append(f"graph {direction}")
+    # Use flowchart instead of graph for better layout
+    lines.append(f"flowchart {direction}")
 
-    # Group entities by type if requested
-    if group_by_type:
-        entities_by_type: dict[str, list[Entity]] = {}
-        for entity in entities:
-            if entity.entity_type not in entities_by_type:
-                entities_by_type[entity.entity_type] = []
-            entities_by_type[entity.entity_type].append(entity)
-
-        # Create subgraphs
-        for entity_type, type_entities in entities_by_type.items():
-            lines.append(f"    subgraph {entity_type}")
-            for entity in type_entities:
-                node_def = entity_to_mermaid_node(entity, scheme)
-                lines.append(f"        {node_def}")
-            lines.append("    end")
-    else:
-        # Add all nodes
-        for entity in entities:
-            node_def = entity_to_mermaid_node(entity, scheme)
-            lines.append(f"    {node_def}")
+    # Add all nodes (no subgraphs - they cause layout issues)
+    for entity in entities:
+        node_def = entity_to_mermaid_node(entity, scheme)
+        lines.append(f"    {node_def}")
 
     # Add edges
     for rel in relationships:

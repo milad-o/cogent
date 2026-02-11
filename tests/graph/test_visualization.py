@@ -61,7 +61,7 @@ class TestMermaidRendering:
         """Test basic Mermaid diagram generation."""
         diagram = to_mermaid(sample_entities, sample_relationships)
 
-        assert "graph LR" in diagram
+        assert "flowchart LR" in diagram
         assert "alice" in diagram
         assert "bob" in diagram
         assert "knows" in diagram
@@ -71,17 +71,21 @@ class TestMermaidRendering:
         diagram_lr = to_mermaid(sample_entities, sample_relationships, direction="LR")
         diagram_tb = to_mermaid(sample_entities, sample_relationships, direction="TB")
 
-        assert "graph LR" in diagram_lr
-        assert "graph TB" in diagram_tb
+        assert "flowchart LR" in diagram_lr
+        assert "flowchart TB" in diagram_tb
 
     def test_to_mermaid_with_grouping(self, sample_entities, sample_relationships):
-        """Test Mermaid with entity type grouping."""
+        """Test Mermaid diagram generation (grouping removed for clean layout)."""
         diagram = to_mermaid(
             sample_entities, sample_relationships, group_by_type=True
         )
 
-        assert "subgraph Person" in diagram
-        assert "subgraph Company" in diagram
+        # No longer uses subgraphs (they create messy layouts)
+        # Instead uses classDef styling for visual grouping
+        assert "flowchart" in diagram
+        assert "classDef PersonStyle" in diagram
+        assert "classDef CompanyStyle" in diagram
+        assert "class alice PersonStyle" in diagram
 
     def test_to_mermaid_with_title(self, sample_entities, sample_relationships):
         """Test Mermaid with title."""
@@ -286,7 +290,7 @@ class TestGraphVisualizationMethods:
         """Test Graph.to_mermaid() method."""
         diagram = await sample_graph.to_mermaid()
 
-        assert "graph LR" in diagram
+        assert "flowchart LR" in diagram
         assert "alice" in diagram
         assert "knows" in diagram
 
@@ -297,9 +301,9 @@ class TestGraphVisualizationMethods:
             direction="TB", group_by_type=True, title="My Graph"
         )
 
-        assert "graph TB" in diagram
-        assert "subgraph Person" in diagram
+        assert "flowchart TB" in diagram
         assert "title: My Graph" in diagram
+        assert "classDef PersonStyle" in diagram
 
     @pytest.mark.asyncio
     async def test_graph_to_graphviz(self, sample_graph):
@@ -327,7 +331,7 @@ class TestGraphVisualizationMethods:
 
         assert file_path.exists()
         content = file_path.read_text()
-        assert "graph LR" in content
+        assert "flowchart LR" in content
 
     @pytest.mark.asyncio
     async def test_graph_save_diagram_graphviz(self, sample_graph, tmp_path):
@@ -368,7 +372,7 @@ class TestEdgeCases:
         """Test Mermaid with empty graph."""
         diagram = to_mermaid([], [])
 
-        assert "graph LR" in diagram
+        assert "flowchart LR" in diagram
 
     def test_empty_graph_graphviz(self):
         """Test Graphviz with empty graph."""
