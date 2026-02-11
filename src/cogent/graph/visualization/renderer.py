@@ -543,6 +543,7 @@ async def render_mermaid_to_image(
             "-o", output_path,
             "-w", str(width),
             "-H", str(height),
+            "-t", "default",  # Use default (light) theme to respect custom styles
         ]
 
         # Add background color for better visibility
