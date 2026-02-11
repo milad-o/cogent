@@ -83,7 +83,7 @@ class FileStorage:
                     self._entities = data.get("entities", {})
                     self._relationships = data.get("relationships", [])
         except Exception as e:
-            raise IOError(f"Failed to load from {self.path}: {e}") from e
+            raise OSError(f"Failed to load from {self.path}: {e}") from e
 
     def _save_sync(self) -> None:
         """Save data to file (synchronous)."""
@@ -123,7 +123,7 @@ class FileStorage:
                 with self.path.open("wb") as f:
                     pickle.dump(data, f)
         except Exception as e:
-            raise IOError(f"Failed to save to {self.path}: {e}") from e
+            raise OSError(f"Failed to save to {self.path}: {e}") from e
 
     async def save(self) -> None:
         """Manually save data to file."""

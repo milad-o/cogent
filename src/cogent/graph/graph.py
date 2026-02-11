@@ -7,8 +7,8 @@ fully composable and flexible graph system.
 
 from typing import Any
 
-from cogent.graph.models import Entity, Relationship
 from cogent.graph.engines.base import Engine
+from cogent.graph.models import Entity, Relationship
 from cogent.graph.storage.base import Storage
 
 
@@ -28,7 +28,7 @@ class Graph:
         >>> # Default: NetworkX engine + memory storage
         >>> graph = Graph()
         >>> await graph.add_entity("alice", "Person", name="Alice")
-        
+
         >>> # Explicit engine and storage
         >>> from cogent.graph.engines import NativeEngine
         >>> from cogent.graph.storage import FileStorage
@@ -36,7 +36,7 @@ class Graph:
         ...     engine=NativeEngine(),
         ...     storage=FileStorage("graph.json", format="json")
         ... )
-        
+
         >>> # SQL persistence with NetworkX algorithms
         >>> from cogent.graph.storage import SQLStorage
         >>> graph = Graph(
@@ -264,10 +264,10 @@ class Graph:
         Example:
             >>> # All relationships from alice
             >>> rels = await graph.get_relationships(source_id="alice")
-            
+
             >>> # All "knows" relationships
             >>> rels = await graph.get_relationships(relation="knows")
-            
+
             >>> # Specific relationship
             >>> rels = await graph.get_relationships(
             ...     source_id="alice", relation="knows", target_id="bob"
@@ -336,7 +336,7 @@ class Graph:
         Example:
             >>> # Find all Person entities
             >>> people = await graph.find_entities(entity_type="Person")
-            
+
             >>> # Find entities with specific attribute
             >>> adults = await graph.find_entities(entity_type="Person", age=30)
         """
@@ -376,7 +376,7 @@ class Graph:
             >>> # Find all Person entities
             >>> result = await graph.match({"type": "Person"})
             >>> print(result.entities)
-            
+
             >>> # Find specific relationship
             >>> result = await graph.match({
             ...     "source": {"id": "alice"},
@@ -384,7 +384,7 @@ class Graph:
             ...     "target": {"type": "Person"}
             ... })
             >>> print(result.relationships)
-            
+
             >>> # Multi-hop path query
             >>> result = await graph.match({
             ...     "path": [
@@ -441,3 +441,132 @@ class Graph:
             >>> count = await graph.edge_count()
         """
         return await self.engine.edge_count()
+
+    # --- Visualization Methods ---
+
+    async def to_mermaid(
+        self,
+        direction: str = "LR",
+        group_by_type: bool = False,
+        scheme: str = "default",
+        title: str | None = None,
+    ) -> str:
+        """Generate Mermaid diagram for the graph.
+
+        Args:
+            direction: Flow direction ("LR" for left-to-right, "TB" for top-to-bottom).
+            group_by_type: If True, group entities by type in subgraphs.
+            scheme: Style scheme name ("default", "minimal").
+            title: Optional diagram title.
+
+        Returns:
+            Mermaid diagram code as string.
+
+        Example:
+            >>> diagram = await graph.to_mermaid(direction="TB", group_by_type=True)
+            >>> print(diagram)
+        """
+        from cogent.graph.visualization import to_mermaid
+
+        entities = await self.get_all_entities()
+        relationships = await self.get_relationships()
+
+        return to_mermaid(
+            entities,
+            relationships,
+            direction=direction,
+            group_by_type=group_by_type,
+            scheme=scheme,
+            title=title,
+        )
+
+    async def to_graphviz(
+        self,
+        scheme: str = "default",
+        title: str | None = None,
+    ) -> str:
+        """Generate Graphviz DOT format for the graph.
+
+        Args:
+            scheme: Style scheme name ("default", "minimal").
+            title: Optional diagram title.
+
+        Returns:
+            DOT format string for Graphviz.
+
+        Example:
+            >>> dot = await graph.to_graphviz()
+            >>> # Save and render: dot -Tpng -o graph.png
+        """
+        from cogent.graph.visualization import to_graphviz
+
+        entities = await self.get_all_entities()
+        relationships = await self.get_relationships()
+
+        return to_graphviz(entities, relationships, scheme=scheme, title=title)
+
+    async def to_graphml(self, title: str | None = None) -> str:
+        """Generate GraphML XML format for the graph.
+
+        GraphML can be imported into yEd, Gephi, and Cytoscape.
+
+        Args:
+            title: Optional diagram title.
+
+        Returns:
+            GraphML XML string.
+
+        Example:
+            >>> xml = await graph.to_graphml(title="My Knowledge Graph")
+        """
+        from cogent.graph.visualization import to_graphml
+
+        entities = await self.get_all_entities()
+        relationships = await self.get_relationships()
+
+        return to_graphml(entities, relationships, title=title)
+
+    async def save_diagram(
+        self,
+        file_path: str,
+        format: str = "mermaid",
+        **options: Any,
+    ) -> None:
+        """Save graph diagram to a file.
+
+        Args:
+            file_path: Path to save the file.
+            format: Output format ("mermaid", "graphviz", "graphml").
+            **options: Format-specific options (direction, group_by_type, scheme, title).
+
+        Raises:
+            ValueError: If format is not recognized.
+
+        Example:
+            >>> await graph.save_diagram("graph.mmd", format="mermaid", direction="TB")
+            >>> await graph.save_diagram("graph.dot", format="graphviz")
+            >>> await graph.save_diagram("graph.graphml", format="graphml")
+        """
+        from cogent.graph.visualization import save_diagram
+
+        # Generate content based on format
+        if format == "mermaid":
+            content = await self.to_mermaid(
+                direction=options.get("direction", "LR"),
+                group_by_type=options.get("group_by_type", False),
+                scheme=options.get("scheme", "default"),
+                title=options.get("title"),
+            )
+        elif format == "graphviz":
+            content = await self.to_graphviz(
+                scheme=options.get("scheme", "default"),
+                title=options.get("title"),
+            )
+        elif format == "graphml":
+            content = await self.to_graphml(title=options.get("title"))
+        else:
+            raise ValueError(
+                f"Unknown format: {format}. Use: mermaid, graphviz, or graphml"
+            )
+
+        save_diagram(content, file_path, format=format)

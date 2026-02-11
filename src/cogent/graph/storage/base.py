@@ -6,6 +6,7 @@ while providing a consistent async-first interface with bulk operations.
 """
 
 from typing import Protocol
+
 from cogent.graph.models import Entity, Relationship
 
 

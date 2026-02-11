@@ -5,7 +5,7 @@ for representing knowledge graph data structures.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 @dataclass(slots=True, frozen=False)
@@ -39,8 +39,8 @@ class Entity:
     id: str
     entity_type: str
     attributes: dict[str, object] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     source: str | None = None
 
     def __post_init__(self) -> None:
@@ -68,7 +68,7 @@ class Entity:
             >>> entity.update_attributes(status="active", score=95)
         """
         self.attributes.update(kwargs)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def get_attribute(self, key: str, default: object = None) -> object:
         """Get an attribute value with optional default.
@@ -126,7 +126,7 @@ class Relationship:
     relation: str
     target_id: str
     attributes: dict[str, object] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     source: str | None = None
 
     def __post_init__(self) -> None:

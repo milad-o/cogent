@@ -3,11 +3,12 @@
 This module provides a clean, modern API for building and querying knowledge graphs.
 """
 
-from cogent.graph.models import Entity, Relationship
-from cogent.graph.storage import Storage, MemoryStorage, FileStorage, SQLStorage
+from cogent.graph import visualization
 from cogent.graph.engines import Engine, NativeEngine
 from cogent.graph.graph import Graph
-from cogent.graph.query import QueryPattern, QueryResult, parse_pattern, match
+from cogent.graph.models import Entity, Relationship
+from cogent.graph.query import QueryPattern, QueryResult, match, parse_pattern
+from cogent.graph.storage import FileStorage, MemoryStorage, SQLStorage, Storage
 
 # Conditionally import NetworkXEngine
 try:
@@ -27,6 +28,7 @@ try:
         "QueryResult",
         "parse_pattern",
         "match",
+        "visualization",
     ]
 except ImportError:
     __all__ = [
@@ -43,4 +45,5 @@ except ImportError:
         "QueryResult",
         "parse_pattern",
         "match",
+        "visualization",
     ]

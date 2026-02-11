@@ -4,11 +4,10 @@ This module provides SQLStorage - persistent storage using any SQL database
 (PostgreSQL, MySQL, SQLite) with async SQLAlchemy ORM and DRY CRUD patterns.
 """
 
-import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
-from sqlalchemy import JSON, String, Text, ForeignKey, select, delete, func
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy import JSON, ForeignKey, String, delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from cogent.graph.models import Entity, Relationship
@@ -137,68 +136,66 @@ class SQLStorage:
         """Add a new entity to storage."""
         await self.initialize()
 
-        async with self.async_session() as session:
-            async with session.begin():
-                # Check if entity exists
-                existing = await self._get_by_id(EntityModel, id, session)
-                if existing:
-                    raise ValueError(f"Entity with ID '{id}' already exists")
+        async with self.async_session() as session, session.begin():
+            # Check if entity exists
+            existing = await self._get_by_id(EntityModel, id, session)
+            if existing:
+                raise ValueError(f"Entity with ID '{id}' already exists")
 
-                # Create entity model
-                entity_model = EntityModel(
-                    id=id,
-                    type=entity_type,
-                    attributes=dict(attributes),
-                )
+            # Create entity model
+            entity_model = EntityModel(
+                id=id,
+                type=entity_type,
+                attributes=dict(attributes),
+            )
 
-                # Use generic create
-                await self._create(entity_model, session)
+            # Use generic create
+            await self._create(entity_model, session)
 
-                # Convert to domain model
-                return Entity(
-                    id=entity_model.id,
-                    entity_type=entity_model.type,
-                    attributes=entity_model.attributes,
-                    created_at=entity_model.created_at,
-                    updated_at=entity_model.updated_at,
-                )
+            # Convert to domain model
+            return Entity(
+                id=entity_model.id,
+                entity_type=entity_model.type,
+                attributes=entity_model.attributes,
+                created_at=entity_model.created_at,
+                updated_at=entity_model.updated_at,
+            )
 
     async def add_entities(self, entities: list[Entity]) -> list[Entity]:
         """Bulk add multiple entities."""
         await self.initialize()
 
-        async with self.async_session() as session:
-            async with session.begin():
-                # Check for existing entities
-                for entity in entities:
-                    existing = await self._get_by_id(EntityModel, entity.id, session)
-                    if existing:
-                        raise ValueError(f"Entity with ID '{entity.id}' already exists")
+        async with self.async_session() as session, session.begin():
+            # Check for existing entities
+            for entity in entities:
+                existing = await self._get_by_id(EntityModel, entity.id, session)
+                if existing:
+                    raise ValueError(f"Entity with ID '{entity.id}' already exists")
 
-                # Create entity models
-                entity_models = [
-                    EntityModel(
-                        id=ent.id,
-                        type=ent.entity_type,
-                        attributes=ent.attributes,
-                    )
-                    for ent in entities
-                ]
+            # Create entity models
+            entity_models = [
+                EntityModel(
+                    id=ent.id,
+                    type=ent.entity_type,
+                    attributes=ent.attributes,
+                )
+                for ent in entities
+            ]
 
-                # Use generic bulk create
-                await self._create_many(entity_models, session)
+            # Use generic bulk create
+            await self._create_many(entity_models, session)
 
-                # Convert to domain models
-                return [
-                    Entity(
-                        id=model.id,
-                        entity_type=model.type,
-                        attributes=model.attributes,
-                        created_at=model.created_at,
-                        updated_at=model.updated_at,
-                    )
-                    for model in entity_models
-                ]
+            # Convert to domain models
+            return [
+                Entity(
+                    id=model.id,
+                    entity_type=model.type,
+                    attributes=model.attributes,
+                    created_at=model.created_at,
+                    updated_at=model.updated_at,
+                )
+                for model in entity_models
+            ]
 
     async def get_entity(self, id: str) -> Entity | None:
         """Retrieve an entity by ID."""
@@ -243,35 +240,34 @@ class SQLStorage:
         """Add a new relationship between entities."""
         await self.initialize()
 
-        async with self.async_session() as session:
-            async with session.begin():
-                # Verify entities exist
-                source = await self._get_by_id(EntityModel, source_id, session)
-                if not source:
-                    raise ValueError(f"Source entity '{source_id}' does not exist")
+        async with self.async_session() as session, session.begin():
+            # Verify entities exist
+            source = await self._get_by_id(EntityModel, source_id, session)
+            if not source:
+                raise ValueError(f"Source entity '{source_id}' does not exist")
 
-                target = await self._get_by_id(EntityModel, target_id, session)
-                if not target:
-                    raise ValueError(f"Target entity '{target_id}' does not exist")
+            target = await self._get_by_id(EntityModel, target_id, session)
+            if not target:
+                raise ValueError(f"Target entity '{target_id}' does not exist")
 
-                # Create relationship model
-                rel_model = RelationshipModel(
-                    source_id=source_id,
-                    relation=relation,
-                    target_id=target_id,
-                    attributes=dict(attributes),
-                )
+            # Create relationship model
+            rel_model = RelationshipModel(
+                source_id=source_id,
+                relation=relation,
+                target_id=target_id,
+                attributes=dict(attributes),
+            )
 
-                # Use generic create
-                await self._create(rel_model, session)
+            # Use generic create
+            await self._create(rel_model, session)
 
-                # Convert to domain model
-                return Relationship(
-                    source_id=rel_model.source_id,
-                    relation=rel_model.relation,
-                    target_id=rel_model.target_id,
-                    attributes=rel_model.attributes,
-                )
+            # Convert to domain model
+            return Relationship(
+                source_id=rel_model.source_id,
+                relation=rel_model.relation,
+                target_id=rel_model.target_id,
+                attributes=rel_model.attributes,
+            )
 
     async def add_relationships(
         self, relationships: list[Relationship]
@@ -279,34 +275,33 @@ class SQLStorage:
         """Bulk add multiple relationships."""
         await self.initialize()
 
-        async with self.async_session() as session:
-            async with session.begin():
-                # Verify all entities exist
-                for rel in relationships:
-                    source = await self._get_by_id(EntityModel, rel.source_id, session)
-                    if not source:
-                        raise ValueError(f"Source entity '{rel.source_id}' does not exist")
+        async with self.async_session() as session, session.begin():
+            # Verify all entities exist
+            for rel in relationships:
+                source = await self._get_by_id(EntityModel, rel.source_id, session)
+                if not source:
+                    raise ValueError(f"Source entity '{rel.source_id}' does not exist")
 
-                    target = await self._get_by_id(EntityModel, rel.target_id, session)
-                    if not target:
-                        raise ValueError(f"Target entity '{rel.target_id}' does not exist")
+                target = await self._get_by_id(EntityModel, rel.target_id, session)
+                if not target:
+                    raise ValueError(f"Target entity '{rel.target_id}' does not exist")
 
-                # Create relationship models
-                rel_models = [
-                    RelationshipModel(
-                        source_id=rel.source_id,
-                        relation=rel.relation,
-                        target_id=rel.target_id,
-                        attributes=rel.attributes,
-                    )
-                    for rel in relationships
-                ]
+            # Create relationship models
+            rel_models = [
+                RelationshipModel(
+                    source_id=rel.source_id,
+                    relation=rel.relation,
+                    target_id=rel.target_id,
+                    attributes=rel.attributes,
+                )
+                for rel in relationships
+            ]
 
-                # Use generic bulk create
-                await self._create_many(rel_models, session)
+            # Use generic bulk create
+            await self._create_many(rel_models, session)
 
-                # Convert to domain models
-                return relationships
+            # Convert to domain models
+            return relationships
 
     async def get_relationships(
         self,
@@ -389,9 +384,8 @@ class SQLStorage:
         """Remove all entities and relationships."""
         await self.initialize()
 
-        async with self.async_session() as session:
-            async with session.begin():
-                # Delete all relationships first (foreign keys)
-                await session.execute(delete(RelationshipModel))
-                # Delete all entities
-                await session.execute(delete(EntityModel))
+        async with self.async_session() as session, session.begin():
+            # Delete all relationships first (foreign keys)
+            await session.execute(delete(RelationshipModel))
+            # Delete all entities
+            await session.execute(delete(EntityModel))

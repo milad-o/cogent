@@ -61,7 +61,7 @@ def parse_pattern(pattern: dict[str, Any]) -> QueryPattern:
         ...     "target": {"type": "Person"}
         ... }
         >>> query = parse_pattern(pattern)
-        
+
         >>> # Multi-hop path
         >>> pattern = {
         ...     "path": [
@@ -70,7 +70,7 @@ def parse_pattern(pattern: dict[str, Any]) -> QueryPattern:
         ...     ]
         ... }
         >>> query = parse_pattern(pattern)
-        
+
         >>> # Entity filter
         >>> pattern = {"type": "Person", "age": 30}
         >>> query = parse_pattern(pattern)
@@ -255,7 +255,7 @@ async def _execute_multi_hop(
 
     # Start with all entities if first hop has no source filter
     first_hop = pattern.path_hops[0]
-    
+
     if "source" in first_hop:
         # Get starting entities from first hop's source filter
         source_result = await _execute_entity_filter(
@@ -270,7 +270,7 @@ async def _execute_multi_hop(
     all_matched_entities = {e.id: e for e in current_entities}
 
     # Execute each hop in sequence
-    for i, hop in enumerate(pattern.path_hops):
+    for _i, hop in enumerate(pattern.path_hops):
         next_entities = []
         hop_relationships = []
 
@@ -373,14 +373,14 @@ async def match(
     Examples:
         >>> # Find all Person entities
         >>> result = await match(graph, {"type": "Person"})
-        
+
         >>> # Find specific relationship
         >>> result = await match(graph, {
         ...     "source": {"id": "alice"},
         ...     "relation": "knows",
         ...     "target": {"type": "Person"}
         ... })
-        
+
         >>> # Multi-hop path
         >>> result = await match(graph, {
         ...     "path": [
