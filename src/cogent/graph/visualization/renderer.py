@@ -444,11 +444,12 @@ def to_pyvis(
         G.add_node(
             entity.id,
             title=tooltip_html,
-            color={"background": node_color, "border": border_color},
+            color=node_color,  # Simple string color for PyVis
+            borderWidth=2,
+            borderWidthSelected=3,
             label=label,
             shape=pyvis_shape,
             group=entity.entity_type,  # For grouping/legend
-            font={"color": node_style.text_color},
         )
 
     # Add relationships as edges
@@ -480,6 +481,21 @@ def to_pyvis(
         cdn_resources="remote",
     )
     net.from_nx(G)
+
+    # Manually set node colors (from_nx doesn't preserve the color attribute properly)
+    # Build a mapping of node_id -> color from our entities
+    node_color_map = {}
+    for entity in entities:
+        node_style = scheme.get_node_style(entity.entity_type)
+        if color_by_type:
+            node_color_map[entity.id] = node_style.color
+        else:
+            node_color_map[entity.id] = entity_color or "#7BE382"
+    
+    # Apply colors to PyVis nodes
+    for node in net.nodes:
+        if node["id"] in node_color_map:
+            node["color"] = node_color_map[node["id"]]
 
     # Apply physics configuration
     default_physics = {

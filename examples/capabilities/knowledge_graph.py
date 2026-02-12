@@ -107,12 +107,6 @@ Dataset:
         max_entities=50,
     )
     print(f"✅ Interactive HTML saved to: {output_dir.name}/knowledge_graph.html")
-    print("   Features:")
-    print("   - Drag nodes to explore")
-    print("   - Zoom and pan")
-    print("   - Hover for details")
-    print("   - Color-coded by entity type")
-    print("   - Force-directed layout")
     print(f"   - Open in browser: file://{html_path.absolute()}")
 
     # === Step 4: Agent drills down to find answers ===

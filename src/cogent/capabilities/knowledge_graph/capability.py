@@ -1099,6 +1099,30 @@ class KnowledgeGraph(BaseCapability):
         output = Path(output_path)
         net.save_graph(str(output))
 
+        # Fix PyVis width/height bug: PyVis incorrectly parses "100%" as "2" in CSS
+        # Read the HTML and fix the CSS
+        html_content = output.read_text()
+        import re
+        
+        # Fix width: should be width: 100% not width: 2
+        html_content = re.sub(
+            r'(#mynetwork\s*\{[^}]*width:\s*)(\d+)(;)',
+            r'\g<1>100%\3',
+            html_content
+        )
+        # Ensure height is preserved correctly
+        if 'px' not in height:
+            height_value = height
+        else:
+            height_value = height
+        html_content = re.sub(
+            r'(#mynetwork\s*\{[^}]*height:\s*)([^;]+)(;)',
+            rf'\g<1>{height_value}\3',
+            html_content
+        )
+        
+        output.write_text(html_content)
+
         return output
 
     # plot() method removed - use mermaid(), interactive(), or visualize() instead
