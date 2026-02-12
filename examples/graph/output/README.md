@@ -5,7 +5,7 @@ Example outputs from the graph visualization demo showcasing different visualiza
 ## 📊 View Interactive Visualizations
 
 ### PyVis Network (Force-Directed)
-**[🔗 View PyVis Visualization](https://htmlpreview.github.io/?https://github.com/milad-o/cogent/blob/main/examples/graph/output/graph_pyvis.html)**
+**[🔗 View PyVis Visualization](https://raw.githack.com/milad-o/cogent/main/examples/graph/output/graph_pyvis.html)**
 
 ### gravis 2D/3D Interactive
 
