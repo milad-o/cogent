@@ -31,8 +31,8 @@ flowchart LR
     saturn_rings -->|surrounds| saturn
     classDef PlanetStyle fill:#B39DDB,stroke:#7d6d99,color:#000000
     classDef PhenomenonStyle fill:#FFCC80,stroke:#b28e59,color:#000000
-    classDef MoonStyle fill:#C5E1A5,stroke:#899d73,color:#000000
     classDef StarStyle fill:#81C784,stroke:#5a8b5c,color:#000000
+    classDef MoonStyle fill:#C5E1A5,stroke:#899d73,color:#000000
     class sun StarStyle
     class earth PlanetStyle
     class mars PlanetStyle
