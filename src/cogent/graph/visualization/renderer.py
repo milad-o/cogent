@@ -538,6 +538,8 @@ def to_gravis(
     show_edge_label: bool = False,
     layout_algorithm: str | None = None,
     graph_height: int = 450,
+    color_by_type: bool = True,
+    scheme: str | StyleScheme = "default",
     **kwargs: Any,
 ) -> Any:
     """
@@ -566,6 +568,8 @@ def to_gravis(
             - "repulsion"
             - "hierarchicalRepulsion"
         graph_height: Height of visualization in pixels (default: 450)
+        color_by_type: If True, color nodes by their entity type (default: True)
+        scheme: Style scheme for coloring ("default" or "minimal")
         **kwargs: Additional gravis parameters (node_size_factor, etc.)
 
     Returns:
@@ -618,16 +622,27 @@ def to_gravis(
             "Install with: uv add gravis"
         ) from e
 
+    # Get style scheme
+    if isinstance(scheme, str):
+        scheme = get_scheme(scheme)
+
     # Build NetworkX graph
     G = nx.DiGraph()
 
     # Add entities as nodes with all attributes
     for entity in entities:
+        node_style = scheme.get_node_style(entity.entity_type)
+        
         node_attrs = {
             "entity_type": entity.entity_type,
             "label": entity.attributes.get("name", entity.id),
             **entity.attributes,
         }
+        
+        # Add color attribute if color_by_type is enabled
+        if color_by_type:
+            node_attrs["color"] = node_style.color
+        
         G.add_node(entity.id, **node_attrs)
 
     # Add relationships as edges
@@ -647,6 +662,9 @@ def to_gravis(
         "show_node_label": show_node_label,
         "show_edge_label": show_edge_label,
     }
+
+    # Note: gravis automatically reads 'color' attribute from nodes when present
+    # No need to set node_color_data_source - it's built into the node data
 
     # Data source mappings
     if node_size_data:

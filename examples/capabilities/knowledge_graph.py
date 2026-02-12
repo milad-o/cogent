@@ -9,12 +9,15 @@ drill down through the graph to find answers.
 Key features demonstrated:
 1. Load knowledge from a data file
 2. Visualize with Mermaid (static SVG)
-3. Visualize with PyVis (interactive HTML)
-4. Agent uses KG tools to explore and find answers
-5. Multi-hop reasoning through relationships
+3. Agent uses KG tools to explore and find answers
+4. Multi-hop reasoning through relationships
+5. Agent updates knowledge dynamically
 6. Save/load for persistence
 7. Multiple storage backends (memory, sqlite, json)
 8. Clean programmatic API for direct access
+
+Note: For comprehensive visualization demos (PyVis, gravis 2D/3D),
+see examples/graph/visualization_demo.py
 """
 
 import asyncio
@@ -77,40 +80,27 @@ Dataset:
     print(f"✅ Loaded from {data_file.name}:")
     print(f"   Graph stats: {kg.stats()}")
 
-    # Create output directory for all visualizations
-    output_dir = Path(__file__).parent / "kg_outputs"
-    output_dir.mkdir(exist_ok=True)
-
     # === Step 2: Visualize the inferred graph ===
-    print("\n🗺️  Step 2: Knowledge Graph (Mermaid)")
+    print("\n🗺️  Step 2: Knowledge Graph (Mermaid SVG)")
     print("-" * 40)
     mermaid_code = kg.mermaid(direction="LR", group_by_type=True, max_entities=50)
     print(mermaid_code)
 
+    output_dir = Path(__file__).parent / "kg_outputs"
+    output_dir.mkdir(exist_ok=True)
     svg_path = output_dir / "knowledge_graph.svg"
+    
     print(f"\n🖼️  Saving SVG to: {output_dir.name}/knowledge_graph.svg")
     print("    (Requires Mermaid CLI: npm install -g @mermaid-js/mermaid-cli)")
     from cogent.graph.visualization import render_mermaid_to_image
 
     await render_mermaid_to_image(mermaid_code, str(svg_path), format="svg")
+    print(f"✅ Saved to: {svg_path.absolute()}")
+    print("\nℹ️  For interactive visualizations (PyVis, gravis 2D/3D):")
+    print("   See: examples/graph/visualization_demo.py")
 
-    # === Step 3: Interactive visualization (PyVis) ===
-    print("\n🌐 Step 3: Interactive Visualization (PyVis)")
-    print("-" * 40)
-    html_path = kg.interactive(
-        output_path=output_dir / "knowledge_graph.html",
-        height="750px",
-        width="100%",
-        color_by_type=True,  # Color nodes by entity type
-        show_type_in_label=True,  # Show type in labels
-        relationship_color="#2B7CE9",
-        max_entities=50,
-    )
-    print(f"✅ Interactive HTML saved to: {output_dir.name}/knowledge_graph.html")
-    print(f"   - Open in browser: file://{html_path.absolute()}")
-
-    # === Step 4: Agent drills down to find answers ===
-    print("\n💬 Step 4: Agent Queries (Drill-down)")
+    # === Step 3: Agent drills down to find answers ===
+    print("\n💬 Step 3: Agent Queries (Drill-down)")
     print("-" * 40)
 
     questions = [
@@ -124,8 +114,8 @@ Dataset:
         response = await agent.run(q)
         print(f"💡 {response_text(response)}")
 
-    # === Step 6: Agent updates knowledge ===
-    print("\n➕ Step 6: Agent Adds Knowledge")
+    # === Step 4: Agent updates knowledge ===
+    print("\n➕ Step 4: Agent Adds Knowledge")
     print("-" * 40)
 
     response = await agent.run(
@@ -140,8 +130,8 @@ Dataset:
         rels = kg.get_relationships("Frank Martinez", direction="outgoing")
         print(f"   Relationships: {[(r.relation, r.target_id) for r in rels]}")
 
-    # === Step 6: Persistence Demo ===
-    print("\n💾 Step 6: Persistence Demo")
+    # === Step 5: Persistence Demo ===
+    print("\n💾 Step 5: Persistence Demo")
     print("-" * 40)
 
     # Demo 1: Save memory graph to file
