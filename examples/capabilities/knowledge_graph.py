@@ -83,7 +83,12 @@ Dataset:
     # === Step 2: Visualize the inferred graph ===
     print("\n🗺️  Step 2: Knowledge Graph (Mermaid SVG)")
     print("-" * 40)
-    mermaid_code = kg.mermaid(direction="LR", group_by_type=True, max_entities=50)
+    mermaid_code = kg.mermaid(
+        direction="LR",
+        group_by_type=True,
+        max_entities=50,
+        scheme="auto",  # Automatic type-based color assignment
+    )
     print(mermaid_code)
 
     output_dir = Path(__file__).parent / "kg_outputs"

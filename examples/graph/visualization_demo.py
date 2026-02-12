@@ -5,22 +5,39 @@ Demonstrates all visualization capabilities with type-based styling:
 2. PyVis interactive HTML (force-directed, physics, type colors)
 3. gravis interactive 2D/3D web visualizations (d3.js/vis.js/three.js)
 
-Uses a Solar System knowledge graph to showcase:
-- Type-based node coloring (Planet, Moon, Star, Phenomenon)
-- Grouped visualization (subgraphs by entity type)
-- Multiple renderers for different use cases
-- Consistent color schemes across all formats
+Shows two approaches to coloring:
+- Automatic color assignment (recommended for most use cases)
+- Custom color schemes (for specific branding/requirements)
+
+Uses a Solar System knowledge graph to showcase visualization features.
 """
 
 import asyncio
 from pathlib import Path
 
 from cogent.graph import Entity, Graph, Relationship
-from cogent.graph.visualization.styles import StyleScheme, NodeStyle, EdgeStyle
+from cogent.graph.visualization.styles import (
+    StyleScheme,
+    NodeStyle,
+    EdgeStyle,
+    create_scheme_from_entities,
+)
 
 
 class SolarSystemScheme(StyleScheme):
-    """Custom color scheme for Solar System entities."""
+    """
+    ADVANCED EXAMPLE: Custom color scheme for specific branding.
+    
+    For most use cases, automatic color assignment is recommended:
+        scheme = create_scheme_from_entities(entities)
+    or simply:
+        kg.mermaid(scheme="auto")
+    
+    Custom schemes are useful when you need:
+    - Specific brand colors (e.g., company color palette)
+    - Domain-specific visual metaphors (e.g., gold for stars, blue for water)
+    - Precise control over shapes and visual aspects
+    """
     
     def __init__(self) -> None:
         """Initialize with celestial body colors."""
@@ -121,8 +138,17 @@ async def demo_all_visualizations():
     for old_file in output_dir.glob("graph_gravis_*.html"):
         old_file.unlink()
     
-    # Create custom color scheme for solar system
-    scheme = SolarSystemScheme()
+    # ====================================================================
+    # APPROACH 1: Automatic color assignment (RECOMMENDED)
+    # ====================================================================
+    # Automatically assigns distinct colors to all entity types
+    # No manual color mapping needed - perfect for exploratory analysis
+    print("🎨 Using automatic color assignment...")
+    scheme = create_scheme_from_entities(entities)
+    print(f"   Auto-assigned colors to: {sorted({e.entity_type for e in entities})}\n")
+    
+    # APPROACH 2 (optional): For specific branding, use a custom scheme
+    # scheme = SolarSystemScheme()  # Gold for stars, blue for planets, etc.
 
     # === 1. Mermaid Diagram (with type grouping) ===
     print("1️⃣  Mermaid Diagram (text-based, grouped by type)")
