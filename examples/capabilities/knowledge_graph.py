@@ -101,7 +101,8 @@ Dataset:
         output_path=output_dir / "knowledge_graph.html",
         height="750px",
         width="100%",
-        entity_color="#7BE382",
+        color_by_type=True,  # Color nodes by entity type
+        show_type_in_label=True,  # Show type in labels
         relationship_color="#2B7CE9",
         max_entities=50,
     )
@@ -110,6 +111,7 @@ Dataset:
     print("   - Drag nodes to explore")
     print("   - Zoom and pan")
     print("   - Hover for details")
+    print("   - Color-coded by entity type")
     print("   - Force-directed layout")
     print(f"   - Open in browser: file://{html_path.absolute()}")
 

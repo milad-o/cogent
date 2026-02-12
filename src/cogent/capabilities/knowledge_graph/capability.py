@@ -1018,37 +1018,47 @@ class KnowledgeGraph(BaseCapability):
         height: str = "600px",
         width: str = "100%",
         physics_config: dict[str, Any] | None = None,
-        entity_color: str = "#7BE382",
+        entity_color: str | None = None,
         relationship_color: str = "#2B7CE9",
         notebook: bool = False,
         max_entities: int | None = None,
+        color_by_type: bool = True,
+        show_type_in_label: bool = True,
+        scheme: str = "default",
     ) -> Path:
         """
         Generate interactive HTML visualization using PyVis and NetworkX.
 
         Creates a force-directed graph with drag, zoom, and hover capabilities.
-        Perfect for interactive exploration, notebooks, and presentations.
+        Nodes are automatically colored by entity type for better visual organization.
 
         Args:
             output_path: Where to save the HTML file
             height: Canvas height (e.g., "600px", "100vh")
             width: Canvas width (e.g., "100%", "800px")
             physics_config: Custom physics configuration for layout
-            entity_color: Default color for entities (hex)
+            entity_color: Override color for all entities (hex). If None and color_by_type=True,
+                colors are assigned by type from the style scheme.
             relationship_color: Color for relationship edges (hex)
             notebook: True if running in Jupyter notebook
             max_entities: Limit number of entities to visualize
+            color_by_type: If True, color nodes by their entity type (recommended)
+            show_type_in_label: If True, include entity type in node labels
+            scheme: Style scheme for coloring ("default" or "minimal")
 
         Returns:
             Path to the generated HTML file
 
         Example:
             ```python
-            # Basic usage
+            # Basic usage with type-based coloring
             kg.interactive("my_graph.html")
 
             # Jupyter notebook
             kg.interactive(notebook=True)
+
+            # Disable type coloring
+            kg.interactive(color_by_type=False, entity_color="#7BE382")
 
             # Custom physics
             kg.interactive(
@@ -1080,6 +1090,9 @@ class KnowledgeGraph(BaseCapability):
             relationship_color=relationship_color,
             notebook=notebook,
             directed=True,
+            scheme=scheme,
+            color_by_type=color_by_type,
+            show_type_in_label=show_type_in_label,
         )
 
         # Save and return path

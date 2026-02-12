@@ -329,10 +329,13 @@ def to_pyvis(
     height: str = "600px",
     width: str = "100%",
     physics_config: dict[str, Any] | None = None,
-    entity_color: str = "#7BE382",
+    entity_color: str | None = None,
     relationship_color: str = "#2B7CE9",
     notebook: bool = False,
     directed: bool = True,
+    scheme: str | StyleScheme = "default",
+    color_by_type: bool = True,
+    show_type_in_label: bool = True,
 ) -> Any:
     """
     Convert entities and relationships to a PyVis Network object.
@@ -346,10 +349,14 @@ def to_pyvis(
         height: Canvas height (e.g., "600px", "100vh")
         width: Canvas width (e.g., "100%", "800px")
         physics_config: Custom physics configuration for layout
-        entity_color: Default color for entities (hex)
+        entity_color: Default color for entities (hex). If None and color_by_type=True,
+            colors are assigned from the style scheme.
         relationship_color: Color for relationship edges (hex)
         notebook: True if running in Jupyter notebook
         directed: Whether to show directed edges (arrows)
+        scheme: Style scheme for coloring nodes by type
+        color_by_type: If True, color nodes by their entity type using the scheme
+        show_type_in_label: If True, include entity type in node labels
 
     Returns:
         PyVis Network object (call .save_graph(path) to export)
@@ -361,8 +368,8 @@ def to_pyvis(
         ```python
         from cogent.graph.visualization import to_pyvis
 
-        # Create network
-        net = to_pyvis(entities, relationships)
+        # Create network with type-based coloring
+        net = to_pyvis(entities, relationships, color_by_type=True)
         net.save_graph("graph.html")
 
         # Custom physics
@@ -388,30 +395,80 @@ def to_pyvis(
             "Install with: uv add networkx pyvis"
         ) from e
 
+    # Get style scheme
+    if isinstance(scheme, str):
+        scheme = get_scheme(scheme)
+
     # Build NetworkX graph
     G = nx.DiGraph() if directed else nx.Graph()
+
+    # Map for PyVis shapes from Mermaid shapes
+    shape_map = {
+        "rectangle": "box",
+        "rounded": "box",
+        "circle": "circle",
+        "hexagon": "hexagon",
+    }
 
     # Add entities as nodes
     for entity in entities:
         attrs = entity.attributes or {}
-        tooltip_lines = [f"{entity.entity_type}: {entity.id}"]
-        tooltip_lines.extend(f"{k}: {v}" for k, v in attrs.items())
+        
+        # Get node style from scheme
+        node_style = scheme.get_node_style(entity.entity_type)
+        
+        # Determine node color
+        if color_by_type:
+            node_color = node_style.color
+            border_color = node_style.border_color
+        else:
+            node_color = entity_color or "#7BE382"
+            border_color = "#333333"
+        
+        # Build label: prefer "name" attribute, fallback to ID
+        name = attrs.get("name", entity.id)
+        if show_type_in_label:
+            label = f"{name}\n({entity.entity_type})"
+        else:
+            label = name
+        
+        # Build tooltip
+        tooltip_lines = [f"<b>{entity.entity_type}</b>: {entity.id}"]
+        for k, v in attrs.items():
+            tooltip_lines.append(f"<i>{k}</i>: {v}")
+        tooltip_html = "<br>".join(tooltip_lines)
+        
+        # Determine shape
+        pyvis_shape = shape_map.get(node_style.shape, "dot")
 
         G.add_node(
             entity.id,
-            title="\n".join(tooltip_lines),
-            color=entity_color,
-            label=entity.id,
+            title=tooltip_html,
+            color={"background": node_color, "border": border_color},
+            label=label,
+            shape=pyvis_shape,
+            group=entity.entity_type,  # For grouping/legend
+            font={"color": node_style.text_color},
         )
 
     # Add relationships as edges
     for rel in relationships:
+        edge_style = scheme.get_edge_style(rel.relation)
+        
+        # Determine edge width
+        width = max(1, edge_style.width)
+        
+        # Determine edge style (dashes for dashed/dotted)
+        dashes = edge_style.style in ("dashed", "dotted")
+        
         G.add_edge(
             rel.source_id,
             rel.target_id,
             label=rel.relation,
-            title=rel.relation,
+            title=f"<b>{rel.relation}</b>",
             color=relationship_color,
+            width=width,
+            dashes=dashes,
         )
 
     # Create PyVis network
