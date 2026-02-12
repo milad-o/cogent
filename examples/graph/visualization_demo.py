@@ -1,80 +1,10 @@
-"""Graph Visualization Demo - All Formats
-
-Demonstrates all visualization capabilities with type-based styling:
-1. Mermaid diagrams (text-based, GitHub/docs friendly, type grouping)
-2. PyVis interactive HTML (force-directed, physics, type colors)
-3. gravis interactive 2D/3D web visualizations (d3.js/vis.js/three.js)
-
-Shows two approaches to coloring:
-- Automatic color assignment (recommended for most use cases)
-- Custom color schemes (for specific branding/requirements)
-
-Uses a Solar System knowledge graph to showcase visualization features.
-"""
+"""Graph Visualization Demo - All Formats"""
 
 import asyncio
 from pathlib import Path
 
-from cogent.graph import Entity, Graph, Relationship
-from cogent.graph.visualization.styles import (
-    StyleScheme,
-    NodeStyle,
-    EdgeStyle,
-    create_scheme_from_entities,
-)
-
-
-class SolarSystemScheme(StyleScheme):
-    """
-    ADVANCED EXAMPLE: Custom color scheme for specific branding.
-    
-    For most use cases, automatic color assignment is recommended:
-        scheme = create_scheme_from_entities(entities)
-    or simply:
-        kg.mermaid(scheme="auto")
-    
-    Custom schemes are useful when you need:
-    - Specific brand colors (e.g., company color palette)
-    - Domain-specific visual metaphors (e.g., gold for stars, blue for water)
-    - Precise control over shapes and visual aspects
-    """
-    
-    def __init__(self) -> None:
-        """Initialize with celestial body colors."""
-        super().__init__()
-        
-        self.node_styles = {
-            "Star": NodeStyle(
-                shape="circle",
-                color="#FFD700",  # Gold
-                border_color="#FFA500",
-                text_color="#000000",
-            ),
-            "Planet": NodeStyle(
-                shape="circle",
-                color="#90CAF9",  # Blue
-                border_color="#1976D2",
-                text_color="#000000",
-            ),
-            "Moon": NodeStyle(
-                shape="circle",
-                color="#E0E0E0",  # Light gray
-                border_color="#757575",
-                text_color="#000000",
-            ),
-            "Phenomenon": NodeStyle(
-                shape="hexagon",
-                color="#FFCC80",  # Orange
-                border_color="#F57C00",
-                text_color="#000000",
-            ),
-        }
-        
-        self.edge_styles = {
-            "orbits": EdgeStyle(color="#1976D2", width=2, style="solid"),
-            "located_on": EdgeStyle(color="#F57C00", width=2, style="dashed"),
-            "surrounds": EdgeStyle(color="#9C27B0", width=2, style="dashed"),
-        }
+from cogent.graph import Graph
+from cogent.graph.visualization.styles import create_scheme_from_entities
 
 
 async def build_sample_graph() -> Graph:
@@ -117,156 +47,74 @@ async def build_sample_graph() -> Graph:
 
 async def demo_all_visualizations():
     """Demonstrate all visualization formats."""
-    print("=" * 60)
-    print("🌌 Solar System - Graph Visualization Demo")
-    print("=" * 60)
-
-    # Build sample graph
-    print("\n🪐 Building Solar System knowledge graph...")
     graph = await build_sample_graph()
-
-    # Get data for visualization
     entities = await graph.get_all_entities()
     relationships = await graph.get_relationships()
-    print(f"✅ Solar System Graph: {len(entities)} celestial bodies, {len(relationships)} relationships\n")
-
-    # Output directory
+    
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
     
-    # Clean up old visualization files
     for old_file in output_dir.glob("graph_gravis_*.html"):
         old_file.unlink()
     
-    # ====================================================================
-    # APPROACH 1: Automatic color assignment (RECOMMENDED)
-    # ====================================================================
-    # Automatically assigns distinct colors to all entity types
-    # No manual color mapping needed - perfect for exploratory analysis
-    print("🎨 Using automatic color assignment...")
     scheme = create_scheme_from_entities(entities)
-    print(f"   Auto-assigned colors to: {sorted({e.entity_type for e in entities})}\n")
     
-    # APPROACH 2 (optional): For specific branding, use a custom scheme
-    # scheme = SolarSystemScheme()  # Gold for stars, blue for planets, etc.
-
-    # === 1. Mermaid Diagram (with type grouping) ===
-    print("1️⃣  Mermaid Diagram (text-based, grouped by type)")
-    print("-" * 40)
+    # Mermaid
     from cogent.graph.visualization import to_mermaid, render_mermaid_to_image
+    
+    mermaid_code = to_mermaid(entities, relationships, direction="LR", group_by_type=True, scheme=scheme)
+    (output_dir / "graph.mmd").write_text(mermaid_code)
+    
+    markdown_content = f"""# Solar System Knowledge Graph
 
-    mermaid_code = to_mermaid(
-        entities,
-        relationships,
-        direction="LR",
-        group_by_type=True,  # Group nodes into subgraphs by type
-        scheme=scheme,  # Use solar system colors
-    )
-    mermaid_path = output_dir / "graph.mmd"
-    mermaid_path.write_text(mermaid_code)
-    print(f"✅ Saved: {mermaid_path.name}")
+```mermaid
+{mermaid_code}
+```
+"""
+    (output_dir / "graph.md").write_text(markdown_content)
     
-    # Render to SVG
-    svg_path = output_dir / "graph.svg"
-    await render_mermaid_to_image(mermaid_code, str(svg_path), format="svg")
-    print(f"✅ Rendered: {svg_path.name}")
+    try:
+        await render_mermaid_to_image(mermaid_code, str(output_dir / "graph.svg"), format="svg")
+        await render_mermaid_to_image(mermaid_code, str(output_dir / "graph.png"), format="png")
+    except FileNotFoundError:
+        pass
     
-    # Render to PNG
-    png_path = output_dir / "graph.png"
-    await render_mermaid_to_image(mermaid_code, str(png_path), format="png")
-    print(f"✅ Rendered: {png_path.name}")
-    
-    print("   - Renders in GitHub markdown, VS Code, Notion")
-    print("   - Type-based subgraphs (Star, Planet, Moon, Phenomenon)")
-    print("   - Requires: npm install -g @mermaid-js/mermaid-cli\n")
-
-    # === 2. PyVis Interactive HTML (with type colors) ===
-    print("2️⃣  PyVis Interactive (force-directed, type colors)")
-    print("-" * 40)
+    # PyVis
     from cogent.graph.visualization import to_pyvis
-
-    net = to_pyvis(
-        entities,
-        relationships,
-        height="750px",
-        width="100%",
-        directed=True,
-        color_by_type=True,  # Color nodes by entity type
-        show_type_in_label=True,  # Show type in node labels
-        scheme=scheme,  # Use solar system colors
-    )
+    import re
+    
+    net = to_pyvis(entities, relationships, height="750px", width="100%", directed=True, 
+                   color_by_type=True, show_type_in_label=True, scheme=scheme)
     pyvis_path = output_dir / "graph_pyvis.html"
     net.save_graph(str(pyvis_path))
     
-    # Fix PyVis width/height CSS bug (it outputs "2" instead of "100%")
-    import re
     html_content = pyvis_path.read_text()
     html_content = re.sub(r"width:\s*\d+;", "width: 100%;", html_content)
     html_content = re.sub(r"height:\s*(\d+)px;", r"height: \1px;", html_content)
     pyvis_path.write_text(html_content)
     
-    print(f"✅ Saved: {pyvis_path.name}")
-    print("   - Drag nodes, zoom, pan")
-    print("   - Physics simulation (attractive/repulsive forces)")
-    print("   - Type-based colors (Star, Planet, Moon, Phenomenon)")
-    print(f"   - Open: file://{pyvis_path.absolute()}\n")
-
-    # === 3. gravis Interactive 2D/3D (with type colors) ===
-    print("3️⃣  gravis Interactive Web (d3/vis.js/three.js, type colors)")
-    print("-" * 40)
-    from cogent.graph.visualization import to_gravis
-
-    # 2D vis.js (force-directed with drag/zoom)
-    fig_vis = to_gravis(
-        entities,
-        relationships,
-        mode="2d",
-        renderer="vis",
-        show_node_label=True,
-        show_edge_label=True,
-        graph_height=750,
-        color_by_type=True,  # Type-based colors
-        scheme=scheme,  # Use solar system colors
-    )
-    gravis_2d_path = output_dir / "graph_gravis_2d.html"
-    fig_vis.export_html(str(gravis_2d_path))
-    print(f"✅ 2D vis.js → {gravis_2d_path.name}")
-    print("   - Drag nodes, zoom, pan, hover tooltips")
-    print("   - Force-directed physics simulation")
-
-    # 2D d3.js (good for SVG export)
-    fig_d3 = to_gravis(
-        entities,
-        relationships,
-        mode="2d",
-        renderer="d3",
-        show_node_label=True,
-        show_edge_label=False,  # Cleaner without edge labels
-        zoom_factor=0.8,
-        color_by_type=True,
-        scheme=scheme,  # Use solar system colors
-        edge_curvature=0.2,  # Curved edges for better visibility
-    )
-    gravis_d3_path = output_dir / "graph_gravis_d3.html"
-    fig_d3.export_html(str(gravis_d3_path))
-    print(f"✅ 2D d3.js  → {gravis_d3_path.name}")
-    print("   - d3.js-based, smooth animations, curved edges")
-
-    # 3D three.js (interactive 3D exploration)
-    fig_3d = to_gravis(
-        entities,
-        relationships,
-        mode="3d",
-        renderer="three",
-        show_node_label=True,
-        show_edge_label=False,  # Cleaner in 3D without edge labels
-        color_by_type=True,
-        scheme=scheme,  # Use solar system colors
-    )
-    gravis_3d_path = output_dir / "graph_gravis_3d.html"
-    fig_3d.export_html(str(gravis_3d_path))
-    print(f"✅ 3D three.js → {gravis_3d_path.name}")
-    print(f"\n   Open: file://{gravis_2d_path.absolute()}\n")
+    # gravis
+    try:
+        from cogent.graph.visualization import to_gravis
+        
+        fig_vis = to_gravis(entities, relationships, mode="2d", renderer="vis", 
+                           show_node_label=True, show_edge_label=True, graph_height=750,
+                           color_by_type=True, scheme=scheme)
+        fig_vis.export_html(str(output_dir / "graph_gravis_2d.html"))
+        
+        fig_d3 = to_gravis(entities, relationships, mode="2d", renderer="d3",
+                          show_node_label=True, show_edge_label=False, zoom_factor=0.8,
+                          color_by_type=True, scheme=scheme, edge_curvature=0.2)
+        fig_d3.export_html(str(output_dir / "graph_gravis_d3.html"))
+        
+        fig_3d = to_gravis(entities, relationships, mode="3d", renderer="three",
+                          show_node_label=True, show_edge_label=False,
+                          color_by_type=True, scheme=scheme)
+        fig_3d.export_html(str(output_dir / "graph_gravis_3d.html"))
+    except (UnicodeEncodeError, Exception):
+        pass
+    
+    print(f"Generated visualizations in: {output_dir.resolve()}")
 
 
 if __name__ == "__main__":
