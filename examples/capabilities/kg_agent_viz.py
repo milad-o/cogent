@@ -161,21 +161,6 @@ When you finish extracting, say "Knowledge extraction complete!" """,
     print("-" * 70)
 
     print("\n" + "=" * 70)
-    print("✅ Demo Complete!")
-    print("\nThe agent:")
-    print("  1. Extracted entities and relationships from text")
-    print("  2. Stored them using knowledge graph tools")
-    print("  3. Can recall and query the information")
-    print("  4. Generated organized visualization with type-based grouping")
-    print("\n📖 Three-Level Visualization API:")
-    print("  • kg.mermaid()      — Low-level: raw Mermaid code")
-    print("  • kg.render(format) — Medium-level: mermaid/ascii/html/png/svg")
-    print("  • kg.display()      — High-level: Jupyter inline rendering")
-    print("  • kg.visualize()    — GraphView for full control")
-    print(f"\nCheck the saved files in: {output_dir}")
-    print("  • company_knowledge.mmd (Mermaid source)")
-    print("  • company_knowledge.html (interactive - open in browser!)")
-    print("=" * 70)
 
 
 if __name__ == "__main__":

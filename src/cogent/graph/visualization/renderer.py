@@ -117,9 +117,7 @@ def to_mermaid(
         entities: List of entities to visualize.
         relationships: List of relationships to visualize.
         direction: Flow direction ("LR" for left-to-right, "TB" for top-to-bottom).
-        group_by_type: If True, group entities by type in subgraphs.
-            Note: Subgraphs can create messy layouts with heavily interconnected graphs.
-            Consider using False for better visual layout (types still colored).
+        group_by_type: If True, group entities by type in subgraphs for better organization.
         scheme: Style scheme name or StyleScheme instance.
         title: Optional diagram title.
 
@@ -149,10 +147,31 @@ def to_mermaid(
 
     safe_ids = {entity.id: _safe_mermaid_id(entity.id) for entity in entities}
 
-    # Add all nodes (no subgraphs - they cause layout issues)
-    for entity in entities:
-        node_def = entity_to_mermaid_node(entity, scheme, node_id=safe_ids[entity.id])
-        lines.append(f"    {node_def}")
+    # Group entities by type if requested
+    if group_by_type:
+        # Create subgraphs for each entity type
+        entities_by_type: dict[str, list[Entity]] = {}
+        for entity in entities:
+            if entity.entity_type not in entities_by_type:
+                entities_by_type[entity.entity_type] = []
+            entities_by_type[entity.entity_type].append(entity)
+
+        # Add subgraphs
+        for entity_type, type_entities in sorted(entities_by_type.items()):
+            lines.append(f"    subgraph {entity_type}")
+            for entity in type_entities:
+                node_def = entity_to_mermaid_node(
+                    entity, scheme, node_id=safe_ids[entity.id]
+                )
+                lines.append(f"        {node_def}")
+            lines.append(f"    end")
+    else:
+        # Add all nodes without grouping
+        for entity in entities:
+            node_def = entity_to_mermaid_node(
+                entity, scheme, node_id=safe_ids[entity.id]
+            )
+            lines.append(f"    {node_def}")
 
     # Add edges
     for rel in relationships:
