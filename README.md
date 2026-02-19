@@ -9,8 +9,6 @@
   <a href="https://github.com/milad-o/cogent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python"></a>
   <a href="https://milad-o.github.io/cogent"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
-  <a href="https://github.com/milad-o/cogent/actions/workflows/tests.yml"><img src="https://github.com/milad-o/cogent/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/milad-o/cogent/actions/workflows/tests.yml"><img src="https://raw.githubusercontent.com/milad-o/cogent/main/badges/tests.svg" alt="Tests"></a>
 </p>
 
 <p align="center">
