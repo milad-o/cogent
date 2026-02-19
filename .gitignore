@@ -96,3 +96,7 @@ TASKBOARD.md
 ARCHITECTURE.md
 RESEARCH.md
 
+# Notebooks
+notebooks/
+# CI reports (ephemeral - generated in CI, not committed)
+reports/

@@ -170,16 +170,16 @@ class TestKnowledgeGraphCapability:
         tools = kg.tools
 
         tool_names = [t.name for t in tools]
-        assert "remember" in tool_names
-        assert "recall" in tool_names
-        assert "connect" in tool_names
-        assert "query_knowledge" in tool_names
-        assert "forget" in tool_names
-        assert "list_knowledge" in tool_names
+        assert "kg_remember" in tool_names
+        assert "kg_recall" in tool_names
+        assert "kg_connect" in tool_names
+        assert "kg_query" in tool_names
+        assert "kg_forget" in tool_names
+        assert "kg_list" in tool_names
 
     def test_remember_tool(self):
         kg = KnowledgeGraph()
-        remember = next(t for t in kg.tools if t.name == "remember")
+        remember = next(t for t in kg.tools if t.name == "kg_remember")
 
         result = remember.invoke(
             {
@@ -201,7 +201,7 @@ class TestKnowledgeGraphCapability:
         kg = KnowledgeGraph()
         kg.graph.add_entity("Alice", "Person", {"role": "engineer"})
 
-        recall = next(t for t in kg.tools if t.name == "recall")
+        recall = next(t for t in kg.tools if t.name == "kg_recall")
         result = recall.invoke({"entity": "Alice"})
 
         assert "Alice" in result
@@ -210,14 +210,14 @@ class TestKnowledgeGraphCapability:
 
     def test_recall_not_found(self):
         kg = KnowledgeGraph()
-        recall = next(t for t in kg.tools if t.name == "recall")
+        recall = next(t for t in kg.tools if t.name == "kg_recall")
 
         result = recall.invoke({"entity": "Unknown"})
         assert "no information" in result.lower() or "not found" in result.lower()
 
     def test_connect_tool(self):
         kg = KnowledgeGraph()
-        connect = next(t for t in kg.tools if t.name == "connect")
+        connect = next(t for t in kg.tools if t.name == "kg_connect")
 
         result = connect.invoke(
             {"source": "Alice", "relation": "works_at", "target": "Acme"}
@@ -236,7 +236,7 @@ class TestKnowledgeGraphCapability:
         kg.graph.add_entity("Acme", "Company")
         kg.graph.add_relationship("Alice", "works_at", "Acme")
 
-        query = next(t for t in kg.tools if t.name == "query_knowledge")
+        query = next(t for t in kg.tools if t.name == "kg_query")
         result = query.invoke(
             {"source": "Alice", "relation": "works_at", "target": None}
         )
@@ -247,7 +247,7 @@ class TestKnowledgeGraphCapability:
         kg = KnowledgeGraph()
         kg.graph.add_entity("Alice", "Person")
 
-        forget = next(t for t in kg.tools if t.name == "forget")
+        forget = next(t for t in kg.tools if t.name == "kg_forget")
         result = forget.invoke({"entity": "Alice"})
 
         assert "Forgot" in result
@@ -259,7 +259,7 @@ class TestKnowledgeGraphCapability:
         kg.graph.add_entity("Bob", "Person")
         kg.graph.add_entity("Acme", "Company")
 
-        list_tool = next(t for t in kg.tools if t.name == "list_knowledge")
+        list_tool = next(t for t in kg.tools if t.name == "kg_list")
 
         # All entities
         result = list_tool.invoke({"entity_type": ""})
@@ -345,8 +345,8 @@ class TestAgentWithCapabilities:
 
         # Capability tools should be in agent's tools
         tool_names = [t.name for t in agent.all_tools]
-        assert "remember" in tool_names
-        assert "recall" in tool_names
+        assert "kg_remember" in tool_names
+        assert "kg_recall" in tool_names
 
     def test_agent_capability_list(self):
         from unittest.mock import MagicMock
@@ -532,6 +532,7 @@ class TestSQLiteGraph:
         graph = SQLiteGraph(db_path)
 
         graph.add_entity("Alice", "Person")
+        graph.add_entity("Bob", "Person")
         graph.add_relationship("Alice", "knows", "Bob")
         graph.clear()
 

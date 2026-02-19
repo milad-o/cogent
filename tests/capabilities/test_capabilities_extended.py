@@ -90,9 +90,9 @@ class TestKnowledgeGraphConvenienceMethods:
     def test_get_tool_direct(self):
         kg = KnowledgeGraph()
 
-        remember_tool = kg.get_tool("remember")
+        remember_tool = kg.get_tool("kg_remember")
         assert remember_tool is not None
-        assert remember_tool.name == "remember"
+        assert remember_tool.name == "kg_remember"
 
         assert kg.get_tool("nonexistent") is None
 
