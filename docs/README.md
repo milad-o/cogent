@@ -17,6 +17,11 @@ uv add cogent-ai
 pip install "cogent-ai[all]"
 ```
 
+> **Note:** The PyPI package name is `cogent-ai`, but the import name is `cogent`:
+> ```python
+> from cogent import Agent  # ✅ correct
+> ```
+
 **Optional dependencies:**
 
 | Group | Purpose |

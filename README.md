@@ -5,7 +5,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/milad-o/cogent/releases"><img src="https://img.shields.io/badge/version-1.17.0-blue.svg" alt="Version"></a>
+  📚 <strong>Documentation: <a href="https://milad-o.github.io/cogent">https://milad-o.github.io/cogent</a></strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/milad-o/cogent/releases"><img src="https://img.shields.io/badge/version-1.17.2-blue.svg" alt="Version"></a>
   <a href="https://github.com/milad-o/cogent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.13+-blue.svg" alt="Python"></a>
   <a href="https://milad-o.github.io/cogent"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
@@ -47,7 +51,7 @@ result = await agent.run("Find the latest news on AI agents")
 
 ---
 
-## 🎉 Latest Changes (v1.0.4)
+## 🎉 Latest Changes (v1.17.2)
 
 **Context Propagation & Query Tracking** 🔄
 - ✨ **RunContext.query** — Track original user request through entire delegation chain
@@ -353,6 +357,8 @@ async with tracer.trace("my-operation") as span:
 ---
 
 ## Installation
+
+> **Note:** The package is published as `cogent-ai` on PyPI, but you import it as `cogent` in your code.
 
 ```bash
 # Install from PyPI

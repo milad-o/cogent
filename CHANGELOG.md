@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.2] - 2026-02-19
+
+### Changed
+
+- **README improvements** — Added prominent documentation link (`https://milad-o.github.io/cogent`) at the top of the README
+- **README improvements** — Added note clarifying that the PyPI package name is `cogent-ai` but the import name is `cogent`
+
+## [1.17.1] - 2026-02-19
+
+### Changed
+
+- Refreshed PyPI project description (removed stale CI/Tests/Coverage badges)
+
 ## [1.17.0] - 2026-02-11
 
 ### Removed
