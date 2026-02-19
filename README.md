@@ -378,21 +378,24 @@ uv add "cogent[all] @ git+https://github.com/milad-o/cogent.git"
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `vector-stores` | Vector databases | FAISS, Qdrant |
+| `vector-stores` | Vector databases | FAISS, Qdrant, SciPy |
 | `retrieval` | Retrieval libraries | BM25, sentence-transformers |
-| `database` | SQL databases | SQLAlchemy, aiosqlite, psycopg2 |
+| `database` | SQL databases | SQLAlchemy, aiosqlite, asyncpg, psycopg2 |
 | `infrastructure` | Infrastructure | Redis |
 | `web` | Web tools | BeautifulSoup4, DuckDuckGo search |
 | `browser` | Browser automation | Playwright |
 | `document` | Document processing | PDF, Word, Markdown loaders |
-| `api` | API framework | FastAPI, Uvicorn |
+| `api` | API framework | FastAPI, Uvicorn, Starlette |
+| `visualization` | Graphs & charts | PyVis, Gravis, Matplotlib, Seaborn, Pandas |
 | `anthropic` | Claude models | Anthropic SDK |
-| `azure` | Azure models | Azure OpenAI, Azure Identity |
+| `azure` | Azure models | Azure Identity, Azure AI Inference |
+| `cerebras` | Cerebras models | Cerebras Cloud SDK |
 | `cohere` | Cohere models | Cohere SDK |
+| `gemini` | Gemini models | Google GenAI SDK |
 | `groq` | Groq models | Groq SDK |
-| `all-providers` | All LLM providers | All anthropic, azure, cohere, groq |
+| `all-providers` | All LLM providers | anthropic, azure, cerebras, cohere, gemini, groq |
 | `all-backend` | All backends | vector-stores, retrieval, database, infrastructure |
-| `all` | Everything | All above |
+| `all` | Everything | All above + visualization |
 
 **Development installation:**
 

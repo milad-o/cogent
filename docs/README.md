@@ -19,11 +19,27 @@ pip install "cogent[all] @ git+https://github.com/milad-o/cogent.git"
 
 **Optional dependencies:**
 
-- `[web]` — Web search, browser automation
-- `[anthropic]` — Anthropic Claude models
-- `[azure]` — Azure OpenAI support
-- `[gemini]` — Google Gemini models
-- `[all]` — All optional dependencies
+| Group | Purpose |
+|-------|--------|
+| `anthropic` | Anthropic Claude models |
+| `azure` | Azure OpenAI + Azure AI Inference |
+| `cerebras` | Cerebras ultra-fast inference |
+| `cohere` | Cohere Command models |
+| `gemini` | Google Gemini models |
+| `groq` | Groq fast inference |
+| `vector-stores` | FAISS, Qdrant vector databases |
+| `retrieval` | BM25, sentence-transformers |
+| `database` | SQLAlchemy, aiosqlite, asyncpg, psycopg2 |
+| `infrastructure` | Redis |
+| `web` | DuckDuckGo search, BeautifulSoup4 |
+| `browser` | Playwright automation |
+| `document` | PDF, Word, Markdown loaders |
+| `mcp` | Model Context Protocol |
+| `api` | FastAPI, Uvicorn |
+| `visualization` | PyVis, Gravis, Matplotlib, Pandas |
+| `all-providers` | All LLM providers |
+| `all-backend` | All backends (vector-stores, retrieval, database, infrastructure) |
+| `all` | Everything |
 
 ---
 

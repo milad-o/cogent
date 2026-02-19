@@ -34,7 +34,7 @@ uv add "cogent[infrastructure] @ git+https://github.com/milad-o/cogent.git"
 # Web tools (search, scraping)
 uv add "cogent[web] @ git+https://github.com/milad-o/cogent.git"
 
-# LLM providers (Anthropic, Azure, Cohere, Groq)
+# LLM providers (Anthropic, Azure, Cerebras, Cohere, Gemini, Groq)
 uv add "cogent[all-providers] @ git+https://github.com/milad-o/cogent.git"
 
 # All backends
