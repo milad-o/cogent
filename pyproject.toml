@@ -1,5 +1,5 @@
 [project]
-name = "cogent"
+name = "cogent-ai"
 version = "1.17.0"
 description = "Production AI agent framework with memory control and semantic caching"
 readme = "README.md"
@@ -88,17 +88,14 @@ visualization = [
 
 # --- Bundles for Easy Installation ---
 all-providers = [
-    "cogent[anthropic,azure,cerebras,cohere,gemini,groq]",
+    "cogent-ai[anthropic,azure,cerebras,cohere,gemini,groq]",
 ]
 all-backend = [
-    "cogent[vector-stores,retrieval,database,infrastructure]",
+    "cogent-ai[vector-stores,retrieval,database,infrastructure]",
 ]
 all = [
-    "cogent[all-providers,all-backend,analytics,api,browser,document,mcp,web,visualization]",
+    "cogent-ai[all-providers,all-backend,analytics,api,browser,document,mcp,web,visualization]",
 ]
-
-# --- Benchmarking (comparisons only, not for production) ---
-benchmark = ["crewai>=1.6.0", "openai-agents>=0.6.1"]
 
 [dependency-groups]
 # --- Core Development Tools ---

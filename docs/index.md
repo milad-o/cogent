@@ -34,11 +34,11 @@ result = await agent.run("Find the latest news on AI agents")
 ## Installation
 
 ```bash
-# Install from GitHub
-pip install git+https://github.com/milad-o/cogent.git
+# Install from PyPI
+pip install cogent-ai
 
 # Or with uv (recommended)
-uv add git+https://github.com/milad-o/cogent.git
+uv add cogent-ai
 ```
 
 **[Get Started →](getting-started.md)**

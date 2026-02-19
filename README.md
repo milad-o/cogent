@@ -358,20 +358,18 @@ async with tracer.trace("my-operation") as span:
 ## Installation
 
 ```bash
-# Minimal installation (core only)
+# Install from PyPI
+uv add cogent-ai
+
+# With extras
+uv add "cogent-ai[vector-stores,retrieval]"
+uv add "cogent-ai[database]"
+uv add "cogent-ai[all-backend]"
+uv add "cogent-ai[all]"
+
+# Or install from source (latest)
 uv add git+https://github.com/milad-o/cogent.git
-
-# With vector stores & retrieval
-uv add "cogent[vector-stores,retrieval] @ git+https://github.com/milad-o/cogent.git"
-
-# With database backends
-uv add "cogent[database] @ git+https://github.com/milad-o/cogent.git"
-
-# With all backends (vector stores, retrieval, database, redis)
-uv add "cogent[all-backend] @ git+https://github.com/milad-o/cogent.git"
-
-# Full installation with all providers & capabilities
-uv add "cogent[all] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[all] @ git+https://github.com/milad-o/cogent.git"
 ```
 
 **Optional dependency groups:**
@@ -401,16 +399,16 @@ uv add "cogent[all] @ git+https://github.com/milad-o/cogent.git"
 
 ```bash
 # Core dev tools (linting, type checking)
-uv add --dev cogent[dev]
+uv sync --group dev
 
 # Add testing
-uv add --dev cogent[dev,test]
+uv sync --group dev --group test
 
 # Add backend tests (vector stores, databases)
-uv add --dev cogent[dev,test,test-backends]
+uv sync --group dev --group test --group test-backends
 
 # Add documentation
-uv add --dev cogent[dev,test,test-backends,docs]
+uv sync --group dev --group test --group test-backends --group docs
 ```
 
 ## Core Architecture

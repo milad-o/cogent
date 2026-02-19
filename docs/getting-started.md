@@ -7,11 +7,11 @@ Get up and running with Cogent in minutes.
 ## Installation
 
 ```bash
-# Minimal installation (core only)
-pip install git+https://github.com/milad-o/cogent.git
+# Install from PyPI
+pip install cogent-ai
 
 # Or with uv (recommended)
-uv add git+https://github.com/milad-o/cogent.git
+uv add cogent-ai
 ```
 
 **Optional dependency groups:**
@@ -20,35 +20,37 @@ Choose what you need:
 
 ```bash
 # Vector stores (FAISS, Qdrant)
-uv add "cogent[vector-stores] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[vector-stores]"
 
 # Retrieval (BM25, rerankers)
-uv add "cogent[retrieval] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[retrieval]"
 
 # Database backends (SQLAlchemy + drivers)
-uv add "cogent[database] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[database]"
 
 # Infrastructure (Redis)
-uv add "cogent[infrastructure] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[infrastructure]"
 
 # Web tools (search, scraping)
-uv add "cogent[web] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[web]"
 
 # LLM providers (Anthropic, Azure, Cerebras, Cohere, Gemini, Groq)
-uv add "cogent[all-providers] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[all-providers]"
 
 # All backends
-uv add "cogent[all-backend] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[all-backend]"
 
 # Everything
-uv add "cogent[all] @ git+https://github.com/milad-o/cogent.git"
+uv add "cogent-ai[all]"
 ```
 
 **Development installation:**
 
 ```bash
 # Development + testing
-uv add --dev cogent[dev,test,test-backends,docs]
+uv sync --group dev --group test
+uv sync --group dev --group test --group test-backends
+uv sync --group dev --group test --group test-backends --group docs
 ```
 
 ---

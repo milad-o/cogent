@@ -7,14 +7,14 @@ Get up and running with Cogent in minutes.
 ## Installation
 
 ```bash
-# Install from GitHub
-pip install git+https://github.com/milad-o/cogent.git
+# Install from PyPI
+pip install cogent-ai
 
 # Or with uv (recommended)
-uv add git+https://github.com/milad-o/cogent.git
+uv add cogent-ai
 
 # With optional dependencies
-pip install "cogent[all] @ git+https://github.com/milad-o/cogent.git"
+pip install "cogent-ai[all]"
 ```
 
 **Optional dependencies:**
