@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +40,7 @@ jobs:
       - name: Commit badges
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "ci: update test and coverage badges [skip ci]"
+          commit_message: "ci: update test badge [skip ci]"
           file_pattern: badges/*.svg
           skip_dirty_check: false
 
