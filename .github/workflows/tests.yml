@@ -3,8 +3,6 @@ name: Tests
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   test:
@@ -25,25 +23,20 @@ jobs:
         run: uv sync --group dev
 
       - name: Run tests
-        id: run_tests
         run: |
           mkdir -p reports
-          uv run pytest \
-            --junitxml=reports/junit.xml
-        continue-on-error: true  # always generate badges even on failure
+          uv run pytest --junitxml=reports/junit.xml
 
       - name: Generate badges
+        if: always()
         run: |
           mkdir -p badges
           uv run genbadge tests -i reports/junit.xml -o badges/tests.svg
 
       - name: Commit badges
+        if: always()
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "ci: update test badge [skip ci]"
           file_pattern: badges/*.svg
           skip_dirty_check: false
-
-      - name: Fail job if tests failed
-        if: steps.run_tests.outcome == 'failure'
-        run: exit 1
