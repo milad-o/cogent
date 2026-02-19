@@ -11,7 +11,6 @@
   <a href="https://milad-o.github.io/cogent"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
   <a href="https://github.com/milad-o/cogent/actions/workflows/tests.yml"><img src="https://github.com/milad-o/cogent/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/milad-o/cogent/actions/workflows/tests.yml"><img src="https://raw.githubusercontent.com/milad-o/cogent/main/badges/tests.svg" alt="Tests"></a>
-  <a href="https://github.com/milad-o/cogent/actions/workflows/tests.yml"><img src="https://raw.githubusercontent.com/milad-o/cogent/main/badges/coverage.svg" alt="Coverage"></a>
 </p>
 
 <p align="center">

@@ -27,19 +27,13 @@ jobs:
         run: |
           mkdir -p reports
           uv run pytest \
-            --junitxml=reports/junit.xml \
-            --cov=src/cogent \
-            --cov-report=xml:reports/coverage.xml \
-            --cov-report=term-missing
+            --junitxml=reports/junit.xml
         continue-on-error: true  # always generate badges even on failure
 
       - name: Generate badges
         run: |
           mkdir -p badges
           uv run genbadge tests -i reports/junit.xml -o badges/tests.svg
-          if [ -f reports/coverage.xml ]; then
-            uv run genbadge coverage -i reports/coverage.xml -o badges/coverage.svg
-          fi
 
       - name: Commit badges
         uses: stefanzweifel/git-auto-commit-action@v5
