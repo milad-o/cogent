@@ -25,6 +25,7 @@ Note:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
@@ -419,10 +420,8 @@ def _process_page_batch(
     try:
         # Import pymupdf.layout BEFORE pymupdf4llm to enable advanced layout features
         # This activates header/footer extraction and disables legacy mode warnings
-        try:
-            import pymupdf.layout
-        except ImportError:
-            pass  # pymupdf_layout not installed, will use legacy mode
+        with contextlib.suppress(ImportError):
+            import pymupdf.layout  # noqa: F401
 
         import pymupdf4llm
     except ImportError as e:

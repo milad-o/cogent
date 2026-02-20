@@ -311,13 +311,13 @@ class DataValidator(BaseCapability):
         errors: list[str] = []
         warnings: list[str] = []
 
-        for field in required_fields:
-            if field not in data:
-                errors.append(f"Missing required field: {field}")
-            elif data[field] is None:
-                errors.append(f"Field '{field}' is None")
-            elif isinstance(data[field], str) and not data[field].strip():
-                errors.append(f"Field '{field}' is empty string")
+        for field_name in required_fields:
+            if field_name not in data:
+                errors.append(f"Missing required field: {field_name}")
+            elif data[field_name] is None:
+                errors.append(f"Field '{field_name}' is None")
+            elif isinstance(data[field_name], str) and not data[field_name].strip():
+                errors.append(f"Field '{field_name}' is empty string")
 
         # Check for unexpected fields
         expected_set = set(required_fields)

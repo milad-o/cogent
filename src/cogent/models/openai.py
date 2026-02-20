@@ -96,11 +96,10 @@ def _parse_response(response: Any) -> AIMessage:
 
     # Extract reasoning tokens if available (o-series models)
     reasoning_tokens = None
-    if response.usage:
-        if hasattr(response.usage, "completion_tokens_details"):
-            details = response.usage.completion_tokens_details
-            if hasattr(details, "reasoning_tokens") and details.reasoning_tokens:
-                reasoning_tokens = details.reasoning_tokens
+    if response.usage and hasattr(response.usage, "completion_tokens_details"):
+        details = response.usage.completion_tokens_details
+        if hasattr(details, "reasoning_tokens") and details.reasoning_tokens:
+            reasoning_tokens = details.reasoning_tokens
 
     metadata = MessageMetadata(
         model=response.model,

@@ -100,12 +100,8 @@ class InMemoryBackend:
             )
 
         # Check NumPy availability
-        try:
-            import numpy as np
-
-            self._numpy_available = True
-        except ImportError:
-            self._numpy_available = False
+        import importlib.util
+        self._numpy_available = importlib.util.find_spec("numpy") is not None
 
     async def add(
         self,

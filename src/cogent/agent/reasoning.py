@@ -134,9 +134,8 @@ class ReasoningConfig:
             raise ValueError("max_thinking_rounds must be at least 1")
         if self.max_thinking_rounds > 20:
             raise ValueError("max_thinking_rounds cannot exceed 20")
-        if self.require_confidence is not None:
-            if not 0.0 <= self.require_confidence <= 1.0:
-                raise ValueError("require_confidence must be between 0.0 and 1.0")
+        if self.require_confidence is not None and not 0.0 <= self.require_confidence <= 1.0:
+            raise ValueError("require_confidence must be between 0.0 and 1.0")
 
     @classmethod
     def quick(cls) -> ReasoningConfig:

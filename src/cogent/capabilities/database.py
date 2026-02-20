@@ -184,9 +184,8 @@ class Database(BaseCapability):
         query_upper = query.strip().upper()
 
         # Check read-only mode
-        if self._read_only:
-            if not query_upper.startswith("SELECT"):
-                raise ValueError("Only SELECT queries allowed in read-only mode")
+        if self._read_only and not query_upper.startswith("SELECT"):
+            raise ValueError("Only SELECT queries allowed in read-only mode")
 
         # Block dangerous keywords (basic protection)
         dangerous = ["DROP TABLE", "DROP DATABASE", "TRUNCATE", "DELETE FROM"]
@@ -255,7 +254,7 @@ class Database(BaseCapability):
 
                 # Convert to list of dicts
                 columns = list(result_proxy.keys())
-                rows_dicts = [dict(zip(columns, row)) for row in rows]
+                rows_dicts = [dict(zip(columns, row, strict=False)) for row in rows]
 
                 execution_time = (time.perf_counter() - start_time) * 1000
 

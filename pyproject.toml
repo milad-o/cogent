@@ -41,7 +41,7 @@ groq = ["groq>=0.15.0"]
 
 # --- Vector Stores & Retrieval ---
 vector-stores = [
-    "faiss-cpu>=1.13.2",
+    "faiss-cpu>=1.7,<2; python_version < '3.14'",
     "qdrant-client>=1.16.2",
     "scipy>=1.17.0",
 ]
@@ -168,6 +168,10 @@ line-length = 88
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/cogent/__init__.py" = ["E402"]
+"src/cogent/executors/native.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cogent"]

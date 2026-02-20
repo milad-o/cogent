@@ -397,15 +397,16 @@ def _extract_schema_from_function(func: Callable[..., Any]) -> dict[str, Any]:
                         # Stop if we hit another parameter or section
                         if next_stripped and (
                             ":" in next_stripped or next_stripped.startswith("-")
-                        ):
-                            # Check if it's another parameter
-                            if any(
+                        ) and (
+                            any(
                                 p + ":" in next_stripped
                                 for p in ["Args", "Returns", "Raises", "Example"]
-                            ) or (
+                            )
+                            or (
                                 next_stripped.split(":")[0].replace("_", "").isalnum()
-                            ):
-                                break
+                            )
+                        ):
+                            break
                         if next_stripped:
                             desc_parts.append(next_stripped)
                         elif desc_parts:  # Empty line after content - stop

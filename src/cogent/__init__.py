@@ -285,6 +285,7 @@ __all__ = [
     "__version__",
     # Core enums
     "AgentStatus",
+    "TaskStatus",
     "Trace",
     "TraceType",
     "Priority",
@@ -405,6 +406,8 @@ __all__ = [
     "DashboardConfig",
     "SystemInspector",
     "AgentInspector",
+    "EventInspector",
+    "TaskInspector",
     # Observer (integrated observability)
     "Observer",
     "ObservabilityLevel",

@@ -400,9 +400,8 @@ class TimeBasedRetriever(BaseRetriever):
                         )
 
             # Apply time range filter
-            if time_range and timestamp:
-                if not time_range.contains(timestamp):
-                    continue
+            if time_range and timestamp and not time_range.contains(timestamp):
+                continue
 
             # Calculate decay-adjusted score
             original_score = sr.score

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from cogent.capabilities.base import BaseCapability
 from cogent.capabilities.knowledge_graph.backends import (
@@ -212,10 +213,8 @@ class KnowledgeGraph(BaseCapability):
         self._path = Path(path) if path else None
 
         # Close the previous backend to release resources
-        try:
+        with contextlib.suppress(Exception):
             previous_graph.close()
-        except Exception:
-            pass
 
         # Clear tools cache to regenerate with new backend
         self._tools_cache = None
@@ -1103,7 +1102,7 @@ class KnowledgeGraph(BaseCapability):
         # Read the HTML and fix the CSS
         html_content = output.read_text()
         import re
-        
+
         # Fix width: should be width: 100% not width: 2
         html_content = re.sub(
             r'(#mynetwork\s*\{[^}]*width:\s*)(\d+)(;)',
@@ -1111,16 +1110,13 @@ class KnowledgeGraph(BaseCapability):
             html_content
         )
         # Ensure height is preserved correctly
-        if 'px' not in height:
-            height_value = height
-        else:
-            height_value = height
+        height_value = height
         html_content = re.sub(
             r'(#mynetwork\s*\{[^}]*height:\s*)([^;]+)(;)',
             rf'\g<1>{height_value}\3',
             html_content
         )
-        
+
         output.write_text(html_content)
 
         return output

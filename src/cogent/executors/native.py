@@ -168,7 +168,7 @@ async def run(
         semaphore = asyncio.Semaphore(20)  # Max 20 concurrent
 
         async def execute_with_limit(tc):
-            async with semaphore:
+            async with semaphore:  # noqa: B023
                 return await _execute_tool_native(tc, tool_map)
 
         tool_results = await asyncio.gather(
@@ -209,9 +209,9 @@ async def _execute_tool_native(
 
 
 # We need BaseExecutor at class definition time
-import contextlib
+import contextlib  # noqa: E402
 
-from cogent.executors.base import BaseExecutor
+from cogent.executors.base import BaseExecutor  # noqa: E402
 
 
 class NativeExecutor(BaseExecutor):
@@ -1074,10 +1074,8 @@ class NativeExecutor(BaseExecutor):
 
                 # POST_RUN interceptors
                 if interceptors:
-                    try:
+                    with contextlib.suppress(StopExecution):
                         await run_interceptors(interceptors, make_ctx(Phase.POST_RUN))
-                    except StopExecution:
-                        pass  # Already completing, ignore stop
 
                 if event_bus:
                     await event_bus.publish(
@@ -1292,7 +1290,7 @@ class NativeExecutor(BaseExecutor):
                 result_str = f"Unknown tool: {tool_name}"
 
             # POST_ACT
-            try:
+            with contextlib.suppress(StopExecution):
                 await run_interceptors(
                     interceptors,
                     make_ctx(
@@ -1303,8 +1301,6 @@ class NativeExecutor(BaseExecutor):
                     ),
                 )
                 # POST_ACT can't stop execution, just observe
-            except StopExecution:
-                pass  # Ignore stop in POST_ACT
 
             results.append(
                 ToolMessage(

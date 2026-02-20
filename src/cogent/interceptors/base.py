@@ -164,7 +164,7 @@ class InterceptResult:
         return cls(proceed=True, modified_prompt=prompt)
 
 
-class StopExecution(Exception):
+class StopExecution(Exception):  # noqa: N818
     """Raised by interceptors to halt execution immediately.
 
     Use this when you need to stop execution and return a specific response.
@@ -182,7 +182,7 @@ class StopExecution(Exception):
         super().__init__(reason or response)
 
 
-class Interceptor(ABC):
+class Interceptor(ABC):  # noqa: B024
     """Base class for all interceptors.
 
     Interceptors can hook into any execution phase by implementing

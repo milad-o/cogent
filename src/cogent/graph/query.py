@@ -333,14 +333,12 @@ def _matches_filter(entity: Entity, filter_dict: dict[str, Any]) -> bool:
         True if entity matches all filter criteria.
     """
     # Check type
-    if "type" in filter_dict and filter_dict["type"] != "?":
-        if entity.entity_type != filter_dict["type"]:
-            return False
+    if "type" in filter_dict and filter_dict["type"] != "?" and entity.entity_type != filter_dict["type"]:
+        return False
 
     # Check ID
-    if "id" in filter_dict and filter_dict["id"] != "?":
-        if entity.id != filter_dict["id"]:
-            return False
+    if "id" in filter_dict and filter_dict["id"] != "?" and entity.id != filter_dict["id"]:
+        return False
 
     # Check attributes
     for key, value in filter_dict.items():

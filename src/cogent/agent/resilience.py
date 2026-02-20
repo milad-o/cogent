@@ -332,11 +332,10 @@ class CircuitBreaker:
     @property
     def state(self) -> CircuitState:
         """Get current circuit state, checking for timeout transitions."""
-        if self._state == CircuitState.OPEN and self._last_failure_time:
-            if time.time() - self._last_failure_time >= self.reset_timeout:
-                self._state = CircuitState.HALF_OPEN
-                self._half_open_calls = 0
-                self._success_count = 0
+        if self._state == CircuitState.OPEN and self._last_failure_time and time.time() - self._last_failure_time >= self.reset_timeout:
+            self._state = CircuitState.HALF_OPEN
+            self._half_open_calls = 0
+            self._success_count = 0
         return self._state
 
     @property
@@ -980,20 +979,18 @@ class ToolResilience:
                 return result
 
         # Check failure memory for known bad patterns
-        if self.failure_memory and self.failure_memory.should_avoid(tool_name, args):
-            # Try fallback for known bad patterns
-            if self.config.fallback_enabled and fallback_fn:
-                self._emit(
-                    "fallback",
-                    {
-                        "from_tool": tool_name,
-                        "to_tool": "alternative",
-                        "reason": "known_failure_pattern",
-                    },
-                )
-                return await self._try_fallbacks(
-                    tool_name, args, fallback_fn, result, start_time
-                )
+        if self.failure_memory and self.failure_memory.should_avoid(tool_name, args) and self.config.fallback_enabled and fallback_fn:
+            self._emit(
+                "fallback",
+                {
+                    "from_tool": tool_name,
+                    "to_tool": "alternative",
+                    "reason": "known_failure_pattern",
+                },
+            )
+            return await self._try_fallbacks(
+                tool_name, args, fallback_fn, result, start_time
+            )
 
         # Execute with retry
         retry_policy = self.config.get_retry_policy(tool_name)

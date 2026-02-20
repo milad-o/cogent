@@ -245,7 +245,7 @@ def _create_search_memories_tool(memory: Memory) -> BaseTool:
 
                 # Return fuzzy-only results (no vectorstore or small candidate set)
                 lines = []
-                for norm_key, score, _ in fuzzy_matches[:5]:
+                for norm_key, _score, _ in fuzzy_matches[:5]:
                     original_key = key_map[norm_key]
                     value = await memory.recall(original_key)
                     lines.append(f"- {original_key}: {value}")
@@ -434,7 +434,7 @@ remember(), you are LYING - the information will be lost.
 
 **What requires remember():**
 - ALL personal information (name, contact, location, timezone, birthday, allergies)
-- ALL preferences (UI settings, food, communication style, work habits)  
+- ALL preferences (UI settings, food, communication style, work habits)
 - ALL work/project details (job, team, deadlines, meetings, current tasks)
 - ALL personal context (pets, hobbies, learning, training, habits, schedules)
 - ALL technical facts (servers, configs, passwords, tools, architecture)

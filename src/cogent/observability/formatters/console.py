@@ -277,7 +277,6 @@ class LLMFormatter(BaseFormatter):
 
             # Tool calls
             has_tools = event.get("has_tool_calls", False)
-            finish = event.get("finish_reason", "stop")
             finish_str = f" → {s.tool('tool_calls')}" if has_tools else ""
 
             return f"{s.agent(formatted_name)} {s.success('[llm-response]')}{s.success(duration_str)}{token_str}{finish_str}{thinking_str}"

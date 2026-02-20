@@ -39,11 +39,11 @@ COLOR_PALETTE = [
 
 def _darken_color(hex_color: str, factor: float = 0.3) -> str:
     """Darken a hex color for borders.
-    
+
     Args:
         hex_color: Hex color code (e.g., "#90CAF9")
         factor: Darkening factor (0-1, higher = darker)
-        
+
     Returns:
         Darkened hex color
     """
@@ -57,13 +57,13 @@ def _darken_color(hex_color: str, factor: float = 0.3) -> str:
 
 def assign_colors_to_types(entity_types: list[str]) -> dict[str, str]:
     """Automatically assign distinct colors to entity types.
-    
+
     Args:
         entity_types: List of unique entity types
-        
+
     Returns:
         Dictionary mapping entity type to hex color
-        
+
     Example:
         >>> types = ["Person", "Project", "Company"]
         >>> colors = assign_colors_to_types(types)
@@ -251,15 +251,15 @@ class MinimalScheme(StyleScheme):
 
 class AutoScheme(StyleScheme):
     """Automatic color scheme that assigns distinct colors to unknown types.
-    
+
     This scheme combines predefined colors for common types with automatic
     color assignment for unknown types. Colors are assigned from a palette
     in a deterministic, repeatable way.
-    
+
     Example:
         >>> scheme = AutoScheme()
         >>> # Known types get predefined colors
-        >>> style = scheme.get_node_style("Person")  
+        >>> style = scheme.get_node_style("Person")
         >>> # Unknown types get auto-assigned colors
         >>> style = scheme.get_node_style("Spacecraft")  # Auto-assigned from palette
     """
@@ -267,7 +267,7 @@ class AutoScheme(StyleScheme):
     def __init__(self) -> None:
         """Initialize with common types + automatic assignment."""
         super().__init__()
-        
+
         # Start with common entity type styles (same as DefaultScheme)
         self.node_styles = {
             "Person": NodeStyle(
@@ -313,16 +313,16 @@ class AutoScheme(StyleScheme):
                 text_color="#000000",
             ),
         }
-        
+
         # Track assigned types for deterministic color assignment
         self._color_index = len(self.node_styles)
-    
+
     def get_node_style(self, entity_type: str) -> NodeStyle:
         """Get node style for an entity type, auto-creating if needed.
-        
+
         Args:
             entity_type: Type of the entity.
-            
+
         Returns:
             NodeStyle for this entity type (existing or newly created).
         """
@@ -330,7 +330,7 @@ class AutoScheme(StyleScheme):
             # Auto-assign color from palette
             color = COLOR_PALETTE[self._color_index % len(COLOR_PALETTE)]
             border_color = _darken_color(color)
-            
+
             self.node_styles[entity_type] = NodeStyle(
                 shape="circle",  # Default shape for unknown types
                 color=color,
@@ -338,40 +338,40 @@ class AutoScheme(StyleScheme):
                 text_color="#000000",
             )
             self._color_index += 1
-        
+
         return self.node_styles[entity_type]
 
 
 def create_scheme_from_entities(entities: list["Entity"]) -> AutoScheme:
     """Create an automatic color scheme from a list of entities.
-    
+
     Analyzes entity types and pre-assigns colors to all types found,
     ensuring consistent colors across multiple visualizations.
-    
+
     Args:
         entities: List of Entity objects
-        
+
     Returns:
         AutoScheme with colors pre-assigned to all entity types
-        
+
     Example:
         >>> from cogent.graph import Graph
         >>> graph = Graph()
         >>> await graph.add_entity("sun", "Star", name="Sun")
         >>> await graph.add_entity("earth", "Planet", name="Earth")
         >>> entities = await graph.get_all_entities()
-        >>> 
+        >>>
         >>> scheme = create_scheme_from_entities(entities)
         >>> # Use in visualizations
         >>> net = to_pyvis(entities, relationships, scheme=scheme)
     """
     scheme = AutoScheme()
-    
+
     # Pre-assign colors to all types
     entity_types = {e.entity_type for e in entities}
     for entity_type in sorted(entity_types):
         _ = scheme.get_node_style(entity_type)  # Trigger auto-assignment
-    
+
     return scheme
 
 
@@ -402,8 +402,6 @@ def get_scheme(name: str = "default") -> StyleScheme:
         >>> style = scheme.get_node_style("Spacecraft")  # Auto-assigned color
     """
     if name not in SCHEMES:
-        raise ValueError(
-            f"Unknown scheme: {name}. Available: {list(SCHEMES.keys())}"
-        )
+        raise ValueError(f"Unknown scheme: {name}. Available: {list(SCHEMES.keys())}")
 
     return SCHEMES[name]()

@@ -171,15 +171,12 @@ class CodeValidator(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         # Check for blocked built-in calls
-        if isinstance(node.func, ast.Name):
-            if node.func.id in self.blocked_builtins:
-                self.errors.append(f"Blocked function: {node.func.id}()")
+        if isinstance(node.func, ast.Name) and node.func.id in self.blocked_builtins:
+            self.errors.append(f"Blocked function: {node.func.id}()")
 
         # Check for __dunder__ method calls
-        if isinstance(node.func, ast.Attribute):
-            if node.func.attr.startswith("__") and node.func.attr.endswith("__"):
-                if node.func.attr not in ("__init__", "__str__", "__repr__", "__len__"):
-                    self.errors.append(f"Blocked dunder method: {node.func.attr}")
+        if isinstance(node.func, ast.Attribute) and node.func.attr.startswith("__") and node.func.attr.endswith("__") and node.func.attr not in ("__init__", "__str__", "__repr__", "__len__"):
+            self.errors.append(f"Blocked dunder method: {node.func.attr}")
 
         self.generic_visit(node)
 

@@ -341,9 +341,8 @@ def _parse_response(response: Any, include_thoughts: bool = False) -> AIMessage:
 
     # Extract thinking tokens if available
     thinking_tokens = None
-    if hasattr(response, "usage_metadata"):
-        if hasattr(response.usage_metadata, "thoughts_token_count"):
-            thinking_tokens = response.usage_metadata.thoughts_token_count
+    if hasattr(response, "usage_metadata") and hasattr(response.usage_metadata, "thoughts_token_count"):
+        thinking_tokens = response.usage_metadata.thoughts_token_count
 
     metadata = MessageMetadata(
         model=response.model_version if hasattr(response, "model_version") else None,
@@ -695,11 +694,10 @@ class GeminiChat(BaseChatModel):
             # Accumulate metadata
             if hasattr(chunk, "model_version") and chunk.model_version:
                 chunk_metadata["model"] = chunk.model_version
-            if hasattr(chunk, "candidates") and chunk.candidates:
-                if hasattr(chunk.candidates[0], "finish_reason"):
-                    chunk_metadata["finish_reason"] = str(
-                        chunk.candidates[0].finish_reason
-                    )
+            if hasattr(chunk, "candidates") and chunk.candidates and hasattr(chunk.candidates[0], "finish_reason"):
+                chunk_metadata["finish_reason"] = str(
+                    chunk.candidates[0].finish_reason
+                )
             if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
                 chunk_metadata["usage"] = chunk.usage_metadata
 

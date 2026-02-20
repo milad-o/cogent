@@ -336,9 +336,8 @@ class FAISSBackend:
             if key in metadata_dict and metadata_dict[key] == value:
                 continue
             # Check custom metadata
-            if "custom" in metadata_dict and key in metadata_dict["custom"]:
-                if metadata_dict["custom"][key] == value:
-                    continue
+            if "custom" in metadata_dict and key in metadata_dict["custom"] and metadata_dict["custom"][key] == value:
+                continue
             # Key not found or value doesn't match
             return False
         return True

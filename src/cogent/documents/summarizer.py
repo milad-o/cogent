@@ -179,11 +179,8 @@ Final Summary:"""
 
             # Move start, accounting for overlap
             new_start = start + len(chunk) - self._chunk_overlap
-            if new_start <= start:
-                # Prevent infinite loop - ensure we always make progress
-                start = end
-            else:
-                start = new_start
+            # Prevent infinite loop - ensure we always make progress
+            start = end if new_start <= start else new_start
 
         return chunks
 
@@ -721,7 +718,7 @@ class HierarchicalSummarizer(BaseSummarizer):
 
             async def bounded_summarize(group: list[str], idx: int) -> str:
                 async with semaphore:
-                    return await self._summarize_group(group, level_num)
+                    return await self._summarize_group(group, level_num)  # noqa: B023
 
             tasks = [bounded_summarize(group, i) for i, group in enumerate(groups)]
             next_level = await asyncio.gather(*tasks)

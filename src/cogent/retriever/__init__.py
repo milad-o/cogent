@@ -170,6 +170,7 @@ __all__ = [
     # Core retrievers
     "DenseRetriever",
     "BM25Retriever",
+    "TFIDFRetriever",
     "HybridRetriever",
     "MetadataMatchMode",
     "MetadataWeight",

@@ -1026,12 +1026,7 @@ class Agent:
             semantic_cache: Layer 4 - Semantic cache (bool or SemanticCache instance)
         """
         from cogent.memory import InMemorySaver, Memory
-        from cogent.memory.acc import AgentCognitiveCompressor
         from cogent.memory.cache import SemanticCache
-
-        # Determine ACC configuration
-        acc_enabled = bool(acc)
-        acc_instance = acc if isinstance(acc, AgentCognitiveCompressor) else None
 
         # Check if user passed a Memory object directly
         if isinstance(long_term_memory, Memory):

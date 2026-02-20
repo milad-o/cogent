@@ -255,22 +255,21 @@ class CohereChat(BaseChatModel):
         async for event in stream:
             # Handle different event types
             if event.type == "content-delta":
-                if hasattr(event, "delta") and hasattr(event.delta, "message"):
-                    if hasattr(event.delta.message, "content") and hasattr(
-                        event.delta.message.content, "text"
-                    ):
-                        text = event.delta.message.content.text
-                        if text:
-                            metadata = MessageMetadata(
-                                id=str(uuid.uuid4()),
-                                timestamp=time.time(),
-                                model=chunk_metadata.get("model"),
-                                tokens=None,
-                                finish_reason=chunk_metadata.get("finish_reason"),
-                                response_id=chunk_metadata.get("id"),
-                                duration=time.time() - start_time,
-                            )
-                            yield AIMessage(content=text, metadata=metadata)
+                if hasattr(event, "delta") and hasattr(event.delta, "message") and hasattr(event.delta.message, "content") and hasattr(
+                    event.delta.message.content, "text"
+                ):
+                    text = event.delta.message.content.text
+                    if text:
+                        metadata = MessageMetadata(
+                            id=str(uuid.uuid4()),
+                            timestamp=time.time(),
+                            model=chunk_metadata.get("model"),
+                            tokens=None,
+                            finish_reason=chunk_metadata.get("finish_reason"),
+                            response_id=chunk_metadata.get("id"),
+                            duration=time.time() - start_time,
+                        )
+                        yield AIMessage(content=text, metadata=metadata)
 
             elif event.type == "message-end" and hasattr(event, "delta"):
                 if hasattr(event.delta, "finish_reason"):
@@ -382,13 +381,12 @@ class CohereEmbedding(BaseEmbedding):
 
         # Cohere response may have meta with billed_units
         tokens = None
-        if hasattr(response, "meta") and hasattr(response.meta, "billed_units"):
-            if hasattr(response.meta.billed_units, "input_tokens"):
-                tokens = TokenUsage(
-                    prompt_tokens=response.meta.billed_units.input_tokens,
-                    completion_tokens=0,
-                    total_tokens=response.meta.billed_units.input_tokens,
-                )
+        if hasattr(response, "meta") and hasattr(response.meta, "billed_units") and hasattr(response.meta.billed_units, "input_tokens"):
+            tokens = TokenUsage(
+                prompt_tokens=response.meta.billed_units.input_tokens,
+                completion_tokens=0,
+                total_tokens=response.meta.billed_units.input_tokens,
+            )
 
         metadata = EmbeddingMetadata(
             model=self.model,
@@ -433,13 +431,12 @@ class CohereEmbedding(BaseEmbedding):
 
         # Cohere response may have meta with billed_units
         tokens = None
-        if hasattr(response, "meta") and hasattr(response.meta, "billed_units"):
-            if hasattr(response.meta.billed_units, "input_tokens"):
-                tokens = TokenUsage(
-                    prompt_tokens=response.meta.billed_units.input_tokens,
-                    completion_tokens=0,
-                    total_tokens=response.meta.billed_units.input_tokens,
-                )
+        if hasattr(response, "meta") and hasattr(response.meta, "billed_units") and hasattr(response.meta.billed_units, "input_tokens"):
+            tokens = TokenUsage(
+                prompt_tokens=response.meta.billed_units.input_tokens,
+                completion_tokens=0,
+                total_tokens=response.meta.billed_units.input_tokens,
+            )
 
         metadata = EmbeddingMetadata(
             model=self.model,

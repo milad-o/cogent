@@ -302,11 +302,10 @@ class Shell(BaseCapability):
             not self.allow_background
             and "&" in command
             and not command.strip().endswith("&&")
+            and re.search(r"[^&]&[^&]|[^&]&$", command)
         ):
-            # Check for background operator (but not &&)
-            if re.search(r"[^&]&[^&]|[^&]&$", command):
-                msg = "Background operations are not allowed"
-                raise SecurityError(msg)
+            msg = "Background operations are not allowed"
+            raise SecurityError(msg)
 
         # Extract base command
         try:

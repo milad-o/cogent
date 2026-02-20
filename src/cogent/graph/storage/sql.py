@@ -219,16 +219,15 @@ class SQLStorage:
         """Remove an entity and all its relationships (cascade)."""
         await self.initialize()
 
-        async with self.async_session() as session:
-            async with session.begin():
-                # First, manually delete relationships
-                await session.execute(
-                    delete(RelationshipModel).where(
-                        (RelationshipModel.source_id == id) | (RelationshipModel.target_id == id)
-                    )
+        async with self.async_session() as session, session.begin():
+            # First, manually delete relationships
+            await session.execute(
+                delete(RelationshipModel).where(
+                    (RelationshipModel.source_id == id) | (RelationshipModel.target_id == id)
                 )
-                # Then delete the entity
-                return await self._delete(EntityModel, id, session)
+            )
+            # Then delete the entity
+            return await self._delete(EntityModel, id, session)
 
     async def add_relationship(
         self,

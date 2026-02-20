@@ -385,9 +385,8 @@ def _dataclass_to_json_schema(cls: type) -> dict[str, Any]:
         properties[f.name] = field_schema
 
         # Check if required (no default and not Optional)
-        if f.default is f.default_factory is type(None).__class__:
-            if not _is_optional_type(field_type):
-                required.append(f.name)
+        if f.default is f.default_factory is type(None).__class__ and not _is_optional_type(field_type):
+            required.append(f.name)
 
     return {
         "type": "object",
@@ -453,28 +452,25 @@ def _python_type_to_json_schema(py_type: type) -> dict[str, Any]:
         return {"type": "array", "items": item_schema, "uniqueItems": True}
 
     # Tuple - array with prefixItems for fixed-length
-    if origin is tuple:
-        if args:
-            # tuple[str, int, float] - fixed length
-            if len(args) > 1 or (len(args) == 1 and args[0] is not ...):
-                # Check if last arg is Ellipsis (tuple[str, ...])
-                if args[-1] is ...:
-                    # Variable length tuple
-                    item_schema = (
-                        _python_type_to_json_schema(args[0]) if len(args) > 1 else {}
-                    )
-                    return {"type": "array", "items": item_schema}
-                else:
-                    # Fixed length tuple
-                    return {
-                        "type": "array",
-                        "prefixItems": [
-                            _python_type_to_json_schema(arg) for arg in args
-                        ],
-                        "minItems": len(args),
-                        "maxItems": len(args),
-                    }
-        return {"type": "array"}
+    if origin is tuple and args and (len(args) > 1 or (len(args) == 1 and args[0] is not ...)):
+        # Check if last arg is Ellipsis (tuple[str, ...])
+        if args[-1] is ...:
+            # Variable length tuple
+            item_schema = (
+                _python_type_to_json_schema(args[0]) if len(args) > 1 else {}
+            )
+            return {"type": "array", "items": item_schema}
+        else:
+            # Fixed length tuple
+            return {
+                "type": "array",
+                "prefixItems": [
+                    _python_type_to_json_schema(arg) for arg in args
+                ],
+                "minItems": len(args),
+                "maxItems": len(args),
+            }
+    return {"type": "array"}
 
     # Dict
     if origin is dict:
@@ -917,7 +913,7 @@ def validate_and_parse[T](
                 try:
                     validated_items = [
                         validate_and_parse(item, arg_type)
-                        for item, arg_type in zip(data, args)
+                        for item, arg_type in zip(data, args, strict=False)
                     ]
                     return tuple(validated_items)
                 except (OutputValidationError, Exception) as e:

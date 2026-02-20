@@ -268,10 +268,8 @@ class DeferredWaiter:
         """Handle incoming event and check if it matches."""
         # Check event type match
         event_type = self.deferred.wait_for
-        if isinstance(event_type, str):
-            # Custom event - check the event_name in data
-            if event.data.get("event_name") != event_type:
-                return
+        if isinstance(event_type, str) and event.data.get("event_name") != event_type:
+            return
 
         # Check field matches
         for key, expected_value in self.deferred.match.items():

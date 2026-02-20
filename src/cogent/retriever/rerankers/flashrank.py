@@ -63,7 +63,7 @@ class FlashRankReranker(BaseReranker):
         """Lazy load the FlashRank ranker."""
         if self._ranker is None:
             try:
-                from flashrank import Ranker, RerankRequest
+                from flashrank import Ranker
             except ImportError as e:
                 raise ImportError(
                     "FlashRankReranker requires flashrank. "

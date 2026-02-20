@@ -29,6 +29,7 @@ Example:
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
@@ -491,10 +492,8 @@ class AgentMemory:
 
         # Clear from backend if supported
         if self._backend and hasattr(self._backend, "adelete_thread"):
-            try:
+            with contextlib.suppress(Exception):
                 await self._backend.adelete_thread(thread_id)
-            except Exception:
-                pass  # Not all backends support deletion
 
     # ========================================
     # Context Management

@@ -403,7 +403,7 @@ all = [
     { name = "cerebras-cloud-sdk" },
     { name = "cohere" },
     { name = "ddgs" },
-    { name = "faiss-cpu" },
+    { name = "faiss-cpu", marker = "python_full_version < '3.14'" },
     { name = "fastapi" },
     { name = "google-genai" },
     { name = "gravis" },
@@ -436,7 +436,7 @@ all = [
 all-backend = [
     { name = "aiosqlite" },
     { name = "asyncpg" },
-    { name = "faiss-cpu" },
+    { name = "faiss-cpu", marker = "python_full_version < '3.14'" },
     { name = "greenlet" },
     { name = "psycopg2-binary" },
     { name = "qdrant-client" },
@@ -512,7 +512,7 @@ retrieval = [
     { name = "sentence-transformers" },
 ]
 vector-stores = [
-    { name = "faiss-cpu" },
+    { name = "faiss-cpu", marker = "python_full_version < '3.14'" },
     { name = "qdrant-client" },
     { name = "scipy" },
 ]
@@ -574,7 +574,7 @@ requires-dist = [
     { name = "cogent-ai", extras = ["vector-stores", "retrieval", "database", "infrastructure"], marker = "extra == 'all-backend'" },
     { name = "cohere", marker = "extra == 'cohere'", specifier = ">=5.20.0" },
     { name = "ddgs", marker = "extra == 'web'", specifier = ">=9.9.1" },
-    { name = "faiss-cpu", marker = "extra == 'vector-stores'", specifier = ">=1.13.2" },
+    { name = "faiss-cpu", marker = "python_full_version < '3.14' and extra == 'vector-stores'", specifier = ">=1.7,<2" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.115.0" },
     { name = "google-genai", marker = "extra == 'gemini'", specifier = ">=1.57.0" },
     { name = "gravis", marker = "extra == 'visualization'", specifier = ">=0.1.0" },

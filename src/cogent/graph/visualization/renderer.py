@@ -6,7 +6,6 @@ Supports rendering Mermaid to images (PNG, SVG, PDF) via Mermaid CLI (mmdc).
 For interactive visualizations, use PyVis (HTML) or gravis (2D/3D web).
 """
 
-import html
 import json
 from typing import Any
 
@@ -164,7 +163,7 @@ def to_mermaid(
                     entity, scheme, node_id=safe_ids[entity.id]
                 )
                 lines.append(f"        {node_def}")
-            lines.append(f"    end")
+            lines.append("    end")
     else:
         # Add all nodes without grouping
         for entity in entities:
@@ -195,9 +194,7 @@ def to_mermaid(
 
     # Apply styles to nodes
     for entity in entities:
-        lines.append(
-            f"    class {safe_ids[entity.id]} {entity.entity_type}Style"
-        )
+        lines.append(f"    class {safe_ids[entity.id]} {entity.entity_type}Style")
 
     return "\n".join(lines)
 
@@ -227,9 +224,7 @@ def save_diagram(
     }
 
     if format not in extensions:
-        raise ValueError(
-            f"Unknown format: {format}. Use: {list(extensions.keys())}"
-        )
+        raise ValueError(f"Unknown format: {format}. Use: {list(extensions.keys())}")
 
     # Ensure extension
     if not file_path.endswith(extensions[format]):
@@ -290,11 +285,16 @@ async def render_mermaid_to_image(
         # Build mmdc command
         cmd = [
             "mmdc",
-            "-i", tmp_path,
-            "-o", output_path,
-            "-w", str(width),
-            "-H", str(height),
-            "-t", "default",  # Use default (light) theme to respect custom styles
+            "-i",
+            tmp_path,
+            "-o",
+            output_path,
+            "-w",
+            str(width),
+            "-H",
+            str(height),
+            "-t",
+            "default",  # Use default (light) theme to respect custom styles
         ]
 
         # Add background color for better visibility
@@ -400,7 +400,7 @@ def to_pyvis(
         scheme = get_scheme(scheme)
 
     # Build NetworkX graph
-    G = nx.DiGraph() if directed else nx.Graph()
+    nx_graph = nx.DiGraph() if directed else nx.Graph()
 
     # Map for PyVis shapes from Mermaid shapes
     shape_map = {
@@ -413,35 +413,27 @@ def to_pyvis(
     # Add entities as nodes
     for entity in entities:
         attrs = entity.attributes or {}
-        
+
         # Get node style from scheme
         node_style = scheme.get_node_style(entity.entity_type)
-        
+
         # Determine node color
-        if color_by_type:
-            node_color = node_style.color
-            border_color = node_style.border_color
-        else:
-            node_color = entity_color or "#7BE382"
-            border_color = "#333333"
-        
+        node_color = node_style.color if color_by_type else entity_color or "#7BE382"
+
         # Build label: prefer "name" attribute, fallback to ID
         name = attrs.get("name", entity.id)
-        if show_type_in_label:
-            label = f"{name}\n({entity.entity_type})"
-        else:
-            label = name
-        
+        label = f"{name}\n({entity.entity_type})" if show_type_in_label else name
+
         # Build tooltip
         tooltip_lines = [f"<b>{entity.entity_type}</b>: {entity.id}"]
         for k, v in attrs.items():
             tooltip_lines.append(f"<i>{k}</i>: {v}")
         tooltip_html = "<br>".join(tooltip_lines)
-        
+
         # Determine shape
         pyvis_shape = shape_map.get(node_style.shape, "dot")
 
-        G.add_node(
+        nx_graph.add_node(
             entity.id,
             title=tooltip_html,
             color=node_color,  # Simple string color for PyVis
@@ -455,14 +447,14 @@ def to_pyvis(
     # Add relationships as edges
     for rel in relationships:
         edge_style = scheme.get_edge_style(rel.relation)
-        
+
         # Determine edge width
         width = max(1, edge_style.width)
-        
+
         # Determine edge style (dashes for dashed/dotted)
         dashes = edge_style.style in ("dashed", "dotted")
-        
-        G.add_edge(
+
+        nx_graph.add_edge(
             rel.source_id,
             rel.target_id,
             label=rel.relation,
@@ -480,7 +472,7 @@ def to_pyvis(
         directed=directed,
         cdn_resources="remote",
     )
-    net.from_nx(G)
+    net.from_nx(nx_graph)
 
     # Manually set node colors (from_nx doesn't preserve the color attribute properly)
     # Build a mapping of node_id -> color from our entities
@@ -491,7 +483,7 @@ def to_pyvis(
             node_color_map[entity.id] = node_style.color
         else:
             node_color_map[entity.id] = entity_color or "#7BE382"
-    
+
     # Apply colors to PyVis nodes
     for node in net.nodes:
         if node["id"] in node_color_map:
@@ -627,28 +619,28 @@ def to_gravis(
         scheme = get_scheme(scheme)
 
     # Build NetworkX graph
-    G = nx.DiGraph()
+    nx_graph = nx.DiGraph()
 
     # Add entities as nodes with all attributes
     for entity in entities:
         node_style = scheme.get_node_style(entity.entity_type)
-        
+
         node_attrs = {
             "entity_type": entity.entity_type,
             "label": entity.attributes.get("name", entity.id),
             **entity.attributes,
         }
-        
+
         # Add color attribute if color_by_type is enabled
         if color_by_type:
             node_attrs["color"] = node_style.color
-        
-        G.add_node(entity.id, **node_attrs)
+
+        nx_graph.add_node(entity.id, **node_attrs)
 
     # Add relationships as edges
     for rel in relationships:
         edge_label = rel.relation if show_edge_label else ""
-        G.add_edge(
+        nx_graph.add_edge(
             rel.source_id,
             rel.target_id,
             relation=rel.relation,
@@ -687,10 +679,10 @@ def to_gravis(
 
     # Select renderer and create figure
     if mode == "3d" or renderer == "three":
-        fig = gv.three(G, **gravis_kwargs)
+        fig = gv.three(nx_graph, **gravis_kwargs)
     elif renderer == "d3":
-        fig = gv.d3(G, **gravis_kwargs)
+        fig = gv.d3(nx_graph, **gravis_kwargs)
     else:  # vis (default)
-        fig = gv.vis(G, **gravis_kwargs)
+        fig = gv.vis(nx_graph, **gravis_kwargs)
 
     return fig

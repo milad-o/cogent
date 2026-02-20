@@ -370,11 +370,11 @@ def should_interrupt(
     return False
 
 
-class HITLException(Exception):
+class HITLError(Exception):
     """Base exception for HITL operations."""
 
 
-class InterruptedException(HITLException):
+class InterruptedException(HITLError):  # noqa: N818
     """
     Raised when agent execution is interrupted for human input.
 
@@ -390,7 +390,7 @@ class InterruptedException(HITLException):
         self.state = state
 
 
-class DecisionRequiredException(HITLException):
+class DecisionRequiredException(HITLError):  # noqa: N818
     """Raised when a human decision is required to continue."""
 
     def __init__(self, pending_action: PendingAction):
@@ -398,7 +398,7 @@ class DecisionRequiredException(HITLException):
         self.pending_action = pending_action
 
 
-class AbortedException(HITLException):
+class AbortedException(HITLError):  # noqa: N818
     """Raised when human aborts the workflow."""
 
     def __init__(self, decision: HumanDecision):
