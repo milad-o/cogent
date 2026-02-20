@@ -160,11 +160,9 @@ from cogent.core.utils import generate_id, now_utc
 
 # Execution strategies
 from cogent.executors import (
-    ExecutionPlan,
     ExecutionStrategy,
     NativeExecutor,
     SequentialExecutor,
-    ToolCall,
     create_executor,
     run,
 )
@@ -305,8 +303,6 @@ __all__ = [
     "InMemorySaver",
     # Execution strategies
     "ExecutionStrategy",
-    "ExecutionPlan",
-    "ToolCall",
     "NativeExecutor",
     "SequentialExecutor",
     "run",

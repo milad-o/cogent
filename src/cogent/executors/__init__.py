@@ -41,9 +41,6 @@ from cogent.executors.base import BaseExecutor, CompletionCheck, ExecutionStrate
 # Factory
 from cogent.executors.factory import create_executor
 
-# Data models
-from cogent.executors.models import ExecutionPlan, ToolCall
-
 # Native executors (default)
 from cogent.executors.native import NativeExecutor, SequentialExecutor, run
 
@@ -58,9 +55,6 @@ from cogent.executors.native import NativeExecutor, SequentialExecutor, run
 __all__ = [
     # Strategy enum
     "ExecutionStrategy",
-    # Data classes
-    "ToolCall",
-    "ExecutionPlan",
     "CompletionCheck",
     # Tree search classes - REMOVED
     # "SearchNode",

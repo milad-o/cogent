@@ -14,105 +14,11 @@ import pytest
 from cogent.agent import Agent, AgentConfig
 from cogent.agent.taskboard import TaskBoard
 from cogent.executors import (
-    ExecutionPlan,
     ExecutionStrategy,
     NativeExecutor,
-    # NodeState,  # REMOVED - was part of TreeSearch multi-agent orchestration
-    # SearchNode,  # REMOVED - was part of TreeSearch multi-agent orchestration
     SequentialExecutor,
-    ToolCall,
-    # TreeSearchExecutor,  # REMOVED - was part of TreeSearch multi-agent orchestration
     create_executor,
 )
-
-
-class TestToolCall:
-    """Tests for ToolCall dataclass."""
-
-    def test_create_tool_call(self) -> None:
-        """Test creating a basic tool call."""
-        call = ToolCall(
-            id="call_0",
-            tool_name="search",
-            args={"query": "test"},
-        )
-        assert call.id == "call_0"
-        assert call.tool_name == "search"
-        assert call.args == {"query": "test"}
-        assert call.status == "pending"
-
-    def test_is_ready_no_deps(self) -> None:
-        """Test call is ready when no dependencies."""
-        call = ToolCall(id="call_0", tool_name="search", args={})
-        assert call.is_ready(set()) is True
-
-    def test_is_ready_with_deps(self) -> None:
-        """Test call readiness with dependencies."""
-        call = ToolCall(
-            id="call_1",
-            tool_name="process",
-            args={},
-            depends_on=["call_0"],
-        )
-        assert call.is_ready(set()) is False
-        assert call.is_ready({"call_0"}) is True
-
-    def test_is_ready_multiple_deps(self) -> None:
-        """Test readiness with multiple dependencies."""
-        call = ToolCall(
-            id="call_2",
-            tool_name="combine",
-            args={},
-            depends_on=["call_0", "call_1"],
-        )
-        assert call.is_ready({"call_0"}) is False
-        assert call.is_ready({"call_0", "call_1"}) is True
-
-
-class TestExecutionPlan:
-    """Tests for ExecutionPlan dataclass."""
-
-    def test_create_empty_plan(self) -> None:
-        """Test creating an empty plan."""
-        plan = ExecutionPlan()
-        assert len(plan) == 0
-        assert bool(plan) is False
-
-    def test_add_call(self) -> None:
-        """Test adding calls to plan."""
-        plan = ExecutionPlan()
-        id1 = plan.add_call("search", {"query": "test"})
-        id2 = plan.add_call("process", {"data": "$call_0"}, depends_on=[id1])
-
-        assert len(plan) == 2
-        assert id1 == "call_0"
-        assert id2 == "call_1"
-        assert plan.calls[1].depends_on == ["call_0"]
-
-    def test_get_ready_calls(self) -> None:
-        """Test getting ready calls."""
-        plan = ExecutionPlan()
-        plan.add_call("search_a", {"q": "A"})
-        plan.add_call("search_b", {"q": "B"})
-        plan.add_call("combine", {}, depends_on=["call_0", "call_1"])
-
-        ready = plan.get_ready_calls(set())
-        assert len(ready) == 2
-        assert ready[0].tool_name == "search_a"
-        assert ready[1].tool_name == "search_b"
-
-    def test_get_execution_order(self) -> None:
-        """Test execution wave calculation."""
-        plan = ExecutionPlan()
-        plan.add_call("search_a", {})  # call_0, no deps
-        plan.add_call("search_b", {})  # call_1, no deps
-        plan.add_call("combine", {}, depends_on=["call_0", "call_1"])  # call_2
-
-        waves = plan.get_execution_order()
-
-        assert len(waves) == 2
-        assert set(waves[0]) == {"call_0", "call_1"}  # Parallel
-        assert waves[1] == ["call_2"]  # Sequential
 
 
 class TestBaseExecutor:
