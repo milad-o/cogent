@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.3] - 2026-02-20
+
+### Changed
+
+- **Code quality** — Fixed all Ruff lint issues across `src/` (SIM102, SIM105, SIM108, F401, F811, F841, B024, B023, B905, N818, E402)
+
 ## [1.17.2] - 2026-02-19
 
 ### Changed
